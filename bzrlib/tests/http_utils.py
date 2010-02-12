@@ -58,12 +58,12 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         """Hand the request off to a smart server instance."""
         backing = get_transport(self.server.test_case_server._home_dir)
         chroot_server = chroot.ChrootServer(backing)
-        chroot_server.setUp()
+        chroot_server.start_server()
         try:
             t = get_transport(chroot_server.get_url())
             self.do_POST_inner(t)
         finally:
-            chroot_server.tearDown()
+            chroot_server.stop_server()
 
     def do_POST_inner(self, chrooted_transport):
         self.send_response(200)

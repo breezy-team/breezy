@@ -31,6 +31,7 @@ from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import (
     KnownFailure,
     HardlinkFeature,
+    test_server,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
@@ -171,15 +172,7 @@ class TestBranch(ExternalBase):
         out, err = self.run_bzr(['branch', 'source', 'target', '--hardlink'])
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
-        same_file = (source_stat == target_stat)
-        if same_file:
-            pass
-        else:
-            # https://bugs.edge.launchpad.net/bzr/+bug/408193
-            self.assertContainsRe(err, "hardlinking working copy files is "
-                "not currently supported")
-            raise KnownFailure("--hardlink doesn't work in formats "
-                "that support content filtering (#408193)")
+        self.assertEqual(source_stat, target_stat)
 
     def test_branch_standalone(self):
         shared_repo = self.make_repository('repo', shared=True)
@@ -216,6 +209,13 @@ class TestBranch(ExternalBase):
         out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('bzr: ERROR: Already a branch: "b".\n', err)
+
+    def test_branch_bind(self):
+        self.example_branch('a')
+        out, err = self.run_bzr('branch a b --bind')
+        self.assertEndsWith(err, "New branch bound to a\n")
+        b = branch.Branch.open('b')
+        self.assertEndsWith(b.get_bound_location(), '/a/')
 
 
 class TestBranchStacked(ExternalBase):
@@ -309,8 +309,7 @@ class TestBranchStacked(ExternalBase):
 
     def test_branch_stacked_from_smart_server(self):
         # We can branch stacking on a smart server
-        from bzrlib.smart.server import SmartTCPServer_for_testing
-        self.transport_server = SmartTCPServer_for_testing
+        self.transport_server = test_server.SmartTCPServer_for_testing
         trunk = self.make_branch('mainline', format='1.9')
         out, err = self.run_bzr(
             ['branch', '--stacked', self.get_url('mainline'), 'shallow'])

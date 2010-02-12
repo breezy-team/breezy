@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #           and others
 #
@@ -23,6 +23,7 @@ import sys
 
 from bzrlib import (
     branch,
+    branchbuilder,
     bzrdir,
     errors,
     osutils,
@@ -478,6 +479,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         self.assertEqual(wt.get_root_id(), checkout.get_root_id())
         self.assertNotEqual(None, wt.get_root_id())
 
+    def test_update_sets_updated_root_id(self):
+        wt = self.make_branch_and_tree('tree')
+        wt.set_root_id('first_root_id')
+        self.assertEqual('first_root_id', wt.get_root_id())
+        self.build_tree(['tree/file'])
+        wt.add(['file'])
+        wt.commit('first')
+        co = wt.branch.create_checkout('checkout')
+        wt.set_root_id('second_root_id')
+        wt.commit('second')
+        self.assertEqual('second_root_id', wt.get_root_id())
+        self.assertEqual(0, co.update())
+        self.assertEqual('second_root_id', co.get_root_id())
+
     def test_update_returns_conflict_count(self):
         # working tree formats from the meta-dir format and newer support
         # setting the last revision on a tree independently of that on the
@@ -513,30 +528,37 @@ class TestWorkingTree(TestCaseWithWorkingTree):
 
     def test_merge_revert(self):
         from bzrlib.merge import merge_inner
-        self.thisFailsStrictLockCheck()
         this = self.make_branch_and_tree('b1')
-        open('b1/a', 'wb').write('a test\n')
-        this.add('a')
-        open('b1/b', 'wb').write('b test\n')
-        this.add('b')
+        self.build_tree_contents([('b1/a', 'a test\n'), ('b1/b', 'b test\n')])
+        this.add(['a', 'b'])
         this.commit(message='')
         base = this.bzrdir.clone('b2').open_workingtree()
-        open('b2/a', 'wb').write('b test\n')
+        self.build_tree_contents([('b2/a', 'b test\n')])
         other = this.bzrdir.clone('b3').open_workingtree()
-        open('b3/a', 'wb').write('c test\n')
-        open('b3/c', 'wb').write('c test\n')
+        self.build_tree_contents([('b3/a', 'c test\n'), ('b3/c', 'c test\n')])
         other.add('c')
 
-        open('b1/b', 'wb').write('q test\n')
-        open('b1/d', 'wb').write('d test\n')
+        self.build_tree_contents([('b1/b', 'q test\n'), ('b1/d', 'd test\n')])
+        # Note: If we don't lock this before calling merge_inner, then we get a
+        #       lock-contention failure. This probably indicates something
+        #       weird going on inside merge_inner. Probably something about
+        #       calling bt = this_tree.basis_tree() in one lock, and then
+        #       locking both this_tree and bt separately, causing a dirstate
+        #       locking race.
+        this.lock_write()
+        self.addCleanup(this.unlock)
         merge_inner(this.branch, other, base, this_tree=this)
-        self.assertNotEqual(open('b1/a', 'rb').read(), 'a test\n')
+        a = open('b1/a', 'rb')
+        try:
+            self.assertNotEqual(a.read(), 'a test\n')
+        finally:
+            a.close()
         this.revert()
-        self.assertEqual(open('b1/a', 'rb').read(), 'a test\n')
-        self.assertIs(os.path.exists('b1/b.~1~'), True)
-        self.assertIs(os.path.exists('b1/c'), False)
-        self.assertIs(os.path.exists('b1/a.~1~'), False)
-        self.assertIs(os.path.exists('b1/d'), True)
+        self.assertFileEqual('a test\n', 'b1/a')
+        self.failUnlessExists('b1/b.~1~')
+        self.failIfExists('b1/c')
+        self.failIfExists('b1/a.~1~')
+        self.failUnlessExists('b1/d')
 
     def test_update_updates_bound_branch_no_local_commits(self):
         # doing an update in a tree updates the branch its bound to too.
@@ -582,6 +604,20 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # and the local branch history should match the masters now.
         self.assertEqual(master_tree.branch.revision_history(),
             tree.branch.revision_history())
+
+    def test_update_takes_revision_parameter(self):
+        wt = self.make_branch_and_tree('wt')
+        self.build_tree_contents([('wt/a', 'old content')])
+        wt.add(['a'])
+        rev1 = wt.commit('first master commit')
+        self.build_tree_contents([('wt/a', 'new content')])
+        rev2 = wt.commit('second master commit')
+        # https://bugs.edge.launchpad.net/bzr/+bug/45719/comments/20
+        # when adding 'update -r' we should make sure all wt formats support
+        # it
+        conflicts = wt.update(revision=rev1)
+        self.assertFileEqual('old content', 'wt/a')
+        self.assertEqual([rev1], wt.get_parent_ids())
 
     def test_merge_modified_detects_corruption(self):
         # FIXME: This doesn't really test that it works; also this is not
@@ -912,6 +948,112 @@ class TestWorkingTree(TestCaseWithWorkingTree):
                 pass
         finally:
             os.link = real_os_link
+
+
+class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
+
+    def make_diverged_master_branch(self):
+        """
+        B: wt.branch.last_revision()
+        M: wt.branch.get_master_branch().last_revision()
+        W: wt.last_revision()
+
+
+            1
+            |\
+          B-2 3
+            | |
+            4 5-M
+            |
+            W
+         """
+        builder = branchbuilder.BranchBuilder(
+            self.get_transport(),
+            format=self.workingtree_format._matchingbzrdir)
+        builder.start_series()
+        # mainline
+        builder.build_snapshot(
+            '1', None,
+            [('add', ('', 'root-id', 'directory', '')),
+             ('add', ('file1', 'file1-id', 'file', 'file1 content\n'))])
+        # branch
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot(
+            '4', ['2'],
+            [('add', ('file4', 'file4-id', 'file', 'file4 content\n'))])
+        # master
+        builder.build_snapshot('3', ['1'], [])
+        builder.build_snapshot(
+            '5', ['3'],
+            [('add', ('file5', 'file5-id', 'file', 'file5 content\n'))])
+        builder.finish_series()
+        return builder, builder._branch.last_revision()
+
+    def make_checkout_and_master(self, builder, wt_path, master_path, wt_revid,
+                                 master_revid=None, branch_revid=None):
+        """Build a lightweight checkout and its master branch."""
+        if master_revid is None:
+            master_revid = wt_revid
+        if branch_revid is None:
+            branch_revid = master_revid
+        final_branch = builder.get_branch()
+        # The master branch
+        master = final_branch.bzrdir.sprout(master_path,
+                                            master_revid).open_branch()
+        # The checkout
+        wt = self.make_branch_and_tree(wt_path)
+        wt.pull(final_branch, stop_revision=wt_revid)
+        wt.branch.pull(final_branch, stop_revision=branch_revid, overwrite=True)
+        try:
+            wt.branch.bind(master)
+        except errors.UpgradeRequired:
+            raise TestNotApplicable(
+                "Can't bind %s" % wt.branch._format.__class__)
+        return wt, master
+
+    def test_update_remove_commit(self):
+        """Update should remove revisions when the branch has removed
+        some commits.
+
+        We want to revert 4, so that strating with the
+        make_diverged_master_branch() graph the final result should be
+        equivalent to:
+
+           1
+           |\
+           3 2
+           | |\
+        MB-5 | 4
+           |/
+           W
+
+        And the changes in 4 have been removed from the WT.
+        """
+        builder, tip = self.make_diverged_master_branch()
+        wt, master = self.make_checkout_and_master(
+            builder, 'checkout', 'master', '4',
+            master_revid=tip, branch_revid='2')
+        # First update the branch
+        old_tip = wt.branch.update()
+        self.assertEqual('2', old_tip)
+        # No conflicts should occur
+        self.assertEqual(0, wt.update(old_tip=old_tip))
+        # We are in sync with the master
+        self.assertEqual(tip, wt.branch.last_revision())
+        # We have the right parents ready to be committed
+        self.assertEqual(['5', '2'], wt.get_parent_ids())
+
+    def test_update_revision(self):
+        builder, tip = self.make_diverged_master_branch()
+        wt, master = self.make_checkout_and_master(
+            builder, 'checkout', 'master', '4',
+            master_revid=tip, branch_revid='2')
+        self.assertEqual(0, wt.update(revision='1'))
+        self.assertEqual('1', wt.last_revision())
+        self.assertEqual(tip, wt.branch.last_revision())
+        self.failUnlessExists('checkout/file1')
+        self.failIfExists('checkout/file4')
+        self.failIfExists('checkout/file5')
 
 
 class TestIllegalPaths(TestCaseWithWorkingTree):

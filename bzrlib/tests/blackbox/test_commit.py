@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ from bzrlib import (
     ignores,
     msgeditor,
     osutils,
+    tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
@@ -105,6 +106,14 @@ class TestCommit(ExternalBase):
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
+
+    def test_warn_about_forgotten_commit_message(self):
+        """Test that the lack of -m parameter is caught"""
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['one', 'two'])
+        wt.add(['two'])
+        out, err = self.run_bzr('commit -m one two')
+        self.assertContainsRe(err, "The commit message is a file name")
 
     def test_verbose_commit_renamed(self):
         # Verbose commit of renamed file should say so
@@ -263,6 +272,9 @@ class TestCommit(ExternalBase):
         self.run_bzr('commit -m ""', retcode=3)
 
     def test_unsupported_encoding_commit_message(self):
+        if sys.platform == 'win32':
+            raise tests.TestNotApplicable('Win32 parses arguments directly'
+                ' as Unicode, so we can\'t pass invalid non-ascii')
         tree = self.make_branch_and_tree('.')
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
@@ -273,10 +285,6 @@ class TestCommit(ExternalBase):
         if char is None:
             raise TestSkipped('Cannot find suitable non-ascii character'
                 'for user_encoding (%s)' % osutils.get_user_encoding())
-        # TODO: jam 2009-07-23 This test seems to fail on Windows now. My best
-        #       guess is that the change to use Unicode command lines means
-        #       that we no longer pay any attention to LANG=C when decoding the
-        #       commandline arguments.
         out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
                                           retcode=1,
                                           env_changes={'LANG': 'C'})
@@ -335,22 +343,31 @@ class TestCommit(ExternalBase):
         trunk = self.make_branch_and_tree('trunk')
 
         u1 = trunk.branch.create_checkout('u1')
-        self.build_tree_contents([('u1/hosts', 'initial contents')])
+        self.build_tree_contents([('u1/hosts', 'initial contents\n')])
         u1.add('hosts')
         self.run_bzr('commit -m add-hosts u1')
 
         u2 = trunk.branch.create_checkout('u2')
-        self.build_tree_contents([('u2/hosts', 'altered in u2')])
+        self.build_tree_contents([('u2/hosts', 'altered in u2\n')])
         self.run_bzr('commit -m checkin-from-u2 u2')
 
         # make an offline commits
-        self.build_tree_contents([('u1/hosts', 'first offline change in u1')])
+        self.build_tree_contents([('u1/hosts', 'first offline change in u1\n')])
         self.run_bzr('commit -m checkin-offline --local u1')
 
         # now try to pull in online work from u2, and then commit our offline
         # work as a merge
         # retcode 1 as we expect a text conflict
         self.run_bzr('update u1', retcode=1)
+        self.assertFileEqual('''\
+<<<<<<< TREE
+first offline change in u1
+=======
+altered in u2
+>>>>>>> MERGE-SOURCE
+''',
+                             'u1/hosts')
+
         self.run_bzr('resolved u1/hosts')
         # add a text change here to represent resolving the merge conflicts in
         # favour of a new version of the file not identical to either the u1
@@ -608,6 +625,26 @@ class TestCommit(ExternalBase):
         properties = last_rev.properties
         self.assertEqual('John Doe\nJane Rey', properties['authors'])
 
+    def test_commit_time(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='2009-10-10 08:00:00 +0100' tree/hello.txt")
+        last_rev = tree.branch.repository.get_revision(tree.last_revision())
+        self.assertEqual(
+            'Sat 2009-10-10 08:00:00 +0100',
+            osutils.format_date(last_rev.timestamp, last_rev.timezone))
+        
+    def test_commit_time_bad_time(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/hello.txt'])
+        tree.add('hello.txt')
+        out, err = self.run_bzr("commit -m hello "
+            "--commit-time='NOT A TIME' tree/hello.txt", retcode=3)
+        self.assertStartsWith(
+            err, "bzr: ERROR: Could not parse --commit-time:")
+
     def test_partial_commit_with_renames_in_tree(self):
         # this test illustrates bug #140419
         t = self.make_branch_and_tree('.')
@@ -640,21 +677,17 @@ class TestCommit(ExternalBase):
 
     def test_commit_hook_template(self):
         # Test that commit template hooks work
-        def restoreDefaults():
-            msgeditor.hooks['commit_message_template'] = []
-            osutils.set_or_unset_env('BZR_EDITOR', default_editor)
         if sys.platform == "win32":
             f = file('fed.bat', 'w')
             f.write('@rem dummy fed')
             f.close()
-            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+            osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
         else:
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
             os.chmod('fed.sh', 0755)
-            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
-        self.addCleanup(restoreDefaults)
+            osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         tree = self.make_branch_and_tree('tree')

@@ -17,6 +17,9 @@
 import re
 
 
+binary_files_re = 'Binary files (.*) and (.*) differ\n'
+
+
 class BinaryFiles(Exception):
 
     def __init__(self, orig_name, mod_name):
@@ -66,7 +69,7 @@ class PatchConflict(Exception):
 def get_patch_names(iter_lines):
     try:
         line = iter_lines.next()
-        match = re.match('Binary files (.*) and (.*) differ\n', line)
+        match = re.match(binary_files_re, line)
         if match is not None:
             raise BinaryFiles(match.group(1), match.group(2))
         if not line.startswith("--- "):
@@ -350,6 +353,7 @@ def parse_patch(iter_lines):
 
 
 def iter_file_patch(iter_lines):
+    regex = re.compile(binary_files_re)
     saved_lines = []
     orig_range = 0
     for line in iter_lines:
@@ -360,7 +364,7 @@ def iter_file_patch(iter_lines):
         elif orig_range > 0:
             if line.startswith('-') or line.startswith(' '):
                 orig_range -= 1
-        elif line.startswith('--- '):
+        elif line.startswith('--- ') or regex.match(line):
             if len(saved_lines) > 0:
                 yield saved_lines
             saved_lines = []

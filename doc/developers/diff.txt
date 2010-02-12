@@ -61,7 +61,7 @@ This must scale with the number of versioned files, unless the user indicates
 that only certain files should be compared.
 
 Performance can be further improved by caching comparisons to avoid repeating
-them.  Caching could potentially be performed by ``diff`` and perhaps by 
+them.  Caching could potentially be performed by ``diff`` and perhaps by
 ``merge``.  Merge is aware of the relationship of a text merge's result to
 the THIS value, and the THIS value is generally the basis value.  So the
 comparison is latent, but present.  The only issue is extracting it.

@@ -52,6 +52,7 @@ from bzrlib.tests import (
     TestNotApplicable,
     multiply_tests,
     )
+from bzrlib.tests import test_server
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
     ConnectedTransport,
@@ -170,8 +171,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
     def test_has_root_works(self):
-        from bzrlib.smart import server
-        if self.transport_server is server.SmartTCPServer_for_testing:
+        if self.transport_server is test_server.SmartTCPServer_for_testing:
             raise TestNotApplicable(
                 "SmartTCPServer_for_testing intentionally does not allow "
                 "access to /.")
@@ -1496,6 +1496,10 @@ class TransportTests(TestTransportImplementation):
                  u'\u0410', # Russian A
                  u'\u65e5', # Kanji person
                 ]
+
+        no_unicode_support = getattr(self._server, 'no_unicode_support', False)
+        if no_unicode_support:
+            raise tests.KnownFailure("test server cannot handle unicode paths")
 
         try:
             self.build_tree(files, transport=t, line_endings='binary')

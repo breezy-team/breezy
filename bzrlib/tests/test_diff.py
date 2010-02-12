@@ -63,19 +63,8 @@ class _AttribFeature(Feature):
 AttribFeature = _AttribFeature()
 
 
-class _CompiledPatienceDiffFeature(Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._patiencediff_c
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._patiencediff_c'
-
-CompiledPatienceDiffFeature = _CompiledPatienceDiffFeature()
+compiled_patiencediff_feature = tests.ModuleAvailableFeature(
+                                    'bzrlib._patiencediff_c')
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -1156,7 +1145,7 @@ pynff pzq_zxqve(Pbzznaq):
 
 class TestPatienceDiffLib_c(TestPatienceDiffLib):
 
-    _test_needs_features = [CompiledPatienceDiffFeature]
+    _test_needs_features = [compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLib_c, self).setUp()
@@ -1252,7 +1241,7 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
 
 class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 
-    _test_needs_features = [CompiledPatienceDiffFeature]
+    _test_needs_features = [compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLibFiles_c, self).setUp()
@@ -1264,7 +1253,7 @@ class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 class TestUsingCompiledIfAvailable(TestCase):
 
     def test_PatienceSequenceMatcher(self):
-        if CompiledPatienceDiffFeature.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import PatienceSequenceMatcher_c
             self.assertIs(PatienceSequenceMatcher_c,
                           bzrlib.patiencediff.PatienceSequenceMatcher)
@@ -1274,7 +1263,7 @@ class TestUsingCompiledIfAvailable(TestCase):
                           bzrlib.patiencediff.PatienceSequenceMatcher)
 
     def test_unique_lcs(self):
-        if CompiledPatienceDiffFeature.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import unique_lcs_c
             self.assertIs(unique_lcs_c,
                           bzrlib.patiencediff.unique_lcs)
@@ -1284,7 +1273,7 @@ class TestUsingCompiledIfAvailable(TestCase):
                           bzrlib.patiencediff.unique_lcs)
 
     def test_recurse_matches(self):
-        if CompiledPatienceDiffFeature.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import recurse_matches_c
             self.assertIs(recurse_matches_c,
                           bzrlib.patiencediff.recurse_matches)
@@ -1337,20 +1326,26 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.commit('old tree')
         tree.lock_read()
         self.addCleanup(tree.unlock)
+        basis_tree = tree.basis_tree()
+        basis_tree.lock_read()
+        self.addCleanup(basis_tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
                                  'print "@old_path @new_path"'],
-                                tree, tree, output)
+                                basis_tree, tree, output)
         diff_obj._prepare_files('file-id', 'file', 'file')
-        self.assertReadableByAttrib(diff_obj._root, 'old\\file', r'old\\file')
-        self.assertReadableByAttrib(diff_obj._root, 'new\\file', r'new\\file')
+        # The old content should be readonly
+        self.assertReadableByAttrib(diff_obj._root, 'old\\file',
+                                    r'R.*old\\file$')
+        # The new content should use the tree object, not a 'new' file anymore
+        self.assertEndsWith(tree.basedir, 'work/tree')
+        self.assertReadableByAttrib(tree.basedir, 'file', r'work\\tree\\file$')
 
     def assertReadableByAttrib(self, cwd, relpath, regex):
         proc = subprocess.Popen(['attrib', relpath],
                                 stdout=subprocess.PIPE,
                                 cwd=cwd)
-        proc.wait()
-        result = proc.stdout.read()
-        self.assertContainsRe(result, regex)
+        (result, err) = proc.communicate()
+        self.assertContainsRe(result.replace('\r\n', '\n'), regex)
 
     def test_prepare_files(self):
         output = StringIO()
@@ -1378,7 +1373,7 @@ class TestDiffFromTool(TestCaseWithTransport):
                                                      'newname')
         self.assertContainsRe(old_path, 'old/oldname$')
         self.assertEqual(0, os.stat(old_path).st_mtime)
-        self.assertContainsRe(new_path, 'new/newname$')
+        self.assertContainsRe(new_path, 'tree/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
         if osutils.host_os_dereferences_symlinks():

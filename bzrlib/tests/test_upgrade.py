@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -185,7 +185,7 @@ class TestUpgrade(TestCaseWithTransport):
         branch.set_push_location('file:///IJ')
         target = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
         converter = branch.bzrdir._format.get_converter(target)
-        converter.convert(branch.bzrdir, progress.DummyProgress())
+        converter.convert(branch.bzrdir, None)
         new_branch = _mod_branch.Branch.open(self.get_url('branch'))
         self.assertIs(new_branch.__class__, _mod_branch.BzrBranch6)
         self.assertEqual('CD', new_branch.last_revision())
@@ -197,7 +197,7 @@ class TestUpgrade(TestCaseWithTransport):
 
         branch2 = self.make_branch('branch2', format='knit')
         converter = branch2.bzrdir._format.get_converter(target)
-        converter.convert(branch2.bzrdir, progress.DummyProgress())
+        converter.convert(branch2.bzrdir, None)
         branch2 = _mod_branch.Branch.open(self.get_url('branch'))
         self.assertIs(branch2.__class__, _mod_branch.BzrBranch6)
 
@@ -206,7 +206,7 @@ class TestUpgrade(TestCaseWithTransport):
         target = bzrdir.format_registry.make_bzrdir('1.9')
         target.set_branch_format(_mod_branch.BzrBranchFormat8())
         converter = branch.bzrdir._format.get_converter(target)
-        converter.convert(branch.bzrdir, progress.DummyProgress())
+        converter.convert(branch.bzrdir, None)
         branch = _mod_branch.Branch.open(self.get_url('branch'))
         self.assertIs(branch.__class__, _mod_branch.BzrBranch8)
         self.assertEqual({}, branch._get_all_reference_info())
@@ -216,7 +216,7 @@ class TestUpgrade(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree', format='knit')
         target = bzrdir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, progress.DummyProgress())
+        converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual('null:', new_tree.last_revision())
@@ -229,7 +229,7 @@ class TestUpgrade(TestCaseWithTransport):
         tree.add(['file'], ['file-id'])
         target = bzrdir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, progress.DummyProgress())
+        converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual('null:', new_tree.last_revision())
@@ -240,7 +240,7 @@ class TestUpgrade(TestCaseWithTransport):
         rev_id = tree.commit('first post')
         target = bzrdir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, progress.DummyProgress())
+        converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual(rev_id, new_tree.last_revision())
@@ -257,7 +257,7 @@ class TestUpgrade(TestCaseWithTransport):
         tree.merge_from_branch(merge_tree.branch)
         target = bzrdir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, progress.DummyProgress())
+        converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual(rev_id2, new_tree.last_revision())

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 import os
 import errno
 from stat import S_ISREG, S_IEXEC
+import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -30,6 +31,7 @@ from bzrlib import (
     multiparent,
     osutils,
     revision as _mod_revision,
+    ui,
     )
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
@@ -48,7 +50,7 @@ from bzrlib.osutils import (
     splitpath,
     supports_executable,
 )
-from bzrlib.progress import DummyProgress, ProgressPhase
+from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
         deprecated_in,
@@ -78,13 +80,13 @@ class _TransformResults(object):
 class TreeTransformBase(object):
     """The base class for TreeTransform and its kin."""
 
-    def __init__(self, tree, pb=DummyProgress(),
+    def __init__(self, tree, pb=None,
                  case_sensitive=True):
         """Constructor.
 
         :param tree: The tree that will be transformed, but not necessarily
             the output tree.
-        :param pb: A ProgressTask indicating how much progress is being made
+        :param pb: ignored
         :param case_sensitive: If True, the target of the transform is
             case sensitive, not just case preserving.
         """
@@ -161,14 +163,12 @@ class TreeTransformBase(object):
 
     def adjust_path(self, name, parent, trans_id):
         """Change the path that is assigned to a transaction id."""
+        if parent is None:
+            raise ValueError("Parent trans-id may not be None")
         if trans_id == self._new_root:
             raise CantMoveRoot
         self._new_name[trans_id] = name
         self._new_parent[trans_id] = parent
-        if parent == ROOT_PARENT:
-            if self._new_root is not None:
-                raise ValueError("Cannot have multiple roots.")
-            self._new_root = trans_id
 
     def adjust_root_path(self, name, parent):
         """Emulate moving the root by moving all children, instead.
@@ -201,6 +201,67 @@ class TreeTransformBase(object):
         self.create_directory(old_root)
         self.version_file(old_root_file_id, old_root)
         self.unversion_file(self._new_root)
+
+    def fixup_new_roots(self):
+        """Reinterpret requests to change the root directory
+
+        Instead of creating a root directory, or moving an existing directory,
+        all the attributes and children of the new root are applied to the
+        existing root directory.
+
+        This means that the old root trans-id becomes obsolete, so it is
+        recommended only to invoke this after the root trans-id has become
+        irrelevant.
+        """
+        new_roots = [k for k, v in self._new_parent.iteritems() if v is
+                     ROOT_PARENT]
+        if len(new_roots) < 1:
+            return
+        if len(new_roots) != 1:
+            raise ValueError('A tree cannot have two roots!')
+        if self._new_root is None:
+            self._new_root = new_roots[0]
+            return
+        old_new_root = new_roots[0]
+        # TODO: What to do if a old_new_root is present, but self._new_root is
+        #       not listed as being removed? This code explicitly unversions
+        #       the old root and versions it with the new file_id. Though that
+        #       seems like an incomplete delta
+
+        # unversion the new root's directory.
+        file_id = self.final_file_id(old_new_root)
+        if old_new_root in self._new_id:
+            self.cancel_versioning(old_new_root)
+        else:
+            self.unversion_file(old_new_root)
+        # if, at this stage, root still has an old file_id, zap it so we can
+        # stick a new one in.
+        if (self.tree_file_id(self._new_root) is not None and
+            self._new_root not in self._removed_id):
+            self.unversion_file(self._new_root)
+        self.version_file(file_id, self._new_root)
+
+        # Now move children of new root into old root directory.
+        # Ensure all children are registered with the transaction, but don't
+        # use directly-- some tree children have new parents
+        list(self.iter_tree_children(old_new_root))
+        # Move all children of new root into old root directory.
+        for child in self.by_parent().get(old_new_root, []):
+            self.adjust_path(self.final_name(child), self._new_root, child)
+
+        # Ensure old_new_root has no directory.
+        if old_new_root in self._new_contents:
+            self.cancel_creation(old_new_root)
+        else:
+            self.delete_contents(old_new_root)
+
+        # prevent deletion of root directory.
+        if self._new_root in self._removed_contents:
+            self.cancel_deletion(self._new_root)
+
+        # destroy path info for old_new_root.
+        del self._new_parent[old_new_root]
+        del self._new_name[old_new_root]
 
     def trans_id_tree_file_id(self, inventory_id):
         """Determine the transaction id of a working tree file.
@@ -253,6 +314,8 @@ class TreeTransformBase(object):
 
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
+        # Ensure that the object exists in the WorkingTree, this will raise an
+        # exception if there is a problem
         self.tree_kind(trans_id)
         self._removed_contents.add(trans_id)
 
@@ -1000,14 +1063,14 @@ class TreeTransformBase(object):
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
 
-    def __init__(self, tree, limbodir, pb=DummyProgress(),
+    def __init__(self, tree, limbodir, pb=None,
                  case_sensitive=True):
         """Constructor.
         :param tree: The tree that will be transformed, but not necessarily
             the output tree.
         :param limbodir: A directory where new files can be stored until
             they are installed in their proper places
-        :param pb: A ProgressBar indicating how much progress is being made
+        :param pb: ignored
         :param case_sensitive: If True, the target of the transform is
             case sensitive, not just case preserving.
         """
@@ -1023,6 +1086,7 @@ class DiskTreeTransform(TreeTransformBase):
         self._limbo_children_names = {}
         # List of transform ids that need to be renamed from limbo into place
         self._needs_rename = set()
+        self._creation_mtime = None
 
     def finalize(self):
         """Release the working tree lock, if held, clean up limbo dir.
@@ -1075,8 +1139,10 @@ class DiskTreeTransform(TreeTransformBase):
         if (trans_id in self._limbo_files and
             trans_id not in self._needs_rename):
             self._rename_in_limbo([trans_id])
-            self._limbo_children[previous_parent].remove(trans_id)
-            del self._limbo_children_names[previous_parent][previous_name]
+            if previous_parent != parent:
+                self._limbo_children[previous_parent].remove(trans_id)
+            if previous_parent != parent or previous_name != name:
+                del self._limbo_children_names[previous_parent][previous_name]
 
     def _rename_in_limbo(self, trans_ids):
         """Fix limbo names so that the right final path is produced.
@@ -1133,6 +1199,7 @@ class DiskTreeTransform(TreeTransformBase):
             f.writelines(contents)
         finally:
             f.close()
+        self._set_mtime(name)
         self._set_mode(trans_id, mode_id, S_ISREG)
 
     def _read_file_chunks(self, trans_id):
@@ -1144,6 +1211,15 @@ class DiskTreeTransform(TreeTransformBase):
 
     def _read_symlink_target(self, trans_id):
         return os.readlink(self._limbo_name(trans_id))
+
+    def _set_mtime(self, path):
+        """All files that are created get the same mtime.
+
+        This time is set by the first object to be created.
+        """
+        if self._creation_mtime is None:
+            self._creation_mtime = time.time()
+        os.utime(path, (self._creation_mtime, self._creation_mtime))
 
     def create_hardlink(self, path, trans_id):
         """Schedule creation of a hard link"""
@@ -1264,7 +1340,7 @@ class TreeTransform(DiskTreeTransform):
     FileMover does not delete files until it is sure that a rollback will not
     happen.
     """
-    def __init__(self, tree, pb=DummyProgress()):
+    def __init__(self, tree, pb=None):
         """Note: a tree_write lock is taken on the tree.
 
         Use TreeTransform.finalize() to release the lock (can be omitted if
@@ -1553,10 +1629,10 @@ class TreeTransform(DiskTreeTransform):
                 child_pb.update('removing file', num, len(tree_paths))
                 full_path = self._tree.abspath(path)
                 if trans_id in self._removed_contents:
-                    mover.pre_delete(full_path, os.path.join(self._deletiondir,
-                                     trans_id))
-                elif trans_id in self._new_name or trans_id in \
-                    self._new_parent:
+                    delete_path = os.path.join(self._deletiondir, trans_id)
+                    mover.pre_delete(full_path, delete_path)
+                elif (trans_id in self._new_name
+                      or trans_id in self._new_parent):
                     try:
                         mover.rename(full_path, self._limbo_name(trans_id))
                     except OSError, e:
@@ -1616,7 +1692,7 @@ class TransformPreview(DiskTreeTransform):
     unversioned files in the input tree.
     """
 
-    def __init__(self, tree, pb=DummyProgress(), case_sensitive=True):
+    def __init__(self, tree, pb=None, case_sensitive=True):
         tree.lock_read()
         limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
@@ -1973,7 +2049,7 @@ class _PreviewTree(tree.Tree):
                 statval = os.lstat(limbo_name)
                 size = statval.st_size
                 if not supports_executable():
-                    executable = None
+                    executable = False
                 else:
                     executable = statval.st_mode & S_IEXEC
             else:
@@ -1981,8 +2057,7 @@ class _PreviewTree(tree.Tree):
                 executable = None
             if kind == 'symlink':
                 link_or_sha1 = os.readlink(limbo_name).decode(osutils._fs_enc)
-        if supports_executable():
-            executable = tt._new_executability.get(trans_id, executable)
+        executable = tt._new_executability.get(trans_id, executable)
         return kind, size, executable, link_or_sha1
 
     def iter_changes(self, from_tree, include_unchanged=False,
@@ -2301,8 +2376,12 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         new_desired_files = desired_files
     else:
         iter = accelerator_tree.iter_changes(tree, include_unchanged=True)
-        unchanged = dict((f, p[1]) for (f, p, c, v, d, n, k, e)
-                         in iter if not (c or e[0] != e[1]))
+        unchanged = [(f, p[1]) for (f, p, c, v, d, n, k, e)
+                     in iter if not (c or e[0] != e[1])]
+        if accelerator_tree.supports_content_filtering():
+            unchanged = [(f, p) for (f, p) in unchanged
+                         if not accelerator_tree.iter_search_rules([p]).next()]
+        unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
         for file_id, (trans_id, tree_path) in desired_files:
@@ -2431,8 +2510,14 @@ def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
         tt.create_directory(trans_id)
 
 
-def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
-    """Create new file contents according to tree contents."""
+def create_from_tree(tt, trans_id, tree, file_id, bytes=None,
+    filter_tree_path=None):
+    """Create new file contents according to tree contents.
+    
+    :param filter_tree_path: the tree path to use to lookup
+      content filters to apply to the bytes output in the working tree.
+      This only applies if the working tree supports content filtering.
+    """
     kind = tree.kind(file_id)
     if kind == 'directory':
         tt.create_directory(trans_id)
@@ -2443,6 +2528,11 @@ def create_from_tree(tt, trans_id, tree, file_id, bytes=None):
                 bytes = tree_file.readlines()
             finally:
                 tree_file.close()
+        wt = tt._tree
+        if wt.supports_content_filtering() and filter_tree_path is not None:
+            filters = wt._content_filter_stack(filter_tree_path)
+            bytes = filtered_output_bytes(bytes, filters,
+                ContentFilterContext(filter_tree_path, tree))
         tt.create_file(bytes, trans_id)
     elif kind == "symlink":
         tt.create_symlink(tree.get_symlink_target(file_id), trans_id)
@@ -2500,9 +2590,10 @@ def _entry_changes(file_id, entry, working_tree):
 
 
 def revert(working_tree, target_tree, filenames, backups=False,
-           pb=DummyProgress(), change_reporter=None):
+           pb=None, change_reporter=None):
     """Revert a working tree's contents to those of a target tree."""
     target_tree.lock_read()
+    pb = ui.ui_factory.nested_progress_bar()
     tt = TreeTransform(working_tree, pb)
     try:
         pp = ProgressPhase("Revert phase", 3, pb)
@@ -2527,7 +2618,6 @@ def revert(working_tree, target_tree, filenames, backups=False,
 def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
                               backups, pp, basis_tree=None,
                               merge_modified=None):
-    pp.next_phase()
     child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
         if merge_modified is None:
@@ -2537,7 +2627,6 @@ def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
                                       merge_modified, basis_tree)
     finally:
         child_pb.finished()
-    pp.next_phase()
     child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
         raw_conflicts = resolve_conflicts(tt, child_pb,
@@ -2636,7 +2725,10 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                     parent_trans = ROOT_PARENT
                 else:
                     parent_trans = tt.trans_id_file_id(parent[1])
-                tt.adjust_path(name[1], parent_trans, trans_id)
+                if parent[0] is None and versioned[0]:
+                    tt.adjust_root_path(name[1], parent_trans)
+                else:
+                    tt.adjust_path(name[1], parent_trans, trans_id)
             if executable[0] != executable[1] and kind[1] == "file":
                 tt.set_executability(executable[1], trans_id)
         if working_tree.supports_content_filtering():
@@ -2655,17 +2747,19 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
             for (trans_id, mode_id), bytes in target_tree.iter_files_bytes(
                 deferred_files):
                 tt.create_file(bytes, trans_id, mode_id)
+        tt.fixup_new_roots()
     finally:
         if basis_tree is not None:
             basis_tree.unlock()
     return merge_modified
 
 
-def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
+def resolve_conflicts(tt, pb=None, pass_func=None):
     """Make many conflict-resolution attempts, but die if they fail"""
     if pass_func is None:
         pass_func = conflict_pass
     new_conflicts = set()
+    pb = ui.ui_factory.nested_progress_bar()
     try:
         for n in range(10):
             pb.update('Resolution pass', n+1, 10)
@@ -2675,7 +2769,7 @@ def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
             new_conflicts.update(pass_func(tt, conflicts))
         raise MalformedTransform(conflicts=conflicts)
     finally:
-        pb.clear()
+        pb.finished()
 
 
 def conflict_pass(tt, conflicts, path_tree=None):

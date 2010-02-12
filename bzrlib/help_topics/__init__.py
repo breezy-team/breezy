@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -251,12 +251,32 @@ def _help_on_transport(name):
         out += "\nSupported modifiers::\n\n  " + \
             '  '.join(decl)
 
+    out += """\
+\nBazaar supports all of the standard parts within the URL::
+
+  <protocol>://[user[:password]@]host[:port]/[path]
+
+allowing URLs such as::
+
+  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk
+
+For bzr+ssh:// and sftp:// URLs, Bazaar also supports paths that begin
+with '~' as meaning that the rest of the path should be interpreted
+relative to the remote user's home directory.  For example if the user
+``remote`` has a  home directory of ``/home/remote`` on the server
+shell.example.com, then::
+
+  bzr+ssh://remote@shell.example.com/~/myproject/trunk
+
+would refer to ``/home/remote/myproject/trunk``.
+"""
+
     return out
 
 
 _basic_help = \
 """Bazaar -- a free distributed version-control tool
-http://bazaar-vcs.org/
+http://www.bazaar.canonical.com/
 
 Basic commands:
   bzr init           makes this directory a versioned branch
@@ -286,13 +306,14 @@ _global_options = \
 """Global Options
 
 These options may be used with any command, and may appear in front of any
-command.  (e.g. "bzr --profile help").
+command.  (e.g. ``bzr --profile help``).
 
 --version      Print the version number. Must be supplied before the command.
 --no-aliases   Do not process command aliases when running this command.
 --builtin      Use the built-in version of a command, not the plugin version.
                This does not suppress other plugin effects.
 --no-plugins   Do not process any plugins.
+--concurrency  Number of processes that can be run concurrently (selftest).
 
 --profile      Profile execution using the hotshot profiler.
 --lsprof       Profile execution using the lsprof profiler.
@@ -304,9 +325,11 @@ command.  (e.g. "bzr --profile help").
                will be a pickle.
 --coverage     Generate line coverage report in the specified directory.
 
-See doc/developers/profiling.txt for more information on profiling.
+See http://doc.bazaar.canonical.com/developers/profiling.html for more
+information on profiling.
+
 A number of debug flags are also available to assist troubleshooting and
-development.  See `bzr help debug-flags`.
+development.  See :doc:`debug-flags-help`.
 """
 
 _standard_options = \
@@ -384,7 +407,9 @@ You can change the master of a checkout by using the "bind" command (see "help
 bind"). This will change the location that the commits are sent to. The bind
 command can also be used to turn a branch into a heavy checkout. If you
 would like to convert your heavy checkout into a normal branch so that every
-commit is local, you can use the "unbind" command.
+commit is local, you can use the "unbind" command. To see whether or not a
+branch is bound or not you can use the "info" command. If the branch is bound
+it will tell you the location of the bound branch.
 
 Related commands::
 
@@ -398,6 +423,8 @@ Related commands::
               be sent to
   unbind      Turn a heavy checkout into a standalone branch so that any
               commits are only made locally
+  info        Displays whether a branch is bound or unbound. If the branch is
+              bound, then it will also display the location of the bound branch
 """
 
 _repositories = \
@@ -493,11 +520,19 @@ history. All branches have a repository associated (which is where the
 branch history is stored), but multiple branches may share the same
 repository (a shared repository). Branches can be copied and merged.
 
+In addition, one branch may be bound to another one.  Binding to another
+branch indicates that commits which happen in this branch must also 
+happen in the other branch.  Bazaar ensures consistency by not allowing 
+commits when the two branches are out of date.  In order for a commit 
+to succeed, it may be necessary to update the current branch using 
+``bzr update``.
+
 Related commands::
 
   init    Change a directory into a versioned branch.
   branch  Create a new branch that is a copy of an existing branch.
   merge   Perform a three-way merge.
+  bind    Bind a branch to another one.
 """
 
 
@@ -561,9 +596,11 @@ BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
 BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
-BZR_SSH          SSH client: paramiko (default), openssh, ssh, plink.
+BZR_SSH          Path to SSH client, or one of paramiko, openssh, sshcorp, plink.
 BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
+BZR_COLUMNS      Override implicit terminal width.
+BZR_CONCURRENCY  Number of processes that can be run concurrently (selftest).
 ================ =================================================================
 """
 
@@ -620,7 +657,7 @@ line-origin detection instead of a basis revision to determine the cause of
 differences.
 """
 
-_branches_out_of_sync = """Branches out of sync
+_branches_out_of_sync = """Branches Out of Sync
 
 When reconfiguring a checkout, tree or branch into a lightweight checkout,
 a local branch must be destroyed.  (For checkouts, this is the local branch
@@ -655,18 +692,20 @@ project is not using 2a, then you should suggest to the
 project owner to upgrade.
 
 
-Note: Some of the older formats have two variants:
-a plain one and a rich-root one. The latter include an additional
-field about the root of the tree. There is no performance cost
-for using a rich-root format but you cannot easily merge changes
-from a rich-root format into a plain format. As a consequence,
-moving a project to a rich-root format takes some co-ordination
-in that all contributors need to upgrade their repositories
-around the same time. 2a and all future formats will be
-implicitly rich-root.
+.. note::
 
-See ``bzr help current-formats`` for the complete list of
-currently supported formats. See ``bzr help other-formats`` for
+   Some of the older formats have two variants:
+   a plain one and a rich-root one. The latter include an additional
+   field about the root of the tree. There is no performance cost
+   for using a rich-root format but you cannot easily merge changes
+   from a rich-root format into a plain format. As a consequence,
+   moving a project to a rich-root format takes some co-ordination
+   in that all contributors need to upgrade their repositories
+   around the same time. 2a and all future formats will be
+   implicitly rich-root.
+
+See :doc:`current-formats-help` for the complete list of
+currently supported formats. See :doc:`other-formats-help` for
 descriptions of any available experimental and deprecated formats.
 """
 
@@ -715,14 +754,12 @@ topic_registry.register('authentication', _load_from_file,
                         'Information on configuring authentication')
 topic_registry.register('configuration', _load_from_file,
                         'Details on the configuration settings available')
-topic_registry.register('conflicts', _load_from_file,
+topic_registry.register('conflict-types', _load_from_file,
                         'Types of conflicts and what to do about them')
 topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
-topic_registry.register('diverged-branches', _load_from_file,
-                        'How to fix diverged branches')
 
 
 # Register concept topics.
@@ -735,6 +772,9 @@ topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
 topic_registry.register('content-filters', _load_from_file,
                         'Conversion of content into/from working trees',
+                        SECT_CONCEPT)
+topic_registry.register('diverged-branches', _load_from_file,
+                        'How to fix diverged branches',
                         SECT_CONCEPT)
 topic_registry.register('eol', _load_from_file,
                         'Information on end-of-line handling',
@@ -829,6 +869,7 @@ class RegisteredTopic(object):
 
 def help_as_plain_text(text):
     """Minimal converter of reStructuredText to plain text."""
+    import re
     lines = text.splitlines()
     result = []
     for line in lines:
@@ -836,5 +877,7 @@ def help_as_plain_text(text):
             line = line[1:]
         elif line.endswith('::'):
             line = line[:-1]
+        # Map :doc:`xxx-help` to ``bzr help xxx``
+        line = re.sub(":doc:`(.+)-help`", r'``bzr help \1``', line)
         result.append(line)
     return "\n".join(result) + "\n"

@@ -92,7 +92,7 @@ will take up less disk space than the working copy of
 the latest version.
 
 As explained in later chapters, Bazaar also has support for
-`lightweight checkouts <using_checkouts.html#getting-a-lightweight-checkout>`_ 
+`lightweight checkouts <using_checkouts.html#getting-a-lightweight-checkout>`_
 of a branch, i.e. working trees with
 no local storage of history. Of course, disconnected usage
 is not available then but that's a tradeoff you can decide

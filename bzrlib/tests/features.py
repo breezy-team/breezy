@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,21 +15,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib.tests import Feature
+from bzrlib import tests
+from bzrlib.symbol_versioning import deprecated_in
 
 
-class _ApportFeature(Feature):
-    
-    def _probe(self):
-        try:
-            import apport
-        except ImportError, e:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'apport'
-
-
-ApportFeature = _ApportFeature()
+apport = tests.ModuleAvailableFeature('apport')
+paramiko = tests.ModuleAvailableFeature('paramiko')
+pycurl = tests.ModuleAvailableFeature('pycurl')
+subunit = tests.ModuleAvailableFeature('subunit')

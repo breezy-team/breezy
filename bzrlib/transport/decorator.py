@@ -177,50 +177,6 @@ class TransportDecorator(Transport):
             return None
 
 
-class DecoratorServer(Server):
-    """Server for the TransportDecorator for testing with.
-
-    To use this when subclassing TransportDecorator, override override the
-    get_decorator_class method.
-    """
-
-    def setUp(self, server=None):
-        """See bzrlib.transport.Server.setUp.
-
-        :server: decorate the urls given by server. If not provided a
-        LocalServer is created.
-        """
-        if server is not None:
-            self._made_server = False
-            self._server = server
-        else:
-            from bzrlib.transport.local import LocalURLServer
-            self._made_server = True
-            self._server = LocalURLServer()
-            self._server.setUp()
-
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        if self._made_server:
-            self._server.tearDown()
-
-    def get_decorator_class(self):
-        """Return the class of the decorators we should be constructing."""
-        raise NotImplementedError(self.get_decorator_class)
-
-    def get_url_prefix(self):
-        """What URL prefix does this decorator produce?"""
-        return self.get_decorator_class()._get_url_prefix()
-
-    def get_bogus_url(self):
-        """See bzrlib.transport.Server.get_bogus_url."""
-        return self.get_url_prefix() + self._server.get_bogus_url()
-
-    def get_url(self):
-        """See bzrlib.transport.Server.get_url."""
-        return self.get_url_prefix() + self._server.get_url()
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing.
 

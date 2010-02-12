@@ -216,7 +216,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         directories.remove('lp:')
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
         self.addCleanup(_register_directory)
-        self.addCleanup(lambda: directories.remove('lp:'))
+        self.addCleanup(directories.remove, 'lp:')
         transport = get_transport('lp:///apt')
         branch = Branch.open_from_transport(transport)
         self.assertEqual(target_branch.base, branch.base)
@@ -274,12 +274,12 @@ class TestXMLRPCTransport(tests.TestCase):
     def setUp(self):
         tests.TestCase.setUp(self)
         self.server = self.server_class()
-        self.server.setUp()
+        self.server.start_server()
         # Ensure we don't clobber env
         self._captureVar('BZR_LP_XMLRPC_URL', None)
 
     def tearDown(self):
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
     def set_canned_response(self, server, path):

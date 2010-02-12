@@ -18,7 +18,6 @@
 
 from bzrlib import (
     rules,
-    tests,
     )
 from bzrlib.tests.per_tree import TestCaseWithTree
 

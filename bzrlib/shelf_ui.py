@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ import tempfile
 
 from bzrlib import (
     builtins,
-    commands,
     delta,
     diff,
     errors,
@@ -253,6 +252,12 @@ class Shelver(object):
         :param message: The message to prompt a user with.
         :return: A character.
         """
+        if not sys.stdin.isatty():
+            # Since there is no controlling terminal we will hang when trying
+            # to prompt the user, better abort now.  See
+            # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
+            # for more context.
+            raise errors.BzrError("You need a controlling terminal.")
         sys.stdout.write(message)
         char = osutils.getchar()
         sys.stdout.write("\r" + ' ' * len(message) + '\r')
@@ -377,16 +382,18 @@ class Unshelver(object):
     """Unshelve changes into a working tree."""
 
     @classmethod
-    def from_args(klass, shelf_id=None, action='apply', directory='.'):
+    def from_args(klass, shelf_id=None, action='apply', directory='.',
+                  write_diff_to=None):
         """Create an unshelver from commandline arguments.
 
-        The returned shelver wil have a tree that is locked and should
+        The returned shelver will have a tree that is locked and should
         be unlocked.
 
         :param shelf_id: Integer id of the shelf, as a string.
         :param action: action to perform.  May be 'apply', 'dry-run',
-            'delete'.
+            'delete', 'preview'.
         :param directory: The directory to unshelve changes into.
+        :param write_diff_to: See Unshelver.__init__().
         """
         tree, path = workingtree.WorkingTree.open_containing(directory)
         tree.lock_tree_write()
@@ -401,24 +408,32 @@ class Unshelver(object):
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
                     raise errors.BzrCommandError('No changes are shelved.')
-                trace.note('Unshelving changes with id "%d".' % shelf_id)
             apply_changes = True
             delete_shelf = True
             read_shelf = True
+            show_diff = False
             if action == 'dry-run':
                 apply_changes = False
                 delete_shelf = False
-            if action == 'delete-only':
+            elif action == 'preview':
+                apply_changes = False
+                delete_shelf = False
+                show_diff = True
+            elif action == 'delete-only':
                 apply_changes = False
                 read_shelf = False
+            elif action == 'keep':
+                apply_changes = True
+                delete_shelf = False
         except:
             tree.unlock()
             raise
         return klass(tree, manager, shelf_id, apply_changes, delete_shelf,
-                     read_shelf)
+                     read_shelf, show_diff, write_diff_to)
 
     def __init__(self, tree, manager, shelf_id, apply_changes=True,
-                 delete_shelf=True, read_shelf=True):
+                 delete_shelf=True, read_shelf=True, show_diff=False,
+                 write_diff_to=None):
         """Constructor.
 
         :param tree: The working tree to unshelve into.
@@ -428,6 +443,11 @@ class Unshelver(object):
             working tree.
         :param delete_shelf: If True, delete the changes from the shelf.
         :param read_shelf: If True, read the changes from the shelf.
+        :param show_diff: If True, show the diff that would result from
+            unshelving the changes.
+        :param write_diff_to: A file-like object where the diff will be
+            written to. If None, ui.ui_factory.make_output_stream() will
+            be used.
         """
         self.tree = tree
         manager = tree.get_shelf_manager()
@@ -436,6 +456,8 @@ class Unshelver(object):
         self.apply_changes = apply_changes
         self.delete_shelf = delete_shelf
         self.read_shelf = read_shelf
+        self.show_diff = show_diff
+        self.write_diff_to = write_diff_to
 
     def run(self):
         """Perform the unshelving operation."""
@@ -443,26 +465,36 @@ class Unshelver(object):
         cleanups = [self.tree.unlock]
         try:
             if self.read_shelf:
+                trace.note('Using changes with id "%d".' % self.shelf_id)
                 unshelver = self.manager.get_unshelver(self.shelf_id)
                 cleanups.append(unshelver.finalize)
                 if unshelver.message is not None:
                     trace.note('Message: %s' % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                task = ui.ui_factory.nested_progress_bar()
-                try:
-                    merger = unshelver.make_merger(task)
-                    merger.change_reporter = change_reporter
-                    if self.apply_changes:
-                        merger.do_merge()
-                    else:
-                        self.show_changes(merger)
-                finally:
-                    task.finished()
+                merger = unshelver.make_merger(None)
+                merger.change_reporter = change_reporter
+                if self.apply_changes:
+                    merger.do_merge()
+                elif self.show_diff:
+                    self.write_diff(merger)
+                else:
+                    self.show_changes(merger)
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
+                trace.note('Deleted changes with id "%d".' % self.shelf_id)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()
+
+    def write_diff(self, merger):
+        """Write this operation's diff to self.write_diff_to."""
+        tree_merger = merger.make_merger()
+        tt = tree_merger.make_preview_transform()
+        new_tree = tt.get_preview_tree()
+        if self.write_diff_to is None:
+            self.write_diff_to = ui.ui_factory.make_output_stream()
+        diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to)
+        tt.finalize()
 
     def show_changes(self, merger):
         """Show the changes that this operation specifies."""

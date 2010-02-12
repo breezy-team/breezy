@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -113,6 +113,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
                 return
 
         self._probe_bzrdir()
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._client)
 
     def _probe_bzrdir(self):
         medium = self._client._medium
@@ -284,21 +287,32 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
     def _get_branch_reference(self):
         path = self._path_for_remote_call(self._client)
         medium = self._client._medium
-        if not medium._is_remote_before((1, 13)):
+        candidate_calls = [
+            ('BzrDir.open_branchV3', (2, 1)),
+            ('BzrDir.open_branchV2', (1, 13)),
+            ('BzrDir.open_branch', None),
+            ]
+        for verb, required_version in candidate_calls:
+            if required_version and medium._is_remote_before(required_version):
+                continue
             try:
-                response = self._call('BzrDir.open_branchV2', path)
-                if response[0] not in ('ref', 'branch'):
-                    raise errors.UnexpectedSmartServerResponse(response)
-                return response
+                response = self._call(verb, path)
             except errors.UnknownSmartMethod:
-                medium._remember_remote_is_before((1, 13))
-        response = self._call('BzrDir.open_branch', path)
-        if response[0] != 'ok':
+                if required_version is None:
+                    raise
+                medium._remember_remote_is_before(required_version)
+            else:
+                break
+        if verb == 'BzrDir.open_branch':
+            if response[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response)
+            if response[1] != '':
+                return ('ref', response[1])
+            else:
+                return ('branch', '')
+        if response[0] not in ('ref', 'branch'):
             raise errors.UnexpectedSmartServerResponse(response)
-        if response[1] != '':
-            return ('ref', response[1])
-        else:
-            return ('branch', '')
+        return response
 
     def _get_tree_branch(self):
         """See BzrDir._get_tree_branch()."""
@@ -951,6 +965,11 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
     def is_write_locked(self):
         return self._lock_mode == 'w'
 
+    def _warn_if_deprecated(self, branch=None):
+        # If we have a real repository, the check will be done there, if we
+        # don't the check will be done remotely.
+        pass
+
     def lock_read(self):
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
@@ -1478,13 +1497,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         return self._real_repository.get_signature_text(revision_id)
 
     @needs_read_lock
-    def get_inventory_xml(self, revision_id):
+    def _get_inventory_xml(self, revision_id):
         self._ensure_real()
-        return self._real_repository.get_inventory_xml(revision_id)
+        return self._real_repository._get_inventory_xml(revision_id)
 
-    def deserialise_inventory(self, revision_id, xml):
+    def _deserialise_inventory(self, revision_id, xml):
         self._ensure_real()
-        return self._real_repository.deserialise_inventory(revision_id, xml)
+        return self._real_repository._deserialise_inventory(revision_id, xml)
 
     def reconcile(self, other=None, thorough=False):
         self._ensure_real()
@@ -2818,8 +2837,13 @@ def _translate_error(err, **context):
         raise NoSuchRevision(find('branch'), err.error_args[0])
     elif err.error_verb == 'nosuchrevision':
         raise NoSuchRevision(find('repository'), err.error_args[0])
-    elif err.error_tuple == ('nobranch',):
-        raise errors.NotBranchError(path=find('bzrdir').root_transport.base)
+    elif err.error_verb == 'nobranch':
+        if len(err.error_args) >= 1:
+            extra = err.error_args[0]
+        else:
+            extra = None
+        raise errors.NotBranchError(path=find('bzrdir').root_transport.base,
+            detail=extra)
     elif err.error_verb == 'norepository':
         raise errors.NoRepositoryPresent(find('bzrdir'))
     elif err.error_verb == 'LockContention':

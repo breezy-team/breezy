@@ -575,26 +575,12 @@ class TestLoadFromPath(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(TestLoadFromPath, self).setUp()
-        # Save the attributes that we're about to monkey-patch.
-        old_plugins_path = bzrlib.plugins.__path__
-        old_loaded = plugin._loaded
-        old_load_from_path = plugin.load_from_path
-
-        def restore():
-            bzrlib.plugins.__path__ = old_plugins_path
-            plugin._loaded = old_loaded
-            plugin.load_from_path = old_load_from_path
-
-        self.addCleanup(restore)
-
         # Change bzrlib.plugin to think no plugins have been loaded yet.
-        bzrlib.plugins.__path__ = []
-        plugin._loaded = False
+        self.overrideAttr(bzrlib.plugins, '__path__', [])
+        self.overrideAttr(plugin, '_loaded', False)
 
         # Monkey-patch load_from_path to stop it from actually loading anything.
-        def load_from_path(dirs):
-            pass
-        plugin.load_from_path = load_from_path
+        self.overrideAttr(plugin, 'load_from_path', lambda dirs: None)
 
     def test_set_plugins_path_with_args(self):
         plugin.set_plugins_path(['a', 'b'])
@@ -645,14 +631,7 @@ class TestEnvPluginPath(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(TestEnvPluginPath, self).setUp()
-        old_default = plugin.DEFAULT_PLUGIN_PATH
-
-        def restore():
-            plugin.DEFAULT_PLUGIN_PATH = old_default
-
-        self.addCleanup(restore)
-
-        plugin.DEFAULT_PLUGIN_PATH = None
+        self.overrideAttr(plugin, 'DEFAULT_PLUGIN_PATH', None)
 
         self.user = plugin.get_user_plugin_path()
         self.site = plugin.get_site_plugin_path()

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -98,6 +98,7 @@ class Tree(object):
     def iter_changes(self, from_tree, include_unchanged=False,
                      specific_files=None, pb=None, extra_trees=None,
                      require_versioned=True, want_unversioned=False):
+        """See InterTree.iter_changes"""
         intertree = InterTree.get(from_tree, self)
         return intertree.iter_changes(include_unchanged, specific_files, pb,
             extra_trees, require_versioned, want_unversioned=want_unversioned)
@@ -697,7 +698,6 @@ class Tree(object):
                 for path in path_names:
                     yield searcher.get_items(path)
 
-    @needs_read_lock
     def _get_rules_searcher(self, default_searcher):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
@@ -852,6 +852,12 @@ class InterTree(InterObject):
     will pass through to InterTree as appropriate.
     """
 
+    # Formats that will be used to test this InterTree. If both are
+    # None, this InterTree will not be tested (e.g. because a complex
+    # setup is required)
+    _matching_from_tree_format = None
+    _matching_to_tree_format = None
+
     _optimisers = []
 
     def _changes_from_entries(self, source_entry, target_entry,
@@ -954,8 +960,6 @@ class InterTree(InterObject):
             a PathsNotVersionedError will be thrown.
         :param want_unversioned: Scan for unversioned paths.
         """
-        # NB: show_status depends on being able to pass in non-versioned files
-        # and report them as unknown
         trees = (self.source,)
         if extra_trees is not None:
             trees = trees + tuple(extra_trees)

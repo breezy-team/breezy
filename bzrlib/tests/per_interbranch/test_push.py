@@ -40,7 +40,7 @@ from bzrlib.tests.per_interbranch import (
     TestCaseWithInterBranch,
     )
 from bzrlib.transport import get_transport
-from bzrlib.transport.local import LocalURLServer
+from bzrlib.tests import test_server
 
 
 # These tests are based on similar tests in 
@@ -155,7 +155,7 @@ class TestPush(TestCaseWithInterBranch):
         try:
             tree = a_branch.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            if self.vfs_transport_factory is LocalURLServer:
+            if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir = bzrdir.BzrDir.open(self.get_vfs_only_url('repo/tree'))
@@ -255,7 +255,6 @@ class TestPush(TestCaseWithInterBranch):
         builder.build_snapshot('third', ['second'], [])
         builder.build_snapshot('fourth', ['third'], [])
         builder.finish_series()
-        local = builder.get_branch()
         local = branch.Branch.open(self.get_vfs_only_url('local'))
         # Initial push of three revisions
         remote_bzrdir = local.bzrdir.sprout(
@@ -281,15 +280,10 @@ class TestPush(TestCaseWithInterBranch):
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking
         # for or receiving more data than the caller asked for.
-        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
-        inter_class = repository.InterRepository
-        old_batch_size = inter_class._walk_to_common_revisions_batch_size
-        inter_class._walk_to_common_revisions_batch_size = 1
-        SmartServerRepositoryGetParentMap.no_extra_results = True
-        def reset_values():
-            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
-            inter_class._walk_to_common_revisions_batch_size = old_batch_size
-        self.addCleanup(reset_values)
+        self.overrideAttr(repository.InterRepository,
+                          '_walk_to_common_revisions_batch_size', 1)
+        self.overrideAttr(SmartServerRepositoryGetParentMap,
+                            'no_extra_results', True)
 
 
 class TestPushHook(TestCaseWithInterBranch):

@@ -93,9 +93,10 @@ class GraphIndexBuilder(object):
         :param key_elements: The number of bytestrings in each key.
         """
         self.reference_lists = reference_lists
-        self._keys = set()
         # A dict of {key: (absent, ref_lists, value)}
         self._nodes = {}
+        # Keys that are referenced but not actually present in this index
+        self._absent_keys = set()
         self._nodes_by_key = None
         self._key_length = key_elements
         self._optimize_for_size = False
@@ -165,9 +166,9 @@ class GraphIndexBuilder(object):
             return
         key_dict = self._nodes_by_key
         if self.reference_lists:
-            key_value = key, value, node_refs
+            key_value = StaticTuple(key, value, node_refs)
         else:
-            key_value = key, value
+            key_value = StaticTuple(key, value)
         for subkey in key[:-1]:
             key_dict = key_dict.setdefault(subkey, {})
         key_dict[key[-1]] = key_value
@@ -189,6 +190,7 @@ class GraphIndexBuilder(object):
                                 This may contain duplicates if the same key is
                                 referenced in multiple lists.
         """
+        as_st = StaticTuple.from_sequence
         self._check_key(key)
         if _newline_null_re.search(value) is not None:
             raise errors.BadIndexValue(value)
@@ -203,10 +205,10 @@ class GraphIndexBuilder(object):
                 if reference not in self._nodes:
                     self._check_key(reference)
                     absent_references.append(reference)
-            # TODO: StaticTuple
-            node_refs.append(tuple(reference_list))
-        # TODO: StaticTuple
-        return tuple(node_refs), absent_references
+            reference_list = as_st([as_st(ref).intern()
+                                    for ref in reference_list])
+            node_refs.append(reference_list)
+        return as_st(node_refs), absent_references
 
     def add_node(self, key, value, references=()):
         """Add a node to the index.
@@ -227,8 +229,9 @@ class GraphIndexBuilder(object):
             # There may be duplicates, but I don't think it is worth worrying
             # about
             self._nodes[reference] = ('a', (), '')
+        self._absent_keys.update(absent_references)
+        self._absent_keys.discard(key)
         self._nodes[key] = ('', node_refs, value)
-        self._keys.add(key)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
 
@@ -243,7 +246,8 @@ class GraphIndexBuilder(object):
         lines = [_SIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
-        lines.append(_OPTION_LEN + str(len(self._keys)) + '\n')
+        key_count = len(self._nodes) - len(self._absent_keys)
+        lines.append(_OPTION_LEN + str(key_count) + '\n')
         prefix_length = sum(len(x) for x in lines)
         # references are byte offsets. To avoid having to do nasty
         # polynomial work to resolve offsets (references to later in the
@@ -451,6 +455,7 @@ class GraphIndex(object):
         trailers = 0
         pos = stream.tell()
         lines = stream.read().split('\n')
+        stream.close()
         del lines[-1]
         _, _, _, trailers = self._parse_lines(lines, pos)
         for key, absent, references, value in self._keys_by_offset.itervalues():
@@ -463,7 +468,6 @@ class GraphIndex(object):
                 node_value = value
             self._nodes[key] = node_value
         # cache the keys for quick set intersections
-        self._keys = set(self._nodes)
         if trailers != 1:
             # there must be one line - the empty trailer line.
             raise errors.BadIndexData(self)
@@ -484,10 +488,11 @@ class GraphIndex(object):
             raise ValueError('No ref list %d, index has %d ref lists'
                 % (ref_list_num, self.node_ref_lists))
         refs = set()
-        for key, (value, ref_lists) in self._nodes.iteritems():
+        nodes = self._nodes
+        for key, (value, ref_lists) in nodes.iteritems():
             ref_list = ref_lists[ref_list_num]
-            refs.update(ref_list)
-        return refs - self._keys
+            refs.update([ref for ref in ref_list if ref not in nodes])
+        return refs
 
     def _get_nodes_by_key(self):
         if self._nodes_by_key is None:
@@ -620,14 +625,17 @@ class GraphIndex(object):
 
     def _iter_entries_from_total_buffer(self, keys):
         """Iterate over keys when the entire index is parsed."""
-        keys = keys.intersection(self._keys)
+        # Note: See the note in BTreeBuilder.iter_entries for why we don't use
+        #       .intersection() here
+        nodes = self._nodes
+        keys = [key for key in keys if key in nodes]
         if self.node_ref_lists:
             for key in keys:
-                value, node_refs = self._nodes[key]
+                value, node_refs = nodes[key]
                 yield self, key, value, node_refs
         else:
             for key in keys:
-                yield self, key, self._nodes[key]
+                yield self, key, nodes[key]
 
     def iter_entries(self, keys):
         """Iterate over keys within the index.
@@ -1507,15 +1515,18 @@ class InMemoryGraphIndex(GraphIndexBuilder):
             defined order for the result iteration - it will be in the most
             efficient order for the index (keys iteration order in this case).
         """
-        keys = set(keys)
+        # Note: See BTreeBuilder.iter_entries for an explanation of why we
+        #       aren't using set().intersection() here
+        nodes = self._nodes
+        keys = [key for key in keys if key in nodes]
         if self.reference_lists:
-            for key in keys.intersection(self._keys):
-                node = self._nodes[key]
+            for key in keys:
+                node = nodes[key]
                 if not node[0]:
                     yield self, key, node[2], node[1]
         else:
-            for key in keys.intersection(self._keys):
-                node = self._nodes[key]
+            for key in keys:
+                node = nodes[key]
                 if not node[0]:
                     yield self, key, node[2]
 
@@ -1595,7 +1606,7 @@ class InMemoryGraphIndex(GraphIndexBuilder):
 
         For InMemoryGraphIndex the estimate is exact.
         """
-        return len(self._keys)
+        return len(self._nodes) - len(self._absent_keys)
 
     def validate(self):
         """In memory index's have no known corruption at the moment."""

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,11 +40,13 @@ from warnings import warn
 
 import bzrlib
 from bzrlib import (
+    cleanup,
     debug,
     errors,
     option,
     osutils,
     trace,
+    ui,
     win32utils,
     )
 """)
@@ -57,7 +59,6 @@ from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
     deprecated_method,
-    suppress_deprecation_warnings,
     )
 
 
@@ -182,23 +183,6 @@ def builtin_command_names():
 def plugin_command_names():
     """Returns command names from commands registered by plugins."""
     return plugin_cmds.keys()
-
-
-@deprecated_function(deprecated_in((1, 17, 0)))
-def get_all_cmds(plugins_override=False):
-    """Return canonical name and class for most commands.
-    
-    NB: This does not return all commands since the introduction of
-    command hooks, and returning the class is not sufficient to 
-    get correctly setup commands, which is why it is deprecated.
-
-    Use 'all_command_names' + 'get_cmd_object' instead.
-    """
-    d = _builtin_commands()
-    if plugins_override:
-        d.update(plugin_cmds.iteritems())
-    for k, v in d.iteritems():
-        yield k,v
 
 
 def get_cmd_object(cmd_name, plugins_override=True):
@@ -383,7 +367,28 @@ class Command(object):
             warn("No help message set for %r" % self)
         # List of standard options directly supported
         self.supported_std_options = []
+        self._operation = cleanup.OperationWithCleanups(self.run)
+    
+    def add_cleanup(self, cleanup_func, *args, **kwargs):
+        """Register a function to call after self.run returns or raises.
 
+        Functions will be called in LIFO order.
+        """
+        self._operation.add_cleanup(cleanup_func, *args, **kwargs)
+
+    def cleanup_now(self):
+        """Execute and empty pending cleanup functions immediately.
+
+        After cleanup_now all registered cleanups are forgotten.  add_cleanup
+        may be called again after cleanup_now; these cleanups will be called
+        after self.run returns or raises (or when cleanup_now is next called).
+
+        This is useful for releasing expensive or contentious resources (such
+        as write locks) before doing further work that does not require those
+        resources (such as writing results to self.outf).
+        """
+        self._operation.cleanup_now()
+        
     @deprecated_method(deprecated_in((2, 1, 0)))
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
@@ -510,8 +515,9 @@ class Command(object):
                         # so don't create a real link
                         see_also_links.append(item)
                     else:
-                        # Use a reST link for this entry
-                        see_also_links.append("`%s`_" % (item,))
+                        # Use a Sphinx link for this entry
+                        link_text = ":doc:`%s <%s-help>`" % (item, item)
+                        see_also_links.append(link_text)
                 see_also = see_also_links
             result += ':See also: '
             result += ', '.join(see_also) + '\n'
@@ -595,33 +601,11 @@ class Command(object):
 
     def _setup_outf(self):
         """Return a file linked to stdout, which has proper encoding."""
-        # Originally I was using self.stdout, but that looks
-        # *way* too much like sys.stdout
-        if self.encoding_type == 'exact':
-            # force sys.stdout to be binary stream on win32
-            if sys.platform == 'win32':
-                fileno = getattr(sys.stdout, 'fileno', None)
-                if fileno:
-                    import msvcrt
-                    msvcrt.setmode(fileno(), os.O_BINARY)
-            self.outf = sys.stdout
-            return
-
-        output_encoding = osutils.get_terminal_encoding()
-
-        self.outf = codecs.getwriter(output_encoding)(sys.stdout,
-                        errors=self.encoding_type)
-        # For whatever reason codecs.getwriter() does not advertise its encoding
-        # it just returns the encoding of the wrapped file, which is completely
-        # bogus. So set the attribute, so we can find the correct encoding later.
-        self.outf.encoding = output_encoding
+        self.outf = ui.ui_factory.make_output_stream(
+            encoding_type=self.encoding_type)
 
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
-        if argv is None:
-            warn("Passing None for [] is deprecated from bzrlib 0.10",
-                 DeprecationWarning, stacklevel=2)
-            argv = []
         args, opts = parse_args(self, argv, alias_argv)
 
         # Process the standard options
@@ -652,7 +636,11 @@ class Command(object):
 
         self._setup_outf()
 
-        return self.run(**all_cmd_args)
+        return self.run_direct(**all_cmd_args)
+
+    def run_direct(self, *args, **kwargs):
+        """Call run directly with objects (without parsing an argv list)."""
+        return self._operation.run_simple(*args, **kwargs)
 
     def run(self):
         """Actually run the command.
@@ -940,7 +928,11 @@ def run_bzr(argv):
 
     --coverage
         Generate line coverage report in the specified directory.
+
+    --concurrency
+        Specify the number of processes that can be run concurrently (selftest).
     """
+    trace.mutter("bazaar version: " + bzrlib.__version__)
     argv = list(argv)
     trace.mutter("bzr arguments: %r", argv)
 
@@ -970,6 +962,9 @@ def run_bzr(argv):
             opt_no_aliases = True
         elif a == '--builtin':
             opt_builtin = True
+        elif a == '--concurrency':
+            os.environ['BZR_CONCURRENCY'] = argv[i + 1]
+            i += 1
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
             i += 1
@@ -1082,25 +1077,12 @@ def install_bzr_command_hooks():
         "bzr plugin-provider-db check")
 
 
-def main(argv=None):
-    """Main entry point of command-line interface.
 
-    :param argv: list of unicode command-line arguments similar to sys.argv.
-        argv[0] is script name usually, it will be ignored.
-        Don't pass here sys.argv because this list contains plain strings
-        and not unicode; pass None instead.
-
-    :return: exit code of bzr command.
-    """
-    import bzrlib.ui
-    bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
-        sys.stdin, sys.stdout, sys.stderr)
-
-    # Is this a final release version? If so, we should suppress warnings
-    if bzrlib.version_info[3] == 'final':
-        suppress_deprecation_warnings(override=True)
+def _specified_or_unicode_argv(argv):
+    # For internal or testing use, argv can be passed.  Otherwise, get it from
+    # the process arguments in a unicode-safe way.
     if argv is None:
-        argv = osutils.get_unicode_argv()
+        return osutils.get_unicode_argv()
     else:
         new_argv = []
         try:
@@ -1112,10 +1094,26 @@ def main(argv=None):
                     new_argv.append(a.decode('ascii'))
         except UnicodeDecodeError:
             raise errors.BzrError("argv should be list of unicode strings.")
-        argv = new_argv
+        return new_argv
+
+
+def main(argv=None):
+    """Main entry point of command-line interface.
+
+    Typically `bzrlib.initialize` should be called first.
+
+    :param argv: list of unicode command-line arguments similar to sys.argv.
+        argv[0] is script name usually, it will be ignored.
+        Don't pass here sys.argv because this list contains plain strings
+        and not unicode; pass None instead.
+
+    :return: exit code of bzr command.
+    """
+    argv = _specified_or_unicode_argv(argv)
     ret = run_bzr_catch_errors(argv)
+    bzrlib.ui.ui_factory.log_transport_activity(
+        display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
-    osutils.report_extension_load_failures()
     return ret
 
 
@@ -1125,6 +1123,7 @@ def run_bzr_catch_errors(argv):
     This function assumed that that UI layer is setup, that symbol deprecations
     are already applied, and that unicode decoding has already been performed on argv.
     """
+    # done here so that they're covered for every test run
     install_bzr_command_hooks()
     return exception_to_return_code(run_bzr, argv)
 
@@ -1135,6 +1134,7 @@ def run_bzr_catch_user_errors(argv):
     This is used for the test suite, and might be useful for other programs
     that want to wrap the commandline interface.
     """
+    # done here so that they're covered for every test run
     install_bzr_command_hooks()
     try:
         return run_bzr(argv)
@@ -1190,7 +1190,3 @@ class ProvidersRegistry(registry.Registry):
             yield provider
 
 command_providers_registry = ProvidersRegistry()
-
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv))

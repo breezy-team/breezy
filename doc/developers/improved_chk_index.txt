@@ -16,7 +16,7 @@ When the key is a sha1 hash, we would not expect to get better than 20bytes
 per key, which is the same size as the binary representation of the hash. This
 means we could write an index format that gets approximately the same on-disk
 size, without having the overhead of ``zlib.decompress``. Some thought would
-still need to be put into how to efficiently access these records from remote. 
+still need to be put into how to efficiently access these records from remote.
 
 
 Required information
@@ -99,7 +99,7 @@ store.
    offset + endpoint as a header in the group itself.)
 
 5. So for 1M keys, an ideal chk+group index would be:
-    
+
     a. 6-byte hash prefix
 
     b. 2-byte group number
@@ -149,13 +149,13 @@ group records, and 0.25MiB for the mini index.
       information to read the entire group block. For local ops, you could
       only read enough to get the header, and then only read enough to
       decompress just the content you want to get at.
-      
+
       Using an offset, you also don't need to decode the entire group header.
       If we assume that things are stored in fixed-size records, you can jump
       to exactly the entry that you care about, and read its 8-byte
       (start,length in uncompressed) info.  If we wanted more redundancy we
       could store the 20-byte hash, but the content can verify itself.
-      
+
    f. If the size of these mini headers becomes critical (8 bytes per record
       is 8% overhead for 100 byte records), we could also compress this mini
       header. Changing the number of bytes per entry is unlikely to be
@@ -172,7 +172,7 @@ group records, and 0.25MiB for the mini index.
       would also have the advantage that fixed width would be highly
       compressible itself. (Most nodes are going to have a length that fits
       1-2 bytes.)
-      
+
       An alternative form would be to use the base-128 encoding.  (If the MSB
       is set, then the next byte needs to be added to the current value
       shifted by 7*n bits.) This encodes 4GiB in 5 bytes, but stores 127B in 1
@@ -470,5 +470,5 @@ the pointer in each entry to be variable should suffice. At 3 bytes for the
 group pointer, we can refer to 16.7M groups. It does add complexity, but it is
 likely necessary to allow for arbitrary cases.
 
-.. 
+..
   vim: ft=rst tw=78 ai

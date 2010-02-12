@@ -39,6 +39,8 @@ from bzrlib import (
     timestamp,
     views,
     )
+
+from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.symbol_versioning import (
@@ -451,7 +453,10 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
-    mtime = tree.get_file_mtime(file_id, path)
+    try:
+        mtime = tree.get_file_mtime(file_id, path)
+    except errors.FileTimestampUnavailable:
+        mtime = 0
     return timestamp.format_patch_date(mtime)
 
 
@@ -722,6 +727,9 @@ class DiffFromTool(DiffPath):
 
     def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
                     allow_write=False):
+        if not force_temp and isinstance(tree, WorkingTree):
+            return tree.abspath(tree.id2path(file_id))
+        
         full_path = osutils.pathjoin(self._root, prefix, relpath)
         if not force_temp and self._try_symlink_root(tree, prefix):
             return full_path
@@ -742,7 +750,10 @@ class DiffFromTool(DiffPath):
             source.close()
         if not allow_write:
             osutils.make_readonly(full_path)
-        mtime = tree.get_file_mtime(file_id)
+        try:
+            mtime = tree.get_file_mtime(file_id)
+        except errors.FileTimestampUnavailable:
+            mtime = 0
         os.utime(full_path, (mtime, mtime))
         return full_path
 
@@ -766,9 +777,9 @@ class DiffFromTool(DiffPath):
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if (old_kind, new_kind) != ('file', 'file'):
             return DiffPath.CANNOT_DIFF
-        self._prepare_files(file_id, old_path, new_path)
-        self._execute(osutils.pathjoin('old', old_path),
-                      osutils.pathjoin('new', new_path))
+        (old_disk_path, new_disk_path) = self._prepare_files(
+                                                file_id, old_path, new_path)
+        self._execute(old_disk_path, new_disk_path)
 
     def edit_file(self, file_id):
         """Use this tool to edit a file.

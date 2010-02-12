@@ -1582,6 +1582,24 @@ class TestCollapseLinearRegions(tests.TestCase):
         self.assertCollapsed(d, d)
 
 
+class TestGraphThunkIdsToKeys(tests.TestCase):
+
+    def test_heads(self):
+        # A
+        # |\
+        # B C
+        # |/
+        # D
+        d = {('D',): [('B',), ('C',)], ('C',):[('A',)],
+             ('B',): [('A',)], ('A',): []}
+        g = _mod_graph.Graph(_mod_graph.DictParentsProvider(d))
+        graph_thunk = _mod_graph.GraphThunkIdsToKeys(g)
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'A'])))
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'B'])))
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'C'])))
+        self.assertEqual(['B', 'C'], sorted(graph_thunk.heads(['B', 'C'])))
+
+
 class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):
     """Tests for bzrlib.graph.PendingAncestryResult."""
 

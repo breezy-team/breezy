@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -114,6 +114,7 @@ docs-sphinx: html-sphinx
 clean-sphinx:
 	cd doc/en && make clean
 	cd doc/es && make clean
+	cd doc/ja && make clean
 	cd doc/ru && make clean
 	cd doc/developers && make clean
 
@@ -122,6 +123,8 @@ SPHINX_DEPENDENCIES = \
         doc/en/user-reference/index.txt \
 	doc/es/Makefile \
 	doc/es/make.bat \
+	doc/ja/Makefile \
+	doc/ja/make.bat \
 	doc/ru/Makefile \
 	doc/ru/make.bat \
 	doc/developers/Makefile \
@@ -144,6 +147,7 @@ html-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make html
 	cd doc/es && make html
 	cd doc/ru && make html
+	cd doc/ja && make html
 	cd doc/developers && make html
 
 # Build the PDF docs using Sphinx. This requires numerous LaTeX
@@ -154,6 +158,7 @@ html-sphinx: $(SPHINX_DEPENDENCIES)
 pdf-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make latex
 	cd doc/es && make latex
+	cd doc/ja && make latex
 	cd doc/developers && make latex
 	cd doc/en/_build/latex && make all-pdf
 	cd doc/es/_build/latex && make all-pdf
@@ -166,6 +171,7 @@ chm-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make htmlhelp
 	cd doc/es && make htmlhelp
 	cd doc/ru && make htmlhelp
+	cd doc/ja && make htmlhelp
 	cd doc/developers && make htmlhelp
 
 
@@ -179,6 +185,7 @@ doc-website: html-sphinx pdf-sphinx
 	$(PYTHON) tools/package_docs.py doc/en $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/es $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/ru $(DOC_WEBSITE_BUILD)
+	$(PYTHON) tools/package_docs.py doc/ja $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/developers $(DOC_WEBSITE_BUILD)
 
 
@@ -192,16 +199,19 @@ rst2html = $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=s
 
 # translate txt docs to html
 derived_txt_files = \
-	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
 txt_all = \
 	doc/en/tutorials/tutorial.txt \
 	doc/en/tutorials/using_bazaar_with_launchpad.txt \
 	doc/en/tutorials/centralized_workflow.txt \
         $(wildcard doc/es/tutorials/*.txt) \
-        $(wildcard doc/ru/tutorials/*.txt) \
+		$(wildcard doc/ru/tutorials/*.txt) \
+	doc/ja/tutorials/tutorial.txt \
+	doc/ja/tutorials/using_bazaar_with_launchpad.txt \
+	doc/ja/tutorials/centralized_workflow.txt \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
 	$(wildcard doc/*/user-guide/index-plain.txt) \
+	doc/en/admin-guide/index-plain.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	$(derived_txt_files) \
 	doc/en/upgrade-guide/index.txt \
@@ -210,7 +220,9 @@ txt_all = \
 txt_nohtml = \
 	doc/en/user-guide/index.txt \
 	doc/es/user-guide/index.txt \
-	doc/ru/user-guide/index.txt
+	doc/ja/user-guide/index.txt \
+	doc/ru/user-guide/index.txt \
+	doc/en/admin-guide/index.txt
 txt_files = $(filter-out $(txt_nohtml), $(txt_all))
 htm_files = $(patsubst %.txt, %.html, $(txt_files)) 
 
@@ -268,6 +280,9 @@ doc/en/user-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/user-g
 #doc/ru/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/ru/user-guide)) 
 #	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 #
+doc/en/admin-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/admin-guide)) 
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
+
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 
@@ -279,9 +294,6 @@ doc/index.%.html: doc/index.%.txt
 
 %.html: %.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
-
-doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
@@ -394,7 +406,7 @@ clean-win32: clean-docs
 
 ### Packaging Targets ###
 
-.PHONY: dist dist-upload-escudero check-dist-tarball
+.PHONY: dist check-dist-tarball
 
 # build a distribution source tarball
 #
@@ -422,18 +434,3 @@ check-dist-tarball:
 	tar Cxz $$tmpdir -f $$tarball && \
 	$(MAKE) -C $$tmpdir/bzr-$$version check && \
 	rm -rf $$tmpdir
-
-
-# upload previously built tarball to the download directory on bazaar-vcs.org,
-# and verify that it can be downloaded ok.
-dist-upload-escudero:
-	version=`./bzr version --short` && \
-	tarball=../bzr-$$version.tar.gz && \
-	scp $$tarball $$tarball.sig \
-	    escudero.ubuntu.com:/srv/bazaar.canonical.com/www/releases/src \
-		&& \
-	echo verifying over http... && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz \
-		| diff -s - $$tarball && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz.sig \
-		| diff -s - $$tarball.sig 

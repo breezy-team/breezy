@@ -59,11 +59,11 @@ class PathFilteringServer(Server):
     def get_url(self):
         return self.scheme
 
-    def setUp(self):
+    def start_server(self):
         self.scheme = 'filtered-%d:///' % id(self)
         register_transport(self.scheme, self._factory)
 
-    def tearDown(self):
+    def stop_server(self):
         unregister_transport(self.scheme, self._factory)
 
 
@@ -174,22 +174,7 @@ class PathFilteringTransport(Transport):
         return self._call('stat', relpath)
 
 
-class TestingPathFilteringServer(PathFilteringServer):
-
-    def __init__(self):
-        """TestingChrootServer is not usable until setUp is called."""
-
-    def setUp(self, backing_server=None):
-        """Setup the Chroot on backing_server."""
-        if backing_server is not None:
-            self.backing_transport = get_transport(backing_server.get_url())
-        else:
-            self.backing_transport = get_transport('.')
-        self.backing_transport.clone('added-by-filter').ensure_base()
-        self.filter_func = lambda x: 'added-by-filter/' + x
-        PathFilteringServer.setUp(self)
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(PathFilteringTransport, TestingPathFilteringServer)]
+    from bzrlib.tests import test_server
+    return [(PathFilteringTransport, test_server.TestingPathFilteringServer)]

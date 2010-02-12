@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,9 +83,14 @@ from bzrlib import (
     )
 from bzrlib.osutils import (
     format_date,
+    format_date_with_offset_in_original_timezone,
     get_terminal_encoding,
     re_compile_checked,
     terminal_width,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
     )
 
 
@@ -303,7 +308,7 @@ class LogGenerator(object):
 
 
 class Logger(object):
-    """An object the generates, formats and displays a log."""
+    """An object that generates, formats and displays a log."""
 
     def __init__(self, branch, rqst):
         """Create a Logger.
@@ -384,27 +389,28 @@ class _DefaultLogGenerator(LogGenerator):
         :return: An iterator yielding LogRevision objects.
         """
         rqst = self.rqst
+        levels = rqst.get('levels')
+        limit = rqst.get('limit')
+        diff_type = rqst.get('diff_type')
         log_count = 0
         revision_iterator = self._create_log_revision_iterator()
         for revs in revision_iterator:
             for (rev_id, revno, merge_depth), rev, delta in revs:
                 # 0 levels means show everything; merge_depth counts from 0
-                levels = rqst.get('levels')
                 if levels != 0 and merge_depth >= levels:
                     continue
-                diff = self._format_diff(rev, rev_id)
+                if diff_type is None:
+                    diff = None
+                else:
+                    diff = self._format_diff(rev, rev_id, diff_type)
                 yield LogRevision(rev, revno, merge_depth, delta,
                     self.rev_tag_dict.get(rev_id), diff)
-                limit = rqst.get('limit')
                 if limit:
                     log_count += 1
                     if log_count >= limit:
                         return
 
-    def _format_diff(self, rev, rev_id):
-        diff_type = self.rqst.get('diff_type')
-        if diff_type is None:
-            return None
+    def _format_diff(self, rev, rev_id, diff_type):
         repo = self.branch.repository
         if len(rev.parent_ids) == 0:
             ancestor_id = _mod_revision.NULL_REVISION
@@ -528,16 +534,30 @@ def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction):
 
 
 def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
-    delayed_graph_generation):
+                            delayed_graph_generation):
     # On large trees, generating the merge graph can take 30-60 seconds
     # so we delay doing it until a merge is detected, incrementally
     # returning initial (non-merge) revisions while we can.
+
+    # The above is only true for old formats (<= 0.92), for newer formats, a
+    # couple of seconds only should be needed to load the whole graph and the
+    # other graph operations needed are even faster than that -- vila 100201
     initial_revisions = []
     if delayed_graph_generation:
         try:
-            for rev_id, revno, depth in \
-                _linear_view_revisions(branch, start_rev_id, end_rev_id):
+            for rev_id, revno, depth in  _linear_view_revisions(
+                branch, start_rev_id, end_rev_id):
                 if _has_merges(branch, rev_id):
+                    # The end_rev_id can be nested down somewhere. We need an
+                    # explicit ancestry check. There is an ambiguity here as we
+                    # may not raise _StartNotLinearAncestor for a revision that
+                    # is an ancestor but not a *linear* one. But since we have
+                    # loaded the graph to do the check (or calculate a dotted
+                    # revno), we may as well accept to show the log... 
+                    # -- vila 100201
+                    graph = branch.repository.get_graph()
+                    if not graph.is_ancestor(start_rev_id, end_rev_id):
+                        raise _StartNotLinearAncestor()
                     end_rev_id = rev_id
                     break
                 else:
@@ -595,6 +615,8 @@ def _is_obvious_ancestor(branch, start_rev_id, end_rev_id):
         else:
             # not obvious
             return False
+    # if either start or end is not specified then we use either the first or
+    # the last revision and *they* are obvious ancestors.
     return True
 
 
@@ -662,11 +684,16 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
                 depth_adjustment = merge_depth
             if depth_adjustment:
                 if merge_depth < depth_adjustment:
+                    # From now on we reduce the depth adjustement, this can be
+                    # surprising for users. The alternative requires two passes
+                    # which breaks the fast display of the first revision
+                    # though.
                     depth_adjustment = merge_depth
                 merge_depth -= depth_adjustment
             yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
         specific_fileid, generate_merge_revisions):
     """Calculate the revisions to view.
@@ -674,9 +701,6 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
              a list of the same tuples.
     """
-    # This method is no longer called by the main code path.
-    # It is retained for API compatibility and may be deprecated
-    # soon. IGC 20090116
     start_rev_id, end_rev_id = _get_revision_limits(branch, start_revision,
         end_revision)
     view_revisions = list(_calc_view_revisions(branch, start_rev_id, end_rev_id,
@@ -1032,6 +1056,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     return mainline_revs, rev_nos, start_rev_id, end_rev_id
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     """Filter view_revisions based on revision ranges.
 
@@ -1046,8 +1071,6 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
     :return: The filtered view_revisions.
     """
-    # This method is no longer called by the main code path.
-    # It may be removed soon. IGC 20090127
     if start_rev_id or end_rev_id:
         revision_ids = [r for r, n, d in view_revisions]
         if start_rev_id:
@@ -1159,15 +1182,13 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     return result
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
                        include_merges=True):
     """Produce an iterator of revisions to show
     :return: an iterator of (revision_id, revno, merge_depth)
     (if there is no revno for a revision, None is supplied)
     """
-    # This method is no longer called by the main code path.
-    # It is retained for API compatibility and may be deprecated
-    # soon. IGC 20090127
     if not include_merges:
         revision_ids = mainline_revs[1:]
         if direction == 'reverse':
@@ -1291,10 +1312,13 @@ class LogFormatter(object):
     preferred_levels = 0
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
-                 delta_format=None, levels=None, show_advice=False):
+                 delta_format=None, levels=None, show_advice=False,
+                 to_exact_file=None):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
+        :param to_exact_file: if set, gives an output stream to which 
+             non-Unicode diffs are written.
         :param show_ids: if True, revision-ids are to be displayed
         :param show_timezone: the timezone to use
         :param delta_format: the level of delta information to display
@@ -1307,7 +1331,13 @@ class LogFormatter(object):
         self.to_file = to_file
         # 'exact' stream used to show diff, it should print content 'as is'
         # and should not try to decode/encode it to unicode to avoid bug #328007
-        self.to_exact_file = getattr(to_file, 'stream', to_file)
+        if to_exact_file is not None:
+            self.to_exact_file = to_exact_file
+        else:
+            # XXX: somewhat hacky; this assumes it's a codec writer; it's better
+            # for code that expects to get diffs to pass in the exact file
+            # stream
+            self.to_exact_file = getattr(to_file, 'stream', to_file)
         self.show_ids = show_ids
         self.show_timezone = show_timezone
         if delta_format is None:
@@ -1367,46 +1397,62 @@ class LogFormatter(object):
         else:
             return ''
 
-    def show_foreign_info(self, rev, indent):
+    def show_properties(self, revision, indent):
+        """Displays the custom properties returned by each registered handler.
+
+        If a registered handler raises an error it is propagated.
+        """
+        for line in self.custom_properties(revision):
+            self.to_file.write("%s%s\n" % (indent, line))
+
+    def custom_properties(self, revision):
+        """Format the custom properties returned by each registered handler.
+
+        If a registered handler raises an error it is propagated.
+
+        :return: a list of formatted lines (excluding trailing newlines)
+        """
+        lines = self._foreign_info_properties(revision)
+        for key, handler in properties_handler_registry.iteritems():
+            lines.extend(self._format_properties(handler(revision)))
+        return lines
+
+    def _foreign_info_properties(self, rev):
         """Custom log displayer for foreign revision identifiers.
 
         :param rev: Revision object.
         """
         # Revision comes directly from a foreign repository
         if isinstance(rev, foreign.ForeignRevision):
-            self._write_properties(indent, rev.mapping.vcs.show_foreign_revid(
-                rev.foreign_revid))
-            return
+            return rev.mapping.vcs.show_foreign_revid(rev.foreign_revid)
 
         # Imported foreign revision revision ids always contain :
         if not ":" in rev.revision_id:
-            return
+            return []
 
         # Revision was once imported from a foreign repository
         try:
             foreign_revid, mapping = \
                 foreign.foreign_vcs_registry.parse_revision_id(rev.revision_id)
         except errors.InvalidRevisionId:
-            return
+            return []
 
-        self._write_properties(indent, 
+        return self._format_properties(
             mapping.vcs.show_foreign_revid(foreign_revid))
 
-    def show_properties(self, revision, indent):
-        """Displays the custom properties returned by each registered handler.
-
-        If a registered handler raises an error it is propagated.
-        """
-        for key, handler in properties_handler_registry.iteritems():
-            self._write_properties(indent, handler(revision))
-
-    def _write_properties(self, indent, properties):
+    def _format_properties(self, properties):
+        lines = []
         for key, value in properties.items():
-            self.to_file.write(indent + key + ': ' + value + '\n')
+            lines.append(key + ': ' + value)
+        return lines
 
     def show_diff(self, to_file, diff, indent):
         for l in diff.rstrip().split('\n'):
             to_file.write(indent + '%s\n' % (l,))
+
+
+# Separator between revisions in long format
+_LONG_SEP = '-' * 60
 
 
 class LongLogFormatter(LogFormatter):
@@ -1417,55 +1463,70 @@ class LongLogFormatter(LogFormatter):
     supports_tags = True
     supports_diff = True
 
+    def __init__(self, *args, **kwargs):
+        super(LongLogFormatter, self).__init__(*args, **kwargs)
+        if self.show_timezone == 'original':
+            self.date_string = self._date_string_original_timezone
+        else:
+            self.date_string = self._date_string_with_timezone
+
+    def _date_string_with_timezone(self, rev):
+        return format_date(rev.timestamp, rev.timezone or 0,
+                           self.show_timezone)
+
+    def _date_string_original_timezone(self, rev):
+        return format_date_with_offset_in_original_timezone(rev.timestamp,
+            rev.timezone or 0)
+
     def log_revision(self, revision):
         """Log a revision, either merged or not."""
         indent = '    ' * revision.merge_depth
-        to_file = self.to_file
-        to_file.write(indent + '-' * 60 + '\n')
+        lines = [_LONG_SEP]
         if revision.revno is not None:
-            to_file.write(indent + 'revno: %s%s\n' % (revision.revno,
+            lines.append('revno: %s%s' % (revision.revno,
                 self.merge_marker(revision)))
         if revision.tags:
-            to_file.write(indent + 'tags: %s\n' % (', '.join(revision.tags)))
+            lines.append('tags: %s' % (', '.join(revision.tags)))
         if self.show_ids:
-            to_file.write(indent + 'revision-id: ' + revision.rev.revision_id)
-            to_file.write('\n')
+            lines.append('revision-id: %s' % (revision.rev.revision_id,))
             for parent_id in revision.rev.parent_ids:
-                to_file.write(indent + 'parent: %s\n' % (parent_id,))
-        self.show_foreign_info(revision.rev, indent)
-        self.show_properties(revision.rev, indent)
+                lines.append('parent: %s' % (parent_id,))
+        lines.extend(self.custom_properties(revision.rev))
 
         committer = revision.rev.committer
         authors = revision.rev.get_apparent_authors()
         if authors != [committer]:
-            to_file.write(indent + 'author: %s\n' % (", ".join(authors),))
-        to_file.write(indent + 'committer: %s\n' % (committer,))
+            lines.append('author: %s' % (", ".join(authors),))
+        lines.append('committer: %s' % (committer,))
 
         branch_nick = revision.rev.properties.get('branch-nick', None)
         if branch_nick is not None:
-            to_file.write(indent + 'branch nick: %s\n' % (branch_nick,))
+            lines.append('branch nick: %s' % (branch_nick,))
 
-        date_str = format_date(revision.rev.timestamp,
-                               revision.rev.timezone or 0,
-                               self.show_timezone)
-        to_file.write(indent + 'timestamp: %s\n' % (date_str,))
+        lines.append('timestamp: %s' % (self.date_string(revision.rev),))
 
-        to_file.write(indent + 'message:\n')
+        lines.append('message:')
         if not revision.rev.message:
-            to_file.write(indent + '  (no message)\n')
+            lines.append('  (no message)')
         else:
             message = revision.rev.message.rstrip('\r\n')
             for l in message.split('\n'):
-                to_file.write(indent + '  %s\n' % (l,))
+                lines.append('  %s' % (l,))
+
+        # Dump the output, appending the delta and diff if requested
+        to_file = self.to_file
+        to_file.write("%s%s\n" % (indent, ('\n' + indent).join(lines)))
         if revision.delta is not None:
             # We don't respect delta_format for compatibility
             revision.delta.show(to_file, self.show_ids, indent=indent,
                                 short_status=False)
         if revision.diff is not None:
             to_file.write(indent + 'diff:\n')
+            to_file.flush()
             # Note: we explicitly don't indent the diff (relative to the
             # revision information) so that the output can be fed to patch -p0
             self.show_diff(self.to_exact_file, revision.diff, indent)
+            self.to_exact_file.flush()
 
     def get_advice_separator(self):
         """Get the text separating the log from the closing advice."""
@@ -1515,7 +1576,6 @@ class ShortLogFormatter(LogFormatter):
                             self.show_timezone, date_fmt="%Y-%m-%d",
                             show_offset=False),
                 tags, self.merge_marker(revision)))
-        self.show_foreign_info(revision.rev, indent+offset)
         self.show_properties(revision.rev, indent+offset)
         if self.show_ids:
             to_file.write(indent + offset + 'revision-id:%s\n'
@@ -1543,12 +1603,16 @@ class LineLogFormatter(LogFormatter):
 
     def __init__(self, *args, **kwargs):
         super(LineLogFormatter, self).__init__(*args, **kwargs)
-        self._max_chars = terminal_width() - 1
+        width = terminal_width()
+        if width is not None:
+            # we need one extra space for terminals that wrap on last char
+            width = width - 1
+        self._max_chars = width
 
     def truncate(self, str, max_len):
-        if len(str) <= max_len:
+        if max_len is None or len(str) <= max_len:
             return str
-        return str[:max_len-3]+'...'
+        return str[:max_len-3] + '...'
 
     def date_string(self, rev):
         return format_date(rev.timestamp, rev.timezone or 0,
@@ -1934,6 +1998,21 @@ def _get_kind_for_file_id(tree, file_id):
 
 
 properties_handler_registry = registry.Registry()
+
+# Use the properties handlers to print out bug information if available
+def _bugs_properties_handler(revision):
+    if revision.properties.has_key('bugs'):
+        bug_lines = revision.properties['bugs'].split('\n')
+        bug_rows = [line.split(' ', 1) for line in bug_lines]
+        fixed_bug_urls = [row[0] for row in bug_rows if
+                          len(row) > 1 and row[1] == 'fixed']
+        
+        if fixed_bug_urls:
+            return {'fixes bug(s)': ' '.join(fixed_bug_urls)}
+    return {}
+
+properties_handler_registry.register('bugs_properties_handler',
+                                     _bugs_properties_handler)
 
 
 # adapters which revision ids to log are filtered. When log is called, the

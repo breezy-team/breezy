@@ -369,6 +369,14 @@ class TestConfigPath(tests.TestCase):
 
 class TestIniConfig(tests.TestCase):
 
+    def make_config_parser(self, s):
+        conf = config.IniBasedConfig(None)
+        parser = conf._get_parser(file=StringIO(s.encode('utf-8')))
+        return conf, parser
+
+
+class TestIniConfigBuilding(TestIniConfig):
+
     def test_contructs(self):
         my_config = config.IniBasedConfig("nothing")
 
@@ -385,20 +393,53 @@ class TestIniConfig(tests.TestCase):
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
 
+
+class TestGetUserOptionAs(TestIniConfig):
+
     def test_get_user_option_as_bool(self):
-        config_file = StringIO("""
+        conf, parser = self.make_config_parser("""
 a_true_bool = true
 a_false_bool = 0
 an_invalid_bool = maybe
-a_list = hmm, who knows ? # This interpreted as a list !
-""".encode('utf-8'))
-        my_config = config.IniBasedConfig(None)
-        parser = my_config._get_parser(file=config_file)
-        get_option = my_config.get_user_option_as_bool
-        self.assertEqual(True, get_option('a_true_bool'))
-        self.assertEqual(False, get_option('a_false_bool'))
-        self.assertIs(None, get_option('an_invalid_bool'))
-        self.assertIs(None, get_option('not_defined_in_this_config'))
+a_list = hmm, who knows ? # This is interpreted as a list !
+""")
+        get_bool = conf.get_user_option_as_bool
+        self.assertEqual(True, get_bool('a_true_bool'))
+        self.assertEqual(False, get_bool('a_false_bool'))
+        self.assertIs(None, get_bool('an_invalid_bool'))
+        self.assertIs(None, get_bool('not_defined_in_this_config'))
+
+
+    def test_get_user_option_as_list(self):
+        conf, parser = self.make_config_parser("""
+a_list = a,b,c
+length_1 = 1,
+one_item = x
+""")
+        get_list = conf.get_user_option_as_list
+        self.assertEqual(['a', 'b', 'c'], get_list('a_list'))
+        self.assertEqual(['1'], get_list('length_1'))
+        self.assertEqual('x', conf.get_user_option('one_item'))
+        # automatically cast to list
+        self.assertEqual(['x'], get_list('one_item'))
+
+
+class TestSupressWarning(TestIniConfig):
+
+    def make_warnings_config(self, s):
+        conf, parser = self.make_config_parser(s)
+        return conf.suppress_warning
+
+    def test_suppress_warning_unknown(self):
+        suppress_warning = self.make_warnings_config('')
+        self.assertEqual(False, suppress_warning('unknown_warning'))
+
+    def test_suppress_warning_known(self):
+        suppress_warning = self.make_warnings_config('suppress_warnings=a,b')
+        self.assertEqual(False, suppress_warning('c'))
+        self.assertEqual(True, suppress_warning('a'))
+        self.assertEqual(True, suppress_warning('b'))
+
 
 class TestGetConfig(tests.TestCase):
 
@@ -1600,7 +1641,7 @@ password=jimpass
         self.assertEquals(entered_password,
                           conf.get_password('ssh', 'bar.org', user='jim'))
         self.assertContainsRe(
-            self._get_log(keep_log_file=True),
+            self.get_log(),
             'password ignored in section \[ssh with password\]')
 
     def test_ssh_without_password_doesnt_emit_warning(self):
@@ -1625,15 +1666,12 @@ user=jim
         # No warning shoud be emitted since there is no password. We are only
         # providing "user".
         self.assertNotContainsRe(
-            self._get_log(keep_log_file=True),
+            self.get_log(),
             'password ignored in section \[ssh with password\]')
 
     def test_uses_fallback_stores(self):
-        self._old_cs_registry = config.credential_store_registry
-        def restore():
-            config.credential_store_registry = self._old_cs_registry
-        self.addCleanup(restore)
-        config.credential_store_registry = config.CredentialStoreRegistry()
+        self.overrideAttr(config, 'credential_store_registry',
+                          config.CredentialStoreRegistry())
         store = StubCredentialStore()
         store.add_credentials("http", "example.com", "joe", "secret")
         config.credential_store_registry.register("stub", store, fallback=True)

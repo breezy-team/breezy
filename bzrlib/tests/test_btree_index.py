@@ -43,26 +43,14 @@ def load_tests(standard_tests, module, loader):
         condition_isinstance(TestBTreeNodes))
     import bzrlib._btree_serializer_py as py_module
     scenarios = [('python', {'parse_btree': py_module})]
-    if CompiledBtreeParserFeature.available():
-        # Is there a way to do this that gets missing feature failures rather
-        # than no indication to the user?
-        import bzrlib._btree_serializer_pyx as c_module
-        scenarios.append(('C', {'parse_btree': c_module}))
+    if compiled_btreeparser_feature.available():
+        scenarios.append(('C', {'parse_btree':
+                                compiled_btreeparser_feature.module}))
     return multiply_tests(node_tests, scenarios, others)
 
 
-class _CompiledBtreeParserFeature(tests.Feature):
-    def _probe(self):
-        try:
-            import bzrlib._btree_serializer_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._btree_serializer_pyx'
-
-CompiledBtreeParserFeature = _CompiledBtreeParserFeature()
+compiled_btreeparser_feature = tests.ModuleAvailableFeature(
+                                'bzrlib._btree_serializer_pyx')
 
 
 class BTreeTestCase(TestCaseWithTransport):
@@ -71,11 +59,7 @@ class BTreeTestCase(TestCaseWithTransport):
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)
-        self._original_header = btree_index._RESERVED_HEADER_BYTES
-        def restore():
-            btree_index._RESERVED_HEADER_BYTES = self._original_header
-        self.addCleanup(restore)
-        btree_index._RESERVED_HEADER_BYTES = 100
+        self.overrideAttr(btree_index, '_RESERVED_HEADER_BYTES', 100)
 
     def make_nodes(self, count, key_elements, reference_lists):
         """Generate count*key_elements sample nodes."""
@@ -115,10 +99,7 @@ class BTreeTestCase(TestCaseWithTransport):
 
     def shrink_page_size(self):
         """Shrink the default page size so that less fits in a page."""
-        old_page_size = btree_index._PAGE_SIZE
-        def cleanup():
-            btree_index._PAGE_SIZE = old_page_size
-        self.addCleanup(cleanup)
+        self.overrideAttr(btree_index, '_PAGE_SIZE')
         btree_index._PAGE_SIZE = 2048
 
 
@@ -359,23 +340,19 @@ class TestBTreeBuilder(BTreeTestCase):
         # Test the parts of the index that take up memory are doing so
         # predictably.
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         builder.add_node(*nodes[1])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(1, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         # now back to memory
         builder.add_node(*nodes[2])
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         # And spills to a second backing index combing all
         builder.add_node(*nodes[3])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(None, builder._backing_indices[0])
@@ -384,7 +361,6 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[4])
         builder.add_node(*nodes[5])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
@@ -448,23 +424,19 @@ class TestBTreeBuilder(BTreeTestCase):
         # Test the parts of the index that take up memory are doing so
         # predictably.
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         builder.add_node(*nodes[1])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(1, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
         # now back to memory
         builder.add_node(*nodes[2])
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         # And spills to a second backing index but doesn't combine
         builder.add_node(*nodes[3])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         for backing_index in builder._backing_indices:
@@ -473,7 +445,6 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[4])
         builder.add_node(*nodes[5])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(3, len(builder._backing_indices))
         for backing_index in builder._backing_indices:
@@ -538,11 +509,9 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[0])
         # Test the parts of the index that take up memory are doing so
         # predictably.
-        self.assertEqual(1, len(builder._keys))
         self.assertEqual(1, len(builder._nodes))
         self.assertIs(None, builder._nodes_by_key)
         builder.add_node(*nodes[1])
-        self.assertEqual(0, len(builder._keys))
         self.assertEqual(0, len(builder._nodes))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(1, len(builder._backing_indices))
@@ -551,7 +520,6 @@ class TestBTreeBuilder(BTreeTestCase):
         old = dict(builder._get_nodes_by_key()) #Build up the nodes by key dict
         builder.add_node(*nodes[2])
         self.assertEqual(1, len(builder._nodes))
-        self.assertEqual(1, len(builder._keys))
         self.assertIsNot(None, builder._nodes_by_key)
         self.assertNotEqual({}, builder._nodes_by_key)
         # We should have a new entry
@@ -559,7 +527,6 @@ class TestBTreeBuilder(BTreeTestCase):
         # And spills to a second backing index combing all
         builder.add_node(*nodes[3])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(None, builder._backing_indices[0])
@@ -568,7 +535,6 @@ class TestBTreeBuilder(BTreeTestCase):
         builder.add_node(*nodes[4])
         builder.add_node(*nodes[5])
         self.assertEqual(0, len(builder._nodes))
-        self.assertEqual(0, len(builder._keys))
         self.assertIs(None, builder._nodes_by_key)
         self.assertEqual(2, len(builder._backing_indices))
         self.assertEqual(2, builder._backing_indices[0].key_count())
@@ -1184,14 +1150,9 @@ class TestBTreeIndex(BTreeTestCase):
 
 class TestBTreeNodes(BTreeTestCase):
 
-    def restore_parser(self):
-        btree_index._btree_serializer = self.saved_parser
-
     def setUp(self):
         BTreeTestCase.setUp(self)
-        self.saved_parser = btree_index._btree_serializer
-        self.addCleanup(self.restore_parser)
-        btree_index._btree_serializer = self.parse_btree
+        self.overrideAttr(btree_index, '_btree_serializer', self.parse_btree)
 
     def test_LeafNode_1_0(self):
         node_bytes = ("type=leaf\n"
@@ -1308,7 +1269,7 @@ class TestCompiledBtree(tests.TestCase):
     def test_exists(self):
         # This is just to let the user know if they don't have the feature
         # available
-        self.requireFeature(CompiledBtreeParserFeature)
+        self.requireFeature(compiled_btreeparser_feature)
 
 
 class TestMultiBisectRight(tests.TestCase):

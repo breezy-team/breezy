@@ -88,4 +88,4 @@ cdef api int SimpleSet_Contains(object self, object key) except -1
 cdef api int SimpleSet_Discard(object self, object key) except -1
 cdef api PyObject *SimpleSet_Get(SimpleSet self, object key) except? NULL
 cdef api Py_ssize_t SimpleSet_Size(object self) except -1
-cdef api int SimpleSet_Next(object self, Py_ssize_t *pos, PyObject **key)
+cdef api int SimpleSet_Next(object self, Py_ssize_t *pos, PyObject **key) except -1

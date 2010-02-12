@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007, 2008 Canonical Ltd
+# Copyright (C) 2004, 2005, 2007, 2008, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,6 +60,12 @@ from bzrlib.symbol_versioning import (
 
 DEFAULT_PLUGIN_PATH = None
 _loaded = False
+_plugins_disabled = False
+
+
+def are_plugins_disabled():
+    return _plugins_disabled
+
 
 @deprecated_function(deprecated_in((2, 0, 0)))
 def get_default_plugin_path():
@@ -75,6 +81,8 @@ def disable_plugins():
 
     Future calls to load_plugins() will be ignored.
     """
+    global _plugins_disabled
+    _plugins_disabled = True
     load_plugins([])
 
 

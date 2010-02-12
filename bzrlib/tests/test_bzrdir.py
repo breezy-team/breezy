@@ -50,9 +50,11 @@ from bzrlib.tests import(
     http_utils,
     )
 from bzrlib.tests.test_http import TestWithTransport_pycurl
-from bzrlib.transport import get_transport
+from bzrlib.transport import (
+    get_transport,
+    memory,
+    )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
-from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
 from bzrlib.transport.readonly import ReadonlyTransportDecorator
 from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
@@ -145,7 +147,7 @@ class TestFormatRegistry(TestCase):
         new = topics.get_detail('current-formats')
         rest = topics.get_detail('other-formats')
         experimental, deprecated = rest.split('Deprecated formats')
-        self.assertContainsRe(new, 'bzr help formats')
+        self.assertContainsRe(new, 'formats-help')
         self.assertContainsRe(new,
                 ':knit:\n    \(native\) \(default\) Format using knits\n')
         self.assertContainsRe(experimental,
@@ -354,7 +356,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_branch_convenience_root(self):
         """Creating a branch at the root of a fs should work."""
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         # outside a repo the default convenience output is a repo+branch_tree
         format = bzrdir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience(self.get_url(),
@@ -565,7 +567,7 @@ class ChrootedTests(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.vfs_transport_factory == MemoryServer:
+        if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = http_server.HttpServer
 
     def local_branch_path(self, branch):
@@ -1049,7 +1051,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def setUp(self):
         super(NonLocalTests, self).setUp()
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
 
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree

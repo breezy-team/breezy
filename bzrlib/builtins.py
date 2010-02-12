@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ from bzrlib import (
     bundle,
     btree_index,
     bzrdir,
+    directory_service,
     delta,
     config,
     errors,
@@ -43,7 +44,9 @@ from bzrlib import (
     reconfigure,
     rename_map,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
+    timestamp,
     transport,
     ui,
     urlutils,
@@ -51,6 +54,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
+from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
@@ -257,6 +261,10 @@ class cmd_status(Command):
     unknown
         Not versioned and not matching an ignore pattern.
 
+    Additionally for directories, symlinks and files with an executable
+    bit, Bazaar indicates their type using a trailing character: '/', '@'
+    or '*' respectively.
+
     To see ignored files use 'bzr ignored'.  For details on the
     changes to file texts, use 'bzr diff'.
 
@@ -431,8 +439,7 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            refs_as_tuples = tuple([tuple([tuple(ref) for ref in ref_list])
-                                   for ref_list in node[3]])
+            refs_as_tuples = static_tuple.as_tuples(node[3])
             as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
 
@@ -500,23 +507,19 @@ class cmd_revno(Command):
                 wt.lock_read()
             except (errors.NoWorkingTree, errors.NotLocalUrl):
                 raise errors.NoWorkingTree(location)
+            self.add_cleanup(wt.unlock)
+            revid = wt.last_revision()
             try:
-                revid = wt.last_revision()
-                try:
-                    revno_t = wt.branch.revision_id_to_dotted_revno(revid)
-                except errors.NoSuchRevision:
-                    revno_t = ('???',)
-                revno = ".".join(str(n) for n in revno_t)
-            finally:
-                wt.unlock()
+                revno_t = wt.branch.revision_id_to_dotted_revno(revid)
+            except errors.NoSuchRevision:
+                revno_t = ('???',)
+            revno = ".".join(str(n) for n in revno_t)
         else:
             b = Branch.open_containing(location)[0]
             b.lock_read()
-            try:
-                revno = b.revno()
-            finally:
-                b.unlock()
-
+            self.add_cleanup(b.unlock)
+            revno = b.revno()
+        self.cleanup_now()
         self.outf.write(str(revno) + '\n')
 
 
@@ -544,43 +547,40 @@ class cmd_revision_info(Command):
             wt = WorkingTree.open_containing(directory)[0]
             b = wt.branch
             wt.lock_read()
+            self.add_cleanup(wt.unlock)
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             wt = None
             b = Branch.open_containing(directory)[0]
             b.lock_read()
-        try:
-            revision_ids = []
-            if revision is not None:
-                revision_ids.extend(rev.as_revision_id(b) for rev in revision)
-            if revision_info_list is not None:
-                for rev_str in revision_info_list:
-                    rev_spec = RevisionSpec.from_string(rev_str)
-                    revision_ids.append(rev_spec.as_revision_id(b))
-            # No arguments supplied, default to the last revision
-            if len(revision_ids) == 0:
-                if tree:
-                    if wt is None:
-                        raise errors.NoWorkingTree(directory)
-                    revision_ids.append(wt.last_revision())
-                else:
-                    revision_ids.append(b.last_revision())
-
-            revinfos = []
-            maxlen = 0
-            for revision_id in revision_ids:
-                try:
-                    dotted_revno = b.revision_id_to_dotted_revno(revision_id)
-                    revno = '.'.join(str(i) for i in dotted_revno)
-                except errors.NoSuchRevision:
-                    revno = '???'
-                maxlen = max(maxlen, len(revno))
-                revinfos.append([revno, revision_id])
-        finally:
-            if wt is None:
-                b.unlock()
+            self.add_cleanup(b.unlock)
+        revision_ids = []
+        if revision is not None:
+            revision_ids.extend(rev.as_revision_id(b) for rev in revision)
+        if revision_info_list is not None:
+            for rev_str in revision_info_list:
+                rev_spec = RevisionSpec.from_string(rev_str)
+                revision_ids.append(rev_spec.as_revision_id(b))
+        # No arguments supplied, default to the last revision
+        if len(revision_ids) == 0:
+            if tree:
+                if wt is None:
+                    raise errors.NoWorkingTree(directory)
+                revision_ids.append(wt.last_revision())
             else:
-                wt.unlock()
+                revision_ids.append(b.last_revision())
 
+        revinfos = []
+        maxlen = 0
+        for revision_id in revision_ids:
+            try:
+                dotted_revno = b.revision_id_to_dotted_revno(revision_id)
+                revno = '.'.join(str(i) for i in dotted_revno)
+            except errors.NoSuchRevision:
+                revno = '???'
+            maxlen = max(maxlen, len(revno))
+            revinfos.append([revno, revision_id])
+
+        self.cleanup_now()
         for ri in revinfos:
             self.outf.write('%*s %s\n' % (maxlen, ri[0], ri[1]))
 
@@ -658,13 +658,11 @@ class cmd_add(Command):
 
         if base_tree:
             base_tree.lock_read()
-        try:
-            tree, file_list = tree_files_for_add(file_list)
-            added, ignored = tree.smart_add(file_list, not
-                no_recurse, action=action, save=not dry_run)
-        finally:
-            if base_tree is not None:
-                base_tree.unlock()
+            self.add_cleanup(base_tree.unlock)
+        tree, file_list = tree_files_for_add(file_list)
+        added, ignored = tree.smart_add(file_list, not
+            no_recurse, action=action, save=not dry_run)
+        self.cleanup_now()
         if len(ignored) > 0:
             if verbose:
                 for glob in sorted(ignored.keys()):
@@ -734,30 +732,28 @@ class cmd_inventory(Command):
         revision = _get_one_revision('inventory', revision)
         work_tree, file_list = tree_files(file_list)
         work_tree.lock_read()
-        try:
-            if revision is not None:
-                tree = revision.as_tree(work_tree.branch)
+        self.add_cleanup(work_tree.unlock)
+        if revision is not None:
+            tree = revision.as_tree(work_tree.branch)
 
-                extra_trees = [work_tree]
-                tree.lock_read()
-            else:
-                tree = work_tree
-                extra_trees = []
+            extra_trees = [work_tree]
+            tree.lock_read()
+            self.add_cleanup(tree.unlock)
+        else:
+            tree = work_tree
+            extra_trees = []
 
-            if file_list is not None:
-                file_ids = tree.paths2ids(file_list, trees=extra_trees,
-                                          require_versioned=True)
-                # find_ids_across_trees may include some paths that don't
-                # exist in 'tree'.
-                entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
-                                 for file_id in file_ids if file_id in tree)
-            else:
-                entries = tree.inventory.entries()
-        finally:
-            tree.unlock()
-            if tree is not work_tree:
-                work_tree.unlock()
+        if file_list is not None:
+            file_ids = tree.paths2ids(file_list, trees=extra_trees,
+                                      require_versioned=True)
+            # find_ids_across_trees may include some paths that don't
+            # exist in 'tree'.
+            entries = sorted((tree.id2path(file_id), tree.inventory[file_id])
+                             for file_id in file_ids if file_id in tree)
+        else:
+            entries = tree.inventory.entries()
 
+        self.cleanup_now()
         for path, entry in entries:
             if kind and kind != entry.kind:
                 continue
@@ -809,10 +805,8 @@ class cmd_mv(Command):
             raise errors.BzrCommandError("missing file argument")
         tree, rel_names = tree_files(names_list, canonicalize=False)
         tree.lock_tree_write()
-        try:
-            self._run(tree, names_list, rel_names, after)
-        finally:
-            tree.unlock()
+        self.add_cleanup(tree.unlock)
+        self._run(tree, names_list, rel_names, after)
 
     def run_auto(self, names_list, after, dry_run):
         if names_list is not None and len(names_list) > 1:
@@ -823,10 +817,8 @@ class cmd_mv(Command):
                                          ' --auto.')
         work_tree, file_list = tree_files(names_list, default_branch='.')
         work_tree.lock_tree_write()
-        try:
-            rename_map.RenameMap.guess_renames(work_tree, dry_run)
-        finally:
-            work_tree.unlock()
+        self.add_cleanup(work_tree.unlock)
+        rename_map.RenameMap.guess_renames(work_tree, dry_run)
 
     def _run(self, tree, names_list, rel_names, after):
         into_existing = osutils.isdir(names_list[-1])
@@ -853,8 +845,9 @@ class cmd_mv(Command):
             # All entries reference existing inventory items, so fix them up
             # for cicp file-systems.
             rel_names = tree.get_canonical_inventory_paths(rel_names)
-            for pair in tree.move(rel_names[:-1], rel_names[-1], after=after):
-                self.outf.write("%s => %s\n" % pair)
+            for src, dest in tree.move(rel_names[:-1], rel_names[-1], after=after):
+                if not is_quiet():
+                    self.outf.write("%s => %s\n" % (src, dest))
         else:
             if len(names_list) != 2:
                 raise errors.BzrCommandError('to mv multiple files the'
@@ -904,22 +897,25 @@ class cmd_mv(Command):
             dest = osutils.pathjoin(dest_parent, dest_tail)
             mutter("attempting to move %s => %s", src, dest)
             tree.rename_one(src, dest, after=after)
-            self.outf.write("%s => %s\n" % (src, dest))
+            if not is_quiet():
+                self.outf.write("%s => %s\n" % (src, dest))
 
 
 class cmd_pull(Command):
     """Turn this branch into a mirror of another branch.
 
-    This command only works on branches that have not diverged.  Branches are
-    considered diverged if the destination branch's most recent commit is one
-    that has not been merged (directly or indirectly) into the parent.
+    By default, this command only works on branches that have not diverged.
+    Branches are considered diverged if the destination branch's most recent 
+    commit is one that has not been merged (directly or indirectly) into the 
+    parent.
 
     If branches have diverged, you can use 'bzr merge' to integrate the changes
     from one into the other.  Once one branch has merged, the other should
     be able to pull it again.
 
-    If you want to forget your local changes and just update your branch to
-    match the remote one, use pull --overwrite.
+    If you want to replace your local changes and just want your branch to
+    match the remote one, use pull --overwrite. This will work even if the two
+    branches have diverged.
 
     If there is no default location set, the first pull will set it.  After
     that, you can omit the location to use the default.  To change the
@@ -1006,34 +1002,29 @@ class cmd_pull(Command):
 
         if branch_from is not branch_to:
             branch_from.lock_read()
-        try:
-            if revision is not None:
-                revision_id = revision.as_revision_id(branch_from)
+            self.add_cleanup(branch_from.unlock)
+        if revision is not None:
+            revision_id = revision.as_revision_id(branch_from)
 
-            branch_to.lock_write()
-            try:
-                if tree_to is not None:
-                    view_info = _get_view_info_for_change_reporter(tree_to)
-                    change_reporter = delta._ChangeReporter(
-                        unversioned_filter=tree_to.is_ignored,
-                        view_info=view_info)
-                    result = tree_to.pull(
-                        branch_from, overwrite, revision_id, change_reporter,
-                        possible_transports=possible_transports, local=local)
-                else:
-                    result = branch_to.pull(
-                        branch_from, overwrite, revision_id, local=local)
+        branch_to.lock_write()
+        self.add_cleanup(branch_to.unlock)
+        if tree_to is not None:
+            view_info = _get_view_info_for_change_reporter(tree_to)
+            change_reporter = delta._ChangeReporter(
+                unversioned_filter=tree_to.is_ignored,
+                view_info=view_info)
+            result = tree_to.pull(
+                branch_from, overwrite, revision_id, change_reporter,
+                possible_transports=possible_transports, local=local)
+        else:
+            result = branch_to.pull(
+                branch_from, overwrite, revision_id, local=local)
 
-                result.report(self.outf)
-                if verbose and result.old_revid != result.new_revid:
-                    log.show_branch_change(
-                        branch_to, self.outf, result.old_revno,
-                        result.old_revid)
-            finally:
-                branch_to.unlock()
-        finally:
-            if branch_from is not branch_to:
-                branch_from.unlock()
+        result.report(self.outf)
+        if verbose and result.old_revid != result.new_revid:
+            log.show_branch_change(
+                branch_to, self.outf, result.old_revno,
+                result.old_revid)
 
 
 class cmd_push(Command):
@@ -1194,81 +1185,83 @@ class cmd_branch(Command):
                     ' directory exists, but does not already'
                     ' have a control directory.  This flag will'
                     ' allow branch to proceed.'),
+        Option('bind',
+            help="Bind new branch to from location."),
         ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
-            use_existing_dir=False, switch=False):
+            use_existing_dir=False, switch=False, bind=False):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
-        if (accelerator_tree is not None and
-            accelerator_tree.supports_content_filtering()):
-            accelerator_tree = None
         revision = _get_one_revision('branch', revision)
         br_from.lock_read()
+        self.add_cleanup(br_from.unlock)
+        if revision is not None:
+            revision_id = revision.as_revision_id(br_from)
+        else:
+            # FIXME - wt.last_revision, fallback to branch, fall back to
+            # None or perhaps NULL_REVISION to mean copy nothing
+            # RBC 20060209
+            revision_id = br_from.last_revision()
+        if to_location is None:
+            to_location = urlutils.derive_to_location(from_location)
+        to_transport = transport.get_transport(to_location)
         try:
-            if revision is not None:
-                revision_id = revision.as_revision_id(br_from)
+            to_transport.mkdir('.')
+        except errors.FileExists:
+            if not use_existing_dir:
+                raise errors.BzrCommandError('Target directory "%s" '
+                    'already exists.' % to_location)
             else:
-                # FIXME - wt.last_revision, fallback to branch, fall back to
-                # None or perhaps NULL_REVISION to mean copy nothing
-                # RBC 20060209
-                revision_id = br_from.last_revision()
-            if to_location is None:
-                to_location = urlutils.derive_to_location(from_location)
-            to_transport = transport.get_transport(to_location)
-            try:
-                to_transport.mkdir('.')
-            except errors.FileExists:
-                if not use_existing_dir:
-                    raise errors.BzrCommandError('Target directory "%s" '
-                        'already exists.' % to_location)
+                try:
+                    bzrdir.BzrDir.open_from_transport(to_transport)
+                except errors.NotBranchError:
+                    pass
                 else:
-                    try:
-                        bzrdir.BzrDir.open_from_transport(to_transport)
-                    except errors.NotBranchError:
-                        pass
-                    else:
-                        raise errors.AlreadyBranchError(to_location)
-            except errors.NoSuchFile:
-                raise errors.BzrCommandError('Parent of "%s" does not exist.'
-                                             % to_location)
-            try:
-                # preserve whatever source format we have.
-                dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
-                                            possible_transports=[to_transport],
-                                            accelerator_tree=accelerator_tree,
-                                            hardlink=hardlink, stacked=stacked,
-                                            force_new_repo=standalone,
-                                            create_tree_if_local=not no_tree,
-                                            source_branch=br_from)
-                branch = dir.open_branch()
-            except errors.NoSuchRevision:
-                to_transport.delete_tree('.')
-                msg = "The branch %s has no revision %s." % (from_location,
-                    revision)
-                raise errors.BzrCommandError(msg)
-            _merge_tags_if_possible(br_from, branch)
-            # If the source branch is stacked, the new branch may
-            # be stacked whether we asked for that explicitly or not.
-            # We therefore need a try/except here and not just 'if stacked:'
-            try:
-                note('Created new stacked branch referring to %s.' %
-                    branch.get_stacked_on_url())
-            except (errors.NotStacked, errors.UnstackableBranchFormat,
-                errors.UnstackableRepositoryFormat), e:
-                note('Branched %d revision(s).' % branch.revno())
-            if switch:
-                # Switch to the new branch
-                wt, _ = WorkingTree.open_containing('.')
-                _mod_switch.switch(wt.bzrdir, branch)
-                note('Switched to branch: %s',
-                    urlutils.unescape_for_display(branch.base, 'utf-8'))
-        finally:
-            br_from.unlock()
+                    raise errors.AlreadyBranchError(to_location)
+        except errors.NoSuchFile:
+            raise errors.BzrCommandError('Parent of "%s" does not exist.'
+                                         % to_location)
+        try:
+            # preserve whatever source format we have.
+            dir = br_from.bzrdir.sprout(to_transport.base, revision_id,
+                                        possible_transports=[to_transport],
+                                        accelerator_tree=accelerator_tree,
+                                        hardlink=hardlink, stacked=stacked,
+                                        force_new_repo=standalone,
+                                        create_tree_if_local=not no_tree,
+                                        source_branch=br_from)
+            branch = dir.open_branch()
+        except errors.NoSuchRevision:
+            to_transport.delete_tree('.')
+            msg = "The branch %s has no revision %s." % (from_location,
+                revision)
+            raise errors.BzrCommandError(msg)
+        _merge_tags_if_possible(br_from, branch)
+        # If the source branch is stacked, the new branch may
+        # be stacked whether we asked for that explicitly or not.
+        # We therefore need a try/except here and not just 'if stacked:'
+        try:
+            note('Created new stacked branch referring to %s.' %
+                branch.get_stacked_on_url())
+        except (errors.NotStacked, errors.UnstackableBranchFormat,
+            errors.UnstackableRepositoryFormat), e:
+            note('Branched %d revision(s).' % branch.revno())
+        if bind:
+            # Bind to the parent
+            parent_branch = Branch.open(from_location)
+            branch.bind(parent_branch)
+            note('New branch bound to %s' % from_location)
+        if switch:
+            # Switch to the new branch
+            wt, _ = WorkingTree.open_containing('.')
+            _mod_switch.switch(wt.bzrdir, branch)
+            note('Switched to branch: %s',
+                urlutils.unescape_for_display(branch.base, 'utf-8'))
 
 
 class cmd_checkout(Command):
@@ -1353,27 +1346,23 @@ class cmd_renames(Command):
     def run(self, dir=u'.'):
         tree = WorkingTree.open_containing(dir)[0]
         tree.lock_read()
-        try:
-            new_inv = tree.inventory
-            old_tree = tree.basis_tree()
-            old_tree.lock_read()
-            try:
-                old_inv = old_tree.inventory
-                renames = []
-                iterator = tree.iter_changes(old_tree, include_unchanged=True)
-                for f, paths, c, v, p, n, k, e in iterator:
-                    if paths[0] == paths[1]:
-                        continue
-                    if None in (paths):
-                        continue
-                    renames.append(paths)
-                renames.sort()
-                for old_name, new_name in renames:
-                    self.outf.write("%s => %s\n" % (old_name, new_name))
-            finally:
-                old_tree.unlock()
-        finally:
-            tree.unlock()
+        self.add_cleanup(tree.unlock)
+        new_inv = tree.inventory
+        old_tree = tree.basis_tree()
+        old_tree.lock_read()
+        self.add_cleanup(old_tree.unlock)
+        old_inv = old_tree.inventory
+        renames = []
+        iterator = tree.iter_changes(old_tree, include_unchanged=True)
+        for f, paths, c, v, p, n, k, e in iterator:
+            if paths[0] == paths[1]:
+                continue
+            if None in (paths):
+                continue
+            renames.append(paths)
+        renames.sort()
+        for old_name, new_name in renames:
+            self.outf.write("%s => %s\n" % (old_name, new_name))
 
 
 class cmd_update(Command):
@@ -1385,48 +1374,79 @@ class cmd_update(Command):
 
     If you want to discard your local changes, you can just do a
     'bzr revert' instead of 'bzr commit' after the update.
+
+    If the tree's branch is bound to a master branch, it will also update
+    the branch from the master.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
     takes_args = ['dir?']
+    takes_options = ['revision']
     aliases = ['up']
 
-    def run(self, dir='.'):
+    def run(self, dir='.', revision=None):
+        if revision is not None and len(revision) != 1:
+            raise errors.BzrCommandError(
+                        "bzr update --revision takes exactly one revision")
         tree = WorkingTree.open_containing(dir)[0]
+        branch = tree.branch
         possible_transports = []
-        master = tree.branch.get_master_branch(
+        master = branch.get_master_branch(
             possible_transports=possible_transports)
         if master is not None:
             tree.lock_write()
+            branch_location = master.base
         else:
             tree.lock_tree_write()
+            branch_location = tree.branch.base
+        self.add_cleanup(tree.unlock)
+        # get rid of the final '/' and be ready for display
+        branch_location = urlutils.unescape_for_display(branch_location[:-1],
+                                                        self.outf.encoding)
+        existing_pending_merges = tree.get_parent_ids()[1:]
+        if master is None:
+            old_tip = None
+        else:
+            # may need to fetch data into a heavyweight checkout
+            # XXX: this may take some time, maybe we should display a
+            # message
+            old_tip = branch.update(possible_transports)
+        if revision is not None:
+            revision_id = revision[0].as_revision_id(branch)
+        else:
+            revision_id = branch.last_revision()
+        if revision_id == _mod_revision.ensure_null(tree.last_revision()):
+            revno = branch.revision_id_to_revno(revision_id)
+            note("Tree is up to date at revision %d of branch %s" %
+                (revno, branch_location))
+            return 0
+        view_info = _get_view_info_for_change_reporter(tree)
+        change_reporter = delta._ChangeReporter(
+            unversioned_filter=tree.is_ignored,
+            view_info=view_info)
         try:
-            existing_pending_merges = tree.get_parent_ids()[1:]
-            last_rev = _mod_revision.ensure_null(tree.last_revision())
-            if last_rev == _mod_revision.ensure_null(
-                tree.branch.last_revision()):
-                # may be up to date, check master too.
-                if master is None or last_rev == _mod_revision.ensure_null(
-                    master.last_revision()):
-                    revno = tree.branch.revision_id_to_revno(last_rev)
-                    note("Tree is up to date at revision %d." % (revno,))
-                    return 0
-            view_info = _get_view_info_for_change_reporter(tree)
             conflicts = tree.update(
-                delta._ChangeReporter(unversioned_filter=tree.is_ignored,
-                view_info=view_info), possible_transports=possible_transports)
-            revno = tree.branch.revision_id_to_revno(
-                _mod_revision.ensure_null(tree.last_revision()))
-            note('Updated to revision %d.' % (revno,))
-            if tree.get_parent_ids()[1:] != existing_pending_merges:
-                note('Your local commits will now show as pending merges with '
-                     "'bzr status', and can be committed with 'bzr commit'.")
-            if conflicts != 0:
-                return 1
-            else:
-                return 0
-        finally:
-            tree.unlock()
+                change_reporter,
+                possible_transports=possible_transports,
+                revision=revision_id,
+                old_tip=old_tip)
+        except errors.NoSuchRevision, e:
+            raise errors.BzrCommandError(
+                                  "branch has no revision %s\n"
+                                  "bzr update --revision only works"
+                                  " for a revision in the branch history"
+                                  % (e.revision))
+        revno = tree.branch.revision_id_to_revno(
+            _mod_revision.ensure_null(tree.last_revision()))
+        note('Updated to revision %d of branch %s' %
+             (revno, branch_location))
+        if tree.get_parent_ids()[1:] != existing_pending_merges:
+            note('Your local commits will now show as pending merges with '
+                 "'bzr status', and can be committed with 'bzr commit'.")
+        if conflicts != 0:
+            return 1
+        else:
+            return 0
 
 
 class cmd_info(Command):
@@ -1503,30 +1523,28 @@ class cmd_remove(Command):
             file_list = [f for f in file_list]
 
         tree.lock_write()
-        try:
-            # Heuristics should probably all move into tree.remove_smart or
-            # some such?
-            if new:
-                added = tree.changes_from(tree.basis_tree(),
-                    specific_files=file_list).added
-                file_list = sorted([f[0] for f in added], reverse=True)
-                if len(file_list) == 0:
-                    raise errors.BzrCommandError('No matching files.')
-            elif file_list is None:
-                # missing files show up in iter_changes(basis) as
-                # versioned-with-no-kind.
-                missing = []
-                for change in tree.iter_changes(tree.basis_tree()):
-                    # Find paths in the working tree that have no kind:
-                    if change[1][1] is not None and change[6][1] is None:
-                        missing.append(change[1][1])
-                file_list = sorted(missing, reverse=True)
-                file_deletion_strategy = 'keep'
-            tree.remove(file_list, verbose=verbose, to_file=self.outf,
-                keep_files=file_deletion_strategy=='keep',
-                force=file_deletion_strategy=='force')
-        finally:
-            tree.unlock()
+        self.add_cleanup(tree.unlock)
+        # Heuristics should probably all move into tree.remove_smart or
+        # some such?
+        if new:
+            added = tree.changes_from(tree.basis_tree(),
+                specific_files=file_list).added
+            file_list = sorted([f[0] for f in added], reverse=True)
+            if len(file_list) == 0:
+                raise errors.BzrCommandError('No matching files.')
+        elif file_list is None:
+            # missing files show up in iter_changes(basis) as
+            # versioned-with-no-kind.
+            missing = []
+            for change in tree.iter_changes(tree.basis_tree()):
+                # Find paths in the working tree that have no kind:
+                if change[1][1] is not None and change[6][1] is None:
+                    missing.append(change[1][1])
+            file_list = sorted(missing, reverse=True)
+            file_deletion_strategy = 'keep'
+        tree.remove(file_list, verbose=verbose, to_file=self.outf,
+            keep_files=file_deletion_strategy=='keep',
+            force=file_deletion_strategy=='force')
 
 
 class cmd_file_id(Command):
@@ -1752,16 +1770,22 @@ class cmd_init(Command):
 
 
 class cmd_init_repository(Command):
-    """Create a shared repository to hold branches.
+    """Create a shared repository for branches to share storage space.
 
     New branches created under the repository directory will store their
-    revisions in the repository, not in the branch directory.
+    revisions in the repository, not in the branch directory.  For branches
+    with shared history, this reduces the amount of storage needed and 
+    speeds up the creation of new branches.
 
-    If the --no-trees option is used then the branches in the repository
-    will not have working trees by default.
+    If the --no-trees option is given then the branches in the repository
+    will not have working trees by default.  They will still exist as 
+    directories on disk, but they will not have separate copies of the 
+    files at a certain revision.  This can be useful for repositories that
+    store branches which are interacted with through checkouts or remote
+    branches, such as on a server.
 
     :Examples:
-        Create a shared repositories holding just branches::
+        Create a shared repository holding just branches::
 
             bzr init-repo --no-trees repo
             bzr init repo/trunk
@@ -1833,13 +1857,27 @@ class cmd_diff(Command):
 
             bzr diff -r1
 
-        Difference between revision 2 and revision 1::
+        Difference between revision 3 and revision 1::
 
-            bzr diff -r1..2
+            bzr diff -r1..3
 
-        Difference between revision 2 and revision 1 for branch xxx::
+        Difference between revision 3 and revision 1 for branch xxx::
 
-            bzr diff -r1..2 xxx
+            bzr diff -r1..3 xxx
+
+        To see the changes introduced in revision X::
+        
+            bzr diff -cX
+
+        Note that in the case of a merge, the -c option shows the changes
+        compared to the left hand parent. To see the changes against
+        another parent, use::
+
+            bzr diff -r<chosen_parent>..X
+
+        The changes introduced by revision 2 (equivalent to -r1..2)::
+
+            bzr diff -c2
 
         Show just the differences for file NEWS::
 
@@ -1938,21 +1976,17 @@ class cmd_deleted(Command):
     def run(self, show_ids=False):
         tree = WorkingTree.open_containing(u'.')[0]
         tree.lock_read()
-        try:
-            old = tree.basis_tree()
-            old.lock_read()
-            try:
-                for path, ie in old.inventory.iter_entries():
-                    if not tree.has_id(ie.file_id):
-                        self.outf.write(path)
-                        if show_ids:
-                            self.outf.write(' ')
-                            self.outf.write(ie.file_id)
-                        self.outf.write('\n')
-            finally:
-                old.unlock()
-        finally:
-            tree.unlock()
+        self.add_cleanup(tree.unlock)
+        old = tree.basis_tree()
+        old.lock_read()
+        self.add_cleanup(old.unlock)
+        for path, ie in old.inventory.iter_entries():
+            if not tree.has_id(ie.file_id):
+                self.outf.write(path)
+                if show_ids:
+                    self.outf.write(' ')
+                    self.outf.write(ie.file_id)
+                self.outf.write('\n')
 
 
 class cmd_modified(Command):
@@ -1994,28 +2028,24 @@ class cmd_added(Command):
     def run(self, null=False):
         wt = WorkingTree.open_containing(u'.')[0]
         wt.lock_read()
-        try:
-            basis = wt.basis_tree()
-            basis.lock_read()
-            try:
-                basis_inv = basis.inventory
-                inv = wt.inventory
-                for file_id in inv:
-                    if file_id in basis_inv:
-                        continue
-                    if inv.is_root(file_id) and len(basis_inv) == 0:
-                        continue
-                    path = inv.id2path(file_id)
-                    if not os.access(osutils.abspath(path), os.F_OK):
-                        continue
-                    if null:
-                        self.outf.write(path + '\0')
-                    else:
-                        self.outf.write(osutils.quotefn(path) + '\n')
-            finally:
-                basis.unlock()
-        finally:
-            wt.unlock()
+        self.add_cleanup(wt.unlock)
+        basis = wt.basis_tree()
+        basis.lock_read()
+        self.add_cleanup(basis.unlock)
+        basis_inv = basis.inventory
+        inv = wt.inventory
+        for file_id in inv:
+            if file_id in basis_inv:
+                continue
+            if inv.is_root(file_id) and len(basis_inv) == 0:
+                continue
+            path = inv.id2path(file_id)
+            if not os.access(osutils.abspath(path), os.F_OK):
+                continue
+            if null:
+                self.outf.write(path + '\0')
+            else:
+                self.outf.write(osutils.quotefn(path) + '\n')
 
 
 class cmd_root(Command):
@@ -2166,13 +2196,10 @@ class cmd_log(Command):
     :Tips & tricks:
 
       GUI tools and IDEs are often better at exploring history than command
-      line tools. You may prefer qlog or glog from the QBzr and Bzr-Gtk packages
-      respectively for example. (TortoiseBzr uses qlog for displaying logs.) See
-      http://bazaar-vcs.org/BzrPlugins and http://bazaar-vcs.org/IDEIntegration.
-
-      Web interfaces are often better at exploring history than command line
-      tools, particularly for branches on servers. You may prefer Loggerhead
-      or one of its alternatives. See http://bazaar-vcs.org/WebInterface.
+      line tools: you may prefer qlog or viz from qbzr or bzr-gtk, the
+      bzr-explorer shell, or the Loggerhead web interface.  See the Plugin
+      Guide <http://doc.bazaar.canonical.com/plugins/en/> and
+      <http://wiki.bazaar.canonical.com/IDEIntegration>.  
 
       You may find it useful to add the aliases below to ``bazaar.conf``::
 
@@ -2279,88 +2306,88 @@ class cmd_log(Command):
 
         file_ids = []
         filter_by_dir = False
-        b = None
-        try:
-            if file_list:
-                # find the file ids to log and check for directory filtering
-                b, file_info_list, rev1, rev2 = _get_info_for_log_files(
-                    revision, file_list)
-                for relpath, file_id, kind in file_info_list:
-                    if file_id is None:
-                        raise errors.BzrCommandError(
-                            "Path unknown at end or start of revision range: %s" %
-                            relpath)
-                    # If the relpath is the top of the tree, we log everything
-                    if relpath == '':
-                        file_ids = []
-                        break
-                    else:
-                        file_ids.append(file_id)
-                    filter_by_dir = filter_by_dir or (
-                        kind in ['directory', 'tree-reference'])
-            else:
-                # log everything
-                # FIXME ? log the current subdir only RBC 20060203
-                if revision is not None \
-                        and len(revision) > 0 and revision[0].get_branch():
-                    location = revision[0].get_branch()
+        if file_list:
+            # find the file ids to log and check for directory filtering
+            b, file_info_list, rev1, rev2 = _get_info_for_log_files(
+                revision, file_list)
+            self.add_cleanup(b.unlock)
+            for relpath, file_id, kind in file_info_list:
+                if file_id is None:
+                    raise errors.BzrCommandError(
+                        "Path unknown at end or start of revision range: %s" %
+                        relpath)
+                # If the relpath is the top of the tree, we log everything
+                if relpath == '':
+                    file_ids = []
+                    break
                 else:
-                    location = '.'
-                dir, relpath = bzrdir.BzrDir.open_containing(location)
-                b = dir.open_branch()
-                b.lock_read()
-                rev1, rev2 = _get_revision_range(revision, b, self.name())
-
-            # Decide on the type of delta & diff filtering to use
-            # TODO: add an --all-files option to make this configurable & consistent
-            if not verbose:
-                delta_type = None
+                    file_ids.append(file_id)
+                filter_by_dir = filter_by_dir or (
+                    kind in ['directory', 'tree-reference'])
+        else:
+            # log everything
+            # FIXME ? log the current subdir only RBC 20060203
+            if revision is not None \
+                    and len(revision) > 0 and revision[0].get_branch():
+                location = revision[0].get_branch()
             else:
-                delta_type = 'full'
-            if not show_diff:
-                diff_type = None
-            elif file_ids:
-                diff_type = 'partial'
-            else:
-                diff_type = 'full'
+                location = '.'
+            dir, relpath = bzrdir.BzrDir.open_containing(location)
+            b = dir.open_branch()
+            b.lock_read()
+            self.add_cleanup(b.unlock)
+            rev1, rev2 = _get_revision_range(revision, b, self.name())
 
-            # Build the log formatter
-            if log_format is None:
-                log_format = log.log_formatter_registry.get_default(b)
-            lf = log_format(show_ids=show_ids, to_file=self.outf,
-                            show_timezone=timezone,
-                            delta_format=get_verbosity_level(),
-                            levels=levels,
-                            show_advice=levels is None)
+        # Decide on the type of delta & diff filtering to use
+        # TODO: add an --all-files option to make this configurable & consistent
+        if not verbose:
+            delta_type = None
+        else:
+            delta_type = 'full'
+        if not show_diff:
+            diff_type = None
+        elif file_ids:
+            diff_type = 'partial'
+        else:
+            diff_type = 'full'
 
-            # Choose the algorithm for doing the logging. It's annoying
-            # having multiple code paths like this but necessary until
-            # the underlying repository format is faster at generating
-            # deltas or can provide everything we need from the indices.
-            # The default algorithm - match-using-deltas - works for
-            # multiple files and directories and is faster for small
-            # amounts of history (200 revisions say). However, it's too
-            # slow for logging a single file in a repository with deep
-            # history, i.e. > 10K revisions. In the spirit of "do no
-            # evil when adding features", we continue to use the
-            # original algorithm - per-file-graph - for the "single
-            # file that isn't a directory without showing a delta" case.
-            partial_history = revision and b.repository._format.supports_chks
-            match_using_deltas = (len(file_ids) != 1 or filter_by_dir
-                or delta_type or partial_history)
+        # Build the log formatter
+        if log_format is None:
+            log_format = log.log_formatter_registry.get_default(b)
+        # Make a non-encoding output to include the diffs - bug 328007
+        unencoded_output = ui.ui_factory.make_output_stream(encoding_type='exact')
+        lf = log_format(show_ids=show_ids, to_file=self.outf,
+                        to_exact_file=unencoded_output,
+                        show_timezone=timezone,
+                        delta_format=get_verbosity_level(),
+                        levels=levels,
+                        show_advice=levels is None)
 
-            # Build the LogRequest and execute it
-            if len(file_ids) == 0:
-                file_ids = None
-            rqst = make_log_request_dict(
-                direction=direction, specific_fileids=file_ids,
-                start_revision=rev1, end_revision=rev2, limit=limit,
-                message_search=message, delta_type=delta_type,
-                diff_type=diff_type, _match_using_deltas=match_using_deltas)
-            Logger(b, rqst).show(lf)
-        finally:
-            if b is not None:
-                b.unlock()
+        # Choose the algorithm for doing the logging. It's annoying
+        # having multiple code paths like this but necessary until
+        # the underlying repository format is faster at generating
+        # deltas or can provide everything we need from the indices.
+        # The default algorithm - match-using-deltas - works for
+        # multiple files and directories and is faster for small
+        # amounts of history (200 revisions say). However, it's too
+        # slow for logging a single file in a repository with deep
+        # history, i.e. > 10K revisions. In the spirit of "do no
+        # evil when adding features", we continue to use the
+        # original algorithm - per-file-graph - for the "single
+        # file that isn't a directory without showing a delta" case.
+        partial_history = revision and b.repository._format.supports_chks
+        match_using_deltas = (len(file_ids) != 1 or filter_by_dir
+            or delta_type or partial_history)
+
+        # Build the LogRequest and execute it
+        if len(file_ids) == 0:
+            file_ids = None
+        rqst = make_log_request_dict(
+            direction=direction, specific_fileids=file_ids,
+            start_revision=rev1, end_revision=rev2, limit=limit,
+            message_search=message, delta_type=delta_type,
+            diff_type=diff_type, _match_using_deltas=match_using_deltas)
+        Logger(b, rqst).show(lf)
 
 
 def _get_revision_range(revisionspec_list, branch, command_name):
@@ -2433,12 +2460,10 @@ class cmd_touching_revisions(Command):
         file_id = tree.path2id(relpath)
         b = tree.branch
         b.lock_read()
-        try:
-            touching_revs = log.find_touching_revisions(b, file_id)
-            for revno, revision_id, what in touching_revs:
-                self.outf.write("%6d %s\n" % (revno, what))
-        finally:
-            b.unlock()
+        self.add_cleanup(b.unlock)
+        touching_revs = log.find_touching_revisions(b, file_id)
+        for revno, revision_id, what in touching_revs:
+            self.outf.write("%6d %s\n" % (revno, what))
 
 
 class cmd_ls(Command):
@@ -2496,7 +2521,7 @@ class cmd_ls(Command):
         if from_root:
             if relpath:
                 prefix = relpath + '/'
-        elif fs_path != '.':
+        elif fs_path != '.' and not fs_path.endswith('/'):
             prefix = fs_path + '/'
 
         if revision is not None or tree is None:
@@ -2511,53 +2536,51 @@ class cmd_ls(Command):
                 note("Ignoring files outside view. View is %s" % view_str)
 
         tree.lock_read()
-        try:
-            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-                from_dir=relpath, recursive=recursive):
-                # Apply additional masking
-                if not all and not selection[fc]:
-                    continue
-                if kind is not None and fkind != kind:
-                    continue
-                if apply_view:
-                    try:
-                        if relpath:
-                            fullpath = osutils.pathjoin(relpath, fp)
-                        else:
-                            fullpath = fp
-                        views.check_path_in_view(tree, fullpath)
-                    except errors.FileOutsideView:
-                        continue
-
-                # Output the entry
-                if prefix:
-                    fp = osutils.pathjoin(prefix, fp)
-                kindch = entry.kind_character()
-                outstring = fp + kindch
-                ui.ui_factory.clear_term()
-                if verbose:
-                    outstring = '%-8s %s' % (fc, outstring)
-                    if show_ids and fid is not None:
-                        outstring = "%-50s %s" % (outstring, fid)
-                    self.outf.write(outstring + '\n')
-                elif null:
-                    self.outf.write(fp + '\0')
-                    if show_ids:
-                        if fid is not None:
-                            self.outf.write(fid)
-                        self.outf.write('\0')
-                    self.outf.flush()
-                else:
-                    if show_ids:
-                        if fid is not None:
-                            my_id = fid
-                        else:
-                            my_id = ''
-                        self.outf.write('%-50s %s\n' % (outstring, my_id))
+        self.add_cleanup(tree.unlock)
+        for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
+            from_dir=relpath, recursive=recursive):
+            # Apply additional masking
+            if not all and not selection[fc]:
+                continue
+            if kind is not None and fkind != kind:
+                continue
+            if apply_view:
+                try:
+                    if relpath:
+                        fullpath = osutils.pathjoin(relpath, fp)
                     else:
-                        self.outf.write(outstring + '\n')
-        finally:
-            tree.unlock()
+                        fullpath = fp
+                    views.check_path_in_view(tree, fullpath)
+                except errors.FileOutsideView:
+                    continue
+
+            # Output the entry
+            if prefix:
+                fp = osutils.pathjoin(prefix, fp)
+            kindch = entry.kind_character()
+            outstring = fp + kindch
+            ui.ui_factory.clear_term()
+            if verbose:
+                outstring = '%-8s %s' % (fc, outstring)
+                if show_ids and fid is not None:
+                    outstring = "%-50s %s" % (outstring, fid)
+                self.outf.write(outstring + '\n')
+            elif null:
+                self.outf.write(fp + '\0')
+                if show_ids:
+                    if fid is not None:
+                        self.outf.write(fid)
+                    self.outf.write('\0')
+                self.outf.flush()
+            else:
+                if show_ids:
+                    if fid is not None:
+                        my_id = fid
+                    else:
+                        my_id = ''
+                    self.outf.write('%-50s %s\n' % (outstring, my_id))
+                else:
+                    self.outf.write(outstring + '\n')
 
 
 class cmd_unknowns(Command):
@@ -2578,10 +2601,23 @@ class cmd_ignore(Command):
 
     See ``bzr help patterns`` for details on the syntax of patterns.
 
+    If a .bzrignore file does not exist, the ignore command
+    will create one and add the specified files or patterns to the newly
+    created file. The ignore command will also automatically add the 
+    .bzrignore file to be versioned. Creating a .bzrignore file without
+    the use of the ignore command will require an explicit add command.
+
     To remove patterns from the ignore list, edit the .bzrignore file.
     After adding, editing or deleting that file either indirectly by
     using this command or directly by using an editor, be sure to commit
     it.
+    
+    Patterns prefixed with '!' are exceptions to ignore patterns and take
+    precedence over regular ignores.  Such exceptions are used to specify
+    files that should be versioned which would otherwise be ignored.
+    
+    Patterns prefixed with '!!' act as regular ignore patterns, but have
+    precedence over the '!' exception patterns.
 
     Note: ignore patterns containing shell wildcards must be quoted from
     the shell on Unix.
@@ -2591,9 +2627,13 @@ class cmd_ignore(Command):
 
             bzr ignore ./Makefile
 
-        Ignore class files in all directories::
+        Ignore .class files in all directories...::
 
             bzr ignore "*.class"
+
+        ...but do not ignore "special.class"::
+
+            bzr ignore "!special.class"
 
         Ignore .o files under the lib directory::
 
@@ -2606,6 +2646,13 @@ class cmd_ignore(Command):
         Ignore everything but the "debian" toplevel directory::
 
             bzr ignore "RE:(?!debian/).*"
+        
+        Ignore everything except the "local" toplevel directory,
+        but always ignore "*~" autosave files, even under local/::
+        
+            bzr ignore "*"
+            bzr ignore "!./local"
+            bzr ignore "!!*~"
     """
 
     _see_also = ['status', 'ignored', 'patterns']
@@ -2669,15 +2716,13 @@ class cmd_ignored(Command):
     def run(self):
         tree = WorkingTree.open_containing(u'.')[0]
         tree.lock_read()
-        try:
-            for path, file_class, kind, file_id, entry in tree.list_files():
-                if file_class != 'I':
-                    continue
-                ## XXX: Slightly inefficient since this was already calculated
-                pat = tree.is_ignored(path)
-                self.outf.write('%-50s %s\n' % (path, pat))
-        finally:
-            tree.unlock()
+        self.add_cleanup(tree.unlock)
+        for path, file_class, kind, file_id, entry in tree.list_files():
+            if file_class != 'I':
+                continue
+            ## XXX: Slightly inefficient since this was already calculated
+            pat = tree.is_ignored(path)
+            self.outf.write('%-50s %s\n' % (path, pat))
 
 
 class cmd_lookup_revision(Command):
@@ -2786,17 +2831,17 @@ class cmd_cat(Command):
         tree, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(filename)
         branch.lock_read()
-        try:
-            return self._run(tree, branch, relpath, filename, revision,
-                             name_from_revision, filters)
-        finally:
-            branch.unlock()
+        self.add_cleanup(branch.unlock)
+        return self._run(tree, branch, relpath, filename, revision,
+                         name_from_revision, filters)
 
     def _run(self, tree, b, relpath, filename, revision, name_from_revision,
         filtered):
         if tree is None:
             tree = b.basis_tree()
         rev_tree = _get_one_revision_tree('cat', revision, branch=b)
+        rev_tree.lock_read()
+        self.add_cleanup(rev_tree.unlock)
 
         old_file_id = rev_tree.path2id(relpath)
 
@@ -2837,8 +2882,10 @@ class cmd_cat(Command):
             chunks = content.splitlines(True)
             content = filtered_output_bytes(chunks, filters,
                 ContentFilterContext(relpath, rev_tree))
+            self.cleanup_now()
             self.outf.writelines(content)
         else:
+            self.cleanup_now()
             self.outf.write(content)
 
 
@@ -2951,6 +2998,9 @@ class cmd_commit(Command):
              Option('strict',
                     help="Refuse to commit if there are unknown "
                     "files in the working tree."),
+             Option('commit-time', type=str,
+                    help="Manually set a commit time using commit date "
+                    "format, e.g. '2009-10-10 08:00:00 +0100'."),
              ListOption('fixes', type=str,
                     help="Mark a bug as being fixed by this revision "
                          "(see \"bzr help bugs\")."),
@@ -2963,9 +3013,9 @@ class cmd_commit(Command):
                          "the master branch until a normal commit "
                          "is performed."
                     ),
-              Option('show-diff',
-                     help='When no message is supplied, show the diff along'
-                     ' with the status summary in the message editor.'),
+             Option('show-diff',
+                    help='When no message is supplied, show the diff along'
+                    ' with the status summary in the message editor.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -2990,7 +3040,7 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False, exclude=None):
+            author=None, show_diff=False, exclude=None, commit_time=None):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -3001,6 +3051,14 @@ class cmd_commit(Command):
             generate_commit_message_template,
             make_commit_message_template_encoded
         )
+
+        commit_stamp = offset = None
+        if commit_time is not None:
+            try:
+                commit_stamp, offset = timestamp.parse_patch_date(commit_time)
+            except ValueError, e:
+                raise errors.BzrCommandError(
+                    "Could not parse --commit-time: " + str(e))
 
         # TODO: Need a blackbox test for invoking the external editor; may be
         # slightly problematic to run this cross-platform.
@@ -3026,6 +3084,21 @@ class cmd_commit(Command):
 
         if local and not tree.branch.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
+
+        if message is not None:
+            try:
+                file_exists = osutils.lexists(message)
+            except UnicodeError:
+                # The commit message contains unicode characters that can't be
+                # represented in the filesystem encoding, so that can't be a
+                # file.
+                file_exists = False
+            if file_exists:
+                warning_msg = (
+                    'The commit message is a file name: "%(f)s".\n'
+                    '(use --file "%(f)s" to take commit message from that file)'
+                    % { 'f': message })
+                ui.ui_factory.show_warning(warning_msg)
 
         def get_message(commit_obj):
             """Callback to get commit message"""
@@ -3062,7 +3135,8 @@ class cmd_commit(Command):
                         specific_files=selected_list,
                         allow_pointless=unchanged, strict=strict, local=local,
                         reporter=None, verbose=verbose, revprops=properties,
-                        authors=author,
+                        authors=author, timestamp=commit_stamp,
+                        timezone=offset,
                         exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
             # FIXME: This should really happen before the file is read in;
@@ -3372,14 +3446,14 @@ class cmd_selftest(Command):
     def get_transport_type(typestring):
         """Parse and return a transport specifier."""
         if typestring == "sftp":
-            from bzrlib.transport.sftp import SFTPAbsoluteServer
-            return SFTPAbsoluteServer
+            from bzrlib.tests import stub_sftp
+            return stub_sftp.SFTPAbsoluteServer
         if typestring == "memory":
-            from bzrlib.transport.memory import MemoryServer
-            return MemoryServer
+            from bzrlib.tests import test_server
+            return memory.MemoryServer
         if typestring == "fakenfs":
-            from bzrlib.transport.fakenfs import FakeNFSServer
-            return FakeNFSServer
+            from bzrlib.tests import test_server
+            return test_server.FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
             (typestring)
         raise errors.BzrCommandError(msg)
@@ -3478,32 +3552,29 @@ class cmd_selftest(Command):
             verbose = not is_quiet()
             # TODO: should possibly lock the history file...
             benchfile = open(".perf_history", "at", buffering=1)
+            self.add_cleanup(benchfile.close)
         else:
             test_suite_factory = None
             benchfile = None
-        try:
-            selftest_kwargs = {"verbose": verbose,
-                              "pattern": pattern,
-                              "stop_on_failure": one,
-                              "transport": transport,
-                              "test_suite_factory": test_suite_factory,
-                              "lsprof_timed": lsprof_timed,
-                              "lsprof_tests": lsprof_tests,
-                              "bench_history": benchfile,
-                              "matching_tests_first": first,
-                              "list_only": list_only,
-                              "random_seed": randomize,
-                              "exclude_pattern": exclude,
-                              "strict": strict,
-                              "load_list": load_list,
-                              "debug_flags": debugflag,
-                              "starting_with": starting_with
-                              }
-            selftest_kwargs.update(self.additional_selftest_args)
-            result = selftest(**selftest_kwargs)
-        finally:
-            if benchfile is not None:
-                benchfile.close()
+        selftest_kwargs = {"verbose": verbose,
+                          "pattern": pattern,
+                          "stop_on_failure": one,
+                          "transport": transport,
+                          "test_suite_factory": test_suite_factory,
+                          "lsprof_timed": lsprof_timed,
+                          "lsprof_tests": lsprof_tests,
+                          "bench_history": benchfile,
+                          "matching_tests_first": first,
+                          "list_only": list_only,
+                          "random_seed": randomize,
+                          "exclude_pattern": exclude,
+                          "strict": strict,
+                          "load_list": load_list,
+                          "debug_flags": debugflag,
+                          "starting_with": starting_with
+                          }
+        selftest_kwargs.update(self.additional_selftest_args)
+        result = selftest(**selftest_kwargs)
         return int(not result)
 
 
@@ -3548,20 +3619,16 @@ class cmd_find_merge_base(Command):
         branch1 = Branch.open_containing(branch)[0]
         branch2 = Branch.open_containing(other)[0]
         branch1.lock_read()
-        try:
-            branch2.lock_read()
-            try:
-                last1 = ensure_null(branch1.last_revision())
-                last2 = ensure_null(branch2.last_revision())
+        self.add_cleanup(branch1.unlock)
+        branch2.lock_read()
+        self.add_cleanup(branch2.unlock)
+        last1 = ensure_null(branch1.last_revision())
+        last2 = ensure_null(branch2.last_revision())
 
-                graph = branch1.repository.get_graph(branch2.repository)
-                base_rev_id = graph.find_unique_lca(last1, last2)
+        graph = branch1.repository.get_graph(branch2.repository)
+        base_rev_id = graph.find_unique_lca(last1, last2)
 
-                print 'merge base is revision %s' % base_rev_id
-            finally:
-                branch2.unlock()
-        finally:
-            branch1.unlock()
+        print 'merge base is revision %s' % base_rev_id
 
 
 class cmd_merge(Command):
@@ -3600,7 +3667,12 @@ class cmd_merge(Command):
     committed to record the result of the merge.
 
     merge refuses to run if there are any uncommitted changes, unless
-    --force is given.
+    --force is given. The --force option can also be used to create a
+    merge revision which has more than two parents.
+
+    If one would like to merge changes from the working tree of the other
+    branch without merging any committed revisions, the --uncommitted option
+    can be given.
 
     To select only some changes to merge, use "merge -i", which will prompt
     you to apply each diff hunk and file change, similar to "shelve".
@@ -3618,9 +3690,16 @@ class cmd_merge(Command):
 
             bzr merge -r 81..82 ../bzr.dev
 
-        To apply a merge directive contained in /tmp/merge:
+        To apply a merge directive contained in /tmp/merge::
 
             bzr merge /tmp/merge
+
+        To create a merge revision with three parents from two branches
+        feature1a and feature1b:
+
+            bzr merge ../feature1a
+            bzr merge ../feature1b --force
+            bzr commit -m 'revision with three parents'
     """
 
     encoding_type = 'exact'
@@ -3684,82 +3763,76 @@ class cmd_merge(Command):
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
             unversioned_filter=tree.is_ignored, view_info=view_info)
-        cleanups = []
-        try:
-            pb = ui.ui_factory.nested_progress_bar()
-            cleanups.append(pb.finished)
-            tree.lock_write()
-            cleanups.append(tree.unlock)
-            if location is not None:
-                try:
-                    mergeable = bundle.read_mergeable_from_url(location,
-                        possible_transports=possible_transports)
-                except errors.NotABundle:
-                    mergeable = None
-                else:
-                    if uncommitted:
-                        raise errors.BzrCommandError('Cannot use --uncommitted'
-                            ' with bundles or merge directives.')
-
-                    if revision is not None:
-                        raise errors.BzrCommandError(
-                            'Cannot use -r with merge directives or bundles')
-                    merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                       mergeable, pb)
-
-            if merger is None and uncommitted:
-                if revision is not None and len(revision) > 0:
-                    raise errors.BzrCommandError('Cannot use --uncommitted and'
-                        ' --revision at the same time.')
-                merger = self.get_merger_from_uncommitted(tree, location, pb,
-                                                          cleanups)
-                allow_pending = False
-
-            if merger is None:
-                merger, allow_pending = self._get_merger_from_branch(tree,
-                    location, revision, remember, possible_transports, pb)
-
-            merger.merge_type = merge_type
-            merger.reprocess = reprocess
-            merger.show_base = show_base
-            self.sanity_check_merger(merger)
-            if (merger.base_rev_id == merger.other_rev_id and
-                merger.other_rev_id is not None):
-                note('Nothing to do.')
-                return 0
-            if pull:
-                if merger.interesting_files is not None:
-                    raise errors.BzrCommandError('Cannot pull individual files')
-                if (merger.base_rev_id == tree.last_revision()):
-                    result = tree.pull(merger.other_branch, False,
-                                       merger.other_rev_id)
-                    result.report(self.outf)
-                    return 0
-            if merger.this_basis is None:
-                raise errors.BzrCommandError(
-                    "This branch has no commits."
-                    " (perhaps you would prefer 'bzr pull')")
-            if preview:
-                return self._do_preview(merger, cleanups)
-            elif interactive:
-                return self._do_interactive(merger, cleanups)
+        pb = ui.ui_factory.nested_progress_bar()
+        self.add_cleanup(pb.finished)
+        tree.lock_write()
+        self.add_cleanup(tree.unlock)
+        if location is not None:
+            try:
+                mergeable = bundle.read_mergeable_from_url(location,
+                    possible_transports=possible_transports)
+            except errors.NotABundle:
+                mergeable = None
             else:
-                return self._do_merge(merger, change_reporter, allow_pending,
-                                      verified)
-        finally:
-            for cleanup in reversed(cleanups):
-                cleanup()
+                if uncommitted:
+                    raise errors.BzrCommandError('Cannot use --uncommitted'
+                        ' with bundles or merge directives.')
 
-    def _get_preview(self, merger, cleanups):
+                if revision is not None:
+                    raise errors.BzrCommandError(
+                        'Cannot use -r with merge directives or bundles')
+                merger, verified = _mod_merge.Merger.from_mergeable(tree,
+                   mergeable, None)
+
+        if merger is None and uncommitted:
+            if revision is not None and len(revision) > 0:
+                raise errors.BzrCommandError('Cannot use --uncommitted and'
+                    ' --revision at the same time.')
+            merger = self.get_merger_from_uncommitted(tree, location, None)
+            allow_pending = False
+
+        if merger is None:
+            merger, allow_pending = self._get_merger_from_branch(tree,
+                location, revision, remember, possible_transports, None)
+
+        merger.merge_type = merge_type
+        merger.reprocess = reprocess
+        merger.show_base = show_base
+        self.sanity_check_merger(merger)
+        if (merger.base_rev_id == merger.other_rev_id and
+            merger.other_rev_id is not None):
+            note('Nothing to do.')
+            return 0
+        if pull:
+            if merger.interesting_files is not None:
+                raise errors.BzrCommandError('Cannot pull individual files')
+            if (merger.base_rev_id == tree.last_revision()):
+                result = tree.pull(merger.other_branch, False,
+                                   merger.other_rev_id)
+                result.report(self.outf)
+                return 0
+        if merger.this_basis is None:
+            raise errors.BzrCommandError(
+                "This branch has no commits."
+                " (perhaps you would prefer 'bzr pull')")
+        if preview:
+            return self._do_preview(merger)
+        elif interactive:
+            return self._do_interactive(merger)
+        else:
+            return self._do_merge(merger, change_reporter, allow_pending,
+                                  verified)
+
+    def _get_preview(self, merger):
         tree_merger = merger.make_merger()
         tt = tree_merger.make_preview_transform()
-        cleanups.append(tt.finalize)
+        self.add_cleanup(tt.finalize)
         result_tree = tt.get_preview_tree()
         return result_tree
 
-    def _do_preview(self, merger, cleanups):
+    def _do_preview(self, merger):
         from bzrlib.diff import show_diff_trees
-        result_tree = self._get_preview(merger, cleanups)
+        result_tree = self._get_preview(merger)
         show_diff_trees(merger.this_tree, result_tree, self.outf,
                         old_label='', new_label='')
 
@@ -3775,7 +3848,7 @@ class cmd_merge(Command):
         else:
             return 0
 
-    def _do_interactive(self, merger, cleanups):
+    def _do_interactive(self, merger):
         """Perform an interactive merge.
 
         This works by generating a preview tree of the merge, then using
@@ -3783,12 +3856,15 @@ class cmd_merge(Command):
         and the preview tree.
         """
         from bzrlib import shelf_ui
-        result_tree = self._get_preview(merger, cleanups)
+        result_tree = self._get_preview(merger)
         writer = bzrlib.option.diff_writer_registry.get()
         shelver = shelf_ui.Shelver(merger.this_tree, result_tree, destroy=True,
                                    reporter=shelf_ui.ApplyReporter(),
                                    diff_writer=writer(sys.stdout))
-        shelver.run()
+        try:
+            shelver.run()
+        finally:
+            shelver.finalize()
 
     def sanity_check_merger(self, merger):
         if (merger.show_base and
@@ -3854,14 +3930,12 @@ class cmd_merge(Command):
             allow_pending = True
         return merger, allow_pending
 
-    def get_merger_from_uncommitted(self, tree, location, pb, cleanups):
+    def get_merger_from_uncommitted(self, tree, location, pb):
         """Get a merger for uncommitted changes.
 
         :param tree: The tree the merger should apply to.
         :param location: The location containing uncommitted changes.
         :param pb: The progress bar to use for showing progress.
-        :param cleanups: A list of operations to perform to clean up the
-            temporary directories, unfinalized objects, etc.
         """
         location = self._select_branch_location(tree, location)[0]
         other_tree, other_path = WorkingTree.open_containing(location)
@@ -3954,63 +4028,58 @@ class cmd_remerge(Command):
             merge_type = _mod_merge.Merge3Merger
         tree, file_list = tree_files(file_list)
         tree.lock_write()
-        try:
-            parents = tree.get_parent_ids()
-            if len(parents) != 2:
-                raise errors.BzrCommandError("Sorry, remerge only works after normal"
-                                             " merges.  Not cherrypicking or"
-                                             " multi-merges.")
-            repository = tree.branch.repository
-            interesting_ids = None
-            new_conflicts = []
-            conflicts = tree.conflicts()
-            if file_list is not None:
-                interesting_ids = set()
-                for filename in file_list:
-                    file_id = tree.path2id(filename)
-                    if file_id is None:
-                        raise errors.NotVersionedError(filename)
-                    interesting_ids.add(file_id)
-                    if tree.kind(file_id) != "directory":
-                        continue
+        self.add_cleanup(tree.unlock)
+        parents = tree.get_parent_ids()
+        if len(parents) != 2:
+            raise errors.BzrCommandError("Sorry, remerge only works after normal"
+                                         " merges.  Not cherrypicking or"
+                                         " multi-merges.")
+        repository = tree.branch.repository
+        interesting_ids = None
+        new_conflicts = []
+        conflicts = tree.conflicts()
+        if file_list is not None:
+            interesting_ids = set()
+            for filename in file_list:
+                file_id = tree.path2id(filename)
+                if file_id is None:
+                    raise errors.NotVersionedError(filename)
+                interesting_ids.add(file_id)
+                if tree.kind(file_id) != "directory":
+                    continue
 
-                    for name, ie in tree.inventory.iter_entries(file_id):
-                        interesting_ids.add(ie.file_id)
-                new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
-            else:
-                # Remerge only supports resolving contents conflicts
-                allowed_conflicts = ('text conflict', 'contents conflict')
-                restore_files = [c.path for c in conflicts
-                                 if c.typestring in allowed_conflicts]
-            _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
-            tree.set_conflicts(ConflictList(new_conflicts))
-            if file_list is not None:
-                restore_files = file_list
-            for filename in restore_files:
-                try:
-                    restore(tree.abspath(filename))
-                except errors.NotConflicted:
-                    pass
-            # Disable pending merges, because the file texts we are remerging
-            # have not had those merges performed.  If we use the wrong parents
-            # list, we imply that the working tree text has seen and rejected
-            # all the changes from the other tree, when in fact those changes
-            # have not yet been seen.
-            pb = ui.ui_factory.nested_progress_bar()
-            tree.set_parent_ids(parents[:1])
+                for name, ie in tree.inventory.iter_entries(file_id):
+                    interesting_ids.add(ie.file_id)
+            new_conflicts = conflicts.select_conflicts(tree, file_list)[0]
+        else:
+            # Remerge only supports resolving contents conflicts
+            allowed_conflicts = ('text conflict', 'contents conflict')
+            restore_files = [c.path for c in conflicts
+                             if c.typestring in allowed_conflicts]
+        _mod_merge.transform_tree(tree, tree.basis_tree(), interesting_ids)
+        tree.set_conflicts(ConflictList(new_conflicts))
+        if file_list is not None:
+            restore_files = file_list
+        for filename in restore_files:
             try:
-                merger = _mod_merge.Merger.from_revision_ids(pb,
-                                                             tree, parents[1])
-                merger.interesting_ids = interesting_ids
-                merger.merge_type = merge_type
-                merger.show_base = show_base
-                merger.reprocess = reprocess
-                conflicts = merger.do_merge()
-            finally:
-                tree.set_parent_ids(parents)
-                pb.finished()
+                restore(tree.abspath(filename))
+            except errors.NotConflicted:
+                pass
+        # Disable pending merges, because the file texts we are remerging
+        # have not had those merges performed.  If we use the wrong parents
+        # list, we imply that the working tree text has seen and rejected
+        # all the changes from the other tree, when in fact those changes
+        # have not yet been seen.
+        tree.set_parent_ids(parents[:1])
+        try:
+            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
+            merger.interesting_ids = interesting_ids
+            merger.merge_type = merge_type
+            merger.show_base = show_base
+            merger.reprocess = reprocess
+            conflicts = merger.do_merge()
         finally:
-            tree.unlock()
+            tree.set_parent_ids(parents)
         if conflicts > 0:
             return 1
         else:
@@ -4038,17 +4107,29 @@ class cmd_revert(Command):
     name.  If you name a directory, all the contents of that directory will be
     reverted.
 
-    Any files that have been newly added since that revision will be deleted,
-    with a backup kept if appropriate.  Directories containing unknown files
-    will not be deleted.
+    If you have newly added files since the target revision, they will be
+    removed.  If the files to be removed have been changed, backups will be
+    created as above.  Directories containing unknown files will not be
+    deleted.
 
-    The working tree contains a list of pending merged revisions, which will
-    be included as parents in the next commit.  Normally, revert clears that
-    list as well as reverting the files.  If any files are specified, revert
-    leaves the pending merge list alone and reverts only the files.  Use "bzr
-    revert ." in the tree root to revert all files but keep the merge record,
-    and "bzr revert --forget-merges" to clear the pending merge list without
+    The working tree contains a list of revisions that have been merged but
+    not yet committed. These revisions will be included as additional parents
+    of the next commit.  Normally, using revert clears that list as well as
+    reverting the files.  If any files are specified, revert leaves the list
+    of uncommitted merges alone and reverts only the files.  Use ``bzr revert
+    .`` in the tree root to revert all files but keep the recorded merges,
+    and ``bzr revert --forget-merges`` to clear the pending merge list without
     reverting any files.
+
+    Using "bzr revert --forget-merges", it is possible to apply all of the
+    changes from a branch in a single revision.  To do this, perform the merge
+    as desired.  Then doing revert with the "--forget-merges" option will keep
+    the content of the tree as it was, but it will clear the list of pending
+    merges.  The next commit will then contain all of the changes that are
+    present in the other branch, but without any other parent revisions.
+    Because this technique forgets where these changes originated, it may
+    cause additional conflicts on later merges involving the same source and
+    target branches.
     """
 
     _see_also = ['cat', 'export']
@@ -4064,23 +4145,17 @@ class cmd_revert(Command):
             forget_merges=None):
         tree, file_list = tree_files(file_list)
         tree.lock_write()
-        try:
-            if forget_merges:
-                tree.set_parent_ids(tree.get_parent_ids()[:1])
-            else:
-                self._revert_tree_to_revision(tree, revision, file_list, no_backup)
-        finally:
-            tree.unlock()
+        self.add_cleanup(tree.unlock)
+        if forget_merges:
+            tree.set_parent_ids(tree.get_parent_ids()[:1])
+        else:
+            self._revert_tree_to_revision(tree, revision, file_list, no_backup)
 
     @staticmethod
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
         rev_tree = _get_one_revision_tree('revert', revision, tree=tree)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            tree.revert(file_list, rev_tree, not no_backup, pb,
-                report_changes=True)
-        finally:
-            pb.finished()
+        tree.revert(file_list, rev_tree, not no_backup, None,
+            report_changes=True)
 
 
 class cmd_assert_fail(Command):
@@ -4135,6 +4210,10 @@ class cmd_missing(Command):
     To filter on a range of revisions, you can use the command -r begin..end
     -r revision requests a specific revision, -r ..end or -r begin.. are
     also valid.
+            
+    :Exit values:
+        1 - some missing revisions
+        0 - no missing revisions
 
     :Examples:
 
@@ -4223,79 +4302,74 @@ class cmd_missing(Command):
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
 
+        local_branch.lock_read()
+        self.add_cleanup(local_branch.unlock)
         local_revid_range = _revision_range_to_revid_range(
             _get_revision_range(my_revision, local_branch,
                 self.name()))
 
+        remote_branch.lock_read()
+        self.add_cleanup(remote_branch.unlock)
         remote_revid_range = _revision_range_to_revid_range(
             _get_revision_range(revision,
                 remote_branch, self.name()))
 
-        local_branch.lock_read()
-        try:
-            remote_branch.lock_read()
-            try:
-                local_extra, remote_extra = find_unmerged(
-                    local_branch, remote_branch, restrict,
-                    backward=not reverse,
-                    include_merges=include_merges,
-                    local_revid_range=local_revid_range,
-                    remote_revid_range=remote_revid_range)
+        local_extra, remote_extra = find_unmerged(
+            local_branch, remote_branch, restrict,
+            backward=not reverse,
+            include_merges=include_merges,
+            local_revid_range=local_revid_range,
+            remote_revid_range=remote_revid_range)
 
-                if log_format is None:
-                    registry = log.log_formatter_registry
-                    log_format = registry.get_default(local_branch)
-                lf = log_format(to_file=self.outf,
-                                show_ids=show_ids,
-                                show_timezone='original')
+        if log_format is None:
+            registry = log.log_formatter_registry
+            log_format = registry.get_default(local_branch)
+        lf = log_format(to_file=self.outf,
+                        show_ids=show_ids,
+                        show_timezone='original')
 
-                status_code = 0
-                if local_extra and not theirs_only:
-                    message("You have %d extra revision(s):\n" %
-                        len(local_extra))
-                    for revision in iter_log_revisions(local_extra,
-                                        local_branch.repository,
-                                        verbose):
-                        lf.log_revision(revision)
-                    printed_local = True
-                    status_code = 1
-                else:
-                    printed_local = False
+        status_code = 0
+        if local_extra and not theirs_only:
+            message("You have %d extra revision(s):\n" %
+                len(local_extra))
+            for revision in iter_log_revisions(local_extra,
+                                local_branch.repository,
+                                verbose):
+                lf.log_revision(revision)
+            printed_local = True
+            status_code = 1
+        else:
+            printed_local = False
 
-                if remote_extra and not mine_only:
-                    if printed_local is True:
-                        message("\n\n\n")
-                    message("You are missing %d revision(s):\n" %
-                        len(remote_extra))
-                    for revision in iter_log_revisions(remote_extra,
-                                        remote_branch.repository,
-                                        verbose):
-                        lf.log_revision(revision)
-                    status_code = 1
+        if remote_extra and not mine_only:
+            if printed_local is True:
+                message("\n\n\n")
+            message("You are missing %d revision(s):\n" %
+                len(remote_extra))
+            for revision in iter_log_revisions(remote_extra,
+                                remote_branch.repository,
+                                verbose):
+                lf.log_revision(revision)
+            status_code = 1
 
-                if mine_only and not local_extra:
-                    # We checked local, and found nothing extra
-                    message('This branch is up to date.\n')
-                elif theirs_only and not remote_extra:
-                    # We checked remote, and found nothing extra
-                    message('Other branch is up to date.\n')
-                elif not (mine_only or theirs_only or local_extra or
-                          remote_extra):
-                    # We checked both branches, and neither one had extra
-                    # revisions
-                    message("Branches are up to date.\n")
-            finally:
-                remote_branch.unlock()
-        finally:
-            local_branch.unlock()
+        if mine_only and not local_extra:
+            # We checked local, and found nothing extra
+            message('This branch is up to date.\n')
+        elif theirs_only and not remote_extra:
+            # We checked remote, and found nothing extra
+            message('Other branch is up to date.\n')
+        elif not (mine_only or theirs_only or local_extra or
+                  remote_extra):
+            # We checked both branches, and neither one had extra
+            # revisions
+            message("Branches are up to date.\n")
+        self.cleanup_now()
         if not status_code and parent is None and other_branch is not None:
             local_branch.lock_write()
-            try:
-                # handle race conditions - a parent might be set while we run.
-                if local_branch.get_parent() is None:
-                    local_branch.set_parent(remote_branch.base)
-            finally:
-                local_branch.unlock()
+            self.add_cleanup(local_branch.unlock)
+            # handle race conditions - a parent might be set while we run.
+            if local_branch.get_parent() is None:
+                local_branch.set_parent(remote_branch.base)
         return status_code
 
 
@@ -4329,10 +4403,10 @@ class cmd_plugins(Command):
     adding new commands, providing additional network transports and
     customizing log output.
 
-    See the Bazaar web site, http://bazaar-vcs.org, for further
-    information on plugins including where to find them and how to
-    install them. Instructions are also provided there on how to
-    write new plugins using the Python programming language.
+    See the Bazaar Plugin Guide <http://doc.bazaar.canonical.com/plugins/en/>
+    for further information on plugins including where to find them and how to
+    install them. Instructions are also provided there on how to write new
+    plugins using the Python programming language.
     """
     takes_options = ['verbose']
 
@@ -4380,18 +4454,16 @@ class cmd_testament(Command):
         else:
             b = Branch.open(branch)
         b.lock_read()
-        try:
-            if revision is None:
-                rev_id = b.last_revision()
-            else:
-                rev_id = revision[0].as_revision_id(b)
-            t = testament_class.from_revision(b.repository, rev_id)
-            if long:
-                sys.stdout.writelines(t.as_text_lines())
-            else:
-                sys.stdout.write(t.as_short_text())
-        finally:
-            b.unlock()
+        self.add_cleanup(b.unlock)
+        if revision is None:
+            rev_id = b.last_revision()
+        else:
+            rev_id = revision[0].as_revision_id(b)
+        t = testament_class.from_revision(b.repository, rev_id)
+        if long:
+            sys.stdout.writelines(t.as_text_lines())
+        else:
+            sys.stdout.write(t.as_short_text())
 
 
 class cmd_annotate(Command):
@@ -4423,30 +4495,28 @@ class cmd_annotate(Command):
             bzrdir.BzrDir.open_containing_tree_or_branch(filename)
         if wt is not None:
             wt.lock_read()
+            self.add_cleanup(wt.unlock)
         else:
             branch.lock_read()
-        try:
-            tree = _get_one_revision_tree('annotate', revision, branch=branch)
-            if wt is not None:
-                file_id = wt.path2id(relpath)
-            else:
-                file_id = tree.path2id(relpath)
-            if file_id is None:
-                raise errors.NotVersionedError(filename)
-            file_version = tree.inventory[file_id].revision
-            if wt is not None and revision is None:
-                # If there is a tree and we're not annotating historical
-                # versions, annotate the working tree's content.
-                annotate_file_tree(wt, file_id, self.outf, long, all,
-                    show_ids=show_ids)
-            else:
-                annotate_file(branch, file_version, file_id, long, all, self.outf,
-                              show_ids=show_ids)
-        finally:
-            if wt is not None:
-                wt.unlock()
-            else:
-                branch.unlock()
+            self.add_cleanup(branch.unlock)
+        tree = _get_one_revision_tree('annotate', revision, branch=branch)
+        tree.lock_read()
+        self.add_cleanup(tree.unlock)
+        if wt is not None:
+            file_id = wt.path2id(relpath)
+        else:
+            file_id = tree.path2id(relpath)
+        if file_id is None:
+            raise errors.NotVersionedError(filename)
+        file_version = tree.inventory[file_id].revision
+        if wt is not None and revision is None:
+            # If there is a tree and we're not annotating historical
+            # versions, annotate the working tree's content.
+            annotate_file_tree(wt, file_id, self.outf, long, all,
+                show_ids=show_ids)
+        else:
+            annotate_file(branch, file_version, file_id, long, all, self.outf,
+                          show_ids=show_ids)
 
 
 class cmd_re_sign(Command):
@@ -4464,10 +4534,8 @@ class cmd_re_sign(Command):
             raise errors.BzrCommandError('You must supply either --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
         b.lock_write()
-        try:
-            return self._run(b, revision_id_list, revision)
-        finally:
-            b.unlock()
+        self.add_cleanup(b.unlock)
+        return self._run(b, revision_id_list, revision)
 
     def _run(self, b, revision_id_list, revision):
         import bzrlib.gpg as gpg
@@ -4542,8 +4610,11 @@ class cmd_bind(Command):
                     'This format does not remember old locations.')
             else:
                 if location is None:
-                    raise errors.BzrCommandError('No location supplied and no '
-                        'previous location known')
+                    if b.get_bound_location() is not None:
+                        raise errors.BzrCommandError('Branch is already bound')
+                    else:
+                        raise errors.BzrCommandError('No location supplied '
+                            'and no previous location known')
         b_other = Branch.open(location)
         try:
             b.bind(b_other)
@@ -4619,16 +4690,11 @@ class cmd_uncommit(Command):
 
         if tree is not None:
             tree.lock_write()
+            self.add_cleanup(tree.unlock)
         else:
             b.lock_write()
-        try:
-            return self._run(b, tree, dry_run, verbose, revision, force,
-                             local=local)
-        finally:
-            if tree is not None:
-                tree.unlock()
-            else:
-                b.unlock()
+            self.add_cleanup(b.unlock)
+        return self._run(b, tree, dry_run, verbose, revision, force, local=local)
 
     def _run(self, b, tree, dry_run, verbose, revision, force, local=False):
         from bzrlib.log import log_formatter, show_log
@@ -4651,11 +4717,12 @@ class cmd_uncommit(Command):
                 rev_id = b.get_rev_id(revno)
 
         if rev_id is None or _mod_revision.is_null(rev_id):
-            self.outf.write('No revisions to uncommit.\n')
+            ui.ui_factory.note('No revisions to uncommit.')
             return 1
 
+        log_collector = ui.ui_factory.make_output_stream()
         lf = log_formatter('short',
-                           to_file=self.outf,
+                           to_file=log_collector,
                            show_timezone='original')
 
         show_log(b,
@@ -4666,23 +4733,21 @@ class cmd_uncommit(Command):
                  end_revision=last_revno)
 
         if dry_run:
-            print 'Dry-run, pretending to remove the above revisions.'
-            if not force:
-                val = raw_input('Press <enter> to continue')
+            ui.ui_factory.note('Dry-run, pretending to remove the above revisions.')
         else:
-            print 'The above revision(s) will be removed.'
-            if not force:
-                val = raw_input('Are you sure [y/N]? ')
-                if val.lower() not in ('y', 'yes'):
-                    print 'Canceled'
-                    return 0
+            ui.ui_factory.note('The above revision(s) will be removed.')
+
+        if not force:
+            if not ui.ui_factory.get_boolean('Are you sure [y/N]? '):
+                ui.ui_factory.note('Canceled')
+                return 0
 
         mutter('Uncommitting from {%s} to {%s}',
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local)
-        note('You can restore the old tip by running:\n'
-             '  bzr pull . -r revid:%s', last_rev_id)
+        ui.ui_factory.note('You can restore the old tip by running:\n'
+             '  bzr pull . -r revid:%s' % last_rev_id)
 
 
 class cmd_break_lock(Command):
@@ -4691,10 +4756,12 @@ class cmd_break_lock(Command):
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
 
-    You can get information on what locks are open via the 'bzr info' command.
+    You can get information on what locks are open via the 'bzr info
+    [location]' command.
 
     :Examples:
         bzr break-lock
+        bzr break-lock bzr+ssh://example.com/bzr/foo
     """
     takes_args = ['location?']
 
@@ -4730,8 +4797,8 @@ class cmd_serve(Command):
     takes_options = [
         Option('inet',
                help='Serve on stdin/out for use from inetd or sshd.'),
-        RegistryOption('protocol', 
-               help="Protocol to serve.", 
+        RegistryOption('protocol',
+               help="Protocol to serve.",
                lazy_registry=('bzrlib.transport', 'transport_server_registry'),
                value_switches=True),
         Option('port',
@@ -4746,7 +4813,11 @@ class cmd_serve(Command):
         Option('allow-writes',
                help='By default the server is a readonly server.  Supplying '
                     '--allow-writes enables write access to the contents of '
-                    'the served directory and below.'
+                    'the served directory and below.  Note that ``bzr serve`` '
+                    'does not perform authentication, so unless some form of '
+                    'external authentication is arranged supplying this '
+                    'option leads to global uncontrolled write access to your '
+                    'file system.'
                 ),
         ]
 
@@ -4968,18 +5039,32 @@ class cmd_send(Command):
       directly from the merge directive, without retrieving data from a
       branch.
 
-    If --no-bundle is specified, then public_branch is needed (and must be
-    up-to-date), so that the receiver can perform the merge using the
-    public_branch.  The public_branch is always included if known, so that
-    people can check it later.
+    `bzr send` creates a compact data set that, when applied using bzr
+    merge, has the same effect as merging from the source branch.  
+    
+    By default the merge directive is self-contained and can be applied to any
+    branch containing submit_branch in its ancestory without needing access to
+    the source branch.
+    
+    If --no-bundle is specified, then Bazaar doesn't send the contents of the
+    revisions, but only a structured request to merge from the
+    public_location.  In that case the public_branch is needed and it must be
+    up-to-date and accessible to the recipient.  The public_branch is always
+    included if known, so that people can check it later.
 
-    The submit branch defaults to the parent, but can be overridden.  Both
-    submit branch and public branch will be remembered if supplied.
+    The submit branch defaults to the parent of the source branch, but can be
+    overridden.  Both submit branch and public branch will be remembered in
+    branch.conf the first time they are used for a particular branch.  The
+    source branch defaults to that containing the working directory, but can
+    be changed using --from.
 
-    If a public_branch is known for the submit_branch, that public submit
-    branch is used in the merge instructions.  This means that a local mirror
-    can be used as your actual submit branch, once you have set public_branch
-    for that mirror.
+    In order to calculate those changes, bzr must analyse the submit branch.
+    Therefore it is most efficient for the submit branch to be a local mirror.
+    If a public location is known for the submit_branch, that location is used
+    in the merge directive.
+
+    The default behaviour is to send the merge directive by mail, unless -o is
+    given, in which case it is sent to a file.
 
     Mail is sent using your preferred mail program.  This should be transparent
     on Windows (it uses MAPI).  On Linux, it requires the xdg-email utility.
@@ -5005,6 +5090,10 @@ class cmd_send(Command):
 
     The merge directives created by bzr send may be applied using bzr merge or
     bzr pull by specifying a file containing a merge directive as the location.
+
+    bzr send makes extensive use of public locations to map local locations into
+    URLs that can be used by other people.  See `bzr help configuration` to
+    set them, and use `bzr info` to display them.
     """
 
     encoding_type = 'exact'
@@ -5169,25 +5258,23 @@ class cmd_tag(Command):
             ):
         branch, relpath = Branch.open_containing(directory)
         branch.lock_write()
-        try:
-            if delete:
-                branch.tags.delete_tag(tag_name)
-                self.outf.write('Deleted tag %s.\n' % tag_name)
+        self.add_cleanup(branch.unlock)
+        if delete:
+            branch.tags.delete_tag(tag_name)
+            self.outf.write('Deleted tag %s.\n' % tag_name)
+        else:
+            if revision:
+                if len(revision) != 1:
+                    raise errors.BzrCommandError(
+                        "Tags can only be placed on a single revision, "
+                        "not on a range")
+                revision_id = revision[0].as_revision_id(branch)
             else:
-                if revision:
-                    if len(revision) != 1:
-                        raise errors.BzrCommandError(
-                            "Tags can only be placed on a single revision, "
-                            "not on a range")
-                    revision_id = revision[0].as_revision_id(branch)
-                else:
-                    revision_id = branch.last_revision()
-                if (not force) and branch.tags.has_tag(tag_name):
-                    raise errors.TagAlreadyExists(tag_name)
-                branch.tags.set_tag(tag_name, revision_id)
-                self.outf.write('Created tag %s.\n' % tag_name)
-        finally:
-            branch.unlock()
+                revision_id = branch.last_revision()
+            if (not force) and branch.tags.has_tag(tag_name):
+                raise errors.TagAlreadyExists(tag_name)
+            branch.tags.set_tag(tag_name, revision_id)
+            self.outf.write('Created tag %s.\n' % tag_name)
 
 
 class cmd_tags(Command):
@@ -5226,41 +5313,40 @@ class cmd_tags(Command):
             return
 
         branch.lock_read()
-        try:
-            if revision:
-                graph = branch.repository.get_graph()
-                rev1, rev2 = _get_revision_range(revision, branch, self.name())
-                revid1, revid2 = rev1.rev_id, rev2.rev_id
-                # only show revisions between revid1 and revid2 (inclusive)
-                tags = [(tag, revid) for tag, revid in tags if
-                    graph.is_between(revid, revid1, revid2)]
-            if sort == 'alpha':
-                tags.sort()
-            elif sort == 'time':
-                timestamps = {}
-                for tag, revid in tags:
-                    try:
-                        revobj = branch.repository.get_revision(revid)
-                    except errors.NoSuchRevision:
-                        timestamp = sys.maxint # place them at the end
-                    else:
-                        timestamp = revobj.timestamp
-                    timestamps[revid] = timestamp
-                tags.sort(key=lambda x: timestamps[x[1]])
-            if not show_ids:
-                # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
-                for index, (tag, revid) in enumerate(tags):
-                    try:
-                        revno = branch.revision_id_to_dotted_revno(revid)
-                        if isinstance(revno, tuple):
-                            revno = '.'.join(map(str, revno))
-                    except errors.NoSuchRevision:
-                        # Bad tag data/merges can lead to tagged revisions
-                        # which are not in this branch. Fail gracefully ...
-                        revno = '?'
-                    tags[index] = (tag, revno)
-        finally:
-            branch.unlock()
+        self.add_cleanup(branch.unlock)
+        if revision:
+            graph = branch.repository.get_graph()
+            rev1, rev2 = _get_revision_range(revision, branch, self.name())
+            revid1, revid2 = rev1.rev_id, rev2.rev_id
+            # only show revisions between revid1 and revid2 (inclusive)
+            tags = [(tag, revid) for tag, revid in tags if
+                graph.is_between(revid, revid1, revid2)]
+        if sort == 'alpha':
+            tags.sort()
+        elif sort == 'time':
+            timestamps = {}
+            for tag, revid in tags:
+                try:
+                    revobj = branch.repository.get_revision(revid)
+                except errors.NoSuchRevision:
+                    timestamp = sys.maxint # place them at the end
+                else:
+                    timestamp = revobj.timestamp
+                timestamps[revid] = timestamp
+            tags.sort(key=lambda x: timestamps[x[1]])
+        if not show_ids:
+            # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
+            for index, (tag, revid) in enumerate(tags):
+                try:
+                    revno = branch.revision_id_to_dotted_revno(revid)
+                    if isinstance(revno, tuple):
+                        revno = '.'.join(map(str, revno))
+                except errors.NoSuchRevision:
+                    # Bad tag data/merges can lead to tagged revisions
+                    # which are not in this branch. Fail gracefully ...
+                    revno = '?'
+                tags[index] = (tag, revno)
+        self.cleanup_now()
         for tag, revspec in tags:
             self.outf.write('%-20s %s\n' % (tag, revspec))
 
@@ -5379,18 +5465,26 @@ class cmd_switch(Command):
     that of the master.
     """
 
-    takes_args = ['to_location']
+    takes_args = ['to_location?']
     takes_options = [Option('force',
                         help='Switch even if local commits will be lost.'),
+                     'revision',
                      Option('create-branch', short_name='b',
                         help='Create the target branch from this one before'
                              ' switching to it.'),
-                     ]
+                    ]
 
-    def run(self, to_location, force=False, create_branch=False):
+    def run(self, to_location=None, force=False, create_branch=False,
+            revision=None):
         from bzrlib import switch
         tree_location = '.'
+        revision = _get_one_revision('switch', revision)
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
+        if to_location is None:
+            if revision is None:
+                raise errors.BzrCommandError('You must supply either a'
+                                             ' revision or a location')
+            to_location = '.'
         try:
             branch = control_dir.open_branch()
             had_explicit_nick = branch.get_config().has_explicit_nickname()
@@ -5401,6 +5495,8 @@ class cmd_switch(Command):
             if branch is None:
                 raise errors.BzrCommandError('cannot create branch without'
                                              ' source branch')
+            to_location = directory_service.directories.dereference(
+                              to_location)
             if '/' not in to_location and '\\' not in to_location:
                 # This path is meant to be relative to the existing branch
                 this_url = self._get_branch_location(control_dir)
@@ -5408,13 +5504,6 @@ class cmd_switch(Command):
             to_branch = branch.bzrdir.sprout(to_location,
                                  possible_transports=[branch.bzrdir.root_transport],
                                  source_branch=branch).open_branch()
-            # try:
-            #     from_branch = control_dir.open_branch()
-            # except errors.NotBranchError:
-            #     raise BzrCommandError('Cannot create a branch from this'
-            #         ' location when we cannot open this branch')
-            # from_branch.bzrdir.sprout(
-            pass
         else:
             try:
                 to_branch = Branch.open(to_location)
@@ -5422,7 +5511,9 @@ class cmd_switch(Command):
                 this_url = self._get_branch_location(control_dir)
                 to_branch = Branch.open(
                     urlutils.join(this_url, '..', to_location))
-        switch.switch(control_dir, to_branch, force)
+        if revision is not None:
+            revision = revision.as_revision_id(to_branch)
+        switch.switch(control_dir, to_branch, force, revision_id=revision)
         if had_explicit_nick:
             branch = control_dir.open_branch() #get the new branch!
             branch.nick = to_branch.nick
@@ -5682,20 +5773,18 @@ class cmd_shelve(Command):
     def run_for_list(self):
         tree = WorkingTree.open_containing('.')[0]
         tree.lock_read()
-        try:
-            manager = tree.get_shelf_manager()
-            shelves = manager.active_shelves()
-            if len(shelves) == 0:
-                note('No shelved changes.')
-                return 0
-            for shelf_id in reversed(shelves):
-                message = manager.get_metadata(shelf_id).get('message')
-                if message is None:
-                    message = '<no message>'
-                self.outf.write('%3d: %s\n' % (shelf_id, message))
-            return 1
-        finally:
-            tree.unlock()
+        self.add_cleanup(tree.unlock)
+        manager = tree.get_shelf_manager()
+        shelves = manager.active_shelves()
+        if len(shelves) == 0:
+            note('No shelved changes.')
+            return 0
+        for shelf_id in reversed(shelves):
+            message = manager.get_metadata(shelf_id).get('message')
+            if message is None:
+                message = '<no message>'
+            self.outf.write('%3d: %s\n' % (shelf_id, message))
+        return 1
 
 
 class cmd_unshelve(Command):
@@ -5713,7 +5802,10 @@ class cmd_unshelve(Command):
             enum_switch=False, value_switches=True,
             apply="Apply changes and remove from the shelf.",
             dry_run="Show changes, but do not apply or remove them.",
-            delete_only="Delete changes without applying them."
+            preview="Instead of unshelving the changes, show the diff that "
+                    "would result from unshelving.",
+            delete_only="Delete changes without applying them.",
+            keep="Apply changes but don't delete them.",
         )
     ]
     _see_also = ['shelve']
@@ -5820,5 +5912,3 @@ from bzrlib.bundle.commands import (
     )
 from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_versionedfile_list, \
-        cmd_weave_plan_merge, cmd_weave_merge_text

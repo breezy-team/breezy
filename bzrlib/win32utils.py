@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,9 +22,7 @@ Only one dependency: ctypes should be installed.
 import glob
 import os
 import re
-import shlex
 import struct
-import StringIO
 import sys
 
 
@@ -137,7 +135,8 @@ def debug_memory_win32api(message='', short=True):
                 'WorkingSetSize': mem_struct.WorkingSetSize,
                 'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
                 'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
-                'QuotaPeakNonPagedPoolUsage': mem_struct.QuotaPeakNonPagedPoolUsage,
+                'QuotaPeakNonPagedPoolUsage':
+                    mem_struct.QuotaPeakNonPagedPoolUsage,
                 'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
                 'PagefileUsage': mem_struct.PagefileUsage,
                 'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
@@ -154,19 +153,21 @@ def debug_memory_win32api(message='', short=True):
                    ' or win32process')
         return
     if short:
-        trace.note('WorkingSize %7dKB'
-                   '\tPeakWorking %7dKB\t%s',
+        # using base-2 units (see HACKING.txt).
+        trace.note('WorkingSize %7dKiB'
+                   '\tPeakWorking %7dKiB\t%s',
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
                    message)
         return
     if message:
         trace.note('%s', message)
-    trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
-    trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
+    trace.note('WorkingSize       %8d KiB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d KiB', info['PeakWorkingSetSize'] / 1024)
+    trace.note('PagefileUsage     %8d KiB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d KiB',
+               info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d KiB', info.get('PrivateUsage', 0) / 1024)
     trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
 
 
@@ -182,14 +183,15 @@ def get_console_size(defaultx=80, defaulty=25):
         return (defaultx, defaulty)
 
     # To avoid problem with redirecting output via pipe
-    # need to use stderr instead of stdout
+    # we need to use stderr instead of stdout
     h = ctypes.windll.kernel32.GetStdHandle(WIN32_STDERR_HANDLE)
     csbi = ctypes.create_string_buffer(22)
     res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
 
     if res:
         (bufx, bufy, curx, cury, wattr,
-        left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", csbi.raw)
+        left, top, right, bottom, maxx, maxy) = struct.unpack(
+            "hhhhHhhhhhh", csbi.raw)
         sizex = right - left + 1
         sizey = bottom - top + 1
         return (sizex, sizey)
@@ -392,7 +394,6 @@ def get_host_name():
 
 
 def _ensure_unicode(s):
-    from bzrlib import osutils
     if s and type(s) != unicode:
         from bzrlib import osutils
         s = s.decode(osutils.get_user_encoding())
@@ -413,7 +414,8 @@ def get_host_name_unicode():
 
 
 def _ensure_with_dir(path):
-    if not os.path.split(path)[0] or path.startswith(u'*') or path.startswith(u'?'):
+    if (not os.path.split(path)[0] or path.startswith(u'*')
+        or path.startswith(u'?')):
         return u'./' + path, True
     else:
         return path, False
@@ -631,7 +633,7 @@ def _command_line_to_argv(command_line):
     args = []
     for is_quoted, arg in s:
         if is_quoted or not glob.has_magic(arg):
-            args.append(arg.replace(u'\\', u'/'))
+            args.append(arg)
         else:
             args.extend(glob_one(arg))
     return args
@@ -648,7 +650,7 @@ if has_ctypes and winver != 'Windows 98':
         prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
         command_line = GetCommandLine()
         # Skip the first argument, since we only care about parameters
-        argv = _command_line_to_argv(GetCommandLine())[1:]
+        argv = _command_line_to_argv(command_line)[1:]
         if getattr(sys, 'frozen', None) is None:
             # Invoked via 'python.exe' which takes the form:
             #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]

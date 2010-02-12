@@ -17,7 +17,6 @@
 """Tests for the urlutils wrapper."""
 
 import os
-import re
 import sys
 
 from bzrlib import osutils, urlutils, win32utils
@@ -300,8 +299,13 @@ class TestUrlToPath(TestCase):
             from_url('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
+        self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
+            from_url('file://localhost/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
+        self.assertRaises(
+            InvalidURL, from_url,
+            'file://remotehost/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s')
 
     def test_win32_local_path_to_url(self):
         to_url = urlutils._win32_local_path_to_url

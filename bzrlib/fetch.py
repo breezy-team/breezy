@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@ import operator
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    graph as _mod_graph,
+    static_tuple,
     tsort,
     versionedfile,
     )
@@ -36,10 +38,10 @@ import bzrlib
 from bzrlib import (
     errors,
     symbol_versioning,
+    ui,
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import mutter
-import bzrlib.ui
 
 
 class RepoFetcher(object):
@@ -50,20 +52,13 @@ class RepoFetcher(object):
     """
 
     def __init__(self, to_repository, from_repository, last_revision=None,
-        pb=None, find_ghosts=True, fetch_spec=None):
+        find_ghosts=True, fetch_spec=None):
         """Create a repo fetcher.
 
         :param last_revision: If set, try to limit to the data this revision
             references.
         :param find_ghosts: If True search the entire history for ghosts.
-        :param pb: ProgressBar object to use; deprecated and ignored.
-            This method will just create one on top of the stack.
         """
-        if pb is not None:
-            symbol_versioning.warn(
-                symbol_versioning.deprecated_in((1, 14, 0))
-                % "pb parameter to RepoFetcher.__init__")
-            # and for simplicity it is in fact ignored
         # repository.fetch has the responsibility for short-circuiting
         # attempts to copy between a repository and itself.
         self.to_repository = to_repository
@@ -96,7 +91,7 @@ class RepoFetcher(object):
         # assert not missing
         self.count_total = 0
         self.file_ids_names = {}
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         pb.show_pct = pb.show_count = False
         try:
             pb.update("Finding revisions", 0, 2)
@@ -123,7 +118,7 @@ class RepoFetcher(object):
             raise errors.IncompatibleRepositories(
                 self.from_repository, self.to_repository,
                 "different rich-root support")
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             pb.update("Get stream source")
             source = self.from_repository._get_source(
@@ -251,11 +246,22 @@ class Inter1and2Helper(object):
         # yet, and are unlikely to in non-rich-root environments anyway.
         root_id_order.sort(key=operator.itemgetter(0))
         # Create a record stream containing the roots to create.
-        from bzrlib.graph import FrozenHeadsCache
-        graph = FrozenHeadsCache(graph)
+        if len(revs) > 100:
+            # XXX: not covered by tests, should have a flag to always run
+            # this. -- mbp 20100129
+            graph = _get_rich_root_heads_graph(self.source, revs)
         new_roots_stream = _new_root_data_stream(
             root_id_order, rev_id_to_root_id, parent_map, self.source, graph)
         return [('texts', new_roots_stream)]
+
+
+def _get_rich_root_heads_graph(source_repo, revision_ids):
+    """Get a Graph object suitable for asking heads() for new rich roots."""
+    st = static_tuple.StaticTuple
+    revision_keys = [st(r_id).intern() for r_id in revision_ids]
+    known_graph = source_repo.revisions.get_known_graph_ancestry(
+                    revision_keys)
+    return _mod_graph.GraphThunkIdsToKeys(known_graph)
 
 
 def _new_root_data_stream(

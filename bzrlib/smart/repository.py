@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@ import bz2
 import os
 import Queue
 import sys
-import tarfile
 import tempfile
 import threading
 
@@ -30,6 +29,7 @@ from bzrlib import (
     graph,
     osutils,
     pack,
+    ui,
     versionedfile,
     )
 from bzrlib.bzrdir import BzrDir
@@ -502,6 +502,13 @@ def _stream_to_byte_stream(stream, src_format):
     yield pack_writer.begin()
     yield pack_writer.bytes_record(src_format.network_name(), '')
     for substream_type, substream in stream:
+        if substream_type == 'inventory-deltas':
+            # This doesn't feel like the ideal place to issue this warning;
+            # however we don't want to do it in the Repository that's
+            # generating the stream, because that might be on the server.
+            # Instead we try to observe it as the stream goes by.
+            ui.ui_factory.warn_cross_format_fetch(src_format,
+                '(remote)')
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
@@ -675,6 +682,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             temp.close()
 
     def _tarball_of_dir(self, dirname, compression, ofile):
+        import tarfile
         filename = os.path.basename(ofile.name)
         tarball = tarfile.open(fileobj=ofile, name=filename,
             mode='w|' + compression)

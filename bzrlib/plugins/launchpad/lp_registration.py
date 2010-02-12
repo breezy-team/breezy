@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,17 +21,14 @@ from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
-from bzrlib import urlutils
-""")
-
 from bzrlib import (
     config,
     errors,
+    urlutils,
     __version__ as _bzrlib_version,
     )
 from bzrlib.transport.http import _urllib2_wrappers
+
 
 # for testing, do
 '''
@@ -84,7 +81,7 @@ class XMLRPCTransport(xmlrpclib.Transport):
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
 
-    See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
+    See http://wiki.bazaar.canonical.com/Specs/LaunchpadRpc for the methods we can call.
     """
 
     LAUNCHPAD_DOMAINS = {
@@ -123,7 +120,6 @@ class LaunchpadService(object):
                     % (_bzrlib_version, xmlrpclib.__version__)
         self.transport = transport
 
-
     @property
     def service_url(self):
         """Return the http or https url for the xmlrpc server.
@@ -140,6 +136,17 @@ class LaunchpadService(object):
                 raise InvalidLaunchpadInstance(self._lp_instance)
         else:
             return self.DEFAULT_SERVICE_URL
+
+    @classmethod
+    def for_url(cls, url, **kwargs):
+        """Return the Launchpad service corresponding to the given URL."""
+        result = urlsplit(url)
+        lp_instance = result[1]
+        if lp_instance == '':
+            lp_instance = None
+        elif lp_instance not in cls.LAUNCHPAD_INSTANCE:
+            raise errors.InvalidURL(path=url)
+        return cls(lp_instance=lp_instance, **kwargs)
 
     def get_proxy(self, authenticated):
         """Return the proxy for XMLRPC requests."""
@@ -216,13 +223,7 @@ class LaunchpadService(object):
             instance = self._lp_instance
         return self.LAUNCHPAD_DOMAINS[instance]
 
-    def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
-        """Get the Launchpad web URL for the given branch URL.
-
-        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
-            Launchpad branch URL.
-        :return: The URL of the branch on Launchpad.
-        """
+    def _guess_branch_path(self, branch_url, _request_factory=None):
         scheme, hostinfo, path = urlsplit(branch_url)[:3]
         if _request_factory is None:
             _request_factory = ResolveLaunchpadPathRequest
@@ -240,6 +241,16 @@ class LaunchpadService(object):
                 for domain in self.LAUNCHPAD_DOMAINS.itervalues())
             if hostinfo not in domains:
                 raise NotLaunchpadBranch(branch_url)
+        return path.lstrip('/')
+
+    def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
+        """Get the Launchpad web URL for the given branch URL.
+
+        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
+            Launchpad branch URL.
+        :return: The URL of the branch on Launchpad.
+        """
+        path = self._guess_branch_path(branch_url, _request_factory)
         return urlutils.join('https://code.%s' % self.domain, path)
 
 

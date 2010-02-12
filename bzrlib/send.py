@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@ import time
 from bzrlib import (
     bzrdir,
     errors,
-    merge_directive,
     osutils,
     registry,
     trace,
@@ -150,6 +149,7 @@ def send(submit_branch, revision, public_branch, remember, format,
 
 def _send_4(branch, revision_id, submit_branch, public_branch,
             no_patch, no_bundle, message, base_revision_id):
+    from bzrlib import merge_directive
     return merge_directive.MergeDirective2.from_objects(
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,
@@ -171,6 +171,7 @@ def _send_0_9(branch, revision_id, submit_branch, public_branch,
             patch_type = 'diff'
         else:
             patch_type = None
+    from bzrlib import merge_directive
     return merge_directive.MergeDirective.from_objects(
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,

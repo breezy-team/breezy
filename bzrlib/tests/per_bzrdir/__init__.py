@@ -26,11 +26,12 @@ rather than in tests/per_branch/*.py.
 
 from bzrlib.bzrdir import BzrDirFormat
 from bzrlib.tests import (
-                          default_transport,
-                          multiply_tests,
-                          TestCaseWithTransport,
-                          )
-from bzrlib.transport.memory import MemoryServer
+    default_transport,
+    multiply_tests,
+    test_server,
+    TestCaseWithTransport,
+    )
+from bzrlib.transport import memory
 
 
 def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
@@ -88,26 +89,20 @@ def load_tests(standard_tests, module, loader):
         None,
         formats)
     # This will always add scenarios using the smart server.
-    from bzrlib.smart.server import (
-        ReadonlySmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing_v2_only,
-        SmartTCPServer_for_testing,
-        SmartTCPServer_for_testing_v2_only,
-        )
     from bzrlib.remote import RemoteBzrDirFormat
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
     scenarios.extend(make_scenarios(
-        MemoryServer,
-        SmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing,
+        memory.MemoryServer,
+        test_server.SmartTCPServer_for_testing,
+        test_server.ReadonlySmartTCPServer_for_testing,
         [(RemoteBzrDirFormat())],
         name_suffix='-default'))
     # And once with < 1.6 - the 'v2' protocol.
     scenarios.extend(make_scenarios(
-        MemoryServer,
-        SmartTCPServer_for_testing_v2_only,
-        ReadonlySmartTCPServer_for_testing_v2_only,
+        memory.MemoryServer,
+        test_server.SmartTCPServer_for_testing_v2_only,
+        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
         [(RemoteBzrDirFormat())],
         name_suffix='-v2'))
     # add the tests for the sub modules
