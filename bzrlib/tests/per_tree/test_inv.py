@@ -131,6 +131,8 @@ class TestInventory(per_tree.TestCaseWithTree):
         work_tree.add(['dir', 'dir/file'])
         if commit:
             work_tree.commit('commit 1')
+        # XXX: this isn't actually guaranteed to return the class we want to
+        # test -- mbp 2010-02-12
         return work_tree
 
     def test_canonical_path(self):
@@ -166,6 +168,9 @@ class TestInventory(per_tree.TestCaseWithTree):
 
     def test_canonical_tree_name_mismatch(self):
         # see <https://bugs.edge.launchpad.net/bzr/+bug/368931>
+        # some of the trees we want to use can only exist on a disk, not in
+        # memory - therefore we can only test this if the filesystem is
+        # case-sensitive.
         work_tree = self.make_branch_and_tree('.')
         self.build_tree(['test/', 'test/file', 'Test'])
         work_tree.add(['test/', 'test/file', 'Test'])
