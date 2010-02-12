@@ -1,3 +1,27 @@
+bzr-builddeb (2.2~ubuntu1) lucid; urgency=low
+
+  * Upload to lucid.
+  * Some support for v3 source formats (Closes: #562991)
+    - Those that look quite a lot like v1 are supported well.
+    - .tar.bz2 tarballs are supported for import, building, merge-upstream,
+      etc., but only enabled for the latter with a --v3 switch for now.
+    - Multiple orig.tar.gz is not supported.
+    - .tar.lzma is not supported awaiting pristine-tar support.
+  * New "dh-make" command ("dh_make" alias) that allows you to start
+    packaging, either in an empty branch, or based on an upstream branch.
+  * Fix merge-package for native packages (LP: #476348)
+  * debian/changelog merge hook to reduce the manual conflict resolution
+    required there. Thanks to John Arbash Meinel and Andrew Bennetts
+    (LP: #501754).
+    - Requires newer bzr.
+  * Fix merge-package outside a shared repo (LP: #493462)
+  * Fix exporting of symlinks (LP: #364671)
+  * Add --force option to merge-upstream which may help certain people.
+  * Use system configobj if the bzr copy isn't available. Thanks Jelmer.
+  * Make merging multiple-root branches work. Thanks Robert Collins.
+
+ -- James Westby <james.westby@ubuntu.com>  Fri, 12 Feb 2010 22:35:51 +0000
+
 bzr-builddeb (2.2) unstable; urgency=low
 
   * Upload to unstable.
