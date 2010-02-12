@@ -142,6 +142,7 @@ Internals
 
 Testing
 *******
+
 * Using the ``bzrlib.chk_map`` module from within multiple threads at the
   same time was broken due to race conditions with a module level page
   cache. This shows up as a KeyError in the ``bzrlib.lru_cache`` code with
