@@ -55,17 +55,22 @@ def _get_tree(package_name):
     return tree
 
 
-def _get_tarball(tree, tarball, package_name, version):
+def _get_tarball(tree, tarball, package_name, version, use_v3=False):
     from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
     config = util.debuild_config(tree, tree, False)
     orig_dir = config.orig_dir or default_orig_dir
     orig_dir = os.path.join(tree.basedir, orig_dir)
     if not os.path.exists(orig_dir):
         os.makedirs(orig_dir)
-    dest_name = util.tarball_name(package_name, version)
+    format = None
+    if use_v3:
+        if tarball.endswith(".tar.bz2") or tarball.endswith(".tbz2"):
+            format = "bz2"
+    dest_name = util.tarball_name(package_name, version, format=format)
     tarball_filename = os.path.join(orig_dir, dest_name)
     trace.note("Fetching tarball")
-    repack_tarball(tarball, dest_name, target_dir=orig_dir)
+    repack_tarball(tarball, dest_name, target_dir=orig_dir,
+            force_gz=not use_v3)
     provider = upstream.UpstreamProvider(package_name, "%s-1" % version,
             orig_dir, [])
     provider.provide(os.path.join(tree.basedir, ".."))
@@ -75,14 +80,14 @@ def _get_tarball(tree, tarball, package_name, version):
     return tarball_filename, md5sum
 
 
-def import_upstream(tarball, package_name, version):
+def import_upstream(tarball, package_name, version, use_v3=False):
     tree = _get_tree(package_name)
     if tree.branch.last_revision() != mod_revision.NULL_REVISION:
         parents = [tree.branch.last_revision()]
     else:
         parents = []
     tarball_filename, md5sum = _get_tarball(tree, tarball,
-            package_name, version)
+            package_name, version, use_v3=use_v3)
     db = import_dsc.DistributionBranch(tree.branch, tree.branch, tree=tree,
             upstream_tree=tree)
     dbs = import_dsc.DistributionBranchSet()
@@ -96,12 +101,24 @@ def import_upstream(tarball, package_name, version):
     return tree
 
 
-def run_dh_make(tree, package_name, version):
+def run_dh_make(tree, package_name, version, use_v3=False):
     if not tree.has_filename("debian"):
         tree.mkdir("debian")
     # FIXME: give a nice error on 'debian is not a directory'
     if tree.path2id("debian") is None:
         tree.add("debian")
+    if use_v3:
+        if not tree.has_filename("debian/source"):
+            tree.mkdir("debian/source")
+        if tree.path2id("debian/source") is None:
+            tree.add("debian/source")
+        f = open("debian/source/format")
+        try:
+            f.write("3.0 (quilt)\n")
+        finally:
+            f.close()
+        if tree.path2id("debian/source/format") is None:
+            tree.add("debian/source/format")
     command = ["dh_make", "--addmissing", "--packagename",
                 "%s_%s" % (package_name, version)]
     proc = subprocess.Popen(command, cwd=tree.basedir,

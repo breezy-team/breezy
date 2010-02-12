@@ -1135,7 +1135,10 @@ class DistributionBranch(object):
             delta = self.make_pristine_tar_delta(self.upstream_tree,
                     upstream_tarball)
             uuencoded = standard_b64encode(delta)
-            revprops["deb-pristine-delta"] = uuencoded
+            if upstream_tarball.endswith(".tar.bz2"):
+                revprops["deb-pristine-delta-bz2"] = uuencoded
+            else:
+                revprops["deb-pristine-delta"] = uuencoded
         if author is not None:
             revprops['authors'] = author
         timezone=None
@@ -1335,8 +1338,11 @@ class DistributionBranch(object):
 
     def _do_import_package(self, version, versions, debian_part, md5,
             upstream_part, upstream_md5, upstream_tarball=None,
-            timestamp=None, author=None, file_ids_from=None):
-        pull_branch = self.branch_to_pull_version_from(version, md5)
+            timestamp=None, author=None, file_ids_from=None,
+            pull_debian=True):
+        pull_branch = None
+        if pull_debian:
+            pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             if (self.branch_to_pull_upstream_from(version.upstream_version,
                         upstream_md5)
@@ -1416,8 +1422,10 @@ class DistributionBranch(object):
 
 
     def _import_native_package(self, version, versions, debian_part, md5,
-            timestamp=None, file_ids_from=None):
-        pull_branch = self.branch_to_pull_version_from(version, md5)
+            timestamp=None, file_ids_from=None, pull_debian=True):
+        pull_branch = None
+        if pull_debian:
+            pull_branch = self.branch_to_pull_version_from(version, md5)
         if pull_branch is not None:
             self.pull_version_from_branch(pull_branch, version, native=True)
         else:
@@ -1436,7 +1444,7 @@ class DistributionBranch(object):
         return versions
 
     def import_package(self, dsc_filename, use_time_from_changelog=True,
-            file_ids_from=None):
+            file_ids_from=None, pull_debian=True):
         """Import a source package.
 
         :param dsc_filename: a path to a .dsc file for the version
@@ -1479,12 +1487,14 @@ class DistributionBranch(object):
                         extractor.unextracted_upstream_md5,
                         upstream_tarball=extractor.unextracted_upstream,
                         timestamp=timestamp, author=author,
-                        file_ids_from=file_ids_from)
+                        file_ids_from=file_ids_from,
+                        pull_debian=pull_debian)
             else:
                 self._import_native_package(version, versions,
                         extractor.extracted_debianised,
                         extractor.unextracted_debian_md5,
-                        timestamp=timestamp, file_ids_from=file_ids_from)
+                        timestamp=timestamp, file_ids_from=file_ids_from,
+                        pull_debian=pull_debian)
         finally:
             extractor.cleanup()
 
@@ -1642,11 +1652,29 @@ class DistributionBranch(object):
 
     def has_pristine_tar_delta(self, revid):
         rev = self.branch.repository.get_revision(revid)
-        return 'deb-pristine-delta' in rev.properties
+        return ('deb-pristine-delta' in rev.properties
+                or 'deb-pristine-delta-bz2' in rev.properties)
+
+    def pristine_tar_format(self, revid):
+        rev = self.branch.repository.get_revision(revid)
+        if 'deb-pristine-delta' in rev.properties:
+            return 'gz'
+        elif 'deb-properties-delta-bz2' in rev.properties:
+            return 'bz2'
+        assert self.has_pristine_tar_delta(revid)
+        raise AssertionError("Not handled new delta type in "
+                "pristine_tar_format")
 
     def pristine_tar_delta(self, revid):
         rev = self.branch.repository.get_revision(revid)
-        uuencoded = rev.properties['deb-pristine-delta']
+        if 'deb-pristine-delta' in rev.properties:
+            uuencoded = rev.properties['deb-pristine-delta']
+        elif 'deb-pristine-delta-bz2' in rev.properties:
+            uuencoded = rev.properties['deb-pristine-delta-bz2']
+        else:
+            assert self.has_pristine_tar_delta(revid)
+            raise AssertionError("Not handled new delta type in "
+                    "pristine_tar_delta")
         delta = standard_b64decode(uuencoded)
         return delta
 
@@ -1663,7 +1691,8 @@ class DistributionBranch(object):
                        os.path.abspath(dest_filename)]
             try:
                 proc = Popen(command, stdin=PIPE, cwd=dest,
-                        preexec_fn=subprocess_setup)
+                        preexec_fn=subprocess_setup, stdout=PIPE,
+                        stderr=STDOUT)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     raise PristineTarError("pristine-tar is not installed")
@@ -1671,7 +1700,7 @@ class DistributionBranch(object):
                     raise
             (stdout, stderr) = proc.communicate(delta)
             if proc.returncode != 0:
-                raise PristineTarError("Generating tar from delta failed: %s" % stderr)
+                raise PristineTarError("Generating tar from delta failed: %s" % stdout)
         finally:
             shutil.rmtree(tmpdir)
 
@@ -1689,7 +1718,7 @@ class DistributionBranch(object):
             command = ["pristine-tar", "gendelta", tarball_path, "-"]
             try:
                 proc = Popen(command, stdout=PIPE, cwd=dest,
-                        preexec_fn=subprocess_setup)
+                        preexec_fn=subprocess_setup, stderr=PIPE)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     raise PristineTarError("pristine-tar is not installed")
@@ -1799,18 +1828,20 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
                     (stdout,)
         for part in self.dsc['files']:
-            if part['name'].endswith(".orig.tar.gz"):
-                assert self.unextracted_upstream is None, "Two .orig.tar.gz?"
+            if (part['name'].endswith(".orig.tar.gz")
+                    or part['name'].endswith(".orig.tar.bz2")):
+                assert self.unextracted_upstream is None, "Two .orig.tar.(gz|bz2)?"
                 self.unextracted_upstream = os.path.abspath(
                         os.path.join(osutils.dirname(self.dsc_path),
                             part['name']))
                 self.unextracted_upstream_md5 = part['md5sum']
-            elif part['name'].endswith(".debian.tar.gz"):
+            elif (part['name'].endswith(".debian.tar.gz")
+                    or part['name'].endswith(".orig.tar.bz2")):
                 self.unextracted_debian_md5 = part['md5sum']
         assert self.unextracted_upstream is not None, \
-            "Can't handle non gz tarballs yet"
+            "Can't handle non gz|bz2 tarballs yet"
         assert self.unextracted_debian_md5 is not None, \
-            "Can't handle non gz tarballs yet"
+            "Can't handle non gz|bz2 tarballs yet"
 
 
 SOURCE_EXTRACTORS = {}

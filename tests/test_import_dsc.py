@@ -800,6 +800,62 @@ class DistributionBranchTests(BuilddebTestCase):
         self.check_changes(changes, added=["NEWS"], removed=["COPYING"],
                 modified=["README"])
 
+    def test_import_upstream_with_tarball(self):
+        self.requireFeature(PristineTarFeature)
+        version = Version("0.1-1")
+        name = "package"
+        basedir = name + "-" + str(version.upstream_version)
+        os.mkdir(basedir)
+        write_to_file(os.path.join(basedir, "README"), "Hi\n")
+        write_to_file(os.path.join(basedir, "BUGS"), "")
+        tar_path = "package_0.1.orig.tar.gz"
+        tf = tarfile.open(tar_path, 'w:gz')
+        try:
+            tf.add(basedir)
+        finally:
+            tf.close()
+        self.db1.import_upstream(basedir, version.upstream_version, 
+            self.fake_md5_1, [], upstream_tarball=os.path.abspath(tar_path))
+        tree = self.up_tree1
+        branch = tree.branch
+        rh = branch.revision_history()
+        self.assertEqual(len(rh), 1)
+        self.assertEqual(self.db1.revid_of_upstream_version(
+            version.upstream_version), rh[0])
+        rev = branch.repository.get_revision(rh[0])
+        self.assertEqual(rev.message,
+                "Import upstream version %s" % str(version.upstream_version))
+        self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
+        self.assertTrue('deb-pristine-delta' in rev.properties)
+
+    def test_import_upstream_with_bzip2_tarball(self):
+        self.requireFeature(PristineTarFeature)
+        version = Version("0.1-1")
+        name = "package"
+        basedir = name + "-" + str(version.upstream_version)
+        os.mkdir(basedir)
+        write_to_file(os.path.join(basedir, "README"), "Hi\n")
+        write_to_file(os.path.join(basedir, "BUGS"), "")
+        tar_path = "package_0.1.orig.tar.bz2"
+        tf = tarfile.open(tar_path, 'w:bz2')
+        try:
+            tf.add(basedir)
+        finally:
+            tf.close()
+        self.db1.import_upstream(basedir, version.upstream_version, 
+            self.fake_md5_1, [], upstream_tarball=os.path.abspath(tar_path))
+        tree = self.up_tree1
+        branch = tree.branch
+        rh = branch.revision_history()
+        self.assertEqual(len(rh), 1)
+        self.assertEqual(self.db1.revid_of_upstream_version(
+            version.upstream_version), rh[0])
+        rev = branch.repository.get_revision(rh[0])
+        self.assertEqual(rev.message,
+                "Import upstream version %s" % str(version.upstream_version))
+        self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
+        self.assertTrue('deb-pristine-delta-bz2' in rev.properties)
+
     def test_import_package_init_from_other(self):
         self.requireFeature(PristineTarFeature)
         version1 = Version("0.1-1")
@@ -1497,7 +1553,8 @@ class DistributionBranchTests(BuilddebTestCase):
         conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
                 Version("0.1"), upstream_branch=upstream_tree.branch,
                 upstream_revision=upstream_rev)
-        self.assertEqual(0,  conflicts)
+        # ./debian conflicts.
+        self.assertEqual(3,  conflicts)
 
     def test_import_symlink(self):
         version = Version("1.0-1")
@@ -1600,6 +1657,36 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
         builder.add_upstream_file("BUGS")
         builder.add_default_control()
         builder.build()
+        dsc = deb822.Dsc(open(builder.dsc_name()).read())
+        self.assertEqual(ThreeDotZeroQuiltSourceExtractor,
+                SOURCE_EXTRACTORS[dsc['Format']])
+        extractor = ThreeDotZeroQuiltSourceExtractor(builder.dsc_name(), dsc)
+        try:
+            extractor.extract()
+            unpacked_dir = extractor.extracted_debianised
+            orig_dir = extractor.extracted_upstream
+            self.assertTrue(os.path.exists(unpacked_dir))
+            self.assertTrue(os.path.exists(orig_dir))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "README")))
+            self.assertTrue(os.path.exists(os.path.join(unpacked_dir,
+                            "debian", "control")))
+            self.assertTrue(os.path.exists(os.path.join(orig_dir,
+                            "README")))
+            self.assertFalse(os.path.exists(os.path.join(orig_dir,
+                            "debian", "control")))
+            self.assertTrue(os.path.exists(extractor.unextracted_upstream))
+        finally:
+            extractor.cleanup()
+
+    def test_extract_format3_quilt_bz2(self):
+        version = Version("0.1-1")
+        name = "package"
+        builder = SourcePackageBuilder(name, version, version3=True)
+        builder.add_upstream_file("README", "Hi\n")
+        builder.add_upstream_file("BUGS")
+        builder.add_default_control()
+        builder.build(tar_format='bz2')
         dsc = deb822.Dsc(open(builder.dsc_name()).read())
         self.assertEqual(ThreeDotZeroQuiltSourceExtractor,
                 SOURCE_EXTRACTORS[dsc['Format']])

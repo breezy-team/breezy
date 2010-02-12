@@ -330,7 +330,9 @@ class SourcePackageBuilder(object):
         self._make_symlinks(self.upstream_symlinks, basedir)
         return basedir
 
-    def build(self):
+    def build(self, tar_format=None):
+        if tar_format is None:
+            tar_format = 'gz'
         basedir = self._make_base()
         if not self.version3:
             if not self.native:
@@ -344,11 +346,11 @@ class SourcePackageBuilder(object):
                 cmd = ["dpkg-source", "-sn", "-b", basedir]
         else:
             if not self.native:
-                tar_path = "%s_%s.orig.tar.gz" % (self.name,
-                        self._cl.version.upstream_version)
+                tar_path = "%s_%s.orig.tar.%s" % (self.name,
+                        self._cl.version.upstream_version, tar_format)
                 if os.path.exists(tar_path):
                     os.unlink(tar_path)
-                tar = tarfile.open(tar_path, 'w:gz')
+                tar = tarfile.open(tar_path, 'w:%s' % tar_format)
                 try:
                     tar.add(basedir)
                 finally:
