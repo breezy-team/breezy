@@ -37,6 +37,7 @@ from bzrlib import (
     ui,
     versionedfile
     )
+from bzrlib.cleanup import OperationWithCleanups
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -46,11 +47,10 @@ from bzrlib.symbol_versioning import (
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
     from_tree.lock_tree_write()
-    try:
-        merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
-                    interesting_ids=interesting_ids, this_tree=from_tree)
-    finally:
-        from_tree.unlock()
+    operation = OperationWithCleanups(merge_inner)
+    operation.add_cleanup(from_tree.unlock)
+    operation.run_simple(from_tree.branch, to_tree, from_tree,
+        ignore_zero=True, interesting_ids=interesting_ids, this_tree=from_tree)
 
 
 class MergeHooks(hooks.Hooks):
@@ -455,6 +455,7 @@ class Merger(object):
     def _add_parent(self):
         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
         new_parent_trees = []
+        operation = OperationWithCleanups(self.this_tree.set_parent_trees)
         for revision_id in new_parents:
             try:
                 tree = self.revision_tree(revision_id)
@@ -462,14 +463,9 @@ class Merger(object):
                 tree = None
             else:
                 tree.lock_read()
+                operation.add_cleanup(tree.unlock)
             new_parent_trees.append((revision_id, tree))
-        try:
-            self.this_tree.set_parent_trees(new_parent_trees,
-                                            allow_leftmost_as_ghost=True)
-        finally:
-            for _revision_id, tree in new_parent_trees:
-                if tree is not None:
-                    tree.unlock()
+        operation.run_simple(new_parent_trees, allow_leftmost_as_ghost=True)
 
     def set_other(self, other_revision, possible_transports=None):
         """Set the revision and tree to merge from.
@@ -626,7 +622,8 @@ class Merger(object):
                                change_reporter=self.change_reporter,
                                **kwargs)
 
-    def _do_merge_to(self, merge):
+    def _do_merge_to(self):
+        merge = self.make_merger()
         if self.other_branch is not None:
             self.other_branch.update_references(self.this_branch)
         merge.do_merge()
@@ -646,26 +643,19 @@ class Merger(object):
                     sub_tree.branch.repository.revision_tree(base_revision)
                 sub_merge.base_rev_id = base_revision
                 sub_merge.do_merge()
+        return merge
 
     def do_merge(self):
+        operation = OperationWithCleanups(self._do_merge_to)
         self.this_tree.lock_tree_write()
-        try:
-            if self.base_tree is not None:
-                self.base_tree.lock_read()
-            try:
-                if self.other_tree is not None:
-                    self.other_tree.lock_read()
-                try:
-                    merge = self.make_merger()
-                    self._do_merge_to(merge)
-                finally:
-                    if self.other_tree is not None:
-                        self.other_tree.unlock()
-            finally:
-                if self.base_tree is not None:
-                    self.base_tree.unlock()
-        finally:
-            self.this_tree.unlock()
+        operation.add_cleanup(self.this_tree.unlock)
+        if self.base_tree is not None:
+            self.base_tree.lock_read()
+            operation.add_cleanup(self.base_tree.unlock)
+        if self.other_tree is not None:
+            self.other_tree.lock_read()
+            operation.add_cleanup(self.other_tree.unlock)
+        merge = operation.run_simple()
         if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero and not trace.is_quiet():
                 trace.note("All changes applied successfully.")
@@ -765,35 +755,36 @@ class Merge3Merger(object):
             warnings.warn("pb argument to Merge3Merger is deprecated")
 
     def do_merge(self):
+        operation = OperationWithCleanups(self._do_merge)
         self.this_tree.lock_tree_write()
+        operation.add_cleanup(self.this_tree.unlock)
         self.base_tree.lock_read()
+        operation.add_cleanup(self.base_tree.unlock)
         self.other_tree.lock_read()
-        try:
-            self.tt = transform.TreeTransform(self.this_tree, None)
-            try:
-                self._compute_transform()
-                results = self.tt.apply(no_conflicts=True)
-                self.write_modified(results)
-                try:
-                    self.this_tree.add_conflicts(self.cooked_conflicts)
-                except errors.UnsupportedOperation:
-                    pass
-            finally:
-                self.tt.finalize()
-        finally:
-            self.other_tree.unlock()
-            self.base_tree.unlock()
-            self.this_tree.unlock()
+        operation.add_cleanup(self.other_tree.unlock)
+        operation.run()
+
+    def _do_merge(self, operation):
+        self.tt = transform.TreeTransform(self.this_tree, None)
+        operation.add_cleanup(self.tt.finalize)
+        self._compute_transform()
+        results = self.tt.apply(no_conflicts=True)
+        self.write_modified(results)
+            self.this_tree.add_conflicts(self.cooked_conflicts)
+        except errors.UnsupportedOperation:
+            pass
 
     def make_preview_transform(self):
+        operation = OperationWithCleanups(self._make_preview_transform)
         self.base_tree.lock_read()
+        operation.add_cleanup(self.base_tree.unlock)
         self.other_tree.lock_read()
+        operation.add_cleanup(self.other_tree.unlock)
+        return operation.run_simple()
+
+    def _make_preview_transform(self):
         self.tt = transform.TransformPreview(self.this_tree)
-        try:
-            self._compute_transform()
-        finally:
-            self.other_tree.unlock()
-            self.base_tree.unlock()
+        self._compute_transform()
         return self.tt
 
     def _compute_transform(self):

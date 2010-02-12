@@ -1424,7 +1424,7 @@ class LogFormatter(object):
         """
         # Revision comes directly from a foreign repository
         if isinstance(rev, foreign.ForeignRevision):
-            return rev.mapping.vcs.show_foreign_revid(rev.foreign_revid)
+            return self._format_properties(rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
         if not ":" in rev.revision_id:

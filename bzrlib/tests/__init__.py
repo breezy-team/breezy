@@ -4372,6 +4372,23 @@ class _CaseInsensitiveFilesystemFeature(Feature):
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
 
+class _CaseSensitiveFilesystemFeature(Feature):
+
+    def _probe(self):
+        if CaseInsCasePresFilenameFeature.available():
+            return False
+        elif CaseInsensitiveFilesystemFeature.available():
+            return False
+        else:
+            return True
+
+    def feature_name(self):
+        return 'case-sensitive filesystem'
+
+# new coding style is for feature instances to be lowercase
+case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
+
+
 # Kept for compatibility, use bzrlib.tests.features.subunit instead
 SubUnitFeature = _CompatabilityThunkFeature(
     deprecated_in((2,1,0)),

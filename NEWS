@@ -100,28 +100,32 @@ Bug Fixes
 * Fix "AttributeError in Inter1and2Helper" during fetch.
   (Martin Pool, #513432)
 
+* ``bzr update`` performs the two merges in a more logical order and will stop
+  when it encounters conflicts.  
+  (Gerard Krol, #113809)
+
 * Fix ``log`` to better check ancestors even if merged revisions are involved.
   (Vincent Ladeuil, #476293)
 
 * Give a better error message when doing ``bzr bind`` in an already bound
   branch.  (Neil Martinsen-Burrell, #513063)
 
+* Ignore ``KeyError`` from ``remove_index`` during ``_abort_write_group``
+  in a pack repository, which can happen harmlessly if the abort occurs during
+  finishing the write group.  Also use ``bzrlib.cleanup`` so that any
+  other errors that occur while aborting the individual packs won't be
+  hidden by secondary failures when removing the corresponding indices.
+  (Andrew Bennetts, #423015)
+
 * Set the mtime of files exported to a directory by ``bzr export`` all to
   the same value to avoid confusing ``make`` and other date-based build
   systems. (Robert Collins, #515631)
-
-* ``bzr update`` performs the two merges in a more logical order and will stop
-  when it encounters conflicts.  
-  (Gerard Krol, #113809)
 
 Improvements
 ************
 
 * Fetching into experimental formats will now print a warning. (Jelmer
   Vernooij)
-
-Documentation
-*************
 
 API Changes
 ***********
@@ -137,12 +141,6 @@ API Changes
 * ``Repository.serialise_inventory`` has been renamed to 
   ``Repository._serialise_inventory`` to indicate it is private.
 
-Internals
-*********
-
-Testing
-*******
-
 * Using the ``bzrlib.chk_map`` module from within multiple threads at the
   same time was broken due to race conditions with a module level page
   cache. This shows up as a KeyError in the ``bzrlib.lru_cache`` code with
@@ -155,6 +153,23 @@ Testing
 * The new ``merge_file_content`` should now be ok with tests to avoid
   regressions.
   (Vincent Ladeuil, #515597)
+
+Internals
+*********
+
+* Use ``bzrlib.cleanup`` rather than less robust ``try``/``finally``
+  blocks in several places in ``bzrlib.merge``.  This avoids masking prior
+  errors when errors like ``ImmortalPendingDeletion`` occur during cleanup
+  in ``do_merge``.
+  (Andrew Bennetts, #517275)
+
+API Changes
+***********
+
+* The ``remove_index`` method of
+  ``bzrlib.repofmt.pack_repo.AggregateIndex`` no longer takes a ``pack``
+  argument.  This argument was always ignored.
+  (Andrew Bennetts, #423015)
 
 bzr 2.1.0rc2
 ############
@@ -413,6 +428,29 @@ Testing
   tests that 'failed' - they're all just failures.
   (Martin Pool)
 
+
+bzr 2.0.5 (not released yet)
+############################
+
+:Codename:
+:2.0.5:
+
+Bug Fixes
+*********
+
+* Handle renames correctly when there are files or directories that 
+  differ only in case.  (Chris Jones, Martin Pool, #368931)
+
+* If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
+  error, report that error rather than failing with an unhelpful
+  ``UnboundLocalError``.
+  (Andrew Bennetts, #423563)
+
+Documentation
+*************
+
+* Added ``location-alias`` help topic.
+  (Andrew Bennetts, #337834)
 
 bzr 2.0.4
 #########
