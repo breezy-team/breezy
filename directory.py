@@ -35,7 +35,7 @@ class VcsDirectory(object):
 
         apt_pkg.init()
 
-        sources = apt_pkg.GetPkgSrcRecords()
+        sources = apt_pkg.SourceRecords()
 
         urls = {}
         while sources.Lookup(name):
