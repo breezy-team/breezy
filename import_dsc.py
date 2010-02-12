@@ -35,6 +35,7 @@ try:
 except ImportError:
     import md5
 import os
+import re
 import shutil
 import stat
 from subprocess import Popen, PIPE, STDOUT
@@ -1619,6 +1620,9 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
                     (stdout,)
         for part in self.dsc['files']:
+            if (re.search("\.orig-[^.]+\.tar\.(gz|bz2|lzma)$", part['name'])):
+                raise AssertionError("Can't import packages with multiple "
+                    "upstream tarballs yet")
             if (part['name'].endswith(".orig.tar.gz")
                     or part['name'].endswith(".orig.tar.bz2")):
                 assert self.unextracted_upstream is None, "Two .orig.tar.(gz|bz2)?"
