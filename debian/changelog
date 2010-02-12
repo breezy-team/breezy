@@ -1,5 +1,6 @@
 bzr-builddeb (2.3) experimental; urgency=low
 
+  [ James Westby ]
   * Some support for v3 source formats (Closes: #562991)
     - Those that look quite a lot like v1 are supported well.
     - .tar.bz2 tarballs are supported for import, building, merge-upstream,
@@ -18,8 +19,13 @@ bzr-builddeb (2.3) experimental; urgency=low
   * Add --force option to merge-upstream which may help certain people.
   * Use system configobj if the bzr copy isn't available. Thanks Jelmer.
   * Make merging multiple-root branches work. Thanks Robert Collins.
+  * Disentangle from bzrtools. Thanks Max Bowser.
 
- -- James Westby <james.westby@ubuntu.com>  Fri, 12 Feb 2010 22:35:51 +0000
+  [ Jelmer Vernooij ]
+  * Bump standards version to 3.8.4.
+  * Fix formatting in doc-base.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 13 Feb 2010 00:44:03 +0100
 
 bzr-builddeb (2.2) unstable; urgency=low
 
