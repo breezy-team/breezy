@@ -154,6 +154,7 @@ class Splitter(object):
             result = None
         return self.quoted, result
 
+
 def split(unsplit, single_quotes_allowed=True):
     splitter = Splitter(unsplit, single_quotes_allowed=single_quotes_allowed)
     return [arg for quoted, arg in splitter]
