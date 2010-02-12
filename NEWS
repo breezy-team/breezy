@@ -16,6 +16,10 @@
   * Support merging tags to a local Git repository.
     (#4445230, Jelmer Vernooij)
 
+ FEATURES
+
+  * Support (dumb) HTTP repositories. (#373688, Jelmer Vernooij)
+
 0.4.3	2010-01-19
 
  BUG FIXES

@@ -122,10 +122,14 @@ class LocalGitDir(GitDir):
         return self._gitrepository_class(self, self._lockfiles)
 
     def open_workingtree(self, recommend_upgrade=True):
-        if not self._git.bare and self._git.has_index():
-            from bzrlib.plugins.git.workingtree import GitWorkingTree
-            return GitWorkingTree(self, self.open_repository(),
-                                                  self.open_branch())
+        if not self._git.bare:
+            from dulwich.errors import NoIndexPresent
+            try:
+                from bzrlib.plugins.git.workingtree import GitWorkingTree
+                return GitWorkingTree(self, self.open_repository(),
+                                                      self.open_branch())
+            except NoIndexPresent:
+                pass
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)
 
