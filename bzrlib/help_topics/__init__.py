@@ -404,13 +404,12 @@ end. Checkouts also work on the local file system, so that all that matters is
 file permissions.
 
 You can change the master of a checkout by using the "switch" command (see
-"help switch").
-This will change the location that the commits are sent to.  The "bind"
-command can also be used to turn a normal branch into a heavy checkout. If you
-would like to convert your heavy checkout into a normal branch so that every
-commit is local, you can use the "unbind" command. To see whether or not a
-branch is bound or not you can use the "info" command. If the branch is bound
-it will tell you the location of the bound branch.
+"help switch").  This will change the location that the commits are sent to.
+The "bind" command can also be used to turn a normal branch into a heavy
+checkout. If you would like to convert your heavy checkout into a normal
+branch so that every commit is local, you can use the "unbind" command. To see
+whether or not a branch is bound or not you can use the "info" command. If the
+branch is bound it will tell you the location of the bound branch.
 
 Related commands::
 
