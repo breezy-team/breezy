@@ -27,7 +27,6 @@ from bzrlib import (
     merge3,
     osutils,
     patiencediff,
-    progress,
     revision as _mod_revision,
     textfile,
     trace,
@@ -770,6 +769,7 @@ class Merge3Merger(object):
         self._compute_transform()
         results = self.tt.apply(no_conflicts=True)
         self.write_modified(results)
+        try:
             self.this_tree.add_conflicts(self.cooked_conflicts)
         except errors.UnsupportedOperation:
             pass
