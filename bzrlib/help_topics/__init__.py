@@ -245,6 +245,19 @@ def _help_on_transport(name):
         out += "\nSupported modifiers::\n\n  " + \
             '  '.join(decl)
 
+    out += """\
+\nBazaar supports all of the standard parts within the URL::
+
+  <protocol>://[user[:password]@]host[:port]/[path]
+
+allowing URLs such as::
+
+  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk
+
+Many commands that accept URLs also accept location aliases too.  See
+`bzr help location-alias`.
+"""
+
     return out
 
 
@@ -713,6 +726,8 @@ topic_registry.register('conflicts', _load_from_file,
                         'Types of conflicts and what to do about them')
 topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
+topic_registry.register('location-alias', _load_from_file,
+                        'Aliases for remembered locations')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
 topic_registry.register('diverged-branches', _load_from_file,
