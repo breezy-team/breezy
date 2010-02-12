@@ -1576,7 +1576,8 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
                 "%s-%s" % (name, str(version.upstream_version)))
         self.extracted_upstream = None
         for part in self.dsc['files']:
-            if part['name'].endswith(".tar.gz"):
+            if (part['name'].endswith(".tar.gz")
+                    or part['name'].endswith(".tar.bz2")):
                 self.unextracted_debian_md5 = part['md5sum']
 
 
