@@ -110,7 +110,7 @@ class TransportObjectStore(PackBasedObjectStore):
             if kind != "P":
                 continue
             if name.startswith("pack-") and name.endswith(".pack"):
-                pd = PackData.from_file(self.pack_transport.get(name))
+                pd = PackData(name, self.pack_transport.get(name))
                 idxname = name.replace(".pack", ".idx")
                 idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
                 ret.append(Pack.from_objects(pd, idx))
