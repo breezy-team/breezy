@@ -1,4 +1,4 @@
-bzr-builddeb (2.2~ubuntu1) lucid; urgency=low
+bzr-builddeb (2.3) UNRELEASED; urgency=low
 
   * Upload to lucid.
   * Some support for v3 source formats (Closes: #562991)
