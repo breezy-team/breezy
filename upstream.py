@@ -421,7 +421,7 @@ class UpstreamProvider(object):
                 self.source.get_specific_version(self.package,
                     self.version.upstream_version, self.store_dir)
             except PackageVersionNotPresent:
-                raise MissingUpstreamTarball(self._tarball_name())
+                raise MissingUpstreamTarball(self._tarball_names()[0])
         else:
              info("Using the upstream tarball that is present in "
                      "%s" % self.store_dir)
@@ -492,4 +492,4 @@ class _SimpleUpstreamProvider(UpstreamProvider):
                 or self.provide_from_store_dir(target_dir))
         if path is not None:
             return path
-        raise MissingUpstreamTarball(self._tarball_name())
+        raise MissingUpstreamTarball(self._tarball_names()[0])
