@@ -66,6 +66,10 @@ Bug Fixes
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)
 
+* Support kind markers for socket and fifo filesystem objects. This
+  prevents ``bzr status --short`` from crashing when those files are
+  present.  (John Arbash Meinel, #303275)
+
 API Changes
 ***********
 
