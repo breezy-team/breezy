@@ -20,7 +20,10 @@
 
 from bzrlib.config import ConfigObj, TreeConfig
 from bzrlib.trace import mutter, warning
-from bzrlib.util.configobj.configobj import ParseError
+try:
+  from bzrlib.util.configobj.configobj import ParseError
+except ImportError:
+  from configobj import ParseError
 
 
 class SvnBuildPackageMappedConfig(object):
