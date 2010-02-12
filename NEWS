@@ -59,6 +59,9 @@ Bug Fixes
 * ``bzr add`` will not add conflict related files unless explicitly required.
   (Vincent Ladeuil, #322767, #414589)
 
+* ``bzr remove-tree`` can now remove multiple working trees.
+  (Jared Hance, Andrew Bennetts, #253137)
+
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)
