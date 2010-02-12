@@ -174,7 +174,7 @@ class TestInventory(per_tree.TestCaseWithTree):
         # some of the trees we want to use can only exist on a disk, not in
         # memory - therefore we can only test this if the filesystem is
         # case-sensitive.
-        self.requireFeature(features.case_sensitive_filesystem_feature)
+        self.requireFeature(tests.case_sensitive_filesystem_feature)
         work_tree = self.make_branch_and_tree('.')
         self.build_tree(['test/', 'test/file', 'Test'])
         work_tree.add(['test/', 'test/file', 'Test'])
