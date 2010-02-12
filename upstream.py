@@ -488,7 +488,8 @@ class _SimpleUpstreamProvider(UpstreamProvider):
         self.store_dir = store_dir
 
     def provide(self, target_dir):
-        if self.already_exists_in_target(target_dir) \
-            or self.provide_from_store_dir(target_dir):
-            return os.path.join(target_dir, self._tarball_name())
+        path = (self.already_exists_in_target(target_dir)
+                or self.provide_from_store_dir(target_dir))
+        if path is not None:
+            return path
         raise MissingUpstreamTarball(self._tarball_name())

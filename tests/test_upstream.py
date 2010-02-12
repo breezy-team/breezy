@@ -20,29 +20,17 @@
 # We have a bit of a problem with testing the actual uscan etc. integration,
 # so just mock them.
 
-import os
-
-from debian_bundle.changelog import Version
-
 from bzrlib.tests import (
         TestCase,
         TestCaseWithTransport,
         )
 from bzrlib.plugins.builddeb.errors import (
-        MissingUpstreamTarball,
         PackageVersionNotPresent,
         )
 from bzrlib.plugins.builddeb.upstream import (
         AptSource,
-        PristineTarSource,
         StackedUpstreamSource,
-        UpstreamProvider,
-        UpstreamSource,
         UScanSource,
-        )
-from bzrlib.plugins.builddeb.util import (
-        get_parent_dir,
-        tarball_name,
         )
 
 
