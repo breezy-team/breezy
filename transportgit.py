@@ -49,13 +49,16 @@ class TransportRepo(BaseRepo):
 
     def __init__(self, transport):
         self.transport = transport
-        if self.transport.has(".git/info/refs"):
-            self.bare = False
-            self._controltransport = self.transport.clone('.git')
-        elif self.transport.has("info/refs"):
-            self.bare = True
-            self._controltransport = self.transport
-        else:
+        try:
+            if self.transport.has(".git/info/refs"):
+                self.bare = False
+                self._controltransport = self.transport.clone('.git')
+            elif self.transport.has("info/refs"):
+                self.bare = True
+                self._controltransport = self.transport
+            else:
+                raise NotGitRepository(self.transport)
+        except NoSuchFile:
             raise NotGitRepository(self.transport)
         object_store = TransportObjectStore(
             self._controltransport.clone(OBJECTDIR))
