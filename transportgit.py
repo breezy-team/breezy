@@ -101,10 +101,12 @@ class TransportObjectStore(PackBasedObjectStore):
         self.pack_transport = self.transport.clone(PACKDIR)
 
     def _load_packs(self):
-        suffix_len = len(".pack")
         ret = []
         for line in self.transport.get('info/packs').readlines():
-            (kind, name) = line.rstrip("\n").split(" ", 1)
+            line = line.rstrip("\n")
+            if not line:
+                continue
+            (kind, name) = line.split(" ", 1)
             if kind != "P":
                 continue
             if name.startswith("pack-") and name.endswith(".pack"):
