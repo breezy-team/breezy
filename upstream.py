@@ -414,7 +414,7 @@ class UpstreamProvider(object):
             info("Upstream tarball already exists in build directory, "
                     "using that")
             return in_target
-        if self.already_exists_in_store() is not None:
+        if self.already_exists_in_store() is None:
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             try:
@@ -448,6 +448,7 @@ class UpstreamProvider(object):
         if path is not None:
             repack_tarball(path, os.path.basename(path),
                     target_dir=target_dir, force_gz=False)
+            return path
         return path
 
     def _tarball_names(self):

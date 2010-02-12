@@ -1691,7 +1691,8 @@ class DistributionBranch(object):
                        os.path.abspath(dest_filename)]
             try:
                 proc = Popen(command, stdin=PIPE, cwd=dest,
-                        preexec_fn=subprocess_setup)
+                        preexec_fn=subprocess_setup, stdout=PIPE,
+                        stderr=STDOUT)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     raise PristineTarError("pristine-tar is not installed")
@@ -1699,7 +1700,7 @@ class DistributionBranch(object):
                     raise
             (stdout, stderr) = proc.communicate(delta)
             if proc.returncode != 0:
-                raise PristineTarError("Generating tar from delta failed: %s" % stderr)
+                raise PristineTarError("Generating tar from delta failed: %s" % stdout)
         finally:
             shutil.rmtree(tmpdir)
 
@@ -1717,7 +1718,7 @@ class DistributionBranch(object):
             command = ["pristine-tar", "gendelta", tarball_path, "-"]
             try:
                 proc = Popen(command, stdout=PIPE, cwd=dest,
-                        preexec_fn=subprocess_setup)
+                        preexec_fn=subprocess_setup, stderr=PIPE)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     raise PristineTarError("pristine-tar is not installed")

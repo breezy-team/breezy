@@ -39,7 +39,6 @@ from bzrlib.errors import (
                            FileExists,
                            )
 from bzrlib.transport import get_transport
-from bzrlib import urlutils
 
 from bzrlib.plugins.builddeb.errors import UnsupportedRepackFormat
 from bzrlib.plugins.builddeb.util import open_file, open_file_via_transport
