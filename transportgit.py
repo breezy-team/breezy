@@ -35,15 +35,10 @@ from dulwich.pack import (
     )
 from dulwich.repo import (
     BaseRepo,
-    RefsContainer,
+    DictRefsContainer,
     OBJECTDIR,
-    REFSDIR,
     BASE_DIRECTORIES,
-    SYMREF,
-    check_ref_format,
-    read_packed_refs_with_peeled,
-    read_packed_refs,
-    write_packed_refs,
+    read_info_refs,
     )
 import errno
 
@@ -59,19 +54,21 @@ class TransportRepo(BaseRepo):
 
     def __init__(self, transport):
         self.transport = transport
-        if self.transport.has(urlutils.join(".git", OBJECTDIR)):
+        if self.transport.has(".git/info/refs"):
             self.bare = False
             self._controltransport = self.transport.clone('.git')
-        elif (self.transport.has(OBJECTDIR) and
-              self.transport.has(REFSDIR)):
+        elif self.transport.has("info/refs"):
             self.bare = True
             self._controltransport = self.transport
         else:
             raise NotGitRepository(self.transport)
         object_store = TransportObjectStore(
             self._controltransport.clone(OBJECTDIR))
-        refs = TransportRefsContainer(self._controltransport)
-        super(TransportRepo, self).__init__(object_store, refs)
+        refs = {}
+        refs["HEAD"] = self._controltransport.get_bytes("HEAD").rstrip("\n")
+        refs.update(read_info_refs(self._controltransport.get('info/refs')))
+        super(TransportRepo, self).__init__(object_store, 
+                DictRefsContainer(refs))
 
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.
@@ -145,6 +142,7 @@ class TransportObjectStore(PackBasedObjectStore):
         self.pack_transport = self.transport.clone(PACKDIR)
 
     def _load_packs(self):
+        return []
         pack_files = []
         for name in self.pack_transport.list_dir('.'):
             # TODO: verify that idx exists first
@@ -206,218 +204,3 @@ class TransportObjectStore(PackBasedObjectStore):
             if os.path.getsize(path) > 0:
                 self.move_in_pack(path)
         return f, commit
-
-
-class TransportRefsContainer(RefsContainer):
-    """Refs container that reads refs from a transport."""
-
-    def __init__(self, transport):
-        self.transport = transport
-        self._packed_refs = None
-        self._peeled_refs = {}
-
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.transport)
-
-    def subkeys(self, base):
-        keys = set()
-        for filename in self.transport.clone(base).iter_files_recursive():
-            refname = ("%s/%s" % (base, filename)).strip("/")
-            # check_ref_format requires at least one /, so we prepend the
-            # base before calling it.
-            if check_ref_format("%s/%s" % (base, refname)):
-                keys.add(refname)
-        for key in self.get_packed_refs():
-            if key.startswith(base):
-                keys.add(key[len(base):].strip("/"))
-        return keys
-
-    def allkeys(self):
-        keys = set()
-        if self.transport.has("HEAD"):
-            keys.add("HEAD")
-        for filename in self.transport.clone('refs').iter_files_recursive():
-            refname = ("refs/%s" % filename).strip("/")
-            if check_ref_format(refname):
-                keys.add(refname)
-        keys.update(self.get_packed_refs())
-        return keys
-
-    def get_packed_refs(self):
-        """Get contents of the packed-refs file.
-
-        :return: Dictionary mapping ref names to SHA1s
-
-        :note: Will return an empty dictionary when no packed-refs file is
-            present.
-        """
-        # TODO: invalidate the cache on repacking
-        if self._packed_refs is None:
-            self._packed_refs = {}
-            try:
-                f = self.transport.get('packed-refs')
-            except NoSuchFile:
-                return {}
-            try:
-                first_line = iter(f).next().rstrip()
-                if (first_line.startswith("# pack-refs") and " peeled" in
-                        first_line):
-                    for sha, name, peeled in read_packed_refs_with_peeled(f):
-                        self._packed_refs[name] = sha
-                        if peeled:
-                            self._peeled_refs[name] = peeled
-                else:
-                    f.seek(0)
-                    for sha, name in read_packed_refs(f):
-                        self._packed_refs[name] = sha
-            finally:
-                f.close()
-        return self._packed_refs
-
-    def read_loose_ref(self, name):
-        try:
-            f = self.transport.get(name)
-            try:
-                header = f.read(len(SYMREF))
-                if header == SYMREF:
-                    # Read only the first line
-                    return header + iter(f).next().rstrip("\n")
-                else:
-                    # Read only the first 40 bytes
-                    return header + f.read(40-len(SYMREF))
-            finally:
-                f.close()
-        except NoSuchFile:
-            return None
-
-    def _remove_packed_ref(self, name):
-        if self._packed_refs is None:
-            return
-        filename = os.path.join(self.path, 'packed-refs')
-        # reread cached refs from disk, while holding the lock
-        f = GitFile(filename, 'wb')
-        try:
-            self._packed_refs = None
-            self.get_packed_refs()
-
-            if name not in self._packed_refs:
-                return
-
-            del self._packed_refs[name]
-            if name in self._peeled_refs:
-                del self._peeled_refs[name]
-            write_packed_refs(f, self._packed_refs, self._peeled_refs)
-            f.close()
-        finally:
-            f.abort()
-
-    def set_if_equals(self, name, old_ref, new_ref):
-        """Set a refname to new_ref only if it currently equals old_ref.
-
-        This method follows all symbolic references, and can be used to perform
-        an atomic compare-and-swap operation.
-
-        :param name: The refname to set.
-        :param old_ref: The old sha the refname must refer to, or None to set
-            unconditionally.
-        :param new_ref: The new sha the refname will refer to.
-        :return: True if the set was successful, False otherwise.
-        """
-        try:
-            realname, _ = self._follow(name)
-        except KeyError:
-            realname = name
-        dir_transport = self.transport.clone(urlutils.dirname(realname))
-        dir_transport.create_prefix()
-        f = GitFile(filename, 'wb')
-        try:
-            if old_ref is not None:
-                try:
-                    # read again while holding the lock
-                    orig_ref = self.read_loose_ref(realname)
-                    if orig_ref is None:
-                        orig_ref = self.get_packed_refs().get(realname, None)
-                    if orig_ref != old_ref:
-                        f.abort()
-                        return False
-                except (OSError, IOError):
-                    f.abort()
-                    raise
-            try:
-                f.write(new_ref+"\n")
-            except (OSError, IOError):
-                f.abort()
-                raise
-        finally:
-            f.close()
-        return True
-
-    def add_if_new(self, name, ref):
-        """Add a new reference only if it does not already exist."""
-        self._check_refname(name)
-        ensure_dir_exists(urlutils.dirname(filename))
-        f = GitFile(filename, 'wb')
-        try:
-            if self.transport.has(name) or name in self.get_packed_refs():
-                f.abort()
-                return False
-            try:
-                f.write(ref+"\n")
-            except (OSError, IOError):
-                f.abort()
-                raise
-        finally:
-            f.close()
-        return True
-
-    def __setitem__(self, name, ref):
-        """Set a reference name to point to the given SHA1.
-
-        This method follows all symbolic references.
-
-        :note: This method unconditionally overwrites the contents of a reference
-            on disk. To update atomically only if the reference has not changed
-            on disk, use set_if_equals().
-        """
-        self.set_if_equals(name, None, ref)
-
-    def remove_if_equals(self, name, old_ref):
-        """Remove a refname only if it currently equals old_ref.
-
-        This method does not follow symbolic references. It can be used to
-        perform an atomic compare-and-delete operation.
-
-        :param name: The refname to delete.
-        :param old_ref: The old sha the refname must refer to, or None to delete
-            unconditionally.
-        :return: True if the delete was successful, False otherwise.
-        """
-        self._check_refname(name)
-        filename = self.refpath(name)
-        ensure_dir_exists(os.path.dirname(filename))
-        f = GitFile(filename, 'wb')
-        try:
-            if old_ref is not None:
-                orig_ref = self.read_loose_ref(name)
-                if orig_ref is None:
-                    orig_ref = self.get_packed_refs().get(name, None)
-                if orig_ref != old_ref:
-                    return False
-            # may only be packed
-            if os.path.exists(filename):
-                os.remove(filename)
-            self._remove_packed_ref(name)
-        finally:
-            # never write, we just wanted the lock
-            f.abort()
-        return True
-
-    def __delitem__(self, name):
-        """Remove a refname.
-
-        This method does not follow symbolic references.
-        :note: This method unconditionally deletes the contents of a reference
-            on disk. To delete atomically only if the reference has not changed
-            on disk, use set_if_equals().
-        """
-        self.remove_if_equals(name, None)
