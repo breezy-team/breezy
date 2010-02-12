@@ -162,8 +162,6 @@ class LocalGitRepository(GitRepository):
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
         """Lookup a revision id.
 
-        :param revid: Bazaar revision id.
-        :return: Tuple with git revisionid and mapping.
         """
         if mapping is None:
             mapping = self.get_mapping()
