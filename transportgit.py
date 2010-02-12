@@ -19,6 +19,7 @@
 
 from dulwich.errors import (
     NotGitRepository,
+    NoIndexPresent,
     )
 from dulwich.objects import (
     ShaFile,
@@ -28,7 +29,9 @@ from dulwich.object_store import (
     PACKDIR,
     )
 from dulwich.pack import (
+    PackData,
     Pack,
+    load_pack_index_file,
     )
 from dulwich.repo import (
     BaseRepo,
@@ -42,6 +45,7 @@ from dulwich.repo import (
     read_packed_refs,
     write_packed_refs,
     )
+import errno
 
 from bzrlib import (
     urlutils,
@@ -90,7 +94,14 @@ class TransportRepo(BaseRepo):
     def open_index(self):
         """Open the index for this repository."""
         from dulwich.index import Index
-        return Index(self._controltransport.local_abspath('index'))
+        try:
+            return Index(self._controltransport.local_abspath('index'))
+        except NoSuchFile:
+            raise NoIndexPresent()
+        except (IOError, OSError), e:
+            if e.errno == errno.ENOENT:
+                raise NoIndexPresent()
+            raise
 
     def __repr__(self):
         return "<TransportRepo for %r>" % self.transport
@@ -140,10 +151,17 @@ class TransportObjectStore(PackBasedObjectStore):
             if name.startswith("pack-") and name.endswith(".pack"):
                 # TODO: if stat fails, just use None - after all
                 # the st_mtime is just used for sorting
-                pack_files.append((self.pack_transport.stat(name).st_mtime, name))
+                st = self.pack_transport.stat(name)
+                pack_files.append((st.st_mtime, st.st_size, name))
         pack_files.sort(reverse=True)
         suffix_len = len(".pack")
-        return [Pack(self.pack_transport.get(f)[:-suffix_len]) for _, f in pack_files]
+        ret = []
+        for _, size, f in pack_files:
+            pd = PackData.from_file(self.pack_transport.get(f), size)
+            idxname = f.replace(".pack", ".idx")
+            idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
+            ret.append(Pack.from_objects(pd, idx))
+        return ret
 
     def _iter_loose_objects(self):
         for base in self.transport.list_dir('.'):
@@ -158,7 +176,7 @@ class TransportObjectStore(PackBasedObjectStore):
     def _get_loose_object(self, sha):
         path = '%s/%s' % self._split_loose_object(sha)
         try:
-            return ShaFile.from_file(self.transport.get(path))
+            return ShaFile._parse_file(self.transport.get(path).read())
         except NoSuchFile:
             return None
 
@@ -203,15 +221,12 @@ class TransportRefsContainer(RefsContainer):
 
     def subkeys(self, base):
         keys = set()
-        path = self.refpath(base)
-        for root, dirs, files in os.walk(path):
-            dir = root[len(path):].strip("/")
-            for filename in files:
-                refname = ("%s/%s" % (dir, filename)).strip("/")
-                # check_ref_format requires at least one /, so we prepend the
-                # base before calling it.
-                if check_ref_format("%s/%s" % (base, refname)):
-                    keys.add(refname)
+        for filename in self.transport.clone(base).iter_files_recursive():
+            refname = ("%s/%s" % (base, filename)).strip("/")
+            # check_ref_format requires at least one /, so we prepend the
+            # base before calling it.
+            if check_ref_format("%s/%s" % (base, refname)):
+                keys.add(refname)
         for key in self.get_packed_refs():
             if key.startswith(base):
                 keys.add(key[len(base):].strip("/"))
@@ -219,15 +234,12 @@ class TransportRefsContainer(RefsContainer):
 
     def allkeys(self):
         keys = set()
-        if self.transport.has(self.refpath("HEAD")):
+        if self.transport.has("HEAD"):
             keys.add("HEAD")
-        path = self.refpath("")
-        for root, dirs, files in os.walk(self.refpath("refs")):
-            dir = root[len(path):].strip("/")
-            for filename in files:
-                refname = ("%s/%s" % (dir, filename)).strip("/")
-                if check_ref_format(refname):
-                    keys.add(refname)
+        for filename in self.transport.clone('refs').iter_files_recursive():
+            refname = ("refs/%s" % filename).strip("/")
+            if check_ref_format(refname):
+                keys.add(refname)
         keys.update(self.get_packed_refs())
         return keys
 
@@ -242,13 +254,10 @@ class TransportRefsContainer(RefsContainer):
         # TODO: invalidate the cache on repacking
         if self._packed_refs is None:
             self._packed_refs = {}
-            path = os.path.join(self.path, 'packed-refs')
             try:
-                f = GitFile(path, 'rb')
-            except IOError, e:
-                if e.errno == errno.ENOENT:
-                    return {}
-                raise
+                f = self.transport.get('packed-refs')
+            except NoSuchFile:
+                return {}
             try:
                 first_line = iter(f).next().rstrip()
                 if (first_line.startswith("# pack-refs") and " peeled" in
