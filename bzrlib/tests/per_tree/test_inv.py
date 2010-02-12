@@ -178,6 +178,11 @@ class TestInventory(per_tree.TestCaseWithTree):
         work_tree = self.make_branch_and_tree('.')
         self.build_tree(['test/', 'test/file', 'Test'])
         work_tree.add(['test/', 'test/file', 'Test'])
+
+        test_tree = self._convert_tree(work_tree)
+        test_tree.lock_read()
+        self.addCleanup(test_tree.unlock)
+
         self.assertEqual(['test', 'test/file', 'Test', 'test/foo', 'Test/foo'],
-            work_tree.get_canonical_inventory_paths(
+            test_tree.get_canonical_inventory_paths(
                 ['test', 'test/file', 'Test', 'test/foo', 'Test/foo']))
