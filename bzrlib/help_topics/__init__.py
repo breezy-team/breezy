@@ -269,6 +269,9 @@ shell.example.com, then::
   bzr+ssh://remote@shell.example.com/~/myproject/trunk
 
 would refer to ``/home/remote/myproject/trunk``.
+
+Many commands that accept URLs also accept location aliases too.  See
+::doc:`location-alias-help`.
 """
 
     return out
@@ -758,6 +761,8 @@ topic_registry.register('conflict-types', _load_from_file,
                         'Types of conflicts and what to do about them')
 topic_registry.register('debug-flags', _load_from_file,
                         'Options to show or record debug information')
+topic_registry.register('location-alias', _load_from_file,
+                        'Aliases for remembered locations')
 topic_registry.register('log-formats', _load_from_file,
                         'Details on the logging formats available')
 

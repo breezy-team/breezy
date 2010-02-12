@@ -315,6 +315,20 @@ Testing
   (Martin Pool)
 
 
+bzr 2.0.5 (not released yet)
+############################
+
+:Codename:
+:2.0.5:
+
+Bug Fixes
+*********
+
+* If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
+  error, report that error rather than failing with an unhelpful
+  ``UnboundLocalError``.
+  (Andrew Bennetts, #423563)
+
 bzr 2.0.4
 #########
 
