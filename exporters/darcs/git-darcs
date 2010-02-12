@@ -42,7 +42,8 @@ add()
 		echo "There is already a darcs repo with that name"
 		exit
 	fi
-	if [ ! -d $location/_darcs ]; then
+	repo=$location/_darcs
+	if [ ! -d $repo ] && ! wget --quiet --spider $repo; then
 		echo "Remote is not a darcs repository"
 		exit
 	fi
