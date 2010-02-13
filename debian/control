@@ -1,5 +1,5 @@
 Source: bzr-builddeb
-Section: devel
+Section: vcs
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>, James Westby <james.westby@ubuntu.com>, Jelmer Vernooij <jelmer@debian.org>

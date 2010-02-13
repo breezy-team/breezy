@@ -1,3 +1,9 @@
+bzr-builddeb (2.4) UNRELEASED; urgency=low
+
+  * Switch section to vcs.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 13 Feb 2010 01:16:00 +0100
+
 bzr-builddeb (2.3) experimental; urgency=low
 
   [ James Westby ]
