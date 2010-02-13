@@ -109,7 +109,7 @@ def find_touching_revisions(branch, file_id):
     last_path = None
     revno = 1
     for revision_id in branch.revision_history():
-        this_inv = branch.repository.get_revision_inventory(revision_id)
+        this_inv = branch.repository.get_inventory(revision_id)
         if file_id in this_inv:
             this_ie = this_inv[file_id]
             this_path = this_inv.id2path(file_id)
