@@ -70,6 +70,11 @@ Bug Fixes
   prevents ``bzr status --short`` from crashing when those files are
   present.  (John Arbash Meinel, #303275)
 
+* ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
+  of ``backup.bzr``. This directory is ignored by bzr commands such as
+  ``add``.
+  (Parth Malwankar, #335033, #300001)
+
 API Changes
 ***********
 
