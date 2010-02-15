@@ -575,6 +575,15 @@ class BzrDir(object):
 
         :return: Tuple with old path name and new path name
         """
+        def name_gen(base='backup.bzr'):
+            counter = 1
+            name = "%s.~%d~" % (base, counter)
+            while os.path.exists(name):
+                counter += 1
+                name = "%s.~%d~" % (base, counter)
+            return name
+
+        BACKUP_DIR=name_gen()
         pb = ui.ui_factory.nested_progress_bar()
         try:
             # FIXME: bug 300001 -- the backup fails if the backup directory
@@ -584,9 +593,9 @@ class BzrDir(object):
             # FIXME: bug 262450 -- the backup directory should have the same
             # permissions as the .bzr directory (probably a bug in copy_tree)
             old_path = self.root_transport.abspath('.bzr')
-            new_path = self.root_transport.abspath('backup.bzr')
+            new_path = self.root_transport.abspath(BACKUP_DIR)
             ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))
-            self.root_transport.copy_tree('.bzr', 'backup.bzr')
+            self.root_transport.copy_tree('.bzr', BACKUP_DIR)
             return (old_path, new_path)
         finally:
             pb.finished()
