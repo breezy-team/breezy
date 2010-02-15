@@ -147,6 +147,31 @@ finished
         self.run_bzr('upgrade --format=knit repo')
 
 
+    def test_upgrade_with_existing_backup_dir(self):
+        # users can force an upgrade to metadir format.
+        self.make_format_5_branch()
+        url = get_transport(self.get_url('format_5_branch')).base
+        # check --format takes effect
+        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        backup_dir1 = 'backup.bzr.~1~'
+        backup_dir2 = 'backup.bzr.~2~'
+        get_transport(self.get_url('format_5_branch')).mkdir(backup_dir1)
+        (out, err) = self.run_bzr(
+            ['upgrade', '--format=metaweave', url])
+        self.assertEqualDiff("""starting upgrade of %s
+making backup of %s.bzr
+  to %s%s
+starting upgrade from format 5 to 6
+adding prefixes to weaves
+adding prefixes to revision-store
+starting upgrade from format 6 to metadir
+finished
+""" % (url, url, url, backup_dir2), out)
+        self.assertEqualDiff("", err)
+        self.assertTrue(isinstance(
+            bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
+            bzrdir.BzrDirMetaFormat1))
+
 class SFTPTests(TestCaseWithSFTPServer):
     """Tests for upgrade over sftp."""
 
