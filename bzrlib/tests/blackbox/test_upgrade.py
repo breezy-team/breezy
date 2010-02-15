@@ -101,17 +101,18 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         url = get_transport(self.get_url('format_5_branch')).base
         # check --format takes effect
         bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of %s.bzr
-  to %sbackup.bzr
+  to %s%s
 starting upgrade from format 5 to 6
 adding prefixes to weaves
 adding prefixes to revision-store
 starting upgrade from format 6 to metadir
 finished
-""" % (url, url, url), out)
+""" % (url, url, url, backup_dir), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
             bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
@@ -124,15 +125,16 @@ finished
         url = get_transport(self.get_url('metadir_weave_branch')).base
         # check --format takes effect
         bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=knit', url])
         self.assertEqualDiff("""starting upgrade of %s
 making backup of %s.bzr
-  to %sbackup.bzr
+  to %s%s
 starting repository conversion
 repository converted
 finished
-""" % (url, url, url), out)
+""" % (url, url, url, backup_dir), out)
         self.assertEqualDiff("", err)
         converted_dir = bzrdir.BzrDir.open(self.get_url('metadir_weave_branch'))
         self.assertTrue(isinstance(converted_dir._format,
@@ -153,14 +155,15 @@ class SFTPTests(TestCaseWithSFTPServer):
         t = get_transport(self.get_url())
         url = t.base
         out, err = self.run_bzr(['upgrade', '--format=knit', url])
+        backup_dir = 'backup.bzr.~1~'
         self.assertEqualDiff("""starting upgrade of %s
 making backup of %s.bzr
-  to %sbackup.bzr
+  to %s%s
 starting upgrade from format 6 to metadir
 starting repository conversion
 repository converted
 finished
-""" % (url, url, url), out)
+""" % (url, url, url,backup_dir), out)
         self.assertEqual('', err)
 
 
