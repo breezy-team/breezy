@@ -380,20 +380,16 @@ class BzrDir(object):
             except errors.NoRepositoryPresent:
                 pass
             else:
-                return False, (None, repository)
-            try:
-                branch = bzrdir.open_branch()
-            except errors.NotBranchError:
-                return True, (None, None)
-            else:
-                return True, (branch, None)
-        branches = []
-        for branch, repo in BzrDir.find_bzrdirs(transport, evaluate=evaluate):
+                return False, ([], repository)
+            return True, (bzrdir.list_branches(), None)
+        ret = []
+        for branches, repo in BzrDir.find_bzrdirs(transport,
+                                                  evaluate=evaluate):
             if repo is not None:
-                branches.extend(repo.find_branches())
-            if branch is not None:
-                branches.append(branch)
-        return branches
+                ret.extend(repo.find_branches())
+            if branches is not None:
+                ret.extend(branches)
+        return ret
 
     def destroy_repository(self):
         """Destroy the repository in this BzrDir"""
