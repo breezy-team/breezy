@@ -354,6 +354,15 @@ class BzrDir(object):
                 for subdir in sorted(subdirs, reverse=True):
                     pending.append(current_transport.clone(subdir))
 
+    def list_branches(self):
+        """List all branches local to this control directory.
+
+        """
+        try:
+            return [self.open_branch()]
+        except errors.NotBranchError:
+            return []
+
     @staticmethod
     def find_branches(transport):
         """Find all branches under a transport.
