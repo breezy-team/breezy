@@ -578,12 +578,12 @@ class BzrDir(object):
         def name_gen(base='backup.bzr'):
             counter = 1
             name = "%s.~%d~" % (base, counter)
-            while os.path.exists(name):
+            while self.root_transport.has(name):
                 counter += 1
                 name = "%s.~%d~" % (base, counter)
             return name
 
-        BACKUP_DIR=name_gen()
+        backup_dir=name_gen()
         pb = ui.ui_factory.nested_progress_bar()
         try:
             # FIXME: bug 300001 -- the backup fails if the backup directory
@@ -593,9 +593,9 @@ class BzrDir(object):
             # FIXME: bug 262450 -- the backup directory should have the same
             # permissions as the .bzr directory (probably a bug in copy_tree)
             old_path = self.root_transport.abspath('.bzr')
-            new_path = self.root_transport.abspath(BACKUP_DIR)
+            new_path = self.root_transport.abspath(backup_dir)
             ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))
-            self.root_transport.copy_tree('.bzr', BACKUP_DIR)
+            self.root_transport.copy_tree('.bzr', backup_dir)
             return (old_path, new_path)
         finally:
             pb.finished()
