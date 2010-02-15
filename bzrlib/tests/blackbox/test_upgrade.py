@@ -150,12 +150,13 @@ finished
     def test_upgrade_with_existing_backup_dir(self):
         # users can force an upgrade to metadir format.
         self.make_format_5_branch()
-        url = get_transport(self.get_url('format_5_branch')).base
+        transport = get_transport(self.get_url('format_5_branch'))
+        url = transport.base
         # check --format takes effect
         bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         backup_dir1 = 'backup.bzr.~1~'
         backup_dir2 = 'backup.bzr.~2~'
-        get_transport(self.get_url('format_5_branch')).mkdir(backup_dir1)
+        transport.mkdir(backup_dir1)
         (out, err) = self.run_bzr(
             ['upgrade', '--format=metaweave', url])
         self.assertEqualDiff("""starting upgrade of %s
@@ -171,6 +172,7 @@ finished
         self.assertTrue(isinstance(
             bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
             bzrdir.BzrDirMetaFormat1))
+        self.assertTrue(transport.has(backup_dir2))
 
 class SFTPTests(TestCaseWithSFTPServer):
     """Tests for upgrade over sftp."""
