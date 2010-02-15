@@ -355,7 +355,7 @@ class BzrDir(object):
                     pending.append(current_transport.clone(subdir))
 
     def list_branches(self):
-        """List all branches local to this control directory.
+        """Return a sequence of all branches local to this control directory.
 
         """
         try:
@@ -3049,11 +3049,7 @@ class ConvertMetaToMeta(Converter):
                 ui.ui_factory.note('starting repository conversion')
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
-        try:
-            branch = self.bzrdir.open_branch()
-        except errors.NotBranchError:
-            pass
-        else:
+        for branch in self.bzrdir.list_branches():
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
