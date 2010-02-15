@@ -229,15 +229,6 @@ class ForeignRepository(Repository):
         """See Repository._get_inventory_xml()."""
         return self._serialise_inventory(self.get_inventory(revision_id))
 
-    def get_revision_xml(self, revision_id):
-        """Return the XML representation of a revision.
-
-        :param revision_id: Revision for which to return the XML.
-        :return: XML string
-        """
-        return self._serializer.write_revision_to_string(
-            self.get_revision(revision_id))
-
 
 class ForeignBranch(Branch):
     """Branch that exists in a foreign version control system."""
