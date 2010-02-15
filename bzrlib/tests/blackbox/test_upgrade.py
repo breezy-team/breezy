@@ -148,14 +148,14 @@ finished
 
 
     def test_upgrade_with_existing_backup_dir(self):
-        # users can force an upgrade to metadir format.
         self.make_format_5_branch()
         transport = get_transport(self.get_url('format_5_branch'))
         url = transport.base
-        # check --format takes effect
         bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         backup_dir1 = 'backup.bzr.~1~'
         backup_dir2 = 'backup.bzr.~2~'
+        # explicitly create backup_dir1. bzr should create the .~2~ directory
+        # as backup
         transport.mkdir(backup_dir1)
         (out, err) = self.run_bzr(
             ['upgrade', '--format=metaweave', url])
