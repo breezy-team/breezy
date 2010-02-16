@@ -23,7 +23,7 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.osutils import pathjoin
+from bzrlib.osutils import pathjoin, isdir
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -121,6 +121,14 @@ class TestVersioning(TestCaseInTempDir):
         from bzrlib.check import check
         check(b, False)
 
+    def test_mkdir_invalid(self):
+        """Basic 'bzr mkdir' operation should fail if !branch. Fix #138600"""
+
+        self.run_bzr('mkdir abc', retcode=3)
+        print "isdir foo returns: ", isdir('foo')
+        print "isdir abc returns: ", isdir('abc')
+        self.assertFalse(isdir('foo'))
+        self.assertFalse(isdir('abc'))
 
 class SubdirCommit(TestCaseWithTransport):
 
