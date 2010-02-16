@@ -144,6 +144,18 @@ finished
         self.run_bzr('init-repository --format=metaweave repo')
         self.run_bzr('upgrade --format=knit repo')
 
+    def test_upgrade_permission_check(self):
+        # test for #262450
+        # permissions for .bzr should be retained in backup.bzr
+        import os, stat
+        old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+        backup_dir = 'backup.bzr'
+        self.run_bzr('init --format=1.6')
+        os.chmod('.bzr', old_perms)
+        self.run_bzr('upgrade')
+        new_perms = os.stat('backup.bzr').st_mode & 0777
+        self.assertTrue(new_perms == old_perms)
+
 
 class SFTPTests(TestCaseWithSFTPServer):
     """Tests for upgrade over sftp."""
