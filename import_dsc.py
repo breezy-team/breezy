@@ -1450,7 +1450,7 @@ class DistributionBranch(object):
         rev = self.branch.repository.get_revision(revid)
         if 'deb-pristine-delta' in rev.properties:
             return 'gz'
-        elif 'deb-properties-delta-bz2' in rev.properties:
+        elif 'deb-pristine-delta-bz2' in rev.properties:
             return 'bz2'
         assert self.has_pristine_tar_delta(revid)
         raise AssertionError("Not handled new delta type in "

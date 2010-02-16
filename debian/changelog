@@ -1,3 +1,9 @@
+bzr-builddeb (2.4) UNRELEASED; urgency=low
+
+  * Correct typo that causes packages with .orig.tar.bz2 to fail to build.
+
+ -- James Westby <james.westby@ubuntu.com>  Tue, 16 Feb 2010 18:53:34 +0000
+
 bzr-builddeb (2.3) UNRELEASED; urgency=low
 
   * Upload to lucid.
