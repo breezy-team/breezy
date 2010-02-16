@@ -586,8 +586,6 @@ class BzrDir(object):
             # already exists, but it should instead either remove it or make
             # a new backup directory.
             #
-            # FIXME: bug 262450 -- the backup directory should have the same
-            # permissions as the .bzr directory (probably a bug in copy_tree)
             old_path = self.root_transport.abspath('.bzr')
             new_path = self.root_transport.abspath('backup.bzr')
             ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))

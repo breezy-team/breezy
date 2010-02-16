@@ -1060,7 +1060,8 @@ class Transport(object):
         """
         source = self.clone(from_relpath)
         target = self.clone(to_relpath)
-        target.mkdir('.')
+        stat = self.stat(from_relpath)
+        target.mkdir('.', stat.st_mode)
         source.copy_tree_to_transport(target)
 
     def copy_tree_to_transport(self, to_transport):
