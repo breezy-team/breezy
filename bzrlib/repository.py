@@ -1895,23 +1895,6 @@ class Repository(_RelockDebugMixin):
                 rev = self._serializer.read_revision_from_string(text)
                 yield (revid, rev)
 
-    @needs_read_lock
-    def get_revision_xml(self, revision_id):
-        # TODO: jam 20070210 This shouldn't be necessary since get_revision
-        #       would have already do it.
-        # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
-        # TODO: this can't just be replaced by:
-        # return self._serializer.write_revision_to_string(
-        #     self.get_revision(revision_id))
-        # as cStringIO preservers the encoding unlike write_revision_to_string
-        # or some other call down the path.
-        rev = self.get_revision(revision_id)
-        rev_tmp = cStringIO.StringIO()
-        # the current serializer..
-        self._serializer.write_revision(rev, rev_tmp)
-        rev_tmp.seek(0)
-        return rev_tmp.getvalue()
-
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
 

@@ -340,6 +340,14 @@ class cmd_cat_revision(Command):
     # cat-revision is more for frontends so should be exact
     encoding = 'strict'
 
+    def print_revision(self, revisions, revid):
+        stream = revisions.get_record_stream([(revid,)], 'unordered', True)
+        record = stream.next()
+        if record.storage_kind == 'absent':
+            raise errors.NoSuchRevision(revisions, revid)
+        revtext = record.get_bytes_as('fulltext')
+        self.outf.write(revtext.decode('utf-8'))
+
     @display_command
     def run(self, revision_id=None, revision=None):
         if revision_id is not None and revision is not None:
@@ -350,23 +358,32 @@ class cmd_cat_revision(Command):
                                          ' --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
 
-        # TODO: jam 20060112 should cat-revision always output utf-8?
-        if revision_id is not None:
-            revision_id = osutils.safe_revision_id(revision_id, warn=False)
-            try:
-                self.outf.write(b.repository.get_revision_xml(revision_id).decode('utf-8'))
-            except errors.NoSuchRevision:
-                msg = "The repository %s contains no revision %s." % (b.repository.base,
-                    revision_id)
-                raise errors.BzrCommandError(msg)
-        elif revision is not None:
-            for rev in revision:
-                if rev is None:
-                    raise errors.BzrCommandError('You cannot specify a NULL'
-                                                 ' revision.')
-                rev_id = rev.as_revision_id(b)
-                self.outf.write(b.repository.get_revision_xml(rev_id).decode('utf-8'))
+        revisions = b.repository.revisions
+        if revisions is None:
+            raise errors.BzrCommandError('Repository %r does not support '
+                'access to raw revision texts')
 
+        b.repository.lock_read()
+        try:
+            # TODO: jam 20060112 should cat-revision always output utf-8?
+            if revision_id is not None:
+                revision_id = osutils.safe_revision_id(revision_id, warn=False)
+                try:
+                    self.print_revision(revisions, revision_id)
+                except errors.NoSuchRevision:
+                    msg = "The repository %s contains no revision %s." % (
+                        b.repository.base, revision_id)
+                    raise errors.BzrCommandError(msg)
+            elif revision is not None:
+                for rev in revision:
+                    if rev is None:
+                        raise errors.BzrCommandError(
+                            'You cannot specify a NULL revision.')
+                    rev_id = rev.as_revision_id(b)
+                    self.print_revision(revisions, rev_id)
+        finally:
+            b.repository.unlock()
+        
 
 class cmd_dump_btree(Command):
     """Dump the contents of a btree index file to stdout.
