@@ -376,30 +376,29 @@ class InterFromGitBranch(branch.GenericInterBranch):
         graph=None, limit=None):
         """See InterBranch.update_revisions()."""
         interrepo = self._get_interrepo(self.source, self.target)
-        self._head = None
-        self._last_revid = None
         def determine_wants(heads):
             if not self.source.name in heads:
                 raise NoSuchRef(self.source.name, heads.keys())
             if stop_revision is not None:
-                self._last_revid = stop_revision
-                self._head, mapping = self.source.repository.lookup_bzr_revision_id(
+                _last_revid = stop_revision
+                _head, mapping = self.source.repository.lookup_bzr_revision_id(
                     stop_revision)
             else:
-                self._head = heads[self.source.name]
-                self._last_revid = \
-                    self.source.mapping.revision_id_foreign_to_bzr(self._head)
-            if self.target.repository.has_revision(self._last_revid):
+                _head = heads[self.source.name]
+                _last_revid = self.source.mapping.revision_id_foreign_to_bzr(
+                    _head)
+            if self.target.repository.has_revision(_last_revid):
                 return []
-            return [self._head]
-        _, r = interrepo.fetch_objects(
+            return [_head]
+        _, _head = interrepo.fetch_objects(
             determine_wants, self.source.mapping, limit=limit)
-        self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(r)
+        _last_revid = self.source.mapping.revision_id_foreign_to_bzr(_head)
         if overwrite:
             prev_last_revid = None
         else:
             prev_last_revid = self.target.last_revision()
-        self.target.generate_revision_history(self._last_revid, prev_last_revid)
+        self.target.generate_revision_history(_last_revid, prev_last_revid)
+        return _head
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,
@@ -432,9 +431,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
             graph = self.target.repository.get_graph(self.source.repository)
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
-            self.update_revisions(stop_revision, overwrite=overwrite,
+            _head = self.update_revisions(stop_revision, overwrite=overwrite,
                 graph=graph, limit=limit)
-            result.new_git_head = self._head
+            result.new_git_head = _head
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
                 overwrite)
             result.new_revno, result.new_revid = self.target.last_revision_info()
@@ -457,8 +456,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
         result.target_branch = self.target
         graph = self.target.repository.get_graph(self.source.repository)
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        self.update_revisions(stop_revision, overwrite=overwrite, graph=graph)
-        result.new_git_head = self._head
+        _head = self.update_revisions(
+            stop_revision, overwrite=overwrite, graph=graph)
+        result.new_git_head = _head
         result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
             overwrite)
         result.new_revno, result.new_revid = self.target.last_revision_info()

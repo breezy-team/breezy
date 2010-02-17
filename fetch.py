@@ -398,6 +398,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     pack_hints = []
     if limit is not None:
         revision_ids = revision_ids[:limit]
+    last_imported = None
     for offset in range(0, len(revision_ids), batch_size):
         repo.start_write_group()
         try:
