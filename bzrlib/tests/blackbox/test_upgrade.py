@@ -23,6 +23,7 @@ from bzrlib import (
 from bzrlib.tests import (
     TestCaseInTempDir,
     TestCaseWithTransport,
+    PosixOSFeature,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
@@ -145,8 +146,8 @@ finished
         self.run_bzr('upgrade --format=knit repo')
 
     def test_upgrade_permission_check(self):
-        # test for #262450
-        # permissions for .bzr should be retained in backup.bzr
+        """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
+        self.requireFeature(PosixOSFeature)
         import os, stat
         old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
         backup_dir = 'backup.bzr'

@@ -4405,3 +4405,14 @@ try:
             return result
 except ImportError:
     pass
+
+class _PosixOSFeature(Feature):
+
+    def _probe(self):
+        return os.name == 'posix'
+
+    def feature_name(self):
+        return 'POSIX OS'
+
+PosixOSFeature = _PosixOSFeature()
+
