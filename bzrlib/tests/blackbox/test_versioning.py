@@ -23,10 +23,27 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.osutils import pathjoin, isdir
+from bzrlib.osutils import pathjoin
 from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
+
+
+class TestMkdir(TestCaseWithTransport):
+
+    def test_mkdir_in_repo(self):
+        """'mkdir' operation should fail if !branch. Fix #138600"""
+        shared_repo = self.make_repository('./foobar')
+        self.run_bzr('mkdir foobar/abc', retcode=3)
+        self.failIfExists('foobar/abc')
+
+    def test_mkdir_inside_invalid_dir(self):
+        """'mkdir' operation should fail if !branch. Fix bug #138600"""
+        dir = pathjoin('.', 'invalid_dir0')
+        newdir = pathjoin(dir, 'abc')
+        os.mkdir(dir)
+        self.run_bzr('mkdir abc', working_dir=dir, retcode=3)
+        self.failIfExists(newdir)
 
 
 class TestVersioning(TestCaseInTempDir):
@@ -121,14 +138,6 @@ class TestVersioning(TestCaseInTempDir):
         from bzrlib.check import check
         check(b, False)
 
-    def test_mkdir_invalid(self):
-        """Basic 'bzr mkdir' operation should fail if !branch. Fix #138600"""
-
-        self.run_bzr('mkdir abc', retcode=3)
-        print "isdir foo returns: ", isdir('foo')
-        print "isdir abc returns: ", isdir('abc')
-        self.assertFalse(isdir('foo'))
-        self.assertFalse(isdir('abc'))
 
 class SubdirCommit(TestCaseWithTransport):
 
