@@ -203,6 +203,17 @@ class BranchTests(tests.TestCaseInTempDir):
         inter_branch.pull()
         self.assertEquals(revid2, newbranch.last_revision())
 
+    def test_interbranch_pull_noop(self):
+        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        oldrepo = Repository.open(path)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        newbranch = self.make_branch('g')
+        inter_branch = InterBranch.get(Branch.open(path), newbranch)
+        inter_branch.pull()
+        # This is basically "assertNotRaises"
+        inter_branch.pull()
+        self.assertEquals(revid2, newbranch.last_revision())
+
     def test_interbranch_pull_stop_revision(self):
         path, (gitsha1, gitsha2) = self.make_tworev_branch()
         oldrepo = Repository.open(path)

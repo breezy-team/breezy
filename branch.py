@@ -392,7 +392,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
             return [_head]
         _, _head = interrepo.fetch_objects(
             determine_wants, self.source.mapping, limit=limit)
-        _last_revid = self.source.mapping.revision_id_foreign_to_bzr(_head)
+        if _head is None:
+            _last_revid = self.target.last_revision()
+        else:
+            _last_revid = self.source.mapping.revision_id_foreign_to_bzr(_head)
         if overwrite:
             prev_last_revid = None
         else:
