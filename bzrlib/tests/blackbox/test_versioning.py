@@ -53,6 +53,29 @@ class TestMkdir(TestCaseWithTransport):
         newdir = pathjoin(dir, 'abc')
         self.failIfExists(newdir)
 
+    def test_mkdir_outside_unversioned_dir_within_branch(self):
+        """'mkdir' should fail with unversioned directory inside branch. Bug #138600"""
+        b = 'foobar0'
+        self.make_branch_and_tree(b)
+        os.chdir(b)
+        dir = pathjoin('.', 'unversioned_dir0')
+        newdir = pathjoin(dir, 'abc')
+        os.mkdir(dir)
+        self.run_bzr(['mkdir', newdir], retcode=3)
+        self.failIfExists(newdir)
+
+    def test_mkdir_inside_unversioned_dir_within_branch(self):
+        """'mkdir' should fail cleanly from within an unversioned directory
+        inside branch. Bug #138600"""
+        b = 'foobar1'
+        self.make_branch_and_tree(b)
+        os.chdir(b)
+        dir = pathjoin('.', 'unversioned_dir1')
+        os.mkdir(dir)
+        self.run_bzr('mkdir abc', working_dir=dir, retcode=3)
+        newdir = pathjoin(dir, 'abc')
+        self.failIfExists(newdir)
+
 
 class TestVersioning(TestCaseInTempDir):
 

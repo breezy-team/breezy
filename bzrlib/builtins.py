@@ -684,10 +684,13 @@ class cmd_mkdir(Command):
         for d in dir_list:
             wt, dd = WorkingTree.open_containing(d)
             base = os.path.dirname(dd)
-            wt.add([base])
-            os.mkdir(d)
-            wt.add([dd])
-            self.outf.write('added %s\n' % d)
+            id = wt.path2id(base)
+            if id != None:
+                os.mkdir(d)
+                wt.add([dd])
+                self.outf.write('added %s\n' % d)
+            else:
+                raise errors.NotVersionedError(path=base)
 
 
 class cmd_relpath(Command):
