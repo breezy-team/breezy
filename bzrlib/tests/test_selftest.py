@@ -62,6 +62,7 @@ from bzrlib.symbol_versioning import (
     )
 from bzrlib.tests import (
     features,
+    stub_sftp,
     test_lsprof,
     test_sftp_transport,
     TestUtil,
@@ -1927,7 +1928,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_transport_sftp(self):
         self.requireFeature(features.paramiko)
-        self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
+        self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
         self.check_transport_set(bzrlib.transport.memory.MemoryServer)

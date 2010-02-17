@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -404,16 +404,34 @@ class Tree(object):
             bit_iter = iter(path.split("/"))
             for elt in bit_iter:
                 lelt = elt.lower()
+                new_path = None
                 for child in self.iter_children(cur_id):
                     try:
+                        # XXX: it seem like if the child is known to be in the
+                        # tree, we shouldn't need to go from its id back to
+                        # its path -- mbp 2010-02-11
+                        #
+                        # XXX: it seems like we could be more efficient
+                        # by just directly looking up the original name and
+                        # only then searching all children; also by not
+                        # chopping paths so much. -- mbp 2010-02-11
                         child_base = os.path.basename(self.id2path(child))
-                        if child_base.lower() == lelt:
+                        if (child_base == elt):
+                            # if we found an exact match, we can stop now; if
+                            # we found an approximate match we need to keep
+                            # searching because there might be an exact match
+                            # later.  
                             cur_id = child
-                            cur_path = osutils.pathjoin(cur_path, child_base)
+                            new_path = osutils.pathjoin(cur_path, child_base)
                             break
+                        elif child_base.lower() == lelt:
+                            cur_id = child
+                            new_path = osutils.pathjoin(cur_path, child_base)
                     except NoSuchId:
                         # before a change is committed we can see this error...
                         continue
+                if new_path:
+                    cur_path = new_path
                 else:
                     # got to the end of this directory and no entries matched.
                     # Return what matched so far, plus the rest as specified.

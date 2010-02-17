@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -921,7 +921,7 @@ class TestCase(testtools.TestCase):
             self._lock_check_thorough = False
         else:
             self._lock_check_thorough = True
-            
+
         self.addCleanup(self._check_locks)
         _mod_lock.Lock.hooks.install_named_hook('lock_acquired',
                                                 self._lock_acquired, None)
@@ -4342,6 +4342,23 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         return 'case-insensitive filesystem'
 
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
+
+
+class _CaseSensitiveFilesystemFeature(Feature):
+
+    def _probe(self):
+        if CaseInsCasePresFilenameFeature.available():
+            return False
+        elif CaseInsensitiveFilesystemFeature.available():
+            return False
+        else:
+            return True
+
+    def feature_name(self):
+        return 'case-sensitive filesystem'
+
+# new coding style is for feature instances to be lowercase
+case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
 
 
 # Kept for compatibility, use bzrlib.tests.features.subunit instead
