@@ -154,7 +154,7 @@ finished
         self.run_bzr('init --format=1.6')
         os.chmod('.bzr', old_perms)
         self.run_bzr('upgrade')
-        new_perms = os.stat('backup.bzr').st_mode & 0777
+        new_perms = os.stat(backup_dir).st_mode & 0777
         self.assertTrue(new_perms == old_perms)
 
 
