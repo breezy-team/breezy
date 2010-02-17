@@ -22,8 +22,8 @@ Bug Fixes
   ``UnboundLocalError``.
   (Andrew Bennetts, #423563)
 
-* Running ``bzr`` command without any arguments shows now shows bzr
-  version number along with rest of the output.
+* Running ``bzr`` command without any arguments now shows bzr
+  version number along with rest of the help text.
   (Parth Malwankar, #369501)
 
 Documentation
