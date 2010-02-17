@@ -1027,7 +1027,7 @@ class Repository(_RelockDebugMixin):
 
         :seealso: add_inventory, for the contract.
         """
-        inv_lines = self._serialise_inventory_to_lines(inv)
+        inv_lines = self._serializer.write_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
@@ -2412,12 +2412,6 @@ class Repository(_RelockDebugMixin):
             raise AssertionError('revision id mismatch %s != %s' % (
                 result.revision_id, revision_id))
         return result
-
-    def _serialise_inventory(self, inv):
-        return self._serializer.write_inventory_to_string(inv)
-
-    def _serialise_inventory_to_lines(self, inv):
-        return self._serializer.write_inventory_to_lines(inv)
 
     def get_serializer_format(self):
         return self._serializer.format_num
