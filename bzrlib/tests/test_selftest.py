@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,12 +17,21 @@
 """Tests for the test framework."""
 
 from cStringIO import StringIO
+from doctest import ELLIPSIS
 import os
 import signal
 import sys
 import time
 import unittest
 import warnings
+
+from testtools import MultiTestResult
+from testtools.content_type import ContentType
+from testtools.matchers import (
+    DocTestMatches,
+    Equals,
+    )
+import testtools.tests.helpers
 
 import bzrlib
 from bzrlib import (
@@ -52,7 +61,8 @@ from bzrlib.symbol_versioning import (
     deprecated_method,
     )
 from bzrlib.tests import (
-    SubUnitFeature,
+    features,
+    stub_sftp,
     test_lsprof,
     test_sftp_transport,
     TestUtil,
@@ -78,14 +88,19 @@ class SelftestTests(tests.TestCase):
                           TestUtil._load_module_by_name,
                           'bzrlib.no-name-yet')
 
+
 class MetaTestLog(tests.TestCase):
 
     def test_logging(self):
         """Test logs are captured when a test fails."""
         self.log('a test message')
-        self._log_file.flush()
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              'a test message\n')
+        details = self.getDetails()
+        log = details['log']
+        self.assertThat(log.content_type, Equals(ContentType(
+            "text", "plain", {"charset": "utf8"})))
+        self.assertThat(u"".join(log.iter_text()), Equals(self.get_log()))
+        self.assertThat(self.get_log(),
+            DocTestMatches(u"...a test message\n", ELLIPSIS))
 
 
 class TestUnicodeFilename(tests.TestCase):
@@ -490,9 +505,9 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertEqualStat(real, fake)
 
     def test_assertEqualStat_notequal(self):
-        self.build_tree(["foo", "bar"])
+        self.build_tree(["foo", "longname"])
         self.assertRaises(AssertionError, self.assertEqualStat,
-            os.lstat("foo"), os.lstat("bar"))
+            os.lstat("foo"), os.lstat("longname"))
 
 
 class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
@@ -515,6 +530,14 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         self.assertIsSameRealPath(self.test_dir, self.TEST_ROOT)
         cwd = osutils.getcwd()
         self.assertIsSameRealPath(self.test_dir, cwd)
+
+    def test_BZR_HOME_and_HOME_are_bytestrings(self):
+        """The $BZR_HOME and $HOME environment variables should not be unicode.
+
+        See https://bugs.launchpad.net/bzr/+bug/464174
+        """
+        self.assertIsInstance(os.environ['BZR_HOME'], str)
+        self.assertIsInstance(os.environ['HOME'], str)
 
     def test_make_branch_and_memory_tree(self):
         """In TestCaseWithMemoryTransport we should not make the branch on disk.
@@ -679,7 +702,7 @@ class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        terminal = unittest.TestResult()
+        terminal = testtools.tests.helpers.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
             def a(self):
@@ -687,11 +710,11 @@ class TestProfileResult(tests.TestCase):
             def sample_function(self):
                 pass
         test = Sample("a")
-        test.attrs_to_keep = test.attrs_to_keep + ('_benchcalls',)
         test.run(result)
-        self.assertLength(1, test._benchcalls)
+        case = terminal._events[0][1]
+        self.assertLength(1, case._benchcalls)
         # We must be able to unpack it as the test reporting code wants
-        (_, _, _), stats = test._benchcalls[0]
+        (_, _, _), stats = case._benchcalls[0]
         self.assertTrue(callable(stats.pprint))
 
 
@@ -702,8 +725,10 @@ class TestTestResult(tests.TestCase):
                 descriptions=0,
                 verbosity=1,
                 )
-        test_case.run(result)
-        timed_string = result._testTimeString(test_case)
+        capture = testtools.tests.helpers.ExtendedTestResult()
+        test_case.run(MultiTestResult(result, capture))
+        run_case = capture._events[0][1]
+        timed_string = result._testTimeString(run_case)
         self.assertContainsRe(timed_string, expected_re)
 
     def test_test_reporting(self):
@@ -824,18 +849,18 @@ class TestTestResult(tests.TestCase):
             def stopTestRun(self): pass
             def startTests(self): pass
             def report_test_start(self, test): pass
-            def report_known_failure(self, test, err):
-                self._call = test, err
+            def report_known_failure(self, test, err=None, details=None):
+                self._call = test, 'known failure'
         result = InstrumentedTestResult(None, None, None, None)
-        def test_function():
-            raise tests.KnownFailure('failed!')
-        test = unittest.FunctionTestCase(test_function)
+        class Test(tests.TestCase):
+            def test_function(self):
+                raise tests.KnownFailure('failed!')
+        test = Test("test_function")
         test.run(result)
         # it should invoke 'report_known_failure'.
         self.assertEqual(2, len(result._call))
-        self.assertEqual(test, result._call[0])
-        self.assertEqual(tests.KnownFailure, result._call[1][0])
-        self.assertIsInstance(result._call[1][1], tests.KnownFailure)
+        self.assertEqual(test.id(), result._call[0].id())
+        self.assertEqual('known failure', result._call[1])
         # we dont introspec the traceback, if the rest is ok, it would be
         # exceptional for it not to be.
         # it should update the known_failure_count on the object.
@@ -913,8 +938,10 @@ class TestTestResult(tests.TestCase):
         result.report_unsupported(test, feature)
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
-        self.assertEqual(lines, ['NODEP        0ms',
-                                 "    The feature 'Feature' is not available."])
+        # We don't check for the final '0ms' since it may fail on slow hosts
+        self.assertStartsWith(lines[0], 'NODEP')
+        self.assertEqual(lines[1],
+                         "    The feature 'Feature' is not available.")
 
     def test_unavailable_exception(self):
         """An UnavailableFeature being raised should invoke addNotSupported."""
@@ -926,13 +953,14 @@ class TestTestResult(tests.TestCase):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
         feature = tests.Feature()
-        def test_function():
-            raise tests.UnavailableFeature(feature)
-        test = unittest.FunctionTestCase(test_function)
+        class Test(tests.TestCase):
+            def test_function(self):
+                raise tests.UnavailableFeature(feature)
+        test = Test("test_function")
         test.run(result)
         # it should invoke 'addNotSupported'.
         self.assertEqual(2, len(result._call))
-        self.assertEqual(test, result._call[0])
+        self.assertEqual(test.id(), result._call[0].id())
         self.assertEqual(feature, result._call[1])
         # and not count as an error
         self.assertEqual(0, result.error_count)
@@ -951,7 +979,7 @@ class TestTestResult(tests.TestCase):
                                              verbosity=1)
         test = self.get_passing_test()
         err = (tests.KnownFailure, tests.KnownFailure('foo'), None)
-        result._addKnownFailure(test, err)
+        result.addExpectedFailure(test, err)
         self.assertFalse(result.wasStrictlySuccessful())
         self.assertEqual(None, result._extractBenchmarkTime(test))
 
@@ -1014,26 +1042,27 @@ class TestRunner(tests.TestCase):
     def test_known_failure_failed_run(self):
         # run a test that generates a known failure which should be printed in
         # the final output when real failures occur.
-        def known_failure_test():
-            raise tests.KnownFailure('failed')
+        class Test(tests.TestCase):
+            def known_failure_test(self):
+                self.expectFailure('failed', self.assertTrue, False)
         test = unittest.TestSuite()
-        test.addTest(unittest.FunctionTestCase(known_failure_test))
+        test.addTest(Test("known_failure_test"))
         def failing_test():
-            raise AssertionError('foo')
+            self.fail('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
         lines = stream.getvalue().splitlines()
         self.assertContainsRe(stream.getvalue(),
-            '(?sm)^testing.*$'
+            '(?sm)^bzr selftest.*$'
             '.*'
             '^======================================================================\n'
-            '^FAIL: unittest.FunctionTestCase \\(failing_test\\)\n'
+            '^FAIL: failing_test\n'
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
-            '    raise AssertionError\\(\'foo\'\\)\n'
+            '    self.fail\\(\'foo\'\\)\n'
             '.*'
             '^----------------------------------------------------------------------\n'
             '.*'
@@ -1041,10 +1070,12 @@ class TestRunner(tests.TestCase):
             )
 
     def test_known_failure_ok_run(self):
-        # run a test that generates a known failure which should be printed in the final output.
-        def known_failure_test():
-            raise tests.KnownFailure('failed')
-        test = unittest.FunctionTestCase(known_failure_test)
+        # run a test that generates a known failure which should be printed in
+        # the final output.
+        class Test(tests.TestCase):
+            def known_failure_test(self):
+                self.expectFailure('failed', self.assertTrue, False)
+        test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
         result = self.run_test_runner(runner, test)
@@ -1127,11 +1158,12 @@ class TestRunner(tests.TestCase):
 
     def test_not_applicable(self):
         # run a test that is skipped because it's not applicable
-        def not_applicable_test():
-            raise tests.TestNotApplicable('this test never runs')
+        class Test(tests.TestCase):
+            def not_applicable_test(self):
+                raise tests.TestNotApplicable('this test never runs')
         out = StringIO()
         runner = tests.TextTestRunner(stream=out, verbosity=2)
-        test = unittest.FunctionTestCase(not_applicable_test)
+        test = Test("not_applicable_test")
         result = self.run_test_runner(runner, test)
         self._log_file.write(out.getvalue())
         self.assertTrue(result.wasSuccessful())
@@ -1192,119 +1224,6 @@ class TestRunner(tests.TestCase):
         output_string = output.getvalue()
         self.assertContainsRe(output_string, "--date [0-9.]+")
         self.assertLength(1, self._get_source_tree_calls)
-
-    def assertLogDeleted(self, test):
-        log = test._get_log()
-        self.assertEqual("DELETED log file to reduce memory footprint", log)
-        self.assertEqual('', test._log_contents)
-        self.assertIs(None, test._log_file_name)
-
-    def test_success_log_deleted(self):
-        """Successful tests have their log deleted"""
-
-        class LogTester(tests.TestCase):
-
-            def test_success(self):
-                self.log('this will be removed\n')
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_success')
-        result = self.run_test_runner(runner, test)
-
-        self.assertLogDeleted(test)
-
-    def test_skipped_log_deleted(self):
-        """Skipped tests have their log deleted"""
-
-        class LogTester(tests.TestCase):
-
-            def test_skipped(self):
-                self.log('this will be removed\n')
-                raise tests.TestSkipped()
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_skipped')
-        result = self.run_test_runner(runner, test)
-
-        self.assertLogDeleted(test)
-
-    def test_not_aplicable_log_deleted(self):
-        """Not applicable tests have their log deleted"""
-
-        class LogTester(tests.TestCase):
-
-            def test_not_applicable(self):
-                self.log('this will be removed\n')
-                raise tests.TestNotApplicable()
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_not_applicable')
-        result = self.run_test_runner(runner, test)
-
-        self.assertLogDeleted(test)
-
-    def test_known_failure_log_deleted(self):
-        """Know failure tests have their log deleted"""
-
-        class LogTester(tests.TestCase):
-
-            def test_known_failure(self):
-                self.log('this will be removed\n')
-                raise tests.KnownFailure()
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_known_failure')
-        result = self.run_test_runner(runner, test)
-
-        self.assertLogDeleted(test)
-
-    def test_fail_log_kept(self):
-        """Failed tests have their log kept"""
-
-        class LogTester(tests.TestCase):
-
-            def test_fail(self):
-                self.log('this will be kept\n')
-                self.fail('this test fails')
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_fail')
-        result = self.run_test_runner(runner, test)
-
-        text = sio.getvalue()
-        self.assertContainsRe(text, 'this will be kept')
-        self.assertContainsRe(text, 'this test fails')
-
-        log = test._get_log()
-        self.assertContainsRe(log, 'this will be kept')
-        self.assertEqual(log, test._log_contents)
-
-    def test_error_log_kept(self):
-        """Tests with errors have their log kept"""
-
-        class LogTester(tests.TestCase):
-
-            def test_error(self):
-                self.log('this will be kept\n')
-                raise ValueError('random exception raised')
-
-        sio = StringIO()
-        runner = tests.TextTestRunner(stream=sio)
-        test = LogTester('test_error')
-        result = self.run_test_runner(runner, test)
-
-        text = sio.getvalue()
-        self.assertContainsRe(text, 'this will be kept')
-        self.assertContainsRe(text, 'random exception raised')
-
-        log = test._get_log()
-        self.assertContainsRe(log, 'this will be kept')
-        self.assertEqual(log, test._log_contents)
 
     def test_startTestRun(self):
         """run should call result.startTestRun()"""
@@ -1475,6 +1394,7 @@ class TestTestCase(tests.TestCase):
         self.assertEqual(set(['original-state']), bzrlib.debug.debug_flags)
 
     def make_test_result(self):
+        """Get a test result that writes to the test log file."""
         return tests.TextTestResult(self._log_file, descriptions=0, verbosity=1)
 
     def inner_test(self):
@@ -1488,6 +1408,7 @@ class TestTestCase(tests.TestCase):
         result = self.make_test_result()
         self.inner_test.run(result)
         note("outer finish")
+        self.addCleanup(osutils.delete_any, self._log_file_name)
 
     def test_trace_nesting(self):
         # this tests that each test case nests its trace facility correctly.
@@ -1505,7 +1426,6 @@ class TestTestCase(tests.TestCase):
         outer_test = TestTestCase("outer_child")
         result = self.make_test_result()
         outer_test.run(result)
-        self.addCleanup(osutils.delete_any, outer_test._log_file_name)
         self.assertEqual(original_trace, bzrlib.trace._trace_file)
 
     def method_that_times_a_bit_twice(self):
@@ -1566,8 +1486,8 @@ class TestTestCase(tests.TestCase):
         # Manually set one up (TestCase doesn't and shouldn't provide magic
         # machinery)
         transport_server = MemoryServer()
-        transport_server.setUp()
-        self.addCleanup(transport_server.tearDown)
+        transport_server.start_server()
+        self.addCleanup(transport_server.stop_server)
         t = transport.get_transport(transport_server.get_url())
         bzrdir.BzrDir.create(t.base)
         self.assertRaises(errors.BzrError,
@@ -1626,6 +1546,8 @@ class TestTestCase(tests.TestCase):
         """Test disabled tests behaviour with support aware results."""
         test = SampleTestCase('_test_pass')
         class DisabledFeature(object):
+            def __eq__(self, other):
+                return isinstance(other, DisabledFeature)
             def available(self):
                 return False
         the_feature = DisabledFeature()
@@ -1642,10 +1564,11 @@ class TestTestCase(tests.TestCase):
                 self.calls.append(('addNotSupported', test, feature))
         result = InstrumentedTestResult()
         test.run(result)
+        case = result.calls[0][1]
         self.assertEqual([
-            ('startTest', test),
-            ('addNotSupported', test, the_feature),
-            ('stopTest', test),
+            ('startTest', case),
+            ('addNotSupported', case, the_feature),
+            ('stopTest', case),
             ],
             result.calls)
 
@@ -1966,7 +1889,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertEqual(expected.getvalue(), repeated.getvalue())
 
     def test_runner_class(self):
-        self.requireFeature(SubUnitFeature)
+        self.requireFeature(features.subunit)
         from subunit import ProtocolTestCase
         stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
             test_suite_factory=self.factory)
@@ -2004,11 +1927,8 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.assertEqual(transport_server, captured_transport[0])
 
     def test_transport_sftp(self):
-        try:
-            import bzrlib.transport.sftp
-        except errors.ParamikoNotPresent:
-            raise tests.TestSkipped("Paramiko not present")
-        self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
+        self.requireFeature(features.paramiko)
+        self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
         self.check_transport_set(bzrlib.transport.memory.MemoryServer)
@@ -2418,28 +2338,6 @@ class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
         self.assertEqual('bzr: interrupted\n', result[1])
 
 
-class TestKnownFailure(tests.TestCase):
-
-    def test_known_failure(self):
-        """Check that KnownFailure is defined appropriately."""
-        # a KnownFailure is an assertion error for compatability with unaware
-        # runners.
-        self.assertIsInstance(tests.KnownFailure(""), AssertionError)
-
-    def test_expect_failure(self):
-        try:
-            self.expectFailure("Doomed to failure", self.assertTrue, False)
-        except tests.KnownFailure, e:
-            self.assertEqual('Doomed to failure', e.args[0])
-        try:
-            self.expectFailure("Doomed to failure", self.assertTrue, True)
-        except AssertionError, e:
-            self.assertEqual('Unexpected success.  Should have failed:'
-                             ' Doomed to failure', e.args[0])
-        else:
-            self.fail('Assertion not raised')
-
-
 class TestFeature(tests.TestCase):
 
     def test_caching(self):
@@ -2479,6 +2377,37 @@ class TestUnavailableFeature(tests.TestCase):
         feature = tests.Feature()
         exception = tests.UnavailableFeature(feature)
         self.assertIs(feature, exception.args[0])
+
+
+simple_thunk_feature = tests._CompatabilityThunkFeature(
+    'bzrlib.tests', 'UnicodeFilename',
+    'bzrlib.tests.test_selftest.simple_thunk_feature',
+    deprecated_in((2,1,0)))
+
+class Test_CompatibilityFeature(tests.TestCase):
+
+    def test_does_thunk(self):
+        res = self.callDeprecated(
+            ['bzrlib.tests.test_selftest.simple_thunk_feature was deprecated'
+             ' in version 2.1.0. Use bzrlib.tests.UnicodeFilename instead.'],
+            simple_thunk_feature.available)
+        self.assertEqual(tests.UnicodeFilename.available(), res)
+
+        
+class TestModuleAvailableFeature(tests.TestCase):
+
+    def test_available_module(self):
+        feature = tests.ModuleAvailableFeature('bzrlib.tests')
+        self.assertEqual('bzrlib.tests', feature.module_name)
+        self.assertEqual('bzrlib.tests', str(feature))
+        self.assertTrue(feature.available())
+        self.assertIs(tests, feature.module)
+
+    def test_unavailable_module(self):
+        feature = tests.ModuleAvailableFeature('bzrlib.no_such_module_exists')
+        self.assertEqual('bzrlib.no_such_module_exists', str(feature))
+        self.assertFalse(feature.available())
+        self.assertIs(None, feature.module)
 
 
 class TestSelftestFiltering(tests.TestCase):
@@ -2665,16 +2594,15 @@ class TestBlackboxSupport(tests.TestCase):
         # the test framework
         self.assertEquals('always fails', str(e))
         # check that there's no traceback in the test log
-        self.assertNotContainsRe(self._get_log(keep_log_file=True),
-            r'Traceback')
+        self.assertNotContainsRe(self.get_log(), r'Traceback')
 
     def test_run_bzr_user_error_caught(self):
         # Running bzr in blackbox mode, normal/expected/user errors should be
         # caught in the regular way and turned into an error message plus exit
         # code.
         transport_server = MemoryServer()
-        transport_server.setUp()
-        self.addCleanup(transport_server.tearDown)
+        transport_server.start_server()
+        self.addCleanup(transport_server.stop_server)
         url = transport_server.get_url()
         self.permit_url(url)
         out, err = self.run_bzr(["log", "%s/nonexistantpath" % url], retcode=3)
@@ -2925,14 +2853,12 @@ class TestFilteredByModuleTestLoader(tests.TestCase):
     def test_load_tests(self):
         test_list = ['bzrlib.tests.test_sampler.DemoTest.test_nothing']
         loader = self._create_loader(test_list)
-
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals(test_list, _test_ids(suite))
 
     def test_exclude_tests(self):
         test_list = ['bogus']
         loader = self._create_loader(test_list)
-
         suite = loader.loadTestsFromModuleName('bzrlib.tests.test_sampler')
         self.assertEquals([], _test_ids(suite))
 
@@ -2983,8 +2909,8 @@ class TestTestPrefixRegistry(tests.TestCase):
         tpr.register('bar', 'bbb.aaa.rrr')
         tpr.register('bar', 'bBB.aAA.rRR')
         self.assertEquals('bbb.aaa.rrr', tpr.get('bar'))
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              r'.*bar.*bbb.aaa.rrr.*bBB.aAA.rRR')
+        self.assertThat(self.get_log(),
+            DocTestMatches("...bar...bbb.aaa.rrr...BB.aAA.rRR", ELLIPSIS))
 
     def test_get_unknown_prefix(self):
         tpr = self._get_registry()

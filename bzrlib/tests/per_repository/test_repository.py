@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,11 +77,11 @@ class TestRepository(TestCaseWithRepository):
         self.assertSubset([getattr(repo._format, attribute)], allowed_values)
 
     def test_attribute__fetch_order(self):
-        """Test the the _fetch_order attribute."""
+        """Test the _fetch_order attribute."""
         self.assertFormatAttribute('_fetch_order', ('topological', 'unordered'))
 
     def test_attribute__fetch_uses_deltas(self):
-        """Test the the _fetch_uses_deltas attribute."""
+        """Test the _fetch_uses_deltas attribute."""
         self.assertFormatAttribute('_fetch_uses_deltas', (True, False))
 
     def test_attribute_fast_deltas(self):
@@ -89,7 +89,7 @@ class TestRepository(TestCaseWithRepository):
         self.assertFormatAttribute('fast_deltas', (True, False))
 
     def test_attribute__fetch_reconcile(self):
-        """Test the the _fetch_reconcile attribute."""
+        """Test the _fetch_reconcile attribute."""
         self.assertFormatAttribute('_fetch_reconcile', (True, False))
 
     def test_attribute_format_pack_compresses(self):
@@ -604,11 +604,11 @@ class TestRepository(TestCaseWithRepository):
 
     def test_upgrade_from_format4(self):
         from bzrlib.tests.test_upgrade import _upgrade_dir_template
+        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
+            return # local conversion to/from RemoteObjects is irrelevant.
         if self.repository_format.get_format_description() \
             == "Repository format 4":
             raise TestSkipped('Cannot convert format-4 to itself')
-        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
-            return # local conversion to/from RemoteObjects is irrelevant.
         self.build_tree_contents(_upgrade_dir_template)
         old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format

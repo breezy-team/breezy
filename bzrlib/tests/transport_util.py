@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,11 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bzrlib.hooks
+from bzrlib.tests import features
 
 # SFTPTransport offers better performances but relies on paramiko, if paramiko
 # is not available, we fallback to FtpTransport
-from bzrlib.tests import test_sftp_transport
-if test_sftp_transport.paramiko_loaded:
+if features.paramiko.available():
+    from bzrlib.tests import test_sftp_transport
     from bzrlib.transport import sftp
     _backing_scheme = 'sftp'
     _backing_transport_class = sftp.SFTPTransport

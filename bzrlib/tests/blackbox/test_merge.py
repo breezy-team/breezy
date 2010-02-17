@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -210,6 +210,22 @@ class TestMerge(tests.TestCaseWithTransport):
         self.run_bzr('merge ../b/', retcode=1)
         self.failUnlessExists('sub/a.txt.OTHER')
         self.failUnlessExists('sub/a.txt.BASE')
+
+    def test_conflict_leaves_base_this_other_files(self):
+        tree, other = self.create_conflicting_branches()
+        self.run_bzr('merge ../other', working_dir='tree',
+                     retcode=1)
+        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+
+    def test_weave_conflict_leaves_base_this_other_files(self):
+        tree, other = self.create_conflicting_branches()
+        self.run_bzr('merge ../other --weave', working_dir='tree',
+                     retcode=1)
+        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
 
     def test_merge_remember(self):
         """Merge changes from one branch to another, test submit location."""
@@ -588,6 +604,26 @@ class TestMerge(tests.TestCaseWithTransport):
         other.commit('rev1b')
         self.run_bzr('merge -d this other -r0..')
         self.failUnlessExists('this/other_file')
+
+    def test_merge_interactive_unlocks_branch(self):
+        this = self.make_branch_and_tree('this')
+        other = self.make_branch_and_tree('other')
+        other.commit('empty commit')
+        self.run_bzr('merge -i -d this other')
+        this.lock_write()
+        this.unlock()
+
+    def test_merge_reversed_revision_range(self):
+        tree = self.make_branch_and_tree(".")
+        for f in ("a", "b"):
+            self.build_tree([f])
+            tree.add(f)
+            tree.commit("added "+f)
+        for context in (".", "", "a"):
+            self.run_bzr("merge -r 1..0 " + context)
+            self.failIfExists("a")
+            tree.revert()
+            self.failUnlessExists("a")
 
 
 class TestMergeForce(tests.TestCaseWithTransport):

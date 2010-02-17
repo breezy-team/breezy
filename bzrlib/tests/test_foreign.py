@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -102,6 +102,9 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
     @staticmethod
     def is_compatible(source, target):
         return isinstance(target, DummyForeignVcsBranch)
+
+    def push(self, overwrite=False, stop_revision=None):
+        raise errors.NoRoundtrippingSupport(self.source, self.target)
 
     def lossy_push(self, stop_revision=None):
         result = branch.BranchPushResult()
@@ -350,6 +353,13 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         newdir = dir.sprout("e")
         self.assertNotEquals("A Dummy VCS Dir",
                              newdir._format.get_format_string())
+
+    def test_push_not_supported(self):
+        source_tree = self.make_branch_and_tree("source")
+        target_tree = self.make_branch_and_tree("target", 
+            format=DummyForeignVcsDirFormat())
+        self.assertRaises(errors.NoRoundtrippingSupport, 
+            source_tree.branch.push, target_tree.branch)
 
     def test_lossy_push_empty(self):
         source_tree = self.make_branch_and_tree("source")

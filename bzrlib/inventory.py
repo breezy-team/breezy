@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ from bzrlib.errors import (
     )
 from bzrlib.symbol_versioning import deprecated_in, deprecated_method
 from bzrlib.trace import mutter
+from bzrlib.static_tuple import StaticTuple
 
 
 class InventoryEntry(object):
@@ -1599,8 +1600,6 @@ class CHKInventory(CommonInventory):
         interesting.add(None) # this will auto-filter it in the loop
         remaining_parents.discard(None) 
         while remaining_parents:
-            if None in remaining_parents:
-                import pdb; pdb.set_trace()
             next_parents = set()
             for entry in self._getitems(remaining_parents):
                 next_parents.add(entry.parent_id)
@@ -1615,7 +1614,7 @@ class CHKInventory(CommonInventory):
         while directories_to_expand:
             # Expand directories by looking in the
             # parent_id_basename_to_file_id map
-            keys = [(f,) for f in directories_to_expand]
+            keys = [StaticTuple(f,).intern() for f in directories_to_expand]
             directories_to_expand = set()
             items = self.parent_id_basename_to_file_id.iteritems(keys)
             next_file_ids = set([item[1] for item in items])
@@ -1678,7 +1677,7 @@ class CHKInventory(CommonInventory):
         # to filter out empty names because of non rich-root...
         sections = bytes.split('\n')
         kind, file_id = sections[0].split(': ')
-        return (sections[2], file_id, sections[3])
+        return (sections[2], intern(file_id), intern(sections[3]))
 
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
@@ -1706,7 +1705,8 @@ class CHKInventory(CommonInventory):
             result.reference_revision = sections[4]
         else:
             raise ValueError("Not a serialised entry %r" % bytes)
-        result.revision = sections[3]
+        result.file_id = intern(result.file_id)
+        result.revision = intern(sections[3])
         if result.parent_id == '':
             result.parent_id = None
         self._fileid_to_entry_cache[result.file_id] = result
@@ -1810,7 +1810,7 @@ class CHKInventory(CommonInventory):
                         pass
                 deletes.add(file_id)
             else:
-                new_key = (file_id,)
+                new_key = StaticTuple(file_id,)
                 new_value = result._entry_to_bytes(entry)
                 # Update caches. It's worth doing this whether
                 # we're propagating the old caches or not.
@@ -1819,13 +1819,13 @@ class CHKInventory(CommonInventory):
             if old_path is None:
                 old_key = None
             else:
-                old_key = (file_id,)
+                old_key = StaticTuple(file_id,)
                 if self.id2path(file_id) != old_path:
                     raise errors.InconsistentDelta(old_path, file_id,
                         "Entry was at wrong other path %r." %
                         self.id2path(file_id))
                 altered.add(file_id)
-            id_to_entry_delta.append((old_key, new_key, new_value))
+            id_to_entry_delta.append(StaticTuple(old_key, new_key, new_value))
             if result.parent_id_basename_to_file_id is not None:
                 # parent_id, basename changes
                 if old_path is None:
@@ -1923,7 +1923,13 @@ class CHKInventory(CommonInventory):
         search_key_name = intern(info.get('search_key_name', 'plain'))
         parent_id_basename_to_file_id = intern(info.get(
             'parent_id_basename_to_file_id', None))
+        if not parent_id_basename_to_file_id.startswith('sha1:'):
+            raise ValueError('parent_id_basename_to_file_id should be a sha1'
+                             ' key not %r' % (parent_id_basename_to_file_id,))
         id_to_entry = info['id_to_entry']
+        if not id_to_entry.startswith('sha1:'):
+            raise ValueError('id_to_entry should be a sha1'
+                             ' key not %r' % (id_to_entry,))
 
         result = CHKInventory(search_key_name)
         result.revision_id = revision_id
@@ -1932,12 +1938,13 @@ class CHKInventory(CommonInventory):
                             result._search_key_name)
         if parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
-                chk_store, (parent_id_basename_to_file_id,),
+                chk_store, StaticTuple(parent_id_basename_to_file_id,),
                 search_key_func=search_key_func)
         else:
             result.parent_id_basename_to_file_id = None
 
-        result.id_to_entry = chk_map.CHKMap(chk_store, (id_to_entry,),
+        result.id_to_entry = chk_map.CHKMap(chk_store,
+                                            StaticTuple(id_to_entry,),
                                             search_key_func=search_key_func)
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
@@ -1965,7 +1972,8 @@ class CHKInventory(CommonInventory):
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for path, entry in inventory.iter_entries():
-            id_to_entry_dict[(entry.file_id,)] = entry_to_bytes(entry)
+            key = StaticTuple(entry.file_id,).intern()
+            id_to_entry_dict[key] = entry_to_bytes(entry)
             p_id_key = parent_id_basename_key(entry)
             parent_id_basename_dict[p_id_key] = entry.file_id
 
@@ -1994,7 +2002,7 @@ class CHKInventory(CommonInventory):
             parent_id = entry.parent_id
         else:
             parent_id = ''
-        return parent_id, entry.name.encode('utf8')
+        return StaticTuple(parent_id, entry.name.encode('utf8')).intern()
 
     def __getitem__(self, file_id):
         """map a single file_id -> InventoryEntry."""
@@ -2005,7 +2013,7 @@ class CHKInventory(CommonInventory):
             return result
         try:
             return self._bytes_to_entry(
-                self.id_to_entry.iteritems([(file_id,)]).next()[1])
+                self.id_to_entry.iteritems([StaticTuple(file_id,)]).next()[1])
         except StopIteration:
             # really we're passing an inventory, not a tree...
             raise errors.NoSuchId(self, file_id)
@@ -2024,7 +2032,7 @@ class CHKInventory(CommonInventory):
                 remaining.append(file_id)
             else:
                 result.append(entry)
-        file_keys = [(f,) for f in remaining]
+        file_keys = [StaticTuple(f,).intern() for f in remaining]
         for file_key, value in self.id_to_entry.iteritems(file_keys):
             entry = self._bytes_to_entry(value)
             result.append(entry)
@@ -2035,7 +2043,8 @@ class CHKInventory(CommonInventory):
         # Perhaps have an explicit 'contains' method on CHKMap ?
         if self._fileid_to_entry_cache.get(file_id, None) is not None:
             return True
-        return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
+        return len(list(
+            self.id_to_entry.iteritems([StaticTuple(file_id,)]))) == 1
 
     def is_root(self, file_id):
         return file_id == self.root_id
@@ -2193,7 +2202,7 @@ class CHKInventory(CommonInventory):
             basename_utf8 = basename.encode('utf8')
             file_id = self._path_to_fileid_cache.get(cur_path, None)
             if file_id is None:
-                key_filter = [(current_id, basename_utf8)]
+                key_filter = [StaticTuple(current_id, basename_utf8)]
                 items = parent_id_index.iteritems(key_filter)
                 for (parent_id, name_utf8), file_id in items:
                     if parent_id != current_id or name_utf8 != basename_utf8:
@@ -2215,16 +2224,16 @@ class CHKInventory(CommonInventory):
             lines.append('search_key_name: %s\n' % (self._search_key_name,))
             lines.append("root_id: %s\n" % self.root_id)
             lines.append('parent_id_basename_to_file_id: %s\n' %
-                self.parent_id_basename_to_file_id.key())
+                (self.parent_id_basename_to_file_id.key()[0],))
             lines.append("revision_id: %s\n" % self.revision_id)
-            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+            lines.append("id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
         else:
             lines.append("revision_id: %s\n" % self.revision_id)
             lines.append("root_id: %s\n" % self.root_id)
             if self.parent_id_basename_to_file_id is not None:
                 lines.append('parent_id_basename_to_file_id: %s\n' %
-                    self.parent_id_basename_to_file_id.key())
-            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+                    (self.parent_id_basename_to_file_id.key()[0],))
+            lines.append("id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
         return lines
 
     @property
@@ -2271,8 +2280,8 @@ class CHKInventoryDirectory(InventoryDirectory):
         parent_id_index = self._chk_inventory.parent_id_basename_to_file_id
         child_keys = set()
         for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
-            key_filter=[(self.file_id,)]):
-            child_keys.add((file_id,))
+            key_filter=[StaticTuple(self.file_id,)]):
+            child_keys.add(StaticTuple(file_id,))
         cached = set()
         for file_id_key in child_keys:
             entry = self._chk_inventory._fileid_to_entry_cache.get(

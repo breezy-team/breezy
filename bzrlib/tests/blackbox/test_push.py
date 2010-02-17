@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +31,11 @@ from bzrlib import (
     workingtree
     )
 from bzrlib.repofmt import knitrepo
-from bzrlib.tests import http_server
+from bzrlib.tests import (
+    blackbox,
+    http_server,
+    test_foreign,
+    )
 from bzrlib.transport import memory
 
 
@@ -335,6 +339,17 @@ class TestPush(tests.TestCaseWithTransport):
         # The push should have created target/a
         self.failUnlessExists('target/a')
 
+    def test_push_use_existing_into_empty_bzrdir(self):
+        """'bzr push --use-existing-dir' into a dir with an empty .bzr dir
+        fails.
+        """
+        tree = self.create_simple_tree()
+        self.build_tree(['target/', 'target/.bzr/'])
+        self.run_bzr_error(
+            ['Target directory ../target already contains a .bzr directory, '
+             'but it is not valid.'],
+            'push ../target --use-existing-dir', working_dir='tree')
+
     def test_push_onto_repo(self):
         """We should be able to 'bzr push' into an existing bzrdir."""
         tree = self.create_simple_tree()
@@ -569,7 +584,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
 
 class RedirectingMemoryServer(memory.MemoryServer):
 
-    def setUp(self):
+    def start_server(self):
         self._dirs = {'/': None}
         self._files = {}
         self._locks = {}
@@ -583,7 +598,7 @@ class RedirectingMemoryServer(memory.MemoryServer):
         result._locks = self._locks
         return result
 
-    def tearDown(self):
+    def stop_server(self):
         transport.unregister_transport(self._scheme, self._memory_factory)
 
 
@@ -757,3 +772,26 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.set_config_push_strict('oFF')
         self.assertPushFails(['--strict'])
         self.assertPushSucceeds([])
+
+
+class TestPushForeign(blackbox.ExternalBase):
+
+    def setUp(self):
+        super(TestPushForeign, self).setUp()
+        test_foreign.register_dummy_foreign_for_test(self)
+
+    def make_dummy_builder(self, relpath):
+        builder = self.make_branch_builder(
+            relpath, format=test_foreign.DummyForeignVcsDirFormat())
+        builder.build_snapshot('revid', None,
+            [('add', ('', 'TREE_ROOT', 'directory', None)),
+             ('add', ('foo', 'fooid', 'file', 'bar'))])
+        return builder
+
+    def test_no_roundtripping(self):
+        target_branch = self.make_dummy_builder('dp').get_branch()
+        source_tree = self.make_branch_and_tree("dc")
+        output, error = self.run_bzr("push -d dc dp", retcode=3)
+        self.assertEquals("", output)
+        self.assertEquals(error, "bzr: ERROR: It is not possible to losslessly"
+            " push to dummy. You may want to use dpush instead.\n")

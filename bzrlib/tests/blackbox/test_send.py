@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -67,7 +67,7 @@ class TestSendMixin(object):
 
     def get_MD(self, args, cmd=None, wd='branch'):
         out = StringIO(self.run_send(args, cmd=cmd, wd=wd)[0])
-        return merge_directive.MergeDirective.from_lines(out.readlines())
+        return merge_directive.MergeDirective.from_lines(out)
 
     def assertBundleContains(self, revs, args, cmd=None, wd='branch'):
         md = self.get_MD(args, cmd=cmd, wd=wd)
@@ -322,8 +322,7 @@ class TestSendStrictMixin(TestSendMixin):
         out, err = self.run_send(args)
         self.assertEquals(
             'Bundling %d revision(s).\n' % len(revs), err)
-        md = merge_directive.MergeDirective.from_lines(
-                StringIO(out).readlines())
+        md = merge_directive.MergeDirective.from_lines(StringIO(out))
         self.assertEqual('parent', md.base_revision_id)
         br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))

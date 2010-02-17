@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd.
+# Copyright (C) 2005-2010 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@ import difflib
 import os
 import re
 import shutil
+import string
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -38,12 +39,20 @@ from bzrlib import (
     timestamp,
     views,
     )
+
+from bzrlib.workingtree import WorkingTree
 """)
 
 from bzrlib.symbol_versioning import (
     deprecated_function,
     )
 from bzrlib.trace import mutter, note, warning
+
+
+class AtTemplate(string.Template):
+    """Templating class that uses @ instead of $."""
+
+    delimiter = '@'
 
 
 # TODO: Rather than building a changeset object, we should probably
@@ -444,7 +453,10 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
-    mtime = tree.get_file_mtime(file_id, path)
+    try:
+        mtime = tree.get_file_mtime(file_id, path)
+    except errors.FileTimestampUnavailable:
+        mtime = 0
     return timestamp.format_patch_date(mtime)
 
 
@@ -672,7 +684,8 @@ class DiffFromTool(DiffPath):
     def from_string(klass, command_string, old_tree, new_tree, to_file,
                     path_encoding='utf-8'):
         command_template = commands.shlex_split_unicode(command_string)
-        command_template.extend(['%(old_path)s', '%(new_path)s'])
+        if '@' not in command_string:
+            command_template.extend(['@old_path', '@new_path'])
         return klass(command_template, old_tree, new_tree, to_file,
                      path_encoding)
 
@@ -685,7 +698,8 @@ class DiffFromTool(DiffPath):
 
     def _get_command(self, old_path, new_path):
         my_map = {'old_path': old_path, 'new_path': new_path}
-        return [t % my_map for t in self.command_template]
+        return [AtTemplate(t).substitute(my_map) for t in
+                self.command_template]
 
     def _execute(self, old_path, new_path):
         command = self._get_command(old_path, new_path)
@@ -711,9 +725,13 @@ class DiffFromTool(DiffPath):
                 raise
         return True
 
-    def _write_file(self, file_id, tree, prefix, relpath):
+    def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
+                    allow_write=False):
+        if not force_temp and isinstance(tree, WorkingTree):
+            return tree.abspath(tree.id2path(file_id))
+        
         full_path = osutils.pathjoin(self._root, prefix, relpath)
-        if self._try_symlink_root(tree, prefix):
+        if not force_temp and self._try_symlink_root(tree, prefix):
             return full_path
         parent_dir = osutils.dirname(full_path)
         try:
@@ -730,16 +748,22 @@ class DiffFromTool(DiffPath):
                 target.close()
         finally:
             source.close()
-        osutils.make_readonly(full_path)
-        mtime = tree.get_file_mtime(file_id)
+        if not allow_write:
+            osutils.make_readonly(full_path)
+        try:
+            mtime = tree.get_file_mtime(file_id)
+        except errors.FileTimestampUnavailable:
+            mtime = 0
         os.utime(full_path, (mtime, mtime))
         return full_path
 
-    def _prepare_files(self, file_id, old_path, new_path):
+    def _prepare_files(self, file_id, old_path, new_path, force_temp=False,
+                       allow_write_new=False):
         old_disk_path = self._write_file(file_id, self.old_tree, 'old',
-                                         old_path)
+                                         old_path, force_temp)
         new_disk_path = self._write_file(file_id, self.new_tree, 'new',
-                                         new_path)
+                                         new_path, force_temp,
+                                         allow_write=allow_write_new)
         return old_disk_path, new_disk_path
 
     def finish(self):
@@ -753,9 +777,32 @@ class DiffFromTool(DiffPath):
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if (old_kind, new_kind) != ('file', 'file'):
             return DiffPath.CANNOT_DIFF
-        self._prepare_files(file_id, old_path, new_path)
-        self._execute(osutils.pathjoin('old', old_path),
-                      osutils.pathjoin('new', new_path))
+        (old_disk_path, new_disk_path) = self._prepare_files(
+                                                file_id, old_path, new_path)
+        self._execute(old_disk_path, new_disk_path)
+
+    def edit_file(self, file_id):
+        """Use this tool to edit a file.
+
+        A temporary copy will be edited, and the new contents will be
+        returned.
+
+        :param file_id: The id of the file to edit.
+        :return: The new contents of the file.
+        """
+        old_path = self.old_tree.id2path(file_id)
+        new_path = self.new_tree.id2path(file_id)
+        new_abs_path = self._prepare_files(file_id, old_path, new_path,
+                                           allow_write_new=True,
+                                           force_temp=True)[1]
+        command = self._get_command(osutils.pathjoin('old', old_path),
+                                    osutils.pathjoin('new', new_path))
+        subprocess.call(command, cwd=self._root)
+        new_file = open(new_abs_path, 'r')
+        try:
+            return new_file.read()
+        finally:
+            new_file.close()
 
 
 class DiffTree(object):

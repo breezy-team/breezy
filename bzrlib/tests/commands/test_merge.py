@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,6 +34,6 @@ class TestMerge(TestCaseWithConnectionHookedTransport):
         cmd = cmd_merge()
         # We don't care about the ouput but 'outf' should be defined
         cmd.outf = StringIOWrapper()
-        cmd.run(self.get_url('branch1'), directory='branch2')
+        cmd.run_direct(self.get_url('branch1'), directory='branch2')
         self.assertEquals(1, len(self.connections))
 

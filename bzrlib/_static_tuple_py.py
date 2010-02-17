@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,8 @@ strings.
 class StaticTuple(tuple):
     """A static type, similar to a tuple of strings."""
 
+    __slots__ = ()
+
     def __new__(cls, *args):
         # Make the empty StaticTuple a singleton
         if not args and _empty_tuple is not None:
@@ -48,12 +50,15 @@ class StaticTuple(tuple):
     def __repr__(self):
         return '%s%s' % (self.__class__.__name__, tuple.__repr__(self))
 
+    def __reduce__(self):
+        return (StaticTuple, tuple(self))
+
     def __add__(self, other):
         """Concatenate self with other"""
         return StaticTuple.from_sequence(tuple.__add__(self,other))
 
     def as_tuple(self):
-        return self
+        return tuple(self)
 
     def intern(self):
         return _interned_tuples.setdefault(self, self)

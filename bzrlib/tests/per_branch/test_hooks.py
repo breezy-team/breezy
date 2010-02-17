@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -208,10 +208,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         branch.set_last_revision_info(0, NULL_REVISION)
 
     def test_hook_failure_prevents_change(self):
-        """If a hook raises an exception, the change does not take effect.
-
-        Also, a HookFailed exception will be raised.
-        """
+        """If a hook raises an exception, the change does not take effect."""
         branch = self.make_branch_with_revision_ids(
             'one-\xc2\xb5', 'two-\xc2\xb5')
         class PearShapedError(Exception):
@@ -221,8 +218,7 @@ class TestPreChangeBranchTip(ChangeBranchTipTestCase):
         Branch.hooks.install_named_hook(
             'pre_change_branch_tip', hook_that_raises, None)
         hook_failed_exc = self.assertRaises(
-            HookFailed, branch.set_last_revision_info, 0, NULL_REVISION)
-        self.assertIsInstance(hook_failed_exc.exc_value, PearShapedError)
+            PearShapedError, branch.set_last_revision_info, 0, NULL_REVISION)
         # The revision info is unchanged.
         self.assertEqual((2, 'two-\xc2\xb5'), branch.last_revision_info())
 

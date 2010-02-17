@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.osutils import sha_string
-from bzrlib.tests.test__groupcompress import CompiledGroupCompressFeature
+from bzrlib.tests.test__groupcompress import compiled_groupcompress_feature
 
 
 def load_tests(standard_tests, module, loader):
@@ -39,7 +39,7 @@ def load_tests(standard_tests, module, loader):
     scenarios = [
         ('python', {'compressor': groupcompress.PythonGroupCompressor}),
         ]
-    if CompiledGroupCompressFeature.available():
+    if compiled_groupcompress_feature.available():
         scenarios.append(('C',
             {'compressor': groupcompress.PyrexGroupCompressor}))
     return tests.multiply_tests(to_adapt, scenarios, result)
@@ -135,7 +135,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
 
 class TestPyrexGroupCompressor(TestGroupCompressor):
 
-    _test_needs_features = [CompiledGroupCompressFeature]
+    _test_needs_features = [compiled_groupcompress_feature]
     compressor = groupcompress.PyrexGroupCompressor
 
     def test_stats(self):

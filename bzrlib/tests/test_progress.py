@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,9 +70,20 @@ class TestTextProgressView(TestCase):
         task.total_cnt = total
         return task
 
+    def test_render_progress_no_bar(self):
+        """The default view now has a spinner but no bar."""
+        out, view = self.make_view()
+        # view.enable_bar = False
+        task = self.make_task(None, view, 'reticulating splines', 5, 20)
+        view.show_progress(task)
+        self.assertEqual(
+'\r/ reticulating splines 5/20                                                    \r'
+            , out.getvalue())
+
     def test_render_progress_easy(self):
         """Just one task and one quarter done"""
         out, view = self.make_view()
+        view.enable_bar = True
         task = self.make_task(None, view, 'reticulating splines', 5, 20)
         view.show_progress(task)
         self.assertEqual(
@@ -85,6 +96,7 @@ class TestTextProgressView(TestCase):
         task = self.make_task(None, view, 'reticulating splines', 0, 2)
         task2 = self.make_task(task, view, 'stage2', 1, 2)
         view.show_progress(task2)
+        view.enable_bar = True
         # so we're in the first half of the main task, and half way through
         # that
         self.assertEqual(
@@ -100,6 +112,7 @@ r'[#########\          ] reticulating splines:stage2 2/2'
     def test_render_progress_sub_nested(self):
         """Intermediate tasks don't mess up calculation."""
         out, view = self.make_view()
+        view.enable_bar = True
         task_a = ProgressTask(None, progress_view=view)
         task_a.update('a', 0, 2)
         task_b = ProgressTask(task_a, progress_view=view)

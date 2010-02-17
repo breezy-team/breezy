@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,8 +50,9 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     # show path to python interpreter
     # (bzr.exe use python interpreter from pythonXY.dll
     # but sys.executable point to bzr.exe itself)
-    if not hasattr(sys, 'frozen'):  # check for bzr.exe
-        # python executable
+    # however, sys.frozen exists if running from bzr.exe
+    # see http://www.py2exe.org/index.cgi/Py2exeEnvironment
+    if getattr(sys, 'frozen', None) is None: # if not bzr.exe
         to_file.write(sys.executable + ' ')
     else:
         # pythonXY.dll
@@ -87,6 +88,8 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
         to_file.write("bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and\n")
         to_file.write("you may use, modify and redistribute it under the terms of the GNU\n")
         to_file.write("General Public License version 2 or later.\n")
+        to_file.write("\nBazaar is part of the GNU Project to produce a free operating "
+                "system.\n")
     to_file.write('\n')
 
 

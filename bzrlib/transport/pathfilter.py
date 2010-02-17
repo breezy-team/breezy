@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,11 +59,11 @@ class PathFilteringServer(Server):
     def get_url(self):
         return self.scheme
 
-    def setUp(self):
+    def start_server(self):
         self.scheme = 'filtered-%d:///' % id(self)
         register_transport(self.scheme, self._factory)
 
-    def tearDown(self):
+    def stop_server(self):
         unregister_transport(self.scheme, self._factory)
 
 
@@ -177,9 +177,9 @@ class PathFilteringTransport(Transport):
 class TestingPathFilteringServer(PathFilteringServer):
 
     def __init__(self):
-        """TestingChrootServer is not usable until setUp is called."""
+        """TestingChrootServer is not usable until start_server is called."""
 
-    def setUp(self, backing_server=None):
+    def start_server(self, backing_server=None):
         """Setup the Chroot on backing_server."""
         if backing_server is not None:
             self.backing_transport = get_transport(backing_server.get_url())
@@ -187,7 +187,7 @@ class TestingPathFilteringServer(PathFilteringServer):
             self.backing_transport = get_transport('.')
         self.backing_transport.clone('added-by-filter').ensure_base()
         self.filter_func = lambda x: 'added-by-filter/' + x
-        PathFilteringServer.setUp(self)
+        PathFilteringServer.start_server(self)
 
 
 def get_test_permutations():

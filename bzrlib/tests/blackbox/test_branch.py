@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -171,15 +171,7 @@ class TestBranch(ExternalBase):
         out, err = self.run_bzr(['branch', 'source', 'target', '--hardlink'])
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
-        same_file = (source_stat == target_stat)
-        if same_file:
-            pass
-        else:
-            # https://bugs.edge.launchpad.net/bzr/+bug/408193
-            self.assertContainsRe(err, "hardlinking working copy files is "
-                "not currently supported")
-            raise KnownFailure("--hardlink doesn't work in formats "
-                "that support content filtering (#408193)")
+        self.assertEqual(source_stat, target_stat)
 
     def test_branch_standalone(self):
         shared_repo = self.make_repository('repo', shared=True)
@@ -216,6 +208,13 @@ class TestBranch(ExternalBase):
         out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('bzr: ERROR: Already a branch: "b".\n', err)
+
+    def test_branch_bind(self):
+        self.example_branch('a')
+        out, err = self.run_bzr('branch a b --bind')
+        self.assertEndsWith(err, "New branch bound to a\n")
+        b = branch.Branch.open('b')
+        self.assertEndsWith(b.get_bound_location(), '/a/')
 
 
 class TestBranchStacked(ExternalBase):

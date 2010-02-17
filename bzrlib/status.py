@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -197,14 +197,24 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
     if len(parents) < 2:
         return
 
-    # we need one extra space for terminals that wrap on last char
-    term_width = osutils.terminal_width() - 1
+    term_width = osutils.terminal_width()
+    if term_width is not None:
+        # we need one extra space for terminals that wrap on last char
+        term_width = term_width - 1
     if short:
         first_prefix = 'P   '
         sub_prefix = 'P.   '
     else:
         first_prefix = '  '
         sub_prefix = '    '
+
+    def show_log_message(rev, prefix):
+        if term_width is None:
+            width = term_width
+        else:
+            width = term_width - len(prefix)
+        log_message = log_formatter.log_string(None, rev, width, prefix=prefix)
+        to_file.write(log_message + '\n')
 
     pending = parents[1:]
     branch = new.branch
@@ -213,7 +223,8 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
         if verbose:
             to_file.write('pending merges:\n')
         else:
-            to_file.write('pending merge tips: (use -v to see all merge revisions)\n')
+            to_file.write('pending merge tips:'
+                          ' (use -v to see all merge revisions)\n')
     graph = branch.repository.get_graph()
     other_revisions = [last_revision]
     log_formatter = log.LineLogFormatter(to_file)
@@ -227,9 +238,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
             continue
 
         # Log the merge, as it gets a slightly different formatting
-        log_message = log_formatter.log_string(None, rev,
-                        term_width - len(first_prefix))
-        to_file.write(first_prefix + log_message + '\n')
+        show_log_message(rev, first_prefix)
         if not verbose:
             continue
 
@@ -267,10 +276,7 @@ def show_pending_merges(new, to_file, short=False, verbose=False):
             if rev is None:
                 to_file.write(sub_prefix + '(ghost) ' + sub_merge + '\n')
                 continue
-            log_message = log_formatter.log_string(None,
-                            revisions[sub_merge],
-                            term_width - len(sub_prefix))
-            to_file.write(sub_prefix + log_message + '\n')
+            show_log_message(revisions[sub_merge], sub_prefix)
 
 
 def _filter_nonexistent(orig_paths, old_tree, new_tree):

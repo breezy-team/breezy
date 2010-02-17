@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,8 +36,9 @@ from bzrlib.trace import mutter
 # Windows expects this bit to be set in the 'external_attr' section
 # Or it won't consider the entry a directory
 ZIP_DIRECTORY_BIT = (1 << 4)
+FILE_PERMISSIONS = (0644 << 16)
 
-_FILE_ATTR = stat.S_IFREG
+_FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT
 
 

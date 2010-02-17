@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +16,13 @@
 
 """Tests for the StaticTuple type."""
 
+import cPickle
 import gc
 import sys
 
 from bzrlib import (
     _static_tuple_py,
+    debug,
     errors,
     osutils,
     static_tuple,
@@ -30,36 +32,11 @@ from bzrlib import (
 
 def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
-    scenarios = [
-        ('python', {'module': _static_tuple_py}),
-    ]
-    suite = loader.suiteClass()
-    if CompiledStaticTuple.available():
-        from bzrlib import _static_tuple_c
-        scenarios.append(('C', {'module': _static_tuple_c}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(CompiledStaticTuple)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    result = tests.multiply_tests(standard_tests, scenarios, suite)
-    return result
-
-
-class _CompiledStaticTuple(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._static_tuple_c
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._static_tuple_c'
-
-CompiledStaticTuple = _CompiledStaticTuple()
+    global compiled_static_tuple_feature
+    suite, compiled_static_tuple_feature = tests.permute_tests_for_extension(
+        standard_tests, loader, 'bzrlib._static_tuple_py',
+        'bzrlib._static_tuple_c')
+    return suite
 
 
 class _Meliae(tests.Feature):
@@ -146,9 +123,34 @@ class TestStaticTuple(tests.TestCase):
         k = self.module.StaticTuple('foo')
         t = k.as_tuple()
         self.assertEqual(('foo',), t)
+        self.assertIsInstance(t, tuple)
+        self.assertFalse(isinstance(t, self.module.StaticTuple))
         k = self.module.StaticTuple('foo', 'bar')
         t = k.as_tuple()
         self.assertEqual(('foo', 'bar'), t)
+        k2 = self.module.StaticTuple(1, k)
+        t = k2.as_tuple()
+        self.assertIsInstance(t, tuple)
+        # For pickling to work, we need to keep the sub-items as StaticTuple so
+        # that it knows that they also need to be converted.
+        self.assertIsInstance(t[1], self.module.StaticTuple)
+        self.assertEqual((1, ('foo', 'bar')), t)
+
+    def test_as_tuples(self):
+        k1 = self.module.StaticTuple('foo', 'bar')
+        t = static_tuple.as_tuples(k1)
+        self.assertIsInstance(t, tuple)
+        self.assertEqual(('foo', 'bar'), t)
+        k2 = self.module.StaticTuple(1, k1)
+        t = static_tuple.as_tuples(k2)
+        self.assertIsInstance(t, tuple)
+        self.assertIsInstance(t[1], tuple)
+        self.assertEqual((1, ('foo', 'bar')), t)
+        mixed = (1, k1)
+        t = static_tuple.as_tuples(mixed)
+        self.assertIsInstance(t, tuple)
+        self.assertIsInstance(t[1], tuple)
+        self.assertEqual((1, ('foo', 'bar')), t)
 
     def test_len(self):
         k = self.module.StaticTuple()
@@ -570,6 +572,8 @@ class TestStaticTuple(tests.TestCase):
     def test_from_sequence_not_sequence(self):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, object())
+        self.assertRaises(TypeError,
+                          self.module.StaticTuple.from_sequence, 10)
 
     def test_from_sequence_incorrect_args(self):
         self.assertRaises(TypeError,
@@ -577,12 +581,68 @@ class TestStaticTuple(tests.TestCase):
         self.assertRaises(TypeError,
                           self.module.StaticTuple.from_sequence, foo='a')
 
+    def test_from_sequence_iterable(self):
+        st = self.module.StaticTuple.from_sequence(iter(['foo', 'bar']))
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_from_sequence_generator(self):
+        def generate_tuple():
+            yield 'foo'
+            yield 'bar'
+        st = self.module.StaticTuple.from_sequence(generate_tuple())
+        self.assertIsInstance(st, self.module.StaticTuple)
+        self.assertEqual(('foo', 'bar'), st)
+
+    def test_pickle(self):
+        st = self.module.StaticTuple('foo', 'bar')
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertEqual(unpickled, st)
+
+    def test_pickle_empty(self):
+        st = self.module.StaticTuple()
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertIs(st, unpickled)
+
+    def test_pickle_nested(self):
+        st = self.module.StaticTuple('foo', self.module.StaticTuple('bar'))
+        pickled = cPickle.dumps(st)
+        unpickled = cPickle.loads(pickled)
+        self.assertEqual(unpickled, st)
+
     def test_static_tuple_thunk(self):
         # Make sure the right implementation is available from
         # bzrlib.static_tuple.StaticTuple.
         if self.module is _static_tuple_py:
-            if CompiledStaticTuple.available():
+            if compiled_static_tuple_feature.available():
                 # We will be using the C version
                 return
         self.assertIs(static_tuple.StaticTuple,
                       self.module.StaticTuple)
+
+
+class TestEnsureStaticTuple(tests.TestCase):
+
+    def test_is_static_tuple(self):
+        st = static_tuple.StaticTuple('foo')
+        st2 = static_tuple.expect_static_tuple(st)
+        self.assertIs(st, st2)
+
+    def test_is_tuple(self):
+        t = ('foo',)
+        st = static_tuple.expect_static_tuple(t)
+        self.assertIsInstance(st, static_tuple.StaticTuple)
+        self.assertEqual(t, st)
+
+    def test_flagged_is_static_tuple(self):
+        debug.debug_flags.add('static_tuple')
+        st = static_tuple.StaticTuple('foo')
+        st2 = static_tuple.expect_static_tuple(st)
+        self.assertIs(st, st2)
+
+    def test_flagged_is_tuple(self):
+        debug.debug_flags.add('static_tuple')
+        t = ('foo',)
+        self.assertRaises(TypeError, static_tuple.expect_static_tuple, t)

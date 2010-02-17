@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -123,6 +123,8 @@ class ForeignVcs(object):
     """A foreign version control system."""
 
     branch_format = None
+
+    repository_format = None
 
     def __init__(self, mapping_registry, abbreviation=None):
         """Create a new foreign vcs instance.

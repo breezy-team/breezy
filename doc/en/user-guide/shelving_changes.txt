@@ -15,7 +15,7 @@ For example, consider a working tree with one or more changes made ... ::
   +++ description.txt
   @@ -2,7 +2,7 @@
    ===============
-   
+
    These plugins
   -by Michael Ellerman
   +written by Michael Ellerman
@@ -23,7 +23,7 @@ For example, consider a working tree with one or more changes made ... ::
    fine-grained 'undo'
    facility
   @@ -11,6 +11,6 @@
-   This allows you to 
+   This allows you to
    undo some of
    your changes,
   -commit, and get
@@ -39,7 +39,7 @@ you want to retain in the working tree::
   +++ description.txt
   @@ -2,7 +2,7 @@
    ===============
-   
+
    These plugins
   -by Michael Ellerman
   +written by Michael Ellerman
@@ -51,7 +51,7 @@ you want to retain in the working tree::
   --- description.txt
   +++ description.txt
   @@ -11,6 +11,6 @@
-   This allows you to 
+   This allows you to
    undo some of
    your changes,
   -commit, and get
@@ -63,7 +63,7 @@ you want to retain in the working tree::
   Shelve 2 change(s)? [yNfrq?]', 'y'
   Selected changes:
    M  description.txt
-  Changes shelved with id "1".  
+  Changes shelved with id "1".
 
 If there are lots of changes in the working tree, you
 can provide the ``shelve`` command with a list of files
@@ -77,7 +77,7 @@ to confirm the tree has just the changes you expect::
   +++ description.txt
   @@ -2,7 +2,7 @@
    ===============
-   
+
    These plugins
   -by Michael Ellerman
   +written by Michael Ellerman

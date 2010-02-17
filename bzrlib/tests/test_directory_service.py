@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,18 +16,23 @@
 
 """Test directory service implementation"""
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    urlutils,
+    )
 from bzrlib.directory_service import DirectoryServiceRegistry, directories
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.transport import get_transport
-from bzrlib import urlutils
 
 
 class FooService(object):
     """A directory service that maps the name to a FILE url"""
 
+    # eg 'file:///foo' on Linux, or 'file:///C:/foo' on Windows
+    base = urlutils.local_path_to_url('/foo')
+
     def look_up(self, name, url):
-        return 'file:///foo' + name
+        return self.base + name
 
 
 class TestDirectoryLookup(TestCase):
@@ -43,14 +48,15 @@ class TestDirectoryLookup(TestCase):
         self.assertEqual('bar', suffix)
 
     def test_dereference(self):
-        self.assertEqual('file:///foobar',
+        self.assertEqual(FooService.base + 'bar',
                          self.registry.dereference('foo:bar'))
         self.assertEqual('baz:qux', self.registry.dereference('baz:qux'))
 
     def test_get_transport(self):
         directories.register('foo:', FooService, 'Map foo URLs to http urls')
         self.addCleanup(lambda: directories.remove('foo:'))
-        self.assertEqual('file:///foobar/', get_transport('foo:bar').base)
+        self.assertEqual(FooService.base + 'bar/',
+                         get_transport('foo:bar').base)
 
 
 class TestAliasDirectory(TestCaseWithTransport):

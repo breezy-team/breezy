@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,6 +35,9 @@ class _SmartClient(object):
             self._headers = {'Software version': bzrlib.__version__}
         else:
             self._headers = dict(headers)
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._medium)
 
     def _send_request(self, protocol_version, method, args, body=None,
                       readv_body=None, body_stream=None):

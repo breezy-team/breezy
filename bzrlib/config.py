@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -153,6 +153,15 @@ class Config(object):
         """Get the users pop up editor."""
         raise NotImplementedError
 
+    def get_change_editor(self, old_tree, new_tree):
+        from bzrlib import diff
+        cmd = self._get_change_editor()
+        if cmd is None:
+            return None
+        return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
+                                             sys.stdout)
+
+
     def get_mail_client(self):
         """Get a mail client to use"""
         selected_client = self.get_user_option('mail_client')
@@ -181,10 +190,22 @@ class Config(object):
         """Get a generic option as a boolean - no special process, no default.
 
         :return None if the option doesn't exist or its value can't be
-            interpreted as a boolean. Returns True or False ortherwise.
+            interpreted as a boolean. Returns True or False otherwise.
         """
         s = self._get_user_option(option_name)
         return ui.bool_from_string(s)
+
+    def get_user_option_as_list(self, option_name):
+        """Get a generic option as a list - no special process, no default.
+
+        :return None if the option doesn't exist. Returns the value as a list
+            otherwise.
+        """
+        l = self._get_user_option(option_name)
+        if isinstance(l, (str, unicode)):
+            # A single value, most probably the user forgot the final ','
+            l = [l]
+        return l
 
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
@@ -304,6 +325,19 @@ class Config(object):
                 path = 'bzr'
             return path
 
+    def suppress_warning(self, warning):
+        """Should the warning be suppressed or emitted.
+
+        :param warning: The name of the warning being tested.
+
+        :returns: True if the warning should be suppressed, False otherwise.
+        """
+        warnings = self.get_user_option_as_list('suppress_warnings')
+        if warnings is None or warning not in warnings:
+            return False
+        else:
+            return True
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -345,6 +379,9 @@ class IniBasedConfig(Config):
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
         return POLICY_NONE
+
+    def _get_change_editor(self):
+        return self.get_user_option('change_editor')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -678,6 +715,9 @@ class BranchConfig(Config):
             pass
 
         return self._get_best_value('_get_user_id')
+
+    def _get_change_editor(self):
+        return self._get_best_value('_get_change_editor')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -1457,7 +1497,7 @@ class TransportConfig(object):
 
     def _get_config_file(self):
         try:
-            return self._transport.get(self._filename)
+            return StringIO(self._transport.get_bytes(self._filename))
         except errors.NoSuchFile:
             return StringIO()
 

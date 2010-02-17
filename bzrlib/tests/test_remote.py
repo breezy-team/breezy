@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ import bz2
 from cStringIO import StringIO
 
 from bzrlib import (
+    branch,
     bzrdir,
     config,
     errors,
@@ -36,7 +37,6 @@ from bzrlib import (
     pack,
     remote,
     repository,
-    smart,
     tests,
     treebuilder,
     urlutils,
@@ -61,9 +61,8 @@ from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
     multiply_tests,
-    KnownFailure,
     )
-from bzrlib.transport import get_transport, http
+from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
     RemoteTransport,
@@ -134,6 +133,10 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_remote_branch_repr(self):
         b = BzrDir.open_from_transport(self.transport).open_branch()
         self.assertStartsWith(str(b), 'RemoteBranch(')
+
+    def test_remote_bzrdir_repr(self):
+        b = BzrDir.open_from_transport(self.transport)
+        self.assertStartsWith(str(b), 'RemoteBzrDir(')
 
     def test_remote_branch_format_supports_stacking(self):
         t = self.transport
@@ -441,7 +444,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
             'BzrDir.cloning_metadir', ('quack/', 'False'),
             'error', ('BranchReference',)),
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('quack/',),
+            'BzrDir.open_branchV3', ('quack/',),
             'success', ('ref', self.get_url('referenced'))),
         a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
             _client=client)
@@ -532,7 +535,7 @@ class TestBzrDirOpenBranch(TestRemote):
         self.make_branch('.')
         a_dir = BzrDir.open(self.get_url('.'))
         self.reset_smart_call_log()
-        verb = 'BzrDir.open_branchV2'
+        verb = 'BzrDir.open_branchV3'
         self.disable_verb(verb)
         format = a_dir.open_branch()
         call_count = len([call for call in self.hpss_calls if
@@ -548,7 +551,7 @@ class TestBzrDirOpenBranch(TestRemote):
         transport = transport.clone('quack')
         client = FakeClient(transport.base)
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('quack/',),
+            'BzrDir.open_branchV3', ('quack/',),
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('quack/',),
@@ -573,7 +576,7 @@ class TestBzrDirOpenBranch(TestRemote):
             _client=client)
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         self.assertEqual(
-            [('call', 'BzrDir.open_branchV2', ('quack/',))],
+            [('call', 'BzrDir.open_branchV3', ('quack/',))],
             client._calls)
 
     def test__get_tree_branch(self):
@@ -603,7 +606,7 @@ class TestBzrDirOpenBranch(TestRemote):
         network_name = reference_format.network_name()
         branch_network_name = self.get_branch_format().network_name()
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('~hello/',),
+            'BzrDir.open_branchV3', ('~hello/',),
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('~hello/',),
@@ -1191,7 +1194,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(self.get_url())
         branch_network_name = self.get_branch_format().network_name()
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('stacked/',),
+            'BzrDir.open_branchV3', ('stacked/',),
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('stacked/',),
@@ -1227,7 +1230,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client = FakeClient(self.get_url())
         branch_network_name = self.get_branch_format().network_name()
         client.add_expected_call(
-            'BzrDir.open_branchV2', ('stacked/',),
+            'BzrDir.open_branchV3', ('stacked/',),
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('stacked/',),
@@ -1782,6 +1785,20 @@ class TestRemoteRepository(TestRemote):
         return repo, client
 
 
+def remoted_description(format):
+    return 'Remote: ' + format.get_format_description()
+
+
+class TestBranchFormat(tests.TestCase):
+
+    def test_get_format_description(self):
+        remote_format = RemoteBranchFormat()
+        real_format = branch.BranchFormat.get_default_format()
+        remote_format._network_name = real_format.network_name()
+        self.assertEqual(remoted_description(real_format),
+            remote_format.get_format_description())
+
+
 class TestRepositoryFormat(TestRemoteRepository):
 
     def test_fast_delta(self):
@@ -1793,6 +1810,13 @@ class TestRepositoryFormat(TestRemoteRepository):
         false_format = RemoteRepositoryFormat()
         false_format._network_name = false_name
         self.assertEqual(False, false_format.fast_deltas)
+
+    def test_get_format_description(self):
+        remote_repo_format = RemoteRepositoryFormat()
+        real_format = repository.RepositoryFormat.get_default_format()
+        remote_repo_format._network_name = real_format.network_name()
+        self.assertEqual(remoted_description(real_format),
+            remote_repo_format.get_format_description())
 
 
 class TestRepositoryGatherStats(TestRemoteRepository):
@@ -2755,6 +2779,15 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         expected_error = errors.NotBranchError(path=bzrdir.root_transport.base)
         self.assertEqual(expected_error, translated_error)
 
+    def test_nobranch_one_arg(self):
+        bzrdir = self.make_bzrdir('')
+        translated_error = self.translateTuple(
+            ('nobranch', 'extra detail'), bzrdir=bzrdir)
+        expected_error = errors.NotBranchError(
+            path=bzrdir.root_transport.base,
+            detail='extra detail')
+        self.assertEqual(expected_error, translated_error)
+
     def test_LockContention(self):
         translated_error = self.translateTuple(('LockContention',))
         expected_error = errors.LockContention('(remote lock)')
@@ -2873,7 +2906,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         # In addition to re-raising ErrorFromSmartServer, some debug info has
         # been muttered to the log file for developer to look at.
         self.assertContainsRe(
-            self._get_log(keep_log_file=True),
+            self.get_log(),
             "Missing key 'branch' in context")
 
     def test_path_missing(self):
@@ -2887,8 +2920,7 @@ class TestErrorTranslationRobustness(TestErrorTranslationBase):
         self.assertEqual(server_error, translated_error)
         # In addition to re-raising ErrorFromSmartServer, some debug info has
         # been muttered to the log file for developer to look at.
-        self.assertContainsRe(
-            self._get_log(keep_log_file=True), "Missing key 'path' in context")
+        self.assertContainsRe(self.get_log(), "Missing key 'path' in context")
 
 
 class TestStacking(tests.TestCaseWithTransport):
@@ -3022,6 +3054,7 @@ class TestStacking(tests.TestCaseWithTransport):
             local_tree.commit('more local changes are better')
             branch = Branch.open(self.get_url('tree3'))
             branch.lock_read()
+            self.addCleanup(branch.unlock)
             return None, branch
         rev_ord, expected_revs = self.get_ordered_revs('1.9', 'unordered',
             branch_factory=make_stacked_stacked)

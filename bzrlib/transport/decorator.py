@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -184,8 +184,8 @@ class DecoratorServer(Server):
     get_decorator_class method.
     """
 
-    def setUp(self, server=None):
-        """See bzrlib.transport.Server.setUp.
+    def start_server(self, server=None):
+        """See bzrlib.transport.Server.start_server.
 
         :server: decorate the urls given by server. If not provided a
         LocalServer is created.
@@ -197,12 +197,11 @@ class DecoratorServer(Server):
             from bzrlib.transport.local import LocalURLServer
             self._made_server = True
             self._server = LocalURLServer()
-            self._server.setUp()
+            self._server.start_server()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         if self._made_server:
-            self._server.tearDown()
+            self._server.stop_server()
 
     def get_decorator_class(self):
         """Return the class of the decorators we should be constructing."""

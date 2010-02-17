@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -371,15 +371,13 @@ class MergeDirective(_BaseMergeDirective):
         :return: a MergeRequest
         """
         line_iter = iter(lines)
+        firstline = ""
         for line in line_iter:
             if line.startswith('# Bazaar merge directive format '):
-                break
-        else:
-            if len(lines) > 0:
-                raise errors.NotAMergeDirective(lines[0])
-            else:
-                raise errors.NotAMergeDirective('')
-        return _format_registry.get(line[2:].rstrip())._from_lines(line_iter)
+                return _format_registry.get(line[2:].rstrip())._from_lines(
+                    line_iter)
+            firstline = firstline or line.strip()
+        raise errors.NotAMergeDirective(firstline)
 
     @classmethod
     def _from_lines(klass, line_iter):
@@ -582,11 +580,13 @@ class MergeDirective2(_BaseMergeDirective):
                     revision_id):
                     raise errors.PublicBranchOutOfDate(public_branch,
                                                        revision_id)
+            testament_sha1 = t.as_sha1()
         finally:
             for entry in reversed(locked):
                 entry.unlock()
-        return klass(revision_id, t.as_sha1(), time, timezone, target_branch,
-            patch, public_branch, message, bundle, base_revision_id)
+        return klass(revision_id, testament_sha1, time, timezone,
+            target_branch, patch, public_branch, message, bundle,
+            base_revision_id)
 
     def _verify_patch(self, repository):
         calculated_patch = self._generate_diff(repository, self.revision_id,

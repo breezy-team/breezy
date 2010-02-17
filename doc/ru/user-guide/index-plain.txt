@@ -87,7 +87,7 @@
 .. include:: ../../en/user-guide/server.txt
 .. include:: ../../en/user-guide/hooks.txt
 .. include:: ../../en/user-guide/version_info.txt
- 
+
 
 Краткое описание некоторых популярных плагинов
 ##############################################

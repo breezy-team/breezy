@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -372,3 +372,53 @@ class TestSource(TestSourceHelper):
             self.fail(
                 "these files contain an assert statement and should not:\n%s"
                 % '\n'.join(badfiles))
+
+    def test_extension_exceptions(self):
+        """Extension functions should propagate exceptions.
+
+        Either they should return an object, have an 'except' clause, or have a
+        "# cannot_raise" to indicate that we've audited them and defined them as not
+        raising exceptions.
+        """
+        both_exc_and_no_exc = []
+        missing_except = []
+        class_re = re.compile(r'^(cdef\s+)?(public\s+)?(api\s+)?class (\w+).*:',
+                              re.MULTILINE)
+        except_re = re.compile(r'cdef\s+' # start with cdef
+                               r'([\w *]*?)\s*' # this is the return signature
+                               r'(\w+)\s*\(' # the function name
+                               r'[^)]*\)\s*' # parameters
+                               r'(.*)\s*:' # the except clause
+                               r'\s*(#\s*cannot[- _]raise)?' # cannot raise comment
+                              )
+        for fname, text in self.get_source_file_contents(
+                extensions=('.pyx',)):
+            known_classes = set([m[-1] for m in class_re.findall(text)])
+            cdefs = except_re.findall(text)
+            for sig, func, exc_clause, no_exc_comment in cdefs:
+                if sig.startswith('api '):
+                    sig = sig[4:]
+                if not sig or sig in known_classes:
+                    sig = 'object'
+                if 'nogil' in exc_clause:
+                    exc_clause = exc_clause.replace('nogil', '').strip()
+                if exc_clause and no_exc_comment:
+                    both_exc_and_no_exc.append((fname, func))
+                if sig != 'object' and not (exc_clause or no_exc_comment):
+                    missing_except.append((fname, func))
+        error_msg = []
+        if both_exc_and_no_exc:
+            error_msg.append('The following functions had "cannot raise" comments'
+                             ' but did have an except clause set:')
+            for fname, func in both_exc_and_no_exc:
+                error_msg.append('%s:%s' % (fname, func))
+            error_msg.extend(('', ''))
+        if missing_except:
+            error_msg.append('The following functions have fixed return types,'
+                             ' but no except clause.')
+            error_msg.append('Either add an except or append "# cannot_raise".')
+            for fname, func in missing_except:
+                error_msg.append('%s:%s' % (fname, func))
+            error_msg.extend(('', ''))
+        if error_msg:
+            self.fail('\n'.join(error_msg))

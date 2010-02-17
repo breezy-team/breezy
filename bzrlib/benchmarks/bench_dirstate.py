@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests.test__dirstate_helpers import (
-    CompiledDirstateHelpersFeature,
+    compiled_dirstate_helpers_feature,
     )
 
 
@@ -206,7 +206,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
 
     def test__read_dirblocks_20k_tree_0_parents_pyx(self):
-        self.requireFeature(CompiledDirstateHelpersFeature)
+        self.requireFeature(compiled_dirstate_helpers_feature)
         from bzrlib._dirstate_helpers_pyx import _read_dirblocks
         state = self.build_20k_dirstate()
         state.lock_read()
@@ -231,7 +231,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
 
     def test__read_dirblocks_20k_tree_1_parent_pyx(self):
-        self.requireFeature(CompiledDirstateHelpersFeature)
+        self.requireFeature(compiled_dirstate_helpers_feature)
         from bzrlib._dirstate_helpers_pyx import _read_dirblocks
         state = self.build_20k_dirstate_with_parents(1)
         state.lock_read()
@@ -256,7 +256,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
 
     def test__read_dirblocks_20k_tree_2_parents_pyx(self):
-        self.requireFeature(CompiledDirstateHelpersFeature)
+        self.requireFeature(compiled_dirstate_helpers_feature)
         from bzrlib._dirstate_helpers_pyx import _read_dirblocks
         state = self.build_20k_dirstate_with_parents(2)
         state.lock_read()
@@ -337,7 +337,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
             state.unlock()
 
     def test_bisect_dirblock_pyx(self):
-        self.requireFeature(CompiledDirstateHelpersFeature)
+        self.requireFeature(compiled_dirstate_helpers_feature)
         from bzrlib._dirstate_helpers_pyx import bisect_dirblock
         state = self.build_10k_dirstate_dirs()
         state.lock_read()
@@ -420,7 +420,7 @@ class BenchmarkDirState(benchmarks.Benchmark):
                              [(3, 1), (3, 1), (3, 1), (3, 2)])
 
     def test_cmp_by_dirs_pyrex(self):
-        self.requireFeature(CompiledDirstateHelpersFeature)
+        self.requireFeature(compiled_dirstate_helpers_feature)
         from bzrlib._dirstate_helpers_pyx import cmp_by_dirs
         self.compareAllPaths(cmp_by_dirs,
                              [(3, 1), (3, 1), (3, 1), (3, 2)])

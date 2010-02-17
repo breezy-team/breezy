@@ -1,4 +1,4 @@
-/* Copyright (C) 2009 Canonical Ltd
+/* Copyright (C) 2009, 2010 Canonical Ltd
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -179,7 +179,8 @@ StaticTuple_New(Py_ssize_t size)
 static StaticTuple *
 StaticTuple_FromSequence(PyObject *sequence)
 {
-    StaticTuple *new;
+    StaticTuple *new = NULL;
+    PyObject *as_tuple = NULL;
     PyObject *item;
     Py_ssize_t i, size;
 
@@ -188,16 +189,18 @@ StaticTuple_FromSequence(PyObject *sequence)
         return (StaticTuple *)sequence;
     }
     if (!PySequence_Check(sequence)) {
-        PyErr_Format(PyExc_TypeError, "Type %s is not a sequence type",
-                     Py_TYPE(sequence)->tp_name);
-        return NULL;
+        as_tuple = PySequence_Tuple(sequence);
+        if (as_tuple == NULL)
+            goto done;
+        sequence = as_tuple;
     }
     size = PySequence_Size(sequence);
-    if (size == -1)
-        return NULL;
+    if (size == -1) {
+        goto done;
+    }
     new = StaticTuple_New(size);
     if (new == NULL) {
-        return NULL;
+        goto done;
     }
     for (i = 0; i < size; ++i) {
         // This returns a new reference, which we then 'steal' with 
@@ -205,10 +208,13 @@ StaticTuple_FromSequence(PyObject *sequence)
         item = PySequence_GetItem(sequence, i);
         if (item == NULL) {
             Py_DECREF(new);
-            return NULL;
+            new = NULL;
+            goto done;
         }
         StaticTuple_SET_ITEM(new, i, item);
     }
+done:
+    Py_XDECREF(as_tuple);
     return (StaticTuple *)new;
 }
 
@@ -308,8 +314,8 @@ StaticTuple_repr(StaticTuple *self)
     if (tuple_repr == NULL) {
         return NULL;
     }
-    result = PyString_FromFormat("%s%s", Py_TYPE(self)->tp_name,
-                                         PyString_AsString(tuple_repr));
+    result = PyString_FromFormat("StaticTuple%s",
+                                 PyString_AsString(tuple_repr));
     return result;
 }
 
@@ -578,6 +584,29 @@ static char StaticTuple__is_interned_doc[] = "_is_interned() => True/False\n"
 
 
 static PyObject *
+StaticTuple_reduce(StaticTuple *self)
+{
+    PyObject *result = NULL, *as_tuple = NULL;
+
+    result = PyTuple_New(2);
+    if (!result) {
+        return NULL;
+    }
+    as_tuple = StaticTuple_as_tuple(self);
+    if (as_tuple == NULL) {
+        Py_DECREF(result);
+        return NULL;
+    }
+    Py_INCREF(&StaticTuple_Type);
+    PyTuple_SET_ITEM(result, 0, (PyObject *)&StaticTuple_Type);
+    PyTuple_SET_ITEM(result, 1, as_tuple);
+    return result;
+}
+
+static char StaticTuple_reduce_doc[] = "__reduce__() => tuple\n";
+
+
+static PyObject *
 StaticTuple_add(PyObject *v, PyObject *w)
 {
     Py_ssize_t i, len_v, len_w;
@@ -692,6 +721,7 @@ static PyMethodDef StaticTuple_methods[] = {
      METH_STATIC | METH_VARARGS,
      "Create a StaticTuple from a given sequence. This functions"
      " the same as the tuple() constructor."},
+    {"__reduce__", (PyCFunction)StaticTuple_reduce, METH_NOARGS, StaticTuple_reduce_doc},
     {NULL, NULL} /* sentinel */
 };
 
@@ -739,7 +769,7 @@ static PySequenceMethods StaticTuple_as_sequence = {
 PyTypeObject StaticTuple_Type = {
     PyObject_HEAD_INIT(NULL)
     0,                                           /* ob_size */
-    "StaticTuple",                               /* tp_name */
+    "bzrlib._static_tuple_c.StaticTuple",        /* tp_name */
     sizeof(StaticTuple),                         /* tp_basicsize */
     sizeof(PyObject *),                          /* tp_itemsize */
     (destructor)StaticTuple_dealloc,             /* tp_dealloc */

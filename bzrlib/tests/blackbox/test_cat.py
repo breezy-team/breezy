@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,7 +20,6 @@
 """
 
 import os
-import sys
 
 from bzrlib import tests
 
@@ -127,6 +126,18 @@ class TestCat(tests.TestCaseWithTransport):
         url = self.get_readonly_url() + '/README'
         out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
+
+    def test_cat_branch_revspec(self):
+        wt = self.make_branch_and_tree('a')
+        self.build_tree(['a/README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+        wt = self.make_branch_and_tree('b')
+        os.chdir('b')
+
+        out, err = self.run_bzr_subprocess(
+            ['cat', '-r', 'branch:../a', 'README'])
+        self.assertEqual('contents of a/README\n', out)
 
     def test_cat_filters(self):
         wt = self.make_branch_and_tree('.')

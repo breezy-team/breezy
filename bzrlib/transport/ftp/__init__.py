@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -204,17 +204,6 @@ class FtpTransport(ConnectedTransport):
         #       to handle. Consider doing something like that here.
         #raise TransportError(msg='Error for path: %s' % (path,), orig_error=e)
         raise
-
-    def _remote_path(self, relpath):
-        # XXX: It seems that ftplib does not handle Unicode paths
-        # at the same time, medusa won't handle utf8 paths So if
-        # we .encode(utf8) here (see ConnectedTransport
-        # implementation), then we get a Server failure.  while
-        # if we use str(), we get a UnicodeError, and the test
-        # suite just skips testing UnicodePaths.
-        relative = str(urlutils.unescape(relpath))
-        remote_path = self._combine_paths(self._path, relative)
-        return remote_path
 
     def has(self, relpath):
         """Does the target location exist?"""

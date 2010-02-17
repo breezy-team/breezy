@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 import sys
 
-from bzrlib import inventory
+from bzrlib import errors, inventory
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -53,3 +53,19 @@ class TestSetRootId(TestCaseWithWorkingTree):
         # should still be retained
         tree = tree.bzrdir.open_workingtree()
         self.assertEqual(root_id, tree.get_root_id())
+        tree._validate()
+
+    def test_set_root_id(self):
+        tree = self.make_branch_and_tree('.')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        orig_root_id = tree.get_root_id()
+        self.assertNotEqual('custom-root-id', orig_root_id)
+        self.assertEqual('', tree.id2path(orig_root_id))
+        self.assertRaises(errors.NoSuchId, tree.id2path, 'custom-root-id')
+        tree.set_root_id('custom-root-id')
+        self.assertEqual('custom-root-id', tree.get_root_id())
+        self.assertEqual('custom-root-id', tree.path2id(''))
+        self.assertEqual('', tree.id2path('custom-root-id'))
+        self.assertRaises(errors.NoSuchId, tree.id2path, orig_root_id)
+        tree._validate()

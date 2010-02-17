@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import re
 
 from bzrlib import (
     branch as _mod_branch,
+    osutils,
     urlutils,
     )
 from bzrlib.bzrdir import BzrDirMetaFormat1
@@ -74,8 +75,8 @@ class TestInit(ExternalBase):
 Using shared repository: %s
 """ % (self._default_label, urlutils.local_path_from_url(
             repo.bzrdir.root_transport.external_url())), out)
-        self.assertEndsWith(out, "bzrlib.tests.blackbox.test_init.TestInit."
-            "test_init_at_repository_root/work/repo/\n")
+        cwd = osutils.getcwd()
+        self.assertEndsWith(out, cwd + '/repo/\n')
         self.assertEqual('', err)
         newdir.open_branch()
         newdir.open_workingtree()

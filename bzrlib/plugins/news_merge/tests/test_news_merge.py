@@ -1,6 +1,4 @@
-# Bazaar -- distributed version control
-#
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2010 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,25 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import sys
+# FIXME: This is totally incomplete but I'm only the patch pilot :-)
+# -- vila 100120
+# Note that the single test from this file is now in
+# test_merge.TestConfigurableFileMerger -- rbc 20100129.
 
-
-def show_status(state, kind, name, to_file=None):
-    if kind == 'directory':
-        # use this even on windows?
-        kind_ch = '/'
-    elif kind == 'symlink':
-        kind_ch = '->'
-    elif kind == 'file':
-        kind_ch = ''
-    else:
-        raise ValueError(kind)
-
-    if len(state) != 1:
-        raise ValueError(state)
-
-    if to_file is None:
-        to_file = sys.stdout
-
-    to_file.write(state + '       ' + name + kind_ch + '\n')
-
+from bzrlib import (
+    option,
+    tests,
+    )
+from bzrlib.merge import Merger
+from bzrlib.plugins import news_merge
+import bzrlib.plugins.news_merge.news_merge
+from bzrlib.tests import test_merge_core

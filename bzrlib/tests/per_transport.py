@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1496,6 +1496,10 @@ class TransportTests(TestTransportImplementation):
                  u'\u0410', # Russian A
                  u'\u65e5', # Kanji person
                 ]
+
+        no_unicode_support = getattr(self._server, 'no_unicode_support', False)
+        if no_unicode_support:
+            raise tests.KnownFailure("test server cannot handle unicode paths")
 
         try:
             self.build_tree(files, transport=t, line_endings='binary')

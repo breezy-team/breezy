@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -414,7 +414,7 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         self.empty_branch.push(target)
         self.assertEqual(
             ['BzrDir.open_2.1',
-             'BzrDir.open_branchV2',
+             'BzrDir.open_branchV3',
              'BzrDir.find_repositoryV3',
              'Branch.get_stacked_on_url',
              'Branch.lock_write',

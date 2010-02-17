@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ from bzrlib import (
     index,
     lru_cache,
     osutils,
+    static_tuple,
     trace,
     )
 from bzrlib.index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
@@ -159,16 +160,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \0 or \n.
         """
+        # Ensure that 'key' is a StaticTuple
+        key = static_tuple.StaticTuple.from_sequence(key).intern()
         # we don't care about absent_references
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
-        # TODO: StaticTuple
-        self._nodes[key] = (node_refs, value)
-        self._keys.add(key)
+        self._nodes[key] = static_tuple.StaticTuple(node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
-        if len(self._keys) < self._spill_at:
+        if len(self._nodes) < self._spill_at:
             return
         self._spill_mem_keys_to_disk()
 
@@ -203,7 +204,6 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 self._backing_indices[backing_pos] = None
         else:
             self._backing_indices.append(new_backing)
-        self._keys = set()
         self._nodes = {}
         self._nodes_by_key = None
 
@@ -411,7 +411,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # Special case the first node as it may be prefixed
             node = row.spool.read(_PAGE_SIZE)
             result.write(node[reserved:])
-            result.write("\x00" * (reserved - position))
+            if len(node) == _PAGE_SIZE:
+                result.write("\x00" * (reserved - position))
             position = 0 # Only the root row actually has an offset
             copied_len = osutils.pumpfile(row.spool, result)
             if copied_len != (row.nodes - 1) * _PAGE_SIZE:
@@ -462,14 +463,22 @@ class BTreeBuilder(index.GraphIndexBuilder):
             efficient order for the index (keys iteration order in this case).
         """
         keys = set(keys)
-        local_keys = keys.intersection(self._keys)
+        # Note: We don't use keys.intersection() here. If you read the C api,
+        #       set.intersection(other) special cases when other is a set and
+        #       will iterate the smaller of the two and lookup in the other.
+        #       It does *not* do this for any other type (even dict, unlike
+        #       some other set functions.) Since we expect keys is generally <<
+        #       self._nodes, it is faster to iterate over it in a list
+        #       comprehension
+        nodes = self._nodes
+        local_keys = [key for key in keys if key in nodes]
         if self.reference_lists:
             for key in local_keys:
-                node = self._nodes[key]
+                node = nodes[key]
                 yield self, key, node[1], node[0]
         else:
             for key in local_keys:
-                node = self._nodes[key]
+                node = nodes[key]
                 yield self, key, node[1]
         # Find things that are in backing indices that have not been handled
         # yet.
@@ -585,7 +594,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
 
         For InMemoryGraphIndex the estimate is exact.
         """
-        return len(self._keys) + sum(backing.key_count() for backing in
+        return len(self._nodes) + sum(backing.key_count() for backing in
             self._backing_indices if backing is not None)
 
     def validate(self):
@@ -623,11 +632,11 @@ class _InternalNode(object):
     def _parse_lines(self, lines):
         nodes = []
         self.offset = int(lines[1][7:])
+        as_st = static_tuple.StaticTuple.from_sequence
         for line in lines[2:]:
             if line == '':
                 break
-            # TODO: Switch to StaticTuple here.
-            nodes.append(tuple(map(intern, line.split('\0'))))
+            nodes.append(as_st(map(intern, line.split('\0'))).intern())
         return nodes
 
 

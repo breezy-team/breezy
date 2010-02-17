@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,6 +53,7 @@ from bzrlib.repofmt.pack_repo import (
     ResumedPack,
     Packer,
     )
+from bzrlib.static_tuple import StaticTuple
 
 
 class GCPack(NewPack):
@@ -352,7 +353,8 @@ class GCCHKPacker(Packer):
         """Build a VersionedFiles instance on top of this group of packs."""
         index_name = index_name + '_index'
         index_to_pack = {}
-        access = knit._DirectPackAccess(index_to_pack)
+        access = knit._DirectPackAccess(index_to_pack,
+                                        reload_func=self._reload_func)
         if for_write:
             # Use new_pack
             if self.new_pack is None:
@@ -703,10 +705,11 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        result = self._save_pack_names(clear_obsolete_packs=True)
-        # Move the old packs out of the way now they are no longer referenced.
-        for revision_count, packs in pack_operations:
-            self._obsolete_packs(packs)
+        to_be_obsoleted = []
+        for _, packs in pack_operations:
+            to_be_obsoleted.extend(packs)
+        result = self._save_pack_names(clear_obsolete_packs=True,
+                                       obsolete_packs=to_be_obsoleted)
         return result
 
 
@@ -814,14 +817,16 @@ class CHKInventoryRepository(KnitPackRepository):
                                  ' no new_path %r' % (file_id,))
             if new_path == '':
                 new_inv.root_id = file_id
-                parent_id_basename_key = ('', '')
+                parent_id_basename_key = StaticTuple('', '').intern()
             else:
                 utf8_entry_name = entry.name.encode('utf-8')
-                parent_id_basename_key = (entry.parent_id, utf8_entry_name)
+                parent_id_basename_key = StaticTuple(entry.parent_id,
+                                                     utf8_entry_name).intern()
             new_value = entry_to_bytes(entry)
             # Populate Caches?
             # new_inv._path_to_fileid_cache[new_path] = file_id
-            id_to_entry_dict[(file_id,)] = new_value
+            key = StaticTuple(file_id).intern()
+            id_to_entry_dict[key] = new_value
             parent_id_basename_dict[parent_id_basename_key] = file_id
 
         new_inv._populate_from_dicts(self.chk_bytes, id_to_entry_dict,
@@ -949,6 +954,10 @@ class CHKInventoryRepository(KnitPackRepository):
                         pb=pb):
                 for name, bytes in items:
                     (name_utf8, file_id, revision_id) = bytes_to_info(bytes)
+                    # TODO: consider interning file_id, revision_id here, or
+                    #       pushing that intern() into bytes_to_info()
+                    # TODO: rich_root should always be True here, for all
+                    #       repositories that support chk_bytes
                     if not rich_root and name_utf8 == '':
                         continue
                     try:
@@ -1189,7 +1198,9 @@ def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_info):
             # are always rich-root, so there are no synthesised root records to
             # ignore.
             _, file_id, revision_id = bytes_to_info(bytes)
-            text_keys.add((file_id, revision_id))
+            file_id = intern(file_id)
+            revision_id = intern(revision_id)
+            text_keys.add(StaticTuple(file_id, revision_id).intern())
         yield record
 
 

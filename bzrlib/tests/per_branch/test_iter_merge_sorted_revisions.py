@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,6 +83,28 @@ class TestIterMergeSortedRevisions(TestCaseWithBranch):
             ('rev-1.1.1', 1, (1,1,1), True),
             ], list(the_branch.iter_merge_sorted_revisions(
                 stop_revision_id='rev-3', stop_rule='with-merges')))
+
+    def test_merge_sorted_range_stop_with_merges_can_show_non_parents(self):
+        tree = self.create_tree_with_merge()
+        the_branch = tree.bzrdir.open_branch()
+        # rev-1.1.1 gets logged before the end revision is reached.
+        # so it is returned even though rev-1.1.1 is not a parent of rev-2.
+        self.assertEqual([
+            ('rev-3', 0, (3,), False),
+            ('rev-1.1.1', 1, (1,1,1), True),
+            ('rev-2', 0, (2,), False),
+            ], list(the_branch.iter_merge_sorted_revisions(
+                stop_revision_id='rev-2', stop_rule='with-merges')))
+
+    def test_merge_sorted_range_stop_with_merges_ignore_non_parents(self):
+        tree = self.create_tree_with_merge()
+        the_branch = tree.bzrdir.open_branch()
+        # rev-2 is not a parent of rev-1.1.1 so it must not be returned
+        self.assertEqual([
+            ('rev-3', 0, (3,), False),
+            ('rev-1.1.1', 1, (1,1,1), True),
+            ], list(the_branch.iter_merge_sorted_revisions(
+                stop_revision_id='rev-1.1.1', stop_rule='with-merges')))
 
     def test_merge_sorted_single_stop_exclude(self):
         # from X..X exclusive is an empty result

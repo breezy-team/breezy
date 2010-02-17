@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -97,11 +97,12 @@ cdef class KnitIndexReader:
         self.end_str = NULL
         self.history_len = 0
 
-    cdef void validate(self):
+    cdef int validate(self) except -1:
         if not PyDict_CheckExact(self.cache):
             raise TypeError('kndx._cache must be a python dict')
         if not PyList_CheckExact(self.history):
             raise TypeError('kndx._history must be a python list')
+        return 0
 
     cdef object process_options(self, char *option_str, char *end):
         """Process the options string into a list."""

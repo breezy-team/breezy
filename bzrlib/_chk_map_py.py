@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
 
 import zlib
 import struct
+
+from bzrlib.static_tuple import StaticTuple
 
 _LeafNode = None
 _InternalNode = None
@@ -93,7 +95,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
         value_lines = lines[pos:pos+num_value_lines]
         pos += num_value_lines
         value = '\n'.join(value_lines)
-        items[tuple(elements[:-1])] = value
+        items[StaticTuple.from_sequence(elements[:-1])] = value
     if len(items) != length:
         raise AssertionError("item count (%d) mismatch for key %s,"
             " bytes %r" % (length, key, bytes))
@@ -141,7 +143,7 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     for line in lines[5:]:
         line = common_prefix + line
         prefix, flat_key = line.rsplit('\x00', 1)
-        items[prefix] = (flat_key,)
+        items[prefix] = StaticTuple(flat_key,)
     if len(items) == 0:
         raise AssertionError("We didn't find any item for %s" % key)
     result._items = items
@@ -155,4 +157,3 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     result._node_width = len(prefix)
     result._search_prefix = common_prefix
     return result
-

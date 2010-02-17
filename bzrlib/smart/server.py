@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -251,7 +251,7 @@ class SmartTCPServer_for_testing(SmartTCPServer):
         """Get a backing transport from a server we are decorating."""
         return transport.get_transport(backing_transport_server.get_url())
 
-    def setUp(self, backing_transport_server=None,
+    def start_server(self, backing_transport_server=None,
               client_path_extra='/extra/'):
         """Set up server for testing.
 
@@ -273,15 +273,15 @@ class SmartTCPServer_for_testing(SmartTCPServer):
             backing_transport_server = LocalURLServer()
         self.chroot_server = ChrootServer(
             self.get_backing_transport(backing_transport_server))
-        self.chroot_server.setUp()
+        self.chroot_server.start_server()
         self.backing_transport = transport.get_transport(
             self.chroot_server.get_url())
         self.root_client_path = self.client_path_extra = client_path_extra
         self.start_background_thread(self.thread_name_suffix)
 
-    def tearDown(self):
+    def stop_server(self):
         self.stop_background_thread()
-        self.chroot_server.tearDown()
+        self.chroot_server.stop_server()
 
     def get_url(self):
         url = super(SmartTCPServer_for_testing, self).get_url()
@@ -386,15 +386,15 @@ class BzrServerFactory(object):
         """Chroot transport, and decorate with userdir expander."""
         self.base_path = self.get_base_path(transport)
         chroot_server = chroot.ChrootServer(transport)
-        chroot_server.setUp()
-        self.cleanups.append(chroot_server.tearDown)
+        chroot_server.start_server()
+        self.cleanups.append(chroot_server.stop_server)
         transport = get_transport(chroot_server.get_url())
         if self.base_path is not None:
             # Decorate the server's backing transport with a filter that can
             # expand homedirs.
             expand_userdirs = self._make_expand_userdirs_filter(transport)
-            expand_userdirs.setUp()
-            self.cleanups.append(expand_userdirs.tearDown)
+            expand_userdirs.start_server()
+            self.cleanups.append(expand_userdirs.stop_server)
             transport = get_transport(expand_userdirs.get_url())
         self.transport = transport
 

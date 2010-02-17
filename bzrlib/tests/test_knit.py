@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ from bzrlib import (
     multiparent,
     osutils,
     pack,
+    tests,
     )
 from bzrlib.errors import (
     RevisionAlreadyPresent,
@@ -69,19 +70,8 @@ from bzrlib.versionedfile import (
     )
 
 
-class _CompiledKnitFeature(Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._knit_load_data_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._knit_load_data_pyx'
-
-CompiledKnitFeature = _CompiledKnitFeature()
+compiled_knit_feature = tests.ModuleAvailableFeature(
+                            'bzrlib._knit_load_data_pyx')
 
 
 class KnitContentTestsMixin(object):
@@ -1308,7 +1298,7 @@ class LowLevelKnitIndexTests(TestCase):
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
-    _test_needs_features = [CompiledKnitFeature]
+    _test_needs_features = [compiled_knit_feature]
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)

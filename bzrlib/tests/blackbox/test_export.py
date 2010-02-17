@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -141,7 +141,7 @@ class TestExport(ExternalBase):
         # forward slashes
         self.assertEqual(['test/a', 'test/b/', 'test/b/c', 'test/d/'], names)
 
-        file_attr = stat.S_IFREG
+        file_attr = stat.S_IFREG | export.zip_exporter.FILE_PERMISSIONS
         dir_attr = stat.S_IFDIR | export.zip_exporter.ZIP_DIRECTORY_BIT
 
         a_info = zfile.getinfo(names[0])

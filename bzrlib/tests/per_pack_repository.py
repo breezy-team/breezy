@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -545,6 +545,42 @@ class TestPackRepository(TestCaseWithTransport):
         finally:
             tree.unlock()
 
+    def test_concurrent_pack_during_autopack(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        try:
+            for i in xrange(9):
+                tree.commit('rev %d' % (i,))
+            r2 = repository.Repository.open('tree')
+            r2.lock_write()
+            try:
+                # Monkey patch so that pack occurs while the other repo is
+                # autopacking. This is slightly bad, but all current pack
+                # repository implementations have a _pack_collection, and we
+                # test that it gets triggered. So if a future format changes
+                # things, the test will fail rather than succeed accidentally.
+                autopack_count = [0]
+                r1 = tree.branch.repository
+                orig = r1._pack_collection.pack_distribution
+                def trigger_during_auto(*args, **kwargs):
+                    ret = orig(*args, **kwargs)
+                    if not autopack_count[0]:
+                        r2.pack()
+                    autopack_count[0] += 1
+                    return ret
+                r1._pack_collection.pack_distribution = trigger_during_auto
+                tree.commit('autopack-rev')
+                # This triggers 2 autopacks. The first one causes r2.pack() to
+                # fire, but r2 doesn't see the new pack file yet. The
+                # autopack restarts and sees there are 2 files and there
+                # should be only 1 for 10 commits. So it goes ahead and
+                # finishes autopacking.
+                self.assertEqual([2], autopack_count)
+            finally:
+                r2.unlock()
+        finally:
+            tree.unlock()
+
     def test_lock_write_does_not_physically_lock(self):
         repo = self.make_repository('.', format=self.get_format())
         repo.lock_write()
@@ -687,9 +723,9 @@ class TestPackRepository(TestCaseWithTransport):
         # abort_write_group will not raise an error
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
         # But it does log an error
-        log_file = self._get_log(keep_log_file=True)
-        self.assertContainsRe(log_file, 'abort_write_group failed')
-        self.assertContainsRe(log_file, r'INFO  bzr: ERROR \(ignored\):')
+        log = self.get_log()
+        self.assertContainsRe(log, 'abort_write_group failed')
+        self.assertContainsRe(log, r'INFO  bzr: ERROR \(ignored\):')
         if token is not None:
             repo.leave_lock_in_place()
 

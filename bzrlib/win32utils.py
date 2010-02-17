@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,9 @@
 Only one dependency: ctypes should be installed.
 """
 
+import glob
 import os
+import re
 import struct
 import sys
 
@@ -178,7 +180,7 @@ def get_console_size(defaultx=80, defaulty=25):
         return (defaultx, defaulty)
 
     # To avoid problem with redirecting output via pipe
-    # need to use stderr instead of stdout
+    # we need to use stderr instead of stdout
     h = ctypes.windll.kernel32.GetStdHandle(WIN32_STDERR_HANDLE)
     csbi = ctypes.create_string_buffer(22)
     res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
@@ -388,7 +390,6 @@ def get_host_name():
 
 
 def _ensure_unicode(s):
-    from bzrlib import osutils
     if s and type(s) != unicode:
         from bzrlib import osutils
         s = s.decode(osutils.get_user_encoding())
@@ -422,6 +423,26 @@ def _undo_ensure_with_dir(path, corrected):
 
 
 
+def glob_one(possible_glob):
+    """Same as glob.glob().
+
+    work around bugs in glob.glob()
+    - Python bug #1001604 ("glob doesn't return unicode with ...")
+    - failing expansion for */* with non-iso-8859-* chars
+    """
+    corrected_glob, corrected = _ensure_with_dir(possible_glob)
+    glob_files = glob.glob(corrected_glob)
+
+    if not glob_files:
+        # special case to let the normal code path handle
+        # files that do not exist, etc.
+        glob_files = [possible_glob]
+    elif corrected:
+        glob_files = [_undo_ensure_with_dir(elem, corrected)
+                      for elem in glob_files]
+    return [elem.replace(u'\\', u'/') for elem in glob_files]
+
+
 def glob_expand(file_list):
     """Replacement for glob expansion by the shell.
 
@@ -435,25 +456,10 @@ def glob_expand(file_list):
     """
     if not file_list:
         return []
-    import glob
     expanded_file_list = []
     for possible_glob in file_list:
-        # work around bugs in glob.glob()
-        # - Python bug #1001604 ("glob doesn't return unicode with ...")
-        # - failing expansion for */* with non-iso-8859-* chars
-        possible_glob, corrected = _ensure_with_dir(possible_glob)
-        glob_files = glob.glob(possible_glob)
-
-        if glob_files == []:
-            # special case to let the normal code path handle
-            # files that do not exists
-            expanded_file_list.append(
-                _undo_ensure_with_dir(possible_glob, corrected))
-        else:
-            glob_files = [_undo_ensure_with_dir(elem, corrected) for elem in glob_files]
-            expanded_file_list += glob_files
-
-    return [elem.replace(u'\\', u'/') for elem in expanded_file_list]
+        expanded_file_list.extend(glob_one(possible_glob))
+    return expanded_file_list
 
 
 def get_app_path(appname):
@@ -511,6 +517,123 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
+
+class UnicodeShlex(object):
+    """This is a very simplified version of shlex.shlex.
+
+    The main change is that it supports non-ascii input streams. The internal
+    structure is quite simplified relative to shlex.shlex, since we aren't
+    trying to handle multiple input streams, etc. In fact, we don't use a
+    file-like api either.
+    """
+
+    def __init__(self, uni_string):
+        self._input = uni_string
+        self._input_iter = iter(self._input)
+        self._whitespace_match = re.compile(u'\s').match
+        self._word_match = re.compile(u'\S').match
+        self._quote_chars = u'"'
+        # self._quote_match = re.compile(u'[\'"]').match
+        self._escape_match = lambda x: None # Never matches
+        self._escape = '\\'
+        # State can be
+        #   ' ' - after whitespace, starting a new token
+        #   'a' - after text, currently working on a token
+        #   '"' - after ", currently in a "-delimited quoted section
+        #   "\" - after '\', checking the next char
+        self._state = ' '
+        self._token = [] # Current token being parsed
+
+    def _get_token(self):
+        # Were there quote chars as part of this token?
+        quoted = False
+        quoted_state = None
+        for nextchar in self._input_iter:
+            if self._state == ' ':
+                if self._whitespace_match(nextchar):
+                    # if self._token: return token
+                    continue
+                elif nextchar in self._quote_chars:
+                    self._state = nextchar # quoted state
+                elif self._word_match(nextchar):
+                    self._token.append(nextchar)
+                    self._state = 'a'
+                else:
+                    raise AssertionError('wtttf?')
+            elif self._state in self._quote_chars:
+                quoted = True
+                if nextchar == self._state: # End of quote
+                    self._state = 'a' # posix allows 'foo'bar to translate to
+                                      # foobar
+                elif self._state == '"' and nextchar == self._escape:
+                    quoted_state = self._state
+                    self._state = nextchar
+                else:
+                    self._token.append(nextchar)
+            elif self._state == self._escape:
+                if nextchar == '\\':
+                    self._token.append('\\')
+                elif nextchar == '"':
+                    self._token.append(nextchar)
+                else:
+                    self._token.append('\\' + nextchar)
+                self._state = quoted_state
+            elif self._state == 'a':
+                if self._whitespace_match(nextchar):
+                    if self._token:
+                        break # emit this token
+                    else:
+                        continue # no token to emit
+                elif nextchar in self._quote_chars:
+                    # Start a new quoted section
+                    self._state = nextchar
+                # escape?
+                elif (self._word_match(nextchar)
+                      or nextchar in self._quote_chars
+                      # or whitespace_split?
+                      ):
+                    self._token.append(nextchar)
+                else:
+                    raise AssertionError('state == "a", char: %r'
+                                         % (nextchar,))
+            else:
+                raise AssertionError('unknown state: %r' % (self._state,))
+        result = ''.join(self._token)
+        self._token = []
+        if not quoted and result == '':
+            result = None
+        return quoted, result
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        quoted, token = self._get_token()
+        if token is None:
+            raise StopIteration
+        return quoted, token
+
+
+def _command_line_to_argv(command_line):
+    """Convert a Unicode command line into a set of argv arguments.
+
+    This does wildcard expansion, etc. It is intended to make wildcards act
+    closer to how they work in posix shells, versus how they work by default on
+    Windows.
+    """
+    s = UnicodeShlex(command_line)
+    # Now that we've split the content, expand globs
+    # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
+    #       '**/' style globs
+    args = []
+    for is_quoted, arg in s:
+        if is_quoted or not glob.has_magic(arg):
+            args.append(arg)
+        else:
+            args.extend(glob_one(arg))
+    return args
+
+
 if has_ctypes and winver != 'Windows 98':
     def get_unicode_argv():
         LPCWSTR = ctypes.c_wchar_p
@@ -520,21 +643,19 @@ if has_ctypes and winver != 'Windows 98':
         GetCommandLine = prototype(("GetCommandLineW",
                                     ctypes.windll.kernel32))
         prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
-        CommandLineToArgv = prototype(("CommandLineToArgvW",
-                                       ctypes.windll.shell32))
-        c = INT(0)
-        pargv = CommandLineToArgv(GetCommandLine(), ctypes.byref(c))
+        command_line = GetCommandLine()
         # Skip the first argument, since we only care about parameters
-        argv = [pargv[i] for i in range(1, c.value)]
+        argv = _command_line_to_argv(command_line)[1:]
         if getattr(sys, 'frozen', None) is None:
             # Invoked via 'python.exe' which takes the form:
             #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
             # we need to get only BZR_OPTIONS part,
-            # so let's using sys.argv[1:] as reference to get the tail
-            # of unicode argv
-            tail_len = len(sys.argv[1:])
-            ix = len(argv) - tail_len
-            argv = argv[ix:]
+            # We already removed 'python.exe' so we remove everything up to and
+            # including the first non-option ('-') argument.
+            for idx in xrange(len(argv)):
+                if argv[idx][:1] != '-':
+                    break
+            argv = argv[idx+1:]
         return argv
 else:
     get_unicode_argv = None

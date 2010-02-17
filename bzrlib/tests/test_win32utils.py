@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,11 @@
 import os
 import sys
 
-from bzrlib import osutils
+from bzrlib import (
+    osutils,
+    tests,
+    win32utils,
+    )
 from bzrlib.tests import (
     Feature,
     TestCase,
@@ -26,21 +30,22 @@ from bzrlib.tests import (
     UnicodeFilenameFeature,
     )
 from bzrlib.win32utils import glob_expand, get_app_path
-from bzrlib import win32utils
 
 
-# Features
-# --------
-
-class _NeedsGlobExpansionFeature(Feature):
+class _BackslashDirSeparatorFeature(tests.Feature):
 
     def _probe(self):
-        return sys.platform == 'win32'
+        try:
+            os.lstat(os.getcwd() + '\\')
+        except OSError:
+            return False
+        else:
+            return True
 
     def feature_name(self):
-        return 'Internally performed glob expansion'
+        return "Filesystem treats '\\' as a directory separator."
 
-NeedsGlobExpansionFeature = _NeedsGlobExpansionFeature()
+BackslashDirSeparatorFeature = _BackslashDirSeparatorFeature()
 
 
 class _RequiredModuleFeature(Feature):
@@ -67,19 +72,9 @@ Win32comShellFeature = _RequiredModuleFeature('win32com.shell')
 # Tests
 # -----
 
-class TestNeedsGlobExpansionFeature(TestCase):
-
-    def test_available(self):
-        self.assertEqual(sys.platform == 'win32',
-                         NeedsGlobExpansionFeature.available())
-
-    def test_str(self):
-        self.assertTrue("performed" in str(NeedsGlobExpansionFeature))
-
-
 class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
-    _test_needs_features = [NeedsGlobExpansionFeature]
+    _test_needs_features = []
 
     def test_empty_tree(self):
         self.build_tree([])
@@ -89,22 +84,28 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             [['*'], ['*']],
             [['a', 'a'], ['a', 'a']]])
 
-    def test_tree_ascii(self):
-        """Checks the glob expansion and path separation char
-        normalization"""
+    def build_ascii_tree(self):
         self.build_tree(['a', 'a1', 'a2', 'a11', 'a.1',
                          'b', 'b1', 'b2', 'b3',
                          'c/', 'c/c1', 'c/c2',
                          'd/', 'd/d1', 'd/d2', 'd/e/', 'd/e/e1'])
+
+    def build_unicode_tree(self):
+        self.requireFeature(UnicodeFilenameFeature)
+        self.build_tree([u'\u1234', u'\u1234\u1234', u'\u1235/',
+                         u'\u1235/\u1235'])
+
+    def test_tree_ascii(self):
+        """Checks the glob expansion and path separation char
+        normalization"""
+        self.build_ascii_tree()
         self._run_testset([
             # no wildcards
             [[u'a'], [u'a']],
             [[u'a', u'a' ], [u'a', u'a']],
-            [[u'A'], [u'A']],
 
             [[u'd'], [u'd']],
             [[u'd/'], [u'd/']],
-            [[u'd\\'], [u'd/']],
 
             # wildcards
             [[u'a*'], [u'a', u'a1', u'a2', u'a11', u'a.1']],
@@ -112,18 +113,35 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             [[u'a?'], [u'a1', u'a2']],
             [[u'a??'], [u'a11', u'a.1']],
             [[u'b[1-2]'], [u'b1', u'b2']],
-            [[u'A?'], [u'a1', u'a2']],
 
             [[u'd/*'], [u'd/d1', u'd/d2', u'd/e']],
+            [[u'?/*'], [u'c/c1', u'c/c2', u'd/d1', u'd/d2', u'd/e']],
+            [[u'*/*'], [u'c/c1', u'c/c2', u'd/d1', u'd/d2', u'd/e']],
+            [[u'*/'], [u'c/', u'd/']],
+            ])
+
+    def test_backslash_globbing(self):
+        self.requireFeature(BackslashDirSeparatorFeature)
+        self.build_ascii_tree()
+        self._run_testset([
+            [[u'd\\'], [u'd/']],
             [[u'd\\*'], [u'd/d1', u'd/d2', u'd/e']],
             [[u'?\\*'], [u'c/c1', u'c/c2', u'd/d1', u'd/d2', u'd/e']],
             [[u'*\\*'], [u'c/c1', u'c/c2', u'd/d1', u'd/d2', u'd/e']],
-            [[u'*/'], [u'c/', u'd/']],
-            [[u'*\\'], [u'c/', u'd/']]])
+            [[u'*\\'], [u'c/', u'd/']],
+            ])
+
+    def test_case_insensitive_globbing(self):
+        self.requireFeature(tests.CaseInsCasePresFilenameFeature)
+        self.build_ascii_tree()
+        self._run_testset([
+            [[u'A'], [u'A']],
+            [[u'A?'], [u'a1', u'a2']],
+            ])
 
     def test_tree_unicode(self):
         """Checks behaviour with non-ascii filenames"""
-        self.build_tree([u'\u1234', u'\u1234\u1234', u'\u1235/', u'\u1235/\u1235'])
+        self.build_unicode_tree()
         self._run_testset([
             # no wildcards
             [[u'\u1234'], [u'\u1234']],
@@ -139,16 +157,26 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
 
             [[u'\u1235/?'], [u'\u1235/\u1235']],
             [[u'\u1235/*'], [u'\u1235/\u1235']],
-            [[u'\u1235\\?'], [u'\u1235/\u1235']],
-            [[u'\u1235\\*'], [u'\u1235/\u1235']],
             [[u'?/'], [u'\u1235/']],
             [[u'*/'], [u'\u1235/']],
-            [[u'?\\'], [u'\u1235/']],
-            [[u'*\\'], [u'\u1235/']],
             [[u'?/?'], [u'\u1235/\u1235']],
             [[u'*/*'], [u'\u1235/\u1235']],
+            ])
+
+    def test_unicode_backslashes(self):
+        self.requireFeature(BackslashDirSeparatorFeature)
+        self.build_unicode_tree()
+        self._run_testset([
+            # no wildcards
+            [[u'\u1235\\'], [u'\u1235/']],
+            [[u'\u1235\\\u1235'], [u'\u1235/\u1235']],
+            [[u'\u1235\\?'], [u'\u1235/\u1235']],
+            [[u'\u1235\\*'], [u'\u1235/\u1235']],
+            [[u'?\\'], [u'\u1235/']],
+            [[u'*\\'], [u'\u1235/']],
             [[u'?\\?'], [u'\u1235/\u1235']],
-            [[u'*\\*'], [u'\u1235/\u1235']]])
+            [[u'*\\*'], [u'\u1235/\u1235']],
+            ])
 
     def _run_testset(self, testset):
         for pattern, expected in testset:
@@ -261,3 +289,108 @@ class TestSetHidden(TestCaseInTempDir):
         os.makedirs(u'\u1234\\.bzr')
         path = osutils.abspath(u'\u1234\\.bzr')
         win32utils.set_file_attr_hidden(path)
+
+
+
+class TestUnicodeShlex(tests.TestCase):
+
+    def assertAsTokens(self, expected, line):
+        s = win32utils.UnicodeShlex(line)
+        self.assertEqual(expected, list(s))
+
+    def test_simple(self):
+        self.assertAsTokens([(False, u'foo'), (False, u'bar'), (False, u'baz')],
+                            u'foo bar baz')
+
+    def test_ignore_multiple_spaces(self):
+        self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'foo  bar')
+
+    def test_ignore_leading_space(self):
+        self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'  foo bar')
+
+    def test_ignore_trailing_space(self):
+        self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'foo bar  ')
+
+    def test_posix_quotations(self):
+        self.assertAsTokens([(True, u'foo bar')], u'"foo bar"')
+        self.assertAsTokens([(False, u"'fo''o"), (False, u"b''ar'")],
+            u"'fo''o b''ar'")
+        self.assertAsTokens([(True, u'foo bar')], u'"fo""o b""ar"')
+        self.assertAsTokens([(True, u"fo'o"), (True, u"b'ar")],
+            u'"fo"\'o b\'"ar"')
+
+    def test_nested_quotations(self):
+        self.assertAsTokens([(True, u'foo"" bar')], u"\"foo\\\"\\\" bar\"")
+        self.assertAsTokens([(True, u'foo\'\' bar')], u"\"foo'' bar\"")
+
+    def test_empty_result(self):
+        self.assertAsTokens([], u'')
+        self.assertAsTokens([], u'    ')
+
+    def test_quoted_empty(self):
+        self.assertAsTokens([(True, '')], u'""')
+        self.assertAsTokens([(False, u"''")], u"''")
+
+    def test_unicode_chars(self):
+        self.assertAsTokens([(False, u'f\xb5\xee'), (False, u'\u1234\u3456')],
+                             u'f\xb5\xee \u1234\u3456')
+
+    def test_newline_in_quoted_section(self):
+        self.assertAsTokens([(True, u'foo\nbar\nbaz\n')], u'"foo\nbar\nbaz\n"')
+
+    def test_escape_chars(self):
+        self.assertAsTokens([(False, u'foo\\bar')], u'foo\\bar')
+
+    def test_escape_quote(self):
+        self.assertAsTokens([(True, u'foo"bar')], u'"foo\\"bar"')
+
+    def test_double_escape(self):
+        self.assertAsTokens([(True, u'foo\\bar')], u'"foo\\\\bar"')
+        self.assertAsTokens([(False, u'foo\\\\bar')], u"foo\\\\bar")
+
+
+class Test_CommandLineToArgv(tests.TestCaseInTempDir):
+
+    def assertCommandLine(self, expected, line):
+        # Strictly speaking we should respect parameter order versus glob
+        # expansions, but it's not really worth the effort here
+        self.assertEqual(expected,
+                         sorted(win32utils._command_line_to_argv(line)))
+
+    def test_glob_paths(self):
+        self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
+        self.assertCommandLine([u'a/b.c', u'a/c.c'], 'a/*.c')
+        self.build_tree(['b/', 'b/b.c', 'b/d.c', 'b/d.h'])
+        self.assertCommandLine([u'a/b.c', u'b/b.c'], '*/b.c')
+        self.assertCommandLine([u'a/b.c', u'a/c.c', u'b/b.c', u'b/d.c'],
+                               '*/*.c')
+        # Bash style, just pass through the argument if nothing matches
+        self.assertCommandLine([u'*/*.qqq'], '*/*.qqq')
+
+    def test_quoted_globs(self):
+        self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
+        self.assertCommandLine([u'a/*.c'], '"a/*.c"')
+        self.assertCommandLine([u"'a/*.c'"], "'a/*.c'")
+
+    def test_slashes_changed(self):
+        # Quoting doesn't change the supplied args
+        self.assertCommandLine([u'a\\*.c'], '"a\\*.c"')
+        # Expands the glob, but nothing matches, swaps slashes
+        self.assertCommandLine([u'a/*.c'], 'a\\*.c')
+        self.assertCommandLine([u'a/?.c'], 'a\\?.c')
+        # No glob, doesn't touch slashes
+        self.assertCommandLine([u'a\\foo.c'], 'a\\foo.c')
+
+    def test_no_single_quote_supported(self):
+        self.assertCommandLine(["add", "let's-do-it.txt"],
+            "add let's-do-it.txt")
+
+    def test_case_insensitive_globs(self):
+        self.requireFeature(tests.CaseInsCasePresFilenameFeature)
+        self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
+        self.assertCommandLine([u'A/b.c'], 'A/B*')
+
+    def test_backslashes(self):
+        self.requireFeature(BackslashDirSeparatorFeature)
+        self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
+        self.assertCommandLine([u'a/b.c'], 'a\\b*')

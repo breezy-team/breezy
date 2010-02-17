@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib.bzrdir import BzrDir
+from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 import bzrlib.errors as errors
 from bzrlib.tests import TestCaseInTempDir
 
@@ -120,3 +120,21 @@ Location:
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(15, self.hpss_calls)
+
+    def test_notification_on_branch_from_repository(self):
+        out, err = self.run_bzr("init-repository -q a")
+        self.assertEqual(out, "")
+        self.assertEqual(err, "")
+        dir = BzrDir.open('a')
+        dir.open_repository() # there is a repository there
+        e = self.assertRaises(errors.NotBranchError, dir.open_branch)
+        self.assertContainsRe(str(e), "location is a repository")
+
+    def test_notification_on_branch_from_nonrepository(self):
+        fmt = BzrDirMetaFormat1()
+        t = self.get_transport()
+        t.mkdir('a')
+        dir = fmt.initialize_on_transport(t.clone('a'))
+        self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
+        e = self.assertRaises(errors.NotBranchError, dir.open_branch)
+        self.assertNotContainsRe(str(e), "location is a repository")

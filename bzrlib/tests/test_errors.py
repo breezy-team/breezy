@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -542,7 +542,7 @@ class TestErrors(TestCaseWithTransport):
             1/0
         except ZeroDivisionError:
             exc_info = sys.exc_info()
-        err = errors.HookFailed('hook stage', 'hook name', exc_info)
+        err = errors.HookFailed('hook stage', 'hook name', exc_info, warn=False)
         self.assertStartsWith(
             str(err), 'Hook \'hook name\' during hook stage failed:\n')
         self.assertEndsWith(
@@ -623,6 +623,38 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             'Repository dummy repo cannot suspend a write group.', str(err))
 
+    def test_not_branch_no_args(self):
+        err = errors.NotBranchError('path')
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_bzrdir_with_repo(self):
+        bzrdir = self.make_repository('repo').bzrdir
+        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual(
+            'Not a branch: "path": location is a repository.', str(err))
+
+    def test_not_branch_bzrdir_without_repo(self):
+        bzrdir = self.make_bzrdir('bzrdir')
+        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_laziness(self):
+        real_bzrdir = self.make_bzrdir('path')
+        class FakeBzrDir(object):
+            def __init__(self):
+                self.calls = []
+            def open_repository(self):
+                self.calls.append('open_repository')
+                raise errors.NoRepositoryPresent(real_bzrdir)
+        fake_bzrdir = FakeBzrDir()
+        err = errors.NotBranchError('path', bzrdir=fake_bzrdir)
+        self.assertEqual([], fake_bzrdir.calls)
+        str(err)
+        self.assertEqual(['open_repository'], fake_bzrdir.calls)
+        # Stringifying twice doesn't try to open a repository twice.
+        str(err)
+        self.assertEqual(['open_repository'], fake_bzrdir.calls)
+
 
 class PassThroughError(errors.BzrError):
 
@@ -676,3 +708,8 @@ class TestErrorFormatting(TestCase):
             socket.error(13, 'Permission denied'))
         self.assertContainsRe(str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
+
+    def test_file_timestamp_unavailable(self):            
+        e = errors.FileTimestampUnavailable("/path/foo")
+        self.assertEquals("The filestamp for /path/foo is not available.",
+            str(e))

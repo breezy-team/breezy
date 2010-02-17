@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,7 +47,7 @@ class TreeDelta(object):
 
     Files that are both modified and renamed are listed only in
     renamed, with the text_modified flag true. The text_modified
-    applies either to the the content of the file or the target of the
+    applies either to the content of the file or the target of the
     symbolic link, depending of the kind of file.
 
     Files are only considered renamed if their name has changed or

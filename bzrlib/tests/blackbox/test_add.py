@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@ from bzrlib.tests import (
     SymlinkFeature
     )
 from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests.test_win32utils import NeedsGlobExpansionFeature
 
 
 def load_tests(standard_tests, module, loader):
@@ -210,20 +209,6 @@ class TestAdd(ExternalBase):
         self.build_tree(['.bzr/crescent'])
         err = self.run_bzr('add .bzr/crescent', retcode=3)[1]
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
-
-    def test_add_with_wildcards(self):
-        self.requireFeature(NeedsGlobExpansionFeature)
-        self.make_branch_and_tree('.')
-        self.build_tree(['a1', 'a2', 'b', 'c33'])
-        self.run_bzr(['add', 'a?', 'c*'])
-        self.assertEquals(self.run_bzr('unknowns')[0], 'b\n')
-
-    def test_add_with_wildcards_unicode(self):
-        self.requireFeature(NeedsGlobExpansionFeature)
-        self.make_branch_and_tree('.')
-        self.build_tree([u'\u1234A', u'\u1235A', u'\u1235AA', 'cc'])
-        self.run_bzr(['add', u'\u1234?', u'\u1235*'])
-        self.assertEquals(self.run_bzr('unknowns')[0], 'cc\n')
 
     def test_add_via_symlink(self):
         self.requireFeature(SymlinkFeature)

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1850,7 +1850,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
 class _DisconnectingTCPServer(object):
     """A TCP server that immediately closes any connection made to it."""
 
-    def setUp(self):
+    def start_server(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind(('127.0.0.1', 0))
         self.sock.listen(1)
@@ -1868,7 +1868,7 @@ class _DisconnectingTCPServer(object):
     def get_url(self):
         return 'bzr://127.0.0.1:%d/' % (self.port,)
 
-    def tearDown(self):
+    def stop_server(self):
         try:
             # make sure the thread dies by connecting to the listening socket,
             # just in case the test failed to do so.
@@ -1879,4 +1879,3 @@ class _DisconnectingTCPServer(object):
             pass
         self.sock.close()
         self.thread.join()
-

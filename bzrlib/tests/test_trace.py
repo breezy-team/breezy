@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ import tempfile
 
 from bzrlib import (
     errors,
+    trace,
     )
 from bzrlib.tests import TestCaseInTempDir, TestCase
 from bzrlib.trace import (
@@ -84,11 +85,12 @@ class TestTrace(TestCase):
     def test_format_os_error(self):
         try:
             os.rmdir('nosuchfile22222')
-        except OSError:
-            pass
+        except OSError, e:
+            e_str = str(e)
         msg = _format_exception()
-        self.assertContainsRe(msg,
-            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile22222')
+        # Linux seems to give "No such file" but Windows gives "The system
+        # cannot find the file specified".
+        self.assertEqual('bzr: ERROR: %s\n' % (e_str,), msg)
 
     def test_format_io_error(self):
         try:
@@ -96,7 +98,10 @@ class TestTrace(TestCase):
         except IOError:
             pass
         msg = _format_exception()
-        self.assertContainsRe(msg, r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
+        # Even though Windows and Linux differ for 'os.rmdir', they both give
+        # 'No such file' for open()
+        self.assertContainsRe(msg,
+            r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
 
     def test_format_unicode_error(self):
         try:
@@ -140,21 +145,21 @@ class TestTrace(TestCase):
     def test_trace_unicode(self):
         """Write Unicode to trace log"""
         self.log(u'the unicode character for benzene is \N{BENZENE RING}')
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              "the unicode character for benzene is")
+        log = self.get_log()
+        self.assertContainsRe(log, "the unicode character for benzene is")
 
     def test_trace_argument_unicode(self):
         """Write a Unicode argument to the trace log"""
         mutter(u'the unicode character for benzene is %s', u'\N{BENZENE RING}')
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              'the unicode character')
+        log = self.get_log()
+        self.assertContainsRe(log, 'the unicode character')
 
     def test_trace_argument_utf8(self):
         """Write a Unicode argument to the trace log"""
         mutter(u'the unicode character for benzene is %s',
                u'\N{BENZENE RING}'.encode('utf-8'))
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              'the unicode character')
+        log = self.get_log()
+        self.assertContainsRe(log, 'the unicode character')
 
     def test_report_broken_pipe(self):
         try:
@@ -173,7 +178,7 @@ class TestTrace(TestCase):
     def test_mutter_callsite_1(self):
         """mutter_callsite can capture 1 level of stack frame."""
         mutter_callsite(1, "foo %s", "a string")
-        log = self._get_log(keep_log_file=True)
+        log = self.get_log()
         # begin with the message
         self.assertLogStartsWith(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
@@ -185,7 +190,7 @@ class TestTrace(TestCase):
     def test_mutter_callsite_2(self):
         """mutter_callsite can capture 2 levels of stack frame."""
         mutter_callsite(2, "foo %s", "a string")
-        log = self._get_log(keep_log_file=True)
+        log = self.get_log()
         # begin with the message
         self.assertLogStartsWith(log, 'foo a string\nCalled from:\n')
         # should show two frame: this frame and the one above
@@ -197,13 +202,19 @@ class TestTrace(TestCase):
     def test_mutter_never_fails(self):
         # Even if the decode/encode stage fails, mutter should not
         # raise an exception
+        # This test checks that mutter doesn't fail; the current behaviour
+        # is that it doesn't fail *and writes non-utf8*.
         mutter(u'Writing a greek mu (\xb5) works in a unicode string')
         mutter('But fails in an ascii string \xb5')
         mutter('and in an ascii argument: %s', '\xb5')
-        log = self._get_log(keep_log_file=True)
+        log = self.get_log()
         self.assertContainsRe(log, 'Writing a greek mu')
         self.assertContainsRe(log, "But fails in an ascii string")
-        self.assertContainsRe(log, u"ascii argument: \xb5")
+        # However, the log content object does unicode replacement on reading
+        # to let it get unicode back where good data has been written. So we
+        # have to do a replaceent here as well.
+        self.assertContainsRe(log, "ascii argument: \xb5".decode('utf8',
+            'replace'))
 
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.
@@ -238,6 +249,20 @@ class TestTrace(TestCase):
             tmp1.close()
             tmp2.close()
 
+    def test__open_bzr_log_uses_stderr_for_failures(self):
+        # If _open_bzr_log cannot open the file, then we should write the
+        # warning to stderr. Since this is normally happening before logging is
+        # set up.
+        self.addCleanup(setattr, sys, 'stderr', sys.stderr)
+        self.addCleanup(setattr, trace, '_bzr_log_filename',
+                        trace._bzr_log_filename)
+        sys.stderr = StringIO()
+        # Set the log file to something that cannot exist
+        os.environ['BZR_LOG'] = os.getcwd() + '/no-dir/bzr.log'
+        logf = trace._open_bzr_log()
+        self.assertIs(None, logf)
+        self.assertContainsRe(sys.stderr.getvalue(),
+                              'failed to open trace file: .*/no-dir/bzr.log')
 
 class TestVerbosityLevel(TestCase):
 
@@ -268,7 +293,7 @@ class TestBzrLog(TestCaseInTempDir):
     def test_log_rollover(self):
         temp_log_name = 'test-log'
         trace_file = open(temp_log_name, 'at')
-        trace_file.write('test_log_rollover padding\n' * 1000000)
+        trace_file.writelines(['test_log_rollover padding\n'] * 200000)
         trace_file.close()
         _rollover_trace_maybe(temp_log_name)
         # should have been rolled over

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ from bzrlib import (
     knit,
     osutils,
     pack,
+    static_tuple,
     trace,
     )
 from bzrlib.btree_index import BTreeBuilder
@@ -1269,6 +1270,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         """See VersionedFiles.clear_cache()"""
         self._group_cache.clear()
         self._index._graph_index.clear_cache()
+        self._index._int_cache.clear()
 
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
@@ -1745,8 +1747,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 key = record.key
             self._unadded_refs[key] = record.parents
             yield found_sha1
-            keys_to_add.append((key, '%d %d' % (start_point, end_point),
-                (record.parents,)))
+            as_st = static_tuple.StaticTuple.from_sequence
+            if record.parents is not None:
+                parents = as_st([as_st(p) for p in record.parents])
+            else:
+                parents = None
+            refs = static_tuple.StaticTuple(parents)
+            keys_to_add.append((key, '%d %d' % (start_point, end_point), refs))
         if len(keys_to_add):
             flush()
         self._compressor = None
@@ -1832,6 +1839,9 @@ class _GCGraphIndex(object):
         self.has_graph = parents
         self._is_locked = is_locked
         self._inconsistency_fatal = inconsistency_fatal
+        # GroupCompress records tend to have the same 'group' start + offset
+        # repeated over and over, this creates a surplus of ints
+        self._int_cache = {}
         if track_external_parent_refs:
             self._key_dependencies = knit._KeyRefs(
                 track_new_keys=track_new_keys)
@@ -1873,8 +1883,11 @@ class _GCGraphIndex(object):
         if not random_id:
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
-                if node_refs != keys[key][1]:
-                    details = '%s %s %s' % (key, (value, node_refs), keys[key])
+                # Sometimes these are passed as a list rather than a tuple
+                node_refs = static_tuple.as_tuples(node_refs)
+                passed = static_tuple.as_tuples(keys[key])
+                if node_refs != passed[1]:
+                    details = '%s %s %s' % (key, (value, node_refs), passed)
                     if self._inconsistency_fatal:
                         raise errors.KnitCorrupt(self, "inconsistent details"
                                                  " in add_records: %s" %
@@ -2013,11 +2026,24 @@ class _GCGraphIndex(object):
         """Convert an index value to position details."""
         bits = node[2].split(' ')
         # It would be nice not to read the entire gzip.
+        # start and stop are put into _int_cache because they are very common.
+        # They define the 'group' that an entry is in, and many groups can have
+        # thousands of objects.
+        # Branching Launchpad, for example, saves ~600k integers, at 12 bytes
+        # each, or about 7MB. Note that it might be even more when you consider
+        # how PyInt is allocated in separate slabs. And you can't return a slab
+        # to the OS if even 1 int on it is in use. Note though that Python uses
+        # a LIFO when re-using PyInt slots, which probably causes more
+        # fragmentation.
         start = int(bits[0])
+        start = self._int_cache.setdefault(start, start)
         stop = int(bits[1])
+        stop = self._int_cache.setdefault(stop, stop)
         basis_end = int(bits[2])
         delta_end = int(bits[3])
-        return node[0], start, stop, basis_end, delta_end
+        # We can't use StaticTuple here, because node[0] is a BTreeGraphIndex
+        # instance...
+        return (node[0], start, stop, basis_end, delta_end)
 
     def scan_unvalidated_index(self, graph_index):
         """Inform this _GCGraphIndex that there is an unvalidated index.

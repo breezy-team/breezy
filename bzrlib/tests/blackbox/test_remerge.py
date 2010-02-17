@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -85,7 +85,7 @@ class TestRemerge(ExternalBase):
                            'remerge --merge-type weave', retcode=1)
 
         self.failUnlessExists('hello.OTHER')
-        self.failIfExists('hello.BASE')
+        self.failUnless('hello.BASE')
         self.assertFalse('|||||||' in conflict_text)
         self.assertFalse('hi world' in conflict_text)
 

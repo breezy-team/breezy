@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,6 +43,7 @@ import bzrlib.smart.branch
 import bzrlib.smart.bzrdir, bzrlib.smart.bzrdir as smart_dir
 import bzrlib.smart.packrepository
 import bzrlib.smart.repository
+import bzrlib.smart.vfs
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
     SmartServerRequest,
@@ -170,6 +171,18 @@ class TestSmartServerRequest(tests.TestCaseWithMemoryTransport):
         self.assertRaises(
             errors.PathNotChild, request.translate_client_path, 'bar/')
         self.assertEqual('./baz', request.translate_client_path('foo/baz'))
+        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
+        self.assertEqual('./' + urlutils.escape(e_acute),
+                         request.translate_client_path('foo/' + e_acute))
+
+    def test_translate_client_path_vfs(self):
+        """VfsRequests receive escaped paths rather than raw UTF-8."""
+        transport = self.get_transport()
+        request = smart.vfs.VfsRequest(transport, 'foo/')
+        e_acute = u'\N{LATIN SMALL LETTER E WITH ACUTE}'.encode('utf-8')
+        escaped = urlutils.escape('foo/' + e_acute)
+        self.assertEqual('./' + urlutils.escape(e_acute),
+                         request.translate_client_path(escaped))
 
     def test_transport_from_client_path(self):
         transport = self.get_transport()
@@ -511,6 +524,14 @@ class TestSmartServerRequestOpenBranch(TestCaseWithChrootedTransport):
         self.assertEqual(SmartServerResponse(('ok', reference_url)),
             request.execute('reference'))
 
+    def test_notification_on_branch_from_repository(self):
+        """When there is a repository, the error should return details."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranch(backing)
+        repo = self.make_repository('.')
+        self.assertEqual(SmartServerResponse(('nobranch',)),
+            request.execute(''))
+
 
 class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
 
@@ -561,6 +582,74 @@ class TestSmartServerRequestOpenBranchV2(TestCaseWithChrootedTransport):
             SuccessfulSmartServerResponse(('branch', expected_format)),
             response)
         self.assertLength(1, opened_branches)
+
+    def test_notification_on_branch_from_repository(self):
+        """When there is a repository, the error should return details."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV2(backing)
+        repo = self.make_repository('.')
+        self.assertEqual(SmartServerResponse(('nobranch',)),
+            request.execute(''))
+
+
+class TestSmartServerRequestOpenBranchV3(TestCaseWithChrootedTransport):
+
+    def test_no_branch(self):
+        """When there is no branch, ('nobranch', ) is returned."""
+        backing = self.get_transport()
+        self.make_bzrdir('.')
+        request = smart.bzrdir.SmartServerRequestOpenBranchV3(backing)
+        self.assertEqual(SmartServerResponse(('nobranch',)),
+            request.execute(''))
+
+    def test_branch(self):
+        """When there is a branch, 'ok' is returned."""
+        backing = self.get_transport()
+        expected = self.make_branch('.')._format.network_name()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV3(backing)
+        self.assertEqual(SuccessfulSmartServerResponse(('branch', expected)),
+            request.execute(''))
+
+    def test_branch_reference(self):
+        """When there is a branch reference, the reference URL is returned."""
+        self.vfs_transport_factory = local.LocalURLServer
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV3(backing)
+        branch = self.make_branch('branch')
+        checkout = branch.create_checkout('reference',lightweight=True)
+        reference_url = BranchReferenceFormat().get_reference(checkout.bzrdir)
+        self.assertFileEqual(reference_url, 'reference/.bzr/branch/location')
+        self.assertEqual(SuccessfulSmartServerResponse(('ref', reference_url)),
+            request.execute('reference'))
+
+    def test_stacked_branch(self):
+        """Opening a stacked branch does not open the stacked-on branch."""
+        trunk = self.make_branch('trunk')
+        feature = self.make_branch('feature')
+        feature.set_stacked_on_url(trunk.base)
+        opened_branches = []
+        Branch.hooks.install_named_hook('open', opened_branches.append, None)
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV3(backing)
+        request.setup_jail()
+        try:
+            response = request.execute('feature')
+        finally:
+            request.teardown_jail()
+        expected_format = feature._format.network_name()
+        self.assertEqual(
+            SuccessfulSmartServerResponse(('branch', expected_format)),
+            response)
+        self.assertLength(1, opened_branches)
+
+    def test_notification_on_branch_from_repository(self):
+        """When there is a repository, the error should return details."""
+        backing = self.get_transport()
+        request = smart.bzrdir.SmartServerRequestOpenBranchV3(backing)
+        repo = self.make_repository('.')
+        self.assertEqual(
+            SmartServerResponse(('nobranch', 'location is a repository')),
+            request.execute(''))
 
 
 class TestSmartServerRequestRevisionHistory(tests.TestCaseWithMemoryTransport):
@@ -1690,6 +1779,19 @@ class TestSmartServerPackRepositoryAutopack(tests.TestCaseWithTransport):
         self.assertEqual(SmartServerResponse(('ok',)), response)
 
 
+class TestSmartServerVfsGet(tests.TestCaseWithMemoryTransport):
+
+    def test_unicode_path(self):
+        """VFS requests expect unicode paths to be escaped."""
+        filename = u'foo\N{INTERROBANG}'
+        filename_escaped = urlutils.escape(filename)
+        backing = self.get_transport()
+        request = smart.vfs.GetRequest(backing)
+        backing.put_bytes_non_atomic(filename_escaped, 'contents')
+        self.assertEqual(SmartServerResponse(('ok', ), 'contents'),
+            request.execute(filename_escaped))
+
+
 class TestHandlers(tests.TestCase):
     """Tests for the request.request_handlers object."""
 
@@ -1745,6 +1847,8 @@ class TestHandlers(tests.TestCase):
             smart.bzrdir.SmartServerRequestOpenBranch)
         self.assertHandlerEqual('BzrDir.open_branchV2',
             smart.bzrdir.SmartServerRequestOpenBranchV2)
+        self.assertHandlerEqual('BzrDir.open_branchV3',
+            smart.bzrdir.SmartServerRequestOpenBranchV3)
         self.assertHandlerEqual('PackRepository.autopack',
             smart.packrepository.SmartServerPackRepositoryAutopack)
         self.assertHandlerEqual('Repository.gather_stats',

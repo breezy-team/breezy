@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -484,6 +484,7 @@ class InfoHooks(_mod_hooks.Hooks):
     """Hooks for the info command."""
 
     def __init__(self):
+        super(InfoHooks, self).__init__()
         self.create_hook(_mod_hooks.HookPoint('repository',
             "Invoked when displaying the statistics for a repository. "
             "repository is called with a statistics dictionary as returned "

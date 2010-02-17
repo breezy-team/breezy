@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,25 +40,25 @@ def _parse_revision_str(revstr):
     each revision specifier supplied.
 
     >>> _parse_revision_str('234')
-    [<RevisionSpec_revno 234>]
+    [<RevisionSpec_dwim 234>]
     >>> _parse_revision_str('234..567')
-    [<RevisionSpec_revno 234>, <RevisionSpec_revno 567>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec_dwim 567>]
     >>> _parse_revision_str('..')
     [<RevisionSpec None>, <RevisionSpec None>]
     >>> _parse_revision_str('..234')
-    [<RevisionSpec None>, <RevisionSpec_revno 234>]
+    [<RevisionSpec None>, <RevisionSpec_dwim 234>]
     >>> _parse_revision_str('234..')
-    [<RevisionSpec_revno 234>, <RevisionSpec None>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec None>]
     >>> _parse_revision_str('234..456..789') # Maybe this should be an error
-    [<RevisionSpec_revno 234>, <RevisionSpec_revno 456>, <RevisionSpec_revno 789>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec_dwim 456>, <RevisionSpec_dwim 789>]
     >>> _parse_revision_str('234....789') #Error ?
-    [<RevisionSpec_revno 234>, <RevisionSpec None>, <RevisionSpec_revno 789>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec None>, <RevisionSpec_dwim 789>]
     >>> _parse_revision_str('revid:test@other.com-234234')
     [<RevisionSpec_revid revid:test@other.com-234234>]
     >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
     [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revid revid:test@other.com-234235>]
     >>> _parse_revision_str('revid:test@other.com-234234..23')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_dwim 23>]
     >>> _parse_revision_str('date:2005-04-12')
     [<RevisionSpec_date date:2005-04-12>]
     >>> _parse_revision_str('date:2005-04-12 12:24:33')
@@ -68,27 +68,23 @@ def _parse_revision_str(revstr):
     >>> _parse_revision_str('date:2005-04-12,12:24:33')
     [<RevisionSpec_date date:2005-04-12,12:24:33>]
     >>> _parse_revision_str('-5..23')
-    [<RevisionSpec_revno -5>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_dwim -5>, <RevisionSpec_dwim 23>]
     >>> _parse_revision_str('-5')
-    [<RevisionSpec_revno -5>]
+    [<RevisionSpec_dwim -5>]
     >>> _parse_revision_str('123a')
-    Traceback (most recent call last):
-      ...
-    NoSuchRevisionSpec: No namespace registered for string: '123a'
+    [<RevisionSpec_dwim 123a>]
     >>> _parse_revision_str('abc')
-    Traceback (most recent call last):
-      ...
-    NoSuchRevisionSpec: No namespace registered for string: 'abc'
+    [<RevisionSpec_dwim abc>]
     >>> _parse_revision_str('branch:../branch2')
     [<RevisionSpec_branch branch:../branch2>]
     >>> _parse_revision_str('branch:../../branch2')
     [<RevisionSpec_branch branch:../../branch2>]
     >>> _parse_revision_str('branch:../../branch2..23')
-    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_dwim 23>]
     >>> _parse_revision_str('branch:..\\\\branch2')
     [<RevisionSpec_branch branch:..\\branch2>]
     >>> _parse_revision_str('branch:..\\\\..\\\\branch2..23')
-    [<RevisionSpec_branch branch:..\\..\\branch2>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_branch branch:..\\..\\branch2>, <RevisionSpec_dwim 23>]
     """
     # TODO: Maybe move this into revisionspec.py
     revs = []
@@ -104,7 +100,7 @@ def _parse_change_str(revstr):
     parent of the revision.
 
     >>> _parse_change_str('123')
-    (<RevisionSpec_before before:123>, <RevisionSpec_revno 123>)
+    (<RevisionSpec_before before:123>, <RevisionSpec_dwim 123>)
     >>> _parse_change_str('123..124')
     Traceback (most recent call last):
       ...

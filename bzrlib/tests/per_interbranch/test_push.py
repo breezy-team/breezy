@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007, 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -255,7 +255,6 @@ class TestPush(TestCaseWithInterBranch):
         builder.build_snapshot('third', ['second'], [])
         builder.build_snapshot('fourth', ['third'], [])
         builder.finish_series()
-        local = builder.get_branch()
         local = branch.Branch.open(self.get_vfs_only_url('local'))
         # Initial push of three revisions
         remote_bzrdir = local.bzrdir.sprout(

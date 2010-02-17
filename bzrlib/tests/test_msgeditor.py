@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ from bzrlib.msgeditor import (
     edit_commit_message_encoded
 )
 from bzrlib.tests import (
+    TestCaseInTempDir,
     TestCaseWithTransport,
     TestNotApplicable,
     TestSkipped,
@@ -290,7 +291,10 @@ if len(sys.argv) == 2:
         # Call _run_editor, capturing mutter.warning calls.
         warnings = []
         def warning(*args):
-            warnings.append(args[0] % args[1:])
+            if len(args) > 1:
+                warnings.append(args[0] % args[1:])
+            else:
+                warnings.append(args[0])
         _warning = trace.warning
         trace.warning = warning
         try:
@@ -364,3 +368,24 @@ if len(sys.argv) == 2:
         commit_obj = commit.Commit()
         self.assertEquals("save me some typing\n",
             msgeditor.generate_commit_message_template(commit_obj))
+
+
+# GZ 2009-11-17: This wants moving to osutils when the errno checking code is
+class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
+    """Ensuring workarounds enshrined in code actually serve a purpose"""
+
+    def test_subprocess_call_bad_file(self):
+        if sys.platform != "win32":
+            raise TestNotApplicable("Workarounds for windows only")
+        import subprocess, errno
+        ERROR_BAD_EXE_FORMAT = 193
+        file("textfile.txt", "w").close()
+        e = self.assertRaises(WindowsError, subprocess.call, "textfile.txt")
+        # Python2.4 used the 'winerror' as the errno, which confuses a lot of
+        # our error trapping code. Make sure that we understand the mapping
+        # correctly.
+        if sys.version_info >= (2, 5):
+            self.assertEqual(e.errno, errno.ENOEXEC)
+            self.assertEqual(e.winerror, ERROR_BAD_EXE_FORMAT)
+        else:
+            self.assertEqual(e.errno, ERROR_BAD_EXE_FORMAT)

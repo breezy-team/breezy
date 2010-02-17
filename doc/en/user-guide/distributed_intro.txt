@@ -19,5 +19,5 @@ branch, then merge it into the mainline when it is ready.
 
 Other distributed workflows are explored later in this chapter.
 
-.. 
+..
    vim: tw=74 ft=rst

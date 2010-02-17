@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,10 +16,12 @@
 
 """Tests for directory lookup through Launchpad.net"""
 
+import os
 import xmlrpclib
 
 from bzrlib import (
     errors,
+    tests,
     )
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
@@ -28,10 +30,38 @@ from bzrlib.tests import (
     TestCaseWithMemoryTransport
 )
 from bzrlib.transport import get_transport
-from bzrlib.plugins.launchpad import _register_directory
+from bzrlib.plugins.launchpad import (
+    _register_directory,
+    lp_registration,
+    )
 from bzrlib.plugins.launchpad.lp_directory import (
     LaunchpadDirectory)
 from bzrlib.plugins.launchpad.account import get_lp_login
+from bzrlib.tests import (
+    http_server,
+    http_utils,
+    )
+
+
+def load_tests(standard_tests, module, loader):
+    result = loader.suiteClass()
+    t_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestXMLRPCTransport,
+                )))
+    transport_scenarios = [
+        ('http', dict(server_class=PreCannedHTTPServer,)),
+        ]
+    if tests.HTTPSServerFeature.available():
+        transport_scenarios.append(
+            ('https', dict(server_class=PreCannedHTTPSServer,)),
+            )
+    tests.multiply_tests(t_tests, transport_scenarios, result)
+
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
+    return result
 
 
 class FakeResolveFactory(object):
@@ -190,3 +220,116 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         transport = get_transport('lp:///apt')
         branch = Branch.open_from_transport(transport)
         self.assertEqual(target_branch.base, branch.base)
+
+
+class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
+    """Request handler for a unique and pre-defined request.
+
+    The only thing we care about here is that we receive a connection. But
+    since we want to dialog with a real http client, we have to send it correct
+    responses.
+
+    We expect to receive a *single* request nothing more (and we won't even
+    check what request it is), the tests will recognize us from our response.
+    """
+
+    def handle_one_request(self):
+        tcs = self.server.test_case_server
+        requestline = self.rfile.readline()
+        headers = self.MessageClass(self.rfile, 0)
+        if requestline.startswith('POST'):
+            # The body should be a single line (or we don't know where it ends
+            # and we don't want to issue a blocking read)
+            body = self.rfile.readline()
+
+        self.wfile.write(tcs.canned_response)
+
+
+class PreCannedServerMixin(object):
+
+    def __init__(self):
+        super(PreCannedServerMixin, self).__init__(
+            request_handler=PredefinedRequestHandler)
+        # Bytes read and written by the server
+        self.bytes_read = 0
+        self.bytes_written = 0
+        self.canned_response = None
+
+
+class PreCannedHTTPServer(PreCannedServerMixin, http_server.HttpServer):
+    pass
+
+
+if tests.HTTPSServerFeature.available():
+    from bzrlib.tests import https_server
+    class PreCannedHTTPSServer(PreCannedServerMixin, https_server.HTTPSServer):
+        pass
+
+
+class TestXMLRPCTransport(tests.TestCase):
+
+    # set by load_tests
+    server_class = None
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self.server = self.server_class()
+        self.server.start_server()
+        # Ensure we don't clobber env
+        self._captureVar('BZR_LP_XMLRPC_URL', None)
+
+    def tearDown(self):
+        self.server.stop_server()
+        tests.TestCase.tearDown(self)
+
+    def set_canned_response(self, server, path):
+        response_format = '''HTTP/1.1 200 OK\r
+Date: Tue, 11 Jul 2006 04:32:56 GMT\r
+Server: Apache/2.0.54 (Fedora)\r
+Last-Modified: Sun, 23 Apr 2006 19:35:20 GMT\r
+ETag: "56691-23-38e9ae00"\r
+Accept-Ranges: bytes\r
+Content-Length: %(length)d\r
+Connection: close\r
+Content-Type: text/plain; charset=UTF-8\r
+\r
+<?xml version='1.0'?>
+<methodResponse>
+<params>
+<param>
+<value><struct>
+<member>
+<name>urls</name>
+<value><array><data>
+<value><string>bzr+ssh://bazaar.launchpad.net/%(path)s</string></value>
+<value><string>http://bazaar.launchpad.net/%(path)s</string></value>
+</data></array></value>
+</member>
+</struct></value>
+</param>
+</params>
+</methodResponse>
+'''
+        length = 334 + 2 * len(path)
+        server.canned_response = response_format % dict(length=length,
+                                                        path=path)
+
+    def do_request(self, server_url):
+        os.environ['BZR_LP_XMLRPC_URL'] = self.server.get_url()
+        service = lp_registration.LaunchpadService()
+        resolve = lp_registration.ResolveLaunchpadPathRequest('bzr')
+        result = resolve.submit(service)
+        return result
+
+    def test_direct_request(self):
+        self.set_canned_response(self.server, '~bzr-pqm/bzr/bzr.dev')
+        result = self.do_request(self.server.get_url())
+        urls = result.get('urls', None)
+        self.assertIsNot(None, urls)
+        self.assertEquals(
+            ['bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev',
+             'http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev'],
+            urls)
+    # FIXME: we need to test with a real proxy, I can't find a way so simulate
+    # CONNECT without leaving one server hanging the test :-/ Since that maybe
+    # related to the leaking tests problems, I'll punt for now -- vila 20091030

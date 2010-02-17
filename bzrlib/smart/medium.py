@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,9 @@ import urllib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import atexit
+import thread
 import weakref
+
 from bzrlib import (
     debug,
     errors,
@@ -295,7 +297,13 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self.finished = True
 
     def _write_out(self, bytes):
+        tstart = osutils.timer_func()
         osutils.send_all(self.socket, bytes, self._report_activity)
+        if 'hpss' in debug.debug_flags:
+            thread_id = thread.get_ident()
+            trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
+                         % ('wrote', thread_id, len(bytes),
+                            osutils.timer_func() - tstart))
 
 
 class SmartServerPipeStreamMedium(SmartServerStreamMedium):
@@ -741,6 +749,9 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._password = password
         self._port = port
         self._username = username
+        # for the benefit of progress making a short description of this
+        # transport
+        self._scheme = 'bzr+ssh'
         # SmartClientStreamMedium stores the repr of this object in its
         # _DebugCounter so we have to store all the values used in our repr
         # method before calling the super init.
@@ -750,17 +761,18 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         self._vendor = vendor
         self._write_to = None
         self._bzr_remote_path = bzr_remote_path
-        # for the benefit of progress making a short description of this
-        # transport
-        self._scheme = 'bzr+ssh'
 
     def __repr__(self):
-        return "%s(connected=%r, username=%r, host=%r, port=%r)" % (
+        if self._port is None:
+            maybe_port = ''
+        else:
+            maybe_port = ':%s' % self._port
+        return "%s(%s://%s@%s%s/)" % (
             self.__class__.__name__,
-            self._connected,
+            self._scheme,
             self._username,
             self._host,
-            self._port)
+            maybe_port)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""

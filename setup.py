@@ -40,7 +40,7 @@ META_INFO = {
     'url':          'http://www.bazaar-vcs.org/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
-    'download_url': 'http://bazaar-vcs.org/Download',
+    'download_url': 'https://launchpad.net/bzr/+download',
     'long_description': get_long_description(),
     'classifiers': [
         'Development Status :: 6 - Mature',
@@ -282,11 +282,13 @@ if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._walkdirs_win32')
     z_lib = 'zdll'
 else:
-    if have_pyrex and pyrex_version == '0.9.4.1':
+    if have_pyrex and pyrex_version.startswith('0.9.4'):
         # Pyrex 0.9.4.1 fails to compile this extension correctly
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
         # which is NULL safe with PY_DECREF which is not.)
+        # <https://bugs.edge.launchpad.net/bzr/+bug/449372>
+        # <https://bugs.edge.launchpad.net/bzr/+bug/276868>
         print 'Cannot build extension "bzrlib._dirstate_helpers_pyx" using'
         print 'your version of pyrex "%s". Please upgrade your pyrex' % (
             pyrex_version,)
@@ -401,6 +403,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     # PyQt4 itself still escapes the plugin detection code for some reason...
     packages.append('PyQt4')
     excludes.append('PyQt4.elementtree.ElementTree')
+    excludes.append('PyQt4.uic.port_v3')
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
     packages.append('docutils') # html formatting
