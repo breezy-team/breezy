@@ -1501,10 +1501,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         self._ensure_real()
         return self._real_repository._get_inventory_xml(revision_id)
 
-    def _deserialise_inventory(self, revision_id, xml):
-        self._ensure_real()
-        return self._real_repository._deserialise_inventory(revision_id, xml)
-
     def reconcile(self, other=None, thorough=False):
         self._ensure_real()
         return self._real_repository.reconcile(other=other, thorough=thorough)

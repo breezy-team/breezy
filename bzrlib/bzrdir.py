@@ -355,6 +355,15 @@ class BzrDir(object):
                 for subdir in sorted(subdirs, reverse=True):
                     pending.append(current_transport.clone(subdir))
 
+    def list_branches(self):
+        """Return a sequence of all branches local to this control directory.
+
+        """
+        try:
+            return [self.open_branch()]
+        except errors.NotBranchError:
+            return []
+
     @staticmethod
     def find_branches(transport):
         """Find all branches under a transport.
@@ -372,20 +381,16 @@ class BzrDir(object):
             except errors.NoRepositoryPresent:
                 pass
             else:
-                return False, (None, repository)
-            try:
-                branch = bzrdir.open_branch()
-            except errors.NotBranchError:
-                return True, (None, None)
-            else:
-                return True, (branch, None)
-        branches = []
-        for branch, repo in BzrDir.find_bzrdirs(transport, evaluate=evaluate):
+                return False, ([], repository)
+            return True, (bzrdir.list_branches(), None)
+        ret = []
+        for branches, repo in BzrDir.find_bzrdirs(transport,
+                                                  evaluate=evaluate):
             if repo is not None:
-                branches.extend(repo.find_branches())
-            if branch is not None:
-                branches.append(branch)
-        return branches
+                ret.extend(repo.find_branches())
+            if branches is not None:
+                ret.extend(branches)
+        return ret
 
     def destroy_repository(self):
         """Destroy the repository in this BzrDir"""
@@ -3054,11 +3059,7 @@ class ConvertMetaToMeta(Converter):
                 ui.ui_factory.note('starting repository conversion')
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
-        try:
-            branch = self.bzrdir.open_branch()
-        except errors.NotBranchError:
-            pass
-        else:
+        for branch in self.bzrdir.list_branches():
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups/some sort of registry.
             # Avoid circular imports

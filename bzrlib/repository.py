@@ -1484,10 +1484,7 @@ class Repository(_RelockDebugMixin):
         :param using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
-            try:
-                return [self.bzrdir.open_branch()]
-            except errors.NotBranchError:
-                return []
+            return self.bzrdir.list_branches()
         class Evaluator(object):
 
             def __init__(self):
@@ -1502,22 +1499,19 @@ class Repository(_RelockDebugMixin):
                     except errors.NoRepositoryPresent:
                         pass
                     else:
-                        return False, (None, repository)
+                        return False, ([], repository)
                 self.first_call = False
-                try:
-                    value = (bzrdir.open_branch(), None)
-                except errors.NotBranchError:
-                    value = (None, None)
+                value = (bzrdir.list_branches(), None)
                 return True, value
 
-        branches = []
-        for branch, repository in bzrdir.BzrDir.find_bzrdirs(
+        ret = []
+        for branches, repository in bzrdir.BzrDir.find_bzrdirs(
                 self.bzrdir.root_transport, evaluate=Evaluator()):
-            if branch is not None:
-                branches.append(branch)
+            if branches is not None:
+                ret.extend(branches)
             if not using and repository is not None:
-                branches.extend(repository.find_branches())
-        return branches
+                ret.extend(repository.find_branches())
+        return ret
 
     @needs_read_lock
     def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
@@ -1900,23 +1894,6 @@ class Repository(_RelockDebugMixin):
                 text = record.get_bytes_as('fulltext')
                 rev = self._serializer.read_revision_from_string(text)
                 yield (revid, rev)
-
-    @needs_read_lock
-    def get_revision_xml(self, revision_id):
-        # TODO: jam 20070210 This shouldn't be necessary since get_revision
-        #       would have already do it.
-        # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
-        # TODO: this can't just be replaced by:
-        # return self._serializer.write_revision_to_string(
-        #     self.get_revision(revision_id))
-        # as cStringIO preservers the encoding unlike write_revision_to_string
-        # or some other call down the path.
-        rev = self.get_revision(revision_id)
-        rev_tmp = cStringIO.StringIO()
-        # the current serializer..
-        self._serializer.write_revision(rev, rev_tmp)
-        rev_tmp.seek(0)
-        return rev_tmp.getvalue()
 
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
