@@ -373,7 +373,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 (getattr(cls._get_interrepo(source, target), "fetch_objects", None) is not None))
 
     def update_revisions(self, stop_revision=None, overwrite=False,
-        graph=None):
+        graph=None, limit=None):
         """See InterBranch.update_revisions()."""
         interrepo = self._get_interrepo(self.source, self.target)
         self._head = None
@@ -392,7 +392,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
             if self.target.repository.has_revision(self._last_revid):
                 return []
             return [self._head]
-        interrepo.fetch_objects(determine_wants, self.source.mapping)
+        _, r = interrepo.fetch_objects(
+            determine_wants, self.source.mapping, limit=limit)
+        self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(r)
         if overwrite:
             prev_last_revid = None
         else:
@@ -401,7 +403,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,
-             _override_hook_target=None, local=False):
+             _override_hook_target=None, local=False, limit=None):
         """See Branch.pull.
 
         :param _hook_master: Private parameter - set the branch to
@@ -411,6 +413,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
             so it should not run its hooks.
         :param _override_hook_target: Private parameter - set the branch to be
             supplied as the target_branch to pull hooks.
+        :param limit: Only import this many revisons.  `None`, the default,
+            means import all revisions.
         """
         # This type of branch can't be bound.
         if local:
@@ -429,7 +433,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
             self.update_revisions(stop_revision, overwrite=overwrite,
-                graph=graph)
+                graph=graph, limit=limit)
             result.new_git_head = self._head
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
                 overwrite)
