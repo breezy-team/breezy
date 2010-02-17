@@ -683,6 +683,8 @@ class cmd_mkdir(Command):
     def run(self, dir_list):
         for d in dir_list:
             wt, dd = WorkingTree.open_containing(d)
+            base = os.path.dirname(dd)
+            wt.add([base])
             os.mkdir(d)
             wt.add([dd])
             self.outf.write('added %s\n' % d)

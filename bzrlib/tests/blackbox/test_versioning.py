@@ -37,12 +37,20 @@ class TestMkdir(TestCaseWithTransport):
         self.run_bzr('mkdir foobar/abc', retcode=3)
         self.failIfExists('foobar/abc')
 
-    def test_mkdir_inside_invalid_dir(self):
+    def test_mkdir_outside_invalid_dir(self):
         """'mkdir' operation should fail if !branch. Fix bug #138600"""
         dir = pathjoin('.', 'invalid_dir0')
         newdir = pathjoin(dir, 'abc')
         os.mkdir(dir)
+        self.run_bzr('mkdir ' + newdir, retcode=3)
+        self.failIfExists(newdir)
+
+    def test_mkdir_inside_invalid_dir(self):
+        """'mkdir' operation should fail if !branch. Fix bug #138600"""
+        dir = pathjoin('.', 'invalid_dir0')
+        os.mkdir(dir)
         self.run_bzr('mkdir abc', working_dir=dir, retcode=3)
+        newdir = pathjoin(dir, 'abc')
         self.failIfExists(newdir)
 
 
