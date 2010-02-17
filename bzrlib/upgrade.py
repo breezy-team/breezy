@@ -17,10 +17,9 @@
 """bzr upgrade logic."""
 
 
-from bzrlib.bzrdir import BzrDir, BzrDirFormat, format_registry
+from bzrlib.bzrdir import BzrDir, format_registry
 import bzrlib.errors as errors
 from bzrlib.remote import RemoteBzrDir
-from bzrlib.transport import get_transport
 import bzrlib.ui as ui
 
 
