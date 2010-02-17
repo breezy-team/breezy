@@ -70,6 +70,10 @@ Bug Fixes
   prevents ``bzr status --short`` from crashing when those files are
   present.  (John Arbash Meinel, #303275)
 
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
+
 API Changes
 ***********
 
