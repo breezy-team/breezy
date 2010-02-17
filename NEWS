@@ -18,6 +18,10 @@ Bug Fixes
   problems importing bzrlib from a non-main thread.
   (Elliot Murphy, #521989)
 
+* Warn if pyrex is too old to compile the new ``SimpleSet`` and
+  ``StaticTuple`` extensions, rather than having the build fail randomly.
+  (John Arbash Meinel, #449776)
+
 
 bzr 2.1.0
 #########
