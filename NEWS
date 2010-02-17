@@ -21,6 +21,8 @@ Bug Fixes
 * Standardize the error handling when creating a new ``StaticTuple``
   (problems will raise TypeError). (Matt Nordhoff, #457979)
 
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+
 
 bzr 2.1.0
 #########

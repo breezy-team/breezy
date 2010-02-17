@@ -24,7 +24,6 @@ from bzrlib import (
     memorytree,
     merge as _mod_merge,
     option,
-    progress,
     tests,
     transform,
     versionedfile,
@@ -2893,6 +2892,11 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
         builder.add_dir('bar-dir', builder.tree_root, 'bar-id',
                         base=False, other=False)
         return builder
+
+    def test_uses_this_branch(self):
+        builder = self.make_text_conflict()
+        tt = builder.make_preview_transform()
+        self.addCleanup(tt.finalize)
 
     def test_affected_files_cached(self):
         """Ensures that the config variable is cached"""
