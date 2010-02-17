@@ -372,9 +372,14 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 not isinstance(target, GitBranch) and
                 (getattr(cls._get_interrepo(source, target), "fetch_objects", None) is not None))
 
-    def update_revisions(self, stop_revision=None, overwrite=False,
+    def _update_revisions(self, stop_revision=None, overwrite=False,
         graph=None, limit=None):
-        """See InterBranch.update_revisions()."""
+        """Like InterBranch.update_revisions(), but with additions.
+
+        Compared to the `update_revisions()` below, this function takes a
+        `limit` argument that limits how many git commits will be converted
+        and returns the new git head.
+        """
         interrepo = self._get_interrepo(self.source, self.target)
         def determine_wants(heads):
             if not self.source.name in heads:
@@ -402,6 +407,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
             prev_last_revid = self.target.last_revision()
         self.target.generate_revision_history(last_revid, prev_last_revid)
         return head
+
+    def update_revisions(self, stop_revision=None, overwrite=False, graph=None):
+        """See InterBranch.update_revisions()."""
+        self._update_revisions(stop_revision, overwrite, graph)
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,
@@ -433,7 +442,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             # the source one.
             graph = self.target.repository.get_graph(self.source.repository)
             result.old_revno, result.old_revid = self.target.last_revision_info()
-            result.new_git_head = self.update_revisions(
+            result.new_git_head = self._update_revisions(
                 stop_revision, overwrite=overwrite, graph=graph, limit=limit)
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
                 overwrite)
@@ -457,9 +466,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
         result.target_branch = self.target
         graph = self.target.repository.get_graph(self.source.repository)
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        _head = self.update_revisions(
+        head = self._update_revisions(
             stop_revision, overwrite=overwrite, graph=graph)
-        result.new_git_head = _head
+        result.new_git_head = head
         result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
             overwrite)
         result.new_revno, result.new_revid = self.target.last_revision_info()
