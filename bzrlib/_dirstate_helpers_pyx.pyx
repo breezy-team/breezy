@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007, 2008, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -156,12 +156,12 @@ def _py_memrchr(s, c):
         return None
     return <char*>found - <char*>_s
 
+
 cdef object safe_string_from_size(char *s, Py_ssize_t size):
     if size < 0:
-        # XXX: On 64-bit machines the <int> cast causes a C compiler warning.
         raise AssertionError(
-            'tried to create a string with an invalid size: %d @0x%x'
-            % (size, <int>s))
+            'tried to create a string with an invalid size: %d'
+            % (size))
     return PyString_FromStringAndSize(s, size)
 
 
