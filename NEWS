@@ -5,6 +5,20 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+
+bzr 2.1.1
+#########
+
+:2.1.1: not released yet
+
+Bug Fixes
+*********
+
+* Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
+  problems importing bzrlib from a non-main thread.
+  (Elliot Murphy, #521989)
+
+
 bzr 2.1.0
 #########
 
