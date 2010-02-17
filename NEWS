@@ -5,11 +5,11 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.2.0b1 (not released yet)
-##############################
+bzr 2.2.0b1
+###########
 
 :Codename: ???
-:2.2.0b1: ???
+:2.2.0b1: Not released yet
 
 Compatibility Breaks
 ********************
@@ -92,11 +92,24 @@ Testing
 * Stop sending apport crash files to ``.cache`` in the directory from
   which ``bzr selftest`` was run.  (Martin Pool, #422350)
 
-bzr 2.1.0 (not released yet)
-############################
+bzr 2.1.0
+#########
 
-:Codename: 
-:2.1.0: 
+:Codename: Strasbourg
+:2.1.0: 2010-02-11
+
+This release marks our second long-term-stable series. The Bazaar team
+has decided that we will continue to make bugfix-only 2.0.x and 2.1.x
+releases, along with 2.2 development releases. 
+
+This is a fairly incremental update, focusing on polish and bugfixing.
+There are no changes for supported disk formats. Key updates include
+reduced memory consumption for many operations, a new per-file merge
+hook, ignore patterns can now include '!' to exclude files, globbing
+support for all commands on Windows, and support for addressing home
+directories via ``bzr+ssh://host/~/`` syntax.
+
+Users are encouraged to upgrade from the 2.0 stable series.
 
 Bug Fixes
 *********
