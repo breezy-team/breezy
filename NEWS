@@ -18,6 +18,9 @@ Bug Fixes
   problems importing bzrlib from a non-main thread.
   (Elliot Murphy, #521989)
 
+* Standardize the error handling when creating a new ``StaticTuple``
+  (problems will raise TypeError). (Matt Nordhoff, #457979)
+
 
 bzr 2.1.0
 #########
