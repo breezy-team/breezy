@@ -16,6 +16,9 @@
   * Support merging tags to a local Git repository.
     (#4445230, Jelmer Vernooij)
 
+  * InterFromGitBranch.pull() supports an optional limit argument to limit
+    how many revisions to import in one go.
+
  FEATURES
 
   * Support (dumb) HTTP repositories. (#373688, Jelmer Vernooij)
