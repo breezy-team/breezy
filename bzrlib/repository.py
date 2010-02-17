@@ -2488,22 +2488,6 @@ class Repository(_RelockDebugMixin):
             else:
                 next_id = parents[0]
 
-    @needs_read_lock
-    def get_revision_inventory(self, revision_id):
-        """Return inventory of a past revision."""
-        # TODO: Unify this with get_inventory()
-        # bzr 0.0.6 and later imposes the constraint that the inventory_id
-        # must be the same as its revision, so this is trivial.
-        if revision_id is None:
-            # This does not make sense: if there is no revision,
-            # then it is the current tree inventory surely ?!
-            # and thus get_root_id() is something that looks at the last
-            # commit on the branch, and the get_root_id is an inventory check.
-            raise NotImplementedError
-            # return Inventory(self.get_root_id())
-        else:
-            return self.get_inventory(revision_id)
-
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
@@ -2543,7 +2527,7 @@ class Repository(_RelockDebugMixin):
             return RevisionTree(self, Inventory(root_id=None),
                                 _mod_revision.NULL_REVISION)
         else:
-            inv = self.get_revision_inventory(revision_id)
+            inv = self.get_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):

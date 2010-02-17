@@ -236,7 +236,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         revid = b.revision_history()[0]
         self.log('first revision_id is {%s}' % revid)
 
-        inv = b.repository.get_revision_inventory(revid)
+        inv = b.repository.get_inventory(revid)
         self.log('contents of inventory: %r' % inv.entries())
 
         self.check_inventory_shape(inv,
