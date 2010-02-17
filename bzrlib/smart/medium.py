@@ -52,7 +52,9 @@ from bzrlib import osutils
 
 # We must not read any more than 64k at a time so we don't risk "no buffer
 # space available" errors on some platforms.  Windows in particular is likely
-# to give error 10053 or 10055 if we read more than 64k from a socket.
+# to throw WSAECONNABORTED or WSAENOBUFS if given too much data at once.
+# Throughout this module buffer size parameters are either limited to be at
+# most 64k, or are ignored and 64k is used instead.
 _MAX_READ_SIZE = 64 * 1024
 
 
@@ -288,7 +290,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
     def _read_bytes(self, desired_count):
         return _read_bytes_from_socket(
-            self.socket.recv, desired_count, self._report_activity)
+            self.socket, _MAX_READ_SIZE, self._report_activity)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -298,7 +300,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
     def _write_out(self, bytes):
         tstart = osutils.timer_func()
-        osutils.send_all(self.socket, bytes, self._report_activity)
+        _send_bytes_chunked(self.socket, bytes, self._report_activity)
         if 'hpss' in debug.debug_flags:
             thread_id = thread.get_ident()
             trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
@@ -838,7 +840,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
-        osutils.send_all(self._socket, bytes, self._report_activity)
+        _send_bytes_chunked(self._socket, bytes, self._report_activity)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -899,7 +901,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         if not self._connected:
             raise errors.MediumNotConnected(self)
         return _read_bytes_from_socket(
-            self._socket.recv, count, self._report_activity)
+            self._socket, _MAX_READ_SIZE, self._report_activity)
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
@@ -943,18 +945,46 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
 
 
 def _read_bytes_from_socket(sock, desired_count, report_activity):
-    # We ignore the desired_count because on sockets it's more efficient to
-    # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-    try:
-        bytes = sock(_MAX_READ_SIZE)
-    except socket.error, e:
-        if len(e.args) and e.args[0] in (errno.ECONNRESET, 10054):
-            # The connection was closed by the other side.  Callers expect an
-            # empty string to signal end-of-stream.
-            bytes = ''
-        else:
-            raise
-    else:
-        report_activity(len(bytes), 'read')
-    return bytes
+    """Read upto desired_count of bytes from sock and notify of progress
 
+    Translates "Connection reset by peer" into a normal disconnect, and
+    repeats the recv if interrupted by a signal.
+    """
+    while 1:
+        try:
+            bytes = sock.recv(desired_count)
+        except socket.error, e:
+            eno = e.args[0]
+            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
+                # The connection was closed by the other side.  Callers expect an
+                # empty string to signal end-of-stream.
+                return ""
+            if eno != errno.EINTR:
+                raise
+        else:
+            report_activity(len(bytes), 'read')
+            return bytes
+
+def _send_bytes_chunked(sock, bytes, report_activity):
+    """Send bytes on sock and notify of progress
+
+    Breaks large blocks in smaller chunks to avoid buffering limitations on
+    some platforms, and catches EINTR which may be thrown if the send is
+    interrupted by a signal.
+
+    For a socket implementation without these issues, this function has much
+    the same effect as:
+        sock.sendall(bytes)
+        report_activity(len(bytes), 'write')
+    """
+    sent_total = 0
+    byte_count = len(bytes)
+    while sent_total < byte_count:
+        try:
+            sent = sock.send(buffer(bytes, sent_total, _MAX_READ_SIZE))
+        except socket.error, e:
+            if e.args[0] != errno.EINTR:
+                raise
+        else:
+            sent_total += sent
+            report_activity(sent, 'write')

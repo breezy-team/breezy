@@ -52,7 +52,14 @@ from bzrlib import (
     errors,
     win32utils,
     )
+from bzrlib.smart import medium
+from bzrlib.tests import test_smart_transport
 """)
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 # sha and md5 modules are deprecated in python2.6 but hashlib is available as
 # of 2.5
@@ -1874,40 +1881,24 @@ def get_host_name():
         return socket.gethostname().decode(get_user_encoding())
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
+def until_no_eintr(f, *a, **kw):
+    """Stub version of previous attempt at signal handling code"""
+    return f(*a, **kw)
+
+
+@deprecated_function(deprecated_in((2, 2, 0)))
 def recv_all(socket, bytes):
-    """Receive an exact number of bytes.
-
-    Regular Socket.recv() may return less than the requested number of bytes,
-    dependning on what's in the OS buffer.  MSG_WAITALL is not available
-    on all platforms, but this should work everywhere.  This will return
-    less than the requested amount if the remote end closes.
-
-    This isn't optimized and is intended mostly for use in testing.
-    """
-    b = ''
-    while len(b) < bytes:
-        new = socket.recv(bytes - len(b))
-        if new == '':
-            break # eof
-        b += new
-    return b
+    """See bzrlib.tests.test_smart_transport._recv_all"""
+    return test_smart_transport._recv_all(socket, bytes)
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def send_all(socket, bytes, report_activity=None):
-    """Send all bytes on a socket.
-
-    Regular socket.sendall() can give socket error 10053 on Windows.  This
-    implementation sends no more than 64k at a time, which avoids this problem.
-
-    :param report_activity: Call this as bytes are read, see
-        Transport._report_activity
-    """
-    chunk_size = 2**16
-    for pos in xrange(0, len(bytes), chunk_size):
-        block = bytes[pos:pos+chunk_size]
-        if report_activity is not None:
-            report_activity(len(block), 'write')
-        socket.sendall(block)
+    """See bzrlib.smart.medium._send_bytes_chunked"""
+    if report_activity is None:
+        report_activity = lambda n, rw: None
+    medium._send_bytes_chunked(socket, bytes, report_activity)
 
 
 def dereference_path(path):
