@@ -1027,7 +1027,7 @@ class Repository(_RelockDebugMixin):
 
         :seealso: add_inventory, for the contract.
         """
-        inv_lines = self._serializer.write_inventory_to_string(inv)
+        inv_lines = self._serializer.write_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
