@@ -187,7 +187,7 @@ class Proposer(object):
                 if line.startswith('Traceback (most recent call last):'):
                     break
                 error_lines.append(line)
-            raise Exception(error_lines)
+            raise Exception(''.join(error_lines))
         else:
             webbrowser.open(canonical_url(mp))
 
