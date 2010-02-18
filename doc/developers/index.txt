@@ -13,7 +13,7 @@ Introduction
 
 
 Working on Bazaar
-================
+=================
 
 .. toctree::
    :maxdepth: 1
