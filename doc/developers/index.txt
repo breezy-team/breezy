@@ -12,17 +12,30 @@ Introduction
    contribution-quickstart
 
 
-Enhancing Bazaar
+Working on Bazaar
 ================
 
 .. toctree::
    :maxdepth: 1
 
-   process
+   cycle
+   profiling
+   bug-handling
    HACKING
    testing
 
-* `Bazaar Writer Guide <http://bazaar-vcs.org/ContributingToTheDocs>`_ (web link)
+* `Contributing to Bazaar Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
+
+
+Releasing and Packaging
+=======================
+
+.. toctree::
+   :maxdepth: 1
+
+   releasing
+   ppa
+   ec2 
 
 
 Developing using bzrlib

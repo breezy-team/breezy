@@ -32,6 +32,9 @@ mentoring?  When you submit your merge proposal on Launchpad, simply say
 with your contribution on the IRC channel, mailing list, or on Launchpad
 (https://answers.launchpad.net/bzr).
 
+* `Giving back <http://wiki.bazaar.canonical.com/BzrGivingBack>`_ (wiki) |--| How to get
+  your changes to Bazaar integrated into a release.
+
 
 Current Bazaar Mentors
 ----------------------
