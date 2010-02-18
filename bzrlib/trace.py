@@ -235,6 +235,7 @@ def _open_bzr_log():
             bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
             bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
+        osutils.copy_ownership(os.path.dirname(_bzr_log_filename), _bzr_log_filename)
         return bzr_log_file
     except IOError, e:
         # If we are failing to open the log, then most likely logging has not

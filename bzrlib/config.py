@@ -473,9 +473,11 @@ class GlobalConfig(IniBasedConfig):
         self._write_config_file()
 
     def _write_config_file(self):
-        f = open(self._get_filename(), 'wb')
+        path = self._get_filename()
+        f = open(path, 'wb')
         self._get_parser().write(f)
         f.close()
+        osutils.copy_ownership(os.path.dirname(path), path)
 
 
 class LocationConfig(IniBasedConfig):
@@ -770,6 +772,7 @@ def ensure_config_dir_exists(path=None):
             os.mkdir(parent_dir)
         trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
+        osutils.copy_ownership(os.path.dirname(path), path)
 
 
 def config_dir():

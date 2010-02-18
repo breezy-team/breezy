@@ -1590,6 +1590,15 @@ def copy_tree(from_path, to_path, handlers={}):
             real_handlers[kind](abspath, relpath)
 
 
+def copy_ownership(src, dst):
+    """copy user and group ownership from src file/dir to dst file/dir"""
+    if os.name == 'posix':
+        s = os.stat(src)
+        os.chown(dst, s.st_uid, s.st_gid)
+        return True
+    return False
+
+
 def path_prefix_key(path):
     """Generate a prefix-order path key for path.
 
