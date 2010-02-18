@@ -49,6 +49,9 @@ New Features
   as resolved is still accessible via the ``--done`` default action.
   (Vincent Ladeuil)
 
+* Merges can be proposed on Launchpad with the new lp-propose-merge command.
+  (Aaron Bentley, Jonathan Lange)
+
 Bug Fixes
 *********
 
