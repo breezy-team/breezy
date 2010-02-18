@@ -289,7 +289,7 @@ class cmd_lp_propose_merge(Command):
     """Propose merging a branch on Launchpad.
 
     This will open your usual editor to provide the initial comment.  When it
-    has submitted the proposal, it will open it in your default web browser.
+    has created the proposal, it will open it in your default web browser.
 
     The branch will be proposed to merge into SUBMIT_BRANCH.  If SUBMIT_BRANCH
     is not supplied, the remembered submit branch will be used.  If no submit
@@ -319,7 +319,7 @@ class cmd_lp_propose_merge(Command):
 
     def run(self, submit_branch=None, review=None, staging=False,
             message=None):
-        from bzrlib.plugins.launchpad import lp_submit
+        from bzrlib.plugins.launchpad import lp_propose
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             '.')
         if review is None:
@@ -337,10 +337,10 @@ class cmd_lp_propose_merge(Command):
             target = None
         else:
             target = _mod_branch.Branch.open(submit_branch)
-        submitter = lp_submit.Submitter(tree, branch, target, message,
-                                        reviews, staging)
-        submitter.check_submission()
-        submitter.submit()
+        proposer = lp_propose.Proposer(tree, branch, target, message,
+                                       reviews, staging)
+        proposer.check_proposal()
+        proposer.create_proposal()
 
 
 register_command(cmd_lp_propose_merge)

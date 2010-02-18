@@ -30,8 +30,8 @@ from bzrlib.plugins.launchpad import (
 from lazr.restfulclient import errors as restful_errors
 
 
-class LaunchpadSubmitterHooks(Hooks):
-    """Hooks for submitting a branch to Launchpad for review."""
+class ProposeMergeHooks(Hooks):
+    """Hooks for proposing a merge on Launchpad."""
 
     def __init__(self):
         Hooks.__init__(self)
@@ -49,9 +49,9 @@ class LaunchpadSubmitterHooks(Hooks):
         )
 
 
-class Submitter(object):
+class Proposer(object):
 
-    hooks = LaunchpadSubmitterHooks()
+    hooks = ProposeMergeHooks()
 
     def __init__(self, tree, source_branch, target_branch, message, reviews,
                  staging=False):
@@ -135,7 +135,7 @@ class Submitter(object):
             })
         return body
 
-    def check_submission(self):
+    def check_proposal(self):
         """Check that the submission is sensible."""
         if self.source_branch.lp.self_link == self.target_branch.lp.self_link:
             raise errors.BzrCommandError(
@@ -159,7 +159,7 @@ class Submitter(object):
                  'prerequisite_branch': prerequisite_branch})
         return prerequisite_branch
 
-    def submit(self):
+    def create_proposal(self):
         """Perform the submission."""
         prerequisite_branch = self._get_prerequisite_branch()
         if prerequisite_branch is None:
