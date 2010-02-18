@@ -31,6 +31,7 @@ from bzrlib import (
     multiparent,
     osutils,
     revision as _mod_revision,
+    ui,
     )
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
@@ -49,7 +50,7 @@ from bzrlib.osutils import (
     splitpath,
     supports_executable,
 )
-from bzrlib.progress import DummyProgress, ProgressPhase
+from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
         deprecated_in,
@@ -79,13 +80,13 @@ class _TransformResults(object):
 class TreeTransformBase(object):
     """The base class for TreeTransform and its kin."""
 
-    def __init__(self, tree, pb=DummyProgress(),
+    def __init__(self, tree, pb=None,
                  case_sensitive=True):
         """Constructor.
 
         :param tree: The tree that will be transformed, but not necessarily
             the output tree.
-        :param pb: A ProgressTask indicating how much progress is being made
+        :param pb: ignored
         :param case_sensitive: If True, the target of the transform is
             case sensitive, not just case preserving.
         """
@@ -1062,14 +1063,14 @@ class TreeTransformBase(object):
 class DiskTreeTransform(TreeTransformBase):
     """Tree transform storing its contents on disk."""
 
-    def __init__(self, tree, limbodir, pb=DummyProgress(),
+    def __init__(self, tree, limbodir, pb=None,
                  case_sensitive=True):
         """Constructor.
         :param tree: The tree that will be transformed, but not necessarily
             the output tree.
         :param limbodir: A directory where new files can be stored until
             they are installed in their proper places
-        :param pb: A ProgressBar indicating how much progress is being made
+        :param pb: ignored
         :param case_sensitive: If True, the target of the transform is
             case sensitive, not just case preserving.
         """
@@ -1339,7 +1340,7 @@ class TreeTransform(DiskTreeTransform):
     FileMover does not delete files until it is sure that a rollback will not
     happen.
     """
-    def __init__(self, tree, pb=DummyProgress()):
+    def __init__(self, tree, pb=None):
         """Note: a tree_write lock is taken on the tree.
 
         Use TreeTransform.finalize() to release the lock (can be omitted if
@@ -1691,7 +1692,7 @@ class TransformPreview(DiskTreeTransform):
     unversioned files in the input tree.
     """
 
-    def __init__(self, tree, pb=DummyProgress(), case_sensitive=True):
+    def __init__(self, tree, pb=None, case_sensitive=True):
         tree.lock_read()
         limbodir = osutils.mkdtemp(prefix='bzr-limbo-')
         DiskTreeTransform.__init__(self, tree, limbodir, pb, case_sensitive)
@@ -2589,9 +2590,10 @@ def _entry_changes(file_id, entry, working_tree):
 
 
 def revert(working_tree, target_tree, filenames, backups=False,
-           pb=DummyProgress(), change_reporter=None):
+           pb=None, change_reporter=None):
     """Revert a working tree's contents to those of a target tree."""
     target_tree.lock_read()
+    pb = ui.ui_factory.nested_progress_bar()
     tt = TreeTransform(working_tree, pb)
     try:
         pp = ProgressPhase("Revert phase", 3, pb)
@@ -2616,7 +2618,6 @@ def revert(working_tree, target_tree, filenames, backups=False,
 def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
                               backups, pp, basis_tree=None,
                               merge_modified=None):
-    pp.next_phase()
     child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
         if merge_modified is None:
@@ -2626,7 +2627,6 @@ def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
                                       merge_modified, basis_tree)
     finally:
         child_pb.finished()
-    pp.next_phase()
     child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     try:
         raw_conflicts = resolve_conflicts(tt, child_pb,
@@ -2754,11 +2754,12 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
     return merge_modified
 
 
-def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
+def resolve_conflicts(tt, pb=None, pass_func=None):
     """Make many conflict-resolution attempts, but die if they fail"""
     if pass_func is None:
         pass_func = conflict_pass
     new_conflicts = set()
+    pb = ui.ui_factory.nested_progress_bar()
     try:
         for n in range(10):
             pb.update('Resolution pass', n+1, 10)
@@ -2768,7 +2769,7 @@ def resolve_conflicts(tt, pb=DummyProgress(), pass_func=None):
             new_conflicts.update(pass_func(tt, conflicts))
         raise MalformedTransform(conflicts=conflicts)
     finally:
-        pb.clear()
+        pb.finished()
 
 
 def conflict_pass(tt, conflicts, path_tree=None):

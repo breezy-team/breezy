@@ -380,6 +380,8 @@ class MutableTree(tree.Tree):
 
         if not file_list:
             # no paths supplied: add the entire tree.
+            # FIXME: this assumes we are running in a working tree subdir :-/
+            # -- vila 20100208
             file_list = [u'.']
         # mutter("smart add of %r")
         inv = self.inventory
@@ -387,6 +389,14 @@ class MutableTree(tree.Tree):
         ignored = {}
         dirs_to_add = []
         user_dirs = set()
+        conflicts_related = set()
+        # Not all mutable trees can have conflicts
+        if getattr(self, 'conflicts', None) is not None:
+            # Collect all related files without checking whether they exist or
+            # are versioned. It's cheaper to do that once for all conflicts
+            # than trying to find the relevant conflict for each added file.
+            for c in self.conflicts():
+                conflicts_related.update(c.associated_filenames())
 
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
@@ -452,6 +462,13 @@ class MutableTree(tree.Tree):
                 continue
             if illegalpath_re.search(directory.raw_path):
                 trace.warning("skipping %r (contains \\n or \\r)" % abspath)
+                continue
+            if directory.raw_path in conflicts_related:
+                # If the file looks like one generated for a conflict, don't
+                # add it.
+                trace.warning(
+                    'skipping %s (generated to help resolve conflicts)',
+                    abspath)
                 continue
 
             if parent_ie is not None:

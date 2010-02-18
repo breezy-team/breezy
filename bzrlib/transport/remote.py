@@ -601,5 +601,5 @@ def get_test_permutations():
     """Return (transport, server) permutations for testing."""
     ### We may need a little more test framework support to construct an
     ### appropriate RemoteTransport in the future.
-    from bzrlib.smart import server
-    return [(RemoteTCPTransport, server.SmartTCPServer_for_testing)]
+    from bzrlib.tests import test_server
+    return [(RemoteTCPTransport, test_server.SmartTCPServer_for_testing)]

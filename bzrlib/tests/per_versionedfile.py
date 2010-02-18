@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -734,11 +734,10 @@ class VersionedFileTestMixIn(object):
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
 
-        class InstrumentedProgress(progress.DummyProgress):
+        class InstrumentedProgress(progress.ProgressTask):
 
             def __init__(self):
-
-                progress.DummyProgress.__init__(self)
+                progress.ProgressTask.__init__(self)
                 self.updates = []
 
             def update(self, msg=None, current=None, total=None):
@@ -2548,11 +2547,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
 
-        class InstrumentedProgress(progress.DummyProgress):
+        class InstrumentedProgress(progress.ProgressTask):
 
             def __init__(self):
-
-                progress.DummyProgress.__init__(self)
+                progress.ProgressTask.__init__(self)
                 self.updates = []
 
             def update(self, msg=None, current=None, total=None):

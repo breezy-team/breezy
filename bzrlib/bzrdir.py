@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ objects returned.
 
 import os
 import sys
+import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -354,6 +355,15 @@ class BzrDir(object):
                 for subdir in sorted(subdirs, reverse=True):
                     pending.append(current_transport.clone(subdir))
 
+    def list_branches(self):
+        """Return a sequence of all branches local to this control directory.
+
+        """
+        try:
+            return [self.open_branch()]
+        except errors.NotBranchError:
+            return []
+
     @staticmethod
     def find_branches(transport):
         """Find all branches under a transport.
@@ -371,20 +381,16 @@ class BzrDir(object):
             except errors.NoRepositoryPresent:
                 pass
             else:
-                return False, (None, repository)
-            try:
-                branch = bzrdir.open_branch()
-            except errors.NotBranchError:
-                return True, (None, None)
-            else:
-                return True, (branch, None)
-        branches = []
-        for branch, repo in BzrDir.find_bzrdirs(transport, evaluate=evaluate):
+                return False, ([], repository)
+            return True, (bzrdir.list_branches(), None)
+        ret = []
+        for branches, repo in BzrDir.find_bzrdirs(transport,
+                                                  evaluate=evaluate):
             if repo is not None:
-                branches.extend(repo.find_branches())
-            if branch is not None:
-                branches.append(branch)
-        return branches
+                ret.extend(repo.find_branches())
+            if branches is not None:
+                ret.extend(branches)
+        return ret
 
     def destroy_repository(self):
         """Destroy the repository in this BzrDir"""
@@ -2609,12 +2615,17 @@ class ConvertBzrDir4To5(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.bzrdir = to_convert
-        self.pb = pb
-        ui.ui_factory.note('starting upgrade from format 4 to 5')
-        if isinstance(self.bzrdir.transport, local.LocalTransport):
-            self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
-        self._convert_to_weaves()
-        return BzrDir.open(self.bzrdir.root_transport.base)
+        if pb is not None:
+            warnings.warn("pb parameter to convert() is deprecated")
+        self.pb = ui.ui_factory.nested_progress_bar()
+        try:
+            ui.ui_factory.note('starting upgrade from format 4 to 5')
+            if isinstance(self.bzrdir.transport, local.LocalTransport):
+                self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
+            self._convert_to_weaves()
+            return BzrDir.open(self.bzrdir.root_transport.base)
+        finally:
+            self.pb.finished()
 
     def _convert_to_weaves(self):
         ui.ui_factory.note('note: upgrade may be faster if all store files are ungzipped first')
@@ -2861,10 +2872,13 @@ class ConvertBzrDir5To6(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.bzrdir = to_convert
-        self.pb = pb
-        ui.ui_factory.note('starting upgrade from format 5 to 6')
-        self._convert_to_prefixed()
-        return BzrDir.open(self.bzrdir.root_transport.base)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            ui.ui_factory.note('starting upgrade from format 5 to 6')
+            self._convert_to_prefixed()
+            return BzrDir.open(self.bzrdir.root_transport.base)
+        finally:
+            pb.finished()
 
     def _convert_to_prefixed(self):
         from bzrlib.store import TransportStore
@@ -2903,7 +2917,7 @@ class ConvertBzrDir6ToMeta(Converter):
         from bzrlib.repofmt.weaverepo import RepositoryFormat7
         from bzrlib.branch import BzrBranchFormat5
         self.bzrdir = to_convert
-        self.pb = pb
+        self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
         self.total = 20 # the steps we know about
         self.garbage_inventories = []
@@ -2989,6 +3003,7 @@ class ConvertBzrDir6ToMeta(Converter):
             'branch-format',
             BzrDirMetaFormat1().get_format_string(),
             mode=self.file_mode)
+        self.pb.finished()
         return BzrDir.open(self.bzrdir.root_transport.base)
 
     def make_lock(self, name):
@@ -3030,7 +3045,7 @@ class ConvertMetaToMeta(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.bzrdir = to_convert
-        self.pb = pb
+        self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
         self.total = 1
         self.step('checking repository format')
@@ -3044,11 +3059,7 @@ class ConvertMetaToMeta(Converter):
                 ui.ui_factory.note('starting repository conversion')
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
-        try:
-            branch = self.bzrdir.open_branch()
-        except errors.NotBranchError:
-            pass
-        else:
+        for branch in self.bzrdir.list_branches():
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
@@ -3096,6 +3107,7 @@ class ConvertMetaToMeta(Converter):
                 isinstance(self.target_format.workingtree_format,
                     workingtree_4.WorkingTreeFormat6)):
                 workingtree_4.Converter4or5to6().convert(tree)
+        self.pb.finished()
         return to_convert
 
 

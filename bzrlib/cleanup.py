@@ -31,9 +31,9 @@ the original exception.
 If you want to be certain that the first, and only the first, error is raised,
 then use::
 
-    operation = OperationWithCleanups(lambda operation: do_something())
+    operation = OperationWithCleanups(do_something)
     operation.add_cleanup(cleanup_something)
-    operation.run()
+    operation.run_simple()
 
 This is more inconvenient (because you need to make every try block a
 function), but will ensure that the first error encountered is the one raised,

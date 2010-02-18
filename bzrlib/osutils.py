@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -179,7 +179,9 @@ def kind_marker(kind):
     try:
         return _kind_marker_map[kind]
     except KeyError:
-        raise errors.BzrError('invalid file kind %r' % kind)
+        # Slightly faster than using .get(, '') when the common case is that
+        # kind will be found
+        return ''
 
 
 lexists = getattr(os.path, 'lexists', None)

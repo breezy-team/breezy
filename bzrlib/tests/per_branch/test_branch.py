@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ from bzrlib.tests import (
     per_branch,
     )
 from bzrlib.tests.http_server import HttpServer
-from bzrlib.transport.memory import MemoryServer
+from bzrlib.transport import memory
 
 
 class TestTestCaseWithBranch(per_branch.TestCaseWithBranch):
@@ -512,7 +512,7 @@ class ChrootedTests(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.vfs_transport_factory == MemoryServer:
+        if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = HttpServer
 
     def test_open_containing(self):

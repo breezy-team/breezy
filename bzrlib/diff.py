@@ -31,7 +31,7 @@ import time
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
-    commands,
+    cmdline,
     errors,
     osutils,
     patiencediff,
@@ -683,7 +683,7 @@ class DiffFromTool(DiffPath):
     @classmethod
     def from_string(klass, command_string, old_tree, new_tree, to_file,
                     path_encoding='utf-8'):
-        command_template = commands.shlex_split_unicode(command_string)
+        command_template = cmdline.split(command_string)
         if '@' not in command_string:
             command_template.extend(['@old_path', '@new_path'])
         return klass(command_template, old_tree, new_tree, to_file,
