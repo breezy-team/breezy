@@ -306,14 +306,19 @@ method::
 
     self.requireFeature(StraceFeature)
 
-Features already defined in bzrlib.tests include:
+Available features
+~~~~~~~~~~~~~~~~~~
+
+Features already defined in bzrlib.tests or bzrlib.tests.features include:
 
  - SymlinkFeature,
  - HardlinkFeature,
  - OsFifoFeature,
  - UnicodeFilenameFeature,
- - FTPServerFeature, and
- - CaseInsensitiveFilesystemFeature.
+ - FTPServerFeature
+ - CaseInsensitiveFilesystemFeature
+ - PosixPermissionsFeature: the test can rely on unix-style permissions bits on files;
+   generally true on Unix but not on all filesystems
 
 
 Defining a new feature that tests can require
