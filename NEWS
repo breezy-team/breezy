@@ -5,14 +5,17 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.0.5 (not released yet)
-############################
+bzr 2.0.5
+#########
 
 :Codename:
-:2.0.5:
+:2.0.5: NOT RELEASED YET
 
 Bug Fixes
 *********
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
 
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
