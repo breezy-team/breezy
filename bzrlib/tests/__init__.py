@@ -3628,6 +3628,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_chunk_writer',
         'bzrlib.tests.test_clean_tree',
         'bzrlib.tests.test_cleanup',
+        'bzrlib.tests.test_cmdline',
         'bzrlib.tests.test_commands',
         'bzrlib.tests.test_commit',
         'bzrlib.tests.test_commit_merge',
