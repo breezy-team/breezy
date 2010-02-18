@@ -278,7 +278,7 @@ Many commands that accept URLs also accept location aliases too.  See
 
 
 _basic_help = \
-"""Bazaar -- a free distributed version-control tool
+"""Bazaar %s -- a free distributed version-control tool
 http://www.bazaar.canonical.com/
 
 Basic commands:
@@ -302,7 +302,7 @@ Basic commands:
   bzr help init      more help on e.g. init command
   bzr help commands  list all commands
   bzr help topics    list all help topics
-"""
+""" % bzrlib.__version__
 
 
 _global_options = \
