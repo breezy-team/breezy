@@ -1593,6 +1593,9 @@ def copy_tree(from_path, to_path, handlers={}):
 def copy_ownership(src, dst):
     """copy user and group ownership from src file/dir to dst file/dir"""
     if os.name == 'posix':
+        # if caller uses os.path.dirname(..) for src it may set src to ''
+        if src == '':
+            src = '.'
         s = os.stat(src)
         os.chown(dst, s.st_uid, s.st_gid)
         return True
