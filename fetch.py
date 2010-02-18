@@ -346,7 +346,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
 
 
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
-        heads, pb=None):
+        heads, pb=None, limit=None):
     """Import a set of git objects into a bzr repository.
 
     :param repo: Target Bazaar repository
@@ -396,6 +396,9 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     batch_size = 100
     revision_ids = topo_sort(graph)
     pack_hints = []
+    if limit is not None:
+        revision_ids = revision_ids[:limit]
+    last_imported = None
     for offset in range(0, len(revision_ids), batch_size):
         repo.start_write_group()
         try:
@@ -405,6 +408,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
                 import_git_commit(repo, mapping, head, lookup_object,
                                   target_git_object_retriever,
                                   parent_invs_cache)
+                last_imported = head
         except:
             repo.abort_write_group()
             raise
@@ -413,7 +417,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
             if hint is not None:
                 pack_hints.extend(hint)
     target_git_object_retriever._idmap.commit_write_group()
-    return pack_hints
+    return pack_hints, last_imported
 
 
 class InterGitRepository(InterRepository):
@@ -456,7 +460,7 @@ class InterGitNonGitRepository(InterGitRepository):
             else:
                 ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
-        pack_hint = self.fetch_objects(determine_wants, mapping, pb)
+        pack_hint = self.fetch_objects(determine_wants, mapping, pb)[0]
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
         if interesting_heads is not None:
@@ -490,7 +494,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         map(all_parents.update, parent_map.itervalues())
         return set(all_revs) - all_parents
 
-    def fetch_objects(self, determine_wants, mapping, pb=None):
+    def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         def progress(text):
             report_git_progress(pb, text)
         store = BazaarObjectStore(self.target, mapping)
@@ -514,7 +518,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                             record_determine_wants, graph_walker,
                             store.get_raw, progress)
                 return import_git_objects(self.target, mapping,
-                    objects_iter, store, recorded_wants, pb)
+                    objects_iter, store, recorded_wants, pb, limit)
             finally:
                 if create_pb:
                     create_pb.finished()
@@ -534,7 +538,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a local Git into a non-Git
     repository."""
 
-    def fetch_objects(self, determine_wants, mapping, pb=None):
+    def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         wants = determine_wants(self.source._git.get_refs())
         create_pb = None
         if pb is None:
@@ -545,7 +549,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
             try:
                 return import_git_objects(self.target, mapping,
                     self.source._git.object_store, target_git_object_retriever,
-                    wants, pb)
+                    wants, pb, limit)
             finally:
                 self.target.unlock()
         finally:
@@ -604,7 +608,7 @@ class InterGitGitRepository(InterGitRepository):
             determine_wants = r.object_store.determine_wants_all
         else:
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
-        return self.fetch_objects(determine_wants, mapping)
+        return self.fetch_objects(determine_wants, mapping)[0]
 
 
     @staticmethod

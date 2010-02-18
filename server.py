@@ -149,7 +149,7 @@ class BzrBackend(Backend):
 
         # If this is a Git repository, just use the existing fetch_objects implementation.
         if getattr(repo, "fetch_objects", None) is not None:
-            return repo.fetch_objects(determine_wants, graph_walker, None, progress)
+            return repo.fetch_objects(determine_wants, graph_walker, None, progress)[0]
 
         wants = determine_wants(self.get_refs())
         graph_walker.reset()
