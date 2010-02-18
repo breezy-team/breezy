@@ -40,6 +40,10 @@ New Features
   automatically or by running ``apport-bug``.  No information is sent
   without specific permission from the user.  (Martin Pool, #515052)
 
+* Parsing of command lines, for example in ``diff --using``, no longer
+  treats backslash as an escape character on Windows.   (Gordon Tyler,
+  #392248)
+
 * Tree-shape conflicts can be resolved by providing ``--take-this`` and
   ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
   as resolved is still accessible via the ``--done`` default action.
