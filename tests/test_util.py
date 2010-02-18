@@ -534,6 +534,8 @@ class ChangelogInfoTests(TestCaseWithTransport):
         self.assert_thanks_is(changes, [u"A. Hacker <ahacker@example.com>"])
         changes = ["  * Thanks to Adeodato Sim\xc3\x83\xc2\xb3"]
         self.assert_thanks_is(changes, [u"Adeodato Sim\xc3\xb3"])
+        changes = ["  * Thanks to \xc3\x81deodato Sim\xc3\x83\xc2\xb3"]
+        self.assert_thanks_is(changes, [u"\xc1deodato Sim\xc3\xb3"])
 
     def test_find_bugs_fixed_no_changes(self):
         self.assertEqual([], find_bugs_fixed([], None, _lplib=MockLaunchpad()))
@@ -611,6 +613,37 @@ class ChangelogInfoTests(TestCaseWithTransport):
         self.assertEqual(find_thanks(changes), thanks)
         self.assertEqual(find_bugs_fixed(changes, wt.branch,
                     _lplib=MockLaunchpad()), bugs)
+
+    def assertUnicodeCommitInfo(self, changes):
+        wt = self.make_branch_and_tree(".")
+        changelog = Changelog()
+        author = "J. Maintainer <maint@example.com>"
+        changelog.new_block(changes=changes, author=author)
+        message, authors, thanks, bugs = \
+                get_commit_info_from_changelog(changelog, wt.branch,
+                        _lplib=MockLaunchpad())
+        self.assertEqual(u'[ \xc1. Hacker ]\n'
+                         u'* First ch\xe1nge, LP: #12345\n'
+                         u'* Second change, thanks to \xde. Hacker',
+                         message)
+        self.assertEqual([author, u'\xc1. Hacker'], authors)
+        self.assertEqual(unicode, type(authors[0]))
+        self.assertEqual([u'\xde. Hacker'], thanks)
+        self.assertEqual(['https://launchpad.net/bugs/12345 fixed'], bugs)
+
+    def test_get_commit_info_utf8(self):
+        changes = ["  [ \xc3\x81. Hacker ]",
+                   "  * First ch\xc3\xa1nge, LP: #12345",
+                   "  * Second change, thanks to \xc3\x9e. Hacker"]
+        self.assertUnicodeCommitInfo(changes)
+
+    def test_get_commit_info_iso_8859_1(self):
+        # Changelogs aren't always well-formed UTF-8, so we fall back to
+        # iso-8859-1 if we fail to decode utf-8.
+        changes = ["  [ \xc1. Hacker ]",
+                   "  * First ch\xe1nge, LP: #12345",
+                   "  * Second change, thanks to \xde. Hacker"]
+        self.assertUnicodeCommitInfo(changes)
 
 
 class MockLaunchpad(object):

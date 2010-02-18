@@ -429,7 +429,7 @@ def find_extra_authors(changes):
 
 def find_thanks(changes):
     thanks_re = re.compile(r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
-            "((?:\s+(?:(?:[A-Z]\.)|(?:[A-Z]\w+(?:-[A-Z]\w+)*)))+"
+            "((?:\s+(?:(?:\w\.)|(?:\w+(?:-\w+)*)))+"
             "(?:\s+<[^@>]+@[^@>]+>)?)",
             re.UNICODE)
     thanks = []
@@ -469,7 +469,7 @@ def get_commit_info_from_changelog(changelog, branch, _lplib=None):
         authors += find_extra_authors(changes)
         bugs = find_bugs_fixed(changes, branch, _lplib=_lplib)
         thanks = find_thanks(changes)
-        message = "\n".join(changes).replace("\r", "")
+        message = safe_decode("\n".join(changes).replace("\r", ""))
     return (message, authors, thanks, bugs)
 
 
