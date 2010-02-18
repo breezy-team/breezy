@@ -45,6 +45,7 @@ from bzrlib.plugins.builddeb.util import (
                   move_file_if_different,
                   get_parent_dir,
                   recursive_copy,
+                  safe_decode,
                   strip_changelog_message,
                   suite_to_distribution,
                   tarball_name,
@@ -82,6 +83,19 @@ class RecursiveCopyTests(TestCaseInTempDir):
         self.failUnlessExists('a/d')
         self.failUnlessExists('a/d/e')
         self.failUnlessExists('a/f')
+
+
+class SafeDecodeTests(TestCase):
+
+    def assertSafeDecode(self, expected, val):
+        self.assertEqual(expected, safe_decode(val))
+
+    def test_utf8(self):
+        self.assertSafeDecode(u'ascii', 'ascii')
+        self.assertSafeDecode(u'\xe7', '\xc3\xa7')
+
+    def test_iso_8859_1(self):
+        self.assertSafeDecode(u'\xe7', '\xe7')
 
 
 cl_block1 = """\
@@ -465,6 +479,22 @@ class ChangelogInfoTests(TestCaseWithTransport):
                    "  [ B. Hacker ]", "  [ A. Hacker}"]
         authors = find_extra_authors(changes)
         self.assertEqual([u"A. Hacker", u"B. Hacker"], authors)
+        self.assertEqual([unicode]*len(authors), map(type, authors))
+
+    def test_find_extra_authors_utf8(self):
+        changes = ["  * Do foo", "", "  [ \xc3\xa1. Hacker ]", "  * Do bar", "",
+                   "  [ \xc3\xa7. Hacker ]", "  [ A. Hacker}"]
+        authors = find_extra_authors(changes)
+        self.assertEqual([u"\xe1. Hacker", u"\xe7. Hacker"], authors)
+        self.assertEqual([unicode]*len(authors), map(type, authors))
+
+    def test_find_extra_authors_iso_8859_1(self):
+        # We try to treat lines as utf-8, but if that fails to decode, we fall
+        # back to iso-8859-1
+        changes = ["  * Do foo", "", "  [ \xe1. Hacker ]", "  * Do bar", "",
+                   "  [ \xe7. Hacker ]", "  [ A. Hacker}"]
+        authors = find_extra_authors(changes)
+        self.assertEqual([u"\xe1. Hacker", u"\xe7. Hacker"], authors)
         self.assertEqual([unicode]*len(authors), map(type, authors))
 
     def test_find_extra_authors_no_changes(self):

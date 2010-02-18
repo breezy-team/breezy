@@ -76,6 +76,7 @@ from bzrlib.plugins.builddeb.util import (
     get_snapshot_revision,
     open_file_via_transport,
     open_transport,
+    safe_decode,
     subprocess_setup,
     )
 
@@ -1251,7 +1252,7 @@ class DistributionBranch(object):
                  time_tuple = rfc822.parsedate_tz(raw_timestamp)
                  if time_tuple is not None:
                      timestamp = (time.mktime(time_tuple[:9]), time_tuple[9])
-                 author = cl.author.decode("utf-8")
+                 author = safe_decode(cl.author)
             versions = self._get_safe_versions_from_changelog(cl)
             assert not self.has_version(version), \
                 "Trying to import version %s again" % str(version)
