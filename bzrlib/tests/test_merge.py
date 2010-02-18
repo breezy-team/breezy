@@ -24,6 +24,7 @@ from bzrlib import (
     memorytree,
     merge as _mod_merge,
     option,
+    progress,
     tests,
     transform,
     versionedfile,
