@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -4058,6 +4058,23 @@ class _CaseInsensitiveFilesystemFeature(Feature):
         return 'case-insensitive filesystem'
 
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
+
+
+class _CaseSensitiveFilesystemFeature(Feature):
+
+    def _probe(self):
+        if CaseInsCasePresFilenameFeature.available():
+            return False
+        elif CaseInsensitiveFilesystemFeature.available():
+            return False
+        else:
+            return True
+
+    def feature_name(self):
+        return 'case-sensitive filesystem'
+
+# new coding style is for feature instances to be lowercase
+case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
 
 
 class _SubUnitFeature(Feature):

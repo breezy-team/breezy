@@ -17,10 +17,19 @@ Bug Fixes
 * Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
   (Martin Pool, #331095)
 
+* Handle renames correctly when there are files or directories that 
+  differ only in case.  (Chris Jones, Martin Pool, #368931)
+
 * If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
   error, report that error rather than failing with an unhelpful
   ``UnboundLocalError``.
   (Andrew Bennetts, #423563)
+
+Documentation
+*************
+
+* Added ``location-alias`` help topic.
+  (Andrew Bennetts, #337834)
 
 bzr 2.0.4
 #########
