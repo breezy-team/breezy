@@ -20,7 +20,10 @@ import re
 
 from bzrlib import (
     merge,
+    merge3,
     )
+
+from debian_bundle import changelog
 
 class ChangeLogFileMerge(merge.ConfigurableFileMerger):
 
@@ -28,235 +31,114 @@ class ChangeLogFileMerge(merge.ConfigurableFileMerger):
     default_files = ['debian/changelog']
 
     def merge_text(self, params):
-        return 'success', merge_changelog(params.this_lines, params.other_lines)
+        return merge_changelog(params.this_lines, params.other_lines,
+                               params.base_lines)
 
-
-########################################################################
-# Changelog Management
-########################################################################
 
 # Regular expression for top of debian/changelog
 CL_RE = re.compile(r'^(\w[-+0-9a-z.]*) \(([^\(\) \t]+)\)((\s+[-0-9a-z]+)+)\;',
                    re.IGNORECASE)
 
-def merge_changelog(left_changelog_lines, right_changelog_lines):
+def merge_changelog(this_lines, other_lines, base_lines=[]):
     """Merge a changelog file."""
 
-    left_cl = read_changelog(left_changelog_lines)
-    right_cl = read_changelog(right_changelog_lines)
+    try:
+        left_cl = read_changelog(this_lines)
+        right_cl = read_changelog(other_lines)
+        # BASE lines don't end up in the output, so we allow strict=False
+        base_cl = read_changelog(base_lines, strict=False)
+    except changelog.ChangelogParseError:
+        return ('not_applicable', None)
 
     content = []
-    # TODO: This is not a 3-way merge, but a 2-way merge
-    #       The resolution is currently 'if left and right have texts that have
-    #       the same "version" string, use left', aka "prefer-mine".
-    #       We could introduce BASE, and cause conflicts, or appropriately
-    #       resolve, etc.
-    #       Note also that this code is only invoked when there is a
-    #       left-and-right change, so merging a pure-right change will take all
-    #       changes.
-    for right_ver, right_text in right_cl:
-        while len(left_cl) and left_cl[0][0] > right_ver:
-            (left_ver, left_text) = left_cl.pop(0)
-            content.append(left_text)
-            content.append('\n')
+    def step(iterator):
+        try:
+            return iterator.next()
+        except StopIteration:
+            return None
+    left_blocks = dict((b.version, b) for b in left_cl._blocks)
+    right_blocks = dict((b.version, b) for b in right_cl._blocks)
+    # Unfortunately, while version objects implement __eq__ they *don't*
+    # implement __hash__, which means we can't do dict lookups properly, so
+    # instead, we fall back on the version string instead of the object.
+    # Make sure never to try to use right_version in left_blocks because of
+    # this.
+    # We lazily parse the base data, in case we never need it
+    base_blocks = dict((b.version.full_version, b) for b in base_cl._blocks)
+    left_order = iter(sorted(left_blocks.keys(), reverse=True))
+    right_order = iter(sorted(right_blocks.keys(), reverse=True))
+    left_version = step(left_order)
+    right_version = step(right_order)
 
-        while len(left_cl) and left_cl[0][0] == right_ver:
-            (left_ver, left_text) = left_cl.pop(0)
+    # TODO: Do we want to support the ability to delete a section? We could do
+    #       a first-pass algorithm that checks the versions in base versus the
+    #       versions in this and other, to determine what versions should be in
+    #       the output. For now, we just assume that if a version is present in
+    #       any of this or other, then we want it in the output.
+    conflict_status = 'success'
 
-        content.append(right_text)
-        content.append('\n')
+    while left_version is not None or right_version is not None:
+        if (left_version is None or
+            (right_version is not None and right_version > left_version)):
+            next_content = str(right_blocks[right_version])
+            right_version = step(right_order)
+        elif (right_version is None or
+            (left_version is not None and left_version > right_version)):
+            next_content = str(left_blocks[left_version])
+            left_version = step(left_order)
+        else:
+            assert left_version == right_version
+            # Same version, step both
+            # TODO: Conflict if left_version != right
+            # Note: See above comment why we can't use
+            #       right_blocks[left_version] even though they *should* be
+            #       equivalent
+            left_content = str(left_blocks[left_version])
+            right_content = str(right_blocks[right_version])
+            if left_content == right_content:
+                # Identical content
+                next_content = left_content
+            else:
+                # Sides disagree, compare with base
+                base_content = str(base_blocks.get(left_version.full_version,
+                                                   ''))
+                if left_content == base_content:
+                    next_content = right_content
+                elif right_content == base_content:
+                    next_content = left_content
+                else:
+                    # TODO: We could use merge3.Merge3 to try a line-based
+                    #       textual merge on the content. However, for now I'm
+                    #       just going to conflict on the whole region
+                    # Conflict names taken from merge.py
+                    next_content = ('<<<<<<< TREE\n'
+                                    + left_content
+                                    + '=======\n'
+                                    + right_content
+                                    + '>>>>>>> MERGE-SOURCE\n'
+                                   )
+                    conflict_status = 'conflicted'
+            next_block = left_blocks[left_version]
+            left_version = step(left_order)
+            right_version = step(right_order)
+        content.append(next_content)
 
-    for left_ver, left_text in left_cl:
-        content.append(left_text)
-        content.append('\n')
-	    
-    return content
+    return conflict_status, content
 
 
-def read_changelog(lines):
+def read_changelog(lines, strict=True):
     """Return a parsed changelog file."""
-    entries = []
-
-    (ver, text) = (None, "")
-    for line in lines:
-        match = CL_RE.search(line)
-        if match:
-            try:
-                ver = Version(match.group(2))
-            except ValueError:
-                ver = None
-
-            text += line
-        elif line.startswith(" -- "):
-            if ver is None:
-                ver = Version("0")
-
-            text += line
-            entries.append((ver, text))
-            (ver, text) = (None, "")
-        elif len(line.strip()) or ver is not None:
-            text += line
-
-    if len(text):
-        entries.append((ver, text))
-
-    return entries
-
-########################################################################
-# Version parsing code
-########################################################################
-# Regular expressions make validating things easy
-valid_epoch = re.compile(r'^[0-9]+$')
-valid_upstream = re.compile(r'^[A-Za-z0-9+:.~-]*$')
-valid_revision = re.compile(r'^[A-Za-z0-9+.~]+$')
-
-# Character comparison table for upstream and revision components
-cmp_table = "~ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+-.:"
-
-
-class Version(object):
-    """Debian version number.
-
-    This class is designed to be reasonably transparent and allow you
-    to write code like:
-
-    |   s.version >= '1.100-1'
-
-    The comparison will be done according to Debian rules, so '1.2' will
-    compare lower.
-
-    Properties:
-      epoch       Epoch
-      upstream    Upstream version
-      revision    Debian/local revision
-    """
-
-    def __init__(self, ver):
-        """Parse a string or number into the three components."""
-        self.epoch = 0
-        self.upstream = None
-        self.revision = None
-
-        ver = str(ver)
-        if not len(ver):
-            raise ValueError
-
-        # Epoch is component before first colon
-        idx = ver.find(":")
-        if idx != -1:
-            self.epoch = ver[:idx]
-            if not len(self.epoch):
-                raise ValueError
-            if not valid_epoch.search(self.epoch):
-                raise ValueError
-            ver = ver[idx+1:]
-
-        # Revision is component after last hyphen
-        idx = ver.rfind("-")
-        if idx != -1:
-            self.revision = ver[idx+1:]
-            if not len(self.revision):
-                raise ValueError
-            if not valid_revision.search(self.revision):
-                raise ValueError
-            ver = ver[:idx]
-
-        # Remaining component is upstream
-        self.upstream = ver
-        if not len(self.upstream):
-            raise ValueError
-        if not valid_upstream.search(self.upstream):
-            raise ValueError
-
-        self.epoch = int(self.epoch)
-
-    def getWithoutEpoch(self):
-        """Return the version without the epoch."""
-        str = self.upstream
-        if self.revision is not None:
-            str += "-%s" % (self.revision,)
-        return str
-
-    without_epoch = property(getWithoutEpoch)
-
-    def __str__(self):
-        """Return the class as a string for printing."""
-        str = ""
-        if self.epoch > 0:
-            str += "%d:" % (self.epoch,)
-        str += self.upstream
-        if self.revision is not None:
-            str += "-%s" % (self.revision,)
-        return str
-
-    def __repr__(self):
-        """Return a debugging representation of the object."""
-        return "<%s epoch: %d, upstream: %r, revision: %r>" \
-               % (self.__class__.__name__, self.epoch,
-                  self.upstream, self.revision)
-
-    def __cmp__(self, other):
-        """Compare two Version classes."""
-        other = Version(other)
-
-        result = cmp(self.epoch, other.epoch)
-        if result != 0: return result
-
-        result = deb_cmp(self.upstream, other.upstream)
-        if result != 0: return result
-
-        result = deb_cmp(self.revision or "", other.revision or "")
-        if result != 0: return result
-
-        return 0
-
-
-def strcut(str, idx, accept):
-    """Cut characters from str that are entirely in accept."""
-    ret = ""
-    while idx < len(str) and str[idx] in accept:
-        ret += str[idx]
-        idx += 1
-
-    return (ret, idx)
-
-def deb_order(str, idx):
-    """Return the comparison order of two characters."""
-    if idx >= len(str):
-        return 0
-    elif str[idx] == "~":
-        return -1
-    else:
-        return cmp_table.index(str[idx])
-
-def deb_cmp_str(x, y):
-    """Compare two strings in a deb version."""
-    idx = 0
-    while (idx < len(x)) or (idx < len(y)):
-        result = deb_order(x, idx) - deb_order(y, idx)
-        if result < 0:
-            return -1
-        elif result > 0:
-            return 1
-
-        idx += 1
-
-    return 0
-
-def deb_cmp(x, y):
-    """Implement the string comparison outlined by Debian policy."""
-    x_idx = y_idx = 0
-    while x_idx < len(x) or y_idx < len(y):
-        # Compare strings
-        (x_str, x_idx) = strcut(x, x_idx, cmp_table)
-        (y_str, y_idx) = strcut(y, y_idx, cmp_table)
-        result = deb_cmp_str(x_str, y_str)
-        if result != 0: return result
-
-        # Compare numbers
-        (x_str, x_idx) = strcut(x, x_idx, "0123456789")
-        (y_str, y_idx) = strcut(y, y_idx, "0123456789")
-        result = cmp(int(x_str or "0"), int(y_str or "0"))
-        if result != 0: return result
-
-    return 0
+    # Note: There appears to be a bug in Changelog if you pass it an iterable
+    #       of lines (like a file obj, or a list of lines). Specifically, it
+    #       does not strip trailing newlines, and it adds ones back in, so you
+    #       get doubled blank lines... :(
+    #       So we just ''.join() the lines and don't worry about it
+    # Note: There is also a bug that the Changelog constructor suppresses parse
+    #       errors, so we want to always call parse_changelog separately
+    content = ''.join(lines)
+    cl = changelog.Changelog()
+    if content:
+        # We get a warning if we try to parse an empty changelog file, which in
+        # strict mode is an error, so only parse when we have content
+        cl.parse_changelog(content, strict=strict)
+    return cl
