@@ -35,7 +35,13 @@ class VcsDirectory(object):
 
         apt_pkg.init()
 
-        sources = apt_pkg.SourceRecords()
+        # Older versions of apt_pkg don't have SourceRecords,
+        # newer versions give a deprecation warning when using
+        # GetPkgSrcRecords.
+        try:
+            sources = apt_pkg.SourceRecords()
+        except AttributeError:
+            sources = apt_pkg.GetPkgSrcRecords()
 
         urls = {}
         while sources.Lookup(name):

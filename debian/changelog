@@ -2,6 +2,7 @@ bzr-builddeb (2.4) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
   * Switch section to vcs.
+  * Allow the directory service to work with older version of python-apt.
 
   [ James Westby ]
   * Correct typo that causes packages with .orig.tar.bz2 to fail to build.
