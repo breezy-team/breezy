@@ -1,15 +1,14 @@
-Bazaar Contribution in Five Minutes
-===================================
+Contributing to Bazaar
+======================
 
 If you want to fix or improve something in Bazaar, we want to help you.
 You can ask at any time for help, on the list, on irc, or through a merge
 proposal on Launchpad.
 
-In particular, through the 
-`Patch Pilot <http://wiki.bazaar.canonical.com/PatchPilot>`_ process,
-we have a specific experienced developer who will help you get your 
-changes in, through code review, advice, debugging, writing tests, or
-whatever it takes.
+In particular, the rostered
+`Patch Pilot <http://wiki.bazaar.canonical.com/PatchPilot>`_ 
+is an experienced developer who will help you get your changes in, through
+code review, advice, debugging, writing tests, or whatever it takes.
 
 Starting
 --------
@@ -74,7 +73,22 @@ like `Transport`, look in ``bzrlib.tests.per_transport``.
 It's a good idea to search the tests for something related to the thing
 you're changing and you may find a test you can modify or adapt.
 
+To run the tests::
+
+    $ ./bzr selftest
+
+Normally the tests will skip if some library dependencies are not present.
+On Ubuntu, you can install them with this command (you must have some
+repositories enabled in Software Sources)::
+
+    $ sudo apt-get build-dep bzr
+
+To build the binary extensions::
+
+    $ make
+
 For more information: `Testing Guide <testing.html>`_.
+
 
 Proposing a merge
 -----------------
