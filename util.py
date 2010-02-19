@@ -56,6 +56,24 @@ from bzrlib.plugins.builddeb.errors import (
                 )
 
 
+def safe_decode(s):
+    """Decode a string into a Unicode value."""
+    if isinstance(s, unicode): # Already unicode
+        mutter('safe_decode() called on an already-unicode string: %r' % (s,))
+        return s
+    try:
+        return s.decode('utf-8')
+    except UnicodeDecodeError, e:
+        mutter('safe_decode(%r) falling back to iso-8859-1' % (s,))
+        # TODO: Looking at BeautifulSoup it seems to use 'chardet' to try to
+        #       guess the encoding of a given text stream. We might want to
+        #       take a closer look at that.
+        # TODO: Another possibility would be to make the fallback encoding
+        #       configurable, possibly exposed as a command-line flag, for now,
+        #       this seems 'good enough'.
+        return s.decode('iso-8859-1')
+
+
 def recursive_copy(fromdir, todir):
     """Copy the contents of fromdir to todir.
 
@@ -392,13 +410,13 @@ def find_bugs_fixed(changes, branch, _lplib=None):
 
 
 def find_extra_authors(changes):
-    extra_author_re = re.compile(r"\s*\[([^\]]+)]\s*", re.UNICODE)
+    extra_author_re = re.compile(r"\s*\[([^\]]+)]\s*")
     authors = []
     for change in changes:
         # Parse out any extra authors.
-        match = extra_author_re.match(change.decode("utf-8"))
+        match = extra_author_re.match(change)
         if match is not None:
-            new_author = match.group(1).strip()
+            new_author = safe_decode(match.group(1).strip())
             already_included = False
             for author in authors:
                 if author.startswith(new_author):
@@ -411,11 +429,11 @@ def find_extra_authors(changes):
 
 def find_thanks(changes):
     thanks_re = re.compile(r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
-            "((?:\s+(?:(?:[A-Z]\.)|(?:[A-Z]\w+(?:-[A-Z]\w+)*)))+"
+            "((?:\s+(?:(?:\w\.)|(?:\w+(?:-\w+)*)))+"
             "(?:\s+<[^@>]+@[^@>]+>)?)",
             re.UNICODE)
     thanks = []
-    changes_str = " ".join(changes).decode("utf-8")
+    changes_str = safe_decode(" ".join(changes))
     for match in thanks_re.finditer(changes_str):
         if thanks is None:
             thanks = []
@@ -446,12 +464,12 @@ def get_commit_info_from_changelog(changelog, branch, _lplib=None):
     bugs = []
     if changelog._blocks:
         block = changelog._blocks[0]
-        authors = [block.author.decode("utf-8")]
+        authors = [safe_decode(block.author)]
         changes = strip_changelog_message(block.changes())
         authors += find_extra_authors(changes)
         bugs = find_bugs_fixed(changes, branch, _lplib=_lplib)
         thanks = find_thanks(changes)
-        message = "\n".join(changes).replace("\r", "")
+        message = safe_decode("\n".join(changes).replace("\r", ""))
     return (message, authors, thanks, bugs)
 
 
