@@ -1,0 +1,31 @@
+bzr ?.?.? (not released yet)
+############################
+
+:Codename: template
+:2.0.2: ???
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
