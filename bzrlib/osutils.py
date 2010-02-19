@@ -77,6 +77,9 @@ from bzrlib import symbol_versioning
 # OR with 0 on those platforms
 O_BINARY = getattr(os, 'O_BINARY', 0)
 
+# O_NOINHERIT exists only on win32 too.
+O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
+
 
 def get_unicode_argv():
     try:
@@ -639,7 +642,7 @@ def size_sha_file(f):
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha()
-    f = os.open(fname, os.O_RDONLY | O_BINARY)
+    f = os.open(fname, os.O_RDONLY | O_BINARY | O_NOINHERIT)
     try:
         while True:
             b = os.read(f, 1<<16)
