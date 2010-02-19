@@ -474,10 +474,10 @@ class GlobalConfig(IniBasedConfig):
 
     def _write_config_file(self):
         path = self._get_filename()
-        f = open(path, 'wb')
+        parent = osutils.parent_dir(path)
+        f = osutils.open(path, 'wb', ownership_src = parent)
         self._get_parser().write(f)
         f.close()
-        osutils.copy_ownership(path, osutils.parent_dir(path))
 
 
 class LocationConfig(IniBasedConfig):

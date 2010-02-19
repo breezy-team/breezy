@@ -1621,6 +1621,16 @@ def mkdir(path, ownership_src=None):
     if ownership_src != None:
         copy_ownership(path, ownership_src)
 
+def open(filename, mode='r', bufsize=-1, ownership_src=None):
+    """This function wraps the python builtin open. filename, mode and bufsize
+    parameters behave the same as the builtin open[1].
+    [1] http://python.org/doc/2.6.4/library/functions.html#open"""
+    import __builtin__
+    f = __builtin__.open(filename, mode, bufsize)
+    if ownership_src != None:
+        copy_ownership(filename, ownership_src)
+    return f
+
 
 def path_prefix_key(path):
     """Generate a prefix-order path key for path.

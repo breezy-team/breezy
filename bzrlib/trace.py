@@ -228,7 +228,9 @@ def _open_bzr_log():
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        bzr_log_file = open(_bzr_log_filename, 'at', 1) # line buffered
+        buffering = 1 # line buffered
+        ownership_src = osutils.parent_dir(_bzr_log_filename)
+        bzr_log_file = osutils.open(_bzr_log_filename, 'at', buffering, ownership_src)
         # bzr_log_file.tell() on windows always return 0 until some writing done
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
@@ -236,7 +238,6 @@ def _open_bzr_log():
             bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
             bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
 
-        osutils.copy_ownership(_bzr_log_filename, osutils.parent_dir(_bzr_log_filename))
         return bzr_log_file
 
     except IOError, e:
