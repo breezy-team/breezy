@@ -1791,7 +1791,7 @@ def copy_ownership(dst, src):
         s = os.stat(src)
         os.chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
-        trace.warning("IOError: %s\nUnable to copy ownership from '%s' to '%s'" % (e, src, dst))
+        trace.warning("IOError: %s. Unable to copy ownership from '%s' to '%s'" % (e, src, dst))
     return True
 
 

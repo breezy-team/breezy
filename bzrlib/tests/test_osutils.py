@@ -1975,3 +1975,63 @@ class TestTerminalWidth(tests.TestCase):
         del os.environ['COLUMNS']
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
+
+class TestCreationOps(tests.TestCaseInTempDir):
+
+    def setUp(self):
+        tests.TestCaseInTempDir.setUp(self)
+        self.overrideAttr(os, 'chown', self._dummy_chown)
+
+        # params set by call to _dummy_chown
+        self.path = self.uid = self.gid = None
+
+    def _dummy_chown(self, path, uid, gid):
+        self.path, self.uid, self.gid = path, uid, gid
+
+    def test_mkdir_no_chown(self):
+        """ensure that osutils.mkdir does not chown without ownership_src arg"""
+        osutils.mkdir('foo')
+        self.assertEquals(self.path, None)
+        self.assertEquals(self.uid, None)
+        self.assertEquals(self.gid, None)
+
+    def test_mkdir_chown(self):
+        """ensure that osutils.mkdir chowns correctly with ownership_src arg"""
+        ownsrc = '/'
+        osutils.mkdir('foo', ownsrc)
+
+        s = os.stat(ownsrc)
+        self.assertEquals(self.path, 'foo')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+
+    def test_open_no_chown(self):
+        """ensure that osutils.open does not chown without ownership_src arg"""
+        f = osutils.open('foo', 'w')
+
+        # do a test write and close
+        f.write('hello')
+        f.close()
+
+        self.assertEquals(self.path, None)
+        self.assertEquals(self.uid, None)
+        self.assertEquals(self.gid, None)
+
+    def test_open_chown(self):
+        """ensure that osutils.open chowns correctly with ownership_src arg"""
+        ownsrc = '/'
+        f = osutils.open('foo', 'w', ownership_src=ownsrc)
+
+        # do a test write and close
+        f.write('hello')
+        f.close()
+
+        s = os.stat(ownsrc)
+        self.assertEquals(self.path, 'foo')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+
+    def test_parent_dir(self):
+        self.assertEquals(osutils.parent_dir('/a/b/c'), '/a/b')
+        self.assertEquals(osutils.parent_dir('x'), '.')
+
