@@ -874,6 +874,10 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
+def shlex_split_unicode(unsplit):
+    return cmdline.split(unsplit)
+
+
 def get_alias(cmd, config=None):
     """Return an expanded alias, or None if no alias exists.
 
