@@ -236,9 +236,9 @@ def _open_bzr_log():
             bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
             bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
 
-        if _bzr_log_filename not in ['/dev/null', 'NUL']:
-            osutils.copy_ownership(os.path.dirname(_bzr_log_filename), _bzr_log_filename)
+        osutils.copy_ownership(_bzr_log_filename, osutils.parent_dir(_bzr_log_filename))
         return bzr_log_file
+
     except IOError, e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
