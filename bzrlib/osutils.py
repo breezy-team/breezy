@@ -51,7 +51,9 @@ from bzrlib import (
     cache_utf8,
     errors,
     win32utils,
+    trace,
     )
+
 """)
 
 # sha and md5 modules are deprecated in python2.6 but hashlib is available as
@@ -1769,6 +1771,46 @@ def copy_tree(from_path, to_path, handlers={}):
     for dir_info, entries in walkdirs(from_path, prefix=to_path):
         for relpath, name, kind, st, abspath in entries:
             real_handlers[kind](abspath, relpath)
+
+
+def parent_dir(path):
+    """same as os.path.dirname but returns '.' instead of ''
+    for paths that just have a filename in it e.g. 'foo'"""
+    pdir = os.path.dirname(path)
+    if pdir == '':
+        pdir = '.'
+    return pdir
+
+
+def copy_ownership(dst, src):
+    """copy user and group ownership from own_src file/dir to dst file/dir.
+    If own_src is None, the containing directory is used as source."""
+    if os.name != 'posix':
+        return False
+    try:
+        s = os.stat(src)
+        os.chown(dst, s.st_uid, s.st_gid)
+    except OSError, e:
+        trace.warning("IOError: %s\nUnable to copy ownership from '%s' to '%s'" % (e, src, dst))
+    return True
+
+
+def mkdir(path, ownership_src=None):
+    """creates the directory 'path'. If ownership_src is given, copies (chown)
+    usr/grp ownership from 'ownership_src' to 'path'"""
+    os.mkdir(path)
+    if ownership_src != None:
+        copy_ownership(path, ownership_src)
+
+def open(filename, mode='r', bufsize=-1, ownership_src=None):
+    """This function wraps the python builtin open. filename, mode and bufsize
+    parameters behave the same as the builtin open[1].
+    [1] http://python.org/doc/2.6.4/library/functions.html#open"""
+    import __builtin__
+    f = __builtin__.open(filename, mode, bufsize)
+    if ownership_src != None:
+        copy_ownership(filename, ownership_src)
+    return f
 
 
 def path_prefix_key(path):
