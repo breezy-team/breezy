@@ -1,6 +1,10 @@
 bzr-builddeb (2.4) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
   * Switch section to vcs.
+
+  [ James Westby ]
+  * Correct typo that causes packages with .orig.tar.bz2 to fail to build.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sat, 13 Feb 2010 01:16:00 +0100
 
