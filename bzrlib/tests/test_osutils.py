@@ -1980,7 +1980,10 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)
-        self.overrideAttr(os, 'chown', self._dummy_chown)
+
+        # we can't overrideAttr os.chown on OS that doesn't support chown
+        if os.name == 'posix' and hasattr(os, 'chown'):
+            self.overrideAttr(os, 'chown', self._dummy_chown)
 
         # params set by call to _dummy_chown
         self.path = self.uid = self.gid = None
