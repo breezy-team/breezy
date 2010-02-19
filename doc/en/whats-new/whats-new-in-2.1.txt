@@ -193,9 +193,9 @@ Further information
 -------------------
 
 For more detailed information on the changes made, be sure to check
-the Release Notes for:
+the :doc:`../release-notes/index` for:
 
-* the interim bzr milestones
+* the interim bzr `milestones <https://launchpad.net/bzr/2.1>`_
 * the plugins you use.
 
 Enjoy,
