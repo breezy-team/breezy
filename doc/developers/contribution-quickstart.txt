@@ -110,6 +110,11 @@ explain what you're trying to do and why.  For `example
   As discussed on the mailing list, this patch adds a What's New document
   summarising the changes since 2.0.
 
+If you make additional changes to your branch you don't need to resubmit;
+they'll automatically show up in the merge proposal.
+
+* `Launchpad Code Review Help <http://help.launchpad.net/Code/Review>`_.
+
 
 ..
    vim: ft=rst tw=74 ai
