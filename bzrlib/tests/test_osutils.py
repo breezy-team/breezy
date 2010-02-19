@@ -1990,6 +1990,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
     def test_mkdir_no_chown(self):
         """ensure that osutils.mkdir does not chown without ownership_src arg"""
+        self.requireFeature(tests.ChownFeature)
         osutils.mkdir('foo')
         self.assertEquals(self.path, None)
         self.assertEquals(self.uid, None)
@@ -1997,6 +1998,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
     def test_mkdir_chown(self):
         """ensure that osutils.mkdir chowns correctly with ownership_src arg"""
+        self.requireFeature(tests.ChownFeature)
         ownsrc = '/'
         osutils.mkdir('foo', ownsrc)
 
@@ -2007,6 +2009,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
     def test_open_no_chown(self):
         """ensure that osutils.open does not chown without ownership_src arg"""
+        self.requireFeature(tests.ChownFeature)
         f = osutils.open('foo', 'w')
 
         # do a test write and close
@@ -2019,6 +2022,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
 
     def test_open_chown(self):
         """ensure that osutils.open chowns correctly with ownership_src arg"""
+        self.requireFeature(tests.ChownFeature)
         ownsrc = '/'
         f = osutils.open('foo', 'w', ownership_src=ownsrc)
 
