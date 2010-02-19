@@ -23,6 +23,11 @@ Bug Fixes
 
 * Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
 
+Documentation
+*************
+
+* Added What's New in Bazar 2.1 document. (Ian Clatworthy)
+
 
 bzr 2.1.0
 #########
