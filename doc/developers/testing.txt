@@ -543,6 +543,8 @@ include:
  - UnicodeFilenameFeature
  - FTPServerFeature
  - CaseInsensitiveFilesystemFeature.
+ - ChownFeature: The test can rely on OS being POSIX and python
+   supporting os.chown.
 
 
 Defining a new feature that tests can require
