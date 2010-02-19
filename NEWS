@@ -64,6 +64,9 @@ Bug Fixes
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
 
+* Fix signature of RemoteBzrDir.create_workingtree to match that of its
+  superclass.  (Neil Martinsen-Burrell, #524627)
+
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)
