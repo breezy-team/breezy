@@ -404,7 +404,7 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.create_branch)
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """Destroy the branch in this BzrDir"""
         raise NotImplementedError(self.destroy_branch)
 
@@ -1377,7 +1377,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.create_branch."""
         return self._format.get_branch_format().initialize(self)
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch."""
         raise errors.UnsupportedOperation(self.destroy_branch, self)
 
@@ -1611,8 +1611,10 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.create_branch."""
         return self._format.get_branch_format().initialize(self)
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         self.transport.delete_tree('branch')
 
     def create_repository(self, shared=False):
