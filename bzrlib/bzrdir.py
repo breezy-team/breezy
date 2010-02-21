@@ -396,8 +396,11 @@ class BzrDir(object):
         """Destroy the repository in this BzrDir"""
         raise NotImplementedError(self.destroy_repository)
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """Create a branch in this BzrDir.
+
+        :param name: Name of the colocated branch to create, None for
+            the default branch.
 
         The bzrdir's format will control what branch format is created.
         For more control see BranchFormatXX.create(a_bzrdir).
@@ -405,7 +408,11 @@ class BzrDir(object):
         raise NotImplementedError(self.create_branch)
 
     def destroy_branch(self, name=None):
-        """Destroy the branch in this BzrDir"""
+        """Destroy a branch in this BzrDir.
+        
+        :param name: Name of the branch to destroy, None for the default 
+            branch.
+        """
         raise NotImplementedError(self.destroy_branch)
 
     @staticmethod
@@ -1373,8 +1380,10 @@ class BzrDirPreSplitOut(BzrDir):
             tree.clone(result)
         return result
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().initialize(self)
 
     def destroy_branch(self, name=None):
@@ -1607,8 +1616,10 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.can_convert_format()."""
         return True
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().initialize(self)
 
     def destroy_branch(self, name=None):
