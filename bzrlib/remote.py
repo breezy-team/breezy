@@ -320,9 +320,12 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         """See BzrDir._get_tree_branch()."""
         return None, self.open_branch()
 
-    def open_branch(self, _unsupported=False, ignore_fallbacks=False):
-        if _unsupported:
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
+        if unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         if self._next_open_branch_result is not None:
             # See create_branch for details.
             result = self._next_open_branch_result

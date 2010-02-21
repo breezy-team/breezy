@@ -899,7 +899,8 @@ class BzrDir(object):
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
 
-    def open_branch(self, unsupported=False, ignore_fallbacks=False):
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
         """Open the branch object at this BzrDir if one is present.
 
         If unsupported is True, then no longer supported branch formats can
@@ -1043,7 +1044,7 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.open_workingtree)
 
-    def has_branch(self):
+    def has_branch(self, name=None):
         """Tell if this bzrdir contains a branch.
 
         Note: if you're going to open the branch, you should just go ahead
@@ -1051,7 +1052,7 @@ class BzrDir(object):
         branch and discards it, and that's somewhat expensive.)
         """
         try:
-            self.open_branch()
+            self.open_branch(name)
             return True
         except errors.NotBranchError:
             return False
@@ -1488,8 +1489,11 @@ class BzrDirPreSplitOut(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
-    def open_branch(self, unsupported=False, ignore_fallbacks=False):
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
         """See BzrDir.open_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         self._check_supported(format, unsupported)
@@ -1752,13 +1756,11 @@ class BzrDirMeta1(BzrDir):
                 return True
         except errors.NoRepositoryPresent:
             pass
-        try:
-            if not isinstance(self.open_branch()._format,
+        for branch in self.list_branches():
+            if not isinstance(branch._format,
                               format.get_branch_format().__class__):
                 # the branch needs an upgrade.
                 return True
-        except errors.NotBranchError:
-            pass
         try:
             my_wt = self.open_workingtree(recommend_upgrade=False)
             if not isinstance(my_wt._format,
@@ -1769,8 +1771,11 @@ class BzrDirMeta1(BzrDir):
             pass
         return False
 
-    def open_branch(self, unsupported=False, ignore_fallbacks=False):
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
         """See BzrDir.open_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         format = self.find_branch_format()
         self._check_supported(format, unsupported)
         return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
