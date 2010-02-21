@@ -55,6 +55,7 @@ from bzrlib import (
 from bzrlib.hooks import HookPoint, Hooks
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
+from bzrlib.plugin import disable_plugins, load_plugins
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_function,
@@ -893,15 +894,21 @@ def get_alias(cmd, config=None):
     return None
 
 
-def run_bzr(argv):
+def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     """Execute a command.
 
-    argv
-       The command-line arguments, without the program name from argv[0]
-       These should already be decoded. All library/test code calling
-       run_bzr should be passing valid strings (don't need decoding).
-
-    Returns a command status or raises an exception.
+    :param argv: The command-line arguments, without the program name from
+        argv[0] These should already be decoded. All library/test code calling
+        run_bzr should be passing valid strings (don't need decoding).
+    :param load_plugins: What function to call when triggering plugin loading.
+        This function should take no arguments and cause all plugins to be
+        loaded.
+    :param disable_plugins: What function to call when disabling plugin
+        loading. This function should take no arguments and cause all plugin
+        loading to be prohibited (so that code paths in your application that
+        know about some plugins possibly being present will fail to import
+        those plugins even if they are installed.)
+    :return: Returns a command exit code or raises an exception.
 
     Special master options: these must come before the command because
     they control how the command is interpreted.
@@ -972,23 +979,19 @@ def run_bzr(argv):
 
     debug.set_debug_flags_from_config()
 
+    if not opt_no_plugins:
+        load_plugins()
+    else:
+        disable_plugins()
+
     argv = argv_copy
     if (not argv):
-        from bzrlib.builtins import cmd_help
-        cmd_help().run_argv_aliases([])
+        get_cmd_object('help').run_argv_aliases([])
         return 0
 
     if argv[0] == '--version':
-        from bzrlib.builtins import cmd_version
-        cmd_version().run_argv_aliases([])
+        get_cmd_object('version').run_argv_aliases([])
         return 0
-
-    if not opt_no_plugins:
-        from bzrlib.plugin import load_plugins
-        load_plugins()
-    else:
-        from bzrlib.plugin import disable_plugins
-        disable_plugins()
 
     alias_argv = None
 

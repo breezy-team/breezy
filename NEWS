@@ -97,6 +97,15 @@ API Changes
 * Remove unused ``CommandFailed`` exception.
   (Martin Pool)
 
+Internals
+*********
+
+* ``bzrlib.commands.run_bzr`` is more extensible: callers can supply the
+  functions to load or disable plugins if they wish to use a different
+  plugin mechanism; the --help, --version and no-command name code paths
+  now use the generic pluggable command lookup infrastructure.
+  (Robert Collins)
+
 Testing
 *******
 
