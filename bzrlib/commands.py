@@ -991,7 +991,6 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
 
     if argv[0] == '--version':
         get_cmd_object('version').run_argv_aliases([])
-        cmd_version().run_argv_aliases([])
         return 0
 
     alias_argv = None
