@@ -242,7 +242,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._ensure_real()
         self._real_bzrdir.destroy_repository()
 
-    def create_branch(self):
+    def create_branch(self, name=None):
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self)
@@ -259,10 +261,10 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._next_open_branch_result = result
         return result
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch"""
         self._ensure_real()
-        self._real_bzrdir.destroy_branch()
+        self._real_bzrdir.destroy_branch(name=name)
         self._next_open_branch_result = None
 
     def create_workingtree(self, revision_id=None, from_branch=None):

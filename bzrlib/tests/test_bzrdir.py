@@ -36,6 +36,7 @@ from bzrlib import (
     )
 import bzrlib.branch
 from bzrlib.errors import (NotBranchError,
+                           NoColocatedBranchSupport,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
@@ -206,8 +207,10 @@ class SampleBzrDir(bzrdir.BzrDir):
         """See BzrDir.open_repository."""
         return SampleRepository(self)
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise NoColocatedBranchSupport(self)
         return SampleBranch(self)
 
     def create_workingtree(self):

@@ -1833,6 +1833,10 @@ class BzrDirFormat(object):
 
     _lock_file_name = 'branch-lock'
 
+    colocated_branches = False
+    """Whether co-located branches are supported for this control dir format.
+    """
+
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
 
