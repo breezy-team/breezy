@@ -1912,7 +1912,7 @@ def local_concurrency(use_cache=True):
     return concurrency
 
 if os.platform = 'win32':
-    def open(filename, mode='r'):
+    def open(filename, mode='r', bufsize=-1):
         writing = 'w' in mode
         updating = '+' in mode
         binary = 'b' in mode
@@ -1926,7 +1926,7 @@ if os.platform = 'win32':
             flags |= os.O_RDONLY
         flags |= os.O_BINARY if binary else os.O_TEXT
 
-        return os.fdopen(os.open(filename, flags), mode)
+        return os.fdopen(os.open(filename, flags), mode, bufsize)
 else:
     import __builtin__
     open = __builtin__.open
