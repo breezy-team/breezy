@@ -1911,7 +1911,7 @@ def local_concurrency(use_cache=True):
         _cached_concurrency = concurrency
     return concurrency
 
-if os.platform = 'win32':
+if sys.platform == 'win32':
     def open(filename, mode='r', bufsize=-1):
         writing = 'w' in mode
         updating = '+' in mode
