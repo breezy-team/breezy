@@ -1913,6 +1913,11 @@ def local_concurrency(use_cache=True):
 
 if sys.platform == 'win32':
     def open(filename, mode='r', bufsize=-1):
+        """This function works like builtin ``open``. But use O_NOINHERIT
+        flag so file handle is not inherited to child process.
+        So deleting or renaming closed file that opened with this function
+        is not blocked by child process.
+        """
         writing = 'w' in mode
         updating = '+' in mode
         binary = 'b' in mode
