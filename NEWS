@@ -86,6 +86,10 @@ Bug Fixes
   ``add``.
   (Parth Malwankar, #335033, #300001)
 
+* SSH child processes will now ignore SIGQUIT on nix systems so breaking into
+  the debugger won't kill the session.
+  (Martin <gzlist@googlemail.com>, #162502)
+
 API Changes
 ***********
 
