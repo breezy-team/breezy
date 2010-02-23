@@ -1,8 +1,8 @@
-Serving Bazaar with FastCGI
-===========================
+Serving Bazaar with Apache
+==========================
 
 This document describes one way to set up a Bazaar HTTP smart server,
-using Apache 2.0 and FastCGI or mod_python.
+using Apache 2.0 and FastCGI or mod_python or mod_wsgi.
 
 For more information on the smart server, and other ways to configure it
 see the main `smart server documentation`_.
@@ -117,6 +117,49 @@ Refer to the mod_python_ documentation for further information.
 .. _mod_python: http://www.modpython.org/
 
 
+mod_wsgi
+~~~~~~~~
+
+The next configuration permit read and write the repository with apache
+authentication.
+First, configure mod_wsgi, e.g. enabling the mod with a2enmod wsgi.
+
+In our example, we're already serving `/srv/example.com/www/code` at
+`http://example.com/code`, if you want apache authentication you need add
+the next lines::
+
+    # This has the same structure as svn in apache
+    <Location /code>
+        AuthType Basic
+        AuthName "example"
+        AuthUserFile /srv/example.com/conf/auth.passwd
+        <LimitExcept GET>
+            Require valid-user
+        </LimitExcept>
+    </Location>
+
+We need to change it to handle all requests for URLs ending in `.bzr/smart`.  It
+will look like::
+
+    WSGIScriptAliasMatch ^/code/.*/\.bzr/smart$ /srv/example.com/scripts/bzr.wsgi
+
+    #The three next lines allows the protocol http[s]+urllib works.
+    RewriteEngine On
+    RewriteRule ^/code/(.*/\.bzr/branch-format)$ /srv/example.com/www/code/$1 [L]
+    RewriteRule ^/code/(.*/\.bzr/repository/.*)$ /srv/example.com/www/code/$1 [L]
+
+
+    <Directory /srv/example.com/www/code>
+        WSGIApplicationGroup %{GLOBAL}
+    </Directory>
+
+This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
+inside `/code` to a Bazaar smart server via WSGI.
+
+Refer to the mod_wsgi_ documentation for further information.
+
+.. _mod_wsgi: http://code.google.com/p/modwsgi/
+
 Configuring Bazaar
 ------------------
 
@@ -171,11 +214,30 @@ Here's what it looks like::
         return wsgi_server.run(request)
 
 The `modpywsgi` module can be found at
-http://dev.pocoo.org/projects/pocoo/browser/pocoo/wrappers/modpy.py. It is
+http://ice.usq.edu.au/svn/ice/trunk/apps/ice-server/modpywsgi.py. It was
 part of pocoo_. You sould make sure you place modpywsgi.py in the same
 directory as bzr-smart.py (ie. /srv/example.com/scripts/).
 
 .. _pocoo: http://dev.pocoo.org/projects/pocoo/
+
+
+mod_wsgi
+~~~~~~~~
+
+We've configured Apache to run the smart server at
+`/srv/example.com/scripts/bzr.wsgi`.  This is just a simple script we need
+to write to configure a smart server, and glue it to the WSGI gateway.
+Here's what it looks like::
+
+    from bzrlib.transport.http import wsgi
+
+    def application(environ, start_response):
+        app = wsgi.make_app(
+            root="/srv/example.com/www/code/",
+            prefix="/code",
+            readonly=False,
+            enable_logging=False)
+        return app(environ, start_response)
 
 Clients
 -------
@@ -183,6 +245,14 @@ Clients
 Now you can use `bzr+http://` URLs, e.g.::
 
     bzr log bzr+http://example.com/code/my-branch
+
+If you put the RewriteRule directive in your Virtual Host::
+
+    bzr log http+urllib://example.com/code/my-branch
+
+    or
+
+    bzr log https+urllib://example.com/code/my-branch
 
 Plain HTTP access should continue to work::
 
@@ -230,6 +300,15 @@ access to the same urls. Because at the HTTP layer (which is doing the
 Authenticating), everything is just a POST request.  However, it would
 certainly be possible to have HTTPS require authentication and use a
 writable server, and plain HTTP allow read-only access.
+
+If you trying to push and receive the next message::
+
+    bzr: ERROR: Connection error: curl connection error (server certificate verification failed.
+    CAfile:/etc/ssl/certs/ca-certificates.crt CRLfile: none)
+
+You can probe uninstall pycurl or use https+urllib if you put the RewriteRule
+directive in your Virtual Host.
+
 
 
 ..
