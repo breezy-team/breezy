@@ -1,4 +1,4 @@
-# Copyright (C) 2004 - 2008 Aaron Bentley, Canonical Ltd
+# Copyright (C) 2005-2010 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify

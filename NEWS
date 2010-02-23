@@ -117,6 +117,28 @@ Testing
 * Stop sending apport crash files to ``.cache`` in the directory from
   which ``bzr selftest`` was run.  (Martin Pool, #422350)
 
+bzr 2.1.1
+#########
+
+:2.1.1: not released yet
+
+Bug Fixes
+*********
+
+* Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
+  problems importing bzrlib from a non-main thread.
+  (Elliot Murphy, #521989)
+
+* Standardize the error handling when creating a new ``StaticTuple``
+  (problems will raise TypeError). (Matt Nordhoff, #457979)
+
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+
+Documentation
+*************
+
+* Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
 bzr 2.1.0
 #########
 

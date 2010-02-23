@@ -2887,6 +2887,11 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
                         base=False, other=False)
         return builder
 
+    def test_uses_this_branch(self):
+        builder = self.make_text_conflict()
+        tt = builder.make_preview_transform()
+        self.addCleanup(tt.finalize)
+
     def test_affected_files_cached(self):
         """Ensures that the config variable is cached"""
         builder = self.make_text_conflict()
