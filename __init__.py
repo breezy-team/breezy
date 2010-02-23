@@ -30,6 +30,7 @@ import re
 
 import bzrlib
 from bzrlib import (
+    osutils,
     bzrdir,
     )
 """)
@@ -43,34 +44,26 @@ class cmd_grep(Command):
     takes_args = ['pattern', 'path*']
     takes_options = [
         'verbose',
-        Option('line-number', short_name='n',
-               help='prefix each line of output with 1-based line number.'),
         Option('ignore-case', short_name='i',
                help='ignore case distinctions while matching.'),
         Option('recursive', short_name='R',
                help='Recurse into subdirectories.'),
         Option('from-root',
                help='Search for pattern starting from the root of the branch.'),
+        Option('null', short_name='z',
+               help='Write an ascii NUL (\\0) separator '
+               'between output lines rather than a newline.'),
         ]
 
 
     @display_command
-    def run(self, verbose=False, line_number=False, null=False,
-            ignore_case=False, recursive=False, from_root=False,
-            path_list=None, pattern=None):
+    def run(self, verbose=False, ignore_case=False, recursive=False, from_root=False,
+            null=False, path_list=None, pattern=None):
         if path_list == None:
             path_list = ['.']
         else:
             if from_root:
                 raise errors.BzrCommandError('cannot specify both --from-root and PATH.')
-
-        print 'pattern:', pattern
-        print 'path_list:', path_list
-        print 'line-number:', line_number
-        print 'null:', null
-        print 'recursive:', recursive
-        print 'from-root:', from_root
-        print '=' * 20
 
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch('.')
 
@@ -78,8 +71,11 @@ class cmd_grep(Command):
         if ignore_case:
             re_flags = re.IGNORECASE
 
-        patternc = None
+        eol_marker = '\n'
+        if null:
+            eol_marker = '\0'
 
+        patternc = None
         try:
             # use python's re.compile as we need to catch re.error in case of bad pattern
             lazy_regex.reset_compile()
@@ -90,23 +86,24 @@ class cmd_grep(Command):
         tree.lock_read()
         self.add_cleanup(tree.unlock)
         for path in path_list:
-            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-                from_dir=relpath, recursive=recursive):
-                print 'fp:', fp
-                print 'fc:', fc
-                print 'fkind:', fkind
-                print 'fid:', fid
-                print 'entry:', entry
-                if fc == 'V' and fkind == 'file':
-                    self.file_grep(fp, patternc)
-                print '~' * 30
+            if osutils.isdir(path):
+                from_dir = os.path.abspath(os.path.join(relpath, path))
+                for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
+                    from_dir=from_dir, recursive=recursive):
+                    if fc == 'V' and fkind == 'file':
+                        self.file_grep(fp, patternc, eol_marker)
+            else:
+                # if user has explicitly specified a file
+                # we don't care if its versioned
+                self.file_grep(path, patternc, eol_marker)
 
-    def file_grep(self, path, patternc):
+    def file_grep(self, path, patternc, eol_marker):
         index = 1
+        fmt = "%s:%d:%s" + eol_marker
         for line in open(path):
             res = patternc.search(line)
             if res:
-                self.outf.write("%s:%d:%s\n" % (path, index, line.strip()))
+                self.outf.write( fmt % (path, index, line.strip()))
             index += 1
 
 register_command(cmd_grep)
