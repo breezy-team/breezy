@@ -160,7 +160,7 @@ class LocalTransport(Transport):
             transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
-            return osutils.open(path, 'rb')
+            return osutils.open_file(path, 'rb')
         except (IOError, OSError),e:
             if e.errno == errno.EISDIR:
                 return LateReadError(relpath)
@@ -329,7 +329,7 @@ class LocalTransport(Transport):
         # initialise the file
         self.put_bytes_non_atomic(relpath, "", mode=mode)
         abspath = self._abspath(relpath)
-        handle = osutils.open(abspath, 'wb')
+        handle = osutils.open_file(abspath, 'wb')
         if mode is not None:
             self._check_mode_and_size(abspath, handle.fileno(), mode)
         transport._file_streams[self.abspath(relpath)] = handle
