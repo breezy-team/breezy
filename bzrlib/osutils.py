@@ -1912,7 +1912,7 @@ def local_concurrency(use_cache=True):
     return concurrency
 
 if sys.platform == 'win32':
-    def open(filename, mode='r', bufsize=-1):
+    def open_file(filename, mode='r', bufsize=-1):
         """This function works like builtin ``open``. But use O_NOINHERIT
         flag so file handle is not inherited to child process.
         So deleting or renaming closed file that opened with this function
@@ -1951,5 +1951,4 @@ if sys.platform == 'win32':
 
         return os.fdopen(os.open(filename, flags), mode, bufsize)
 else:
-    import __builtin__
-    open = __builtin__.open
+    open_file = open
