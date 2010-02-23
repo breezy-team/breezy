@@ -709,7 +709,8 @@ class DiffFromTool(DiffPath):
         return True
 
     def _write_file(self, file_id, tree, prefix, relpath):
-        full_path = osutils.pathjoin(self._root, prefix, relpath)
+        full_path = osutils.pathjoin(self._root, prefix,
+                                     '_'+relpath.encode('ascii', 'ignore'))
         if self._try_symlink_root(tree, prefix):
             return full_path
         parent_dir = osutils.dirname(full_path)
@@ -750,9 +751,9 @@ class DiffFromTool(DiffPath):
     def diff(self, file_id, old_path, new_path, old_kind, new_kind):
         if (old_kind, new_kind) != ('file', 'file'):
             return DiffPath.CANNOT_DIFF
-        self._prepare_files(file_id, old_path, new_path)
-        self._execute(osutils.pathjoin('old', old_path),
-                      osutils.pathjoin('new', new_path))
+        old_disk_path, new_disk_path = \
+                self._prepare_files(file_id, old_path, new_path)
+        self._execute(old_disk_path, new_disk_path)
 
 
 class DiffTree(object):
