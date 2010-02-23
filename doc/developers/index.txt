@@ -47,7 +47,7 @@ Developing using bzrlib
    overview
    integration
 
-* `Writing plugins for Bazaar <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_
+* `Writing plugins for Bazaar <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_ (web link)
 
 * `bzrlib API reference <http://starship.python.net/crew/mwh/bzrlibapi/>`_
   (web link)

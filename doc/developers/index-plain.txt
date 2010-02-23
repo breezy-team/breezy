@@ -25,7 +25,7 @@ Overall developer documentation
 * `Testing <testing.html>`_ |--| Guide to writing tests for Bazaar.
 
 * `Writing plugins <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_
-  |--| specific advice on writing Bazaar plugins.
+  |--| specific advice on writing Bazaar plugins. (web link)
 
 Process
 =======
