@@ -874,6 +874,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
+@deprecated_method(deprecated_in((2, 2, 0)))
 def shlex_split_unicode(unsplit):
     return cmdline.split(unsplit)
 
