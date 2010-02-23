@@ -74,10 +74,10 @@ from bzrlib import symbol_versioning
 # be opened in binary mode, rather than text mode.
 # On other platforms, O_BINARY doesn't exist, because
 # they always open in binary mode, so it is okay to
-# OR with 0 on those platforms
+# OR with 0 on those platforms.
+# O_NOINHERIT and O_TEXT exists only on win32 too.
 O_BINARY = getattr(os, 'O_BINARY', 0)
-
-# O_NOINHERIT exists only on win32 too.
+O_TEXT = getattr(os, 'O_TEXT', 0)
 O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 
 
@@ -1923,13 +1923,13 @@ if sys.platform == 'win32':
         updating = '+' in mode
         binary = 'b' in mode
 
-        flags = os.O_NOINHERIT
+        flags = O_NOINHERIT
         # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
         # for flags for each modes.
         if binary:
-            flags |= os.O_BINARY
+            flags |= O_BINARY
         else:
-            flags |= os.O_TEXT
+            flags |= O_TEXT
 
         if writing:
             if updating:
