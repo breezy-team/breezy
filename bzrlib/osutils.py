@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import __builtin__
 import os
 import re
 import stat
@@ -1919,6 +1918,38 @@ if sys.platform == 'win32':
         So deleting or renaming closed file that opened with this function
         is not blocked by child process.
         """
-        return __builtin__.open(filename, mode+'N', bufsize)
+        writing = 'w' in mode
+        appending = 'a' in mode
+        updating = '+' in mode
+        binary = 'b' in mode
+
+        flags = os.O_NOINHERIT
+        # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
+        # for flags for each modes.
+        if binary:
+            flags |= os.O_BINARY
+        else:
+            flags |= os.O_TEXT
+
+        if writing:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_TRUNC
+        elif appending:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_APPEND
+        else: #reading
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_RDONLY
+
+        return os.fdopen(os.open(filename, flags), mode, bufsize)
 else:
+    import __builtin__
     open = __builtin__.open
