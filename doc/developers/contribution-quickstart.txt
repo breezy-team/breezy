@@ -56,13 +56,13 @@ ie ::
 
 You probably want this configuration in ``~/.bazaar/locations.conf``::
 
-    [/home/mbp/bzr]
-    push_location = lp:~mbp/bzr/
+    [/home/USER/bzr]
+    push_location = lp:~LAUNCHPAD_USER/bzr/
     push_location:policy = appendpath
-    public_branch = http://bazaar.launchpad.net/~mbp/bzr/
+    public_branch = http://bazaar.launchpad.net/~LAUNCHPAD_USER/bzr/
     public_branch:policy = appendpath
 
-with your local and remote username inserted.
+with your local and Launchpad usernames inserted.
 
 
 Writing tests
