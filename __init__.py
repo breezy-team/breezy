@@ -65,8 +65,6 @@ class cmd_grep(Command):
             if from_root:
                 raise errors.BzrCommandError('cannot specify both --from-root and PATH.')
 
-        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch('.')
-
         re_flags = 0
         if ignore_case:
             re_flags = re.IGNORECASE
@@ -83,27 +81,31 @@ class cmd_grep(Command):
         except re.error, e:
             raise errors.BzrError("Invalid pattern: '%s'" % pattern)
 
-        tree.lock_read()
-        self.add_cleanup(tree.unlock)
         for path in path_list:
+            path = os.path.abspath(path)
             if osutils.isdir(path):
-                from_dir = os.path.abspath(os.path.join(relpath, path))
-                for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-                    from_dir=from_dir, recursive=recursive):
-                    if fc == 'V' and fkind == 'file':
-                        self.file_grep(fp, patternc, eol_marker)
+                tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(path)
+                tree.lock_read()
+                try:
+                    for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
+                        from_dir=relpath, recursive=recursive):
+                        if fc == 'V' and fkind == 'file':
+                            self.file_grep(relpath, fp, patternc, eol_marker)
+                finally:
+                    tree.unlock()
             else:
                 # if user has explicitly specified a file
                 # we don't care if its versioned
-                self.file_grep(path, patternc, eol_marker)
+                self.file_grep('.', path, patternc, eol_marker)
 
-    def file_grep(self, path, patternc, eol_marker):
+    def file_grep(self, relpath, path, patternc, eol_marker):
         index = 1
-        fmt = "%s:%d:%s" + eol_marker
+        path = os.path.normpath(os.path.join('..', relpath, path))
+        fmt = path + ":%d:%s" + eol_marker
         for line in open(path):
             res = patternc.search(line)
             if res:
-                self.outf.write( fmt % (path, index, line.strip()))
+                self.outf.write( fmt % (index, line.strip()))
             index += 1
 
 register_command(cmd_grep)
