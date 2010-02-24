@@ -36,6 +36,7 @@ from bzrlib.trace import (
     pop_log_file,
     push_log_file,
     _rollover_trace_maybe,
+    show_error,
     )
 
 
@@ -215,6 +216,13 @@ class TestTrace(TestCase):
         # have to do a replaceent here as well.
         self.assertContainsRe(log, "ascii argument: \xb5".decode('utf8',
             'replace'))
+        
+    def test_show_error(self):
+        show_error('error1')
+        show_error(u'error2 \xb5 blah')
+        log = self.get_log()
+        self.assertContainsRe(log, 'error1')
+        self.assertContainsRe(log, u'error2 \xb5 blah')
 
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.
