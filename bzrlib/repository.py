@@ -3408,9 +3408,6 @@ class InterRepository(InterObject):
         """
         from bzrlib.fetch import RepoFetcher
         # See <https://launchpad.net/bugs/456077> asking for a warning here
-        #
-        # XXX: This may be called on the server, but we actually want to only
-        # do it on the client?
         if self.source._format.network_name() != self.target._format.network_name():
             ui.ui_factory.warn_cross_format_fetch(self.source._format,
                 self.target._format)
@@ -3993,6 +3990,10 @@ class InterDifferingSerializer(InterRepository):
             self._revision_id_to_root_id = {}
         else:
             self._converting_to_rich_root = False
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        if self.source._format.network_name() != self.target._format.network_name():
+            ui.ui_factory.warn_cross_format_fetch(self.source._format,
+                self.target._format)
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
