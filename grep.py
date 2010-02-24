@@ -1,3 +1,4 @@
+# Copyright (C) 2010 Canonical Ltd
 # Copyright (C) 2010 Parth Malwankar <parth.malwankar@gmail.com>
 #
 # This program is free software; you can redistribute it and/or modify
