@@ -195,7 +195,10 @@ class EmailSender(object):
             process = subprocess.Popen(self._command_line(),
                                        stdin=subprocess.PIPE)
             try:
-                message = self.body().encode('utf8') + self.get_diff()
+                message = self.body().encode('utf8')
+                diff = self.get_diff()
+                if diff:
+                    message += diff
                 result = process.communicate(message)[0]
                 if process.returncode is None:
                     process.wait()
@@ -227,9 +230,12 @@ class EmailSender(object):
             to_addrs = [to_addrs]
 
         smtp = self._smtplib_implementation(self.config)
-        smtp.send_text_and_attachment_email(from_addr, to_addrs,
-                                            subject, body, diff,
-                                            self.diff_filename())
+        if diff:
+            smtp.send_text_and_attachment_email(from_addr, to_addrs,
+                                                subject, body, diff,
+                                                self.diff_filename())
+        else:
+            smtp.send_text_email(from_addr, to_addrs, subject, body)
 
     def should_send(self):
         result = self.config.get_user_option('post_commit_difflimit')
