@@ -24,29 +24,90 @@ class TestGrep(tests.TestCaseWithTransport):
     def _str_contains(self, base, pattern):
         return re.search(pattern, base) != None
 
-    def _mk_file(self, path, text, versioned=True):
+    def _mk_file(self, path, total_lines, line_prefix, versioned):
+        text=''
+        for i in range(total_lines):
+            text += line_prefix + str(i+1) + "\n"
+
         open(path, 'w').write(text)
         if versioned:
             self.run_bzr(['add', path])
             self.run_bzr(['ci', '-m', '"' + path + '" added'])
 
-    def test_basic_unversioned_file_grep(self):
+    def _mk_unversioned_file(self, path, line_prefix='line', total_lines=10):
+        self._mk_file(path, total_lines, line_prefix, versioned=False)
+
+    def _mk_versioned_file(self, path, line_prefix='line', total_lines=10):
+        self._mk_file(path, total_lines, line_prefix, versioned=True)
+
+    def _mk_dir(self, path, versioned):
+        os.mkdir(path)
+        if versioned:
+            self.run_bzr(['add', path])
+            self.run_bzr(['ci', '-m', '"' + path + '" added'])
+
+    def _mk_unversioned_dir(self, path):
+        self._mk_dir(path, versioned=True)
+
+    def _mk_versioned_dir(self, path):
+        self._mk_dir(path, versioned=True)
+
+    def test_basic_unversioned_file(self):
         """search for pattern in specfic file"""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
-        self._mk_file('file0.txt', 'line1\nline2\nline3', versioned=False)
+        self._mk_unversioned_file('file0.txt')
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
         self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
         self.assertTrue(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
 
-    def test_basic_versioned_file_grep(self):
+    def test_basic_versioned_file(self):
         """search for pattern in specfic file"""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
-        self._mk_file('file0.txt', 'line1\nline2\nline3', versioned=True)
+        self._mk_versioned_file('file0.txt')
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
         self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
         self.assertFalse(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
+
+    def test_versioned_file_in_dir_no_recurse(self):
+        """should not recurse without -R"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+        out, err = self.run_bzr(['grep', 'line1'])
+        self.assertFalse(out, self._str_contains(out, ".*file0.txt:1:line1"))
+
+    def test_versioned_file_in_dir_recurse(self):
+        """should find pattern in hierarchy with -R"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+        out, err = self.run_bzr(['grep', '-R', 'line1'])
+        self.assertTrue(out, self._str_contains(out, "dir0/file0.txt:1:line1"))
+
+    def test_ignore_case_no_match(self):
+        """match fails without --ignore-case"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.txt')
+        out, err = self.run_bzr(['grep', 'LinE1', 'file0.txt'])
+        self.assertFalse(out, self._str_contains(out, "file0.txt:1:line1"))
+
+    def test_ignore_case_match(self):
+        """match fails without --ignore-case"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.txt')
+        out, err = self.run_bzr(['grep', '-i', 'LinE1', 'file0.txt'])
+        self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
+
 
