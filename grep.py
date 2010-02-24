@@ -39,14 +39,14 @@ def compile_pattern(pattern, flags=0):
     return patternc
 
 
-def file_grep(relpath, path, patternc, eol_marker, outf):
+def file_grep(tree, id, relpath, path, patternc, eol_marker, outf):
     index = 1
     path = os.path.normpath(os.path.join(relpath, path))
     if relpath:
         path = path.replace(relpath + '/', '', 1)
     fmt = path + ":%d:%s" + eol_marker
 
-    for line in open(path):
+    for line in tree.get_file_lines(id):
         res = patternc.search(line)
         if res:
             outf.write( fmt % (index, line.strip()))

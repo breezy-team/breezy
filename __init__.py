@@ -91,15 +91,19 @@ class cmd_grep(Command):
                     for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
                         from_dir=relpath, recursive=recursive):
                         if fc == 'V' and fkind == 'file':
-                            grep.file_grep(rpath, fp, patternc, eol_marker, outf=self.outf)
+                            grep.file_grep(tree, fid, rpath, fp, patternc, eol_marker, outf=self.outf)
                 finally:
                     tree.unlock()
             else:
-                # if user has explicitly specified a file
-                # we don't care if its versioned
-                if not tree.path2id(path):
+                id = tree.path2id(path)
+                if not id:
                     trace.warning("warning: file '%s' is not versioned." % path)
-                grep.file_grep('.', path, patternc, eol_marker, outf=self.outf)
+                    continue
+                tree.lock_read()
+                try:
+                    grep.file_grep(tree, id, '.', path, patternc, eol_marker, outf=self.outf)
+                finally:
+                    tree.unlock()
 
 register_command(cmd_grep)
 

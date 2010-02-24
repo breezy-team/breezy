@@ -53,13 +53,13 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_dir(path, versioned=True)
 
     def test_basic_unversioned_file(self):
-        """search for pattern in specfic file"""
+        """search for pattern in specfic file. should issue warning."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
         self._mk_unversioned_file('file0.txt')
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
-        self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
+        self.assertFalse(out, self._str_contains(out, "file0.txt:1:line1"))
         self.assertTrue(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
 
     def test_basic_versioned_file(self):
