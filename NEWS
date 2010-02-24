@@ -17,6 +17,10 @@ Bug Fixes
 * Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
   (Martin Pool, #331095)
 
+* Give the warning about potentially slow cross-format fetches much
+  earlier on in the fetch operation.
+  (Martin Pool, #456077)
+
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
 

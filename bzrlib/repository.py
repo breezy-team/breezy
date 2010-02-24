@@ -3407,6 +3407,14 @@ class InterRepository(InterObject):
         :return: None.
         """
         from bzrlib.fetch import RepoFetcher
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        #
+        # XXX: This may be called on the server, but we actually want to only
+        # do it on the client?
+        # 
+        # XXX: Message is probably not useful for remote formats?
+        ui.ui_factory.warn_cross_format_fetch(self.source._format,
+            self.target._format)
         f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -3980,12 +3988,6 @@ class InterDifferingSerializer(InterRepository):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             raise AssertionError("Not implemented yet...")
-        # See <https://launchpad.net/bugs/456077> asking for a warning here
-        #
-        # nb this is only active for local-local fetches; other things using
-        # streaming.
-        ui.ui_factory.warn_cross_format_fetch(self.source._format,
-            self.target._format)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True
@@ -4284,8 +4286,6 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
-                ui.ui_factory.warn_cross_format_fetch(src_format,
-                    self.target_repo._format)
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':

@@ -211,6 +211,8 @@ class UIFactory(object):
     def warn_cross_format_fetch(self, from_format, to_format):
         """Warn about a potentially slow cross-format transfer"""
         # See <https://launchpad.net/bugs/456077> asking for a warning here
+        # By default, eg run on the server, we just mutter the warning;
+        # interactive versions can show it
         trace.warning("Doing on-the-fly conversion from %s to %s.\n"
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance.\n" %
