@@ -52,7 +52,8 @@ class cmd_grep(Command):
         Option('recursive', short_name='R',
                help='Recurse into subdirectories.'),
         Option('from-root',
-               help='Search for pattern starting from the root of the branch. (implied -R)'),
+               help='Search for pattern starting from the root of the branch. '
+               '(implies --recursive)'),
         Option('null', short_name='z',
                help='Write an ascii NUL (\\0) separator '
                'between output lines rather than a newline.'),
