@@ -44,7 +44,8 @@ def file_grep(tree, id, relpath, path, patternc, eol_marker, outf):
     index = 1
     if relpath:
         path = osutils.normpath(osutils.pathjoin(relpath, path))
-        path = path.replace(relpath + os.sep, '', 1)
+        path = path.replace('\\', '/')
+        path = path.replace(relpath + '/', '', 1)
     fmt = path + ":%d:%s" + eol_marker
 
     for line in tree.get_file_lines(id):
