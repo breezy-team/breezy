@@ -85,7 +85,7 @@ class cmd_grep(Command):
                 # setup rpath to open files relative to cwd
                 rpath = relpath
                 if relpath:
-                    rpath = os.path.join('..',relpath)
+                    rpath = osutils.pathjoin('..',relpath)
 
                 tree.lock_read()
                 try:

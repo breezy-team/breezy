@@ -23,6 +23,7 @@ import os
 import re
 
 from bzrlib import (
+    osutils,
     errors,
     lazy_regex,
     )
@@ -42,7 +43,7 @@ def compile_pattern(pattern, flags=0):
 def file_grep(tree, id, relpath, path, patternc, eol_marker, outf):
     index = 1
     if relpath:
-        path = os.path.normpath(os.path.join(relpath, path))
+        path = osutils.normpath(osutils.pathjoin(relpath, path))
         path = path.replace(relpath + '/', '', 1)
     fmt = path + ":%d:%s" + eol_marker
 
