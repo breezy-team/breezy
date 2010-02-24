@@ -92,6 +92,19 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(out, self._str_contains(out, "file2.txt:line1"))
         self.assertTrue(out, self._str_contains(out, "file2.txt:line2"))
 
+    def test_null_option(self):
+        """--null option should use NUL instead of newline"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.txt', total_lines=3)
+
+        out, err = self.run_bzr(['grep', '--null', 'line[1-3]'])
+        self.assertTrue(out == "file0.txt:line1\0file0.txt:line2\0file0.txt:line3\0")
+
+        out, err = self.run_bzr(['grep', '-Z', 'line[1-3]'])
+        self.assertTrue(out == "file0.txt:line1\0file0.txt:line2\0file0.txt:line3\0")
+
     def test_versioned_file_in_dir_no_recurse(self):
         """should not recurse without -R"""
         wd = 'foobar0'
