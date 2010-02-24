@@ -82,15 +82,20 @@ class cmd_grep(Command):
             raise errors.BzrError("Invalid pattern: '%s'" % pattern)
 
         for path in path_list:
-            path = os.path.abspath(path)
             if osutils.isdir(path):
                 tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(path)
+
+                # setup rpath to open files relative to cwd
+                rpath = relpath
+                if relpath:
+                    rpath = os.path.join('..',relpath)
+
                 tree.lock_read()
                 try:
                     for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
                         from_dir=relpath, recursive=recursive):
                         if fc == 'V' and fkind == 'file':
-                            self.file_grep(relpath, fp, patternc, eol_marker)
+                            self.file_grep(rpath, fp, patternc, eol_marker)
                 finally:
                     tree.unlock()
             else:
@@ -100,7 +105,7 @@ class cmd_grep(Command):
 
     def file_grep(self, relpath, path, patternc, eol_marker):
         index = 1
-        path = os.path.normpath(os.path.join('..', relpath, path))
+        path = os.path.normpath(os.path.join(relpath, path))
         fmt = path + ":%d:%s" + eol_marker
         for line in open(path):
             res = patternc.search(line)
