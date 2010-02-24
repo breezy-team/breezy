@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@ import time
 
 from bzrlib import (
     errors,
+    remote,
+    repository,
     tests,
     ui as _mod_ui,
     )
@@ -299,6 +301,22 @@ class UITests(tests.TestCase):
             self.assertEquals('', ui.stdout.getvalue())
         finally:
             pb.finished()
+
+    def test_text_ui_warn_cross_format_fetch(self):
+        from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
+        from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5
+        err = StringIO()
+        out = StringIO()
+        ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
+        remote_fmt = remote.RemoteRepositoryFormat()
+        remote_fmt._network_name = RepositoryFormatKnitPack5().network_name()
+        ui.warn_cross_format_fetch(RepositoryFormat2a(), remote_fmt)
+        self.assertEquals('', out.getvalue())
+        self.assertEquals("Doing on-the-fly conversion from RepositoryFormat2a() to "
+            "RemoteRepositoryFormat(_network_name='Bazaar RepositoryFormatKnitPack5 "
+            "(bzr 1.6)\\n').\nThis may take some time. Upgrade the repositories to "
+            "the same format for better performance.\n",
+            err.getvalue())
 
 
 class CLIUITests(TestCase):

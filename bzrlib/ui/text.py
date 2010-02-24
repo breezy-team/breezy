@@ -31,6 +31,7 @@ from bzrlib import (
     progress,
     osutils,
     symbol_versioning,
+    trace,
     )
 
 """)
@@ -189,6 +190,23 @@ class TextUIFactory(UIFactory):
 
     def _progress_all_finished(self):
         self._progress_view.clear()
+
+    def user_warning(self, msg):
+        """Show a text message to the user.
+
+        Explicitly not for warnings about bzr apis, deprecations or internals.
+        """
+        # eventually trace.warning should migrate here, to avoid logging and
+        # be easier to test; that has a lot of test fallout so for now just
+        # new code can call this
+        self.stderr.write(msg)
+
+    def warn_cross_format_fetch(self, from_format, to_format):
+        """Warn about a potentially slow cross-format transfer"""
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        # By default, eg run on the server, we just mutter the warning;
+        # interactive versions can show it
+        self.user_warning(self._cross_format_fetch_warning_message(from_format, to_format))
 
 
 class TextProgressView(object):
@@ -357,10 +375,3 @@ class TextProgressView(object):
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
-
-    def warn_cross_format_fetch(self, from_format, to_format):
-        """Warn about a potentially slow cross-format transfer"""
-        # See <https://launchpad.net/bugs/456077> asking for a warning here
-        # By default, eg run on the server, we just mutter the warning;
-        # interactive versions can show it
-        trace.warning(self._cross_format_fetch_warning_message(from_format, to_format))
