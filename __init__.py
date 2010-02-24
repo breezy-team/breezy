@@ -52,7 +52,7 @@ class cmd_grep(Command):
         Option('recursive', short_name='R',
                help='Recurse into subdirectories.'),
         Option('from-root',
-               help='Search for pattern starting from the root of the branch.'),
+               help='Search for pattern starting from the root of the branch. (implied -R)'),
         Option('null', short_name='z',
                help='Write an ascii NUL (\\0) separator '
                'between output lines rather than a newline.'),
@@ -88,6 +88,11 @@ class cmd_grep(Command):
 
                 tree.lock_read()
                 try:
+                    if from_root:
+                        # start searching recursively from root
+                        relpath=None
+                        recursive=True
+
                     for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
                         from_dir=relpath, recursive=recursive):
                         if fc == 'V' and fkind == 'file':

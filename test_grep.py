@@ -123,7 +123,6 @@ class TestGrep(tests.TestCaseWithTransport):
 
     def test_from_root_pass(self):
         """match pass with --from-root"""
-        raise tests.KnownFailure("--from-root not implemented yet!")
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
