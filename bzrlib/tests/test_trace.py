@@ -220,9 +220,11 @@ class TestTrace(TestCase):
     def test_show_error(self):
         show_error('error1')
         show_error(u'error2 \xb5 blah')
+        show_error('arg: %s', 'blah')
         log = self.get_log()
         self.assertContainsRe(log, 'error1')
         self.assertContainsRe(log, u'error2 \xb5 blah')
+        self.assertContainsRe(log, 'arg: blah')
 
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.
