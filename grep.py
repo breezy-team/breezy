@@ -41,9 +41,9 @@ def compile_pattern(pattern, flags=0):
 
 def file_grep(relpath, path, patternc, eol_marker, outf):
     index = 1
-    path = os.path.normpath(os.path.join(relpath, '/', path))
-
-    path = path.replace(os.path.dirname(relpath) + '/', '', 1)
+    path = os.path.normpath(os.path.join(relpath, path))
+    if relpath:
+        path = path.replace(relpath + '/', '', 1)
     fmt = path + ":%d:%s" + eol_marker
 
     for line in open(path):

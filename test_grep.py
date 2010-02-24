@@ -110,7 +110,7 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '-i', 'LinE1', 'file0.txt'])
         self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
 
-    def test_from_root(self):
+    def test_from_root_fail(self):
         """match should fail without --from-root"""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
@@ -121,8 +121,9 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', 'line1'])
         self.assertFalse(out, self._str_contains(out, ".*file0.txt:1:line1"))
 
-    def test_from_root(self):
+    def test_from_root_pass(self):
         """match pass with --from-root"""
+        raise tests.KnownFailure("--from-root not implemented yet!")
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
@@ -130,6 +131,6 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_dir('dir0')
         os.chdir('dir0')
         out, err = self.run_bzr(['grep', '--from-root', 'line1'])
-        self.assertFalse(out, self._str_contains(out, ".*file0.txt:1:line1"))
+        self.assertTrue(out, self._str_contains(out, ".*file0.txt:1:line1"))
 
 
