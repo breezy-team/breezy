@@ -216,9 +216,6 @@ class UIFactory(object):
         trace.warning(self._cross_format_fetch_warning_message(from_format, to_format))
         
     def _cross_format_fetch_warning_message(self, from_format, to_format):
-        # XXX: Message is probably not useful for remote formats?
-        # <https://bugs.edge.launchpad.net/bzr/+bug/513157>; ought to make
-        # sure their str says something useful.
         return ("Doing on-the-fly conversion from %s to %s.\n"
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance.\n" %

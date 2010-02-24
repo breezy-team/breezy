@@ -3067,8 +3067,8 @@ class RepositoryFormat(object):
     # Does the repository inventory storage understand references to trees?
     supports_tree_reference = None
 
-    def __str__(self):
-        return "<%s>" % self.__class__.__name__
+    def __repr__(self):
+        return "%s()" % self.__class__.__name__
 
     def __eq__(self, other):
         # format objects are generally stateless
