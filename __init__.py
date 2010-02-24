@@ -54,7 +54,7 @@ class cmd_grep(Command):
         Option('from-root',
                help='Search for pattern starting from the root of the branch. '
                '(implies --recursive)'),
-        Option('null', short_name='z',
+        Option('null', short_name='Z',
                help='Write an ascii NUL (\\0) separator '
                'between output lines rather than a newline.'),
         ]
