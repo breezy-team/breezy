@@ -103,3 +103,16 @@ class cmd_grep(Command):
 
 register_command(cmd_grep)
 
+def test_suite():
+    from bzrlib.tests import TestUtil
+
+    suite = TestUtil.TestSuite()
+    loader = TestUtil.TestLoader()
+    testmod_names = [
+        'test_grep',
+        ]
+
+    suite.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return suite
+
