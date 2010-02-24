@@ -20,11 +20,14 @@ import re
 
 from bzrlib import tests
 
+open('/home/parthm/tmp/re.txt', 'w')
+
 class TestGrep(tests.TestCaseWithTransport):
     def _str_contains(self, base, pattern, flags=re.MULTILINE|re.DOTALL):
-        return re.match(pattern, base, flags) != None
+        res = re.findall(pattern, base, flags)
+        return res != []
 
-    def _mk_file(self, path, total_lines, line_prefix, versioned):
+    def _mk_file(self, path, line_prefix, total_lines, versioned):
         text=''
         for i in range(total_lines):
             text += line_prefix + str(i+1) + "\n"
@@ -35,19 +38,19 @@ class TestGrep(tests.TestCaseWithTransport):
             self.run_bzr(['ci', '-m', '"' + path + '"'])
 
     def _mk_unversioned_file(self, path, line_prefix='line', total_lines=10):
-        self._mk_file(path, total_lines, line_prefix, versioned=False)
+        self._mk_file(path, line_prefix, total_lines, versioned=False)
 
     def _mk_versioned_file(self, path, line_prefix='line', total_lines=10):
-        self._mk_file(path, total_lines, line_prefix, versioned=True)
+        self._mk_file(path, line_prefix, total_lines, versioned=True)
 
     def _mk_dir(self, path, versioned):
         os.mkdir(path)
         if versioned:
             self.run_bzr(['add', path])
-            self.run_bzr(['ci', '-m', '"' + path + '" added'])
+            self.run_bzr(['ci', '-m', '"' + path + '"'])
 
     def _mk_unversioned_dir(self, path):
-        self._mk_dir(path, versioned=True)
+        self._mk_dir(path, versioned=False)
 
     def _mk_versioned_dir(self, path):
         self._mk_dir(path, versioned=True)
@@ -72,25 +75,22 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(out, self._str_contains(out, "file0.txt:line1"))
         self.assertFalse(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
 
-    def test_basic_versioned_file_multiple_files(self):
-        """search for pattern in specfic file"""
-        raise tests.KnownFailure("this test should not fail. TODO:debug")
+    def test_multiple_files(self):
+        """search for pattern in multiple files"""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
-        self._mk_versioned_file('file0.txt', total_lines=3)
-        self._mk_versioned_file('file1.txt', total_lines=3)
-        self._mk_versioned_file('file2.txt', total_lines=3)
-        out, err = self.run_bzr(['grep', '"line"'])
+        self._mk_versioned_file('file0.txt', total_lines=2)
+        self._mk_versioned_file('file1.txt', total_lines=2)
+        self._mk_versioned_file('file2.txt', total_lines=2)
+        out, err = self.run_bzr(['grep', 'line[1-2]'])
 
-        open('/home/parthm/tmp/out.txt', 'w').write(out)
-        self.assertTrue(out, self._str_contains(out, ".*file0\.txt:line1.*"))
-        self.assertTrue(out, self._str_contains(out, ".*file1\.txt:line1.*"))
-        self.assertTrue(out, self._str_contains(out, ".*file2\.txt:line1.*"))
-
-        self.assertTrue(out, self._str_contains(out, ".*file0\.txt:line2.*"))
-        self.assertTrue(out, self._str_contains(out, ".*file1\.txt:line2.*"))
-        self.assertTrue(out, self._str_contains(out, ".*file2\.txt:line2.*"))
+        self.assertTrue(out, self._str_contains(out, "file0.txt:line1"))
+        self.assertTrue(out, self._str_contains(out, "file0.txt:line2"))
+        self.assertTrue(out, self._str_contains(out, "file1.txt:line1"))
+        self.assertTrue(out, self._str_contains(out, "file1.txt:line2"))
+        self.assertTrue(out, self._str_contains(out, "file2.txt:line1"))
+        self.assertTrue(out, self._str_contains(out, "file2.txt:line2"))
 
     def test_versioned_file_in_dir_no_recurse(self):
         """should not recurse without -R"""
