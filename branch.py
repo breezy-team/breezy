@@ -169,6 +169,8 @@ class GitBranch(ForeignBranch):
         self.name = name
         self._head = None
         self.base = bzrdir.root_transport.base
+        if self.name != "HEAD":
+            self.base += ",%s" % self.name
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
