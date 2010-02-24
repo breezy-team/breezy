@@ -109,7 +109,10 @@ class cmd_grep(Command):
     def file_grep(self, relpath, path, patternc, eol_marker):
         index = 1
         path = os.path.normpath(os.path.join(relpath, path))
+
+        path = path.replace(os.path.dirname(relpath) + '/', '', 1)
         fmt = path + ":%d:%s" + eol_marker
+
         for line in open(path):
             res = patternc.search(line)
             if res:
