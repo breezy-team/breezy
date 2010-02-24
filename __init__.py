@@ -18,7 +18,7 @@
 import os
 import sys
 
-from bzrlib import errors, lazy_regex
+from bzrlib import errors
 from bzrlib.commands import Command, register_command, display_command
 from bzrlib.option import (
     Option,
@@ -28,6 +28,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import re
 
+import grep
 import bzrlib
 from bzrlib import (
     osutils,
@@ -66,21 +67,14 @@ class cmd_grep(Command):
             if from_root:
                 raise errors.BzrCommandError('cannot specify both --from-root and PATH.')
 
-        re_flags = 0
-        if ignore_case:
-            re_flags = re.IGNORECASE
-
         eol_marker = '\n'
         if null:
             eol_marker = '\0'
 
-        patternc = None
-        try:
-            # use python's re.compile as we need to catch re.error in case of bad pattern
-            lazy_regex.reset_compile()
-            patternc = re.compile(pattern, re_flags)
-        except re.error, e:
-            raise errors.BzrError("Invalid pattern: '%s'" % pattern)
+        re_flags = 0
+        if ignore_case:
+            re_flags = re.IGNORECASE
+        patternc = grep.compile_pattern(pattern, re_flags)
 
         for path in path_list:
             tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(path)
@@ -96,7 +90,7 @@ class cmd_grep(Command):
                     for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
                         from_dir=relpath, recursive=recursive):
                         if fc == 'V' and fkind == 'file':
-                            self.file_grep(rpath, fp, patternc, eol_marker)
+                            grep.file_grep(rpath, fp, patternc, eol_marker, outf=self.outf)
                 finally:
                     tree.unlock()
             else:
@@ -104,20 +98,7 @@ class cmd_grep(Command):
                 # we don't care if its versioned
                 if not tree.path2id(path):
                     trace.warning("warning: file '%s' is not versioned." % path)
-                self.file_grep('.', path, patternc, eol_marker)
-
-    def file_grep(self, relpath, path, patternc, eol_marker):
-        index = 1
-        path = os.path.normpath(os.path.join(relpath, path))
-
-        path = path.replace(os.path.dirname(relpath) + '/', '', 1)
-        fmt = path + ":%d:%s" + eol_marker
-
-        for line in open(path):
-            res = patternc.search(line)
-            if res:
-                self.outf.write( fmt % (index, line.strip()))
-            index += 1
+                grep.file_grep('.', path, patternc, eol_marker, outf=self.outf)
 
 register_command(cmd_grep)
 
