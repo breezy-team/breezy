@@ -80,7 +80,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_dir('dir0')
         self._mk_versioned_file('dir0/file0.txt')
         out, err = self.run_bzr(['grep', 'line1'])
-        self.assertFalse(out, self._str_contains(out, ".*file0.txt:1:line1"))
+        self.assertFalse(out, self._str_contains(out, "file0.txt:1:line1"))
 
     def test_versioned_file_in_dir_recurse(self):
         """should find pattern in hierarchy with -R"""
@@ -90,7 +90,18 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_dir('dir0')
         self._mk_versioned_file('dir0/file0.txt')
         out, err = self.run_bzr(['grep', '-R', 'line1'])
-        self.assertTrue(out, self._str_contains(out, "dir0/file0.txt:1:line1"))
+        self.assertTrue(out, self._str_contains(out, "^dir0/file0.txt:1:line1"))
+
+    def test_versioned_file_within_dir(self):
+        """search for pattern while in nested dir"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+        os.chdir('dir0')
+        out, err = self.run_bzr(['grep', 'line1'])
+        self.assertTrue(out, self._str_contains(out, "^file0.txt:1:line1"))
 
     def test_ignore_case_no_match(self):
         """match fails without --ignore-case"""
