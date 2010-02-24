@@ -3411,10 +3411,9 @@ class InterRepository(InterObject):
         #
         # XXX: This may be called on the server, but we actually want to only
         # do it on the client?
-        # 
-        # XXX: Message is probably not useful for remote formats?
-        ui.ui_factory.warn_cross_format_fetch(self.source._format,
-            self.target._format)
+        if self.source._format.network_name() != self.target._format.network_name():
+            ui.ui_factory.warn_cross_format_fetch(self.source._format,
+                self.target._format)
         f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
