@@ -32,6 +32,7 @@ import bzrlib
 from bzrlib import (
     osutils,
     bzrdir,
+    trace,
     )
 """)
 
@@ -82,9 +83,9 @@ class cmd_grep(Command):
             raise errors.BzrError("Invalid pattern: '%s'" % pattern)
 
         for path in path_list:
-            if osutils.isdir(path):
-                tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(path)
+            tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(path)
 
+            if osutils.isdir(path):
                 # setup rpath to open files relative to cwd
                 rpath = relpath
                 if relpath:
@@ -101,6 +102,8 @@ class cmd_grep(Command):
             else:
                 # if user has explicitly specified a file
                 # we don't care if its versioned
+                if not tree.path2id(path):
+                    trace.warning("warning: file '%s' is not versioned." % path)
                 self.file_grep('.', path, patternc, eol_marker)
 
     def file_grep(self, relpath, path, patternc, eol_marker):
