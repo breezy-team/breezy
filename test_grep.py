@@ -24,13 +24,29 @@ class TestGrep(tests.TestCaseWithTransport):
     def _str_contains(self, base, pattern):
         return re.search(pattern, base) != None
 
+    def _mk_file(self, path, text, versioned=True):
+        open(path, 'w').write(text)
+        if versioned:
+            self.run_bzr(['add', path])
+            self.run_bzr(['ci', '-m', '"' + path + '" added'])
+
     def test_basic_unversioned_file_grep(self):
         """search for pattern in specfic file"""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
-        open('file0.txt', 'w').write('line1\nline2\nline3')
+        self._mk_file('file0.txt', 'line1\nline2\nline3', versioned=False)
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
         self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
         self.assertTrue(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
+
+    def test_basic_versioned_file_grep(self):
+        """search for pattern in specfic file"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_file('file0.txt', 'line1\nline2\nline3', versioned=True)
+        out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
+        self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
+        self.assertFalse(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
 
