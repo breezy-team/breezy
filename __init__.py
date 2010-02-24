@@ -47,6 +47,8 @@ class cmd_grep(Command):
     takes_args = ['pattern', 'path*']
     takes_options = [
         'verbose',
+        Option('line-number', short_name='n',
+               help='show 1-based line number.'),
         Option('ignore-case', short_name='i',
                help='ignore case distinctions while matching.'),
         Option('recursive', short_name='R',
@@ -62,7 +64,7 @@ class cmd_grep(Command):
 
     @display_command
     def run(self, verbose=False, ignore_case=False, recursive=False, from_root=False,
-            null=False, path_list=None, pattern=None):
+            null=False, line_number=False, path_list=None, pattern=None):
         if path_list == None:
             path_list = ['.']
         else:
@@ -97,7 +99,8 @@ class cmd_grep(Command):
                     for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
                         from_dir=relpath, recursive=recursive):
                         if fc == 'V' and fkind == 'file':
-                            grep.file_grep(tree, fid, rpath, fp, patternc, eol_marker, outf=self.outf)
+                            grep.file_grep(tree, fid, rpath, fp, patternc,
+                                eol_marker, self.outf, line_number)
                 finally:
                     tree.unlock()
             else:
@@ -107,7 +110,8 @@ class cmd_grep(Command):
                     continue
                 tree.lock_read()
                 try:
-                    grep.file_grep(tree, id, '.', path, patternc, eol_marker, outf=self.outf)
+                    grep.file_grep(tree, id, '.', path, patternc, eol_marker,
+                        self.outf, line_number)
                 finally:
                     tree.unlock()
 

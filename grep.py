@@ -40,18 +40,22 @@ def compile_pattern(pattern, flags=0):
     return patternc
 
 
-def file_grep(tree, id, relpath, path, patternc, eol_marker, outf):
-    index = 1
+def file_grep(tree, id, relpath, path, patternc, eol_marker, outf, line_number=True):
     if relpath:
         path = osutils.normpath(osutils.pathjoin(relpath, path))
         path = path.replace('\\', '/')
         path = path.replace(relpath + '/', '', 1)
-    fmt = path + ":%d:%s" + eol_marker
+    fmt_with_n = path + ":%d:%s" + eol_marker
+    fmt_without_n = path + ":%s" + eol_marker
 
+    index = 1
     for line in tree.get_file_lines(id):
         res = patternc.search(line)
         if res:
-            outf.write( fmt % (index, line.strip()))
+            if line_number:
+                outf.write(fmt_with_n % (index, line.strip()))
+            else:
+                outf.write(fmt_without_n % (line.strip(),))
         index += 1
 
 

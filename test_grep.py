@@ -59,7 +59,7 @@ class TestGrep(tests.TestCaseWithTransport):
         os.chdir(wd)
         self._mk_unversioned_file('file0.txt')
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
-        self.assertFalse(out, self._str_contains(out, "file0.txt:1:line1"))
+        self.assertFalse(out, self._str_contains(out, "file0.txt:line1"))
         self.assertTrue(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
 
     def test_basic_versioned_file(self):
@@ -69,7 +69,7 @@ class TestGrep(tests.TestCaseWithTransport):
         os.chdir(wd)
         self._mk_versioned_file('file0.txt')
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
-        self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
+        self.assertTrue(out, self._str_contains(out, "file0.txt:line1"))
         self.assertFalse(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
 
     def test_versioned_file_in_dir_no_recurse(self):
@@ -80,7 +80,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_dir('dir0')
         self._mk_versioned_file('dir0/file0.txt')
         out, err = self.run_bzr(['grep', 'line1'])
-        self.assertFalse(out, self._str_contains(out, "file0.txt:1:line1"))
+        self.assertFalse(out, self._str_contains(out, "file0.txt:line1"))
 
     def test_versioned_file_in_dir_recurse(self):
         """should find pattern in hierarchy with -R"""
@@ -90,7 +90,9 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_dir('dir0')
         self._mk_versioned_file('dir0/file0.txt')
         out, err = self.run_bzr(['grep', '-R', 'line1'])
-        self.assertTrue(out, self._str_contains(out, "^dir0/file0.txt:1:line1"))
+        self.assertTrue(out, self._str_contains(out, "^dir0/file0.txt:line1"))
+        out, err = self.run_bzr(['grep', '--recursive', 'line1'])
+        self.assertTrue(out, self._str_contains(out, "^dir0/file0.txt:line1"))
 
     def test_versioned_file_within_dir(self):
         """search for pattern while in nested dir"""
@@ -101,7 +103,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_file('dir0/file0.txt')
         os.chdir('dir0')
         out, err = self.run_bzr(['grep', 'line1'])
-        self.assertTrue(out, self._str_contains(out, "^file0.txt:1:line1"))
+        self.assertTrue(out, self._str_contains(out, "^file0.txt:line1"))
 
     def test_ignore_case_no_match(self):
         """match fails without --ignore-case"""
@@ -110,7 +112,7 @@ class TestGrep(tests.TestCaseWithTransport):
         os.chdir(wd)
         self._mk_versioned_file('file0.txt')
         out, err = self.run_bzr(['grep', 'LinE1', 'file0.txt'])
-        self.assertFalse(out, self._str_contains(out, "file0.txt:1:line1"))
+        self.assertFalse(out, self._str_contains(out, "file0.txt:line1"))
 
     def test_ignore_case_match(self):
         """match fails without --ignore-case"""
@@ -119,7 +121,9 @@ class TestGrep(tests.TestCaseWithTransport):
         os.chdir(wd)
         self._mk_versioned_file('file0.txt')
         out, err = self.run_bzr(['grep', '-i', 'LinE1', 'file0.txt'])
-        self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
+        self.assertTrue(out, self._str_contains(out, "file0.txt:line1"))
+        out, err = self.run_bzr(['grep', '--ignore-case', 'LinE1', 'file0.txt'])
+        self.assertTrue(out, self._str_contains(out, "^file0.txt:line1"))
 
     def test_from_root_fail(self):
         """match should fail without --from-root"""
@@ -130,7 +134,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_dir('dir0')
         os.chdir('dir0')
         out, err = self.run_bzr(['grep', 'line1'])
-        self.assertFalse(out, self._str_contains(out, ".*file0.txt:1:line1"))
+        self.assertFalse(out, self._str_contains(out, ".*file0.txt:line1"))
 
     def test_from_root_pass(self):
         """match pass with --from-root"""
@@ -141,6 +145,17 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_dir('dir0')
         os.chdir('dir0')
         out, err = self.run_bzr(['grep', '--from-root', 'line1'])
-        self.assertTrue(out, self._str_contains(out, ".*file0.txt:1:line1"))
+        self.assertTrue(out, self._str_contains(out, ".*file0.txt:line1"))
+
+    def test_with_line_number(self):
+        """search for pattern with --line-number"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.txt')
+        out, err = self.run_bzr(['grep', '--line-number', 'line3', 'file0.txt'])
+        self.assertTrue(out, self._str_contains(out, "file0.txt:3:line1"))
+        out, err = self.run_bzr(['grep', '-n', 'line1', 'file0.txt'])
+        self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
 
 
