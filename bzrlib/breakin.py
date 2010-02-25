@@ -25,6 +25,7 @@ _breakin_signal_name = None
 def _debug(signal_number, interrupted_frame):
     import pdb
     import sys
+    from bzrlib.osutils import set_signal_handler
     sys.stderr.write("** %s received, entering debugger\n"
             "** Type 'c' to continue or 'q' to stop the process\n"
             "** Or %s again to quit (and possibly dump core)\n"
@@ -38,7 +39,7 @@ def _debug(signal_number, interrupted_frame):
     try:
         pdb.set_trace()
     finally:
-        signal.signal(_breakin_signal_number, _debug)
+        set_signal_handler(_breakin_signal_number, _debug)
 
 
 def hook_sigquit():
@@ -90,4 +91,5 @@ def hook_debugger_to_signal():
     if sig is None:
         return
     # print 'hooking into %s' % (_breakin_signal_name,)
-    signal.signal(sig, _debug)
+    from bzrlib.osutils import set_signal_handler
+    set_signal_handler(sig, _debug)
