@@ -143,11 +143,10 @@ will look like::
 
     WSGIScriptAliasMatch ^/code/.*/\.bzr/smart$ /srv/example.com/scripts/bzr.wsgi
 
-    #The three next lines allows the protocol http[s]+urllib works.
+    #The three next lines allow regular GETs to work too
     RewriteEngine On
-    RewriteRule ^/code/(.*/\.bzr/branch-format)$ /srv/example.com/www/code/$1 [L]
-    RewriteRule ^/code/(.*/\.bzr/repository/.*)$ /srv/example.com/www/code/$1 [L]
-
+    RewriteCond %{REQUEST_URI} !^/code/.*/\.bzr/smart$
+    RewriteRule ^/code/(.*/\.bzr/.*)$ /srv/example.com/www/code/$1 [L]
 
     <Directory /srv/example.com/www/code>
         WSGIApplicationGroup %{GLOBAL}
@@ -242,22 +241,13 @@ Here's what it looks like::
 Clients
 -------
 
-Now you can use `bzr+http://` URLs, e.g.::
+Now you can use `bzr+http://` URLs or just `http://` URLs, e.g.::
 
     bzr log bzr+http://example.com/code/my-branch
-
-If you put the RewriteRule directive in your Virtual Host::
-
-    bzr log http+urllib://example.com/code/my-branch
-
-    or
-
-    bzr log https+urllib://example.com/code/my-branch
 
 Plain HTTP access should continue to work::
 
     bzr log http://example.com/code/my-branch
-
 
 Advanced configuration
 ----------------------
@@ -301,15 +291,16 @@ Authenticating), everything is just a POST request.  However, it would
 certainly be possible to have HTTPS require authentication and use a
 writable server, and plain HTTP allow read-only access.
 
-If you trying to push and receive the next message::
+If you trying to push with the protocol bzr+https and receive the next
+message::
 
     bzr: ERROR: Connection error: curl connection error (server certificate verification failed.
     CAfile:/etc/ssl/certs/ca-certificates.crt CRLfile: none)
 
-You can probe uninstall pycurl or use https+urllib if you put the RewriteRule
-directive in your Virtual Host.
+You can probably uninstall pycurl or check the `bug 82086`_ or use
+https+urllib if you put the RewriteRule directive in your Virtual Host.
 
-
+.. _bug 82086: https://bugs.launchpad.net/bzr/+bug/82086
 
 ..
    vim: ft=rst tw=74 et
