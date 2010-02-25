@@ -515,16 +515,15 @@ class LocalTransport(transport.Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
-    def link(self, source, link_name):
-        """See Transport.link."""
-        try:
-            os.link(self._abspath(source),
-                    self._abspath(link_name))
-            return True
-        except AttributeError:
-            raise errors.TransportNotPossible("Hardlinks are not supported on %s" % self)
-        except (IOError, OSError), e:
-            self._translate_error(e, source)
+    if osutils.hardlinks_good():
+        def link(self, source, link_name):
+            """See Transport.link."""
+            try:
+                os.link(self._abspath(source),
+                        self._abspath(link_name))
+                return True
+            except (IOError, OSError), e:
+                self._translate_error(e, source)
 
     def symlink(self, source, link_name):
         """See Transport.symlink."""
