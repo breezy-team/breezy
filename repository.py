@@ -70,7 +70,7 @@ class GitRepository(ForeignRepository):
     def supports_rich_root(self):
         return True
 
-    def _warn_if_deprecated(self):
+    def _warn_if_deprecated(self, branch=None):
         # This class isn't deprecated
         pass
 
