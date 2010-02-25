@@ -38,6 +38,7 @@ import shutil
 from shutil import (
     rmtree,
     )
+import signal
 import subprocess
 import tempfile
 from tempfile import (
@@ -1245,19 +1246,24 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
-def set_signal_handler(signum, handler):
+def set_signal_handler(signum, handler, restart_syscall=True):
     """A wrapper for signal.signal that also calls siginterrupt(signum, False)
     on platforms that support that.
+
+    :param restart_syscall: if set, allow syscalls interrupted by a signal to
+        automatically restart (by calling `signal.siginterrupt(signum,
+        False)`).  May be ignored if the feature is not available on this
+        platform or Python version.
     """
     old_handler = signal.signal(signum, handler)
-    try:
-        siginterrupt = signal.siginterrupt
-    except AttributeError:
-        # siginterrupt doesn't exist on this platform, or for this version of
-        # Python.
-        pass
-    else:
-        siginterrupt(signum, False)
+    if restart_syscall:
+        try:
+            siginterrupt = signal.siginterrupt
+        except AttributeError: # siginterrupt doesn't exist on this platform, or for this version of
+            # Python.
+            pass
+        else:
+            siginterrupt(signum, False)
     return old_handler
 
 
