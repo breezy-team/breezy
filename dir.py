@@ -119,6 +119,11 @@ class LocalGitDir(GitDir):
             name = "HEAD"
         return LocalGitBranch(self, repo, name, self._lockfiles)
 
+    def destroy_branch(self, name=None):
+        if name is None:
+            name = "HEAD"
+        del self._git.refs[name]
+
     def list_branches(self):
         ret = []
         for name in self._git.get_refs():
