@@ -14,6 +14,11 @@ bzr 2.1.1
 Bug Fixes
 *********
 
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
 * Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
   problems importing bzrlib from a non-main thread.
   (Elliot Murphy, #521989)
@@ -27,6 +32,22 @@ Documentation
 *************
 
 * Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
+API Changes
+***********
+
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
+
+Internals
+*********
+
+* ``bzrlib.breakin`` uses ``bzrlib.osutils.set_signal_handler`` to set the
+  ``SIGQUIT`` signal handler, so that entering the debugger with
+  ``SIGQUIT`` will no longer cause ``EINTR`` during blocking IO.
+  (Andrew Bennetts, #173007)
 
 
 bzr 2.1.0
