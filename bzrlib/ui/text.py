@@ -191,7 +191,7 @@ class TextUIFactory(UIFactory):
     def _progress_all_finished(self):
         self._progress_view.clear()
 
-    def user_warning(self, msg):
+    def show_user_warning(self, warning_id, **message_args):
         """Show a text message to the user.
 
         Explicitly not for warnings about bzr apis, deprecations or internals.
@@ -199,14 +199,8 @@ class TextUIFactory(UIFactory):
         # eventually trace.warning should migrate here, to avoid logging and
         # be easier to test; that has a lot of test fallout so for now just
         # new code can call this
-        self.stderr.write(msg)
-
-    def warn_cross_format_fetch(self, from_format, to_format):
-        """Warn about a potentially slow cross-format transfer"""
-        # See <https://launchpad.net/bugs/456077> asking for a warning here
-        # By default, eg run on the server, we just mutter the warning;
-        # interactive versions can show it
-        self.user_warning(self._cross_format_fetch_warning_message(from_format, to_format))
+        self.stderr.write(self.format_user_warning(warning_id, message_args) +
+            '\n')
 
 
 class TextProgressView(object):

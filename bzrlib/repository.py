@@ -3409,8 +3409,9 @@ class InterRepository(InterObject):
         from bzrlib.fetch import RepoFetcher
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
-            ui.ui_factory.warn_cross_format_fetch(self.source._format,
-                self.target._format)
+            ui.ui_factory.show_user_warning('cross_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
@@ -3992,8 +3993,9 @@ class InterDifferingSerializer(InterRepository):
             self._converting_to_rich_root = False
         # See <https://launchpad.net/bugs/456077> asking for a warning here
         if self.source._format.network_name() != self.target._format.network_name():
-            ui.ui_factory.warn_cross_format_fetch(self.source._format,
-                self.target._format)
+            ui.ui_factory.show_user_warning('cross_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
