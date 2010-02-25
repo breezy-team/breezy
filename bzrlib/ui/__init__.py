@@ -256,6 +256,15 @@ class UIFactory(object):
         """
         pass
 
+    def warn_cross_format_fetch(self, from_format, to_format):
+        """Warn about a potentially slow cross-format transfer.
+        
+        This is deprecated in favor of show_user_warning, but retained for api
+        compatibility in 2.0 and 2.1.
+        """
+        self.show_user_warning('cross_format_fetch', from_format=from_format,
+            to_format=to_format)
+
 
 class CLIUIFactory(UIFactory):
     """Deprecated in favor of TextUIFactory."""
