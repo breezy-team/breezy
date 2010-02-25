@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -668,6 +668,19 @@ class TestLockDir(TestCaseWithTransport):
         self.assertRaises(errors.LockContention, ld2.attempt_lock)
         # no kibble
         check_dir(['held'])
+
+    def test_no_lockdir_info(self):
+        """We can cope with empty info files."""
+        # This seems like a fairly common failure case - see
+        # <https://bugs.edge.launchpad.net/bzr/+bug/185103> and all its dupes.
+        # Processes are often interrupted after opening the file
+        # before the actual contents are committed.
+        t = self.get_transport()
+        t.mkdir('test_lock')
+        t.mkdir('test_lock/held')
+        t.put_bytes('test_lock/held/info', '')
+        lf = LockDir(t, 'test_lock')
+        lf.peek()
 
 
 class TestLockDirHooks(TestCaseWithTransport):
