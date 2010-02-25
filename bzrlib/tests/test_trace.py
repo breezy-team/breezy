@@ -221,10 +221,21 @@ class TestTrace(TestCase):
         show_error('error1')
         show_error(u'error2 \xb5 blah')
         show_error('arg: %s', 'blah')
+        show_error('arg2: %(key)s', {'key':'stuff'})
+        try:
+            raise Exception("oops")
+        except:
+            show_error('kwarg', exc_info=True)
         log = self.get_log()
         self.assertContainsRe(log, 'error1')
         self.assertContainsRe(log, u'error2 \xb5 blah')
         self.assertContainsRe(log, 'arg: blah')
+        self.assertContainsRe(log, 'arg2: stuff')
+        self.assertContainsRe(log, 'kwarg')
+        self.assertContainsRe(log, 'Traceback \\(most recent call last\\):')
+        self.assertContainsRe(log, 'File ".*test_trace.py", line .*, in test_show_error')
+        self.assertContainsRe(log, 'raise Exception\\("oops"\\)')
+        self.assertContainsRe(log, 'Exception: oops')
 
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.
