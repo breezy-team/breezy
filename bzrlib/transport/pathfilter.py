@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -174,22 +174,7 @@ class PathFilteringTransport(Transport):
         return self._call('stat', relpath)
 
 
-class TestingPathFilteringServer(PathFilteringServer):
-
-    def __init__(self):
-        """TestingChrootServer is not usable until start_server is called."""
-
-    def start_server(self, backing_server=None):
-        """Setup the Chroot on backing_server."""
-        if backing_server is not None:
-            self.backing_transport = get_transport(backing_server.get_url())
-        else:
-            self.backing_transport = get_transport('.')
-        self.backing_transport.clone('added-by-filter').ensure_base()
-        self.filter_func = lambda x: 'added-by-filter/' + x
-        PathFilteringServer.start_server(self)
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(PathFilteringTransport, TestingPathFilteringServer)]
+    from bzrlib.tests import test_server
+    return [(PathFilteringTransport, test_server.TestingPathFilteringServer)]

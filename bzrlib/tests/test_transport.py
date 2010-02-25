@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +36,10 @@ from bzrlib.transport import (
     pathfilter,
     readonly,
     )
-from bzrlib.tests import features
+from bzrlib.tests import (
+    features,
+    test_server,
+    )
 
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -593,7 +596,7 @@ class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
 
     def test_fakenfs_server_default(self):
         # a FakeNFSServer() should bring up a local relpath server for itself
-        server = fakenfs.FakeNFSServer()
+        server = test_server.FakeNFSServer()
         self.start_server(server)
         # the url should be decorated appropriately
         self.assertStartsWith(server.get_url(), 'fakenfs+')
@@ -906,8 +909,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # SFTPFullAbsoluteServer has a get_url method, and doesn't
         # override the interface (doesn't change self._vendor).
         # Note that this does encryption, so can be slow.
-        from bzrlib.transport.sftp import SFTPFullAbsoluteServer
-        from bzrlib.tests.stub_sftp import StubServer
+        from bzrlib.tests import stub_sftp
 
         # Start an SSH server
         self.command_executed = []
@@ -916,7 +918,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # SSH channel ourselves.  Surely this has already been implemented
         # elsewhere?
         started = []
-        class StubSSHServer(StubServer):
+        class StubSSHServer(stub_sftp.StubServer):
 
             test = self
 
@@ -950,7 +952,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
 
                 return True
 
-        ssh_server = SFTPFullAbsoluteServer(StubSSHServer)
+        ssh_server = stub_sftp.SFTPFullAbsoluteServer(StubSSHServer)
         # We *don't* want to override the default SSH vendor: the detected one
         # is the one to use.
         self.start_server(ssh_server)

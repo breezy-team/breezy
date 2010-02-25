@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>, Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Robey Pointer <robey@lag.net>, Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,16 +25,16 @@ from bzrlib import (
     errors,
     tests,
     )
-from bzrlib.transport.local import LocalURLServer
-from bzrlib.transport.memory import MemoryServer
+from bzrlib.tests import test_server
+from bzrlib.transport import memory
 
 
 class BoundSFTPBranch(tests.TestCaseWithTransport):
 
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
-        self.vfs_transport_factory = MemoryServer
-        if self.transport_server is LocalURLServer:
+        self.vfs_transport_factory = memory.MemoryServer
+        if self.transport_server is test_server.LocalURLServer:
             self.transport_server = None
 
     def create_branches(self):

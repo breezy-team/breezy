@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -234,91 +234,6 @@ class SmartServerHooks(Hooks):
             "server_started hook: (backing_urls, public_url).", (0, 16), None))
 
 SmartTCPServer.hooks = SmartServerHooks()
-
-
-class SmartTCPServer_for_testing(SmartTCPServer):
-    """Server suitable for use by transport tests.
-
-    This server is backed by the process's cwd.
-    """
-
-    def __init__(self, thread_name_suffix=''):
-        SmartTCPServer.__init__(self, None)
-        self.client_path_extra = None
-        self.thread_name_suffix = thread_name_suffix
-
-    def get_backing_transport(self, backing_transport_server):
-        """Get a backing transport from a server we are decorating."""
-        return transport.get_transport(backing_transport_server.get_url())
-
-    def start_server(self, backing_transport_server=None,
-              client_path_extra='/extra/'):
-        """Set up server for testing.
-
-        :param backing_transport_server: backing server to use.  If not
-            specified, a LocalURLServer at the current working directory will
-            be used.
-        :param client_path_extra: a path segment starting with '/' to append to
-            the root URL for this server.  For instance, a value of '/foo/bar/'
-            will mean the root of the backing transport will be published at a
-            URL like `bzr://127.0.0.1:nnnn/foo/bar/`, rather than
-            `bzr://127.0.0.1:nnnn/`.  Default value is `extra`, so that tests
-            by default will fail unless they do the necessary path translation.
-        """
-        if not client_path_extra.startswith('/'):
-            raise ValueError(client_path_extra)
-        from bzrlib.transport.chroot import ChrootServer
-        if backing_transport_server is None:
-            from bzrlib.transport.local import LocalURLServer
-            backing_transport_server = LocalURLServer()
-        self.chroot_server = ChrootServer(
-            self.get_backing_transport(backing_transport_server))
-        self.chroot_server.start_server()
-        self.backing_transport = transport.get_transport(
-            self.chroot_server.get_url())
-        self.root_client_path = self.client_path_extra = client_path_extra
-        self.start_background_thread(self.thread_name_suffix)
-
-    def stop_server(self):
-        self.stop_background_thread()
-        self.chroot_server.stop_server()
-
-    def get_url(self):
-        url = super(SmartTCPServer_for_testing, self).get_url()
-        return url[:-1] + self.client_path_extra
-
-    def get_bogus_url(self):
-        """Return a URL which will fail to connect"""
-        return 'bzr://127.0.0.1:1/'
-
-
-class ReadonlySmartTCPServer_for_testing(SmartTCPServer_for_testing):
-    """Get a readonly server for testing."""
-
-    def get_backing_transport(self, backing_transport_server):
-        """Get a backing transport from a server we are decorating."""
-        url = 'readonly+' + backing_transport_server.get_url()
-        return transport.get_transport(url)
-
-
-class SmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing):
-    """A variation of SmartTCPServer_for_testing that limits the client to
-    using RPCs in protocol v2 (i.e. bzr <= 1.5).
-    """
-
-    def get_url(self):
-        url = super(SmartTCPServer_for_testing_v2_only, self).get_url()
-        url = 'bzr-v2://' + url[len('bzr://'):]
-        return url
-
-
-class ReadonlySmartTCPServer_for_testing_v2_only(SmartTCPServer_for_testing_v2_only):
-    """Get a readonly server for testing."""
-
-    def get_backing_transport(self, backing_transport_server):
-        """Get a backing transport from a server we are decorating."""
-        url = 'readonly+' + backing_transport_server.get_url()
-        return transport.get_transport(url)
 
 
 def _local_path_for_transport(transport):

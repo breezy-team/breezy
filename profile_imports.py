@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2009 by Canonical Ltd
+# Copyright (C) 2006, 2008, 2009, 2010 by Canonical Ltd
 # Written by John Arbash Meinel <john@arbash-meinel.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -64,7 +64,8 @@ def stack_finish(this, cost):
 
 def log_stack_info(out_file, sorted=True, hide_fast=True):
     # Find all of the roots with import = 0
-    out_file.write(' cum  inline name\t\t\t\t\t\tframe\n')
+    out_file.write('%5s %5s %-40s @ %s:%s\n'
+        % ('cum', 'inline', 'name', 'file', 'line'))
     todo = [(value[-1], key) for key,value in _info.iteritems() if value[0] == 0]
 
     if sorted:
@@ -89,9 +90,10 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
         # indent, cum_time, mod_time, name,
         # scope_name, frame_name, frame_lineno
-        out_file.write('%5.1f %5.1f %s %-35s\t@ %s:%d\n'
-            % (info[-1]*1000., mod_time*1000., '+'*info[0], 
-               cur[1][:35], info[1], info[2]))
+        out_file.write('%5.1f %5.1f %-40s @ %s:%d\n'
+            % (info[-1]*1000., mod_time*1000.,
+               ('+'*info[0] + cur[1]),
+               info[1], info[2]))
 
         if sorted:
             c_times.sort()
@@ -102,24 +104,32 @@ def log_stack_info(out_file, sorted=True, hide_fast=True):
 
 _real_import = __import__
 
-def timed_import(name, globals, locals, fromlist, level=None):
+def timed_import(name, globals=None, locals=None, fromlist=None, level=None):
     """Wrap around standard importer to log import time"""
+    # normally there are 4, but if this is called as __import__ eg by
+    # /usr/lib/python2.6/email/__init__.py then there may be only one
+    # parameter
     # level is only passed by python2.6
 
-    scope_name = globals.get('__name__', None)
-    if scope_name is None:
-        scope_name = globals.get('__file__', None)
-    if scope_name is None:
-        scope_name = globals.keys()
+    if globals is None:
+        # can't determine the scope name afaics; we could peek up the stack to
+        # see where this is being called from, but it should be a rare case.
+        scope_name = None
     else:
-        # Trim out paths before bzrlib
-        loc = scope_name.find('bzrlib')
-        if loc != -1:
-            scope_name = scope_name[loc:]
-        # For stdlib, trim out early paths
-        loc = scope_name.find('python2.4')
-        if loc != -1:
-            scope_name = scope_name[loc:]
+        scope_name = globals.get('__name__', None)
+        if scope_name is None:
+            scope_name = globals.get('__file__', None)
+        if scope_name is None:
+            scope_name = globals.keys()
+        else:
+            # Trim out paths before bzrlib
+            loc = scope_name.find('bzrlib')
+            if loc != -1:
+                scope_name = scope_name[loc:]
+            # For stdlib, trim out early paths
+            loc = scope_name.find('python2.4')
+            if loc != -1:
+                scope_name = scope_name[loc:]
 
     # Figure out the frame that is doing the importing
     frame = sys._getframe(1)

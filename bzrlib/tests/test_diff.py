@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,6 +44,8 @@ from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revisionspec import RevisionSpec
+
+from bzrlib.tests.test_win32utils import BackslashDirSeparatorFeature
 
 
 class _AttribFeature(Feature):
@@ -1292,11 +1294,21 @@ class TestDiffFromTool(TestCaseWithTransport):
             diff_obj.command_template)
 
     def test_from_string_u5(self):
-        diff_obj = DiffFromTool.from_string('diff -u\\ 5', None, None, None)
+        diff_obj = DiffFromTool.from_string('diff "-u 5"', None, None, None)
         self.addCleanup(diff_obj.finish)
         self.assertEqual(['diff', '-u 5', '@old_path', '@new_path'],
                          diff_obj.command_template)
         self.assertEqual(['diff', '-u 5', 'old-path', 'new-path'],
+                         diff_obj._get_command('old-path', 'new-path'))
+        
+    def test_from_string_path_with_backslashes(self):
+        self.requireFeature(BackslashDirSeparatorFeature)
+        tool = 'C:\\Tools\\Diff.exe'
+        diff_obj = DiffFromTool.from_string(tool, None, None, None)
+        self.addCleanup(diff_obj.finish)
+        self.assertEqual(['C:\\Tools\\Diff.exe', '@old_path', '@new_path'],
+                         diff_obj.command_template)
+        self.assertEqual(['C:\\Tools\\Diff.exe', 'old-path', 'new-path'],
                          diff_obj._get_command('old-path', 'new-path'))
 
     def test_execute(self):

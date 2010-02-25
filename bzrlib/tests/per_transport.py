@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,6 +52,7 @@ from bzrlib.tests import (
     TestNotApplicable,
     multiply_tests,
     )
+from bzrlib.tests import test_server
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
     ConnectedTransport,
@@ -170,8 +171,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
     def test_has_root_works(self):
-        from bzrlib.smart import server
-        if self.transport_server is server.SmartTCPServer_for_testing:
+        if self.transport_server is test_server.SmartTCPServer_for_testing:
             raise TestNotApplicable(
                 "SmartTCPServer_for_testing intentionally does not allow "
                 "access to /.")

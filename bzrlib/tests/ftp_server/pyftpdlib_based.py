@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,8 +29,8 @@ import threading
 from bzrlib import (
     osutils,
     trace,
-    transport,
     )
+from bzrlib.tests import test_server
 
 
 class AnonymousWithWriteAccessAuthorizer(ftpserver.DummyAuthorizer):
@@ -133,7 +133,7 @@ class ftp_server(ftpserver.FTPServer):
         self.addr = self.socket.getsockname()
 
 
-class FTPTestServer(transport.Server):
+class FTPTestServer(test_server.TestServer):
     """Common code for FTP server facilities."""
 
     def __init__(self):
@@ -158,8 +158,8 @@ class FTPTestServer(transport.Server):
         self.logs.append(message)
 
     def start_server(self, vfs_server=None):
-        from bzrlib.transport.local import LocalURLServer
-        if not (vfs_server is None or isinstance(vfs_server, LocalURLServer)):
+        if not (vfs_server is None or isinstance(vfs_server,
+                                                 test_server.LocalURLServer)):
             raise AssertionError(
                 "FTPServer currently assumes local transport, got %s"
                 % vfs_server)

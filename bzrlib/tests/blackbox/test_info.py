@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.transport import memory
+
 
 class TestInfo(tests.TestCaseWithTransport):
 
@@ -211,8 +212,8 @@ In the working tree:
          0 added
          0 removed
          0 renamed
-         1 unknown
-         0 ignored
+         0 unknown
+         1 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -379,8 +380,8 @@ In the working tree:
          0 added
          0 removed
          0 renamed
-         1 unknown
-         0 ignored
+         0 unknown
+         1 ignored
          0 versioned subdirectories
 
 Branch history:

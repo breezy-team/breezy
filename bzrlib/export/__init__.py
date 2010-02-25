@@ -138,14 +138,23 @@ def _export_iter_entries(tree, subdir):
     """Iter the entries for tree suitable for exporting.
 
     :param tree: A tree object.
-    :param subdir: None or the path of a directory to start exporting from.
+    :param subdir: None or the path of an entry to start exporting from.
     """
     inv = tree.inventory
     if subdir is None:
-        subdir_id = None
+        subdir_object = None
     else:
         subdir_id = inv.path2id(subdir)
-    entries = inv.iter_entries(subdir_id)
+        if subdir_id is not None:
+            subdir_object = inv[subdir_id]
+        # XXX: subdir is path not an id, so NoSuchId isn't proper error
+        else:
+            raise errors.NoSuchId(tree, subdir)
+    if subdir_object is not None and subdir_object.kind != 'directory':
+        yield subdir_object.name, subdir_object
+        return
+    else:
+        entries = inv.iter_entries(subdir_object)
     if subdir is None:
         entries.next() # skip root
     for entry in entries:

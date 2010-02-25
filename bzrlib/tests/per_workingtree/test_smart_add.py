@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -227,6 +227,36 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
                                 in wt.inventory.iter_entries()])
 
 
+class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
+
+    def make_tree_with_text_conflict(self):
+        tb = self.make_branch_and_tree('base')
+        self.build_tree_contents([('base/file', 'content in base')])
+        tb.add('file')
+        tb.commit('Adding file')
+
+        t1 = tb.bzrdir.sprout('t1').open_workingtree()
+
+        self.build_tree_contents([('base/file', 'content changed in base')])
+        tb.commit('Changing file in base')
+
+        self.build_tree_contents([('t1/file', 'content in t1')])
+        t1.commit('Changing file in t1')
+        t1.merge_from_branch(tb.branch)
+        return t1
+
+    def test_cant_add_generated_files_implicitly(self):
+        t = self.make_tree_with_text_conflict()
+        added, ignored = t.smart_add([t.basedir])
+        self.assertEqual(([], {}), (added, ignored))
+
+    def test_can_add_generated_files_explicitly(self):
+        fnames = ['file.%s' % s  for s in ('BASE', 'THIS', 'OTHER')]
+        t = self.make_tree_with_text_conflict()
+        added, ignored = t.smart_add([t.basedir + '/%s' % f for f in fnames])
+        self.assertEqual((fnames, {}), (added, ignored))
+
+
 class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
     _test_needs_features = [tests.UnicodeFilenameFeature]
@@ -239,7 +269,14 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
     def test_accessible_explicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        self.wt.smart_add([u'a\u030a'])
+        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+            self.expectFailure(
+                'With WorkingTreeFormat2, smart_add requires'
+                ' normalized unicode filenames',
+                self.assertRaises, errors.NoSuchFile,
+                self.wt.smart_add, [u'a\u030a'])
+        else:
+            self.wt.smart_add([u'a\u030a'])
         self.wt.lock_read()
         self.addCleanup(self.wt.unlock)
         self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
@@ -248,12 +285,19 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
     def test_accessible_implicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        self.wt.smart_add([])
+        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+            self.expectFailure(
+                'With WorkingTreeFormat2, smart_add requires'
+                ' normalized unicode filenames',
+                self.assertRaises, errors.NoSuchFile,
+                self.wt.smart_add, [])
+        else:
+            self.wt.smart_add([])
         self.wt.lock_read()
         self.addCleanup(self.wt.unlock)
         self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                         [(path, ie.kind) for path,ie in
-                          self.wt.inventory.iter_entries()])
+                         [(path, ie.kind) for path,ie
+                          in self.wt.inventory.iter_entries()])
 
     def test_inaccessible_explicit(self):
         osutils.normalized_filename = osutils._inaccessible_normalized_filename

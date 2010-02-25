@@ -111,7 +111,7 @@ class TestGetAlias(tests.TestCase):
 
     def test_unicode(self):
         my_config = self._get_config("[ALIASES]\n"
-            u"iam=whoami 'Erik B\u00e5gfors <erik@bagfors.nu>'\n")
+            u'iam=whoami "Erik B\u00e5gfors <erik@bagfors.nu>"\n')
         self.assertEqual([u'whoami', u'Erik B\u00e5gfors <erik@bagfors.nu>'],
                           commands.get_alias("iam", config=my_config))
 

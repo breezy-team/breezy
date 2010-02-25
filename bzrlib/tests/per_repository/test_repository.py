@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,9 +43,10 @@ from bzrlib.repofmt import (
     pack_repo,
     weaverepo,
     )
-from bzrlib.smart import server
-from bzrlib.tests import per_repository
-from bzrlib.transport.fakevfat import FakeVFATServer
+from bzrlib.tests import (
+    per_repository,
+    test_server,
+    )
 
 
 class TestRepositoryMakeBranchAndTree(per_repository.TestCaseWithRepository):
@@ -82,6 +83,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_attribute__fetch_reconcile(self):
         """Test the _fetch_reconcile attribute."""
         self.assertFormatAttribute('_fetch_reconcile', (True, False))
+
+    def test_attribute_format_experimental(self):
+        self.assertFormatAttribute('experimental', (True, False))
 
     def test_attribute_format_pack_compresses(self):
         self.assertFormatAttribute('pack_compresses', (True, False))
@@ -820,7 +824,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """Make a RemoteRepository object backed by a real repository that will
         be created at the given path."""
         repo = self.make_repository(path, shared=shared)
-        smart_server = server.SmartTCPServer_for_testing()
+        smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server, self.get_server())
         remote_transport = transport.get_transport(
             smart_server.get_url()).clone(path)
@@ -1292,7 +1296,7 @@ class TestEscaping(tests.TestCaseWithTransport):
         # about local disk layout/support.
         if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
             return
-        self.transport_server = FakeVFATServer
+        self.transport_server = test_server.FakeVFATServer
         FOO_ID = 'foo<:>ID'
         REV_ID = 'revid-1'
         # this makes a default format repository always, which is wrong:
