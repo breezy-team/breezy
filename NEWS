@@ -36,6 +36,9 @@ Bug Fixes
 * Avoid infinite recursion when probing for apport.
   (Vincent Ladeuil, #516934)
 
+* Tolerate patches with leading noise in ``bzr-handle-patch``.
+  (Toshio Kuratomi, Martin Pool, #502076)
+
 Testing
 *******
 
