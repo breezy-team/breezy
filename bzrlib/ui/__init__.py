@@ -106,7 +106,7 @@ class UIFactory(object):
     This tells the library how to display things to the user.  Through this
     layer different applications can choose the style of UI.
 
-    :ivar squelched_user_warnings: Identifiers for user warnings that should 
+    :ivar squelched_warnings: Identifiers for user warnings that should 
         no be emitted.
     """
 
