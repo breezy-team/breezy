@@ -199,7 +199,7 @@ class TextUIFactory(UIFactory):
         # eventually trace.warning should migrate here, to avoid logging and
         # be easier to test; that has a lot of test fallout so for now just
         # new code can call this
-        if warning_id not in self.squelched_warnings:
+        if warning_id not in self.suppressed_warnings:
             self.stderr.write(self.format_user_warning(warning_id, message_args) +
                 '\n')
 

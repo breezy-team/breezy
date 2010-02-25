@@ -322,7 +322,7 @@ class UITests(tests.TestCase):
         err = StringIO()
         out = StringIO()
         ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
-        ui.squelched_warnings.add('cross_format_fetch')
+        ui.suppressed_warnings.add('cross_format_fetch')
         ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
             to_format=remote_fmt)
         self.assertEquals('', out.getvalue())

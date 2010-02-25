@@ -106,7 +106,7 @@ class UIFactory(object):
     This tells the library how to display things to the user.  Through this
     layer different applications can choose the style of UI.
 
-    :ivar squelched_warnings: Identifiers for user warnings that should 
+    :ivar suppressed_warnings: Identifiers for user warnings that should 
         no be emitted.
     """
 
@@ -120,7 +120,7 @@ class UIFactory(object):
 
     def __init__(self):
         self._task_stack = []
-        self.squelched_warnings = set()
+        self.suppressed_warnings = set()
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
