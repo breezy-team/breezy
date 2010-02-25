@@ -1245,6 +1245,22 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
+def set_signal_handler(signum, handler):
+    """A wrapper for signal.signal that also calls siginterrupt(signum, False)
+    on platforms that support that.
+    """
+    old_handler = signal.signal(signum, handler)
+    try:
+        siginterrupt = signal.siginterrupt
+    except AttributeError:
+        # siginterrupt doesn't exist on this platform, or for this version of
+        # Python.
+        pass
+    else:
+        siginterrupt(signum, False)
+    return old_handler
+
+
 def terminal_width():
     """Return estimated terminal width."""
     if sys.platform == 'win32':
