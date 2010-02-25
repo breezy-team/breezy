@@ -302,7 +302,7 @@ class UITests(tests.TestCase):
         finally:
             pb.finished()
 
-    def test_text_ui_warn_cross_format_fetch(self):
+    def test_text_ui_show_user_warning(self):
         from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
         from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5
         err = StringIO()
@@ -310,13 +310,23 @@ class UITests(tests.TestCase):
         ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
         remote_fmt = remote.RemoteRepositoryFormat()
         remote_fmt._network_name = RepositoryFormatKnitPack5().network_name()
-        ui.warn_cross_format_fetch(RepositoryFormat2a(), remote_fmt)
+        ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
+            to_format=remote_fmt)
         self.assertEquals('', out.getvalue())
         self.assertEquals("Doing on-the-fly conversion from RepositoryFormat2a() to "
             "RemoteRepositoryFormat(_network_name='Bazaar RepositoryFormatKnitPack5 "
             "(bzr 1.6)\\n').\nThis may take some time. Upgrade the repositories to "
             "the same format for better performance.\n",
             err.getvalue())
+        # and now with it suppressed please
+        err = StringIO()
+        out = StringIO()
+        ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
+        ui.squelched_warnings.add('cross_format_fetch')
+        ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
+            to_format=remote_fmt)
+        self.assertEquals('', out.getvalue())
+        self.assertEquals('', err.getvalue())
 
 
 class CLIUITests(TestCase):
