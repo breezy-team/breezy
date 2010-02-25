@@ -38,7 +38,7 @@ import os
 import re
 import shutil
 import stat
-from subprocess import Popen, PIPE, STDOUT
+import subprocess
 import tempfile
 
 from debian_bundle import deb822
@@ -1324,7 +1324,7 @@ class DistributionBranch(object):
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
         try:
-            proc = Popen(["tar", "xzf", tarball_filename, "-C",
+            proc = subprocess.Popen(["tar", "xzf", tarball_filename, "-C",
                     tempdir, "--strip-components", "1"],
                     preexec_fn=subprocess_setup)
             proc.communicate()
@@ -1482,9 +1482,9 @@ class DistributionBranch(object):
             command = ["pristine-tar", "gentar", "-",
                        os.path.abspath(dest_filename)]
             try:
-                proc = Popen(command, stdin=PIPE, cwd=dest,
-                        preexec_fn=subprocess_setup, stdout=PIPE,
-                        stderr=STDOUT)
+                proc = subprocess.Popen(command, stdin=subprocess.PIPE,
+                        cwd=dest, preexec_fn=subprocess_setup,
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     raise PristineTarError("pristine-tar is not installed")
@@ -1509,8 +1509,9 @@ class DistributionBranch(object):
                 tree.unlock()
             command = ["pristine-tar", "gendelta", tarball_path, "-"]
             try:
-                proc = Popen(command, stdout=PIPE, cwd=dest,
-                        preexec_fn=subprocess_setup, stderr=PIPE)
+                proc = subprocess.Popen(command, stdout=subprocess.PIPE,
+                        cwd=dest, preexec_fn=subprocess_setup,
+                        stderr=subprocess.PIPE)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     raise PristineTarError("pristine-tar is not installed")
@@ -1540,9 +1541,9 @@ class SourceExtractor(object):
         """Extract the package to a new temporary directory."""
         self.tempdir = tempfile.mkdtemp()
         dsc_filename = os.path.abspath(self.dsc_path)
-        proc = Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
-                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
-                preexec_fn=subprocess_setup)
+        proc = subprocess.Popen("dpkg-source -su -x %s" % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
                     (stdout,)
@@ -1579,9 +1580,9 @@ class ThreeDotZeroNativeSourceExtractor(SourceExtractor):
     def extract(self):
         self.tempdir = tempfile.mkdtemp()
         dsc_filename = os.path.abspath(self.dsc_path)
-        proc = Popen("dpkg-source -x %s" % (dsc_filename,), shell=True,
-                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
-                preexec_fn=subprocess_setup)
+        proc = subprocess.Popen("dpkg-source -x %s" % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
                     (stdout,)
@@ -1601,10 +1602,10 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
     def extract(self):
         self.tempdir = tempfile.mkdtemp()
         dsc_filename = os.path.abspath(self.dsc_path)
-        proc = Popen("dpkg-source --skip-debianization -x %s"
+        proc = subprocess.Popen("dpkg-source --skip-debianization -x %s"
                 % (dsc_filename,), shell=True,
-                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
-                preexec_fn=subprocess_setup)
+                cwd=self.tempdir, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
                     (stdout,)
@@ -1614,12 +1615,17 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
                 "%s-%s" % (name, str(version.upstream_version)))
         self.extracted_upstream = self.extracted_debianised + ".orig"
         os.rename(self.extracted_debianised, self.extracted_upstream)
-        proc = Popen("dpkg-source -x %s" % (dsc_filename,), shell=True,
-                cwd=self.tempdir, stdout=PIPE, stderr=STDOUT,
-                preexec_fn=subprocess_setup)
+        proc = subprocess.Popen("dpkg-source -x %s" % (dsc_filename,), shell=True,
+                cwd=self.tempdir, stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT, preexec_fn=subprocess_setup)
         (stdout, _) = proc.communicate()
         assert proc.returncode == 0, "dpkg-source -x failed, output:\n%s" % \
                     (stdout,)
+        # Check that there are no unreadable files extracted.
+        subprocess.call(["find", self.extracted_upstream, "-perm",
+                "0000", "-exec", "chmod", "644", "{}", ";"])
+        subprocess.call(["find", self.extracted_debianised, "-perm",
+                "0000", "-exec", "chmod", "644", "{}", ";"])
         for part in self.dsc['files']:
             if (re.search("\.orig-[^.]+\.tar\.(gz|bz2|lzma)$", part['name'])):
                 raise AssertionError("Can't import packages with multiple "
