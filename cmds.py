@@ -48,6 +48,7 @@ from bzrlib.errors import (
     )
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.tag import _merge_tags_if_possible
 from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
 
@@ -920,6 +921,7 @@ class cmd_merge_package(Command):
                     fix_ancestry_as_needed(tree, source_branch)
 
                 # Merge source packaging branch in to the target packaging branch.
+                _merge_tags_if_possible(source_branch, tree.branch)
                 conflicts = tree.merge_from_branch(source_branch)
                 if conflicts > 0:
                     note('The merge resulted in %s conflicts. Please resolve these '

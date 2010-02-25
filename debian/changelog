@@ -6,6 +6,7 @@ bzr-builddeb (2.4) UNRELEASED; urgency=low
 
   [ James Westby ]
   * Correct typo that causes packages with .orig.tar.bz2 to fail to build.
+  * Also merge tags in merge-package.
 
   [ John Arbash Meinel ]
   * Improve the changelog merge hook to be smarter when both sides change.
