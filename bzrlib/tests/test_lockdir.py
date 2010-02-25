@@ -680,7 +680,13 @@ class TestLockDir(TestCaseWithTransport):
         t.mkdir('test_lock/held')
         t.put_bytes('test_lock/held/info', '')
         lf = LockDir(t, 'test_lock')
-        lf.peek()
+        info = lf.peek()
+        formatted_info = lf._format_lock_info(info)
+        self.assertEquals(
+            ['lock %s' % t.abspath('test_lock'),
+             'held by None on host None [process #None]',
+             'locked (unknown)'],
+            formatted_info)
 
 
 class TestLockDirHooks(TestCaseWithTransport):
