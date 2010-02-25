@@ -1202,6 +1202,20 @@ class Transport(object):
         count = self._iterate_over(relpaths, gather, pb, 'stat', expand=False)
         return stats
 
+    def link(self, source, link_name):
+        """Create a hardlink pointing to source named link_name.
+
+        Return True if successful.
+        """
+        raise errors.TransportNotPossible("Hard links are not supported on %s" % self)
+
+    def symlink(self, source, link_name):
+        """Create a symlink pointing to source named link_name.
+
+        Return True if successful.
+        """
+        raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
+
     def listable(self):
         """Return True if this store supports listing."""
         raise NotImplementedError(self.listable)

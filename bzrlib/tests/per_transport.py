@@ -1083,6 +1083,52 @@ class TransportTests(TestTransportImplementation):
         subdir.stat('./file')
         subdir.stat('.')
 
+    def test_link(self):
+        from stat import ST_NLINK
+
+        t = self.get_transport()
+
+        source_name = "original_target"
+        link_name = "target_link"
+
+        self.build_tree([source_name], transport=t)
+
+        try:
+            link_result = t.link(source_name, link_name)
+            self.failUnless(link_result)
+
+            self.failUnless(t.has(source_name))
+            self.failUnless(t.has(link_name))
+
+            st = t.stat(link_name)
+            self.failUnlessEqual(st[ST_NLINK], 2)
+        except TransportNotPossible:
+            # This transport doesn't do hardlinks
+            return
+
+    def test_symlink(self):
+        from stat import S_ISLNK
+
+        t = self.get_transport()
+
+        source_name = "original_target"
+        link_name = "target_link"
+
+        self.build_tree([source_name], transport=t)
+
+        try:
+            link_result = t.symlink(source_name, link_name)
+            self.failUnless(link_result)
+
+            self.failUnless(t.has(source_name))
+            self.failUnless(t.has(link_name))
+
+            st = t.stat(link_name)
+            self.failUnless(S_ISLNK(st.st_mode))
+        except TransportNotPossible:
+            # This transport doesn't do hardlinks
+            return
+
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
         t = self.get_transport()
