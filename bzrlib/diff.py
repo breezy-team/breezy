@@ -724,7 +724,7 @@ class DiffFromTool(DiffPath):
         else:
             fenc = sys.getfilesystemencoding()
         relpath_tmp = relpath.encode(fenc, 'replace').decode(fenc, 'replace')
-        relpath_tmp.replace(u'?', u'_')
+        relpath_tmp = relpath_tmp.replace(u'?', u'_')
         full_path = osutils.pathjoin(self._root, prefix, relpath_tmp)
         if self._try_symlink_root(tree, prefix):
             return full_path
