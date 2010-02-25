@@ -682,7 +682,17 @@ class DiffFromTool(DiffPath):
 
     def _get_command(self, old_path, new_path):
         my_map = {'old_path': old_path, 'new_path': new_path}
-        return [t % my_map for t in self.command_template]
+        command = [t % my_map for t in self.command_template]
+        if sys.platform == 'win32': # Popen doesn't accept unicode on win32
+            command_encoded = []
+            for c in command:
+                if isinstance(c, unicode):
+                    command_encoded.append(c.encode('mbcs'))
+                else:
+                    command_encoded.append(c)
+            return command_encoded
+        else:
+            return command
 
     def _execute(self, old_path, new_path):
         command = self._get_command(old_path, new_path)
@@ -709,8 +719,13 @@ class DiffFromTool(DiffPath):
         return True
 
     def _write_file(self, file_id, tree, prefix, relpath):
-        full_path = osutils.pathjoin(self._root, prefix,
-                                     '_'+relpath.encode('ascii', 'ignore'))
+        if sys.platform == 'win32':
+            fenc = 'mbcs'
+        else:
+            fenc = sys.getfilesystemencoding()
+        relpath_tmp = relpath.encode(fenc, 'replace').decode(fenc, 'replace')
+        relpath_tmp.replace(u'?', u'_')
+        full_path = osutils.pathjoin(self._root, prefix, relpath_tmp)
         if self._try_symlink_root(tree, prefix):
             return full_path
         parent_dir = osutils.dirname(full_path)
