@@ -1995,6 +1995,12 @@ def until_no_eintr(f, *a, **kw):
     WARNING: you must be certain that it is safe to retry the call repeatedly
     if EINTR does occur.  This is typically only true for low-level operations
     like os.read.  If in any doubt, don't use this.
+
+    Keep in mind that this is not a complete solution to EINTR.  There is
+    probably code in the Python standard library and other dependencies that
+    may encounter EINTR if a signal arrives (and there is signal handler for
+    that signal).  So this function can reduce the impact for IO that bzrlib
+    directly controls, but it is not a complete solution.
     """
     # Borrowed from Twisted's twisted.python.util.untilConcludes function.
     while True:
