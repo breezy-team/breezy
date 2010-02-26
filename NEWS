@@ -70,8 +70,8 @@ Bug Fixes
   prevents ``bzr status --short`` from crashing when those files are
   present.  (John Arbash Meinel, #303275)
 
-* ``bzr mkdir dir_name...`` will not create directory ``dir_name`` if
-  the ``mkdir`` operation fails. (Parth Malwankar, #138600)
+* ``bzr mkdir DIR`` will not create DIR unless DIR's parent is a versioned
+   directory. (Parth Malwankar, #138600)
 
 API Changes
 ***********

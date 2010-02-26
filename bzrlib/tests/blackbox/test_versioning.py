@@ -34,7 +34,7 @@ class TestMkdir(TestCaseWithTransport):
     def test_mkdir_in_repo(self):
         """'mkdir' should fail cleanly withing a repo. Bug #138600"""
         shared_repo = self.make_repository('./foobar')
-        self.run_bzr('mkdir foobar/abc', retcode=3)
+        self.run_bzr(['mkdir', 'foobar/abc'], retcode=3)
         self.failIfExists('foobar/abc')
 
     def test_mkdir_outside_unversioned_dir(self):
@@ -49,7 +49,7 @@ class TestMkdir(TestCaseWithTransport):
         """'mkdir' should fail cleanly from within an unversioned directory. Bug #138600"""
         dir = pathjoin('.', 'unversioned_dir1')
         os.mkdir(dir)
-        self.run_bzr('mkdir abc', working_dir=dir, retcode=3)
+        self.run_bzr(['mkdir', 'abc'], working_dir=dir, retcode=3)
         newdir = pathjoin(dir, 'abc')
         self.failIfExists(newdir)
 
@@ -72,7 +72,7 @@ class TestMkdir(TestCaseWithTransport):
         os.chdir(b)
         dir = pathjoin('.', 'unversioned_dir1')
         os.mkdir(dir)
-        self.run_bzr('mkdir abc', working_dir=dir, retcode=3)
+        self.run_bzr(['mkdir', 'abc'], working_dir=dir, retcode=3)
         newdir = pathjoin(dir, 'abc')
         self.failIfExists(newdir)
 
@@ -83,10 +83,10 @@ class TestVersioning(TestCaseInTempDir):
         """Basic 'bzr mkdir' operation"""
 
         self.run_bzr('init')
-        self.run_bzr('mkdir foo')
+        self.run_bzr(['mkdir', 'foo'])
         self.assert_(os.path.isdir('foo'))
 
-        self.run_bzr('mkdir foo', retcode=3)
+        self.run_bzr(['mkdir', 'foo'], retcode=3)
 
         wt = WorkingTree.open('.')
 
@@ -102,12 +102,12 @@ class TestVersioning(TestCaseInTempDir):
         """'bzr mkdir' operation in subdirectory"""
 
         self.run_bzr('init')
-        self.run_bzr('mkdir dir')
+        self.run_bzr(['mkdir', 'dir'])
         self.assert_(os.path.isdir('dir'))
 
         os.chdir('dir')
         self.log('Run mkdir in subdir')
-        self.run_bzr('mkdir subdir')
+        self.run_bzr(['mkdir', 'subdir'])
         self.assert_(os.path.isdir('subdir'))
         os.chdir('..')
 
@@ -134,7 +134,7 @@ class TestVersioning(TestCaseInTempDir):
         self.run_bzr('init')
         os.chdir('../..')
 
-        self.run_bzr('mkdir dir a/dir a/b/dir')
+        self.run_bzr(['mkdir', 'dir', 'a/dir', 'a/b/dir'])
         self.failUnless(os.path.isdir('dir'))
         self.failUnless(os.path.isdir('a/dir'))
         self.failUnless(os.path.isdir('a/b/dir'))
