@@ -444,6 +444,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     repository_class = KnitRepository
     _commit_builder_class = RootCommitBuilder
     rich_root_data = True
+    experimental = True
     supports_tree_reference = True
     @property
     def _serializer(self):

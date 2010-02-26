@@ -32,14 +32,9 @@ from bzrlib.branch import (BranchFormat,
                            _legacy_formats,
                            )
 from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
-from bzrlib.smart.server import (
-    ReadonlySmartTCPServer_for_testing,
-    ReadonlySmartTCPServer_for_testing_v2_only,
-    SmartTCPServer_for_testing,
-    SmartTCPServer_for_testing_v2_only,
-    )
+from bzrlib.tests import test_server
 from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.transport.memory import MemoryServer
+from bzrlib.transport import memory
 
 
 def make_scenarios(transport_server, transport_readonly_server,
@@ -148,18 +143,18 @@ def branch_scenarios():
     # Add RemoteBranch tests, which need a special server.
     remote_branch_format = RemoteBranchFormat()
     scenarios.extend(make_scenarios(
-        SmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing,
+        test_server.SmartTCPServer_for_testing,
+        test_server.ReadonlySmartTCPServer_for_testing,
         [(remote_branch_format, remote_branch_format._matchingbzrdir)],
-        MemoryServer,
+        memory.MemoryServer,
         name_suffix='-default'))
     # Also add tests for RemoteBranch with HPSS protocol v2 (i.e. bzr <1.6)
     # server.
     scenarios.extend(make_scenarios(
-        SmartTCPServer_for_testing_v2_only,
-        ReadonlySmartTCPServer_for_testing_v2_only,
+        test_server.SmartTCPServer_for_testing_v2_only,
+        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
         [(remote_branch_format, remote_branch_format._matchingbzrdir)],
-        MemoryServer,
+        memory.MemoryServer,
         name_suffix='-v2'))
     return scenarios
 

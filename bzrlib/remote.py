@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1500,10 +1500,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
     def _get_inventory_xml(self, revision_id):
         self._ensure_real()
         return self._real_repository._get_inventory_xml(revision_id)
-
-    def _deserialise_inventory(self, revision_id, xml):
-        self._ensure_real()
-        return self._real_repository._deserialise_inventory(revision_id, xml)
 
     def reconcile(self, other=None, thorough=False):
         self._ensure_real()

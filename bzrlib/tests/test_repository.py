@@ -51,7 +51,6 @@ from bzrlib.transport import (
     fakenfs,
     get_transport,
     )
-from bzrlib.transport.memory import MemoryServer
 from bzrlib import (
     bencode,
     bzrdir,

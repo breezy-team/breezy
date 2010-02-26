@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.bundle import serializer
+from bzrlib.transport import memory
 
 
 def load_tests(standard_tests, module, loader):
@@ -280,7 +281,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertEqual('rev3', md.revision_id)
 
     def test_nonexistant_branch(self):
-        self.vfs_transport_factory = tests.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         location = self.get_url('absentdir/')
         out, err = self.run_bzr(["send", "--from", location], retcode=3)
         self.assertEqual(out, '')

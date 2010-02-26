@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -22,6 +22,7 @@
 import os
 
 from bzrlib import tests
+from bzrlib.transport import memory
 
 
 class TestCat(tests.TestCaseWithTransport):
@@ -195,6 +196,6 @@ class TestCat(tests.TestCaseWithTransport):
         self.assertEqual('contents of README\n', out)
 
     def test_cat_nonexistent_branch(self):
-        self.vfs_transport_factory = tests.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         self.run_bzr_error(['^bzr: ERROR: Not a branch'],
                            ['cat', self.get_url()])

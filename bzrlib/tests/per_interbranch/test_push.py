@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007, 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ from bzrlib.tests.per_interbranch import (
     TestCaseWithInterBranch,
     )
 from bzrlib.transport import get_transport
-from bzrlib.transport.local import LocalURLServer
+from bzrlib.tests import test_server
 
 
 # These tests are based on similar tests in 
@@ -155,7 +155,7 @@ class TestPush(TestCaseWithInterBranch):
         try:
             tree = a_branch.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            if self.vfs_transport_factory is LocalURLServer:
+            if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir = bzrdir.BzrDir.open(self.get_vfs_only_url('repo/tree'))

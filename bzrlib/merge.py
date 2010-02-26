@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import warnings
 
 from bzrlib import (
     branch as _mod_branch,
@@ -26,7 +27,6 @@ from bzrlib import (
     merge3,
     osutils,
     patiencediff,
-    progress,
     revision as _mod_revision,
     textfile,
     trace,
@@ -36,6 +36,7 @@ from bzrlib import (
     ui,
     versionedfile
     )
+from bzrlib.cleanup import OperationWithCleanups
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
@@ -45,11 +46,10 @@ from bzrlib.symbol_versioning import (
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
     from_tree.lock_tree_write()
-    try:
-        merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
-                    interesting_ids=interesting_ids, this_tree=from_tree)
-    finally:
-        from_tree.unlock()
+    operation = OperationWithCleanups(merge_inner)
+    operation.add_cleanup(from_tree.unlock)
+    operation.run_simple(from_tree.branch, to_tree, from_tree,
+        ignore_zero=True, interesting_ids=interesting_ids, this_tree=from_tree)
 
 
 class MergeHooks(hooks.Hooks):
@@ -99,9 +99,14 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
     This is a base class for concrete custom file merging logic. Concrete
     classes should implement ``merge_text``.
 
+    See ``bzrlib.plugins.news_merge.news_merge`` for an example concrete class.
+    
     :ivar affected_files: The configured file paths to merge.
+
     :cvar name_prefix: The prefix to use when looking up configuration
-        details.
+        details. <name_prefix>_merge_files describes the files targeted by the
+        hook for example.
+        
     :cvar default_files: The default file paths to merge when no configuration
         is present.
     """
@@ -118,9 +123,14 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
             raise ValueError("name_prefix must be set.")
 
     def filename_matches_config(self, params):
+        """Check whether the file should call the merge hook.
+
+        <name_prefix>_merge_files configuration variable is a list of files
+        that should use the hook.
+        """
         affected_files = self.affected_files
         if affected_files is None:
-            config = self.merger.this_tree.branch.get_config()
+            config = self.merger.this_branch.get_config()
             # Until bzr provides a better policy for caching the config, we
             # just add the part we're interested in to the params to avoid
             # reading the config files repeatedly (bazaar.conf, location.conf,
@@ -150,7 +160,7 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
             # option.
             not self.filename_matches_config(params)):
             return 'not_applicable', None
-        return self.merge_text(self, params)
+        return self.merge_text(params)
 
     def merge_text(self, params):
         """Merge the byte contents of a single file.
@@ -227,9 +237,8 @@ class Merger(object):
         self.interesting_files = None
         self.show_base = False
         self.reprocess = False
-        if pb is None:
-            pb = progress.DummyProgress()
-        self._pb = pb
+        if pb is not None:
+            warnings.warn("pb parameter to Merger() is deprecated and ignored")
         self.pp = None
         self.recurse = recurse
         self.change_reporter = change_reporter
@@ -445,6 +454,7 @@ class Merger(object):
     def _add_parent(self):
         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
         new_parent_trees = []
+        operation = OperationWithCleanups(self.this_tree.set_parent_trees)
         for revision_id in new_parents:
             try:
                 tree = self.revision_tree(revision_id)
@@ -452,14 +462,9 @@ class Merger(object):
                 tree = None
             else:
                 tree.lock_read()
+                operation.add_cleanup(tree.unlock)
             new_parent_trees.append((revision_id, tree))
-        try:
-            self.this_tree.set_parent_trees(new_parent_trees,
-                                            allow_leftmost_as_ghost=True)
-        finally:
-            for _revision_id, tree in new_parent_trees:
-                if tree is not None:
-                    tree.unlock()
+        operation.run_simple(new_parent_trees, allow_leftmost_as_ghost=True)
 
     def set_other(self, other_revision, possible_transports=None):
         """Set the revision and tree to merge from.
@@ -588,7 +593,7 @@ class Merger(object):
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
-                  'pp': self.pp, 'this_branch': self.this_branch,
+                  'this_branch': self.this_branch,
                   'do_merge': False}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
@@ -612,11 +617,12 @@ class Merger(object):
         if self._is_criss_cross and getattr(self.merge_type,
                                             'supports_lca_trees', False):
             kwargs['lca_trees'] = self._lca_trees
-        return self.merge_type(pb=self._pb,
+        return self.merge_type(pb=None,
                                change_reporter=self.change_reporter,
                                **kwargs)
 
-    def _do_merge_to(self, merge):
+    def _do_merge_to(self):
+        merge = self.make_merger()
         if self.other_branch is not None:
             self.other_branch.update_references(self.this_branch)
         merge.do_merge()
@@ -636,26 +642,19 @@ class Merger(object):
                     sub_tree.branch.repository.revision_tree(base_revision)
                 sub_merge.base_rev_id = base_revision
                 sub_merge.do_merge()
+        return merge
 
     def do_merge(self):
+        operation = OperationWithCleanups(self._do_merge_to)
         self.this_tree.lock_tree_write()
-        try:
-            if self.base_tree is not None:
-                self.base_tree.lock_read()
-            try:
-                if self.other_tree is not None:
-                    self.other_tree.lock_read()
-                try:
-                    merge = self.make_merger()
-                    self._do_merge_to(merge)
-                finally:
-                    if self.other_tree is not None:
-                        self.other_tree.unlock()
-            finally:
-                if self.base_tree is not None:
-                    self.base_tree.unlock()
-        finally:
-            self.this_tree.unlock()
+        operation.add_cleanup(self.this_tree.unlock)
+        if self.base_tree is not None:
+            self.base_tree.lock_read()
+            operation.add_cleanup(self.base_tree.unlock)
+        if self.other_tree is not None:
+            self.other_tree.lock_read()
+            operation.add_cleanup(self.other_tree.unlock)
+        merge = operation.run_simple()
         if len(merge.cooked_conflicts) == 0:
             if not self.ignore_zero and not trace.is_quiet():
                 trace.note("All changes applied successfully.")
@@ -696,7 +695,7 @@ class Merge3Merger(object):
 
     def __init__(self, working_tree, this_tree, base_tree, other_tree,
                  interesting_ids=None, reprocess=False, show_base=False,
-                 pb=progress.DummyProgress(), pp=None, change_reporter=None,
+                 pb=None, pp=None, change_reporter=None,
                  interesting_files=None, do_merge=True,
                  cherrypick=False, lca_trees=None, this_branch=None):
         """Initialize the merger object and perform the merge.
@@ -712,7 +711,7 @@ class Merge3Merger(object):
         :param: reprocess If True, perform conflict-reduction processing.
         :param show_base: If True, show the base revision in text conflicts.
             (incompatible with reprocess)
-        :param pb: A Progress bar
+        :param pb: ignored
         :param pp: A ProgressPhase object
         :param change_reporter: An object that should report changes made
         :param interesting_files: The tree-relative paths of files that should
@@ -745,51 +744,47 @@ class Merge3Merger(object):
         # making sure we haven't missed any corner cases.
         # if lca_trees is None:
         #     self._lca_trees = [self.base_tree]
-        self.pb = pb
-        self.pp = pp
         self.change_reporter = change_reporter
         self.cherrypick = cherrypick
-        if self.pp is None:
-            self.pp = progress.ProgressPhase("Merge phase", 3, self.pb)
         if do_merge:
             self.do_merge()
+        if pp is not None:
+            warnings.warn("pp argument to Merge3Merger is deprecated")
+        if pb is not None:
+            warnings.warn("pb argument to Merge3Merger is deprecated")
 
     def do_merge(self):
+        operation = OperationWithCleanups(self._do_merge)
         self.this_tree.lock_tree_write()
+        operation.add_cleanup(self.this_tree.unlock)
         self.base_tree.lock_read()
+        operation.add_cleanup(self.base_tree.unlock)
         self.other_tree.lock_read()
+        operation.add_cleanup(self.other_tree.unlock)
+        operation.run()
+
+    def _do_merge(self, operation):
+        self.tt = transform.TreeTransform(self.this_tree, None)
+        operation.add_cleanup(self.tt.finalize)
+        self._compute_transform()
+        results = self.tt.apply(no_conflicts=True)
+        self.write_modified(results)
         try:
-            self.tt = transform.TreeTransform(self.this_tree, self.pb)
-            try:
-                self.pp.next_phase()
-                self._compute_transform()
-                self.pp.next_phase()
-                results = self.tt.apply(no_conflicts=True)
-                self.write_modified(results)
-                try:
-                    self.this_tree.add_conflicts(self.cooked_conflicts)
-                except errors.UnsupportedOperation:
-                    pass
-            finally:
-                self.tt.finalize()
-        finally:
-            self.other_tree.unlock()
-            self.base_tree.unlock()
-            self.this_tree.unlock()
-            self.pb.clear()
+            self.this_tree.add_conflicts(self.cooked_conflicts)
+        except errors.UnsupportedOperation:
+            pass
 
     def make_preview_transform(self):
+        operation = OperationWithCleanups(self._make_preview_transform)
         self.base_tree.lock_read()
+        operation.add_cleanup(self.base_tree.unlock)
         self.other_tree.lock_read()
+        operation.add_cleanup(self.other_tree.unlock)
+        return operation.run_simple()
+
+    def _make_preview_transform(self):
         self.tt = transform.TransformPreview(self.this_tree)
-        try:
-            self.pp.next_phase()
-            self._compute_transform()
-            self.pp.next_phase()
-        finally:
-            self.other_tree.unlock()
-            self.base_tree.unlock()
-            self.pb.clear()
+        self._compute_transform()
         return self.tt
 
     def _compute_transform(self):
@@ -817,7 +812,6 @@ class Merge3Merger(object):
         finally:
             child_pb.finished()
         self.fix_root()
-        self.pp.next_phase()
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             fs_conflicts = transform.resolve_conflicts(self.tt, child_pb,
@@ -1716,7 +1710,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 other_rev_id=None,
                 interesting_files=None,
                 this_tree=None,
-                pb=progress.DummyProgress(),
+                pb=None,
                 change_reporter=None):
     """Primary interface for merging.
 

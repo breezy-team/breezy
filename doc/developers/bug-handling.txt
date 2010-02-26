@@ -28,6 +28,8 @@ Links
 * `Open bugs most recently changed first
   <https://bugs.edge.launchpad.net/bzr/+bugs?field.searchtext=&orderby=-date_last_updated&search=Search&field.status%3Alist=NEW&field.status%3Alist=INCOMPLETE_WITH_RESPONSE&field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&field.status%3Alist=CONFIRMED&field.status%3Alist=TRIAGED&field.status%3Alist=INPROGRESS&field.status%3Alist=FIXCOMMITTED&field.assignee=&field.bug_reporter=&field.omit_dupes=on&field.has_patch=&field.has_no_package=>`_.
 
+* `Most commonly duplicated bugs <http://tinyurl.com/bzr-bugs-by-dupes>`_.
+
 
 Generalities
 ************
