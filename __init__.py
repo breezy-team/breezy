@@ -97,27 +97,9 @@ class cmd_grep(Command):
         self.add_cleanup(wt.unlock)
         for path in path_list:
             tree = start_rev.as_tree(wt.branch)
-
             if osutils.isdir(path):
-                # setup rpath to open files relative to cwd
-                rpath = relpath
-                if relpath:
-                    rpath = osutils.pathjoin('..',relpath)
-
-                tree.lock_read()
-                try:
-                    if from_root:
-                        # start searching recursively from root
-                        relpath=None
-                        recursive=True
-
-                    for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-                        from_dir=relpath, recursive=recursive):
-                        if fc == 'V' and fkind == 'file':
-                            grep.file_grep(tree, fid, rpath, fp, patternc,
-                                eol_marker, self.outf, line_number)
-                finally:
-                    tree.unlock()
+                self._grep_dir(tree, relpath, recursive, line_number,
+                    patternc, from_root, eol_marker)
             else:
                 id = tree.path2id(path)
                 if not id:
@@ -129,6 +111,29 @@ class cmd_grep(Command):
                         self.outf, line_number)
                 finally:
                     tree.unlock()
+
+    def _grep_dir(self, tree, relpath, recursive, line_number, compiled_pattern,
+        from_root, eol_marker):
+            # setup relpath to open files relative to cwd
+            rpath = relpath
+            if relpath:
+                rpath = osutils.pathjoin('..',relpath)
+
+            tree.lock_read()
+            try:
+                if from_root:
+                    # start searching recursively from root
+                    relpath=None
+                    recursive=True
+
+                for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
+                    from_dir=relpath, recursive=recursive):
+                    if fc == 'V' and fkind == 'file':
+                        grep.file_grep(tree, fid, rpath, fp, compiled_pattern,
+                            eol_marker, self.outf, line_number)
+            finally:
+                tree.unlock()
+
 
 register_command(cmd_grep)
 
