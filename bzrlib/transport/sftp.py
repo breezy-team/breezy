@@ -806,13 +806,29 @@ class SFTPTransport(ConnectedTransport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to rmdir')
 
-    def stat(self, relpath):
-        """Return the stat information for a file."""
+    def lstat(self, relpath):
+        """Return the stat information for a file, without following symbolic links."""
         path = self._remote_path(relpath)
         try:
             return self._get_sftp().lstat(path)
         except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, path, ': unable to lstat')
+
+    def stat(self, relpath):
+        """Return the stat information for a file."""
+        path = self._remote_path(relpath)
+        try:
+            return self._get_sftp().stat(path)
+        except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to stat')
+
+    def readlink(self, relpath):
+        """See Transport.readlink."""
+        path = self._remote_path(relpath)
+        try:
+            return self._get_sftp().readlink(path)
+        except (IOError, paramiko.SSHException), e:
+            self._translate_io_exception(e, path, ': unable to readlink')
 
     def symlink(self, source, link_name):
         """See Transport.symlink."""

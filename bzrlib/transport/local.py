@@ -475,13 +475,23 @@ class LocalTransport(transport.Transport):
             self._translate_error(e, path)
         return [urlutils.escape(entry) for entry in entries]
 
+    def lstat(self, relpath):
+        """Return the stat information for a file, without following symbolic links.
+        """
+        path = relpath
+        try:
+            path = self._abspath(relpath)
+            return os.lstat(path)
+        except (IOError, OSError),e:
+            self._translate_error(e, path)
+
     def stat(self, relpath):
         """Return the stat information for a file.
         """
         path = relpath
         try:
             path = self._abspath(relpath)
-            return os.lstat(path)
+            return os.stat(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
@@ -515,31 +525,38 @@ class LocalTransport(transport.Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
+    if osutils.host_os_dereferences_symlinks():
+        def readlink(self, relpath):
+            """See Transport.readlink."""
+            return osutils.readlink(self._abspath(relpath)
+
     if osutils.hardlinks_good():
         def link(self, source, link_name):
             """See Transport.link."""
             try:
-                os.link(self._abspath(source),
-                        self._abspath(link_name))
-                return True
+                link = os.link
+            except AttributeError:
+                return errors.TransportNotPossible("Hardlinks are not supported on %s" %self)
             except (IOError, OSError), e:
                 self._translate_error(e, source)
 
-    def symlink(self, source, link_name):
-        """See Transport.symlink."""
-        abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
-        source_rel = urlutils.file_relpath(
-            urlutils.strip_trailing_slash(abs_link_dirpath),
-            urlutils.strip_trailing_slash(self.abspath(source))
-        )
+            link(self._abspath(source), self._abspath(link_name))
 
-        try:
-            os.symlink(source_rel, self._abspath(link_name))
-            return True
-        except AttributeError:
-            raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
-        except (IOError, OSError), e:
-            self._translate_error(e, source_rel)
+    if osutils.has_symlinks():
+        def symlink(self, source, link_name):
+            """See Transport.symlink."""
+            abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
+            source_rel = urlutils.file_relpath(
+                urlutils.strip_trailing_slash(abs_link_dirpath),
+                urlutils.strip_trailing_slash(self.abspath(source))
+            )
+
+            try:
+                os.symlink(source_rel, self._abspath(link_name))
+            except AttributeError:
+                raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
+            except (IOError, OSError), e:
+                self._translate_error(e, source_rel)
 
     def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':

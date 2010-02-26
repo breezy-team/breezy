@@ -1094,8 +1094,7 @@ class TransportTests(TestTransportImplementation):
         self.build_tree([source_name], transport=t)
 
         try:
-            link_result = t.link(source_name, link_name)
-            self.failUnless(link_result)
+            t.link(source_name, link_name)
 
             self.failUnless(t.has(source_name))
             self.failUnless(t.has(link_name))
@@ -1117,8 +1116,7 @@ class TransportTests(TestTransportImplementation):
         self.build_tree([source_name], transport=t)
 
         try:
-            link_result = t.symlink(source_name, link_name)
-            self.failUnless(link_result)
+            t.symlink(source_name, link_name)
 
             self.failUnless(t.has(source_name))
             self.failUnless(t.has(link_name))
