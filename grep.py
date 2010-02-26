@@ -40,22 +40,37 @@ def compile_pattern(pattern, flags=0):
     return patternc
 
 
-def file_grep(tree, id, relpath, path, patternc, eol_marker, outf, line_number=True):
+def file_grep(tree, id, relpath, path, patternc, eol_marker, outf,
+        line_number, revno, print_revno):
     if relpath:
         path = osutils.normpath(osutils.pathjoin(relpath, path))
         path = path.replace('\\', '/')
         path = path.replace(relpath + '/', '', 1)
-    fmt_with_n = path + ":%d:%s" + eol_marker
-    fmt_without_n = path + ":%s" + eol_marker
+
+    revfmt = ''
+    if print_revno:
+        revfmt = "~%s"
+
+    fmt_with_n = path + revfmt + ":%d:%s" + eol_marker
+    fmt_without_n = path + revfmt + ":%s" + eol_marker
 
     index = 1
     for line in tree.get_file_lines(id):
         res = patternc.search(line)
         if res:
             if line_number:
-                outf.write(fmt_with_n % (index, line.strip()))
+                if print_revno:
+                    out = (revno, index, line.strip())
+                else:
+                    out = (index, line.strip())
+                outf.write(fmt_with_n % out)
             else:
-                outf.write(fmt_without_n % (line.strip(),))
+                if print_revno:
+                    out = (revno, line.strip())
+                else:
+                    out = (line.strip(),)
+                outf.write(fmt_without_n % out)
+
         index += 1
 
 

@@ -32,7 +32,7 @@ import re
 import grep
 
 import bzrlib
-from bzrlib.revisionspec import RevisionSpec
+from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.workingtree import WorkingTree
 from bzrlib import (
     osutils,
@@ -75,8 +75,12 @@ class cmd_grep(Command):
             if from_root:
                 raise errors.BzrCommandError('cannot specify both --from-root and PATH.')
 
+        print_revno = False
         if revision == None:
             revision = [RevisionSpec.from_string("last:1")]
+        else:
+            print_revno = True # used to print revno in output.
+
         start_rev = revision[0]
         end_rev = None
         if len(revision) == 2:
@@ -92,14 +96,24 @@ class cmd_grep(Command):
         patternc = grep.compile_pattern(pattern, re_flags)
 
         wt, relpath = WorkingTree.open_containing('.')
+        id_to_revno = wt.branch.get_revision_id_to_revno_map()
+
+        rev = start_rev
 
         wt.lock_read()
         self.add_cleanup(wt.unlock)
         for path in path_list:
-            tree = start_rev.as_tree(wt.branch)
+            tree = rev.as_tree(wt.branch)
+            revid = rev.as_revision_id(wt.branch)
+            try:
+                revno = ".".join([str(n) for n in id_to_revno[revid]])
+            except KeyError, e:
+                trace.warning("warning: file '%s' is not versioned." % path)
+                continue
+
             if osutils.isdir(path):
                 self._grep_dir(tree, relpath, recursive, line_number,
-                    patternc, from_root, eol_marker)
+                    patternc, from_root, eol_marker, revno, print_revno)
             else:
                 id = tree.path2id(path)
                 if not id:
@@ -108,12 +122,12 @@ class cmd_grep(Command):
                 tree.lock_read()
                 try:
                     grep.file_grep(tree, id, '.', path, patternc, eol_marker,
-                        self.outf, line_number)
+                        self.outf, line_number, revno, print_revno)
                 finally:
                     tree.unlock()
 
     def _grep_dir(self, tree, relpath, recursive, line_number, compiled_pattern,
-        from_root, eol_marker):
+        from_root, eol_marker, revno, print_revno):
             # setup relpath to open files relative to cwd
             rpath = relpath
             if relpath:
@@ -130,7 +144,7 @@ class cmd_grep(Command):
                     from_dir=relpath, recursive=recursive):
                     if fc == 'V' and fkind == 'file':
                         grep.file_grep(tree, fid, rpath, fp, compiled_pattern,
-                            eol_marker, self.outf, line_number)
+                            eol_marker, self.outf, line_number, revno, print_revno)
             finally:
                 tree.unlock()
 
