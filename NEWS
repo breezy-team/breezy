@@ -70,6 +70,12 @@ Bug Fixes
 * ``bzr add`` will not add conflict related files unless explicitly required.
   (Vincent Ladeuil, #322767, #414589)
 
+* ``bzr help`` will no longer trigger the get_missing_command hook when
+  doing a topic lookup. This avoids prompting (like 'no command plugins/loom,
+  did you mean log?') when getting help. In future we may trigger the hook 
+  deliberately when no help topics match from any help index.
+  (Robert Collins, #396261)
+
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
 

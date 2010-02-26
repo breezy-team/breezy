@@ -199,11 +199,13 @@ def get_cmd_object(cmd_name, plugins_override=True):
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
 
-def _get_cmd_object(cmd_name, plugins_override=True):
+def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     """Get a command object.
 
     :param cmd_name: The name of the command.
     :param plugins_override: Allow plugins to override builtins.
+    :param check_missing: Look up commands not found in the regular index via
+        the get_missing_command hook.
     :return: A Command object instance
     :raises KeyError: If no command is found.
     """
@@ -219,7 +221,7 @@ def _get_cmd_object(cmd_name, plugins_override=True):
             # We've found a non-plugin command, don't permit it to be
             # overridden.
             break
-    if cmd is None:
+    if cmd is None and check_missing:
         for hook in Command.hooks['get_missing_command']:
             cmd = hook(cmd_name)
             if cmd is not None:
@@ -1162,7 +1164,7 @@ class HelpCommandIndex(object):
         if topic and topic.startswith(self.prefix):
             topic = topic[len(self.prefix):]
         try:
-            cmd = _get_cmd_object(topic)
+            cmd = _get_cmd_object(topic, check_missing=False)
         except KeyError:
             return []
         else:
