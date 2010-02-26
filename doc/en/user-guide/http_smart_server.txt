@@ -120,24 +120,7 @@ Refer to the mod_python_ documentation for further information.
 mod_wsgi
 ~~~~~~~~
 
-The next configuration permit read and write the repository with apache
-authentication.
 First, configure mod_wsgi, e.g. enabling the mod with a2enmod wsgi.
-
-In our example, we're already serving `/srv/example.com/www/code` at
-`http://example.com/code`, if you want apache authentication you need add
-the next lines::
-
-    # This has the same structure as svn in apache
-    <Location /code>
-        AuthType Basic
-        AuthName "example"
-        AuthUserFile /srv/example.com/conf/auth.passwd
-        <LimitExcept GET>
-            Require valid-user
-        </LimitExcept>
-    </Location>
-
 We need to change it to handle all requests for URLs ending in `.bzr/smart`.  It
 will look like::
 
@@ -153,7 +136,8 @@ will look like::
     </Directory>
 
 This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
-inside `/code` to a Bazaar smart server via WSGI.
+inside `/code` to a Bazaar smart server via WSGI, and any other URL inside
+`/code` to be served directly by Apache.
 
 Refer to the mod_wsgi_ documentation for further information.
 
@@ -234,7 +218,7 @@ Here's what it looks like::
         app = wsgi.make_app(
             root="/srv/example.com/www/code/",
             prefix="/code",
-            readonly=False,
+            readonly=True,
             enable_logging=False)
         return app(environ, start_response)
 
@@ -276,29 +260,39 @@ standard`_ for further information.
 .. _WSGI standard: http://www.python.org/dev/peps/pep-0333/
 
 
-Pushing over ``bzr+http://``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Pushing over the http smart server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is possible to allow pushing data over the http smart server. The
 easiest way to do this, is to just supply ``readonly=False`` to the
 ``wsgi.make_app()`` call. But be careful, because the smart protocol does
 not contain any Authentication. So if you enable write support, you will
 want to restrict access to ``.bzr/smart`` URLs to restrict who can
-actually write data on your system.  At this time, it is not possible to
-allow some people to have read-only access and others to have read-write
-access to the same urls. Because at the HTTP layer (which is doing the
-Authenticating), everything is just a POST request.  However, it would
-certainly be possible to have HTTPS require authentication and use a
-writable server, and plain HTTP allow read-only access.
+actually write data on your system, e.g. in apache it looks like::
 
-If you trying to push with the protocol bzr+https and receive the next
-message::
+    <Location /code>
+        AuthType Basic
+        AuthName "example"
+        AuthUserFile /srv/example.com/conf/auth.passwd
+        <LimitExcept GET>
+            Require valid-user
+        </LimitExcept>
+    </Location>
 
-    bzr: ERROR: Connection error: curl connection error (server certificate verification failed.
-    CAfile:/etc/ssl/certs/ca-certificates.crt CRLfile: none)
+At this time, it is not possible to allow some people to have read-only
+access and others to have read-write access to the same urls. Because at
+the HTTP layer (which is doing the Authenticating), everything is just a
+POST request.  However, it would certainly be possible to have HTTPS
+require authentication and use a writable server, and plain HTTP allow
+read-only access.
 
-You can probably uninstall pycurl or check the `bug 82086`_ or use
-https+urllib if you put the RewriteRule directive in your Virtual Host.
+If bzr gives an error like this when accessing your HTTPS site::
+
+  bzr: ERROR: Connection error: curl connection error (server certificate verification failed.
+  CAfile:/etc/ssl/certs/ca-certificates.crt CRLfile: none)
+
+You can workaround it by using ``https+urllib`` rather than ``http`` in your
+URL, or by uninstalling pycurl.  See `bug 82086`_ for more details.
 
 .. _bug 82086: https://bugs.launchpad.net/bzr/+bug/82086
 
