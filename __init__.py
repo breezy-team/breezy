@@ -30,7 +30,10 @@ lazy_import(globals(), """
 import re
 
 import grep
+
 import bzrlib
+from bzrlib.revisionspec import RevisionSpec
+from bzrlib.workingtree import WorkingTree
 from bzrlib import (
     osutils,
     bzrdir,
@@ -47,6 +50,7 @@ class cmd_grep(Command):
     takes_args = ['pattern', 'path*']
     takes_options = [
         'verbose',
+        'revision',
         Option('line-number', short_name='n',
                help='show 1-based line number.'),
         Option('ignore-case', short_name='i',
@@ -64,12 +68,19 @@ class cmd_grep(Command):
 
     @display_command
     def run(self, verbose=False, ignore_case=False, recursive=False, from_root=False,
-            null=False, line_number=False, path_list=None, pattern=None):
+            null=False, line_number=False, path_list=None, revision=None, pattern=None):
         if path_list == None:
             path_list = ['.']
         else:
             if from_root:
                 raise errors.BzrCommandError('cannot specify both --from-root and PATH.')
+
+        if revision == None:
+            revision = [RevisionSpec.from_string("last:1")]
+        start_rev = revision[0]
+        end_rev = None
+        if len(revision) == 2:
+            end_rev = revision[1]
 
         eol_marker = '\n'
         if null:
@@ -80,8 +91,12 @@ class cmd_grep(Command):
             re_flags = re.IGNORECASE
         patternc = grep.compile_pattern(pattern, re_flags)
 
+        wt, relpath = WorkingTree.open_containing('.')
+
+        wt.lock_read()
+        self.add_cleanup(wt.unlock)
         for path in path_list:
-            tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(path)
+            tree = start_rev.as_tree(wt.branch)
 
             if osutils.isdir(path):
                 # setup rpath to open files relative to cwd
