@@ -619,7 +619,7 @@ class LockDir(lock.Lock):
         return [
             'lock %s' % (lock_url,),
             'held by %s on host %s [process #%s]' %
-                tuple(map(info.get, ['user', 'hostname', 'pid'])),
+                tuple([info.get(x, '<unknown>') for x in ['user', 'hostname', 'pid']]),
             'locked %s' % (time_ago,),
             ]
 

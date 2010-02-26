@@ -684,7 +684,7 @@ class TestLockDir(TestCaseWithTransport):
         formatted_info = lf._format_lock_info(info)
         self.assertEquals(
             ['lock %s' % t.abspath('test_lock'),
-             'held by None on host None [process #None]',
+             'held by <unknown> on host <unknown> [process #<unknown>]',
              'locked (unknown)'],
             formatted_info)
 
