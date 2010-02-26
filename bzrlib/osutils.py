@@ -40,6 +40,7 @@ from shutil import (
     rmtree,
     )
 import signal
+import socket
 import subprocess
 import tempfile
 from tempfile import (
@@ -1882,23 +1883,37 @@ def get_host_name():
 
 
 @deprecated_function(deprecated_in((2, 2, 0)))
-def until_no_eintr(f, *a, **kw):
-    """Stub version of previous attempt at signal handling code"""
-    return f(*a, **kw)
-
-
-@deprecated_function(deprecated_in((2, 2, 0)))
 def recv_all(socket, bytes):
     """See bzrlib.tests.test_smart_transport._recv_all"""
     return test_smart_transport._recv_all(socket, bytes)
 
 
-@deprecated_function(deprecated_in((2, 2, 0)))
-def send_all(socket, bytes, report_activity=None):
-    """See bzrlib.smart.medium._send_bytes_chunked"""
-    if report_activity is None:
-        report_activity = lambda n, rw: None
-    medium._send_bytes_chunked(socket, bytes, report_activity)
+_MAX_SOCKET_CHUNK = 64 * 1024
+
+def send_all(sock, bytes, report_activity=None):
+    """Send all bytes on a socket.
+ 
+    Breaks large blocks in smaller chunks to avoid buffering limitations on
+    some platforms, and catches EINTR which may be thrown if the send is
+    interrupted by a signal.
+
+    This is preferred to socket.sendall(), because it avoids bugs and provides
+    reasonable activity reporting.
+ 
+    :param report_activity: Call this as bytes are read, see
+        Transport._report_activity
+    """
+    sent_total = 0
+    byte_count = len(bytes)
+    while sent_total < byte_count:
+        try:
+            sent = sock.send(buffer(bytes, sent_total, _MAX_SOCKET_CHUNK))
+        except socket.error, e:
+            if e.args[0] != errno.EINTR:
+                raise
+        else:
+            sent_total += sent
+            report_activity(sent, 'write')
 
 
 def dereference_path(path):
@@ -1972,6 +1987,23 @@ def file_kind(f, _lstat=os.lstat):
         if getattr(e, 'errno', None) in (errno.ENOENT, errno.ENOTDIR):
             raise errors.NoSuchFile(f)
         raise
+
+
+def until_no_eintr(f, *a, **kw):
+    """Run f(*a, **kw), retrying if an EINTR error occurs.
+    
+    WARNING: you must be certain that it is safe to retry the call repeatedly
+    if EINTR does occur.  This is typically only true for low-level operations
+    like os.read.  If in any doubt, don't use this.
+    """
+    # Borrowed from Twisted's twisted.python.util.untilConcludes function.
+    while True:
+        try:
+            return f(*a, **kw)
+        except (IOError, OSError), e:
+            if e.errno == errno.EINTR:
+                continue
+            raise
 
 
 def re_compile_checked(re_string, flags=0, where=""):

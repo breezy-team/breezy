@@ -713,6 +713,9 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     """A client medium using simple pipes.
 
     This client does not manage the pipes: it assumes they will always be open.
+
+    Note that if readable_pipe.read might raise IOError or OSError with errno
+    of EINTR, it must be safe to retry the read.
     """
 
     def __init__(self, readable_pipe, writeable_pipe, base):
@@ -731,7 +734,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
-        bytes = self._readable_pipe.read(count)
+        bytes = osutils.until_no_eintr(self._readable_pipe.read, count))
         self._report_activity(len(bytes), 'read')
         return bytes
 
