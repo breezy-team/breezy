@@ -723,6 +723,8 @@ class DiffFromTool(DiffPath):
             fenc = 'mbcs'
         else:
             fenc = sys.getfilesystemencoding()
+        # encoded_str.replace('?', '_') may break multibyte char.
+        # So we should encode, decode, then replace(u'?', u'_')
         relpath_tmp = relpath.encode(fenc, 'replace').decode(fenc, 'replace')
         relpath_tmp = relpath_tmp.replace(u'?', u'_')
         full_path = osutils.pathjoin(self._root, prefix, relpath_tmp)
