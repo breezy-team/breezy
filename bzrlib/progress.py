@@ -316,8 +316,3 @@ class ProgressPhase(object):
         else:
             self.cur_phase += 1
         self.pb.update(self.message, self.cur_phase, self.total)
-
-
-_progress_bar_types = {}
-_progress_bar_types['dummy'] = DummyProgress
-_progress_bar_types['none'] = DummyProgress
