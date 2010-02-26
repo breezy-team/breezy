@@ -959,14 +959,17 @@ def _read_bytes_from_socket(sock, desired_count, report_activity):
         except socket.error, e:
             eno = e.args[0]
             if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
-                # The connection was closed by the other side.  Callers expect an
-                # empty string to signal end-of-stream.
+                # The connection was closed by the other side.  Callers expect
+                # an empty string to signal end-of-stream.
                 return ""
-            if eno != errno.EINTR:
-                raise
+            elif eno == errno.EINTR:
+                # Retry the interrupted recv.
+                continue
+            raise
         else:
             report_activity(len(bytes), 'read')
             return bytes
+
 
 def _send_bytes_chunked(sock, bytes, report_activity):
     """Send bytes on sock and notify of progress
