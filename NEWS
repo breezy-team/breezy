@@ -400,13 +400,6 @@ Documentation
 * Added ``location-alias`` help topic.
   (Andrew Bennetts, #337834)
 
-API Changes
-***********
-
-* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
-  can set a signal handler and call ``signal.siginterrupt(signum,
-  False)`` for it, if the platform and Python version supports it.
-  (Andrew Bennetts, #496813)
 
 
 bzr 2.0.4
