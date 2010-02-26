@@ -1991,29 +1991,29 @@ class TestCreationOps(tests.TestCaseInTempDir):
     def _dummy_chown(self, path, uid, gid):
         self.path, self.uid, self.gid = path, uid, gid
 
-    def test_mkdir_no_chown(self):
-        """ensure that osutils.mkdir does not chown without ownership_src arg"""
+    def test_mkdir_with_ownership_no_chown(self):
+        """ensure that osutils.mkdir_with_ownership does not chown without ownership_src arg"""
         self.requireFeature(tests.ChownFeature)
-        osutils.mkdir('foo')
+        osutils.mkdir_with_ownership('foo')
         self.assertEquals(self.path, None)
         self.assertEquals(self.uid, None)
         self.assertEquals(self.gid, None)
 
-    def test_mkdir_chown(self):
-        """ensure that osutils.mkdir chowns correctly with ownership_src arg"""
+    def test_mkdir_with_ownership_chown(self):
+        """ensure that osutils.mkdir_with_ownership chowns correctly with ownership_src arg"""
         self.requireFeature(tests.ChownFeature)
         ownsrc = '/'
-        osutils.mkdir('foo', ownsrc)
+        osutils.mkdir_with_ownership('foo', ownsrc)
 
         s = os.stat(ownsrc)
         self.assertEquals(self.path, 'foo')
         self.assertEquals(self.uid, s.st_uid)
         self.assertEquals(self.gid, s.st_gid)
 
-    def test_open_no_chown(self):
-        """ensure that osutils.open does not chown without ownership_src arg"""
+    def test_open_with_ownership_no_chown(self):
+        """ensure that osutils.open_with_ownership does not chown without ownership_src arg"""
         self.requireFeature(tests.ChownFeature)
-        f = osutils.open('foo', 'w')
+        f = osutils.open_with_ownership('foo', 'w')
 
         # do a test write and close
         f.write('hello')
@@ -2023,11 +2023,11 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.uid, None)
         self.assertEquals(self.gid, None)
 
-    def test_open_chown(self):
-        """ensure that osutils.open chowns correctly with ownership_src arg"""
+    def test_open_with_ownership_chown(self):
+        """ensure that osutils.open_with_ownership chowns correctly with ownership_src arg"""
         self.requireFeature(tests.ChownFeature)
         ownsrc = '/'
-        f = osutils.open('foo', 'w', ownership_src=ownsrc)
+        f = osutils.open_with_ownership('foo', 'w', ownership_src=ownsrc)
 
         # do a test write and close
         f.write('hello')

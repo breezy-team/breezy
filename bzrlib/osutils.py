@@ -1795,19 +1795,19 @@ def copy_ownership(dst, src):
     return True
 
 
-def mkdir(path, ownership_src=None):
+def mkdir_with_ownership(path, ownership_src=None):
     """creates the directory 'path'. If ownership_src is given, copies (chown)
     usr/grp ownership from 'ownership_src' to 'path'"""
     os.mkdir(path)
     if ownership_src != None:
         copy_ownership(path, ownership_src)
 
-def open(filename, mode='r', bufsize=-1, ownership_src=None):
+def open_with_ownership(filename, mode='r', bufsize=-1, ownership_src=None):
     """This function wraps the python builtin open. filename, mode and bufsize
-    parameters behave the same as the builtin open[1].
+    parameters behave the same as the builtin open[1]. If ownership_src is
+    given, copies (chown) usr/grp ownership from 'ownership_src' to 'filename'.
     [1] http://python.org/doc/2.6.4/library/functions.html#open"""
-    import __builtin__
-    f = __builtin__.open(filename, mode, bufsize)
+    f = open(filename, mode, bufsize)
     if ownership_src != None:
         copy_ownership(filename, ownership_src)
     return f

@@ -243,7 +243,7 @@ def _open_bzr_log():
     try:
         buffering = 0 # unbuffered
         ownership_src = osutils.parent_dir(_bzr_log_filename)
-        bzr_log_file = osutils.open(_bzr_log_filename, 'at', buffering, ownership_src)
+        bzr_log_file = osutils.open_with_ownership(_bzr_log_filename, 'at', buffering, ownership_src)
         # bzr_log_file.tell() on windows always return 0 until some writing done
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
