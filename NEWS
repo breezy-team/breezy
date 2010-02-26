@@ -47,14 +47,6 @@ API Changes
   False)`` for it, if the platform and Python version supports it.
   (Andrew Bennetts, #496813)
 
-Internals
-*********
-
-* ``bzrlib.breakin`` uses ``bzrlib.osutils.set_signal_handler`` to set the
-  ``SIGQUIT`` signal handler, so that entering the debugger with
-  ``SIGQUIT`` will no longer cause ``EINTR`` during blocking IO.
-  (Andrew Bennetts, #173007)
-
 
 bzr 2.1.0
 #########
@@ -416,13 +408,6 @@ API Changes
   False)`` for it, if the platform and Python version supports it.
   (Andrew Bennetts, #496813)
 
-Internals
-*********
-
-* ``bzrlib.breakin`` uses ``bzrlib.osutils.set_signal_handler`` to set the
-  ``SIGQUIT`` signal handler, so that entering the debugger with
-  ``SIGQUIT`` will no longer cause ``EINTR`` during blocking IO.
-  (Andrew Bennetts, #173007)
 
 bzr 2.0.4
 #########
