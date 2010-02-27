@@ -61,7 +61,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_unversioned_file('file0.txt')
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
         self.assertFalse(out, self._str_contains(out, "file0.txt:line1"))
-        self.assertTrue(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
+        self.assertTrue(err, self._str_contains(err, "warning: skipped.*file0.txt.*\."))
 
     def test_basic_versioned_file(self):
         """search for pattern in specfic file"""
@@ -71,7 +71,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_file('file0.txt')
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
         self.assertTrue(out, self._str_contains(out, "file0.txt:line1"))
-        self.assertFalse(err, self._str_contains(err, "warning:.*file0.txt.*not versioned\."))
+        self.assertFalse(err, self._str_contains(err, "warning: skipped.*file0.txt.*\."))
 
     def test_multiple_files(self):
         """search for pattern in multiple files"""

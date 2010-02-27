@@ -108,7 +108,7 @@ class cmd_grep(Command):
                 try:
                     revno = ".".join([str(n) for n in id_to_revno[revid]])
                 except KeyError, e:
-                    trace.warning("warning: file '%s' is not versioned." % path)
+                    self._skip_file(path)
                     continue
 
                 if osutils.isdir(path):
@@ -117,7 +117,7 @@ class cmd_grep(Command):
                 else:
                     id = tree.path2id(path)
                     if not id:
-                        trace.warning("warning: file '%s' is not versioned." % path)
+                        self._skip_file(path)
                         continue
                     tree.lock_read()
                     try:
@@ -127,6 +127,9 @@ class cmd_grep(Command):
                         tree.unlock()
         finally:
             wt.unlock()
+
+    def _skip_file(self, path):
+        trace.warning("warning: skipped unversioned file '%s'." % path)
 
     def _grep_dir(self, tree, relpath, recursive, line_number, compiled_pattern,
         from_root, eol_marker, revno, print_revno):
