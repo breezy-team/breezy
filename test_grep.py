@@ -35,6 +35,11 @@ class TestGrep(tests.TestCaseWithTransport):
             self.run_bzr(['add', path])
             self.run_bzr(['ci', '-m', '"' + path + '"'])
 
+    def _update_file(self, path, text):
+        """append text to file 'path' and check it in"""
+        open(path, 'a').write(text)
+        self.run_bzr(['ci', '-m', '"' + path + '"'])
+
     def _mk_unversioned_file(self, path, line_prefix='line', total_lines=10):
         self._mk_file(path, line_prefix, total_lines, versioned=False)
 
@@ -205,4 +210,50 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '-n', 'line1', 'file0.txt'])
         self.assertTrue(out, self._str_contains(out, "file0.txt:1:line1"))
 
+    def test_basic_history_grep_file(self):
+        """search for pattern in specific revision number in a file"""
+        wd = 'foobar0'
+        fname = 'file0.txt'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file(fname)
+        self._update_file(fname, text="v2 text\n")
+        self._update_file(fname, text="v3 text\n")
+        self._update_file(fname, text="v4 text\n")
+
+        # rev 2 should not have text 'v3'
+        out, err = self.run_bzr(['grep', '-r', '2', 'v3', fname])
+        self.assertFalse(out, self._str_contains(out, "file0.txt"))
+
+        # rev 3 should not have text 'v3'
+        out, err = self.run_bzr(['grep', '-r', '3', 'v3', fname])
+        self.assertTrue(out, self._str_contains(out, "file0.txt~3:v3.*"))
+
+        # rev 3 should not have text 'v3' with line number
+        out, err = self.run_bzr(['grep', '-r', '3', '-n', 'v3', fname])
+        self.assertTrue(out, self._str_contains(out, "file0.txt~3:2:v3.*"))
+
+    def test_basic_history_grep_full(self):
+        """search for pattern in specific revision number in a file"""
+        wd = 'foobar0'
+        fname = 'file0.txt'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file(fname)              # rev1
+        self._mk_versioned_file('file1.txt')        # rev2
+        self._update_file(fname, text="v3 text\n")  # rev3
+        self._update_file(fname, text="v4 text\n")  # rev4
+        self._update_file(fname, text="v5 text\n")  # rev5
+
+        # rev 2 should not have text 'v3'
+        out, err = self.run_bzr(['grep', '-r', '2', 'v3'])
+        self.assertFalse(out, self._str_contains(out, "file0.txt"))
+
+        # rev 3 should not have text 'v3'
+        out, err = self.run_bzr(['grep', '-r', '3', 'v3'])
+        self.assertTrue(out, self._str_contains(out, "file0.txt~3:v3.*"))
+
+        # rev 3 should not have text 'v3' with line number
+        out, err = self.run_bzr(['grep', '-r', '3', '-n', 'v3'])
+        self.assertTrue(out, self._str_contains(out, "file0.txt~3:2:v3.*"))
 
