@@ -40,7 +40,7 @@ __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 
 bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
-if __name__ == 'bzrlib.plugins.rebase.__init__':
+if __name__ == 'bzrlib.plugins.rebase':
     raise ImportError("The rebase plugin has been renamed to rewrite. Please rename the directory in ~/.bazaar/plugins")
 
 for cmd in bzr_commands:

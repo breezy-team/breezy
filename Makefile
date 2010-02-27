@@ -27,11 +27,11 @@ TMP_PLUGINS_DIR = $(shell pwd)/.plugins
 $(TMP_PLUGINS_DIR):
 	mkdir -p $@
 
-$(TMP_PLUGINS_DIR)/rebase: $(TMP_PLUGINS_DIR)
+$(TMP_PLUGINS_DIR)/rewrite: $(TMP_PLUGINS_DIR)
 	ln -sf .. $@
 
-check:: $(TMP_PLUGINS_DIR)/rebase/
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR):$(BZR_PLUGIN_PATH) $(DEBUGGER) $(PYTHON) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.rebase $(TESTS)
+check:: $(TMP_PLUGINS_DIR)/rewrite/
+	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR):$(BZR_PLUGIN_PATH) $(DEBUGGER) $(PYTHON) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.rewrite $(TESTS)
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
