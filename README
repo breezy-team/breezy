@@ -1,0 +1,9 @@
+bzr-commitfromnews, a bzr plugin to provide commit message templates based on
+changes to a NEWS file.
+Copyright (C) 2009 Canonical Limited.
+
+Install in the regular way::
+  $ bzr branch lp:bzr-commitfromnews ~/.bazaar/plugins/commitfromnews
+
+For docs see bzr help commitfromnews after installation, or see the __init__.py
+docstring.

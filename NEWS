@@ -1,0 +1,13 @@
+----------------------------
+commitfromnews release notes
+----------------------------
+
+NEXT (In development)
+---------------------
+
+IMPROVEMENTS
+~~~~~~~~~~~~
+
+* Created plugin, basic functionality of looking for NEWS and including the
+  NEWS diff.
+
