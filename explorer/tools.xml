@@ -14,7 +14,7 @@
       <tool action="qrun fast-import" icon="mimetypes/text-x-generic-template" title="Fast Import Stream" type="bzr" />
     </folder>
     <separator/>
-    <tool action="qrun fast-import-filter" icon="actions/media-playback-pause" title="Filter Fast Import Stream" type="bzr" />
+    <tool action="qrun fast-import-filter" icon="actions/media-playback-pause" title="Fast Import Filter" type="bzr" />
   </folder>
 </folder>
 

@@ -8,7 +8,7 @@ Required and recommended packages are:
 
 * Python 2.4 or later
 
-* Bazaar 1.1 or later.
+* Bazaar 1.18 or later.
 
 
 Installation

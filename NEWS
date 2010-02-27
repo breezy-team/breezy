@@ -4,11 +4,8 @@ bzr-fastimport Release Notes
 
 .. contents::
 
-In Development
-==============
-
-Compatability Breaks
---------------------
+0.9 28-Feb-2010
+===============
 
 New Features
 ------------
@@ -110,12 +107,6 @@ Documentation
 
 * Improved documentation has been published in the Bazaar Data Migration
   Guide: http://doc.bazaar-vcs.org/migration/en/data-migration/.
-
-Testing
--------
-
-Internals
----------
 
 
 0.8 22-Jul-2009
