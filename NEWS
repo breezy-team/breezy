@@ -11,3 +11,4 @@ IMPROVEMENTS
 * Created plugin, basic functionality of looking for NEWS and including the
   NEWS diff.
 
+* Merge messages in the changed-NEWS file case.

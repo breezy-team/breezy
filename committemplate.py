@@ -85,7 +85,7 @@ class CommitTemplate(object):
                 if tag == 'delete':
                     continue
                 new_lines.extend(new[j1:j2])
-            return ''.join(new_lines)
+            return self.merge_message(''.join(new_lines))
 
     def merge_message(self, new_message):
         """Merge new_message with self.message.
