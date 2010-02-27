@@ -16,20 +16,13 @@
 
 """Mapping upgrade tests."""
 
-from bzrlib.bzrdir import BzrDir
-from bzrlib.repository import Repository
 from bzrlib.tests import (
     TestCase,
-    TestSkipped,
     )
 
-from bzrlib.plugins.rebase.upgrade import (
+from bzrlib.plugins.rewrite.upgrade import (
     UpgradeChangesContent,
-    upgrade_branch,
-    upgrade_repository,
-    upgrade_workingtree,
     create_upgraded_revid,
-    generate_upgrade_map,
     )
 
 

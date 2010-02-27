@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """Rebase."""
 
 import os
@@ -37,7 +38,7 @@ from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 import bzrlib.ui as ui
 
-from bzrlib.plugins.rebase.maptree import (
+from bzrlib.plugins.rewrite.maptree import (
     MapTree,
     map_file_ids,
     )

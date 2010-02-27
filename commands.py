@@ -85,7 +85,7 @@ class cmd_rebase(Command):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
-        from bzrlib.plugins.rebase.rebase import (
+        from bzrlib.plugins.rewrite.rebase import (
             generate_simple_plan,
             rebase,
             rebase_plan_exists,
@@ -215,7 +215,7 @@ class cmd_rebase_abort(Command):
 
     @display_command
     def run(self):
-        from bzrlib.plugins.rebase.rebase import (
+        from bzrlib.plugins.rewrite.rebase import (
             read_rebase_plan,
             remove_rebase_plan,
             complete_revert,
@@ -241,10 +241,9 @@ class cmd_rebase_continue(Command):
 
     @display_command
     def run(self, merge_type=None):
-        from bzrlib.plugins.rebase.rebase import (
+        from bzrlib.plugins.rewrite.rebase import (
             commit_rebase,
             rebase,
-            rebase_plan_exists,
             read_rebase_plan,
             read_active_rebase_revid,
             remove_rebase_plan,
@@ -289,7 +288,7 @@ class cmd_rebase_todo(Command):
     """
 
     def run(self):
-        from bzrlib.plugins.rebase.rebase import (
+        from bzrlib.plugins.rewrite.rebase import (
             rebase_todo,
             read_rebase_plan,
             read_active_rebase_revid,
@@ -324,7 +323,7 @@ class cmd_replay(Command):
         from bzrlib.branch import Branch
         from bzrlib.workingtree import WorkingTree
         from bzrlib import ui
-        from bzrlib.plugins.rebase.rebase import (
+        from bzrlib.plugins.rewrite.rebase import (
             regenerate_default_revid,
             replay_delta_workingtree,
             )
@@ -385,7 +384,7 @@ class cmd_foreign_mapping_upgrade(Command):
         from bzrlib.branch import Branch
         from bzrlib.repository import Repository
         from bzrlib.workingtree import WorkingTree
-        from bzrlib.plugins.rebase.upgrade import (
+        from bzrlib.plugins.rewrite.upgrade import (
             create_upgraded_revid,
             generate_rebase_map_from_mappings,
             upgrade_branch,
@@ -465,7 +464,7 @@ class cmd_pseudonyms(Command):
         from bzrlib.bzrdir import BzrDir
         dir, _ = BzrDir.open_containing(repository)
         r = dir.find_repository()
-        from bzrlib.plugins.rebase.pseudonyms import find_pseudonyms
+        from bzrlib.plugins.rewrite.pseudonyms import find_pseudonyms
         for pseudonyms in find_pseudonyms(r, r.all_revision_ids()):
             self.outf.write(", ".join(pseudonyms) + "\n")
 
@@ -490,12 +489,12 @@ class cmd_rebase_foreign(Command):
             )
         from bzrlib.branch import Branch
         from bzrlib.workingtree import WorkingTree
-        from bzrlib.plugins.rebase.pseudonyms import (
+        from bzrlib.plugins.rewrite.pseudonyms import (
             find_pseudonyms,
             generate_rebase_map_from_pseudonyms,
             pseudonyms_as_dict,
             )
-        from bzrlib.plugins.rebase.upgrade import (
+        from bzrlib.plugins.rewrite.upgrade import (
             create_deterministic_revid,
             upgrade_branch,
             upgrade_workingtree,

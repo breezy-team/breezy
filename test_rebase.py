@@ -13,16 +13,23 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """Tests for the rebase code."""
 
 from bzrlib.conflicts import ConflictList
-from bzrlib.errors import UnknownFormatError, NoSuchFile, ConflictsInTree
-from bzrlib.graph import Graph, DictParentsProvider
+from bzrlib.errors import (
+    UnknownFormatError,
+    NoSuchFile,
+    ConflictsInTree,
+    )
+from bzrlib.graph import (
+    Graph,
+    DictParentsProvider,
+    )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.trace import mutter
 
-from bzrlib.plugins.rebase.rebase import (
+from bzrlib.plugins.rewrite.rebase import (
     marshall_rebase_plan,
     unmarshall_rebase_plan,
     replay_snapshot,
@@ -37,7 +44,6 @@ from bzrlib.plugins.rebase.rebase import (
     read_active_rebase_revid,
     write_active_rebase_revid,
     write_rebase_plan,
-    MapTree,
     ReplaySnapshotError,
     ReplayParentsInconsistent,
     replay_delta_workingtree,

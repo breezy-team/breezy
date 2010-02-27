@@ -12,13 +12,13 @@ if __name__ == '__main__':
           keywords='plugin bzr rewrite rebase',
           version=version_string,
           url='http://bazaar-vcs.org/Rebase',
-          download_url='http://samba.org/~jelmer/bzr/bzr-rebase-%s.tar.gz' % version_string,
+          download_url='http://samba.org/~jelmer/bzr/bzr-rewrite-%s.tar.gz' % version_string,
           license='GPLv3 or later',
           author='Jelmer Vernooij',
           author_email='jelmer@samba.org',
           long_description="""
           Hooks into Bazaar and provides commands for rebasing.
           """,
-          package_dir={'bzrlib.plugins.rebase':'.'},
-          packages=['bzrlib.plugins.rebase']
+          package_dir={'bzrlib.plugins.rewrite':'.'},
+          packages=['bzrlib.plugins.rewrite']
     )

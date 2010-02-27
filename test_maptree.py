@@ -15,16 +15,22 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Tests for the maptree code."""
 
-from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.treebuilder import TreeBuilder
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    )
+from bzrlib.treebuilder import (
+    TreeBuilder,
+    )
 
-from bzrlib.plugins.rebase.maptree import (
+from bzrlib.plugins.rewrite.maptree import (
     MapTree,
     map_file_ids,
     )
 
 
 class EmptyMapTreeTests(TestCaseWithTransport):
+
     def setUp(self):
         super(EmptyMapTreeTests, self).setUp()
         tree = self.make_branch_and_tree('branch')

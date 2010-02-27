@@ -34,7 +34,7 @@ from bzrlib.foreign import (
     update_workingtree_fileids,
     )
 
-from bzrlib.plugins.rebase.rebase import (
+from bzrlib.plugins.rewrite.rebase import (
     generate_transpose_plan,
     replay_snapshot,
     rebase,
@@ -112,9 +112,12 @@ def upgrade_tags(tags, repository, generate_rebase_map, determine_new_revid,
         for i, (name, revid) in enumerate(tags_dict.iteritems()):
             pb.update("upgrading tags", i, len(tags_dict))
             if not revid in renames:
-                renames.update(upgrade_repository(repository, generate_rebase_map, determine_new_revid,
-                      revision_id=revid, allow_changes=allow_changes, verbose=verbose))
-            if revid in renames and (branch_ancestry is None or not revid in branch_ancestry):
+                renames.update(upgrade_repository(repository, 
+                      generate_rebase_map, determine_new_revid,
+                      revision_id=revid, allow_changes=allow_changes,
+                      verbose=verbose))
+            if (revid in renames and 
+                (branch_ancestry is None or not revid in branch_ancestry)):
                 tags.set_tag(name, renames[revid])
     finally:
         pb.finished()
@@ -139,8 +142,8 @@ def upgrade_branch(branch, generate_rebase_map, determine_new_revid,
                     topo_sorted=False)
     upgrade_tags(branch.tags, branch.repository, generate_rebase_map,
             determine_new_revid,
-           allow_changes=allow_changes, verbose=verbose, branch_renames=renames,
-           branch_ancestry=ancestry)
+           allow_changes=allow_changes, verbose=verbose,
+           branch_renames=renames, branch_ancestry=ancestry)
     return renames
 
 
@@ -182,7 +185,8 @@ def generate_upgrade_map(revs, vcs, determine_upgraded_revid):
     return rename_map
 
 
-def generate_rebase_map_from_mappings(repository, graph, revision_id, foreign_repository, new_mapping):
+def generate_rebase_map_from_mappings(repository, graph, revision_id,
+                                      foreign_repository, new_mapping):
     if revision_id is None:
         potential = repository.all_revision_ids()
     else:
@@ -190,8 +194,10 @@ def generate_rebase_map_from_mappings(repository, graph, revision_id, foreign_re
                 graph.iter_ancestry([revision_id]))
 
     def determine_upgraded_revid(foreign_revid):
-        # FIXME: Try all mappings until new_mapping rather than just new_mapping
-        new_revid = foreign_repository.upgrade_foreign_revision_id(foreign_revid, new_mapping)
+        # FIXME: Try all mappings until new_mapping rather than just
+        # new_mapping
+        new_revid = foreign_repository.upgrade_foreign_revision_id(
+            foreign_revid, new_mapping)
         if new_revid is None:
             return None
         # Make sure the revision is there
@@ -213,7 +219,8 @@ def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
     """Generate a rebase plan for upgrading revisions.
 
     :param repository: Repository to do upgrade in
-    :param foreign_repository: Subversion repository to fetch new revisions from.
+    :param foreign_repository: Subversion repository to fetch new revisions
+        from.
     :param new_mapping: New mapping to use.
     :param revision_id: Revision to upgrade (None for all revisions in
         repository.)

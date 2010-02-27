@@ -40,16 +40,19 @@ __author__ = 'Jelmer Vernooij <jelmer@samba.org>'
 
 bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
+if __name__ == 'bzrlib.plugins.rebase.__init__':
+    raise ImportError("The rebase plugin has been renamed to rewrite. Please rename the directory in ~/.bazaar/plugins")
+
 for cmd in bzr_commands:
     plugin_cmds.register_lazy("cmd_%s" % cmd, [],
-        "bzrlib.plugins.rebase.commands")
+        "bzrlib.plugins.rewrite.commands")
 
 plugin_cmds.register_lazy('cmd_foreign_mapping_upgrade', [],
-                          'bzrlib.plugins.rebase.commands')
+                          'bzrlib.plugins.rewrite.commands')
 
 
 def test_suite():
-    """Determine the testsuite for bzr-rebase."""
+    """Determine the testsuite for bzr-rewrite."""
     from unittest import TestSuite
     from bzrlib.tests import TestUtil
 
