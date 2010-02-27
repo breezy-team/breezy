@@ -478,7 +478,7 @@ class FtpTransport(ConnectedTransport):
     def _rename(self, abs_from, abs_to, f):
         try:
             f.rename(abs_from, abs_to)
-        except ftplib.error_perm, e:
+        except (ftplib.error_temp, ftplib.error_perm), e:
             self._translate_ftp_error(e, abs_from,
                 ': unable to rename to %r' % (abs_to))
 
