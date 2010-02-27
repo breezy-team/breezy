@@ -101,30 +101,32 @@ class cmd_grep(Command):
         rev = start_rev
 
         wt.lock_read()
-        self.add_cleanup(wt.unlock)
-        for path in path_list:
-            tree = rev.as_tree(wt.branch)
-            revid = rev.as_revision_id(wt.branch)
-            try:
-                revno = ".".join([str(n) for n in id_to_revno[revid]])
-            except KeyError, e:
-                trace.warning("warning: file '%s' is not versioned." % path)
-                continue
-
-            if osutils.isdir(path):
-                self._grep_dir(tree, relpath, recursive, line_number,
-                    patternc, from_root, eol_marker, revno, print_revno)
-            else:
-                id = tree.path2id(path)
-                if not id:
+        try:
+            for path in path_list:
+                tree = rev.as_tree(wt.branch)
+                revid = rev.as_revision_id(wt.branch)
+                try:
+                    revno = ".".join([str(n) for n in id_to_revno[revid]])
+                except KeyError, e:
                     trace.warning("warning: file '%s' is not versioned." % path)
                     continue
-                tree.lock_read()
-                try:
-                    grep.file_grep(tree, id, '.', path, patternc, eol_marker,
-                        self.outf, line_number, revno, print_revno)
-                finally:
-                    tree.unlock()
+
+                if osutils.isdir(path):
+                    self._grep_dir(tree, relpath, recursive, line_number,
+                        patternc, from_root, eol_marker, revno, print_revno)
+                else:
+                    id = tree.path2id(path)
+                    if not id:
+                        trace.warning("warning: file '%s' is not versioned." % path)
+                        continue
+                    tree.lock_read()
+                    try:
+                        grep.file_grep(tree, id, '.', path, patternc, eol_marker,
+                            self.outf, line_number, revno, print_revno)
+                    finally:
+                        tree.unlock()
+        finally:
+            wt.unlock()
 
     def _grep_dir(self, tree, relpath, recursive, line_number, compiled_pattern,
         from_root, eol_marker, revno, print_revno):
