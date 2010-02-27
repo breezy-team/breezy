@@ -20,8 +20,6 @@ import re
 
 from bzrlib import tests
 
-open('/home/parthm/tmp/re.txt', 'w')
-
 class TestGrep(tests.TestCaseWithTransport):
     def _str_contains(self, base, pattern, flags=re.MULTILINE|re.DOTALL):
         res = re.findall(pattern, base, flags)
