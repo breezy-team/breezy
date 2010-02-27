@@ -44,7 +44,23 @@ from bzrlib import (
 version_info = (0, 1)
 
 class cmd_grep(Command):
-    """Print lines matching PATTERN for specified files.
+    """Print lines matching PATTERN for specified files and revisions.
+
+    This command searches the specified files and revisions for a given pattern.
+    The pattern is specified as a Python regular expressions[1].
+    If the file name is not specified the file revisions in the current directory
+    are searched. If the revision number is not specified, the latest revision is
+    searched.
+
+    Note that this command is different from POSIX grep in that it searches the
+    revisions of the branch and not the working copy. Unversioned files and
+    uncommitted changes are not seen.
+
+    When searching a pattern, the output is shown in the 'filepath:string' format.
+    If a revision is explicitly searched, the output is shown as 'filepath~N:string',
+    where N is the revision number.
+
+    [1] http://docs.python.org/library/re.html#regular-expression-syntax
     """
 
     takes_args = ['pattern', 'path*']
@@ -77,6 +93,7 @@ class cmd_grep(Command):
 
         print_revno = False
         if revision == None:
+            # grep on latest revision by default
             revision = [RevisionSpec.from_string("last:1")]
         else:
             print_revno = True # used to print revno in output.
@@ -106,7 +123,7 @@ class cmd_grep(Command):
                 tree = rev.as_tree(wt.branch)
                 revid = rev.as_revision_id(wt.branch)
                 try:
-                    revno = ".".join([str(n) for n in id_to_revno[revid]])
+                    revno = self._revno_str(id_to_revno, revid)
                 except KeyError, e:
                     self._skip_file(path)
                     continue
@@ -130,6 +147,10 @@ class cmd_grep(Command):
 
     def _skip_file(self, path):
         trace.warning("warning: skipped unversioned file '%s'." % path)
+
+    def _revno_str(self, id_to_revno_dict, revid):
+        revno = ".".join([str(n) for n in id_to_revno_dict[revid]])
+        return revno
 
     def _grep_dir(self, tree, relpath, recursive, line_number, compiled_pattern,
         from_root, eol_marker, revno, print_revno):
