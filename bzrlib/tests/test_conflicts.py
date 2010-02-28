@@ -215,21 +215,38 @@ class TestResolveContentConflicts(tests.TestCaseWithTransport):
         builder.finish_series()
         self.builder = builder
 
-    def test_resolve_taking_this(self):
+    def _merge_other_into_this(self):
         b = self.builder.get_branch()
         wt = b.bzrdir.sprout('branch').open_workingtree()
         wt.merge_from_branch(b, 'other')
-        # Check that we got the right conflict
+        return wt
+
+    def assertConflict(self, wt, ctype, **kwargs):
         confs = wt.conflicts()
         self.assertEqual(1, len(confs))
         c = confs[0]
-        self.assertIsInstance(confs[0], conflicts.ContentsConflict)
-        self.assertEqual('file-id', c.file_id)
-        self.assertEqual('file', c.path)
-        conflicts.resolve(wt, ['file'], action='take_this')
+        self.assertIsInstance(c, ctype)
+        sentinel = object() # An impossible value
+        for k, v in kwargs.iteritems():
+            self.assertEqual(v, getattr(c, k, sentinel))
+
+    def assertResolved(self, wt, item, action):
+        conflicts.resolve(wt, [item], action=action)
         # Check that we don't have any conflicts nor unknown left
         self.assertEqual(0, len(wt.conflicts()))
         self.assertEqual(0, len(list(wt.unknowns())))
+
+    def test_resolve_taking_this(self):
+        wt = self._merge_other_into_this()
+        self.assertConflict(wt, conflicts.ContentsConflict,
+                            path='file', file_id='file-id',)
+        self.assertResolved(wt, 'file', 'take_this')
+
+    def test_resolve_taking_other(self):
+        wt = self._merge_other_into_this()
+        self.assertConflict(wt, conflicts.ContentsConflict,
+                            path='file', file_id='file-id',)
+        self.assertResolved(wt, 'file', 'take_other')
 
 
 class OldTestResolveContentConflicts(TestResolveConflicts):
