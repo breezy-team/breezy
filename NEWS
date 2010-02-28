@@ -109,6 +109,9 @@ API Changes
 Internals
 *********
 
+* ``bzrlib.branchbuilder.BranchBuilder.build_snapshot`` now accepts a
+  ``message_callback`` in the same way that commit does. (Robert Collins)
+
 * ``bzrlib.commands.run_bzr`` is more extensible: callers can supply the
   functions to load or disable plugins if they wish to use a different
   plugin mechanism; the --help, --version and no-command name code paths
