@@ -119,7 +119,8 @@ class BzrGitMapping(foreign.VcsMapping):
         super(BzrGitMapping, self).__init__(foreign_git)
 
     def __eq__(self, other):
-        return type(self) == type(other) and self.revid_prefix == other.revid_prefix
+        return (type(self) == type(other) and 
+                self.revid_prefix == other.revid_prefix)
 
     @classmethod
     def revision_id_foreign_to_bzr(cls, git_rev_id):
@@ -147,7 +148,8 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
-            ret = [(name, unusual_file_modes[name]) for name in sorted(unusual_file_modes.keys())]
+            ret = [(name, unusual_file_modes[name])
+                   for name in sorted(unusual_file_modes.keys())]
             rev.properties['file-modes'] = bencode.bencode(ret)
 
     def export_unusual_file_modes(self, rev):

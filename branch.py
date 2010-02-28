@@ -410,7 +410,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
         self.target.generate_revision_history(last_revid, prev_last_revid)
         return head
 
-    def update_revisions(self, stop_revision=None, overwrite=False, graph=None):
+    def update_revisions(self, stop_revision=None, overwrite=False,
+                         graph=None):
         """See InterBranch.update_revisions()."""
         self._update_revisions(stop_revision, overwrite, graph)
 
@@ -443,12 +444,14 @@ class InterFromGitBranch(branch.GenericInterBranch):
             # We assume that during 'pull' the target repository is closer than
             # the source one.
             graph = self.target.repository.get_graph(self.source.repository)
-            result.old_revno, result.old_revid = self.target.last_revision_info()
+            (result.old_revno, result.old_revid) = \
+                self.target.last_revision_info()
             result.new_git_head = self._update_revisions(
                 stop_revision, overwrite=overwrite, graph=graph, limit=limit)
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
                 overwrite)
-            result.new_revno, result.new_revid = self.target.last_revision_info()
+            (result.new_revno, result.new_revid) = \
+                self.target.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master
                 result.local_branch = result.target_branch
@@ -504,7 +507,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
                 refs["refs/tags/%s" % name] = sha
             return refs
         self.target.repository.send_pack(get_changed_refs,
-                self.source.repository._git.object_store.generate_pack_contents)
+            self.source.repository._git.object_store.generate_pack_contents)
         return result
 
 
