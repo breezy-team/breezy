@@ -18,11 +18,13 @@
 import os
 
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     conflicts,
     errors,
     option,
     tests,
+    workingtree,
     )
 from bzrlib.tests import script
 
@@ -192,7 +194,45 @@ class TestResolveTextConflicts(TestResolveConflicts):
     pass
 
 
-class TestResolveContentConflicts(TestResolveConflicts):
+class TestResolveContentConflicts(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestResolveContentConflicts, self).setUp()
+        builder = self.make_branch_builder('trunk')
+        builder.start_series()
+        # Create an empty trunk
+        builder.build_snapshot('start', None, [
+                ('add', ('', 'root-id', 'directory', ''))])
+        # Add a minimal base content
+        builder.build_snapshot('base', ['start'], [
+                ('add', ('file', 'file-id', 'file', 'trunk content\n'))])
+        # Modify the base content in branch
+        builder.build_snapshot('other', ['base'], [
+                ('unversion', 'file-id')])
+        # Modify the base content in trunk
+        builder.build_snapshot('this', ['base'], [
+                ('modify', ('file-id', 'trunk content\nmore content\n'))])
+        builder.finish_series()
+        self.builder = builder
+
+    def test_resolve_taking_this(self):
+        b = self.builder.get_branch()
+        wt = b.bzrdir.sprout('branch').open_workingtree()
+        wt.merge_from_branch(b, 'other')
+        # Check that we got the right conflict
+        confs = wt.conflicts()
+        self.assertEqual(1, len(confs))
+        c = confs[0]
+        self.assertIsInstance(confs[0], conflicts.ContentsConflict)
+        self.assertEqual('file-id', c.file_id)
+        self.assertEqual('file', c.path)
+        conflicts.resolve(wt, ['file'], action='take_this')
+        # Check that we don't have any conflicts nor unknown left
+        self.assertEqual(0, len(wt.conflicts()))
+        self.assertEqual(0, len(list(wt.unknowns())))
+
+
+class OldTestResolveContentConflicts(TestResolveConflicts):
 
     # FIXME: We need to add the reverse case (delete in trunk, modify in
     # branch) but that could wait until the resolution mechanism is implemented.
@@ -255,6 +295,7 @@ $ cd trunk
 $ echo 'trunk content' >file
 $ bzr add file
 $ bzr commit -m 'Create trunk'
+
 $ echo 'trunk content too' >file2
 $ bzr add file2
 $ bzr commit -m 'Add file2 in trunk'
@@ -314,6 +355,7 @@ $ cd trunk
 $ mkdir dir
 $ bzr add dir
 $ bzr commit -m 'Create trunk'
+
 $ echo 'trunk content' >dir/file
 $ bzr add dir/file
 $ bzr commit -m 'Add dir/file in trunk'
@@ -354,6 +396,7 @@ $ mkdir dir
 $ echo 'trunk content' >dir/file
 $ bzr add
 $ bzr commit -m 'Create trunk'
+
 $ echo 'trunk content' >dir/file2
 $ bzr add dir/file2
 $ bzr commit -m 'Add dir/file2 in branch'
@@ -415,6 +458,7 @@ $ mkdir dir
 $ echo 'trunk content' >dir/file
 $ bzr add
 $ bzr commit -m 'Create trunk'
+
 $ bzr rm dir/file --force
 $ bzr rm dir --force
 $ bzr commit -m 'Remove dir/file'
@@ -474,6 +518,7 @@ $ cd trunk
 $ echo 'Boo!' >file
 $ bzr add
 $ bzr commit -m 'Create trunk'
+
 $ bzr mv file file-in-trunk
 $ bzr commit -m 'Renamed to file-in-trunk'
 
@@ -522,6 +567,7 @@ $ cd trunk
 $ bzr mkdir dir1
 $ bzr mkdir dir2
 $ bzr commit -m 'Create trunk'
+
 $ bzr mv dir2 dir1
 $ bzr commit -m 'Moved dir2 into dir1'
 
