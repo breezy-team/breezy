@@ -118,7 +118,14 @@ Internals
 Testing
 *******
 
-* New `bzrlib.tests.test_import_tariff` can make assertions about what
+* bzr now has a ``.testr.conf`` file in its source tree configured
+  appropriately for running tests with Testrepository
+  (``https://launchpad.net/testrepository``). (Robert Collins)
+
+* Documentation about testing with ``subunit`` has been tweaked.
+  (Robert Collins)
+
+* New ``bzrlib.tests.test_import_tariff`` can make assertions about what
   Python modules are loaded, to guard against startup time or library
   dependency regressions.
   (Martin Pool)

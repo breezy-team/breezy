@@ -144,11 +144,44 @@ Using subunit
 -------------
 
 Bazaar can optionally produce output in the machine-readable subunit_
-format, so that test output can be post-processed by various tools.
+format, so that test output can be post-processed by various tools. To
+generate a subunit test stream::
+
+ $ ./bzr selftest --subunit
+
+Processing such a stream can be done using a variety of tools including:
+
+* The builtin ``subunit2pyunit``, ``subunit-filter``, ``subunit-ls``,
+  ``subunit2junitxml`` from the subunit project.
+
+* tribunal_, a GUI for showing test results.
+
+* testrepository_, a tool for gathering and managing test runs.
 
 .. _subunit: https://launchpad.net/subunit/
+.. _tribunal: https://launchpad.net/tribunal/
 
 
+Using testrepository
+--------------------
+
+Bazaar ships with a config file for testrepository_. This can be very
+useful for keeping track of failing tests and doing general workflow
+support. To run tests using testrepository::
+
+  $ testr run
+
+To run only failing tests::
+
+  $ testr run --failing
+
+To run only some tests, without plugins::
+
+  $ test run test_selftest -- --no-plugins
+
+See the testrepository documentation for more details.
+
+.. _testrepository: https://launchpad.net/testrepository
 
 Writing Tests
 =============
