@@ -158,9 +158,9 @@ class BzrGitMapping(foreign.VcsMapping):
         except KeyError:
             return {}
 
-    def _generate_git_svn_metadata(self, rev):
+    def _generate_git_svn_metadata(self, rev, encoding):
         try:
-            return "\ngit-svn-id: %s\n" % rev.properties["git-svn-id"].encode("utf-8")
+            return "\ngit-svn-id: %s\n" % rev.properties["git-svn-id"].encode(encoding)
         except KeyError:
             return ""
 
@@ -202,11 +202,11 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['hg:renames'] = base64.b64encode(bencode.bencode([(new, old) for (old, new) in renames.iteritems()]))
         return message
 
-    def _decode_commit_message(self, rev, message):
-        return message.decode("utf-8", "replace")
+    def _decode_commit_message(self, rev, message, encoding):
+        return message.decode(encoding)
 
-    def _encode_commit_message(self, rev, message):
-        return message.encode("utf-8")
+    def _encode_commit_message(self, rev, message, encoding):
+        return message.encode(encoding)
 
     def export_commit(self, rev, tree_sha, parent_lookup):
         """Turn a Bazaar revision in to a Git commit
@@ -226,8 +226,15 @@ class BzrGitMapping(foreign.VcsMapping):
             if git_p is not None:
                 assert len(git_p) == 40, "unexpected length for %r" % git_p
                 commit.parents.append(git_p)
-        commit.committer = fix_person_identifier(rev.committer.encode("utf-8"))
-        commit.author = fix_person_identifier(rev.get_apparent_authors()[0].encode("utf-8"))
+        try:
+            encoding = rev.properties['git-explicit-encoding']
+        except KeyError:
+            encoding = rev.properties.get('git-implicit-encoding', 'utf-8')
+        commit.encoding = rev.properties.get('git-explicit-encoding')
+        commit.committer = fix_person_identifier(rev.committer.encode(
+            encoding))
+        commit.author = fix_person_identifier(
+            rev.get_apparent_authors()[0].encode(encoding))
         commit.commit_time = long(rev.timestamp)
         if 'author-timestamp' in rev.properties:
             commit.author_time = long(rev.properties['author-timestamp'])
@@ -238,7 +245,8 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = int(rev.properties['author-timezone'])
         else:
             commit.author_timezone = commit.commit_timezone
-        commit.message = self._encode_commit_message(rev, rev.message)
+        commit.message = self._encode_commit_message(rev, rev.message, 
+            encoding)
         return commit
 
     def import_commit(self, commit):
@@ -250,17 +258,31 @@ class BzrGitMapping(foreign.VcsMapping):
             raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, self, self.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
-        rev.committer = str(commit.committer).decode("utf-8", "replace")
-        if commit.committer != commit.author:
-            rev.properties['author'] = str(commit.author).decode("utf-8", "replace")
-
+        def decode_using_encoding(rev, commit, encoding):
+            rev.committer = str(commit.committer).decode(encoding)
+            if commit.committer != commit.author:
+                rev.properties['author'] = str(commit.author).decode(encoding)
+            rev.message = self._decode_commit_message(rev, commit.message, 
+                encoding)
+        if commit.encoding is not None:
+            rev.properties['git-explicit-encoding'] = commit.encoding
+            decode_using_encoding(rev, commit, commit.encoding)
+        else:
+            for encoding in ('utf-8', 'latin1'):
+                try:
+                    decode_using_encoding(rev, commit, encoding)
+                except UnicodeDecodeError:
+                    pass
+                else:
+                    if encoding != 'utf-8':
+                        rev.properties['git-implicit-encoding'] = encoding
+                    break
         if commit.commit_time != commit.author_time:
             rev.properties['author-timestamp'] = str(commit.author_time)
         if commit.commit_timezone != commit.author_timezone:
             rev.properties['author-timezone'] = "%d" % (commit.author_timezone, )
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
-        rev.message = self._decode_commit_message(rev, commit.message)
         return rev
 
 
@@ -276,15 +298,15 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
     revid_prefix = 'git-experimental'
     experimental = True
 
-    def _decode_commit_message(self, rev, message):
+    def _decode_commit_message(self, rev, message, encoding):
         message = self._extract_hg_metadata(rev, message)
         message = self._extract_git_svn_metadata(rev, message)
-        return message.decode("utf-8", "replace")
+        return message.decode(encoding)
 
-    def _encode_commit_message(self, rev, message):
-        ret = message.encode("utf-8")
+    def _encode_commit_message(self, rev, message, encoding):
+        ret = message.encode(encoding)
         ret += self._generate_hg_message_tail(rev)
-        ret += self._generate_git_svn_metadata(rev)
+        ret += self._generate_git_svn_metadata(rev, encoding)
         return ret
 
     def import_commit(self, commit):

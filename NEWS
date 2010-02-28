@@ -1,4 +1,4 @@
-0.4.4	UNRELEASED
+0.5.0	UNRELEASED
 
  BUG FIXES
  
@@ -18,6 +18,9 @@
 
   * InterFromGitBranch.pull() supports an optional limit argument to limit
     how many revisions to import in one go. (Michael Hudson)
+
+  * Cope with different encodings better, rather than just stripping out 
+    unknown characters. (#529460, Jelmer Vernooij)
 
  FEATURES
 
