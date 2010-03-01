@@ -2737,9 +2737,10 @@ class cmd_lookup_revision(Command):
         try:
             revno = int(revno)
         except ValueError:
-            raise errors.BzrCommandError("not a valid revision-number: %r" % revno)
-
-        self.outf.write("%s\n" % WorkingTree.open_containing(u'.')[0].branch.get_rev_id(revno))
+            raise errors.BzrCommandError("not a valid revision-number: %r"
+                                         % revno)
+        revid = WorkingTree.open_containing(u'.')[0].branch.get_rev_id(revno)
+        self.outf.write("%s\n" % revid)
 
 
 class cmd_export(Command):
@@ -3320,7 +3321,7 @@ class cmd_nick(Command):
 
     @display_command
     def printme(self, branch):
-        self.outf.write(branch.nick)
+        self.outf.write('%s\n' % branch.nick)
 
 
 class cmd_alias(Command):
@@ -4734,7 +4735,8 @@ class cmd_uncommit(Command):
                  end_revision=last_revno)
 
         if dry_run:
-            self.outf.write('Dry-run, pretending to remove the above revisions.\n')
+            self.outf.write('Dry-run, pretending to remove'
+                            ' the above revisions.\n')
         else:
             self.outf.write('The above revision(s) will be removed.\n')
 
