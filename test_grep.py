@@ -142,6 +142,24 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', 'line1'])
         self.assertTrue(self._str_contains(out, "^file0.txt:line1"))
 
+    def test_versioned_files_from_outside_dir(self):
+        """grep for pattern with dirs passed as argument"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+
+        self._mk_versioned_dir('dir1')
+        self._mk_versioned_file('dir1/file1.txt')
+
+        # pass dirs as arg
+        # TODO: show better path relative to dir arg
+        out, err = self.run_bzr(['grep', 'line1', 'dir0', 'dir1'])
+        self.assertTrue(self._str_contains(out, "file0.txt:line1"))
+        self.assertTrue(self._str_contains(out, "file1.txt:line1"))
+
     def test_versioned_file_within_dir_two_levels(self):
         """search for pattern while in nested dir (two levels)"""
         wd = 'foobar0'
