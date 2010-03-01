@@ -32,8 +32,10 @@ import re
 import grep
 
 import bzrlib
-from bzrlib.revisionspec import RevisionSpec, RevisionInfo
+from bzrlib.builtins import _get_revision_range
+from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid
 from bzrlib.workingtree import WorkingTree
+from bzrlib import log as logcmd
 from bzrlib import (
     osutils,
     bzrdir,
@@ -99,7 +101,7 @@ class cmd_grep(Command):
             print_revno = True # used to print revno in output.
 
         start_rev = revision[0]
-        end_rev = None
+        end_rev = revision[0]
         if len(revision) == 2:
             end_rev = revision[1]
 
@@ -113,40 +115,49 @@ class cmd_grep(Command):
         patternc = grep.compile_pattern(pattern, re_flags)
 
         wt, relpath = WorkingTree.open_containing('.')
+
+        start_revid = start_rev.as_revision_id(wt.branch)
+        end_revid   = end_rev.as_revision_id(wt.branch)
+
         id_to_revno = wt.branch.get_revision_id_to_revno_map()
+        given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
 
-        rev = start_rev
-
-        wt.lock_read()
+        # edge case: we have a repo created with 'bzr init' and it has no
+        # revisions (revno: 0)
         try:
-            for path in path_list:
-                tree = rev.as_tree(wt.branch)
-                revid = rev.as_revision_id(wt.branch)
-                try:
-                    revno = self._revno_str(id_to_revno, revid)
-                except KeyError, e:
-                    self._skip_file(path)
-                    continue
+            given_revs = list(given_revs)
+        except erros.NoSuchRevision, e:
+            raise errors.BzrCommandError('no revisions found available to grep')
 
-                if osutils.isdir(path):
-                    self._grep_dir(tree, relpath, recursive, line_number,
-                        patternc, from_root, eol_marker, revno, print_revno)
-                else:
+        for revid, dotrev, merge_depth in given_revs:
+            wt.lock_read()
+            rev = RevisionSpec_revid.from_string("revid:"+revid)
+            try:
+                for path in path_list:
+                    tree = rev.as_tree(wt.branch)
                     id = tree.path2id(path)
                     if not id:
                         self._skip_file(path)
                         continue
-                    tree.lock_read()
-                    try:
-                        grep.file_grep(tree, id, '.', path, patternc, eol_marker,
-                            self.outf, line_number, revno, print_revno)
-                    finally:
-                        tree.unlock()
-        finally:
-            wt.unlock()
+
+                    revid = rev.as_revision_id(wt.branch)
+                    revno = self._revno_str(id_to_revno, revid)
+
+                    if osutils.isdir(path):
+                        self._grep_dir(tree, relpath, recursive, line_number,
+                            patternc, from_root, eol_marker, revno, print_revno)
+                    else:
+                        tree.lock_read()
+                        try:
+                            grep.file_grep(tree, id, '.', path, patternc, eol_marker,
+                                self.outf, line_number, revno, print_revno)
+                        finally:
+                            tree.unlock()
+            finally:
+                wt.unlock()
 
     def _skip_file(self, path):
-        trace.warning("warning: skipped unversioned file '%s'." % path)
+        trace.warning("warning: skipped unknown file '%s'." % path)
 
     def _revno_str(self, id_to_revno_dict, revid):
         revno = ".".join([str(n) for n in id_to_revno_dict[revid]])

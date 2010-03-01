@@ -40,7 +40,7 @@ class TestGrep(tests.TestCaseWithTransport):
         open(path, 'a').write(text)
         self.run_bzr(['ci', '-m', '"' + path + '"'])
 
-    def _mk_unversioned_file(self, path, line_prefix='line', total_lines=10):
+    def _mk_unknown_file(self, path, line_prefix='line', total_lines=10):
         self._mk_file(path, line_prefix, total_lines, versioned=False)
 
     def _mk_versioned_file(self, path, line_prefix='line', total_lines=10):
@@ -52,18 +52,19 @@ class TestGrep(tests.TestCaseWithTransport):
             self.run_bzr(['add', path])
             self.run_bzr(['ci', '-m', '"' + path + '"'])
 
-    def _mk_unversioned_dir(self, path):
+    def _mk_unknown_dir(self, path):
         self._mk_dir(path, versioned=False)
 
     def _mk_versioned_dir(self, path):
         self._mk_dir(path, versioned=True)
 
-    def test_basic_unversioned_file(self):
+    def test_basic_unknown_file(self):
         """search for pattern in specfic file. should issue warning."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
-        self._mk_unversioned_file('file0.txt')
+        self._mk_versioned_file('filex.txt') # force rev to revno:1 and not revno:0
+        self._mk_unknown_file('file0.txt')
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
         self.assertFalse(self._str_contains(out, "file0.txt:line1"))
         self.assertTrue(self._str_contains(err, "warning: skipped.*file0.txt.*\."))
