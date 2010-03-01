@@ -35,11 +35,11 @@ class VcsDirectory(object):
 
         apt_pkg.init()
 
-        sources = apt_pkg.GetPkgSrcRecords()
+        sources = apt_pkg.SourceRecords()
 
         urls = {}
-        while sources.Lookup(name):
-            for l in sources.Record.splitlines():
+        while sources.lookup(name):
+            for l in sources.record.splitlines():
                 if not ": " in l:
                     continue
                 (field, value) = l.strip("\n").split(": ", 1)
@@ -55,7 +55,7 @@ class VcsDirectory(object):
 
         if version is None:
             # Try the latest version
-            version = sorted(urls,cmp=apt_pkg.VersionCompare)[0]
+            version = sorted(urls,cmp=apt_pkg.version_compare)[0]
 
         if not version in urls:
             raise errors.InvalidURL(path=url,

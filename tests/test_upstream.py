@@ -53,20 +53,20 @@ class MockSources(object):
         self.lookup_called_times = 0
         self.lookup_package = None
         self.versions = versions
-        self.Version = None
+        self.version = None
 
-    def Restart(self):
+    def restart(self):
         self.restart_called_times += 1
 
-    def Lookup(self, package):
+    def lookup(self, package):
         self.lookup_called_times += 1
         assert not self.lookup_package or self.lookup_package == package
         self.lookup_package = package
         if self.lookup_called_times <= len(self.versions):
-            self.Version = self.versions[self.lookup_called_times-1]
+            self.version = self.versions[self.lookup_called_times-1]
             return True
         else:
-            self.Version = None
+            self.version = None
             return False
 
 
@@ -80,7 +80,7 @@ class MockAptPkg(object):
     def init(self):
         self.init_called_times += 1
 
-    def GetPkgSrcRecords(self):
+    def SourceRecords(self):
         self.get_pkg_source_records_called_times += 1
         return self.sources
 
