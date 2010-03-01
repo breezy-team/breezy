@@ -146,12 +146,7 @@ class cmd_grep(Command):
             try:
                 for path in path_list:
                     tree = rev.as_tree(wt.branch)
-
-                    path_for_id = path
-                    if osutils.isdir(path):
-                        # tweak path to get valid id
-                        path_for_id = osutils.pathjoin(relpath, path)
-
+                    path_for_id = osutils.pathjoin(relpath, path)
                     id = tree.path2id(path_for_id)
                     if not id:
                         self._skip_file(path)

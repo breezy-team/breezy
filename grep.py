@@ -42,6 +42,7 @@ def compile_pattern(pattern, flags=0):
 
 def file_grep(tree, id, relpath, path, patternc, eol_marker, outf,
         line_number, revno, print_revno):
+
     if relpath:
         path = osutils.normpath(osutils.pathjoin(relpath, path))
         path = path.replace('\\', '/')
