@@ -334,9 +334,11 @@ class GitBranchPullResult(branch.PullResult):
         if not is_quiet():
             if self.old_revid == self.new_revid:
                 to_file.write('No revisions to pull.\n')
-            else:
+            elif self.new_git_head is not None:
                 to_file.write('Now on revision %d (git sha: %s).\n' %
                         (self.new_revno, self.new_git_head))
+            else:
+                to_file.write('Now on revision %d.\n' % (self.new_revno,))
         self._show_tag_conficts(to_file)
 
 
@@ -387,27 +389,25 @@ class InterFromGitBranch(branch.GenericInterBranch):
             if not self.source.name in heads:
                 raise NoSuchRef(self.source.name, heads.keys())
             if stop_revision is not None:
-                last_revid = stop_revision
+                self._last_revid = stop_revision
                 head, mapping = self.source.repository.lookup_bzr_revision_id(
                     stop_revision)
             else:
                 head = heads[self.source.name]
-                last_revid = self.source.mapping.revision_id_foreign_to_bzr(
+                self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(
                     head)
-            if self.target.repository.has_revision(last_revid):
+            if self.target.repository.has_revision(self._last_revid):
                 return []
             return [head]
         _, head = interrepo.fetch_objects(
             determine_wants, self.source.mapping, limit=limit)
-        if head is None:
-            last_revid = self.target.last_revision()
-        else:
-            last_revid = self.source.mapping.revision_id_foreign_to_bzr(head)
+        if head is not None:
+            self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(head)
         if overwrite:
             prev_last_revid = None
         else:
             prev_last_revid = self.target.last_revision()
-        self.target.generate_revision_history(last_revid, prev_last_revid)
+        self.target.generate_revision_history(self._last_revid, prev_last_revid)
         return head
 
     def update_revisions(self, stop_revision=None, overwrite=False,
