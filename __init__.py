@@ -127,7 +127,6 @@ class cmd_grep(Command):
         start_revid = start_rev.as_revision_id(wt.branch)
         end_revid   = end_rev.as_revision_id(wt.branch)
 
-        id_to_revno = wt.branch.get_revision_id_to_revno_map()
         given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
 
         # edge case: we have a repo created with 'bzr init' and it has no
@@ -173,10 +172,6 @@ class cmd_grep(Command):
 
     def _skip_file(self, path):
         trace.warning("warning: skipped unknown file '%s'." % path)
-
-    def _revno_str(self, id_to_revno_dict, revid):
-        revno = ".".join([str(n) for n in id_to_revno_dict[revid]])
-        return revno
 
     def _grep_dir(self, tree, path, relpath, recursive, line_number, compiled_pattern,
         from_root, eol_marker, revno, print_revno):
