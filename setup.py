@@ -2,7 +2,8 @@
 
 from distutils.core import setup
 
-setup(name='bzr-email',
+if __name__ == '__main__':
+    setup(name='bzr-email',
       description='Email plugin for Bazaar',
       keywords='plugin bzr email',
       version='0.0.1',
@@ -14,8 +15,8 @@ setup(name='bzr-email',
       long_description="""
       Hooks into Bazaar and sends commit notification emails.
       """,
-      package_dir={'bzrlib.plugins.email':'.', 
+      package_dir={'bzrlib.plugins.email':'.',
                    'bzrlib.plugins.email.tests':'tests'},
-      packages=['bzrlib.plugins.email', 
+      packages=['bzrlib.plugins.email',
                 'bzrlib.plugins.email.tests']
       )
