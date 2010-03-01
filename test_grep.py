@@ -279,4 +279,64 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '-r', 'last:2', '-R', 'v4'])
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt~4:v4"))
 
+    def test_revno_range_basic_history_grep(self):
+        """search for pattern in revision range for file"""
+        wd = 'foobar0'
+        fname = 'file0.txt'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file(fname, total_lines=0) # rev1
+        self._mk_versioned_file('file1.txt')          # rev2
+        self._update_file(fname, text="v3 text\n")    # rev3
+        self._update_file(fname, text="v4 text\n")    # rev4
+        self._update_file(fname, text="v5 text\n")    # rev5
+        self._update_file(fname, text="v6 text\n")    # rev6
+
+        out, err = self.run_bzr(['grep', '-r', '1..', 'v3'])
+        self.assertTrue(self._str_contains(out, "file0.txt~3:v3"))
+        self.assertTrue(self._str_contains(out, "file0.txt~4:v3"))
+        self.assertTrue(self._str_contains(out, "file0.txt~5:v3"))
+
+        out, err = self.run_bzr(['grep', '-r', '1..5', 'v3'])
+        self.assertTrue(self._str_contains(out, "file0.txt~3:v3"))
+        self.assertTrue(self._str_contains(out, "file0.txt~4:v3"))
+        self.assertTrue(self._str_contains(out, "file0.txt~5:v3"))
+        self.assertFalse(self._str_contains(out, "file0.txt~6:v3"))
+
+    def test_revno_range_versioned_file_in_dir(self):
+        """we create a file 'foobar0/dir0/file0.txt' and grep rev-range for pattern"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')                      # rev1
+        self._mk_versioned_file('dir0/file0.txt')           # rev2
+        self._update_file('dir0/file0.txt', "v3 text\n")    # rev3
+        self._update_file('dir0/file0.txt', "v4 text\n")    # rev4
+        self._update_file('dir0/file0.txt', "v5 text\n")    # rev5
+        self._update_file('dir0/file0.txt', "v6 text\n")    # rev6
+
+        out, err = self.run_bzr(['grep', '-R', '-r', '2..5', 'v3'])
+        self.assertTrue(self._str_contains(out, "^dir0/file0.txt~3:v3"))
+        self.assertTrue(self._str_contains(out, "^dir0/file0.txt~4:v3"))
+        self.assertTrue(self._str_contains(out, "^dir0/file0.txt~5:v3"))
+        self.assertFalse(self._str_contains(out, "^dir0/file0.txt~6:v3"))
+
+    def test_revno_range_versioned_file_from_outside_dir(self):
+        """grep rev-range for pattern from outside dir"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')                      # rev1
+        self._mk_versioned_file('dir0/file0.txt')           # rev2
+        self._update_file('dir0/file0.txt', "v3 text\n")    # rev3
+        self._update_file('dir0/file0.txt', "v4 text\n")    # rev4
+        self._update_file('dir0/file0.txt', "v5 text\n")    # rev5
+        self._update_file('dir0/file0.txt', "v6 text\n")    # rev6
+
+        out, err = self.run_bzr(['grep', '-r', '2..5', 'v3', 'dir0'])
+        open('/home/parthm/tmp/out.txt', 'w').write(out)
+        self.assertTrue(self._str_contains(out, "^file0.txt~3:v3"))
+        self.assertTrue(self._str_contains(out, "^file0.txt~4:v3"))
+        self.assertTrue(self._str_contains(out, "^file0.txt~5:v3"))
+        self.assertFalse(self._str_contains(out, "^file0.txt~6:v3"))
 

@@ -32,7 +32,7 @@ import re
 import grep
 
 import bzrlib
-from bzrlib.builtins import _get_revision_range
+from bzrlib.builtins import _get_revision_range, _parse_levels
 from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid
 from bzrlib.workingtree import WorkingTree
 from bzrlib import log as logcmd
@@ -81,12 +81,20 @@ class cmd_grep(Command):
         Option('null', short_name='Z',
                help='Write an ascii NUL (\\0) separator '
                'between output lines rather than a newline.'),
+        Option('levels',
+           help='Number of levels to display - 0 for all, 1 for collapsed (default).',
+           argname='N',
+           type=_parse_levels),
         ]
 
 
     @display_command
     def run(self, verbose=False, ignore_case=False, recursive=False, from_root=False,
-            null=False, line_number=False, path_list=None, revision=None, pattern=None):
+            null=False, levels=None, line_number=False, path_list=None, revision=None, pattern=None):
+
+        if levels==None:
+            levels=1
+
         if path_list == None:
             path_list = ['.']
         else:
@@ -129,22 +137,29 @@ class cmd_grep(Command):
         except erros.NoSuchRevision, e:
             raise errors.BzrCommandError('no revisions found available to grep')
 
-        for revid, dotrev, merge_depth in given_revs:
+        for revid, revno, merge_depth in given_revs:
+            if levels == 1 and merge_depth != 0:
+                # with level=1 show only top level
+                continue
+
             wt.lock_read()
             rev = RevisionSpec_revid.from_string("revid:"+revid)
             try:
                 for path in path_list:
                     tree = rev.as_tree(wt.branch)
-                    id = tree.path2id(path)
+
+                    path_for_id = path
+                    if osutils.isdir(path):
+                        # tweak path to get valid id
+                        path_for_id = osutils.pathjoin(relpath, path)
+
+                    id = tree.path2id(path_for_id)
                     if not id:
                         self._skip_file(path)
                         continue
 
-                    revid = rev.as_revision_id(wt.branch)
-                    revno = self._revno_str(id_to_revno, revid)
-
                     if osutils.isdir(path):
-                        self._grep_dir(tree, relpath, recursive, line_number,
+                        self._grep_dir(tree, path, relpath, recursive, line_number,
                             patternc, from_root, eol_marker, revno, print_revno)
                     else:
                         tree.lock_read()
@@ -163,7 +178,7 @@ class cmd_grep(Command):
         revno = ".".join([str(n) for n in id_to_revno_dict[revid]])
         return revno
 
-    def _grep_dir(self, tree, relpath, recursive, line_number, compiled_pattern,
+    def _grep_dir(self, tree, path, relpath, recursive, line_number, compiled_pattern,
         from_root, eol_marker, revno, print_revno):
             # setup relpath to open files relative to cwd
             rpath = relpath
@@ -172,13 +187,14 @@ class cmd_grep(Command):
 
             tree.lock_read()
             try:
+                from_dir = osutils.pathjoin(relpath, path)
                 if from_root:
                     # start searching recursively from root
-                    relpath=None
+                    from_dir=None
                     recursive=True
 
                 for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-                    from_dir=relpath, recursive=recursive):
+                    from_dir=from_dir, recursive=recursive):
                     if fc == 'V' and fkind == 'file':
                         grep.file_grep(tree, fid, rpath, fp, compiled_pattern,
                             eol_marker, self.outf, line_number, revno, print_revno)
