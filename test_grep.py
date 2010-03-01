@@ -334,7 +334,6 @@ class TestGrep(tests.TestCaseWithTransport):
         self._update_file('dir0/file0.txt', "v6 text\n")    # rev6
 
         out, err = self.run_bzr(['grep', '-r', '2..5', 'v3', 'dir0'])
-        open('/home/parthm/tmp/out.txt', 'w').write(out)
         self.assertTrue(self._str_contains(out, "^file0.txt~3:v3"))
         self.assertTrue(self._str_contains(out, "^file0.txt~4:v3"))
         self.assertTrue(self._str_contains(out, "^file0.txt~5:v3"))
