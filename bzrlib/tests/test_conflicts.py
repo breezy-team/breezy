@@ -196,6 +196,9 @@ class TestResolveTextConflicts(TestResolveConflicts):
 
 class TestResolveContentConflicts(tests.TestCaseWithTransport):
 
+    # FIXME: We need to add the reverse case (delete in trunk, modify in
+    # branch) but that could wait until the resolution mechanism is implemented.
+
     def setUp(self):
         super(TestResolveContentConflicts, self).setUp()
         builder = self.make_branch_builder('trunk')
@@ -241,67 +244,14 @@ class TestResolveContentConflicts(tests.TestCaseWithTransport):
         self.assertConflict(wt, conflicts.ContentsConflict,
                             path='file', file_id='file-id',)
         self.assertResolved(wt, 'file', 'take_this')
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
 
     def test_resolve_taking_other(self):
         wt = self._merge_other_into_this()
         self.assertConflict(wt, conflicts.ContentsConflict,
                             path='file', file_id='file-id',)
         self.assertResolved(wt, 'file', 'take_other')
-
-
-class OldTestResolveContentConflicts(TestResolveConflicts):
-
-    # FIXME: We need to add the reverse case (delete in trunk, modify in
-    # branch) but that could wait until the resolution mechanism is implemented.
-
-    preamble = """
-$ bzr init trunk
-$ cd trunk
-$ echo 'trunk content' >file
-$ bzr add file
-$ bzr commit -m 'Create trunk'
-
-$ bzr branch . ../branch
-$ cd ../branch
-$ bzr rm file
-$ bzr commit -m 'Delete file'
-
-$ cd ../trunk
-$ echo 'more content' >>file
-$ bzr commit -m 'Modify file'
-
-$ cd ../branch
-$ bzr merge ../trunk
-2>+N  file.OTHER
-2>Contents conflict in file
-2>1 conflicts encountered.
-"""
-
-    def test_take_this(self):
-        self.run_script("""
-$ bzr rm file.OTHER --force # a simple rm file.OTHER is valid too
-$ bzr resolve file
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_take_other(self):
-        self.run_script("""
-$ bzr mv file.OTHER file
-$ bzr resolve file
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_resolve_taking_this(self):
-        self.run_script("""
-$ bzr resolve --take-this file
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_resolve_taking_other(self):
-        self.run_script("""
-$ bzr resolve --take-other file
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
+        self.failIfExists('branch/file')
 
 
 class TestResolveDuplicateEntry(TestResolveConflicts):
