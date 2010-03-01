@@ -29,6 +29,21 @@ from bzrlib import (
 from bzrlib.tests import script
 
 
+def load_tests(standard_tests, module, loader):
+    result = loader.suiteClass()
+
+    sp_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestResolveContentConflicts,
+                )))
+    tests.multiply_tests(sp_tests, content_conflict_scenarios(), result)
+
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
+    return result
+
+
 # TODO: Test commit with some added, and added-but-missing files
 # RBC 20060124 is that not tested in test_commit.py ?
 
@@ -194,10 +209,25 @@ class TestResolveTextConflicts(TestResolveConflicts):
     pass
 
 
+def content_conflict_scenarios():
+    return [('file,None', dict(_this_actions='modify_file',
+                               _check_this='file_has_more_content',
+                               _other_actions='delete_file',
+                               _check_other='file_doesnt_exist',
+                               )),
+            ('None,file', dict(_this_actions='delete_file',
+                               _check_this='file_doesnt_exist',
+                               _other_actions='modify_file',
+                               _check_other='file_has_more_content',
+                               )),
+            ]
+
+
 class TestResolveContentConflicts(tests.TestCaseWithTransport):
 
-    # FIXME: We need to add the reverse case (delete in trunk, modify in
-    # branch) but that could wait until the resolution mechanism is implemented.
+    # Set by load_tests
+    this_actions = None
+    other_actions = None
 
     def setUp(self):
         super(TestResolveContentConflicts, self).setUp()
@@ -210,13 +240,31 @@ class TestResolveContentConflicts(tests.TestCaseWithTransport):
         builder.build_snapshot('base', ['start'], [
                 ('add', ('file', 'file-id', 'file', 'trunk content\n'))])
         # Modify the base content in branch
-        builder.build_snapshot('other', ['base'], [
-                ('unversion', 'file-id')])
+        other_actions = self._get_actions(self._other_actions)
+        builder.build_snapshot('other', ['base'], other_actions())
         # Modify the base content in trunk
-        builder.build_snapshot('this', ['base'], [
-                ('modify', ('file-id', 'trunk content\nmore content\n'))])
+        this_actions = self._get_actions(self._this_actions)
+        builder.build_snapshot('this', ['base'], this_actions())
         builder.finish_series()
         self.builder = builder
+
+    def _get_actions(self, name):
+        return getattr(self, 'do_%s' % name)
+
+    def _get_check(self, name):
+        return getattr(self, 'check_%s' % name)
+
+    def do_modify_file(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n'))]
+
+    def check_file_has_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
+
+    def do_delete_file(self):
+        return [('unversion', 'file-id')]
+
+    def check_file_doesnt_exist(self):
+        self.failIfExists('branch/file')
 
     def _merge_other_into_this(self):
         b = self.builder.get_branch()
@@ -244,14 +292,16 @@ class TestResolveContentConflicts(tests.TestCaseWithTransport):
         self.assertConflict(wt, conflicts.ContentsConflict,
                             path='file', file_id='file-id',)
         self.assertResolved(wt, 'file', 'take_this')
-        self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
+        check_this = self._get_check(self._check_this)
+        check_this()
 
     def test_resolve_taking_other(self):
         wt = self._merge_other_into_this()
         self.assertConflict(wt, conflicts.ContentsConflict,
                             path='file', file_id='file-id',)
         self.assertResolved(wt, 'file', 'take_other')
-        self.failIfExists('branch/file')
+        check_other = self._get_check(self._check_other)
+        check_other()
 
 
 class TestResolveDuplicateEntry(TestResolveConflicts):
