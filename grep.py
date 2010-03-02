@@ -39,9 +39,32 @@ def compile_pattern(pattern, flags=0):
         raise errors.BzrError("Invalid pattern: '%s'" % pattern)
     return patternc
 
+def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
+    from_root, eol_marker, revno, print_revno, outf):
+        # setup relpath to open files relative to cwd
+        rpath = relpath
+        if relpath:
+            rpath = osutils.pathjoin('..',relpath)
 
-def file_grep(tree, id, relpath, path, patternc, eol_marker, outf,
-        line_number, revno, print_revno):
+        tree.lock_read()
+        try:
+            from_dir = osutils.pathjoin(relpath, path)
+            if from_root:
+                # start searching recursively from root
+                from_dir=None
+                recursive=True
+
+            for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
+                from_dir=from_dir, recursive=recursive):
+                if fc == 'V' and fkind == 'file':
+                    file_grep(tree, fid, rpath, fp, compiled_pattern,
+                        eol_marker, line_number, revno, print_revno, outf)
+        finally:
+            tree.unlock()
+
+
+def file_grep(tree, id, relpath, path, patternc, eol_marker,
+        line_number, revno, print_revno, outf):
 
     if relpath:
         path = osutils.normpath(osutils.pathjoin(relpath, path))

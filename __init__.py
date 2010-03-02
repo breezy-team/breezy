@@ -153,13 +153,13 @@ class cmd_grep(Command):
                         continue
 
                     if osutils.isdir(path):
-                        self._grep_dir(tree, path, relpath, recursive, line_number,
-                            patternc, from_root, eol_marker, revno, print_revno)
+                        grep.dir_grep(tree, path, relpath, recursive, line_number,
+                            patternc, from_root, eol_marker, revno, print_revno, self.outf)
                     else:
                         tree.lock_read()
                         try:
                             grep.file_grep(tree, id, '.', path, patternc, eol_marker,
-                                self.outf, line_number, revno, print_revno)
+                                line_number, revno, print_revno, self.outf)
                         finally:
                             tree.unlock()
             finally:
@@ -167,29 +167,6 @@ class cmd_grep(Command):
 
     def _skip_file(self, path):
         trace.warning("warning: skipped unknown file '%s'." % path)
-
-    def _grep_dir(self, tree, path, relpath, recursive, line_number, compiled_pattern,
-        from_root, eol_marker, revno, print_revno):
-            # setup relpath to open files relative to cwd
-            rpath = relpath
-            if relpath:
-                rpath = osutils.pathjoin('..',relpath)
-
-            tree.lock_read()
-            try:
-                from_dir = osutils.pathjoin(relpath, path)
-                if from_root:
-                    # start searching recursively from root
-                    from_dir=None
-                    recursive=True
-
-                for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-                    from_dir=from_dir, recursive=recursive):
-                    if fc == 'V' and fkind == 'file':
-                        grep.file_grep(tree, fid, rpath, fp, compiled_pattern,
-                            eol_marker, self.outf, line_number, revno, print_revno)
-            finally:
-                tree.unlock()
 
 
 register_command(cmd_grep)
