@@ -699,10 +699,15 @@ class cmd_mkdir(Command):
 
     def run(self, dir_list):
         for d in dir_list:
-            os.mkdir(d)
             wt, dd = WorkingTree.open_containing(d)
-            wt.add([dd])
-            self.outf.write('added %s\n' % d)
+            base = os.path.dirname(dd)
+            id = wt.path2id(base)
+            if id != None:
+                os.mkdir(d)
+                wt.add([dd])
+                self.outf.write('added %s\n' % d)
+            else:
+                raise errors.NotVersionedError(path=base)
 
 
 class cmd_relpath(Command):
