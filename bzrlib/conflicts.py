@@ -479,30 +479,29 @@ class ContentsConflict(PathConflict):
     def associated_filenames(self):
         return [self.path + suffix for suffix in ('.BASE', '.OTHER')]
 
-    def _take_it(self, tree, suffix):
+    def _take_it(self, tree, suffix_to_remove):
         """Resolve the conflict.
 
-        :param tree: The working tree where the confict is resolved.
-        :param suffix: Either 'THIS' or 'OTHER'
+        :param tree: The working tree where the conflict is resolved.
+        :param suffix_to_remove: Either 'THIS' or 'OTHER'
 
         The resolution is symmetric, when taking THIS, OTHER is deleted and
         item.THIS is renamed into item and vice-versa.
-
-        Note that suffix='OTHER' really means takes 'THIS' and vice-versa.
         """
         tt = transform.TreeTransform(tree)
         try:
             try:
-                # Delete 'item.THIS' or 'item.OTHER' depending on suffix
+                # Delete 'item.THIS' or 'item.OTHER' depending on
+                # suffix_to_remove
                 tt.delete_contents(
-                    tt.trans_id_tree_path(self.path + '.' + suffix))
+                    tt.trans_id_tree_path(self.path + '.' + suffix_to_remove))
             except errors.NoSuchFile:
-                # There are valid cases where 'item.suffix' either never
-                # existed or was already deleted (including the case where the
-                # user deleted it)
+                # There are valid cases where 'item.suffix_to_remove' either
+                # never existed or was already deleted (including the case
+                # where the user deleted it)
                 pass
-            # Rename 'item.suffix' (note that if 'item.suffix' has been
-            # deleted, this is a no-op)
+            # Rename 'item.suffix_to_remove' (note that if
+            # 'item.suffix_to_remove' has been deleted, this is a no-op)
             this_tid = tt.trans_id_file_id(self.file_id)
             parent_tid = tt.get_tree_parent(this_tid)
             tt.adjust_path(self.path, parent_tid, this_tid)

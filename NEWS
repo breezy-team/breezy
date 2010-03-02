@@ -79,8 +79,8 @@ Bug Fixes
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
 
-* ``bzr resolve --take-{this|other}`` now correctly rename the kept file
-  on content conflicts where one side deleted the file.
+* ``bzr resolve --take-this`` and ``--take-other`` now correctly renames
+  the kept file on content conflicts where one side deleted the file.
   (Vincent Ladeuil, #529968)
 
 * ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
