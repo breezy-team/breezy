@@ -247,7 +247,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         try:
             bzrdir.destroy_branch()
         except (errors.UnsupportedOperation, errors.TransportNotPossible):
-            raise TestNotApplicable('Format does not support destroying tree')
+            raise TestNotApplicable('Format does not support destroying branch')
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         bzrdir.create_branch()
         bzrdir.open_branch()
@@ -259,10 +259,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             colo_branch = bzrdir.create_branch('colo')
         except errors.NoColocatedBranchSupport:
             raise TestNotApplicable('BzrDir does not do colocated branches')
-        try:
-            bzrdir.destroy_branch("colo")
-        except (errors.UnsupportedOperation, errors.TransportNotPossible):
-            raise TestNotApplicable('Format does not support destroying tree')
+        bzrdir.destroy_branch("colo")
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch, 
                           "colo")
 
@@ -1430,7 +1427,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            return
+            raise TestNotApplicable('Control dir format not supported')
         t = get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
