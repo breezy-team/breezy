@@ -133,8 +133,8 @@ class cmd_grep(Command):
         # revisions (revno: 0)
         try:
             given_revs = list(given_revs)
-        except erros.NoSuchRevision, e:
-            raise errors.BzrCommandError('no revisions found available to grep')
+        except errors.NoSuchRevision, e:
+            raise errors.BzrCommandError('No revisions found for grep.')
 
         for revid, revno, merge_depth in given_revs:
             if levels == 1 and merge_depth != 0:

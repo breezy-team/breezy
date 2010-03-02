@@ -69,6 +69,14 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertFalse(self._str_contains(out, "file0.txt:line1"))
         self.assertTrue(self._str_contains(err, "warning: skipped.*file0.txt.*\."))
 
+    def test_revno0(self):
+        """search for pattern in when only revno0 is present"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)   # only revno 0 in branch
+        os.chdir(wd)
+        out, err = self.run_bzr(['grep', 'line1'], retcode=3)
+        self.assertTrue(self._str_contains(err, "ERROR: No revisions found"))
+
     def test_basic_versioned_file(self):
         """search for pattern in specfic file"""
         wd = 'foobar0'
@@ -158,6 +166,21 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt:line1"))
         self.assertTrue(self._str_contains(out, "^dir1/file1.txt:line1"))
 
+    def test_versioned_files_from_outside_dir(self):
+        """grep for pattern with dirs passed as argument"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+
+        self._mk_versioned_dir('dir1')
+        self._mk_versioned_file('dir1/file1.txt')
+
+        out, err = self.run_bzr(['grep', 'line1', 'dir0', 'dir1'])
+        self.assertTrue(self._str_contains(out, "^dir0/file0.txt:line1"))
+        self.assertTrue(self._str_contains(out, "^dir1/file1.txt:line1"))
 
     def test_versioned_files_from_outside_two_dirs(self):
         """grep for pattern with two levels of nested dir"""
