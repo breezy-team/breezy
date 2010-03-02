@@ -40,7 +40,7 @@ def compile_pattern(pattern, flags=0):
     return patternc
 
 def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
-    from_root, eol_marker, revno, print_revno, outf):
+    from_root, eol_marker, revno, print_revno, outf, path_prefix):
         # setup relpath to open files relative to cwd
         rpath = relpath
         if relpath:
@@ -58,13 +58,13 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
                 from_dir=from_dir, recursive=recursive):
                 if fc == 'V' and fkind == 'file':
                     file_grep(tree, fid, rpath, fp, compiled_pattern,
-                        eol_marker, line_number, revno, print_revno, outf)
+                        eol_marker, line_number, revno, print_revno, outf, path_prefix)
         finally:
             tree.unlock()
 
 
 def file_grep(tree, id, relpath, path, patternc, eol_marker,
-        line_number, revno, print_revno, outf):
+        line_number, revno, print_revno, outf, path_prefix = None):
 
     if relpath:
         path = osutils.normpath(osutils.pathjoin(relpath, path))
@@ -74,6 +74,10 @@ def file_grep(tree, id, relpath, path, patternc, eol_marker,
     revfmt = ''
     if print_revno:
         revfmt = "~%s"
+
+    if path_prefix and path_prefix != '.':
+        # user has passed a dir arg, show that as result prefix
+        path = osutils.pathjoin(path_prefix, path)
 
     fmt_with_n = path + revfmt + ":%d:%s" + eol_marker
     fmt_without_n = path + revfmt + ":%s" + eol_marker

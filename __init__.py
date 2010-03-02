@@ -153,8 +153,10 @@ class cmd_grep(Command):
                         continue
 
                     if osutils.isdir(path):
+                        path_prefix = path
                         grep.dir_grep(tree, path, relpath, recursive, line_number,
-                            patternc, from_root, eol_marker, revno, print_revno, self.outf)
+                            patternc, from_root, eol_marker, revno, print_revno,
+                            self.outf, path_prefix)
                     else:
                         tree.lock_read()
                         try:
