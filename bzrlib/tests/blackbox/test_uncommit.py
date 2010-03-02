@@ -216,7 +216,7 @@ class TestUncommit(TestCaseWithTransport):
 
     def test_uncommit_shows_log_with_revision_id(self):
         wt = self.create_simple_tree()
-        
+
         script = ScriptRunner()
         script.run_script(self, """
 $ cd tree

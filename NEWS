@@ -79,14 +79,18 @@ Bug Fixes
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
 
-* ``bzr resolve --take-{this|other}`` now correctly rename the kept file
-  on content conflicts where one side deleted the file.
+* ``bzr resolve --take-this`` and ``--take-other`` now correctly renames
+  the kept file on content conflicts where one side deleted the file.
   (Vincent Ladeuil, #529968)
 
 * ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
   of ``backup.bzr``. This directory is ignored by bzr commands such as
   ``add``.
   (Parth Malwankar, #335033, #300001)
+
+* Correctly interpret "451 Rename/move failure: Directory not empty" from
+  ftp servers while trying to take a lock.
+  (Martin Pool, #528722)
 
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
@@ -98,6 +102,10 @@ Bug Fixes
 
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
+
+* SSH child processes will now ignore SIGQUIT on nix systems so breaking into
+  the debugger won't kill the session.
+  (Martin <gzlist@googlemail.com>, #162502)
 
 API Changes
 ***********
@@ -113,6 +121,9 @@ API Changes
 Internals
 *********
 
+* ``bzrlib.branchbuilder.BranchBuilder.build_snapshot`` now accepts a
+  ``message_callback`` in the same way that commit does. (Robert Collins)
+
 * ``bzrlib.commands.run_bzr`` is more extensible: callers can supply the
   functions to load or disable plugins if they wish to use a different
   plugin mechanism; the --help, --version and no-command name code paths
@@ -122,7 +133,14 @@ Internals
 Testing
 *******
 
-* New `bzrlib.tests.test_import_tariff` can make assertions about what
+* bzr now has a ``.testr.conf`` file in its source tree configured
+  appropriately for running tests with Testrepository
+  (``https://launchpad.net/testrepository``). (Robert Collins)
+
+* Documentation about testing with ``subunit`` has been tweaked.
+  (Robert Collins)
+
+* New ``bzrlib.tests.test_import_tariff`` can make assertions about what
   Python modules are loaded, to guard against startup time or library
   dependency regressions.
   (Martin Pool)
@@ -150,7 +168,12 @@ Bug Fixes
 Documentation
 *************
 
+* Added a link to the Desktop Guide. (Ian Clatworthy)
+
 * Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
+* Drop Google Analytics from the core docs as they caused problems
+  in the CHM files. (Ian Clatworthy, #502010)
 
 bzr 2.1.0
 #########
@@ -513,13 +536,31 @@ bzr 2.0.5 (not released yet)
 ############################
 
 :Codename:
-:2.0.5:
+:2.0.5: NOT RELEASED YET
 
 Bug Fixes
 *********
 
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Cope with the lockdir ``held/info`` file being empty, which seems to
+  happen fairly often if the process is suddenly interrupted while taking
+  a lock.
+  (Martin Pool, #185103)
+
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
 
 * If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
   error, report that error rather than failing with an unhelpful
@@ -12014,38 +12055,6 @@ Enhancements
 
 * Storage of local versions: init, add, remove, rm, info, log,
   diff, status, etc.
-
-
-bzr ?.?.? (not released yet)
-############################
-
-:Codename: template
-:2.0.2: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
 
 
 ..

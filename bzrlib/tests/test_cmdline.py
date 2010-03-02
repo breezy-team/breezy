@@ -85,7 +85,7 @@ class TestSplitter(tests.TestCase):
     def test_double_escape(self):
         self.assertAsTokens([(True, u'foo\\\\bar')], u'"foo\\\\bar"')
         self.assertAsTokens([(False, u'foo\\\\bar')], u"foo\\\\bar")
-        
+
     def test_multiple_quoted_args(self):
         self.assertAsTokens([(True, u'x x'), (True, u'y y')],
             u'"x x" "y y"')

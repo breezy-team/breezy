@@ -86,15 +86,15 @@ class TestConflicts(tests.TestCaseWithTransport):
                                   ('hello.sploo.OTHER', 'yellowworld2'),
                                   ])
         tree.lock_read()
-        self.assertEqual(6, len(list(tree.list_files())))
+        self.assertLength(6, list(tree.list_files()))
         tree.unlock()
         tree_conflicts = tree.conflicts()
-        self.assertEqual(2, len(tree_conflicts))
+        self.assertLength(2, tree_conflicts)
         self.assertTrue('hello' in tree_conflicts[0].path)
         self.assertTrue('hello.sploo' in tree_conflicts[1].path)
         conflicts.restore('hello')
         conflicts.restore('hello.sploo')
-        self.assertEqual(0, len(tree.conflicts()))
+        self.assertLength(0, tree.conflicts())
         self.assertFileEqual('hello world2', 'hello')
         self.assertFalse(os.path.lexists('hello.sploo'))
         self.assertRaises(errors.NotConflicted, conflicts.restore, 'hello')
@@ -274,24 +274,24 @@ class TestResolveContentConflicts(tests.TestCaseWithTransport):
 
     def assertConflict(self, wt, ctype, **kwargs):
         confs = wt.conflicts()
-        self.assertEqual(1, len(confs))
+        self.assertLength(1, confs)
         c = confs[0]
         self.assertIsInstance(c, ctype)
         sentinel = object() # An impossible value
         for k, v in kwargs.iteritems():
             self.assertEqual(v, getattr(c, k, sentinel))
 
-    def assertResolved(self, wt, item, action):
+    def check_resolved(self, wt, item, action):
         conflicts.resolve(wt, [item], action=action)
         # Check that we don't have any conflicts nor unknown left
-        self.assertEqual(0, len(wt.conflicts()))
-        self.assertEqual(0, len(list(wt.unknowns())))
+        self.assertLength(0, wt.conflicts())
+        self.assertLength(0, list(wt.unknowns()))
 
     def test_resolve_taking_this(self):
         wt = self._merge_other_into_this()
         self.assertConflict(wt, conflicts.ContentsConflict,
                             path='file', file_id='file-id',)
-        self.assertResolved(wt, 'file', 'take_this')
+        self.check_resolved(wt, 'file', 'take_this')
         check_this = self._get_check(self._check_this)
         check_this()
 
@@ -299,7 +299,7 @@ class TestResolveContentConflicts(tests.TestCaseWithTransport):
         wt = self._merge_other_into_this()
         self.assertConflict(wt, conflicts.ContentsConflict,
                             path='file', file_id='file-id',)
-        self.assertResolved(wt, 'file', 'take_other')
+        self.check_resolved(wt, 'file', 'take_other')
         check_other = self._get_check(self._check_other)
         check_other()
 
