@@ -26,6 +26,7 @@ import errno
 
 from bzrlib import (
     builtins,
+    cleanup,
     commands,
     errors,
     osutils,
@@ -479,41 +480,43 @@ class ContentsConflict(PathConflict):
     def associated_filenames(self):
         return [self.path + suffix for suffix in ('.BASE', '.OTHER')]
 
-    def _take_it(self, tree, suffix_to_remove):
+    def _take_it(self, tt, suffix_to_remove):
         """Resolve the conflict.
 
-        :param tree: The working tree where the conflict is resolved.
+        :param tt: The TreeTransform where the conflict is resolved.
         :param suffix_to_remove: Either 'THIS' or 'OTHER'
 
         The resolution is symmetric, when taking THIS, OTHER is deleted and
         item.THIS is renamed into item and vice-versa.
         """
-        tt = transform.TreeTransform(tree)
         try:
-            try:
-                # Delete 'item.THIS' or 'item.OTHER' depending on
-                # suffix_to_remove
-                tt.delete_contents(
-                    tt.trans_id_tree_path(self.path + '.' + suffix_to_remove))
-            except errors.NoSuchFile:
-                # There are valid cases where 'item.suffix_to_remove' either
-                # never existed or was already deleted (including the case
-                # where the user deleted it)
-                pass
-            # Rename 'item.suffix_to_remove' (note that if
-            # 'item.suffix_to_remove' has been deleted, this is a no-op)
-            this_tid = tt.trans_id_file_id(self.file_id)
-            parent_tid = tt.get_tree_parent(this_tid)
-            tt.adjust_path(self.path, parent_tid, this_tid)
-            tt.apply()
-        finally:
-            tt.finalize()
+            # Delete 'item.THIS' or 'item.OTHER' depending on
+            # suffix_to_remove
+            tt.delete_contents(
+                tt.trans_id_tree_path(self.path + '.' + suffix_to_remove))
+        except errors.NoSuchFile:
+            # There are valid cases where 'item.suffix_to_remove' either
+            # never existed or was already deleted (including the case
+            # where the user deleted it)
+            pass
+        # Rename 'item.suffix_to_remove' (note that if
+        # 'item.suffix_to_remove' has been deleted, this is a no-op)
+        this_tid = tt.trans_id_file_id(self.file_id)
+        parent_tid = tt.get_tree_parent(this_tid)
+        tt.adjust_path(self.path, parent_tid, this_tid)
+        tt.apply()
+
+    def _take_it_with_cleanups(self, tree, suffix_to_remove):
+        tt = transform.TreeTransform(tree)
+        op = cleanup.OperationWithCleanups(self._take_it)
+        op.add_cleanup(tt.finalize)
+        op.run_simple(tt, suffix_to_remove)
 
     def action_take_this(self, tree):
-        self._take_it(tree, 'OTHER')
+        self._take_it_with_cleanups(tree, 'OTHER')
 
     def action_take_other(self, tree):
-        self._take_it(tree, 'THIS')
+        self._take_it_with_cleanups(tree, 'THIS')
 
 
 # FIXME: TextConflict is about a single file-id, there never is a conflict_path
