@@ -30,6 +30,8 @@ Documentation
 
 * Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
 
+* Drop Google Analytics from the core docs as they caused problems
+  in the CHM files. (Ian Clatworthy, #502010)
 
 bzr 2.1.0
 #########
