@@ -26,16 +26,16 @@ class _PushbackSequence(object):
     def __init__(self, orig):
         self._iter = iter(orig)
         self._pushback_buffer = []
-        
+
     def next(self):
         if len(self._pushback_buffer) > 0:
             return self._pushback_buffer.pop()
         else:
             return self._iter.next()
-    
+
     def pushback(self, char):
         self._pushback_buffer.append(char)
-        
+
     def __iter__(self):
         return self
 
@@ -77,7 +77,7 @@ class _Backslash(object):
     def __init__(self, exit_state):
         self.exit_state = exit_state
         self.count = 1
-        
+
     def process(self, next_char, context):
         if next_char == u'\\':
             self.count += 1
@@ -104,7 +104,7 @@ class _Backslash(object):
             # let exit_state handle next_char
             context.seq.pushback(next_char)
             return self.exit_state
-    
+
     def finish(self, context):
         if self.count > 0:
             context.token.append(u'\\' * self.count)
@@ -129,16 +129,16 @@ class Splitter(object):
         self.allowed_quote_chars = u'"'
         if single_quotes_allowed:
             self.allowed_quote_chars += u"'"
-    
+
     def __iter__(self):
         return self
-    
+
     def next(self):
         quoted, token = self._get_token()
         if token is None:
             raise StopIteration
         return quoted, token
-    
+
     def _get_token(self):
         self.quoted = False
         self.token = []

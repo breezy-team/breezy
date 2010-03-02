@@ -1,62 +1,120 @@
-Bazaar Contribution in Five Minutes
-===================================
+Contributing to Bazaar
+======================
 
-Contributing to Bazaar requires attention to quality.  To ensure
-high-quality commits, the "Bazaar process" involves you in our
-code review and improvement activities.
+Talk to us
+----------
 
-In brief, a contribution should include:
+If you want to fix or improve something in Bazaar, we want to help you.
+You can ask at any time for help, on the list, on irc, or through a merge
+proposal on Launchpad.
 
-1.  A brief rationale, including expected audience and use cases,
-    for inclusion in Bazaar.
+In particular, the rostered
+`Patch Pilot <http://wiki.bazaar.canonical.com/PatchPilot>`_ 
+is an experienced developer who will help you get your changes in, through
+code review, advice, debugging, writing tests, or whatever it takes.
 
-2.  A branch registered as a branch on Launchpad, and submitted as
-    a merge proposal.
+* `Bazaar mailing list <http://lists.ubuntu.com/mailman/listinfo/bazaar>`_
 
-3.  The branch should include:
-
-    a.  implementation of the feature,
-
-    b.  user documentation (if the feature is visible in the user
-        interface) and/or developer documentation (if new or
-        changed APIs are provided), and
-
-    c.  tests to ensure the specification is correctly
-        implemented.
-
-For more information, see the `Bazaar Developer Guide <HACKING.html>`_.
-
-If you are not an experienced Bazaar contributor, why not ask for
-mentoring?  When you submit your merge proposal on Launchpad, simply say
-"I'd like to be mentored, please" in your submission.  Or ask for help
-with your contribution on the IRC channel, mailing list, or on Launchpad
-(https://answers.launchpad.net/bzr).
-
-* `Giving back <http://wiki.bazaar.canonical.com/BzrGivingBack>`_: How to get
-  your changes to Bazaar integrated into a release.
+* IRC in channel ``#bzr`` on ``irc.ubuntu.com``
 
 
-Current Bazaar Mentors
-----------------------
+Starting
+--------
 
-See the roster at http://bazaar-vcs.org/PatchPilot, although other
-developers may help too!
+Before starting on a change it's a good idea to either file a bug, find a
+relevant existing bug, or send a proposal to the list.  If there is a bug
+you should set it to "In Progress" and if you wish assign it to yourself.
+
+You might like to start with a bug tagged `easy
+<https://bugs.edge.launchpad.net/bzr/+bugs?field.tag=easy>`_.
+
+Making a branch
+---------------
+
+First, get a local copy of Bazaar::
+
+   $ cd $HOME
+   $ bzr init-repo bzr
+   $ cd bzr
+   $ bzr branch lp:bzr bzr.dev
+
+Now make your own branch; we recommend you include the bug number and also
+a brief description::
+
+   $ bzr branch bzr.dev 123456-status-speed
+
+and go ahead and commit in there.  Normally you should fix only one bug or
+closely-related cluster of bugs per branch, to make reviews and merges
+flow more smoothly.
+
+For bugs that exist in older supported branches of bzr like 2.0 or 2.1,
+you might want to fix the bug there so it can go into a bugfix release,
+ie ::
+
+   $ bzr branch lp:bzr/2.1 bzr.2.1
+   $ bzr branch bzr.2.1 123458-2.1-status
+
+You probably want this configuration in ``~/.bazaar/locations.conf``::
+
+    [/home/USER/bzr]
+    push_location = lp:~LAUNCHPAD_USER/bzr/
+    push_location:policy = appendpath
+    public_branch = http://bazaar.launchpad.net/~LAUNCHPAD_USER/bzr/
+    public_branch:policy = appendpath
+
+with your local and Launchpad usernames inserted.
 
 
-Bazaar Mentors FAQ
-------------------
+Writing tests
+-------------
 
-1.  Why is this "Bazaar process" in HACKING.txt so complicated?
+We value test coverage and generally all changes should have or update a
+test.  There is a powerful test framework but it can be hard to find the
+right place to put your test.  Don't hesitate to ask, or to propose a
+merge that does not yet have tests.
 
-    Answer: If we knew *that*, we'd simplify it!  We are working
-    on streamlining many aspects, but quality comes first.
+Normally for command-line code you should look in
+``bzrlib.tests.blackbox`` and for library code in ``bzrlib.tests``.  For
+functions on an interface for which there are multiple implementations,
+like `Transport`, look in ``bzrlib.tests.per_transport``.
 
-1.  What sort of things can a mentor help with?
+It's a good idea to search the tests for something related to the thing
+you're changing and you may find a test you can modify or adapt.
 
-    Anything that's getting in your way, time permitting.  This includes
-    guiding you through the ``bzrlib`` API, explaining how to use our test
-    infrastructure, discussing possible designs for your bug fix or
-    feature, and so on.
+To run the tests::
+
+    $ ./bzr selftest
+
+Normally the tests will skip if some library dependencies are not present.
+On Ubuntu, you can install them with this command (you must have some
+repositories enabled in Software Sources)::
+
+    $ sudo apt-get build-dep bzr
+
+To build the binary extensions::
+
+    $ make
+
+For more information: `Testing Guide <testing.html>`_.
+
+
+Proposing a merge
+-----------------
+
+
+Then propose a merge into bzr; for bzr 2.2 and later you can use the ``bzr
+propose-merge`` command.  In the comment for your merge proposal please
+explain what you're trying to do and why.  For `example
+<https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677>`_:
+
+  As discussed on the mailing list, this patch adds a What's New document
+  summarising the changes since 2.0.
+
+If you make additional changes to your branch you don't need to resubmit;
+they'll automatically show up in the merge proposal.
+
+* `Launchpad Code Review Help <http://help.launchpad.net/Code/Review>`_.
+
 
 ..
    vim: ft=rst tw=74 ai

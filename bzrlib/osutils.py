@@ -21,11 +21,11 @@ from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import sys
 import time
+import codecs
 import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 from datetime import datetime
 import errno
 from ntpath import (abspath as _nt_abspath,
@@ -1440,12 +1440,21 @@ def _terminal_size_changed(signum, frame):
     if width is not None:
         os.environ['COLUMNS'] = str(width)
 
-if sys.platform == 'win32':
-    # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from ReadConsoleInput but
-    # I've no idea how to plug that in the current design -- vila 20091216
-    pass
-else:
-    signal.signal(signal.SIGWINCH, _terminal_size_changed)
+
+_registered_sigwinch = False
+
+def watch_sigwinch():
+    """Register for SIGWINCH, once and only once."""
+    global _registered_sigwinch
+    if not _registered_sigwinch:
+        if sys.platform == 'win32':
+            # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from
+            # ReadConsoleInput but I've no idea how to plug that in
+            # the current design -- vila 20091216
+            pass
+        else:
+            signal.signal(signal.SIGWINCH, _terminal_size_changed)
+        _registered_sigwinch = True
 
 
 def supports_executable():
