@@ -3124,3 +3124,12 @@ class FileTimestampUnavailable(BzrError):
 
     def __init__(self, path):
         self.path = path
+
+
+class NoColocatedBranchSupport(BzrError):
+
+    _fmt = ("%(bzrdir)r does not support co-located branches.")
+
+    def __init__(self, bzrdir):
+        self.bzrdir = bzrdir
+

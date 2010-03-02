@@ -118,6 +118,9 @@ API Changes
   to be done separately.
   (Martin Pool, #507710)
 
+* New method ``BzrDir.list_branches()`` that returns a sequence of branches 
+  present in a control directory. (Jelmer Vernooij)
+
 * Remove unused ``CommandFailed`` exception.
   (Martin Pool)
 
@@ -132,6 +135,10 @@ Internals
   plugin mechanism; the --help, --version and no-command name code paths
   now use the generic pluggable command lookup infrastructure.
   (Robert Collins)
+
+* The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
+  ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
+  (Jelmer Vernooij)
 
 Testing
 *******
