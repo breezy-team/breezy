@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,50 +31,15 @@ from bzrlib.workingtree import WorkingTree
 
 class TestMkdir(TestCaseWithTransport):
 
-    def test_mkdir_in_repo(self):
-        """'mkdir' should fail cleanly withing a repo. Bug #138600"""
-        shared_repo = self.make_repository('./foobar')
-        self.run_bzr(['mkdir', 'foobar/abc'], retcode=3)
-        self.failIfExists('foobar/abc')
-
-    def test_mkdir_outside_unversioned_dir(self):
-        """'mkdir' should fail with unversioned directory in path. Bug #138600"""
-        dir = pathjoin('.', 'unversioned_dir0')
-        newdir = pathjoin(dir, 'abc')
-        os.mkdir(dir)
-        self.run_bzr(['mkdir', newdir], retcode=3)
-        self.failIfExists(newdir)
-
-    def test_mkdir_inside_unversioned_dir(self):
-        """'mkdir' should fail cleanly from within an unversioned directory. Bug #138600"""
-        dir = pathjoin('.', 'unversioned_dir1')
-        os.mkdir(dir)
-        self.run_bzr(['mkdir', 'abc'], working_dir=dir, retcode=3)
-        newdir = pathjoin(dir, 'abc')
-        self.failIfExists(newdir)
-
-    def test_mkdir_outside_unversioned_dir_within_branch(self):
-        """'mkdir' should fail with unversioned directory inside branch. Bug #138600"""
-        b = 'foobar0'
-        self.make_branch_and_tree(b)
-        os.chdir(b)
-        dir = pathjoin('.', 'unversioned_dir0')
-        newdir = pathjoin(dir, 'abc')
-        os.mkdir(dir)
-        self.run_bzr(['mkdir', newdir], retcode=3)
-        self.failIfExists(newdir)
-
-    def test_mkdir_inside_unversioned_dir_within_branch(self):
-        """'mkdir' should fail cleanly from within an unversioned directory
-        inside branch. Bug #138600"""
-        b = 'foobar1'
-        self.make_branch_and_tree(b)
-        os.chdir(b)
-        dir = pathjoin('.', 'unversioned_dir1')
-        os.mkdir(dir)
-        self.run_bzr(['mkdir', 'abc'], working_dir=dir, retcode=3)
-        newdir = pathjoin(dir, 'abc')
-        self.failIfExists(newdir)
+    def test_mkdir_fails_cleanly(self):
+        """'mkdir' fails cleanly when no working tree is available.
+        https://bugs.edge.launchpad.net/bzr/+bug/138600
+        """
+        # Since there is a safety working tree above us, we create a bare repo
+        # here locally.
+        shared_repo = self.make_repository('.')
+        self.run_bzr(['mkdir', 'abc'], retcode=3)
+        self.failIfExists('abc')
 
 
 class TestVersioning(TestCaseInTempDir):
