@@ -77,6 +77,14 @@ class GitDir(bzrdir.BzrDir):
     def cloning_metadir(self, stacked=False):
         return get_rich_root_format(stacked)
 
+    def _branch_name_to_ref(self, name):
+        if name is None and name != "HEAD":
+            return "HEAD"
+        if not "/" in name:
+            return "refs/heads/%s" % name
+        else:
+            return name
+
 
 class LocalGitDir(GitDir):
     """An adapter to the '.git' dir used by git."""
@@ -111,9 +119,6 @@ class LocalGitDir(GitDir):
     get_repository_transport = get_branch_transport
     get_workingtree_transport = get_branch_transport
 
-    def _branch_name_to_ref(self, name):
-        if name is None:
-            return "HEAD"
 
     def open_branch(self, ignore_fallbacks=None, name=None):
         """'create' a branch for this dir."""

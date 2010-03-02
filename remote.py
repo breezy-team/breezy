@@ -197,10 +197,8 @@ class RemoteGitDir(GitDir):
 
     def open_branch(self, ignore_fallbacks=False, name=None):
         repo = self.open_repository()
-        # TODO: Support for multiple branches in one bzrdir in bzrlib!
-        if name is None:
-            name = "HEAD"
-        return RemoteGitBranch(self, repo, name, self._lockfiles)
+        refname = self._branch_name_to_ref(name)
+        return RemoteGitBranch(self, repo, refname, self._lockfiles)
 
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
