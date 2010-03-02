@@ -715,7 +715,7 @@ class BzrDir(object):
         """
         return None
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         """Get the transport for use by branch format in this BzrDir.
 
         Note that bzr dirs that do not support format strings will raise
@@ -1383,9 +1383,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def create_branch(self, name=None):
         """See BzrDir.create_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
-        return self._format.get_branch_format().initialize(self)
+        return self._format.get_branch_format().initialize(self, name=name)
 
     def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch."""
@@ -1449,8 +1447,10 @@ class BzrDirPreSplitOut(BzrDir):
         raise errors.UnsupportedOperation(self.destroy_workingtree_metadata,
                                           self)
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         if branch_format is None:
             return self.transport
         try:
@@ -1622,9 +1622,7 @@ class BzrDirMeta1(BzrDir):
 
     def create_branch(self, name=None):
         """See BzrDir.create_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
-        return self._format.get_branch_format().initialize(self)
+        return self._format.get_branch_format().initialize(self, name=name)
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
@@ -1678,8 +1676,10 @@ class BzrDirMeta1(BzrDir):
         format = BranchFormat.find_format(self)
         return format.get_reference(self)
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
         if branch_format is None:

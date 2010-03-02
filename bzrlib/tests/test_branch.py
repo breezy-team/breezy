@@ -123,9 +123,9 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, name=None):
         """Format 4 branches cannot be created."""
-        t = a_bzrdir.get_branch_transport(self)
+        t = a_bzrdir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
         return 'A branch'
 
@@ -438,7 +438,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
         t.mkdir('branch')
         branch_dir = bzrdirformat.initialize(self.get_url('branch'))
         made_branch = _mod_branch.BranchReferenceFormat().initialize(
-            branch_dir, target_branch)
+            branch_dir, target_branch=target_branch)
         self.assertEqual(made_branch.base, target_branch.base)
         opened_branch = branch_dir.open_branch()
         self.assertEqual(opened_branch.base, target_branch.base)
