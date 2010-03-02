@@ -99,6 +99,10 @@ Bug Fixes
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
 
+* SSH child processes will now ignore SIGQUIT on nix systems so breaking into
+  the debugger won't kill the session.
+  (Martin <gzlist@googlemail.com>, #162502)
+
 API Changes
 ***********
 
