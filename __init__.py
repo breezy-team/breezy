@@ -148,6 +148,9 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
                 raise bzr_errors.NotBranchError(path=transport.base)
         except bzr_errors.NoSuchFile:
             raise bzr_errors.NotBranchError(path=transport.base)
+        from bzrlib import urlutils
+        if urlutils.split(transport.base)[1] == ".git":
+            raise bzr_errors.NotBranchError(path=transport.base)
         lazy_check_versions()
         import dulwich
         format = klass()
