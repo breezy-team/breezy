@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1913,10 +1913,11 @@ def local_concurrency(use_cache=True):
 
 if sys.platform == 'win32':
     def open_file(filename, mode='r', bufsize=-1):
-        """This function works like builtin ``open``. But use O_NOINHERIT
-        flag so file handle is not inherited to child process.
-        So deleting or renaming closed file that opened with this function
-        is not blocked by child process.
+        """This function is used to override the ``open`` builtin.
+        
+        But it uses O_NOINHERIT flag so the file handle is not inherited by
+        child processes.  Deleting or renaming a closed file opened with this
+        function is not blocking child processes.
         """
         writing = 'w' in mode
         appending = 'a' in mode
