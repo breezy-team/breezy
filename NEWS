@@ -79,6 +79,10 @@ Bug Fixes
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
 
+* ``bzr resolve --take-this`` and ``--take-other`` now correctly renames
+  the kept file on content conflicts where one side deleted the file.
+  (Vincent Ladeuil, #529968)
+
 * ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
   of ``backup.bzr``. This directory is ignored by bzr commands such as
   ``add``.
@@ -96,6 +100,13 @@ Bug Fixes
   prevents ``bzr status --short`` from crashing when those files are
   present.  (John Arbash Meinel, #303275)
 
+* ``bzr mkdir DIR`` will not create DIR unless DIR's parent is a versioned
+   directory. (Parth Malwankar, #138600)
+
+* SSH child processes will now ignore SIGQUIT on nix systems so breaking into
+  the debugger won't kill the session.
+  (Martin <gzlist@googlemail.com>, #162502)
+
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
 
@@ -106,6 +117,9 @@ API Changes
   run when starting up; it sets up several things that previously needed
   to be done separately.
   (Martin Pool, #507710)
+
+* New method ``BzrDir.list_branches()`` that returns a sequence of branches 
+  present in a control directory. (Jelmer Vernooij)
 
 * Remove unused ``CommandFailed`` exception.
   (Martin Pool)
@@ -128,6 +142,10 @@ Internals
 
 * ``bzrlib.errors.BoundBranchOutOfDate`` has a new field ``extra_help``
   which can be set to add extra help to the error. (Gary van der Merwe)
+
+* The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
+  ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
+  (Jelmer Vernooij)
 
 Testing
 *******
@@ -167,7 +185,12 @@ Bug Fixes
 Documentation
 *************
 
+* Added a link to the Desktop Guide. (Ian Clatworthy)
+
 * Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
+* Drop Google Analytics from the core docs as they caused problems
+  in the CHM files. (Ian Clatworthy, #502010)
 
 bzr 2.1.0
 #########
@@ -530,13 +553,31 @@ bzr 2.0.5 (not released yet)
 ############################
 
 :Codename:
-:2.0.5:
+:2.0.5: NOT RELEASED YET
 
 Bug Fixes
 *********
 
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Cope with the lockdir ``held/info`` file being empty, which seems to
+  happen fairly often if the process is suddenly interrupted while taking
+  a lock.
+  (Martin Pool, #185103)
+
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
 
 * If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
   error, report that error rather than failing with an unhelpful
@@ -12031,38 +12072,6 @@ Enhancements
 
 * Storage of local versions: init, add, remove, rm, info, log,
   diff, status, etc.
-
-
-bzr ?.?.? (not released yet)
-############################
-
-:Codename: template
-:2.0.2: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
 
 
 ..
