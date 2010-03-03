@@ -18,7 +18,7 @@
 import os
 import re
 
-from bzrlib import tests
+from bzrlib import tests, osutils
 
 class TestGrep(tests.TestCaseWithTransport):
     def _str_contains(self, base, pattern, flags=re.MULTILINE|re.DOTALL):
@@ -399,4 +399,38 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt~4:v3"))
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt~5:v3"))
         self.assertFalse(self._str_contains(out, "^dir0/file0.txt~6:v3"))
+
+    def test_levels(self):
+        """levels=0 should show findings from merged revision"""
+        wd0 = 'foobar0'
+        wd1 = 'foobar1'
+
+        self.make_branch_and_tree(wd0)
+        os.chdir(wd0)
+        self._mk_versioned_file('file0.txt')
+        os.chdir('..')
+
+        out, err = self.run_bzr(['branch', wd0, wd1])
+        os.chdir(wd1)
+        self._mk_versioned_file('file1.txt')
+        os.chdir(osutils.pathjoin('..', wd0))
+
+        out, err = self.run_bzr(['merge', osutils.pathjoin('..', wd1)])
+        out, err = self.run_bzr(['ci', '-m', 'merged'])
+
+        out, err = self.run_bzr(['grep', 'line1'])
+        self.assertTrue(self._str_contains(out, "file0.txt:line1"))
+        self.assertTrue(self._str_contains(out, "file1.txt:line1"))
+
+        out, err = self.run_bzr(['grep', '--levels=0', 'line1'])
+        self.assertTrue(self._str_contains(out, "file0.txt~2:line1"))
+        self.assertTrue(self._str_contains(out, "file1.txt~2:line1"))
+        self.assertTrue(self._str_contains(out, "file0.txt~1.1.1:line1"))
+        self.assertTrue(self._str_contains(out, "file1.txt~1.1.1:line1"))
+
+        out, err = self.run_bzr(['grep', '-n', '--levels=0', 'line1'])
+        self.assertTrue(self._str_contains(out, "file0.txt~2:1:line1"))
+        self.assertTrue(self._str_contains(out, "file1.txt~2:1:line1"))
+        self.assertTrue(self._str_contains(out, "file0.txt~1.1.1:1:line1"))
+        self.assertTrue(self._str_contains(out, "file1.txt~1.1.1:1:line1"))
 

@@ -32,7 +32,7 @@ import re
 import grep
 
 import bzrlib
-from bzrlib.builtins import _get_revision_range, _parse_levels
+from bzrlib.builtins import _get_revision_range
 from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid
 from bzrlib.workingtree import WorkingTree
 from bzrlib import log as logcmd
@@ -44,6 +44,20 @@ from bzrlib import (
 """)
 
 version_info = (0, 1)
+
+# FIXME: _parse_levels should be shared with bzrlib.builtins. this is a copy
+# to avoid the error
+#   "IllegalUseOfScopeReplacer: ScopeReplacer object '_parse_levels' was used
+#   incorrectly: Object already cleaned up, did you assign it to another
+#   variable?: _factory
+# with lazy import
+def _parse_levels(s):
+    try:
+        return int(s)
+    except ValueError:
+        msg = "The levels argument must be an integer."
+        raise errors.BzrCommandError(msg)
+
 
 class cmd_grep(Command):
     """Print lines matching PATTERN for specified files and revisions.
@@ -102,11 +116,13 @@ class cmd_grep(Command):
                 raise errors.BzrCommandError('cannot specify both --from-root and PATH.')
 
         print_revno = False
+        if revision != None or levels == 0:
+            # print revision numbers as we may be showing multiple revisions
+            print_revno = True
+
         if revision == None:
             # grep on latest revision by default
             revision = [RevisionSpec.from_string("last:1")]
-        else:
-            print_revno = True # used to print revno in output.
 
         start_rev = revision[0]
         end_rev = revision[0]
