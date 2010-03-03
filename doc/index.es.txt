@@ -3,7 +3,7 @@ Indice de Documentacion de Bazaar
 ==================================
 
 Las ultimas versiones de estos documentos se encuentran disponibles
-en la pagina de  Bazaar, http://doc.bazaar-vcs.org.
+en la pagina de  Bazaar, http://doc.bazaar.canonical.com/.
 
 Documentacion Principal
 =======================

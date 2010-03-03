@@ -212,8 +212,8 @@ In the working tree:
          0 added
          0 removed
          0 renamed
-         1 unknown
-         0 ignored
+         0 unknown
+         1 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -380,8 +380,8 @@ In the working tree:
          0 added
          0 removed
          0 renamed
-         1 unknown
-         0 ignored
+         0 unknown
+         1 ignored
          0 versioned subdirectories
 
 Branch history:

@@ -1,5 +1,4 @@
 # Copyright (C) 2006-2010 Canonical Ltd
-# -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -341,6 +340,7 @@ $ bzr update -r revid:m2
         # now update (and get conflicts)
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
+        # NB: these conflicts are actually in the source code
         self.assertFileEqual('''\
 <<<<<<< TREE
 lightweight local changes
@@ -358,6 +358,7 @@ checkout
         # check we get the second conflict
         out, err = self.run_bzr('update lightweight', retcode=1)
         self.assertEqual('', out)
+        # NB: these conflicts are actually in the source code
         self.assertFileEqual('''\
 <<<<<<< TREE
 lightweight+checkout
@@ -366,4 +367,3 @@ master
 >>>>>>> MERGE-SOURCE
 ''',
                              'lightweight/file')
-

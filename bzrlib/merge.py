@@ -130,7 +130,7 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
         """
         affected_files = self.affected_files
         if affected_files is None:
-            config = self.merger.this_tree.branch.get_config()
+            config = self.merger.this_branch.get_config()
             # Until bzr provides a better policy for caching the config, we
             # just add the part we're interested in to the params to avoid
             # reading the config files repeatedly (bazaar.conf, location.conf,

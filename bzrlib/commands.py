@@ -41,6 +41,7 @@ from warnings import warn
 import bzrlib
 from bzrlib import (
     cleanup,
+    cmdline,
     debug,
     errors,
     option,
@@ -54,6 +55,7 @@ from bzrlib import (
 from bzrlib.hooks import HookPoint, Hooks
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
+from bzrlib.plugin import disable_plugins, load_plugins
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_function,
@@ -197,11 +199,13 @@ def get_cmd_object(cmd_name, plugins_override=True):
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
 
-def _get_cmd_object(cmd_name, plugins_override=True):
+def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     """Get a command object.
 
     :param cmd_name: The name of the command.
     :param plugins_override: Allow plugins to override builtins.
+    :param check_missing: Look up commands not found in the regular index via
+        the get_missing_command hook.
     :return: A Command object instance
     :raises KeyError: If no command is found.
     """
@@ -217,7 +221,7 @@ def _get_cmd_object(cmd_name, plugins_override=True):
             # We've found a non-plugin command, don't permit it to be
             # overridden.
             break
-    if cmd is None:
+    if cmd is None and check_missing:
         for hook in Command.hooks['get_missing_command']:
             cmd = hook(cmd_name)
             if cmd is not None:
@@ -368,7 +372,7 @@ class Command(object):
         # List of standard options directly supported
         self.supported_std_options = []
         self._operation = cleanup.OperationWithCleanups(self.run)
-    
+
     def add_cleanup(self, cleanup_func, *args, **kwargs):
         """Register a function to call after self.run returns or raises.
 
@@ -388,7 +392,7 @@ class Command(object):
         resources (such as writing results to self.outf).
         """
         self._operation.cleanup_now()
-        
+
     @deprecated_method(deprecated_in((2, 1, 0)))
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
@@ -873,9 +877,9 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def shlex_split_unicode(unsplit):
-    import shlex
-    return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
+    return cmdline.split(unsplit)
 
 
 def get_alias(cmd, config=None):
@@ -893,19 +897,25 @@ def get_alias(cmd, config=None):
         config = bzrlib.config.GlobalConfig()
     alias = config.get_alias(cmd)
     if (alias):
-        return shlex_split_unicode(alias)
+        return cmdline.split(alias)
     return None
 
 
-def run_bzr(argv):
+def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     """Execute a command.
 
-    argv
-       The command-line arguments, without the program name from argv[0]
-       These should already be decoded. All library/test code calling
-       run_bzr should be passing valid strings (don't need decoding).
-
-    Returns a command status or raises an exception.
+    :param argv: The command-line arguments, without the program name from
+        argv[0] These should already be decoded. All library/test code calling
+        run_bzr should be passing valid strings (don't need decoding).
+    :param load_plugins: What function to call when triggering plugin loading.
+        This function should take no arguments and cause all plugins to be
+        loaded.
+    :param disable_plugins: What function to call when disabling plugin
+        loading. This function should take no arguments and cause all plugin
+        loading to be prohibited (so that code paths in your application that
+        know about some plugins possibly being present will fail to import
+        those plugins even if they are installed.)
+    :return: Returns a command exit code or raises an exception.
 
     Special master options: these must come before the command because
     they control how the command is interpreted.
@@ -976,23 +986,19 @@ def run_bzr(argv):
 
     debug.set_debug_flags_from_config()
 
+    if not opt_no_plugins:
+        load_plugins()
+    else:
+        disable_plugins()
+
     argv = argv_copy
     if (not argv):
-        from bzrlib.builtins import cmd_help
-        cmd_help().run_argv_aliases([])
+        get_cmd_object('help').run_argv_aliases([])
         return 0
 
     if argv[0] == '--version':
-        from bzrlib.builtins import cmd_version
-        cmd_version().run_argv_aliases([])
+        get_cmd_object('version').run_argv_aliases([])
         return 0
-
-    if not opt_no_plugins:
-        from bzrlib.plugin import load_plugins
-        load_plugins()
-    else:
-        from bzrlib.plugin import disable_plugins
-        disable_plugins()
 
     alias_argv = None
 
@@ -1163,7 +1169,7 @@ class HelpCommandIndex(object):
         if topic and topic.startswith(self.prefix):
             topic = topic[len(self.prefix):]
         try:
-            cmd = _get_cmd_object(topic)
+            cmd = _get_cmd_object(topic, check_missing=False)
         except KeyError:
             return []
         else:

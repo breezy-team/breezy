@@ -1027,7 +1027,7 @@ class Repository(_RelockDebugMixin):
 
         :seealso: add_inventory, for the contract.
         """
-        inv_lines = self._serialise_inventory_to_lines(inv)
+        inv_lines = self._serializer.write_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
@@ -1895,23 +1895,6 @@ class Repository(_RelockDebugMixin):
                 rev = self._serializer.read_revision_from_string(text)
                 yield (revid, rev)
 
-    @needs_read_lock
-    def get_revision_xml(self, revision_id):
-        # TODO: jam 20070210 This shouldn't be necessary since get_revision
-        #       would have already do it.
-        # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
-        # TODO: this can't just be replaced by:
-        # return self._serializer.write_revision_to_string(
-        #     self.get_revision(revision_id))
-        # as cStringIO preservers the encoding unlike write_revision_to_string
-        # or some other call down the path.
-        rev = self.get_revision(revision_id)
-        rev_tmp = cStringIO.StringIO()
-        # the current serializer..
-        self._serializer.write_revision(rev, rev_tmp)
-        rev_tmp.seek(0)
-        return rev_tmp.getvalue()
-
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
 
@@ -2430,12 +2413,6 @@ class Repository(_RelockDebugMixin):
                 result.revision_id, revision_id))
         return result
 
-    def _serialise_inventory(self, inv):
-        return self._serializer.write_inventory_to_string(inv)
-
-    def _serialise_inventory_to_lines(self, inv):
-        return self._serializer.write_inventory_to_lines(inv)
-
     def get_serializer_format(self):
         return self._serializer.format_num
 
@@ -2505,22 +2482,6 @@ class Repository(_RelockDebugMixin):
             else:
                 next_id = parents[0]
 
-    @needs_read_lock
-    def get_revision_inventory(self, revision_id):
-        """Return inventory of a past revision."""
-        # TODO: Unify this with get_inventory()
-        # bzr 0.0.6 and later imposes the constraint that the inventory_id
-        # must be the same as its revision, so this is trivial.
-        if revision_id is None:
-            # This does not make sense: if there is no revision,
-            # then it is the current tree inventory surely ?!
-            # and thus get_root_id() is something that looks at the last
-            # commit on the branch, and the get_root_id is an inventory check.
-            raise NotImplementedError
-            # return Inventory(self.get_root_id())
-        else:
-            return self.get_inventory(revision_id)
-
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
@@ -2560,7 +2521,7 @@ class Repository(_RelockDebugMixin):
             return RevisionTree(self, Inventory(root_id=None),
                                 _mod_revision.NULL_REVISION)
         else:
-            inv = self.get_revision_inventory(revision_id)
+            inv = self.get_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):

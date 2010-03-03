@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>
+# Copyright (C) 2006-2010 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -173,12 +173,15 @@ register_default_ssh_vendor = _ssh_vendor_manager.register_default_vendor
 register_ssh_vendor = _ssh_vendor_manager.register_vendor
 
 
-def _ignore_sigint():
+def _ignore_signals():
     # TODO: This should possibly ignore SIGHUP as well, but bzr currently
     # doesn't handle it itself.
     # <https://launchpad.net/products/bzr/+bug/41433/+index>
     import signal
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    # GZ 2010-02-19: Perhaps make this check if breakin is installed instead
+    if signal.getsignal(signal.SIGQUIT) != signal.SIG_DFL:
+        signal.signal(signal.SIGQUIT, signal.SIG_IGN)
 
 
 class SocketAsChannelAdapter(object):
@@ -634,7 +637,7 @@ def os_specific_subprocess_params():
         # Running it in a separate process group is not good because then it
         # can't get non-echoed input of a password or passphrase.
         # <https://launchpad.net/products/bzr/+bug/40508>
-        return {'preexec_fn': _ignore_sigint,
+        return {'preexec_fn': _ignore_signals,
                 'close_fds': True,
                 }
 

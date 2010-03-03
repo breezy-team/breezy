@@ -340,6 +340,14 @@ class cmd_cat_revision(Command):
     # cat-revision is more for frontends so should be exact
     encoding = 'strict'
 
+    def print_revision(self, revisions, revid):
+        stream = revisions.get_record_stream([(revid,)], 'unordered', True)
+        record = stream.next()
+        if record.storage_kind == 'absent':
+            raise errors.NoSuchRevision(revisions, revid)
+        revtext = record.get_bytes_as('fulltext')
+        self.outf.write(revtext.decode('utf-8'))
+
     @display_command
     def run(self, revision_id=None, revision=None):
         if revision_id is not None and revision is not None:
@@ -350,23 +358,32 @@ class cmd_cat_revision(Command):
                                          ' --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
 
-        # TODO: jam 20060112 should cat-revision always output utf-8?
-        if revision_id is not None:
-            revision_id = osutils.safe_revision_id(revision_id, warn=False)
-            try:
-                self.outf.write(b.repository.get_revision_xml(revision_id).decode('utf-8'))
-            except errors.NoSuchRevision:
-                msg = "The repository %s contains no revision %s." % (b.repository.base,
-                    revision_id)
-                raise errors.BzrCommandError(msg)
-        elif revision is not None:
-            for rev in revision:
-                if rev is None:
-                    raise errors.BzrCommandError('You cannot specify a NULL'
-                                                 ' revision.')
-                rev_id = rev.as_revision_id(b)
-                self.outf.write(b.repository.get_revision_xml(rev_id).decode('utf-8'))
+        revisions = b.repository.revisions
+        if revisions is None:
+            raise errors.BzrCommandError('Repository %r does not support '
+                'access to raw revision texts')
 
+        b.repository.lock_read()
+        try:
+            # TODO: jam 20060112 should cat-revision always output utf-8?
+            if revision_id is not None:
+                revision_id = osutils.safe_revision_id(revision_id, warn=False)
+                try:
+                    self.print_revision(revisions, revision_id)
+                except errors.NoSuchRevision:
+                    msg = "The repository %s contains no revision %s." % (
+                        b.repository.base, revision_id)
+                    raise errors.BzrCommandError(msg)
+            elif revision is not None:
+                for rev in revision:
+                    if rev is None:
+                        raise errors.BzrCommandError(
+                            'You cannot specify a NULL revision.')
+                    rev_id = rev.as_revision_id(b)
+                    self.print_revision(revisions, rev_id)
+        finally:
+            b.repository.unlock()
+        
 
 class cmd_dump_btree(Command):
     """Dump the contents of a btree index file to stdout.
@@ -682,10 +699,15 @@ class cmd_mkdir(Command):
 
     def run(self, dir_list):
         for d in dir_list:
-            os.mkdir(d)
             wt, dd = WorkingTree.open_containing(d)
-            wt.add([dd])
-            self.outf.write('added %s\n' % d)
+            base = os.path.dirname(dd)
+            id = wt.path2id(base)
+            if id != None:
+                os.mkdir(d)
+                wt.add([dd])
+                self.outf.write('added %s\n' % d)
+            else:
+                raise errors.NotVersionedError(path=base)
 
 
 class cmd_relpath(Command):
@@ -2667,7 +2689,7 @@ class cmd_ignore(Command):
         if old_default_rules is not None:
             # dump the rules and exit
             for pattern in ignores.OLD_DEFAULTS:
-                print pattern
+                self.outf.write("%s\n" % pattern)
             return
         if not name_pattern_list:
             raise errors.BzrCommandError("ignore requires at least one "
@@ -2689,13 +2711,13 @@ class cmd_ignore(Command):
             if id is not None:
                 filename = entry[0]
                 if ignored.match(filename):
-                    matches.append(filename.encode('utf-8'))
+                    matches.append(filename)
         tree.unlock()
         if len(matches) > 0:
-            print "Warning: the following files are version controlled and" \
-                  " match your ignore pattern:\n%s" \
-                  "\nThese files will continue to be version controlled" \
-                  " unless you 'bzr remove' them." % ("\n".join(matches),)
+            self.outf.write("Warning: the following files are version controlled and"
+                  " match your ignore pattern:\n%s"
+                  "\nThese files will continue to be version controlled"
+                  " unless you 'bzr remove' them.\n" % ("\n".join(matches),))
 
 
 class cmd_ignored(Command):
@@ -2739,9 +2761,10 @@ class cmd_lookup_revision(Command):
         try:
             revno = int(revno)
         except ValueError:
-            raise errors.BzrCommandError("not a valid revision-number: %r" % revno)
-
-        print WorkingTree.open_containing(u'.')[0].branch.get_rev_id(revno)
+            raise errors.BzrCommandError("not a valid revision-number: %r"
+                                         % revno)
+        revid = WorkingTree.open_containing(u'.')[0].branch.get_rev_id(revno)
+        self.outf.write("%s\n" % revid)
 
 
 class cmd_export(Command):
@@ -2894,7 +2917,7 @@ class cmd_local_time_offset(Command):
     hidden = True
     @display_command
     def run(self):
-        print osutils.local_time_offset()
+        self.outf.write("%s\n" % osutils.local_time_offset())
 
 
 
@@ -3151,10 +3174,11 @@ class cmd_commit(Command):
             raise errors.BzrCommandError("Commit refused because there are"
                               " unknown files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
-            raise errors.BzrCommandError(str(e) + "\n"
-            'To commit to master branch, run update and then commit.\n'
-            'You can also pass --local to commit to continue working '
-            'disconnected.')
+            e.extra_help = ("\n"
+                'To commit to master branch, run update and then commit.\n'
+                'You can also pass --local to commit to continue working '
+                'disconnected.')
+            raise
 
 
 class cmd_check(Command):
@@ -3322,7 +3346,7 @@ class cmd_nick(Command):
 
     @display_command
     def printme(self, branch):
-        print branch.nick
+        self.outf.write('%s\n' % branch.nick)
 
 
 class cmd_alias(Command):
@@ -3602,7 +3626,7 @@ class cmd_rocks(Command):
 
     @display_command
     def run(self):
-        print "It sure does!"
+        self.outf.write("It sure does!\n")
 
 
 class cmd_find_merge_base(Command):
@@ -3628,7 +3652,7 @@ class cmd_find_merge_base(Command):
         graph = branch1.repository.get_graph(branch2.repository)
         base_rev_id = graph.find_unique_lca(last1, last2)
 
-        print 'merge base is revision %s' % base_rev_id
+        self.outf.write('merge base is revision %s\n' % base_rev_id)
 
 
 class cmd_merge(Command):
@@ -4427,11 +4451,11 @@ class cmd_plugins(Command):
                 doc = '(no description)'
             result.append((name_ver, doc, plugin.path()))
         for name_ver, doc, path in sorted(result):
-            print name_ver
-            print '   ', doc
+            self.outf.write("%s\n" % name_ver)
+            self.outf.write("   %s\n" % doc)
             if verbose:
-                print '   ', path
-            print
+                self.outf.write("   %s\n" % path)
+            self.outf.write("\n")
 
 
 class cmd_testament(Command):
@@ -4717,12 +4741,11 @@ class cmd_uncommit(Command):
                 rev_id = b.get_rev_id(revno)
 
         if rev_id is None or _mod_revision.is_null(rev_id):
-            ui.ui_factory.note('No revisions to uncommit.')
+            self.outf.write('No revisions to uncommit.\n')
             return 1
 
-        log_collector = ui.ui_factory.make_output_stream()
         lf = log_formatter('short',
-                           to_file=log_collector,
+                           to_file=self.outf,
                            show_timezone='original')
 
         show_log(b,
@@ -4733,21 +4756,22 @@ class cmd_uncommit(Command):
                  end_revision=last_revno)
 
         if dry_run:
-            ui.ui_factory.note('Dry-run, pretending to remove the above revisions.')
+            self.outf.write('Dry-run, pretending to remove'
+                            ' the above revisions.\n')
         else:
-            ui.ui_factory.note('The above revision(s) will be removed.')
+            self.outf.write('The above revision(s) will be removed.\n')
 
         if not force:
-            if not ui.ui_factory.get_boolean('Are you sure [y/N]? '):
-                ui.ui_factory.note('Canceled')
+            if not ui.ui_factory.get_boolean('Are you sure'):
+                self.outf.write('Canceled')
                 return 0
 
         mutter('Uncommitting from {%s} to {%s}',
                last_rev_id, rev_id)
         uncommit(b, tree=tree, dry_run=dry_run, verbose=verbose,
                  revno=revno, local=local)
-        ui.ui_factory.note('You can restore the old tip by running:\n'
-             '  bzr pull . -r revid:%s' % last_rev_id)
+        self.outf.write('You can restore the old tip by running:\n'
+             '  bzr pull . -r revid:%s\n' % last_rev_id)
 
 
 class cmd_break_lock(Command):
