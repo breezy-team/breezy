@@ -32,6 +32,7 @@ bzr_titles = {
         u'Bazaar Tutorial': None,
         u'Using Bazaar With Launchpad': None,
         u'Centralized Workflow Tutorial': None,
+        u"What's New in Bazaar 2.1?": None,
     }
 def bzr_title(s):
     return bzr_titles.get(s) or s
@@ -69,6 +70,8 @@ latex_documents = [
   ('tutorials/centralized_workflow',
     'bzr-%s-tutorial-centralized.tex' % (bzr_locale,),
     bzr_title(u'Centralized Workflow Tutorial'), bzr_team, 'howto'),
+  ('whats-new/whats-new-in-2.1', 'bzr-%s-whats-new.tex' % (bzr_locale,),
+    bzr_title(u"What's New in Bazaar 2.1?"), bzr_team, 'howto'),
 ]
 
 # List of documents that shouldn't be included in the build.
