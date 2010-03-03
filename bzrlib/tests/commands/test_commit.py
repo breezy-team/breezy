@@ -53,8 +53,7 @@ class TestCommitWithBoundBranch(
         # commit do not provide a directory parameter, we have to change dir
         # manually
         os.chdir('local')
-        # cmd_commit translates BoundBranchOutOfDate into BzrCommandError
-        self.assertRaises(errors.BzrCommandError, commit.run,
+        self.assertRaises(errors.BoundBranchOutOfDate, commit.run,
                           message=u'empty commit', unchanged=True)
         self.assertEquals(1, len(self.connections))
 

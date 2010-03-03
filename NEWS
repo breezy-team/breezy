@@ -130,11 +130,18 @@ Internals
 * ``bzrlib.branchbuilder.BranchBuilder.build_snapshot`` now accepts a
   ``message_callback`` in the same way that commit does. (Robert Collins)
 
+* ``bzrlib.builtins.Commit.run`` raises ``bzrlib.errors.BoundBranchOutOfDate``
+  rather than ``bzrlib.errors.BzrCommandError`` when the bound branch is out
+  of date. (Gary van der Merwe)
+
 * ``bzrlib.commands.run_bzr`` is more extensible: callers can supply the
   functions to load or disable plugins if they wish to use a different
   plugin mechanism; the --help, --version and no-command name code paths
   now use the generic pluggable command lookup infrastructure.
   (Robert Collins)
+
+* ``bzrlib.errors.BoundBranchOutOfDate`` has a new field ``extra_help``
+  which can be set to add extra help to the error. (Gary van der Merwe)
 
 * The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
   ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
