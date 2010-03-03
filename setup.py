@@ -612,7 +612,11 @@ elif 'py2exe' in sys.argv:
             excludes.extend(["bzrlib.plugins." + d for d in dirs])
         x = []
         for i in files:
-            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll", ".mo"]:
+            # Throw away files we don't want packaged. Note that plugins may
+            # have data files with all sorts of extensions so we need to
+            # be conservative here about what we ditch.
+            ext = os.path.splitext(i)[1]
+            if ext.endswith('~') or ext in [".pyc", ".swp"]:
                 continue
             if i == '__init__.py' and root == 'bzrlib/plugins':
                 continue
