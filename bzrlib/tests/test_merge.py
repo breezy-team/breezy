@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2893,6 +2893,11 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
         builder.add_dir('bar-dir', builder.tree_root, 'bar-id',
                         base=False, other=False)
         return builder
+
+    def test_uses_this_branch(self):
+        builder = self.make_text_conflict()
+        tt = builder.make_preview_transform()
+        self.addCleanup(tt.finalize)
 
     def test_affected_files_cached(self):
         """Ensures that the config variable is cached"""

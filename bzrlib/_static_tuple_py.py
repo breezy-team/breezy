@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,15 +34,15 @@ class StaticTuple(tuple):
 
     def __init__(self, *args):
         """Create a new 'StaticTuple'"""
+        num_keys = len(args)
+        if num_keys < 0 or num_keys > 255:
+            raise TypeError('StaticTuple(...) takes from 0 to 255 items')
         for bit in args:
             if type(bit) not in (str, StaticTuple, unicode, int, long, float,
                                  None.__class__, bool):
                 raise TypeError('StaticTuple can only point to'
                     ' StaticTuple, str, unicode, int, long, float, bool, or'
                     ' None not %s' % (type(bit),))
-        num_keys = len(args)
-        if num_keys < 0 or num_keys > 255:
-            raise ValueError('must have 1 => 256 key bits')
         # We don't need to pass args to tuple.__init__, because that was
         # already handled in __new__.
         tuple.__init__(self)
