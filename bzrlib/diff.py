@@ -698,8 +698,18 @@ class DiffFromTool(DiffPath):
 
     def _get_command(self, old_path, new_path):
         my_map = {'old_path': old_path, 'new_path': new_path}
-        return [AtTemplate(t).substitute(my_map) for t in
-                self.command_template]
+        command = [AtTemplate(t).substitute(my_map) for t in
+                   self.command_template]
+        if sys.platform == 'win32': # Popen doesn't accept unicode on win32
+            command_encoded = []
+            for c in command:
+                if isinstance(c, unicode):
+                    command_encoded.append(c.encode('mbcs'))
+                else:
+                    command_encoded.append(c)
+            return command_encoded
+        else:
+            return command
 
     def _execute(self, old_path, new_path):
         command = self._get_command(old_path, new_path)
@@ -729,8 +739,16 @@ class DiffFromTool(DiffPath):
                     allow_write=False):
         if not force_temp and isinstance(tree, WorkingTree):
             return tree.abspath(tree.id2path(file_id))
-        
-        full_path = osutils.pathjoin(self._root, prefix, relpath)
+
+        if sys.platform == 'win32':
+            fenc = 'mbcs'
+        else:
+            fenc = sys.getfilesystemencoding() or 'ascii'
+        # encoded_str.replace('?', '_') may break multibyte char.
+        # So we should encode, decode, then replace(u'?', u'_')
+        relpath_tmp = relpath.encode(fenc, 'replace').decode(fenc, 'replace')
+        relpath_tmp = relpath_tmp.replace(u'?', u'_')
+        full_path = osutils.pathjoin(self._root, prefix, relpath_tmp)
         if not force_temp and self._try_symlink_root(tree, prefix):
             return full_path
         parent_dir = osutils.dirname(full_path)
@@ -792,13 +810,13 @@ class DiffFromTool(DiffPath):
         """
         old_path = self.old_tree.id2path(file_id)
         new_path = self.new_tree.id2path(file_id)
-        new_abs_path = self._prepare_files(file_id, old_path, new_path,
-                                           allow_write_new=True,
-                                           force_temp=True)[1]
-        command = self._get_command(osutils.pathjoin('old', old_path),
-                                    osutils.pathjoin('new', new_path))
+        old_abs_path, new_abs_path = self._prepare_files(
+                                            file_id, old_path, new_path,
+                                            allow_write_new=True,
+                                            force_temp=True)
+        command = self._get_command(old_abs_path, new_abs_path)
         subprocess.call(command, cwd=self._root)
-        new_file = open(new_abs_path, 'r')
+        new_file = open(new_abs_path, 'rb')
         try:
             return new_file.read()
         finally:
