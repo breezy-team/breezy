@@ -224,15 +224,15 @@ def content_conflict_scenarios():
             ('%s,%s' % (t, o),
              dict(_this_actions=d['_this_actions'],
                   _check_this=d['_check_this'],
-                  _other_actions=['_other_actions'],
-                  _check_other=['_check_other'],
+                  _other_actions=d['_other_actions'],
+                  _check_other=d['_check_other'],
                   )))
         scenarios.append(
             ('%s,%s' % (o, t),
              dict(_this_actions=d['_other_actions'],
                   _check_this=d['_check_other'],
-                  _other_actions=['_this_actions'],
-                  _check_other=['_check_this'],
+                  _other_actions=d['_this_actions'],
+                  _check_other=d['_check_this'],
                   )))
     return scenarios
 
