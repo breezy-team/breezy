@@ -28,6 +28,7 @@ bzr_titles = {
         u'Bazaar User Reference': None,
         u'Bazaar Release Notes': None,
         u'Bazaar Upgrade Guide': None,
+        u"Bazaar System Administrator's Guide": None,
         u'Bazaar in five minutes': None,
         u'Bazaar Tutorial': None,
         u'Using Bazaar With Launchpad': None,
@@ -59,6 +60,8 @@ latex_documents = [
     bzr_title(u'Bazaar Release Notes'), bzr_team, 'manual'),
   ('upgrade-guide/index', 'bzr-%s-upgrade-guide.tex' % (bzr_locale,),
     bzr_title(u'Bazaar Upgrade Guide'), bzr_team, 'manual'),
+  ('admin-guide/index', 'bzr-%s-admin-guide.tex' % (bzr_locale,),
+    bzr_title(u"Bazaar System Administrator's Guide"), bzr_team, 'manual'),
   # Tutorials
   ('mini-tutorial/index', 'bzr-%s-tutorial-mini.tex' % (bzr_locale,),
     bzr_title(u'Bazaar in five minutes'), bzr_team, 'howto'),
