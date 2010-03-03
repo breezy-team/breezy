@@ -434,3 +434,15 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "file0.txt~1.1.1:1:line1"))
         self.assertTrue(self._str_contains(out, "file1.txt~1.1.1:1:line1"))
 
+    def test_binary_file_grep(self):
+        """grep for pattern in binary file"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.txt')
+        self._update_file('file0.txt', "\x00lineNN\x00\n")
+        out, err = self.run_bzr(['grep', 'lineNN', 'file0.txt'])
+        self.assertFalse(self._str_contains(out, "file0.txt:line1"))
+        self.assertTrue(self._str_contains(err, "Binary file.*file0.txt.*skipped"))
+
+

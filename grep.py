@@ -21,11 +21,14 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import os
 import re
+import cStringIO
 
 from bzrlib import (
-    osutils,
     errors,
     lazy_regex,
+    osutils,
+    textfile,
+    trace,
     )
 """)
 
@@ -82,8 +85,15 @@ def file_grep(tree, id, relpath, path, patternc, eol_marker,
     fmt_with_n = path + revfmt + ":%d:%s" + eol_marker
     fmt_without_n = path + revfmt + ":%s" + eol_marker
 
+    str_file = cStringIO.StringIO(tree.get_file_text(id))
+    try:
+        iter_file = textfile.text_file(str_file)
+    except errors.BinaryFile, e:
+        trace.warning("Binary file '%s' skipped." % path)
+        return
+
     index = 1
-    for line in tree.get_file_lines(id):
+    for line in iter_file:
         res = patternc.search(line)
         if res:
             if line_number:
