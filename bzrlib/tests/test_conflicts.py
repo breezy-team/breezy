@@ -210,17 +210,31 @@ class TestResolveTextConflicts(TestResolveConflicts):
 
 
 def content_conflict_scenarios():
-    return [('file,None', dict(_this_actions='modify_file',
-                               _check_this='file_has_more_content',
-                               _other_actions='delete_file',
-                               _check_other='file_doesnt_exist',
-                               )),
-            ('None,file', dict(_this_actions='delete_file',
-                               _check_this='file_doesnt_exist',
-                               _other_actions='modify_file',
-                               _check_other='file_has_more_content',
-                               )),
-            ]
+    base_scenarios = [
+        (('file', 'None'), dict(_this_actions='modify_file',
+                           _check_this='file_has_more_content',
+                           _other_actions='delete_file',
+                           _check_other='file_doesnt_exist',
+                           )),
+        ]
+    # Each base scenario is duplicated switching the roles of this and other
+    scenarios = []
+    for (t, o), d in base_scenarios:
+        scenarios.append(
+            ('%s,%s' % (t, o),
+             dict(_this_actions=d['_this_actions'],
+                  _check_this=d['_check_this'],
+                  _other_actions=['_other_actions'],
+                  _check_other=['_check_other'],
+                  )))
+        scenarios.append(
+            ('%s,%s' % (o, t),
+             dict(_this_actions=d['_other_actions'],
+                  _check_this=d['_check_other'],
+                  _other_actions=['_this_actions'],
+                  _check_other=['_check_this'],
+                  )))
+    return scenarios
 
 
 class TestResolveContentConflicts(tests.TestCaseWithTransport):
