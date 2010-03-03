@@ -37,7 +37,7 @@ META_INFO = {
     'version':      bzrlib.__version__,
     'author':       'Canonical Ltd',
     'author_email': 'bazaar@lists.canonical.com',
-    'url':          'http://www.bazaar-vcs.org/',
+    'url':          'http://bazaar.canonical.com/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
     'download_url': 'https://launchpad.net/bzr/+download',
@@ -541,7 +541,7 @@ elif 'py2exe' in sys.argv:
                                      version = version_str,
                                      description = META_INFO['description'],
                                      author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2009",
+                                     copyright = "(c) Canonical Ltd, 2005-2010",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
