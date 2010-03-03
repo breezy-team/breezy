@@ -42,7 +42,7 @@ from bzrlib import (
     )
 """)
 
-version_info = (0, 1)
+version_info = (0, 1, 'dev')
 
 # FIXME: _parse_levels should be shared with bzrlib.builtins. this is a copy
 # to avoid the error
