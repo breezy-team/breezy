@@ -69,21 +69,24 @@ def file_grep(tree, id, relpath, path, patternc, eol_marker,
         line_number, revno, print_revno, outf, path_prefix = None):
 
     if relpath:
+        # update path so to display it w.r.t cwd
+        # handle windows slash separator
         path = osutils.normpath(osutils.pathjoin(relpath, path))
         path = path.replace('\\', '/')
         path = path.replace(relpath + '/', '', 1)
-
-    revfmt = ''
-    if print_revno:
-        revfmt = "~%s"
 
     if path_prefix and path_prefix != '.':
         # user has passed a dir arg, show that as result prefix
         path = osutils.pathjoin(path_prefix, path)
 
+    revfmt = ''
+    if print_revno:
+        revfmt = "~%s"
+
     fmt_with_n = path + revfmt + ":%d:%s" + eol_marker
     fmt_without_n = path + revfmt + ":%s" + eol_marker
 
+    # test and skip binary files
     str_file = cStringIO.StringIO(tree.get_file_text(id))
     try:
         iter_file = textfile.text_file(str_file)
