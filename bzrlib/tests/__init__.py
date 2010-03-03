@@ -4405,28 +4405,3 @@ try:
             return result
 except ImportError:
     pass
-
-class _PosixPermissionsFeature(Feature):
-
-    def _probe(self):
-        def has_perms():
-            # create temporary file and check if specified perms are maintained.
-            import tempfile
-
-            write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
-            fd, name = f
-            os.close(fd)
-            os.chmod(name, write_perms)
-
-            read_perms = os.stat(name).st_mode & 0777
-            os.unlink(name)
-            return (write_perms == read_perms)
-
-        return (os.name == 'posix') and has_perms()
-
-    def feature_name(self):
-        return 'POSIX permissions support'
-
-PosixPermissionsFeature = _PosixPermissionsFeature()
-

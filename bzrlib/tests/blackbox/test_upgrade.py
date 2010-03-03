@@ -15,15 +15,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black box tests for the upgrade ui."""
+import os
+import stat
 
 from bzrlib import (
     bzrdir,
     repository,
     )
 from bzrlib.tests import (
+    features,
     TestCaseInTempDir,
     TestCaseWithTransport,
-    PosixPermissionsFeature,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
@@ -147,8 +149,7 @@ finished
 
     def test_upgrade_permission_check(self):
         """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
-        self.requireFeature(PosixPermissionsFeature)
-        import os, stat
+        self.requireFeature(features.PosixPermissionsFeature)
         old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
         backup_dir = 'backup.bzr'
         self.run_bzr('init --format=1.6')
