@@ -1323,8 +1323,12 @@ class DistributionBranch(object):
 
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
+        if tarball_filename.endswith(".tar.bz2"):
+	    tar_args = 'xjf'
+        else:
+	    tar_args = 'xzf'
         try:
-            proc = subprocess.Popen(["tar", "xzf", tarball_filename, "-C",
+            proc = subprocess.Popen(["tar", tar_args, tarball_filename, "-C",
                     tempdir, "--strip-components", "1"],
                     preexec_fn=subprocess_setup)
             proc.communicate()
