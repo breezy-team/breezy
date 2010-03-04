@@ -1297,12 +1297,13 @@ class UnlistableBranch(BzrError):
 class BoundBranchOutOfDate(BzrError):
 
     _fmt = ("Bound branch %(branch)s is out of date with master branch"
-            " %(master)s.")
+            " %(master)s.%(extra_help)s")
 
     def __init__(self, branch, master):
         BzrError.__init__(self)
         self.branch = branch
         self.master = master
+        self.extra_help = ''
 
 
 class CommitToDoubleBoundBranch(BzrError):
@@ -3124,3 +3125,12 @@ class FileTimestampUnavailable(BzrError):
 
     def __init__(self, path):
         self.path = path
+
+
+class NoColocatedBranchSupport(BzrError):
+
+    _fmt = ("%(bzrdir)r does not support co-located branches.")
+
+    def __init__(self, bzrdir):
+        self.bzrdir = bzrdir
+

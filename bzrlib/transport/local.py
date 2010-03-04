@@ -518,7 +518,7 @@ class LocalTransport(transport.Transport):
     if osutils.host_os_dereferences_symlinks():
         def readlink(self, relpath):
             """See Transport.readlink."""
-            return osutils.readlink(self._abspath(relpath)
+            return osutils.readlink(self._abspath(relpath))
 
     if osutils.hardlinks_good():
         def link(self, source, link_name):
