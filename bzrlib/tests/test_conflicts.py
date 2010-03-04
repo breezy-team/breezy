@@ -34,9 +34,9 @@ def load_tests(standard_tests, module, loader):
 
     sp_tests, remaining_tests = tests.split_suite_by_condition(
         standard_tests, tests.condition_isinstance((
-                TestResolveContentConflicts,
+                TestParametrizedResolveConflicts,
                 )))
-    tests.multiply_tests(sp_tests, content_conflict_scenarios(), result)
+    tests.multiply_tests(sp_tests, resolve_conflict_scenarios(), result)
 
     # No parametrization for the remaining tests
     result.addTests(remaining_tests)
@@ -209,50 +209,75 @@ class TestResolveTextConflicts(TestResolveConflicts):
     pass
 
 
-def content_conflict_scenarios():
+def resolve_conflict_scenarios():
     base_scenarios = [
-        (('file', 'None'), dict(_this_actions='modify_file',
-                           _check_this='file_has_more_content',
-                           _other_actions='delete_file',
-                           _check_other='file_doesnt_exist',
-                           )),
+        (('file_modified', 'file_deleted'),
+         dict(_conflict_type=conflicts.ContentsConflict,
+              _item_path='file',
+              _item_id='file-id',
+              _this_actions='modify_file',
+              _check_this='file_has_more_content',
+              _other_actions='delete_file',
+              _check_other='file_doesnt_exist',
+              )),
+        (('dir_renamed', 'dir_deleted'),
+         dict(_conflict_type=conflicts.PathConflict,
+              _item_path='new-dir',
+              _item_id='dir-id',
+              _this_actions='rename_dir',
+              _check_this='dir_renamed',
+              _other_actions='delete_dir',
+              _check_other='dir_doesnt_exist',
+              )),
         ]
     # Each base scenario is duplicated switching the roles of this and other
     scenarios = []
     for (t, o), d in base_scenarios:
         scenarios.append(
             ('%s,%s' % (t, o),
-             dict(_this_actions=d['_this_actions'],
+             dict(_conflict_type=d['_conflict_type'],
+                  _item_path=d['_item_path'],
+                  _item_id=d['_item_id'],
+                  _this_actions=d['_this_actions'],
                   _check_this=d['_check_this'],
                   _other_actions=d['_other_actions'],
                   _check_other=d['_check_other'],
                   )))
         scenarios.append(
             ('%s,%s' % (o, t),
-             dict(_this_actions=d['_other_actions'],
+             dict(_conflict_type=d['_conflict_type'],
+                  _item_path=d['_item_path'],
+                  _item_id=d['_item_id'],
+                  _this_actions=d['_other_actions'],
                   _check_this=d['_check_other'],
                   _other_actions=d['_this_actions'],
                   _check_other=d['_check_this'],
                   )))
     return scenarios
 
-
-class TestResolveContentConflicts(tests.TestCaseWithTransport):
+# FIXME: Get rid of parametrized once we delete TestResolveConflicts
+class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     # Set by load_tests
-    this_actions = None
-    other_actions = None
+    _this_actions = None
+    _other_actions = None
+    _conflict_type = None
+    _item_path = None
+    _item_id = None
 
     def setUp(self):
-        super(TestResolveContentConflicts, self).setUp()
+        super(TestParametrizedResolveConflicts, self).setUp()
         builder = self.make_branch_builder('trunk')
         builder.start_series()
         # Create an empty trunk
         builder.build_snapshot('start', None, [
                 ('add', ('', 'root-id', 'directory', ''))])
         # Add a minimal base content
-        builder.build_snapshot('base', ['start'], [
-                ('add', ('file', 'file-id', 'file', 'trunk content\n'))])
+        builder.build_snapshot(
+            'base', ['start'], [
+                ('add', ('file', 'file-id', 'file', 'trunk content\n')),
+                ('add', ('dir', 'dir-id', 'directory', '')),
+                ])
         # Modify the base content in branch
         other_actions = self._get_actions(self._other_actions)
         builder.build_snapshot('other', ['base'], other_actions())
@@ -268,6 +293,21 @@ class TestResolveContentConflicts(tests.TestCaseWithTransport):
     def _get_check(self, name):
         return getattr(self, 'check_%s' % name)
 
+    def assertConflict(self, wt, **kwargs):
+        confs = wt.conflicts()
+        self.assertLength(1, confs)
+        c = confs[0]
+        self.assertIsInstance(c, self._conflict_type)
+        sentinel = object() # An impossible value
+        for k, v in kwargs.iteritems():
+            self.assertEqual(v, getattr(c, k, sentinel), "for key '%s'" % k)
+
+    def check_resolved(self, wt, item, action):
+        conflicts.resolve(wt, [item], action=action)
+        # Check that we don't have any conflicts nor unknown left
+        self.assertLength(0, wt.conflicts())
+        self.assertLength(0, list(wt.unknowns()))
+
     def do_modify_file(self):
         return [('modify', ('file-id', 'trunk content\nmore content\n'))]
 
@@ -280,40 +320,36 @@ class TestResolveContentConflicts(tests.TestCaseWithTransport):
     def check_file_doesnt_exist(self):
         self.failIfExists('branch/file')
 
+    def do_rename_dir(self):
+        return [('rename', ('dir', 'new-dir'))]
+
+    def check_dir_renamed(self):
+        self.failIfExists('branch/dir')
+        self.failUnlessExists('branch/new-dir')
+
+    def do_delete_dir(self):
+        return [('unversion', 'dir-id')]
+
+    def check_dir_doesnt_exist(self):
+        self.failIfExists('branch/dir')
+
     def _merge_other_into_this(self):
         b = self.builder.get_branch()
         wt = b.bzrdir.sprout('branch').open_workingtree()
         wt.merge_from_branch(b, 'other')
         return wt
 
-    def assertConflict(self, wt, ctype, **kwargs):
-        confs = wt.conflicts()
-        self.assertLength(1, confs)
-        c = confs[0]
-        self.assertIsInstance(c, ctype)
-        sentinel = object() # An impossible value
-        for k, v in kwargs.iteritems():
-            self.assertEqual(v, getattr(c, k, sentinel))
-
-    def check_resolved(self, wt, item, action):
-        conflicts.resolve(wt, [item], action=action)
-        # Check that we don't have any conflicts nor unknown left
-        self.assertLength(0, wt.conflicts())
-        self.assertLength(0, list(wt.unknowns()))
-
     def test_resolve_taking_this(self):
         wt = self._merge_other_into_this()
-        self.assertConflict(wt, conflicts.ContentsConflict,
-                            path='file', file_id='file-id',)
-        self.check_resolved(wt, 'file', 'take_this')
+        self.assertConflict(wt, path=self._item_path, file_id=self._item_id)
+        self.check_resolved(wt, self._item_path, 'take_this')
         check_this = self._get_check(self._check_this)
         check_this()
 
     def test_resolve_taking_other(self):
         wt = self._merge_other_into_this()
-        self.assertConflict(wt, conflicts.ContentsConflict,
-                            path='file', file_id='file-id',)
-        self.check_resolved(wt, 'file', 'take_other')
+        self.assertConflict(wt, path=self._item_path, file_id=self._item_id)
+        self.check_resolved(wt, self._item_path, 'take_other')
         check_other = self._get_check(self._check_other)
         check_other()
 
