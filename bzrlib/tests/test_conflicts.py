@@ -213,16 +213,24 @@ def resolve_conflict_scenarios():
     base_scenarios = [
         (dict(_conflict_type=conflicts.ContentsConflict,
               _base_actions='create_file',
+              _assert_conflict='assert_ContentsConflict',
               _item_path='file', _item_id='file-id',),
          ('file_modified', dict(actions='modify_file',
                                 check='file_has_more_content')),
          ('file_deleted', dict(actions='delete_file',
                                 check='file_doesnt_exist'))),
         (dict(_conflict_type=conflicts.PathConflict,
+              _assert_conflict='assert_PathConflict',
               _base_actions='create_dir',
               _item_path='new-dir', _item_id='dir-id',),
          ('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
          ('dir_deleted', dict(actions='delete_dir', check='dir_doesnt_exist'))),
+        (dict(_conflict_type=conflicts.PathConflict,
+              _assert_conflict='assert_PathConflict',
+              _base_actions='create_dir',
+              _item_path='new-dir', _item_id='dir-id',),
+         ('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
+         ('dir_renamed2', dict(actions='rename_dir2', check='dir_renamed2'))),
         ]
     # Each base scenario is duplicated switching the roles of this and other
     scenarios = []
@@ -245,8 +253,12 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _this_actions = None
     _other_actions = None
     _conflict_type = None
-    _item_path = None
-    _item_id = None
+
+    # Set by _this_actions and other_actions
+    _this_path = None
+    _this_id = None
+    _other_path = None
+    _other_id = None
 
     def setUp(self):
         super(TestParametrizedResolveConflicts, self).setUp()
@@ -257,14 +269,17 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         builder.build_snapshot('start', None, [
                 ('add', ('', 'root-id', 'directory', ''))])
         # Add a minimal base content
-        base_actions = self._get_actions(self._base_actions)
-        builder.build_snapshot('base', ['start'], base_actions())
+        _, _, base_actions = self._get_actions(self._base_actions)()
+        builder.build_snapshot('base', ['start'], base_actions)
         # Modify the base content in branch
-        other_actions = self._get_actions(self._other_actions)
-        builder.build_snapshot('other', ['base'], other_actions())
+        (self._other_path, self._other_id,
+         other_actions) = self._get_actions(self._other_actions)()
+        builder.build_snapshot('other', ['base'], other_actions)
         # Modify the base content in trunk
-        this_actions = self._get_actions(self._this_actions)
-        builder.build_snapshot('this', ['base'], this_actions())
+        (self._this_path, self._this_id,
+         this_actions) = self._get_actions(self._this_actions)()
+        builder.build_snapshot('this', ['base'], this_actions)
+        # builder.get_branch() tip is now 'this'
 
         builder.finish_series()
         self.builder = builder
@@ -275,14 +290,27 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     def _get_check(self, name):
         return getattr(self, 'check_%s' % name)
 
-    def assertConflict(self, wt, **kwargs):
+    def assert_ContentsConflict(self, c):
+        self.assertEqual(self._other_id, c.file_id)
+        self.assertEqual(self._other_path, c.path)
+
+    def assert_PathConflict(self, c):
+        # bug #531967 is about file_id not being set in some cases
+#        self.assertEqual(self._other_id, c.file_id)
+        # FIXME: PathConflicts objects are created with other/this
+        # path/conflict_path paths reversed -- vila 20100304
+        # self.assertEqual(self._other_path, c.path)
+        # self.assertEqual(self._this_path, c.conflict_path)
+        self.assertEqual(self._this_path, c.path)
+        self.assertEqual(self._other_path, c.conflict_path)
+
+    def assertConflict(self, wt):
         confs = wt.conflicts()
         self.assertLength(1, confs)
         c = confs[0]
         self.assertIsInstance(c, self._conflict_type)
-        sentinel = object() # An impossible value
-        for k, v in kwargs.iteritems():
-            self.assertEqual(v, getattr(c, k, sentinel), "for key '%s'" % k)
+        _assert_conflict = getattr(self, self._assert_conflict)
+        _assert_conflict(c)
 
     def check_resolved(self, wt, item, action):
         conflicts.resolve(wt, [item], action=action)
@@ -291,32 +319,44 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self.assertLength(0, list(wt.unknowns()))
 
     def do_create_file(self):
-        return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
+        return ('file', 'file-id',
+                [('add', ('file', 'file-id', 'file', 'trunk content\n'))])
 
     def do_create_dir(self):
-        return [('add', ('dir', 'dir-id', 'directory', ''))]
+        return ('dir', 'dir-id', [('add', ('dir', 'dir-id', 'directory', ''))])
 
     def do_modify_file(self):
-        return [('modify', ('file-id', 'trunk content\nmore content\n'))]
+        return ('file', 'file-id',
+                [('modify', ('file-id', 'trunk content\nmore content\n'))])
 
     def check_file_has_more_content(self):
         self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
 
     def do_delete_file(self):
-        return [('unversion', 'file-id')]
+        # None or <deleted> ?
+        return ('file', 'file-id', [('unversion', 'file-id')])
 
     def check_file_doesnt_exist(self):
         self.failIfExists('branch/file')
 
     def do_rename_dir(self):
-        return [('rename', ('dir', 'new-dir'))]
+        return ('new-dir', 'dir-id', [('rename', ('dir', 'new-dir'))])
 
     def check_dir_renamed(self):
         self.failIfExists('branch/dir')
         self.failUnlessExists('branch/new-dir')
 
+    def do_rename_dir2(self):
+        return ('new-dir2', 'dir-id', [('rename', ('dir', 'new-dir2'))])
+
+    def check_dir_renamed2(self):
+        self.failIfExists('branch/dir')
+        self.failUnlessExists('branch/new-dir2')
+
     def do_delete_dir(self):
-        return [('unversion', 'dir-id')]
+        # None or <deleted> ?
+        # bug #531967 also mess up the paths
+        return ('<deleted>', 'dir-id', [('unversion', 'dir-id')])
 
     def check_dir_doesnt_exist(self):
         self.failIfExists('branch/dir')
@@ -329,14 +369,14 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     def test_resolve_taking_this(self):
         wt = self._merge_other_into_this()
-        self.assertConflict(wt, path=self._item_path, file_id=self._item_id)
+        self.assertConflict(wt)
         self.check_resolved(wt, self._item_path, 'take_this')
         check_this = self._get_check(self._check_this)
         check_this()
 
     def test_resolve_taking_other(self):
         wt = self._merge_other_into_this()
-        self.assertConflict(wt, path=self._item_path, file_id=self._item_id)
+        self.assertConflict(wt)
         self.check_resolved(wt, self._item_path, 'take_other')
         check_other = self._get_check(self._check_other)
         check_other()

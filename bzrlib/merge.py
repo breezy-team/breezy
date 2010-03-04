@@ -1587,6 +1587,8 @@ class Merge3Merger(object):
             else:
                 this_path = "<deleted>"
             file_id = self.tt.final_file_id(trans_id)
+            # FIXME: PathConflicts objects are created with other/this
+            # path/conflict_path paths reversed -- vila 20100304
             c = _mod_conflicts.Conflict.factory('path conflict', path=this_path,
                                                 conflict_path=other_path,
                                                 file_id=file_id)
