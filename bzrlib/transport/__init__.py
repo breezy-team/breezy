@@ -1174,14 +1174,6 @@ class Transport(object):
     def __repr__(self):
         return "<%s.%s url=%s>" % (self.__module__, self.__class__.__name__, self.base)
 
-    def lstat(self, relpath):
-        """Like stat(), but do not follow symbolic links.
-
-        NOTE: Might be an alias to stat() for transports that support
-        stat() but do not support symlinks.
-        """
-        raise NotImplementedError(self.lstat)
-
     def stat(self, relpath):
         """Return the stat information for a file.
         WARNING: This may not be implementable for all protocols, so use

@@ -475,23 +475,13 @@ class LocalTransport(transport.Transport):
             self._translate_error(e, path)
         return [urlutils.escape(entry) for entry in entries]
 
-    def lstat(self, relpath):
-        """Return the stat information for a file, without following symbolic links.
-        """
-        path = relpath
-        try:
-            path = self._abspath(relpath)
-            return os.lstat(path)
-        except (IOError, OSError),e:
-            self._translate_error(e, path)
-
     def stat(self, relpath):
         """Return the stat information for a file.
         """
         path = relpath
         try:
             path = self._abspath(relpath)
-            return os.stat(path)
+            return os.lstat(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
 

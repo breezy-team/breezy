@@ -806,19 +806,11 @@ class SFTPTransport(ConnectedTransport):
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to rmdir')
 
-    def lstat(self, relpath):
-        """Return the stat information for a file, without following symbolic links."""
-        path = self._remote_path(relpath)
-        try:
-            return self._get_sftp().lstat(path)
-        except (IOError, paramiko.SSHException), e:
-            self._translate_io_exception(e, path, ': unable to lstat')
-
     def stat(self, relpath):
         """Return the stat information for a file."""
         path = self._remote_path(relpath)
         try:
-            return self._get_sftp().stat(path)
+            return self._get_sftp().lstat(path)
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': unable to stat')
 
@@ -834,8 +826,12 @@ class SFTPTransport(ConnectedTransport):
         """See Transport.symlink."""
         try:
             conn = self._get_sftp()
-            retval = conn.symlink(source, link_name)
-            return (SFTP_OK == retval)
+            sftp_retval = conn.symlink(source, link_name)
+            if SFTP_OK != sftp_retval:
+                raise TransportError(
+                    '%r: unable to create symlink to %r' % (link_name, source),
+                    sftp_retval
+                )
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, link_name,
                                          ': unable to create symlink to %r' % (source))
