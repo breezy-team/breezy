@@ -15,18 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-# TODO: probably should say which arguments are candidates for glob
-# expansion on windows and do that at the command level.
-
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
 # would help with validation and shell completion.  They could also provide
 # help/explanation for that argument in a structured way.
 
 # TODO: Specific "examples" property on commands for consistent formatting.
-
-# TODO: "--profile=cum", to change sort order.  Is there any value in leaving
-# the profile output behind so it can be interactively examined?
 
 import os
 import sys
@@ -124,6 +118,7 @@ class CommandRegistry(registry.Registry):
 
 
 plugin_cmds = CommandRegistry()
+builtin_cmds = CommandRegistry()
 
 
 def register_command(cmd, decorate=False):
@@ -140,8 +135,17 @@ def _unsquish_command_name(cmd):
 
 
 def _builtin_commands():
+    # return dict(name: cmd_class)
+    return dict(builtin_cmds.items())
+
+
+def _register_builtin_commands():
+    if builtin_cmds.keys():
+        # only load once
+        return
     import bzrlib.builtins
-    return _scan_module_for_commands(bzrlib.builtins)
+    for cmd_class in _scan_module_for_commands(bzrlib.builtins).values():
+        builtin_cmds.register(cmd_class)
 
 
 def _scan_module_for_commands(module):
@@ -1109,6 +1113,7 @@ def main(argv=None):
         except UnicodeDecodeError:
             raise errors.BzrError("argv should be list of unicode strings.")
         argv = new_argv
+    _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
     bzrlib.ui.ui_factory.log_transport_activity(
         display=('bytes' in debug.debug_flags))
