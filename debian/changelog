@@ -9,6 +9,7 @@ bzr-builddeb (2.4) UNRELEASED; urgency=low
   * Also merge tags in merge-package.
   * Adapt to the python-apt 0.8 API. Thanks to Julian Andres Klode.
     (Closes: #572093)
+  * Fix merge-upstream with just a branch. (LP: #528273)
 
   [ John Arbash Meinel ]
   * Improve the changelog merge hook to be smarter when both sides change.
