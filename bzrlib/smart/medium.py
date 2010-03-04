@@ -289,8 +289,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self._push_back(protocol.unused_data)
 
     def _read_bytes(self, desired_count):
-        return _read_bytes_from_socket(
-            self.socket, _MAX_READ_SIZE, self._report_activity)
+        return _read_bytes_from_socket(self.socket, self._report_activity)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -734,7 +733,7 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
-        bytes = osutils.until_no_eintr(self._readable_pipe.read, count))
+        bytes = osutils.until_no_eintr(self._readable_pipe.read, count)
         self._report_activity(len(bytes), 'read')
         return bytes
 
@@ -903,8 +902,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        return _read_bytes_from_socket(
-            self._socket, _MAX_READ_SIZE, self._report_activity)
+        return _read_bytes_from_socket(self._socket, self._report_activity)
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
@@ -947,15 +945,17 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         self._medium._flush()
 
 
-def _read_bytes_from_socket(sock, desired_count, report_activity):
-    """Read upto desired_count of bytes from sock and notify of progress
+def _read_bytes_from_socket(sock, report_activity,
+        max_read_size=_MAX_READ_SIZE):
+    """Read up to max_read_size of bytes from sock and notify of progress.
 
-    Translates "Connection reset by peer" into a normal disconnect, and
-    repeats the recv if interrupted by a signal.
+    Translates "Connection reset by peer" into file-like EOF (return an
+    empty string rather than raise an error), and repeats the recv if
+    interrupted by a signal.
     """
     while 1:
         try:
-            bytes = sock.recv(desired_count)
+            bytes = sock.recv(_MAX_READ_SIZE)
         except socket.error, e:
             eno = e.args[0]
             if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
@@ -987,7 +987,8 @@ def _send_bytes_chunked(sock, bytes, report_activity):
     byte_count = len(bytes)
     while sent_total < byte_count:
         try:
-            sent = sock.send(buffer(bytes, sent_total, _MAX_READ_SIZE))
+            buf = buffer(bytes, sent_total, _MAX_READ_SIZE)
+            sent = sock.send(buf)
         except socket.error, e:
             if e.args[0] != errno.EINTR:
                 raise

@@ -63,7 +63,7 @@ def _recv_all(socket, bytes):
     b = ''
     reporter = lambda n, rw: None
     while len(b) < bytes:
-        new = medium._read_bytes_from_socket(socket, bytes - len(b), reporter)
+        new = medium._read_bytes_from_socket(socket, reporter, bytes - len(b))
         if new == '':
             break # eof
         b += new
