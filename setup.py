@@ -186,6 +186,7 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
+    pyrex_version_info = tuple(map(int, pyrex_version.split('.')))
 
 
 class build_ext_if_possible(build_ext):
@@ -282,7 +283,7 @@ if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._walkdirs_win32')
     z_lib = 'zdll'
 else:
-    if have_pyrex and pyrex_version.startswith('0.9.4'):
+    if have_pyrex and pyrex_version_info[:3] == (0,9,4):
         # Pyrex 0.9.4.1 fails to compile this extension correctly
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
@@ -301,9 +302,20 @@ else:
 add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
-add_pyrex_extension('bzrlib._simple_set_pyx')
-ext_modules.append(Extension('bzrlib._static_tuple_c',
-                             ['bzrlib/_static_tuple_c.c']))
+if have_pyrex and pyrex_version_info < (0, 9, 6, 3):
+    print
+    print 'Your Pyrex/Cython version %s is too old to build the simple_set' % (
+        pyrex_version)
+    print 'and static_tuple extensions.'
+    print 'Please upgrade to at least Pyrex 0.9.6.3'
+    print
+    # TODO: Should this be a fatal error?
+else:
+    # We only need 0.9.6.3 to build _simple_set_pyx, but static_tuple depends
+    # on simple_set
+    add_pyrex_extension('bzrlib._simple_set_pyx')
+    ext_modules.append(Extension('bzrlib._static_tuple_c',
+                                 ['bzrlib/_static_tuple_c.c']))
 add_pyrex_extension('bzrlib._btree_serializer_pyx')
 
 
