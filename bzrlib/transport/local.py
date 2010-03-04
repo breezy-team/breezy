@@ -524,13 +524,9 @@ class LocalTransport(transport.Transport):
         def link(self, source, link_name):
             """See Transport.link."""
             try:
-                link = os.link
-            except AttributeError:
-                return errors.TransportNotPossible("Hardlinks are not supported on %s" %self)
+                os.link(self._abspath(source), self._abspath(link_name))
             except (IOError, OSError), e:
                 self._translate_error(e, source)
-
-            link(self._abspath(source), self._abspath(link_name))
 
     if osutils.has_symlinks():
         def symlink(self, source, link_name):
@@ -543,8 +539,6 @@ class LocalTransport(transport.Transport):
 
             try:
                 os.symlink(source_rel, self._abspath(link_name))
-            except AttributeError:
-                raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
             except (IOError, OSError), e:
                 self._translate_error(e, source_rel)
 
