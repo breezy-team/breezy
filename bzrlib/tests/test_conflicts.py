@@ -211,48 +211,28 @@ class TestResolveTextConflicts(TestResolveConflicts):
 
 def resolve_conflict_scenarios():
     base_scenarios = [
-        (('file_modified', 'file_deleted'),
-         dict(_conflict_type=conflicts.ContentsConflict,
-              _item_path='file',
-              _item_id='file-id',
-              _this_actions='modify_file',
-              _check_this='file_has_more_content',
-              _other_actions='delete_file',
-              _check_other='file_doesnt_exist',
-              )),
-        (('dir_renamed', 'dir_deleted'),
-         dict(_conflict_type=conflicts.PathConflict,
-              _item_path='new-dir',
-              _item_id='dir-id',
-              _this_actions='rename_dir',
-              _check_this='dir_renamed',
-              _other_actions='delete_dir',
-              _check_other='dir_doesnt_exist',
-              )),
+        (dict(_conflict_type=conflicts.ContentsConflict,
+              _item_path='file', _item_id='file-id',),
+         ('file_modified', dict(actions='modify_file',
+                                check='file_has_more_content')),
+         ('file_deleted', dict(actions='delete_file',
+                                check='file_doesnt_exist'))),
+        (dict(_conflict_type=conflicts.PathConflict,
+              _item_path='new-dir', _item_id='dir-id',),
+         ('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
+         ('dir_deleted', dict(actions='delete_dir', check='dir_doesnt_exist'))),
         ]
     # Each base scenario is duplicated switching the roles of this and other
     scenarios = []
-    for (t, o), d in base_scenarios:
-        scenarios.append(
-            ('%s,%s' % (t, o),
-             dict(_conflict_type=d['_conflict_type'],
-                  _item_path=d['_item_path'],
-                  _item_id=d['_item_id'],
-                  _this_actions=d['_this_actions'],
-                  _check_this=d['_check_this'],
-                  _other_actions=d['_other_actions'],
-                  _check_other=d['_check_other'],
-                  )))
-        scenarios.append(
-            ('%s,%s' % (o, t),
-             dict(_conflict_type=d['_conflict_type'],
-                  _item_path=d['_item_path'],
-                  _item_id=d['_item_id'],
-                  _this_actions=d['_other_actions'],
-                  _check_this=d['_check_other'],
-                  _other_actions=d['_this_actions'],
-                  _check_other=d['_check_this'],
-                  )))
+    for common, (tname, tdict), (oname, odict) in base_scenarios:
+        d = common.copy()
+        d.update(_this_actions=tdict['actions'], _check_this=tdict['check'],
+                 _other_actions=odict['actions'], _check_other=odict['check'])
+        scenarios.append(('%s,%s' % (tname, oname), d))
+        d = common.copy()
+        d.update(_this_actions=odict['actions'], _check_this=odict['check'],
+                 _other_actions=tdict['actions'], _check_other=tdict['check'])
+        scenarios.append(('%s,%s' % (oname, tname), d))
     return scenarios
 
 # FIXME: Get rid of parametrized once we delete TestResolveConflicts
