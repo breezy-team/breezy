@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ from bzrlib import (
         errors,
         osutils,
         tests,
+        transport,
         urlutils,
         )
 from bzrlib.smart import (
@@ -39,14 +40,13 @@ from bzrlib.smart import (
         server,
         vfs,
 )
-from bzrlib.tests.test_smart import TestCaseWithSmartMedium
+from bzrlib.tests import test_smart
 from bzrlib.transport import (
-        get_transport,
+        http,
         local,
         memory,
         remote,
         )
-from bzrlib.transport.http import SmartClientHTTPMediumRequest
 
 
 def _recv_all(socket, bytes):
@@ -578,7 +578,7 @@ class TestSmartClientStreamMediumRequest(tests.TestCase):
         self.assertRaises(errors.ReadingCompleted, request.read_bytes, None)
 
 
-class RemoteTransportTests(TestCaseWithSmartMedium):
+class RemoteTransportTests(test_smart.TestCaseWithSmartMedium):
 
     def test_plausible_url(self):
         self.assert_(self.get_url().startswith('bzr://'))
@@ -1024,12 +1024,14 @@ class SmartTCPTests(tests.TestCase):
             mem_server.start_server()
             self.addCleanup(mem_server.stop_server)
             self.permit_url(mem_server.get_url())
-            self.backing_transport = get_transport(mem_server.get_url())
+            self.backing_transport = transport.get_transport(
+                mem_server.get_url())
         else:
             self.backing_transport = backing_transport
         if readonly:
             self.real_backing_transport = self.backing_transport
-            self.backing_transport = get_transport("readonly+" + self.backing_transport.abspath('.'))
+            self.backing_transport = transport.get_transport(
+                "readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
@@ -1182,7 +1184,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_started',
             self.capture_server_call, None)
-        self.start_server(backing_transport=get_transport("."))
+        self.start_server(backing_transport=transport.get_transport("."))
         # at this point, the server will be starting a thread up.
         # there is no indicator at the moment, so bodge it by doing a request.
         self.transport.has('.')
@@ -1215,7 +1217,7 @@ class TestServerHooks(SmartTCPTests):
         self.hook_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             self.capture_server_call, None)
-        self.start_server(backing_transport=get_transport("."))
+        self.start_server(backing_transport=transport.get_transport("."))
         result = [(
             [self.backing_transport.base, self.backing_transport.external_url()]
             , self.transport.base)]
@@ -1360,13 +1362,13 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 class RemoteTransportRegistration(tests.TestCase):
 
     def test_registration(self):
-        t = get_transport('bzr+ssh://example.com/path')
+        t = transport.get_transport('bzr+ssh://example.com/path')
         self.assertIsInstance(t, remote.RemoteSSHTransport)
         self.assertEqual('example.com', t._host)
 
     def test_bzr_https(self):
         # https://bugs.launchpad.net/bzr/+bug/128456
-        t = get_transport('bzr+https://example.com/path')
+        t = transport.get_transport('bzr+https://example.com/path')
         self.assertIsInstance(t, remote.RemoteHTTPTransport)
         self.assertStartsWith(
             t._http_transport.base,
@@ -3537,7 +3539,7 @@ class HTTPTunnellingSmokeTest(tests.TestCase):
 
     def test_smart_http_medium_request_accept_bytes(self):
         medium = FakeHTTPMedium()
-        request = SmartClientHTTPMediumRequest(medium)
+        request = http.SmartClientHTTPMediumRequest(medium)
         request.accept_bytes('abc')
         request.accept_bytes('def')
         self.assertEqual(None, medium.written_request)

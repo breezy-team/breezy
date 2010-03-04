@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,14 +39,14 @@ from bzrlib.trace import mutter
 from bzrlib.transport import LateReadError
 """)
 
-from bzrlib.transport import Transport, Server
+from bzrlib import transport
 
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
 _put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY
 
 
-class LocalTransport(Transport):
+class LocalTransport(transport.Transport):
     """This is the transport agent for local filesystem access."""
 
     def __init__(self, base):
@@ -554,23 +554,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
             return EmulatedWin32LocalTransport(abspath)
 
 
-class LocalURLServer(Server):
-    """A pretend server for local transports, using file:// urls.
-
-    Of course no actual server is required to access the local filesystem, so
-    this just exists to tell the test code how to get to it.
-    """
-
-    def start_server(self):
-        pass
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return urlutils.local_path_to_url('')
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [
-            (LocalTransport, LocalURLServer),
-            ]
+    from bzrlib.tests import test_server
+    return [(LocalTransport, test_server.LocalURLServer),]

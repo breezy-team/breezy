@@ -24,6 +24,7 @@ import time
 
 from bzrlib import (
     chk_map,
+    cleanup,
     debug,
     graph,
     osutils,
@@ -646,11 +647,10 @@ class AggregateIndex(object):
         del self.combined_index._indices[:]
         self.add_callback = None
 
-    def remove_index(self, index, pack):
+    def remove_index(self, index):
         """Remove index from the indices used to answer queries.
 
         :param index: An index from the pack parameter.
-        :param pack: A Pack instance.
         """
         del self.index_to_pack[index]
         self.combined_index._indices.remove(index)
@@ -1840,14 +1840,22 @@ class RepositoryPackCollection(object):
         self._remove_pack_indices(pack)
         self.packs.remove(pack)
 
-    def _remove_pack_indices(self, pack):
-        """Remove the indices for pack from the aggregated indices."""
-        self.revision_index.remove_index(pack.revision_index, pack)
-        self.inventory_index.remove_index(pack.inventory_index, pack)
-        self.text_index.remove_index(pack.text_index, pack)
-        self.signature_index.remove_index(pack.signature_index, pack)
-        if self.chk_index is not None:
-            self.chk_index.remove_index(pack.chk_index, pack)
+    def _remove_pack_indices(self, pack, ignore_missing=False):
+        """Remove the indices for pack from the aggregated indices.
+        
+        :param ignore_missing: Suppress KeyErrors from calling remove_index.
+        """
+        for index_type in Pack.index_definitions.keys():
+            attr_name = index_type + '_index'
+            aggregate_index = getattr(self, attr_name)
+            if aggregate_index is not None:
+                pack_index = getattr(pack, attr_name)
+                try:
+                    aggregate_index.remove_index(pack_index)
+                except KeyError:
+                    if ignore_missing:
+                        continue
+                    raise
 
     def reset(self):
         """Clear all cached data."""
@@ -2091,24 +2099,21 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            try:
-                self._new_pack.abort()
-            finally:
-                # XXX: If we aborted while in the middle of finishing the write
-                # group, _remove_pack_indices can fail because the indexes are
-                # already gone.  If they're not there we shouldn't fail in this
-                # case.  -- mbp 20081113
-                self._remove_pack_indices(self._new_pack)
-                self._new_pack = None
+            operation = cleanup.OperationWithCleanups(self._new_pack.abort)
+            operation.add_cleanup(setattr, self, '_new_pack', None)
+            # If we aborted while in the middle of finishing the write
+            # group, _remove_pack_indices could fail because the indexes are
+            # already gone.  But they're not there we shouldn't fail in this
+            # case, so we pass ignore_missing=True.
+            operation.add_cleanup(self._remove_pack_indices, self._new_pack,
+                ignore_missing=True)
+            operation.run_simple()
         for resumed_pack in self._resumed_packs:
-            try:
-                resumed_pack.abort()
-            finally:
-                # See comment in previous finally block.
-                try:
-                    self._remove_pack_indices(resumed_pack)
-                except KeyError:
-                    pass
+            operation = cleanup.OperationWithCleanups(resumed_pack.abort)
+            # See comment in previous finally block.
+            operation.add_cleanup(self._remove_pack_indices, resumed_pack,
+                ignore_missing=True)
+            operation.run_simple()
         del self._resumed_packs[:]
 
     def _remove_resumed_pack_indices(self):
@@ -2615,6 +2620,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     repository_class = KnitPackRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
+    experimental = True
     supports_tree_reference = True
     @property
     def _serializer(self):
@@ -2888,6 +2894,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     repository_class = KnitPackRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
+    experimental = True
     supports_tree_reference = True
     supports_external_lookups = True
     # What index classes to use

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -309,7 +309,9 @@ class TestKind(tests.TestCaseInTempDir):
         self.assertEqual("/", osutils.kind_marker(osutils._directory_kind))
         self.assertEqual("@", osutils.kind_marker("symlink"))
         self.assertEqual("+", osutils.kind_marker("tree-reference"))
-        self.assertRaises(errors.BzrError, osutils.kind_marker, "unknown")
+        self.assertEqual("", osutils.kind_marker("fifo"))
+        self.assertEqual("", osutils.kind_marker("socket"))
+        self.assertEqual("", osutils.kind_marker("unknown"))
 
 
 class TestUmask(tests.TestCaseInTempDir):

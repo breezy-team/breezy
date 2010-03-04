@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,13 +18,30 @@
 import os
 
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     conflicts,
     errors,
     option,
     tests,
+    workingtree,
     )
 from bzrlib.tests import script
+
+
+def load_tests(standard_tests, module, loader):
+    result = loader.suiteClass()
+
+    sp_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestResolveContentConflicts,
+                )))
+    tests.multiply_tests(sp_tests, content_conflict_scenarios(), result)
+
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
+    return result
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -69,15 +86,15 @@ class TestConflicts(tests.TestCaseWithTransport):
                                   ('hello.sploo.OTHER', 'yellowworld2'),
                                   ])
         tree.lock_read()
-        self.assertEqual(6, len(list(tree.list_files())))
+        self.assertLength(6, list(tree.list_files()))
         tree.unlock()
         tree_conflicts = tree.conflicts()
-        self.assertEqual(2, len(tree_conflicts))
+        self.assertLength(2, tree_conflicts)
         self.assertTrue('hello' in tree_conflicts[0].path)
         self.assertTrue('hello.sploo' in tree_conflicts[1].path)
         conflicts.restore('hello')
         conflicts.restore('hello.sploo')
-        self.assertEqual(0, len(tree.conflicts()))
+        self.assertLength(0, tree.conflicts())
         self.assertFileEqual('hello world2', 'hello')
         self.assertFalse(os.path.lexists('hello.sploo'))
         self.assertRaises(errors.NotConflicted, conflicts.restore, 'hello')
@@ -192,59 +209,99 @@ class TestResolveTextConflicts(TestResolveConflicts):
     pass
 
 
-class TestResolveContentConflicts(TestResolveConflicts):
+def content_conflict_scenarios():
+    return [('file,None', dict(_this_actions='modify_file',
+                               _check_this='file_has_more_content',
+                               _other_actions='delete_file',
+                               _check_other='file_doesnt_exist',
+                               )),
+            ('None,file', dict(_this_actions='delete_file',
+                               _check_this='file_doesnt_exist',
+                               _other_actions='modify_file',
+                               _check_other='file_has_more_content',
+                               )),
+            ]
 
-    # FIXME: We need to add the reverse case (delete in trunk, modify in
-    # branch) but that could wait until the resolution mechanism is implemented.
 
-    preamble = """
-$ bzr init trunk
-$ cd trunk
-$ echo 'trunk content' >file
-$ bzr add file
-$ bzr commit -m 'Create trunk'
+class TestResolveContentConflicts(tests.TestCaseWithTransport):
 
-$ bzr branch . ../branch
-$ cd ../branch
-$ bzr rm file
-$ bzr commit -m 'Delete file'
+    # Set by load_tests
+    this_actions = None
+    other_actions = None
 
-$ cd ../trunk
-$ echo 'more content' >>file
-$ bzr commit -m 'Modify file'
+    def setUp(self):
+        super(TestResolveContentConflicts, self).setUp()
+        builder = self.make_branch_builder('trunk')
+        builder.start_series()
+        # Create an empty trunk
+        builder.build_snapshot('start', None, [
+                ('add', ('', 'root-id', 'directory', ''))])
+        # Add a minimal base content
+        builder.build_snapshot('base', ['start'], [
+                ('add', ('file', 'file-id', 'file', 'trunk content\n'))])
+        # Modify the base content in branch
+        other_actions = self._get_actions(self._other_actions)
+        builder.build_snapshot('other', ['base'], other_actions())
+        # Modify the base content in trunk
+        this_actions = self._get_actions(self._this_actions)
+        builder.build_snapshot('this', ['base'], this_actions())
+        builder.finish_series()
+        self.builder = builder
 
-$ cd ../branch
-$ bzr merge ../trunk
-2>+N  file.OTHER
-2>Contents conflict in file
-2>1 conflicts encountered.
-"""
+    def _get_actions(self, name):
+        return getattr(self, 'do_%s' % name)
 
-    def test_take_this(self):
-        self.run_script("""
-$ bzr rm file.OTHER --force # a simple rm file.OTHER is valid too
-$ bzr resolve file
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
+    def _get_check(self, name):
+        return getattr(self, 'check_%s' % name)
 
-    def test_take_other(self):
-        self.run_script("""
-$ bzr mv file.OTHER file
-$ bzr resolve file
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
+    def do_modify_file(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n'))]
+
+    def check_file_has_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
+
+    def do_delete_file(self):
+        return [('unversion', 'file-id')]
+
+    def check_file_doesnt_exist(self):
+        self.failIfExists('branch/file')
+
+    def _merge_other_into_this(self):
+        b = self.builder.get_branch()
+        wt = b.bzrdir.sprout('branch').open_workingtree()
+        wt.merge_from_branch(b, 'other')
+        return wt
+
+    def assertConflict(self, wt, ctype, **kwargs):
+        confs = wt.conflicts()
+        self.assertLength(1, confs)
+        c = confs[0]
+        self.assertIsInstance(c, ctype)
+        sentinel = object() # An impossible value
+        for k, v in kwargs.iteritems():
+            self.assertEqual(v, getattr(c, k, sentinel))
+
+    def check_resolved(self, wt, item, action):
+        conflicts.resolve(wt, [item], action=action)
+        # Check that we don't have any conflicts nor unknown left
+        self.assertLength(0, wt.conflicts())
+        self.assertLength(0, list(wt.unknowns()))
 
     def test_resolve_taking_this(self):
-        self.run_script("""
-$ bzr resolve --take-this file
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
+        wt = self._merge_other_into_this()
+        self.assertConflict(wt, conflicts.ContentsConflict,
+                            path='file', file_id='file-id',)
+        self.check_resolved(wt, 'file', 'take_this')
+        check_this = self._get_check(self._check_this)
+        check_this()
 
     def test_resolve_taking_other(self):
-        self.run_script("""
-$ bzr resolve --take-other file
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
+        wt = self._merge_other_into_this()
+        self.assertConflict(wt, conflicts.ContentsConflict,
+                            path='file', file_id='file-id',)
+        self.check_resolved(wt, 'file', 'take_other')
+        check_other = self._get_check(self._check_other)
+        check_other()
 
 
 class TestResolveDuplicateEntry(TestResolveConflicts):
@@ -255,6 +312,7 @@ $ cd trunk
 $ echo 'trunk content' >file
 $ bzr add file
 $ bzr commit -m 'Create trunk'
+
 $ echo 'trunk content too' >file2
 $ bzr add file2
 $ bzr commit -m 'Add file2 in trunk'
@@ -314,6 +372,7 @@ $ cd trunk
 $ mkdir dir
 $ bzr add dir
 $ bzr commit -m 'Create trunk'
+
 $ echo 'trunk content' >dir/file
 $ bzr add dir/file
 $ bzr commit -m 'Add dir/file in trunk'
@@ -354,6 +413,7 @@ $ mkdir dir
 $ echo 'trunk content' >dir/file
 $ bzr add
 $ bzr commit -m 'Create trunk'
+
 $ echo 'trunk content' >dir/file2
 $ bzr add dir/file2
 $ bzr commit -m 'Add dir/file2 in branch'
@@ -415,6 +475,7 @@ $ mkdir dir
 $ echo 'trunk content' >dir/file
 $ bzr add
 $ bzr commit -m 'Create trunk'
+
 $ bzr rm dir/file --force
 $ bzr rm dir --force
 $ bzr commit -m 'Remove dir/file'
@@ -474,6 +535,7 @@ $ cd trunk
 $ echo 'Boo!' >file
 $ bzr add
 $ bzr commit -m 'Create trunk'
+
 $ bzr mv file file-in-trunk
 $ bzr commit -m 'Renamed to file-in-trunk'
 
@@ -522,6 +584,7 @@ $ cd trunk
 $ bzr mkdir dir1
 $ bzr mkdir dir2
 $ bzr commit -m 'Create trunk'
+
 $ bzr mv dir2 dir1
 $ bzr commit -m 'Moved dir2 into dir1'
 

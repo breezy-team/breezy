@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ objects returned.
 
 import os
 import sys
+import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -354,6 +355,15 @@ class BzrDir(object):
                 for subdir in sorted(subdirs, reverse=True):
                     pending.append(current_transport.clone(subdir))
 
+    def list_branches(self):
+        """Return a sequence of all branches local to this control directory.
+
+        """
+        try:
+            return [self.open_branch()]
+        except errors.NotBranchError:
+            return []
+
     @staticmethod
     def find_branches(transport):
         """Find all branches under a transport.
@@ -371,35 +381,38 @@ class BzrDir(object):
             except errors.NoRepositoryPresent:
                 pass
             else:
-                return False, (None, repository)
-            try:
-                branch = bzrdir.open_branch()
-            except errors.NotBranchError:
-                return True, (None, None)
-            else:
-                return True, (branch, None)
-        branches = []
-        for branch, repo in BzrDir.find_bzrdirs(transport, evaluate=evaluate):
+                return False, ([], repository)
+            return True, (bzrdir.list_branches(), None)
+        ret = []
+        for branches, repo in BzrDir.find_bzrdirs(transport,
+                                                  evaluate=evaluate):
             if repo is not None:
-                branches.extend(repo.find_branches())
-            if branch is not None:
-                branches.append(branch)
-        return branches
+                ret.extend(repo.find_branches())
+            if branches is not None:
+                ret.extend(branches)
+        return ret
 
     def destroy_repository(self):
         """Destroy the repository in this BzrDir"""
         raise NotImplementedError(self.destroy_repository)
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """Create a branch in this BzrDir.
+
+        :param name: Name of the colocated branch to create, None for
+            the default branch.
 
         The bzrdir's format will control what branch format is created.
         For more control see BranchFormatXX.create(a_bzrdir).
         """
         raise NotImplementedError(self.create_branch)
 
-    def destroy_branch(self):
-        """Destroy the branch in this BzrDir"""
+    def destroy_branch(self, name=None):
+        """Destroy a branch in this BzrDir.
+        
+        :param name: Name of the branch to destroy, None for the default 
+            branch.
+        """
         raise NotImplementedError(self.destroy_branch)
 
     @staticmethod
@@ -574,6 +587,15 @@ class BzrDir(object):
 
         :return: Tuple with old path name and new path name
         """
+        def name_gen(base='backup.bzr'):
+            counter = 1
+            name = "%s.~%d~" % (base, counter)
+            while self.root_transport.has(name):
+                counter += 1
+                name = "%s.~%d~" % (base, counter)
+            return name
+
+        backup_dir=name_gen()
         pb = ui.ui_factory.nested_progress_bar()
         try:
             # FIXME: bug 300001 -- the backup fails if the backup directory
@@ -583,9 +605,9 @@ class BzrDir(object):
             # FIXME: bug 262450 -- the backup directory should have the same
             # permissions as the .bzr directory (probably a bug in copy_tree)
             old_path = self.root_transport.abspath('.bzr')
-            new_path = self.root_transport.abspath('backup.bzr')
+            new_path = self.root_transport.abspath(backup_dir)
             ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))
-            self.root_transport.copy_tree('.bzr', 'backup.bzr')
+            self.root_transport.copy_tree('.bzr', backup_dir)
             return (old_path, new_path)
         finally:
             pb.finished()
@@ -877,7 +899,8 @@ class BzrDir(object):
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
 
-    def open_branch(self, unsupported=False, ignore_fallbacks=False):
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
         """Open the branch object at this BzrDir if one is present.
 
         If unsupported is True, then no longer supported branch formats can
@@ -1021,7 +1044,7 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.open_workingtree)
 
-    def has_branch(self):
+    def has_branch(self, name=None):
         """Tell if this bzrdir contains a branch.
 
         Note: if you're going to open the branch, you should just go ahead
@@ -1029,7 +1052,7 @@ class BzrDir(object):
         branch and discards it, and that's somewhat expensive.)
         """
         try:
-            self.open_branch()
+            self.open_branch(name)
             return True
         except errors.NotBranchError:
             return False
@@ -1358,11 +1381,13 @@ class BzrDirPreSplitOut(BzrDir):
             tree.clone(result)
         return result
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().initialize(self)
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch."""
         raise errors.UnsupportedOperation(self.destroy_branch, self)
 
@@ -1464,8 +1489,11 @@ class BzrDirPreSplitOut(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
-    def open_branch(self, unsupported=False, ignore_fallbacks=False):
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
         """See BzrDir.open_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         self._check_supported(format, unsupported)
@@ -1592,12 +1620,16 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.can_convert_format()."""
         return True
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().initialize(self)
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         self.transport.delete_tree('branch')
 
     def create_repository(self, shared=False):
@@ -1724,13 +1756,11 @@ class BzrDirMeta1(BzrDir):
                 return True
         except errors.NoRepositoryPresent:
             pass
-        try:
-            if not isinstance(self.open_branch()._format,
+        for branch in self.list_branches():
+            if not isinstance(branch._format,
                               format.get_branch_format().__class__):
                 # the branch needs an upgrade.
                 return True
-        except errors.NotBranchError:
-            pass
         try:
             my_wt = self.open_workingtree(recommend_upgrade=False)
             if not isinstance(my_wt._format,
@@ -1741,8 +1771,11 @@ class BzrDirMeta1(BzrDir):
             pass
         return False
 
-    def open_branch(self, unsupported=False, ignore_fallbacks=False):
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
         """See BzrDir.open_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         format = self.find_branch_format()
         self._check_supported(format, unsupported)
         return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
@@ -1804,6 +1837,10 @@ class BzrDirFormat(object):
     """
 
     _lock_file_name = 'branch-lock'
+
+    colocated_branches = False
+    """Whether co-located branches are supported for this control dir format.
+    """
 
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
@@ -2609,12 +2646,17 @@ class ConvertBzrDir4To5(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.bzrdir = to_convert
-        self.pb = pb
-        ui.ui_factory.note('starting upgrade from format 4 to 5')
-        if isinstance(self.bzrdir.transport, local.LocalTransport):
-            self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
-        self._convert_to_weaves()
-        return BzrDir.open(self.bzrdir.root_transport.base)
+        if pb is not None:
+            warnings.warn("pb parameter to convert() is deprecated")
+        self.pb = ui.ui_factory.nested_progress_bar()
+        try:
+            ui.ui_factory.note('starting upgrade from format 4 to 5')
+            if isinstance(self.bzrdir.transport, local.LocalTransport):
+                self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
+            self._convert_to_weaves()
+            return BzrDir.open(self.bzrdir.root_transport.base)
+        finally:
+            self.pb.finished()
 
     def _convert_to_weaves(self):
         ui.ui_factory.note('note: upgrade may be faster if all store files are ungzipped first')
@@ -2861,10 +2903,13 @@ class ConvertBzrDir5To6(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.bzrdir = to_convert
-        self.pb = pb
-        ui.ui_factory.note('starting upgrade from format 5 to 6')
-        self._convert_to_prefixed()
-        return BzrDir.open(self.bzrdir.root_transport.base)
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            ui.ui_factory.note('starting upgrade from format 5 to 6')
+            self._convert_to_prefixed()
+            return BzrDir.open(self.bzrdir.root_transport.base)
+        finally:
+            pb.finished()
 
     def _convert_to_prefixed(self):
         from bzrlib.store import TransportStore
@@ -2903,7 +2948,7 @@ class ConvertBzrDir6ToMeta(Converter):
         from bzrlib.repofmt.weaverepo import RepositoryFormat7
         from bzrlib.branch import BzrBranchFormat5
         self.bzrdir = to_convert
-        self.pb = pb
+        self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
         self.total = 20 # the steps we know about
         self.garbage_inventories = []
@@ -2989,6 +3034,7 @@ class ConvertBzrDir6ToMeta(Converter):
             'branch-format',
             BzrDirMetaFormat1().get_format_string(),
             mode=self.file_mode)
+        self.pb.finished()
         return BzrDir.open(self.bzrdir.root_transport.base)
 
     def make_lock(self, name):
@@ -3030,7 +3076,7 @@ class ConvertMetaToMeta(Converter):
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
         self.bzrdir = to_convert
-        self.pb = pb
+        self.pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
         self.total = 1
         self.step('checking repository format')
@@ -3044,11 +3090,7 @@ class ConvertMetaToMeta(Converter):
                 ui.ui_factory.note('starting repository conversion')
                 converter = CopyConverter(self.target_format.repository_format)
                 converter.convert(repo, pb)
-        try:
-            branch = self.bzrdir.open_branch()
-        except errors.NotBranchError:
-            pass
-        else:
+        for branch in self.bzrdir.list_branches():
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
@@ -3096,6 +3138,7 @@ class ConvertMetaToMeta(Converter):
                 isinstance(self.target_format.workingtree_format,
                     workingtree_4.WorkingTreeFormat6)):
                 workingtree_4.Converter4or5to6().convert(tree)
+        self.pb.finished()
         return to_convert
 
 

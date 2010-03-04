@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,11 +21,11 @@ from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import sys
 import time
+import codecs
 import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 from datetime import datetime
 import errno
 from ntpath import (abspath as _nt_abspath,
@@ -187,7 +187,9 @@ def kind_marker(kind):
     try:
         return _kind_marker_map[kind]
     except KeyError:
-        raise errors.BzrError('invalid file kind %r' % kind)
+        # Slightly faster than using .get(, '') when the common case is that
+        # kind will be found
+        return ''
 
 
 lexists = getattr(os.path, 'lexists', None)
@@ -1446,12 +1448,21 @@ def _terminal_size_changed(signum, frame):
     if width is not None:
         os.environ['COLUMNS'] = str(width)
 
-if sys.platform == 'win32':
-    # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from ReadConsoleInput but
-    # I've no idea how to plug that in the current design -- vila 20091216
-    pass
-else:
-    signal.signal(signal.SIGWINCH, _terminal_size_changed)
+
+_registered_sigwinch = False
+
+def watch_sigwinch():
+    """Register for SIGWINCH, once and only once."""
+    global _registered_sigwinch
+    if not _registered_sigwinch:
+        if sys.platform == 'win32':
+            # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from
+            # ReadConsoleInput but I've no idea how to plug that in
+            # the current design -- vila 20091216
+            pass
+        else:
+            signal.signal(signal.SIGWINCH, _terminal_size_changed)
+        _registered_sigwinch = True
 
 
 def supports_executable():

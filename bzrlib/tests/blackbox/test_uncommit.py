@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -216,7 +216,7 @@ class TestUncommit(TestCaseWithTransport):
 
     def test_uncommit_shows_log_with_revision_id(self):
         wt = self.create_simple_tree()
-        
+
         script = ScriptRunner()
         script.run_script(self, """
 $ cd tree

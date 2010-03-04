@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -242,7 +242,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._ensure_real()
         self._real_bzrdir.destroy_repository()
 
-    def create_branch(self):
+    def create_branch(self, name=None):
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self)
@@ -259,10 +261,10 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._next_open_branch_result = result
         return result
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch"""
         self._ensure_real()
-        self._real_bzrdir.destroy_branch()
+        self._real_bzrdir.destroy_branch(name=name)
         self._next_open_branch_result = None
 
     def create_workingtree(self, revision_id=None, from_branch=None):
@@ -318,9 +320,12 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         """See BzrDir._get_tree_branch()."""
         return None, self.open_branch()
 
-    def open_branch(self, _unsupported=False, ignore_fallbacks=False):
-        if _unsupported:
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
+        if unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         if self._next_open_branch_result is not None:
             # See create_branch for details.
             result = self._next_open_branch_result
@@ -1500,10 +1505,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
     def _get_inventory_xml(self, revision_id):
         self._ensure_real()
         return self._real_repository._get_inventory_xml(revision_id)
-
-    def _deserialise_inventory(self, revision_id, xml):
-        self._ensure_real()
-        return self._real_repository._deserialise_inventory(revision_id, xml)
 
     def reconcile(self, other=None, thorough=False):
         self._ensure_real()

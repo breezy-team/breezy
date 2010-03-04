@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ import errno
 
 from bzrlib import (
     builtins,
+    cleanup,
     commands,
     errors,
     osutils,
@@ -412,8 +413,17 @@ class Conflict(object):
             raise NotImplementedError(self.__class__.__name__ + '.' + action)
         meth(tree)
 
+    def associated_filenames(self):
+        """The names of the files generated to help resolve the conflict."""
+        raise NotImplementedError(self.associated_filenames)
+
     def cleanup(self, tree):
-        raise NotImplementedError(self.cleanup)
+        for fname in self.associated_filenames():
+            try:
+                osutils.delete_any(tree.abspath(fname))
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
 
     def action_done(self, tree):
         """Mark the conflict as solved once it has been handled."""
@@ -446,9 +456,9 @@ class PathConflict(Conflict):
             s.add('conflict_path', self.conflict_path)
         return s
 
-    def cleanup(self, tree):
+    def associated_filenames(self):
         # No additional files have been generated here
-        pass
+        return []
 
     def action_take_this(self, tree):
         tree.rename_one(self.conflict_path, self.path)
@@ -467,24 +477,46 @@ class ContentsConflict(PathConflict):
 
     format = 'Contents conflict in %(path)s'
 
-    def cleanup(self, tree):
-        for suffix in ('.BASE', '.OTHER'):
-            try:
-                osutils.delete_any(tree.abspath(self.path + suffix))
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
+    def associated_filenames(self):
+        return [self.path + suffix for suffix in ('.BASE', '.OTHER')]
 
-    # FIXME: I smell something weird here and it seems we should be able to be
-    # more coherent with some other conflict ? bzr *did* a choice there but
-    # neither action_take_this nor action_take_other reflect that...
-    # -- vila 20091224
+    def _take_it(self, tt, suffix_to_remove):
+        """Resolve the conflict.
+
+        :param tt: The TreeTransform where the conflict is resolved.
+        :param suffix_to_remove: Either 'THIS' or 'OTHER'
+
+        The resolution is symmetric, when taking THIS, OTHER is deleted and
+        item.THIS is renamed into item and vice-versa.
+        """
+        try:
+            # Delete 'item.THIS' or 'item.OTHER' depending on
+            # suffix_to_remove
+            tt.delete_contents(
+                tt.trans_id_tree_path(self.path + '.' + suffix_to_remove))
+        except errors.NoSuchFile:
+            # There are valid cases where 'item.suffix_to_remove' either
+            # never existed or was already deleted (including the case
+            # where the user deleted it)
+            pass
+        # Rename 'item.suffix_to_remove' (note that if
+        # 'item.suffix_to_remove' has been deleted, this is a no-op)
+        this_tid = tt.trans_id_file_id(self.file_id)
+        parent_tid = tt.get_tree_parent(this_tid)
+        tt.adjust_path(self.path, parent_tid, this_tid)
+        tt.apply()
+
+    def _take_it_with_cleanups(self, tree, suffix_to_remove):
+        tt = transform.TreeTransform(tree)
+        op = cleanup.OperationWithCleanups(self._take_it)
+        op.add_cleanup(tt.finalize)
+        op.run_simple(tt, suffix_to_remove)
+
     def action_take_this(self, tree):
-        tree.remove([self.path + '.OTHER'], force=True, keep_files=False)
+        self._take_it_with_cleanups(tree, 'OTHER')
 
     def action_take_other(self, tree):
-        tree.remove([self.path], force=True, keep_files=False)
-
+        self._take_it_with_cleanups(tree, 'THIS')
 
 
 # FIXME: TextConflict is about a single file-id, there never is a conflict_path
@@ -501,13 +533,8 @@ class TextConflict(PathConflict):
 
     format = 'Text conflict in %(path)s'
 
-    def cleanup(self, tree):
-        for suffix in CONFLICT_SUFFIXES:
-            try:
-                osutils.delete_any(tree.abspath(self.path+suffix))
-            except OSError, e:
-                if e.errno != errno.ENOENT:
-                    raise
+    def associated_filenames(self):
+        return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
 
 
 class HandledConflict(Conflict):
@@ -529,9 +556,9 @@ class HandledConflict(Conflict):
         s.add('action', self.action)
         return s
 
-    def cleanup(self, tree):
-        """Nothing to cleanup."""
-        pass
+    def associated_filenames(self):
+        # Nothing has been generated here
+        return []
 
 
 class HandledPathConflict(HandledConflict):
