@@ -186,7 +186,7 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
-    pyrex_version_info = map(int, pyrex_version.split('.'))
+    pyrex_version_info = tuple(map(int, pyrex_version.split('.')))
 
 
 class build_ext_if_possible(build_ext):
