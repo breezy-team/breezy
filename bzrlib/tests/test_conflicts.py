@@ -212,12 +212,14 @@ class TestResolveTextConflicts(TestResolveConflicts):
 def resolve_conflict_scenarios():
     base_scenarios = [
         (dict(_conflict_type=conflicts.ContentsConflict,
+              _base_actions='create_file',
               _item_path='file', _item_id='file-id',),
          ('file_modified', dict(actions='modify_file',
                                 check='file_has_more_content')),
          ('file_deleted', dict(actions='delete_file',
                                 check='file_doesnt_exist'))),
         (dict(_conflict_type=conflicts.PathConflict,
+              _base_actions='create_dir',
               _item_path='new-dir', _item_id='dir-id',),
          ('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
          ('dir_deleted', dict(actions='delete_dir', check='dir_doesnt_exist'))),
@@ -239,6 +241,7 @@ def resolve_conflict_scenarios():
 class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     # Set by load_tests
+    _base_actions = None
     _this_actions = None
     _other_actions = None
     _conflict_type = None
@@ -249,21 +252,20 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         super(TestParametrizedResolveConflicts, self).setUp()
         builder = self.make_branch_builder('trunk')
         builder.start_series()
+
         # Create an empty trunk
         builder.build_snapshot('start', None, [
                 ('add', ('', 'root-id', 'directory', ''))])
         # Add a minimal base content
-        builder.build_snapshot(
-            'base', ['start'], [
-                ('add', ('file', 'file-id', 'file', 'trunk content\n')),
-                ('add', ('dir', 'dir-id', 'directory', '')),
-                ])
+        base_actions = self._get_actions(self._base_actions)
+        builder.build_snapshot('base', ['start'], base_actions())
         # Modify the base content in branch
         other_actions = self._get_actions(self._other_actions)
         builder.build_snapshot('other', ['base'], other_actions())
         # Modify the base content in trunk
         this_actions = self._get_actions(self._this_actions)
         builder.build_snapshot('this', ['base'], this_actions())
+
         builder.finish_series()
         self.builder = builder
 
@@ -287,6 +289,12 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         # Check that we don't have any conflicts nor unknown left
         self.assertLength(0, wt.conflicts())
         self.assertLength(0, list(wt.unknowns()))
+
+    def do_create_file(self):
+        return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_create_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', ''))]
 
     def do_modify_file(self):
         return [('modify', ('file-id', 'trunk content\nmore content\n'))]
