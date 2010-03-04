@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ from warnings import warn
 import bzrlib
 from bzrlib import (
     cleanup,
+    cmdline,
     debug,
     errors,
     option,
@@ -48,12 +49,12 @@ from bzrlib import (
 from bzrlib.hooks import HookPoint, Hooks
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
+from bzrlib.plugin import disable_plugins, load_plugins
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
     deprecated_method,
-    suppress_deprecation_warnings,
     )
 
 
@@ -202,11 +203,13 @@ def get_cmd_object(cmd_name, plugins_override=True):
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
 
-def _get_cmd_object(cmd_name, plugins_override=True):
+def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     """Get a command object.
 
     :param cmd_name: The name of the command.
     :param plugins_override: Allow plugins to override builtins.
+    :param check_missing: Look up commands not found in the regular index via
+        the get_missing_command hook.
     :return: A Command object instance
     :raises KeyError: If no command is found.
     """
@@ -222,7 +225,7 @@ def _get_cmd_object(cmd_name, plugins_override=True):
             # We've found a non-plugin command, don't permit it to be
             # overridden.
             break
-    if cmd is None:
+    if cmd is None and check_missing:
         for hook in Command.hooks['get_missing_command']:
             cmd = hook(cmd_name)
             if cmd is not None:
@@ -879,8 +882,7 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
 
 
 def shlex_split_unicode(unsplit):
-    import shlex
-    return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
+    return cmdline.split(unsplit)
 
 
 def get_alias(cmd, config=None):
@@ -898,19 +900,25 @@ def get_alias(cmd, config=None):
         config = bzrlib.config.GlobalConfig()
     alias = config.get_alias(cmd)
     if (alias):
-        return shlex_split_unicode(alias)
+        return cmdline.split(alias)
     return None
 
 
-def run_bzr(argv):
+def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     """Execute a command.
 
-    argv
-       The command-line arguments, without the program name from argv[0]
-       These should already be decoded. All library/test code calling
-       run_bzr should be passing valid strings (don't need decoding).
-
-    Returns a command status or raises an exception.
+    :param argv: The command-line arguments, without the program name from
+        argv[0] These should already be decoded. All library/test code calling
+        run_bzr should be passing valid strings (don't need decoding).
+    :param load_plugins: What function to call when triggering plugin loading.
+        This function should take no arguments and cause all plugins to be
+        loaded.
+    :param disable_plugins: What function to call when disabling plugin
+        loading. This function should take no arguments and cause all plugin
+        loading to be prohibited (so that code paths in your application that
+        know about some plugins possibly being present will fail to import
+        those plugins even if they are installed.)
+    :return: Returns a command exit code or raises an exception.
 
     Special master options: these must come before the command because
     they control how the command is interpreted.
@@ -981,23 +989,19 @@ def run_bzr(argv):
 
     debug.set_debug_flags_from_config()
 
+    if not opt_no_plugins:
+        load_plugins()
+    else:
+        disable_plugins()
+
     argv = argv_copy
     if (not argv):
-        from bzrlib.builtins import cmd_help
-        cmd_help().run_argv_aliases([])
+        get_cmd_object('help').run_argv_aliases([])
         return 0
 
     if argv[0] == '--version':
-        from bzrlib.builtins import cmd_version
-        cmd_version().run_argv_aliases([])
+        get_cmd_object('version').run_argv_aliases([])
         return 0
-
-    if not opt_no_plugins:
-        from bzrlib.plugin import load_plugins
-        load_plugins()
-    else:
-        from bzrlib.plugin import disable_plugins
-        disable_plugins()
 
     alias_argv = None
 
@@ -1082,25 +1086,12 @@ def install_bzr_command_hooks():
         "bzr plugin-provider-db check")
 
 
-def main(argv=None):
-    """Main entry point of command-line interface.
 
-    :param argv: list of unicode command-line arguments similar to sys.argv.
-        argv[0] is script name usually, it will be ignored.
-        Don't pass here sys.argv because this list contains plain strings
-        and not unicode; pass None instead.
-
-    :return: exit code of bzr command.
-    """
-    import bzrlib.ui
-    bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
-        sys.stdin, sys.stdout, sys.stderr)
-
-    # Is this a final release version? If so, we should suppress warnings
-    if bzrlib.version_info[3] == 'final':
-        suppress_deprecation_warnings(override=True)
+def _specified_or_unicode_argv(argv):
+    # For internal or testing use, argv can be passed.  Otherwise, get it from
+    # the process arguments in a unicode-safe way.
     if argv is None:
-        argv = osutils.get_unicode_argv()
+        return osutils.get_unicode_argv()
     else:
         new_argv = []
         try:
@@ -1112,13 +1103,27 @@ def main(argv=None):
                     new_argv.append(a.decode('ascii'))
         except UnicodeDecodeError:
             raise errors.BzrError("argv should be list of unicode strings.")
-        argv = new_argv
+        return new_argv
+
+
+def main(argv=None):
+    """Main entry point of command-line interface.
+
+    Typically `bzrlib.initialize` should be called first.
+
+    :param argv: list of unicode command-line arguments similar to sys.argv.
+        argv[0] is script name usually, it will be ignored.
+        Don't pass here sys.argv because this list contains plain strings
+        and not unicode; pass None instead.
+
+    :return: exit code of bzr command.
+    """
+    argv = _specified_or_unicode_argv(argv)
     _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
     bzrlib.ui.ui_factory.log_transport_activity(
         display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
-    osutils.report_extension_load_failures()
     return ret
 
 
@@ -1128,6 +1133,7 @@ def run_bzr_catch_errors(argv):
     This function assumed that that UI layer is setup, that symbol deprecations
     are already applied, and that unicode decoding has already been performed on argv.
     """
+    # done here so that they're covered for every test run
     install_bzr_command_hooks()
     return exception_to_return_code(run_bzr, argv)
 
@@ -1138,6 +1144,7 @@ def run_bzr_catch_user_errors(argv):
     This is used for the test suite, and might be useful for other programs
     that want to wrap the commandline interface.
     """
+    # done here so that they're covered for every test run
     install_bzr_command_hooks()
     try:
         return run_bzr(argv)
@@ -1166,7 +1173,7 @@ class HelpCommandIndex(object):
         if topic and topic.startswith(self.prefix):
             topic = topic[len(self.prefix):]
         try:
-            cmd = _get_cmd_object(topic)
+            cmd = _get_cmd_object(topic, check_missing=False)
         except KeyError:
             return []
         else:

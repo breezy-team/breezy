@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -224,19 +224,6 @@ class ForeignRepository(Repository):
     def get_default_mapping(self):
         """Get the default mapping for this repository."""
         raise NotImplementedError(self.get_default_mapping)
-
-    def _get_inventory_xml(self, revision_id):
-        """See Repository._get_inventory_xml()."""
-        return self._serialise_inventory(self.get_inventory(revision_id))
-
-    def get_revision_xml(self, revision_id):
-        """Return the XML representation of a revision.
-
-        :param revision_id: Revision for which to return the XML.
-        :return: XML string
-        """
-        return self._serializer.write_revision_to_string(
-            self.get_revision(revision_id))
 
 
 class ForeignBranch(Branch):

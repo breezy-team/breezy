@@ -1,4 +1,4 @@
-# Copyright (C) 2004 - 2006, 2008 Aaron Bentley, Canonical Ltd
+# Copyright (C) 2005-2010 Aaron Bentley, Canonical Ltd
 # <aaron.bentley@utoronto.ca>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -250,7 +250,13 @@ class Hunk:
         return shift
 
 
-def iter_hunks(iter_lines):
+def iter_hunks(iter_lines, allow_dirty=False):
+    '''
+    :arg iter_lines: iterable of lines to parse for hunks
+    :kwarg allow_dirty: If True, when we encounter something that is not
+        a hunk header when we're looking for one, assume the rest of the lines
+        are not part of the patch (comments or other junk).  Default False
+    '''
     hunk = None
     for line in iter_lines:
         if line == "\n":
@@ -260,7 +266,15 @@ def iter_hunks(iter_lines):
             continue
         if hunk is not None:
             yield hunk
-        hunk = hunk_from_header(line)
+        try:
+            hunk = hunk_from_header(line)
+        except MalformedHunkHeader:
+            if allow_dirty:
+                # If the line isn't a hunk header, then we've reached the end
+                # of this patch and there's "junk" at the end.  Ignore the
+                # rest of this patch.
+                return
+            raise
         orig_size = 0
         mod_size = 0
         while orig_size < hunk.orig_range or mod_size < hunk.mod_range:
@@ -339,7 +353,12 @@ class Patch(BinaryPatch):
                     pos += 1
 
 
-def parse_patch(iter_lines):
+def parse_patch(iter_lines, allow_dirty=False):
+    '''
+    :arg iter_lines: iterable of lines to parse
+    :kwarg allow_dirty: If True, allow the patch to have trailing junk.
+        Default False
+    '''
     iter_lines = iter_lines_handle_nl(iter_lines)
     try:
         (orig_name, mod_name) = get_patch_names(iter_lines)
@@ -347,15 +366,29 @@ def parse_patch(iter_lines):
         return BinaryPatch(e.orig_name, e.mod_name)
     else:
         patch = Patch(orig_name, mod_name)
-        for hunk in iter_hunks(iter_lines):
+        for hunk in iter_hunks(iter_lines, allow_dirty):
             patch.hunks.append(hunk)
         return patch
 
 
-def iter_file_patch(iter_lines):
+def iter_file_patch(iter_lines, allow_dirty=False):
+    '''
+    :arg iter_lines: iterable of lines to parse for patches
+    :kwarg allow_dirty: If True, allow comments and other non-patch text
+        before the first patch.  Note that the algorithm here can only find
+        such text before any patches have been found.  Comments after the
+        first patch are stripped away in iter_hunks() if it is also passed
+        allow_dirty=True.  Default False.
+    '''
+    ### FIXME: Docstring is not quite true.  We allow certain comments no
+    # matter what, If they startwith '===', '***', or '#' Someone should
+    # reexamine this logic and decide if we should include those in
+    # allow_dirty or restrict those to only being before the patch is found
+    # (as allow_dirty does).
     regex = re.compile(binary_files_re)
     saved_lines = []
     orig_range = 0
+    beginning = True
     for line in iter_lines:
         if line.startswith('=== ') or line.startswith('*** '):
             continue
@@ -365,7 +398,12 @@ def iter_file_patch(iter_lines):
             if line.startswith('-') or line.startswith(' '):
                 orig_range -= 1
         elif line.startswith('--- ') or regex.match(line):
-            if len(saved_lines) > 0:
+            if allow_dirty and beginning:
+                # Patches can have "junk" at the beginning
+                # Stripping junk from the end of patches is handled when we
+                # parse the patch
+                beginning = False
+            elif len(saved_lines) > 0:
                 yield saved_lines
             saved_lines = []
         elif line.startswith('@@'):
@@ -397,8 +435,15 @@ def iter_lines_handle_nl(iter_lines):
         yield last_line
 
 
-def parse_patches(iter_lines):
-    return [parse_patch(f.__iter__()) for f in iter_file_patch(iter_lines)]
+def parse_patches(iter_lines, allow_dirty=False):
+    '''
+    :arg iter_lines: iterable of lines to parse for patches
+    :kwarg allow_dirty: If True, allow text that's not part of the patch at
+        selected places.  This includes comments before and after a patch
+        for instance.  Default False.
+    '''
+    return [parse_patch(f.__iter__(), allow_dirty) for f in
+                        iter_file_patch(iter_lines, allow_dirty)]
 
 
 def difference_index(atext, btext):

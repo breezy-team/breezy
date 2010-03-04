@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -37,6 +37,8 @@ from bzrlib import (
 
 """)
 
+from bzrlib.osutils import watch_sigwinch
+
 from bzrlib.ui import (
     UIFactory,
     NullProgressView,
@@ -60,7 +62,9 @@ class TextUIFactory(UIFactory):
         self.stderr = stderr
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
-        
+        # hook up the signals to watch for terminal size changes
+        watch_sigwinch()
+
     def be_quiet(self, state):
         if state and not self._quiet:
             self.clear_term()
@@ -238,8 +242,12 @@ class TextUIFactory(UIFactory):
             warnings.warn("%r updated but no tasks are active" %
                 (task,))
         elif task != self._task_stack[-1]:
-            warnings.warn("%r is not the top progress task %r" %
-                (task, self._task_stack[-1]))
+            # We used to check it was the top task, but it's hard to always
+            # get this right and it's not necessarily useful: any actual
+            # problems will be evident in use
+            #warnings.warn("%r is not the top progress task %r" %
+            #     (task, self._task_stack[-1]))
+            pass
         self._progress_view.show_progress(task)
 
     def _progress_all_finished(self):

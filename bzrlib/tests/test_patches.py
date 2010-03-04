@@ -1,5 +1,4 @@
-# Copyright (C) 2004 - 2008 Aaron Bentley, Canonical Ltd
-# <aaron.bentley@utoronto.ca>
+# Copyright (C) 2005-2010 Aaron Bentley, Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,6 +53,14 @@ class PatchesTester(TestCase):
             return datafile.readlines()
         finally:
             datafile.close()
+
+    def test_parse_patches_leading_noise(self):
+        # https://bugs.edge.launchpad.net/bzr/+bug/502076
+        # https://code.edge.launchpad.net/~toshio/bzr/allow-dirty-patches/+merge/18854
+        lines = ["diff -pruN commands.py",
+            "--- orig/commands.py",
+            "+++ mod/dommands.py"]
+        bits = parse_patches(iter(lines), allow_dirty=True)
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""

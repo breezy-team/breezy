@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -433,3 +433,23 @@ class TestPull(ExternalBase):
             from_tree.branch.bzrdir.root_transport.base])
         self.assertContainsRe(err,
             "(?m)Doing on-the-fly conversion")
+
+    def test_pull_to_experimental_format_warning(self):
+        """You get a warning for pulling into experimental formats.
+        """
+        from_tree = self.make_branch_and_tree('from', format='development-subtree')
+        to_tree = self.make_branch_and_tree('to', format='development-subtree')
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertContainsRe(err,
+            "(?m)Fetching into experimental format")
+
+    def test_pull_cross_to_experimental_format_warning(self):
+        """You get a warning for pulling into experimental formats.
+        """
+        from_tree = self.make_branch_and_tree('from', format='2a')
+        to_tree = self.make_branch_and_tree('to', format='development-subtree')
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertContainsRe(err,
+            "(?m)Fetching into experimental format")

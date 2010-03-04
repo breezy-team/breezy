@@ -46,7 +46,7 @@ def load_tests(standard_tests, module, loader):
 class TestMergeImplementation(TestCaseWithTransport):
 
     def do_merge(self, target_tree, source_tree, **kwargs):
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+        merger = _mod_merge.Merger.from_revision_ids(None,
             target_tree, source_tree.last_revision(),
             other_branch=source_tree.branch)
         merger.merge_type=self.merge_type

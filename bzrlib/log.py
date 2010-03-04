@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ def find_touching_revisions(branch, file_id):
     last_path = None
     revno = 1
     for revision_id in branch.revision_history():
-        this_inv = branch.repository.get_revision_inventory(revision_id)
+        this_inv = branch.repository.get_inventory(revision_id)
         if file_id in this_inv:
             this_ie = this_inv[file_id]
             this_path = this_inv.id2path(file_id)
@@ -1424,7 +1424,7 @@ class LogFormatter(object):
         """
         # Revision comes directly from a foreign repository
         if isinstance(rev, foreign.ForeignRevision):
-            return rev.mapping.vcs.show_foreign_revid(rev.foreign_revid)
+            return self._format_properties(rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
         if not ":" in rev.revision_id:

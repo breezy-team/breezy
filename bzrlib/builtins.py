@@ -1,4 +1,4 @@
-# Copyright (C) 2004-2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,6 +54,7 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList
+from bzrlib.transport import memory
 from bzrlib.revisionspec import RevisionSpec, RevisionInfo
 from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
@@ -339,6 +340,14 @@ class cmd_cat_revision(Command):
     # cat-revision is more for frontends so should be exact
     encoding = 'strict'
 
+    def print_revision(self, revisions, revid):
+        stream = revisions.get_record_stream([(revid,)], 'unordered', True)
+        record = stream.next()
+        if record.storage_kind == 'absent':
+            raise errors.NoSuchRevision(revisions, revid)
+        revtext = record.get_bytes_as('fulltext')
+        self.outf.write(revtext.decode('utf-8'))
+
     @display_command
     def run(self, revision_id=None, revision=None):
         if revision_id is not None and revision is not None:
@@ -349,23 +358,32 @@ class cmd_cat_revision(Command):
                                          ' --revision or a revision_id')
         b = WorkingTree.open_containing(u'.')[0].branch
 
-        # TODO: jam 20060112 should cat-revision always output utf-8?
-        if revision_id is not None:
-            revision_id = osutils.safe_revision_id(revision_id, warn=False)
-            try:
-                self.outf.write(b.repository.get_revision_xml(revision_id).decode('utf-8'))
-            except errors.NoSuchRevision:
-                msg = "The repository %s contains no revision %s." % (b.repository.base,
-                    revision_id)
-                raise errors.BzrCommandError(msg)
-        elif revision is not None:
-            for rev in revision:
-                if rev is None:
-                    raise errors.BzrCommandError('You cannot specify a NULL'
-                                                 ' revision.')
-                rev_id = rev.as_revision_id(b)
-                self.outf.write(b.repository.get_revision_xml(rev_id).decode('utf-8'))
+        revisions = b.repository.revisions
+        if revisions is None:
+            raise errors.BzrCommandError('Repository %r does not support '
+                'access to raw revision texts')
 
+        b.repository.lock_read()
+        try:
+            # TODO: jam 20060112 should cat-revision always output utf-8?
+            if revision_id is not None:
+                revision_id = osutils.safe_revision_id(revision_id, warn=False)
+                try:
+                    self.print_revision(revisions, revision_id)
+                except errors.NoSuchRevision:
+                    msg = "The repository %s contains no revision %s." % (
+                        b.repository.base, revision_id)
+                    raise errors.BzrCommandError(msg)
+            elif revision is not None:
+                for rev in revision:
+                    if rev is None:
+                        raise errors.BzrCommandError(
+                            'You cannot specify a NULL revision.')
+                    rev_id = rev.as_revision_id(b)
+                    self.print_revision(revisions, rev_id)
+        finally:
+            b.repository.unlock()
+        
 
 class cmd_dump_btree(Command):
     """Dump the contents of a btree index file to stdout.
@@ -452,34 +470,38 @@ class cmd_remove_tree(Command):
     To re-create the working tree, use "bzr checkout".
     """
     _see_also = ['checkout', 'working-trees']
-    takes_args = ['location?']
+    takes_args = ['location*']
     takes_options = [
         Option('force',
                help='Remove the working tree even if it has '
                     'uncommitted changes.'),
         ]
 
-    def run(self, location='.', force=False):
-        d = bzrdir.BzrDir.open(location)
+    def run(self, location_list, force=False):
+        if not location_list:
+            location_list=['.']
 
-        try:
-            working = d.open_workingtree()
-        except errors.NoWorkingTree:
-            raise errors.BzrCommandError("No working tree to remove")
-        except errors.NotLocalUrl:
-            raise errors.BzrCommandError("You cannot remove the working tree"
-                                         " of a remote path")
-        if not force:
-            if (working.has_changes()):
-                raise errors.UncommittedChanges(working)
+        for location in location_list:
+            d = bzrdir.BzrDir.open(location)
+            
+            try:
+                working = d.open_workingtree()
+            except errors.NoWorkingTree:
+                raise errors.BzrCommandError("No working tree to remove")
+            except errors.NotLocalUrl:
+                raise errors.BzrCommandError("You cannot remove the working tree"
+                                             " of a remote path")
+            if not force:
+                if (working.has_changes()):
+                    raise errors.UncommittedChanges(working)
 
-        working_path = working.bzrdir.root_transport.base
-        branch_path = working.branch.bzrdir.root_transport.base
-        if working_path != branch_path:
-            raise errors.BzrCommandError("You cannot remove the working tree"
-                                         " from a lightweight checkout")
+            working_path = working.bzrdir.root_transport.base
+            branch_path = working.branch.bzrdir.root_transport.base
+            if working_path != branch_path:
+                raise errors.BzrCommandError("You cannot remove the working tree"
+                                             " from a lightweight checkout")
 
-        d.destroy_workingtree()
+            d.destroy_workingtree()
 
 
 class cmd_revno(Command):
@@ -3444,11 +3466,11 @@ class cmd_selftest(Command):
             from bzrlib.tests import stub_sftp
             return stub_sftp.SFTPAbsoluteServer
         if typestring == "memory":
-            from bzrlib.transport.memory import MemoryServer
-            return MemoryServer
+            from bzrlib.tests import test_server
+            return memory.MemoryServer
         if typestring == "fakenfs":
-            from bzrlib.transport.fakenfs import FakeNFSServer
-            return FakeNFSServer
+            from bzrlib.tests import test_server
+            return test_server.FakeNFSServer
         msg = "No known transport type %s. Supported types are: sftp\n" %\
             (typestring)
         raise errors.BzrCommandError(msg)
@@ -3777,18 +3799,18 @@ class cmd_merge(Command):
                     raise errors.BzrCommandError(
                         'Cannot use -r with merge directives or bundles')
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
-                   mergeable, pb)
+                   mergeable, None)
 
         if merger is None and uncommitted:
             if revision is not None and len(revision) > 0:
                 raise errors.BzrCommandError('Cannot use --uncommitted and'
                     ' --revision at the same time.')
-            merger = self.get_merger_from_uncommitted(tree, location, pb)
+            merger = self.get_merger_from_uncommitted(tree, location, None)
             allow_pending = False
 
         if merger is None:
             merger, allow_pending = self._get_merger_from_branch(tree,
-                location, revision, remember, possible_transports, pb)
+                location, revision, remember, possible_transports, None)
 
         merger.merge_type = merge_type
         merger.reprocess = reprocess
@@ -4065,11 +4087,9 @@ class cmd_remerge(Command):
         # list, we imply that the working tree text has seen and rejected
         # all the changes from the other tree, when in fact those changes
         # have not yet been seen.
-        pb = ui.ui_factory.nested_progress_bar()
         tree.set_parent_ids(parents[:1])
         try:
-            merger = _mod_merge.Merger.from_revision_ids(pb,
-                                                         tree, parents[1])
+            merger = _mod_merge.Merger.from_revision_ids(None, tree, parents[1])
             merger.interesting_ids = interesting_ids
             merger.merge_type = merge_type
             merger.show_base = show_base
@@ -4077,7 +4097,6 @@ class cmd_remerge(Command):
             conflicts = merger.do_merge()
         finally:
             tree.set_parent_ids(parents)
-            pb.finished()
         if conflicts > 0:
             return 1
         else:
@@ -4152,12 +4171,8 @@ class cmd_revert(Command):
     @staticmethod
     def _revert_tree_to_revision(tree, revision, file_list, no_backup):
         rev_tree = _get_one_revision_tree('revert', revision, tree=tree)
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            tree.revert(file_list, rev_tree, not no_backup, pb,
-                report_changes=True)
-        finally:
-            pb.finished()
+        tree.revert(file_list, rev_tree, not no_backup, None,
+            report_changes=True)
 
 
 class cmd_assert_fail(Command):
@@ -5910,5 +5925,3 @@ from bzrlib.bundle.commands import (
     )
 from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits
-from bzrlib.weave_commands import cmd_versionedfile_list, \
-        cmd_weave_plan_merge, cmd_weave_merge_text

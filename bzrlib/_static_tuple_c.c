@@ -1,4 +1,4 @@
-/* Copyright (C) 2009 Canonical Ltd
+/* Copyright (C) 2009, 2010 Canonical Ltd
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -140,10 +140,6 @@ static StaticTuple *
 StaticTuple_New(Py_ssize_t size)
 {
     StaticTuple *stuple;
-    if (size < 0) {
-        PyErr_BadInternalCall();
-        return NULL;
-    }
 
     if (size < 0 || size > 255) {
         /* Too big or too small */
@@ -280,6 +276,14 @@ StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     len = PyTuple_GET_SIZE(args);
+    if (len < 0 || len > 255) {
+        /* Check the length here so we can raise a TypeError instead of
+         * StaticTuple_New's ValueError.
+         */
+        PyErr_SetString(PyExc_TypeError, "StaticTuple(...)"
+            " takes from 0 to 255 items");
+        return NULL;
+    }
     self = (StaticTuple *)StaticTuple_New(len);
     if (self == NULL) {
         return NULL;

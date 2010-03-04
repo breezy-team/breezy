@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,11 +64,12 @@ from bzrlib.tests import (
     features,
     stub_sftp,
     test_lsprof,
+    test_server,
     test_sftp_transport,
     TestUtil,
     )
 from bzrlib.trace import note
-from bzrlib.transport.memory import MemoryServer, MemoryTransport
+from bzrlib.transport import memory
 from bzrlib.version import _get_bzr_source_tree
 
 
@@ -622,9 +623,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
 
     def test_get_readonly_url_none(self):
         from bzrlib.transport import get_transport
-        from bzrlib.transport.memory import MemoryServer
         from bzrlib.transport.readonly import ReadonlyTransportDecorator
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         self.transport_readonly_server = None
         # calling get_readonly_transport() constructs a decorator on the url
         # for the server
@@ -639,9 +639,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     def test_get_readonly_url_http(self):
         from bzrlib.tests.http_server import HttpServer
         from bzrlib.transport import get_transport
-        from bzrlib.transport.local import LocalURLServer
         from bzrlib.transport.http import HttpTransportBase
-        self.transport_server = LocalURLServer
+        self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
         url = self.get_readonly_url()
@@ -678,13 +677,13 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTestCaseTransports, self).setUp()
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
 
     def test_make_bzrdir_preserves_transport(self):
         t = self.get_transport()
         result_bzrdir = self.make_bzrdir('subdir')
         self.assertIsInstance(result_bzrdir.transport,
-                              MemoryTransport)
+                              memory.MemoryTransport)
         # should not be on disk, should only be in memory
         self.failIfExists('subdir')
 
@@ -1470,7 +1469,7 @@ class TestTestCase(tests.TestCase):
         # permitted.
         # Manually set one up (TestCase doesn't and shouldn't provide magic
         # machinery)
-        transport_server = MemoryServer()
+        transport_server = memory.MemoryServer()
         transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
         t = transport.get_transport(transport_server.get_url())
@@ -1558,7 +1557,7 @@ class TestTestCase(tests.TestCase):
             result.calls)
 
     def test_start_server_registers_url(self):
-        transport_server = MemoryServer()
+        transport_server = memory.MemoryServer()
         # A little strict, but unlikely to be changed soon.
         self.assertEqual([], self._bzr_selftest_roots)
         self.start_server(transport_server)
@@ -1805,8 +1804,7 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         # make_branch_and_tree has to use local branch and repositories
         # when the vfs transport and local disk are colocated, even if
         # a different transport is in use for url generation.
-        from bzrlib.transport.fakevfat import FakeVFATServer
-        self.transport_server = FakeVFATServer
+        self.transport_server = test_server.FakeVFATServer
         self.assertFalse(self.get_url('t1').startswith('file://'))
         tree = self.make_branch_and_tree('t1')
         base = tree.bzrdir.root_transport.base
@@ -1952,7 +1950,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
         self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
-        self.check_transport_set(bzrlib.transport.memory.MemoryServer)
+        self.check_transport_set(memory.MemoryServer)
 
 
 class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
@@ -2623,7 +2621,7 @@ class TestBlackboxSupport(tests.TestCase):
         # Running bzr in blackbox mode, normal/expected/user errors should be
         # caught in the regular way and turned into an error message plus exit
         # code.
-        transport_server = MemoryServer()
+        transport_server = memory.MemoryServer()
         transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
         url = transport_server.get_url()

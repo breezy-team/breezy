@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ from bzrlib.tests import (
     features,
     stub_sftp,
     )
-
+from bzrlib.transport import memory
 
 class SelfTestPatch:
 
@@ -82,10 +82,8 @@ class TestOptions(tests.TestCase, SelfTestPatch):
     def test_transport_set_to_memory(self):
         # Test that we can pass a transport to the selftest core - memory
         # version.
-        import bzrlib.transport.memory
         params = self.get_params_passed_to_core('selftest --transport=memory')
-        self.assertEqual(bzrlib.transport.memory.MemoryServer,
-            params[1]["transport"])
+        self.assertEqual(memory.MemoryServer, params[1]["transport"])
 
     def test_parameters_passed_to_core(self):
         params = self.get_params_passed_to_core('selftest --list-only')

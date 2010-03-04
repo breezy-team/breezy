@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +36,10 @@ from bzrlib.transport import (
     pathfilter,
     readonly,
     )
-from bzrlib.tests import features
+from bzrlib.tests import (
+    features,
+    test_server,
+    )
 
 
 # TODO: Should possibly split transport-specific tests into their own files.
@@ -593,7 +596,7 @@ class FakeNFSDecoratorTests(tests.TestCaseInTempDir):
 
     def test_fakenfs_server_default(self):
         # a FakeNFSServer() should bring up a local relpath server for itself
-        server = fakenfs.FakeNFSServer()
+        server = test_server.FakeNFSServer()
         self.start_server(server)
         # the url should be decorated appropriately
         self.assertStartsWith(server.get_url(), 'fakenfs+')
