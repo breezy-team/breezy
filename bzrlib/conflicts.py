@@ -436,6 +436,12 @@ class Conflict(object):
     def action_take_other(self, tree):
         raise NotImplementedError(self.action_take_other)
 
+    def _resolve_with_cleanups(self, tree, *args, **kwargs):
+        tt = transform.TreeTransform(tree)
+        op = cleanup.OperationWithCleanups(self._resolve)
+        op.add_cleanup(tt.finalize)
+        op.run_simple(tt, *args, **kwargs)
+
 
 class PathConflict(Conflict):
     """A conflict was encountered merging file paths"""
@@ -460,8 +466,33 @@ class PathConflict(Conflict):
         # No additional files have been generated here
         return []
 
+    def _resolve(self, tt, file_id, path):
+        """Resolve the conflict.
+
+        :param tt: The TreeTransform where the conflict is resolved.
+        :param file_id: The retained file id.
+        :param path: The retained path.
+        """
+        # Rename 'item.suffix_to_remove' (note that if
+        # 'item.suffix_to_remove' has been deleted, this is a no-op)
+        tid = tt.trans_id_file_id(file_id)
+        parent_tid = tt.get_tree_parent(tid)
+        tt.adjust_path(path, parent_tid, tid)
+        tt.apply()
+
+    def _get_or_infer_file_id(self, tree):
+        if self.file_id is not None:
+            return self.file_id
+
+        # Prior to bug #531967, file_id wasn't always set, there may still be
+        # conflict files in the wild so we need to cope with them
+        return tree.path2id(self.conflict_path)
+
     def action_take_this(self, tree):
-        tree.rename_one(self.conflict_path, self.path)
+        file_id = self._get_or_infer_file_id(tree)
+        if file_id is None:
+            import pdb ; pdb.set_trace()
+        self._resolve_with_cleanups(tree, file_id, self.path)
 
     def action_take_other(self, tree):
         # just acccept bzr proposal
@@ -480,7 +511,7 @@ class ContentsConflict(PathConflict):
     def associated_filenames(self):
         return [self.path + suffix for suffix in ('.BASE', '.OTHER')]
 
-    def _take_it(self, tt, suffix_to_remove):
+    def _resolve(self, tt, suffix_to_remove):
         """Resolve the conflict.
 
         :param tt: The TreeTransform where the conflict is resolved.
@@ -506,17 +537,11 @@ class ContentsConflict(PathConflict):
         tt.adjust_path(self.path, parent_tid, this_tid)
         tt.apply()
 
-    def _take_it_with_cleanups(self, tree, suffix_to_remove):
-        tt = transform.TreeTransform(tree)
-        op = cleanup.OperationWithCleanups(self._take_it)
-        op.add_cleanup(tt.finalize)
-        op.run_simple(tt, suffix_to_remove)
-
     def action_take_this(self, tree):
-        self._take_it_with_cleanups(tree, 'OTHER')
+        self._resolve_with_cleanups(tree, 'OTHER')
 
     def action_take_other(self, tree):
-        self._take_it_with_cleanups(tree, 'THIS')
+        self._resolve_with_cleanups(tree, 'THIS')
 
 
 # FIXME: TextConflict is about a single file-id, there never is a conflict_path

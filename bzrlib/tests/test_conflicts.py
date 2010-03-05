@@ -312,8 +312,8 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         _assert_conflict = getattr(self, self._assert_conflict)
         _assert_conflict(c)
 
-    def check_resolved(self, wt, item, action):
-        conflicts.resolve(wt, [item], action=action)
+    def check_resolved(self, wt, path, action):
+        conflicts.resolve(wt, [path], action=action)
         # Check that we don't have any conflicts nor unknown left
         self.assertLength(0, wt.conflicts())
         self.assertLength(0, list(wt.unknowns()))
