@@ -18,8 +18,11 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib import osutils, patiencediff
+from bzrlib import bugtracker, errors, osutils, patiencediff
 """)
+import re
+
+_BUG_MATCH = re.compile(r'#(\d+)')
 
 class CommitTemplate(object):
 
@@ -85,6 +88,16 @@ class CommitTemplate(object):
                 if tag == 'delete':
                     continue
                 new_lines.extend(new[j1:j2])
+            if not self.commit.revprops.get('bugs'):
+                # TODO: Allow the user to configure the bug tracker to use
+                # rather than hardcoding Launchpad.
+                bt = bugtracker.tracker_registry.get('launchpad')
+                bugids = []
+                for line in new_lines:
+                    bugids.extend(_BUG_MATCH.findall(line))
+                self.commit.revprops['bugs'] = \
+                    bugtracker.encode_fixes_bug_urls(
+                        [bt.get_bug_url(bugid) for bugid in bugids])
             return self.merge_message(''.join(new_lines))
 
     def merge_message(self, new_message):

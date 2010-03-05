@@ -38,6 +38,7 @@ IMPROVEMENTS
 class TestCommitTemplate(TestCaseWithTransport):
 
     def capture_template(self, commit, message):
+        self.commits.append(commit)
         self.messages.append(message)
         if message is None:
             message = 'let this commit succeed I command thee.'
@@ -48,6 +49,7 @@ class TestCommitTemplate(TestCaseWithTransport):
         msgeditor.hooks.install_named_hook('commit_message_template',
             self.capture_template, 'commitfromnews test template')
         self.messages = []
+        self.commits = []
 
     def test_initial(self):
         self.setup_capture()
@@ -107,6 +109,45 @@ IMPROVEMENTS
             message_callback=msgeditor.generate_commit_message_template)
         builder.finish_series()
         self.assertEqual([change_content], self.messages)
+
+    def test_fix_bug(self):
+        self.setup_capture()
+        builder = self.make_branch_builder('test')
+        builder.start_series()
+        orig_content = INITIAL_NEWS_CONTENT
+        mod_content = """----------------------------
+commitfromnews release notes
+----------------------------
+
+NEXT (In development)
+---------------------
+
+IMPROVEMENTS
+~~~~~~~~~~~~
+
+* Created plugin, basic functionality of looking for NEWS and including the
+  NEWS diff.
+
+* Fixed a horrible bug. (#523423)
+
+"""
+        change_content = """
+* Fixed a horrible bug. (#523423)
+
+"""
+        builder.build_snapshot('BASE-id', None,
+            [('add', ('', None, 'directory', None)),
+             ('add', ('NEWS', 'foo-id', 'file', orig_content)),
+             ])
+        builder.build_snapshot(None, None,
+            [('modify', ('foo-id', mod_content)),
+             ],
+            message_callback=msgeditor.generate_commit_message_template)
+        builder.finish_series()
+        self.assertEqual([change_content], self.messages)
+        self.assertEqual(1, len(self.commits))
+        self.assertEquals('https://launchpad.net/bugs/523423 fixed',
+                          self.commits[0].revprops['bugs'])
 
     def _todo_test_passes_messages_through(self):
         pass
