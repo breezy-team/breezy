@@ -299,7 +299,7 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
 
     def _write_out(self, bytes):
         tstart = osutils.timer_func()
-        _send_bytes_chunked(self.socket, bytes, self._report_activity)
+        osutils.send_all(self.socket, bytes, self._report_activity)
         if 'hpss' in debug.debug_flags:
             thread_id = thread.get_ident()
             trace.mutter('%12s: [%s] %d bytes to the socket in %.3fs'
@@ -842,7 +842,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
-        _send_bytes_chunked(self._socket, bytes, self._report_activity)
+        osutils.send_all(self._socket, bytes, self._report_activity)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -971,27 +971,3 @@ def _read_bytes_from_socket(sock, report_activity,
             return bytes
 
 
-def _send_bytes_chunked(sock, bytes, report_activity):
-    """Send bytes on sock and notify of progress
-
-    Breaks large blocks in smaller chunks to avoid buffering limitations on
-    some platforms, and catches EINTR which may be thrown if the send is
-    interrupted by a signal.
-
-    For a socket implementation without these issues, this function has much
-    the same effect as:
-        sock.sendall(bytes)
-        report_activity(len(bytes), 'write')
-    """
-    sent_total = 0
-    byte_count = len(bytes)
-    while sent_total < byte_count:
-        try:
-            buf = buffer(bytes, sent_total, _MAX_READ_SIZE)
-            sent = sock.send(buf)
-        except socket.error, e:
-            if e.args[0] != errno.EINTR:
-                raise
-        else:
-            sent_total += sent
-            report_activity(sent, 'write')
