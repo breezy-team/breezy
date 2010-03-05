@@ -20,6 +20,21 @@ from bzrlib.plugins import commitfromnews
 from bzrlib import msgeditor
 from bzrlib.tests import TestCaseWithTransport
 
+INITIAL_NEWS_CONTENT = """----------------------------
+commitfromnews release notes
+----------------------------
+
+NEXT (In development)
+---------------------
+
+IMPROVEMENTS
+~~~~~~~~~~~~
+
+* Created plugin, basic functionality of looking for NEWS and including the
+  NEWS diff.
+"""
+
+
 class TestCommitTemplate(TestCaseWithTransport):
 
     def capture_template(self, commit, message):
@@ -50,19 +65,7 @@ class TestCommitTemplate(TestCaseWithTransport):
         self.setup_capture()
         builder = self.make_branch_builder('test')
         builder.start_series()
-        content = """----------------------------
-commitfromnews release notes
-----------------------------
-
-NEXT (In development)
----------------------
-
-IMPROVEMENTS
-~~~~~~~~~~~~
-
-* Created plugin, basic functionality of looking for NEWS and including the
-  NEWS diff.
-"""
+        content = INITIAL_NEWS_CONTENT
         builder.build_snapshot('BASE-id', None,
             [('add', ('', None, 'directory', None)),
              ('add', ('NEWS', 'foo-id', 'file', content)),
@@ -75,19 +78,7 @@ IMPROVEMENTS
         self.setup_capture()
         builder = self.make_branch_builder('test')
         builder.start_series()
-        orig_content = """----------------------------
-commitfromnews release notes
-----------------------------
-
-NEXT (In development)
----------------------
-
-IMPROVEMENTS
-~~~~~~~~~~~~
-
-* Created plugin, basic functionality of looking for NEWS and including the
-  NEWS diff.
-"""
+        orig_content = INITIAL_NEWS_CONTENT
         mod_content = """----------------------------
 commitfromnews release notes
 ----------------------------
