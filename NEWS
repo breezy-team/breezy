@@ -401,6 +401,10 @@ Bug Fixes
   version number along with rest of the help text.
   (Parth Malwankar, #369501)
 
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
+
 Documentation
 *************
 

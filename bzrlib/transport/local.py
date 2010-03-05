@@ -42,8 +42,8 @@ from bzrlib.transport import LateReadError
 from bzrlib.transport import Transport, Server
 
 
-_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
-_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY
+_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
+_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
 
 
 class LocalTransport(Transport):
@@ -160,7 +160,7 @@ class LocalTransport(Transport):
             transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
-            return open(path, 'rb')
+            return osutils.open_file(path, 'rb')
         except (IOError, OSError),e:
             if e.errno == errno.EISDIR:
                 return LateReadError(relpath)
@@ -329,7 +329,7 @@ class LocalTransport(Transport):
         # initialise the file
         self.put_bytes_non_atomic(relpath, "", mode=mode)
         abspath = self._abspath(relpath)
-        handle = open(abspath, 'wb')
+        handle = osutils.open_file(abspath, 'wb')
         if mode is not None:
             self._check_mode_and_size(abspath, handle.fileno(), mode)
         transport._file_streams[self.abspath(relpath)] = handle
