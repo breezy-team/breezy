@@ -1671,7 +1671,21 @@ class TestCase(testtools.TestCase):
                 unicodestr = log_contents.decode('utf8', 'replace')
                 log_contents = unicodestr.encode('utf8')
             if not keep_log_file:
-                self._log_file.close()
+                close_attempts = 0
+                while close_attempts < 100:
+                    close_attempts += 1
+                    try:
+                        self._log_file.close()
+                    except IOError, ioe:
+                        if ioe.errno is None:
+                            # No errno implies 'close() called during
+                            # concurrent operation on the same file object', so
+                            # retry.  Probably a thread is trying to write to
+                            # the log file.
+                            continue
+                        raise
+                    else:
+                        break
                 self._log_file = None
                 # Permit multiple calls to get_log until we clean it up in
                 # finishLogFile
