@@ -1102,8 +1102,8 @@ class TransportTests(TestTransportImplementation):
             st = t.stat(link_name)
             self.failUnlessEqual(st[ST_NLINK], 2)
         except TransportNotPossible:
-            # This transport doesn't do hardlinks
-            return
+            raise TestSkipped("Transport %s does not support hardlinks." %
+                              self._server.__class__)
 
     def test_symlink(self):
         from stat import S_ISLNK
@@ -1124,8 +1124,10 @@ class TransportTests(TestTransportImplementation):
             st = t.stat(link_name)
             self.failUnless(S_ISLNK(st.st_mode))
         except TransportNotPossible:
-            # This transport doesn't do hardlinks
-            return
+            raise TestSkipped("Transport %s does not support symlinks." %
+                              self._server.__class__)
+        except IOError:
+            raise tests.KnownFailure("Paramiko fails to create symlinks during tests")
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
