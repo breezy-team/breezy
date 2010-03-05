@@ -419,8 +419,6 @@ class GraphIndex(object):
         # The number of bytes we've read so far in trying to process this file
         self._bytes_read = 0
         self._base_offset = offset
-        if offset != 0:
-            raise NotImplementedError('GraphIndex(offset) must be 0')
 
     def __eq__(self, other):
         """Equal when self and other were created with the same parameters."""
@@ -449,6 +447,10 @@ class GraphIndex(object):
             mutter('Reading entire index %s', self._transport.abspath(self._name))
         if stream is None:
             stream = self._transport.get(self._name)
+            if self._base_offset != 0:
+                # This is wasteful, but it is better than dealing with
+                # adjusting all the offsets, etc.
+                stream = StringIO(stream.read()[self._base_offset:])
         self._read_prefix(stream)
         self._expected_elements = 3 + self._key_length
         line_count = 0
@@ -1195,11 +1197,22 @@ class GraphIndex(object):
             self._buffer_all()
             return
 
+        base_offset = self._base_offset
+        if base_offset != 0:
+            # Rewrite the ranges for the offset
+            readv_ranges = [(start+base_offset, size)
+                            for start, size in readv_ranges]
         readv_data = self._transport.readv(self._name, readv_ranges, True,
-            self._size)
+            self._size + self._base_offset)
         # parse
         for offset, data in readv_data:
+            offset -= base_offset
             self._bytes_read += len(data)
+            if offset < 0:
+                # transport.readv() expanded to extra data which isn't part of
+                # this index
+                data = data[-offset:]
+                offset = 0
             if offset == 0 and len(data) == self._size:
                 # We read the whole range, most likely because the
                 # Transport upcast our readv ranges into one long request

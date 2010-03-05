@@ -388,6 +388,17 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         size = trans.put_file('index', stream)
         return GraphIndex(trans, 'index', size)
 
+    def make_index_with_offset(self, ref_lists=0, key_elements=1, nodes=[],
+                               offset=0):
+        builder = GraphIndexBuilder(ref_lists, key_elements=key_elements)
+        for key, value, references in nodes:
+            builder.add_node(key, value, references)
+        content = builder.finish().read()
+        size = len(content)
+        trans = self.get_transport()
+        trans.put_bytes('index', (' '*offset) + content)
+        return GraphIndex(trans, 'index', size, offset=offset)
+
     def test_clear_cache(self):
         index = self.make_index()
         # For now, we just want to make sure the api is available. As this is
@@ -399,10 +410,25 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans.put_bytes('name', "not an index\n")
         index = GraphIndex(trans, 'name', 13)
 
-    def test_open_bad_offset(self):
-        trans = self.get_transport()
-        self.assertRaises(NotImplementedError, 
-            GraphIndex, trans, 'name', 13, offset=10)
+    def test_with_offset(self):
+        nodes = self.make_nodes(200)
+        index = self.make_index_with_offset(offset=1234567, nodes=nodes)
+        self.assertEqual(200, index.key_count())
+
+    def test_buffer_all_with_offset(self):
+        nodes = self.make_nodes(200)
+        index = self.make_index_with_offset(offset=1234567, nodes=nodes)
+        index._buffer_all()
+        self.assertEqual(200, index.key_count())
+
+    def test_side_effect_buffering_with_offset(self):
+        nodes = self.make_nodes(20)
+        index = self.make_index_with_offset(offset=1234567, nodes=nodes)
+        index._transport.recommended_page_size = lambda:64*1024
+        subset_nodes = [nodes[0][0], nodes[10][0], nodes[19][0]]
+        entries = [n[1] for n in index.iter_entries(subset_nodes)]
+        self.assertEqual(sorted(subset_nodes), sorted(entries))
+        self.assertEqual(20, index.key_count())
 
     def test_open_sets_parsed_map_empty(self):
         index = self.make_index()
