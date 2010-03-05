@@ -382,7 +382,7 @@ class GraphIndex(object):
     suitable for production use. :XXX
     """
 
-    def __init__(self, transport, name, size, unlimited_cache=False):
+    def __init__(self, transport, name, size, unlimited_cache=False, offset=0):
         """Open an index called name on transport.
 
         :param transport: A bzrlib.transport.Transport.
@@ -394,6 +394,8 @@ class GraphIndex(object):
             avoided by having it supplied. If size is None, then bisection
             support will be disabled and accessing the index will just stream
             all the data.
+        :param offset: Instead of starting the index data at offset 0, start it
+            at an arbitrary offset.
         """
         self._transport = transport
         self._name = name
@@ -416,6 +418,9 @@ class GraphIndex(object):
         self._size = size
         # The number of bytes we've read so far in trying to process this file
         self._bytes_read = 0
+        self._base_offset = offset
+        if offset != 0:
+            raise NotImplementedError('GraphIndex(offset) must be 0')
 
     def __eq__(self, other):
         """Equal when self and other were created with the same parameters."""
