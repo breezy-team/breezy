@@ -14,6 +14,9 @@ bzr 2.1.1
 Bug Fixes
 *********
 
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
 * Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
 
 * Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids

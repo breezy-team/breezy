@@ -297,14 +297,14 @@ class SocketListener(threading.Thread):
                 threading.Thread(target=self._callback, args=(s,)).start()
             except socket.error, x:
                 sys.excepthook(*sys.exc_info())
-                warning('Socket error during accept() within unit test server'
-                        ' thread: %r' % x)
+                trace.warning('Socket error during accept() '
+                              'within unit test server thread: %r' % x)
             except Exception, x:
                 # probably a failed test; unit test thread will log the
                 # failure/error
                 sys.excepthook(*sys.exc_info())
-                warning('Exception from within unit test server thread: %r' %
-                        x)
+                trace.warning(
+                    'Exception from within unit test server thread: %r' % x)
 
 
 class SocketDelay(object):
@@ -438,13 +438,15 @@ class SFTPServer(Server):
         if not (backing_server is None or
                 isinstance(backing_server, local.LocalURLServer)):
             raise AssertionError(
-                "backing_server should not be %r, because this can only serve the "
-                "local current working directory." % (backing_server,))
+                'backing_server should not be %r, because this can only serve '
+                'the local current working directory.' % (backing_server,))
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
+        # FIXME: the following block should certainly just be self._homedir =
+        # osutils.getcwd() but that fails badly on Unix -- vila 20100224
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
-            self._homedir = getcwd()
+            self._homedir = os.getcwdu()
         else:
             # But Linux SFTP servers should just deal in bytestreams
             self._homedir = os.getcwd()
