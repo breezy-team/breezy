@@ -1083,7 +1083,7 @@ class TransportTests(TestTransportImplementation):
         subdir.stat('./file')
         subdir.stat('.')
 
-    def test_link(self):
+    def test_hardlink(self):
         from stat import ST_NLINK
 
         t = self.get_transport()
@@ -1094,7 +1094,7 @@ class TransportTests(TestTransportImplementation):
         self.build_tree([source_name], transport=t)
 
         try:
-            t.link(source_name, link_name)
+            t.hardlink(source_name, link_name)
 
             self.failUnless(t.has(source_name))
             self.failUnless(t.has(link_name))

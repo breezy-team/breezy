@@ -521,7 +521,7 @@ class LocalTransport(transport.Transport):
             return osutils.readlink(self._abspath(relpath))
 
     if osutils.hardlinks_good():
-        def link(self, source, link_name):
+        def hardlink(self, source, link_name):
             """See Transport.link."""
             try:
                 os.link(self._abspath(source), self._abspath(link_name))

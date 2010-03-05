@@ -1206,7 +1206,7 @@ class Transport(object):
         """Return a string representing the path to which the symbolic link points."""
         raise errors.TransportNotPossible("Dereferencing symlinks is not supported on %s" % self)
 
-    def link(self, source, link_name):
+    def hardlink(self, source, link_name):
         """Create a hardlink pointing to source named link_name."""
         raise errors.TransportNotPossible("Hard links are not supported on %s" % self)
 
