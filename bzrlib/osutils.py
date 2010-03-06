@@ -1785,20 +1785,17 @@ def copy_tree(from_path, to_path, handlers={}):
             real_handlers[kind](abspath, relpath)
 
 
-def parent_dir(path):
-    """same as os.path.dirname but returns '.' instead of ''
-    for paths that just have a filename in it e.g. 'foo'"""
-    pdir = os.path.dirname(path)
-    if pdir == '':
-        pdir = '.'
-    return pdir
-
-
-def copy_ownership(dst, src):
-    """copy user and group ownership from own_src file/dir to dst file/dir.
-    If own_src is None, the containing directory is used as source."""
+def copy_ownership(dst, src=None):
+    """copy usr/grp ownership from src file/dir to dst file/dir.
+    If src is None, the containing directory is used as source."""
     if os.name != 'posix':
         return False
+
+    if src == None:
+        src = os.path.dirname(dst)
+        if src == '':
+            src = '.'
+
     try:
         s = os.stat(src)
         os.chown(dst, s.st_uid, s.st_gid)
@@ -1808,20 +1805,21 @@ def copy_ownership(dst, src):
 
 
 def mkdir_with_ownership(path, ownership_src=None):
-    """creates the directory 'path'. If ownership_src is given, copies (chown)
-    usr/grp ownership from 'ownership_src' to 'path'"""
+    """creates the directory 'path' with specified ownership.
+    If ownership_src is given, copies (chown) usr/grp ownership
+    from 'ownership_src' to 'path'. If ownership_src is None, use the
+    containing dir ownership"""
     os.mkdir(path)
-    if ownership_src != None:
-        copy_ownership(path, ownership_src)
+    copy_ownership(path, ownership_src)
+
 
 def open_with_ownership(filename, mode='r', bufsize=-1, ownership_src=None):
-    """This function wraps the python builtin open. filename, mode and bufsize
-    parameters behave the same as the builtin open[1]. If ownership_src is
-    given, copies (chown) usr/grp ownership from 'ownership_src' to 'filename'.
-    [1] http://python.org/doc/2.6.4/library/functions.html#open"""
+    """open a file with the specified ownership.
+    If ownership_src is specified, copy usr/grp ownership from ownership_src
+    to filename. If ownership_src is None, copy ownership from containing
+    directory."""
     f = open(filename, mode, bufsize)
-    if ownership_src != None:
-        copy_ownership(filename, ownership_src)
+    copy_ownership(filename, ownership_src)
     return f
 
 
