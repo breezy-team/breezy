@@ -34,6 +34,101 @@ from bzrlib.trace import mutter, warning
 # if known, but only if really going to the terminal (not into a file)
 
 
+def show(to_file, delta, show_ids=False, show_unchanged=False,
+         indent='', filter=None):
+    """Output given delta in status-like form to to_file.
+
+    :param to_file: A file-like object where the output is displayed.
+
+    :param delta: A TreeDelta containing the changes to be displayed
+
+    :param show_ids: Output the file ids if True.
+
+    :param show_unchanged: Output the unchanged files if True.
+
+    :param indent: Added at the beginning of all output lines (for merged
+        revisions).
+
+    :param filter: A callable receiving a path and a file id and
+        returning True if the path should be displayed.
+    """
+
+    def decorate_path(path, kind, meta_modified=None):
+        if kind == 'directory':
+            path += '/'
+        elif kind == 'symlink':
+            path += '@'
+        if meta_modified:
+            path += '*'
+        return path
+
+    def show_more_renamed(item):
+        (oldpath, file_id, kind,
+         text_modified, meta_modified, newpath) = item
+        dec_new_path = decorate_path(newpath, kind, meta_modified)
+        to_file.write(' => %s' % dec_new_path)
+        if text_modified or meta_modified:
+            extra_modified.append((newpath, file_id, kind,
+                                   text_modified, meta_modified))
+
+    def show_more_kind_changed(item):
+        (path, file_id, old_kind, new_kind) = item
+        to_file.write(' (%s => %s)' % (old_kind, new_kind))
+
+    def show_path(path, file_id, kind, meta_modified,
+                  default_format, with_file_id_format):
+        dec_path = decorate_path(path, kind, meta_modified)
+        if show_ids:
+            to_file.write(with_file_id_format % dec_path)
+        else:
+            to_file.write(default_format % dec_path)
+
+    def show_list(files, long_status_name, default_format='%s', 
+                  with_file_id_format='%-30s', show_more=None):
+        if files:
+            header_shown = False
+            prefix = indent + '  '
+
+            for item in files:
+                path, file_id, kind = item[:3]
+                if (filter is not None and not filter(path, file_id)):
+                    continue
+                if not header_shown:
+                    to_file.write(indent + long_status_name + ':\n')
+                    header_shown = True
+                meta_modified = None
+                if len(item) == 5:
+                    meta_modified = item[4]
+
+                to_file.write(prefix)
+                show_path(path, file_id, kind, meta_modified,
+                          default_format, with_file_id_format)
+                if show_more is not None:
+                    show_more(item)
+                if show_ids:
+                    to_file.write(' %s' % file_id)
+                to_file.write('\n')
+
+    show_list(delta.removed, 'removed')
+    show_list(delta.added, 'added')
+    extra_modified = []
+    # Reorder delta.renamed tuples so that all lists share the same
+    # order for their 3 first fields and that they also begin like
+    # the delta.modified tuples
+    renamed = [(p, i, k, tm, mm, np)
+               for  p, np, i, k, tm, mm  in delta.renamed]
+    show_list(renamed, 'renamed', with_file_id_format='%s',
+              show_more=show_more_renamed)
+    show_list(delta.kind_changed, 'kind changed', 
+              with_file_id_format='%s',
+              show_more=show_more_kind_changed)
+    show_list(delta.modified + extra_modified, 'modified')
+    if show_unchanged:
+        show_list(delta.unchanged, 'unchanged')
+
+    show_list(delta.unversioned, 'unknown')
+
+
 def show_tree_status(wt, show_unchanged=None,
                      specific_files=None,
                      show_ids=False,
@@ -42,7 +137,8 @@ def show_tree_status(wt, show_unchanged=None,
                      revision=None,
                      short=False,
                      verbose=False,
-                     versioned=False):
+                     versioned=False,
+                     show_callback=show):
     """Display summary of changes.
 
     By default this compares the working tree to a previous revision.
@@ -71,6 +167,7 @@ def show_tree_status(wt, show_unchanged=None,
     :param verbose: If True, show all merged revisions, not just
         the merge tips
     :param versioned: If True, only shows versioned files.
+    :param show_callback: A callback: message = show_callback(to_file, delta, show_ids, show_unchanged, indent, filter)
     """
     if show_unchanged is not None:
         warn("show_tree_status with show_unchanged has been deprecated "
@@ -120,10 +217,9 @@ def show_tree_status(wt, show_unchanged=None,
                 # this
                 delta.unversioned = [unversioned for unversioned in
                     delta.unversioned if not new.is_ignored(unversioned[0])]
-                delta.show(to_file,
-                           show_ids=show_ids,
-                           show_unchanged=show_unchanged,
-                           short_status=False)
+                show_callback(to_file, delta, 
+                              show_ids=show_ids,
+                              show_unchanged=show_unchanged)
             # show the new conflicts only for now. XXX: get them from the
             # delta.
             conflicts = new.conflicts()
