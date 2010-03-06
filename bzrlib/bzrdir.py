@@ -1492,12 +1492,10 @@ class BzrDirPreSplitOut(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         self._check_supported(format, unsupported)
-        return format.open(self, _found=True)
+        return format.open(self, name, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
@@ -1774,11 +1772,10 @@ class BzrDirMeta1(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
         format = self.find_branch_format()
         self._check_supported(format, unsupported)
-        return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
+        return format.open(self, name=name,
+            _found=True, ignore_fallbacks=ignore_fallbacks)
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
