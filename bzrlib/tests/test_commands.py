@@ -24,6 +24,7 @@ from bzrlib import (
     config,
     errors,
     option,
+    symbol_versioning,
     tests,
     )
 from bzrlib.commands import display_command
@@ -276,32 +277,45 @@ class TestGetCommandHook(tests.TestCase):
 
 class TestGetMissingCommandHook(tests.TestCase):
 
-    def test_fires_on_get_cmd_object(self):
-        # The get_missing_command(cmd) hook fires when commands are delivered to the
-        # ui.
-        hook_calls = []
+    def hook_missing(self):
+        """Hook get_missing_command for testing."""
+        self.hook_calls = []
         class ACommand(commands.Command):
             """A sample command."""
         def get_missing_cmd(cmd_name):
-            hook_calls.append(('called', cmd_name))
+            self.hook_calls.append(('called', cmd_name))
             if cmd_name in ('foo', 'info'):
                 return ACommand()
         commands.Command.hooks.install_named_hook(
             "get_missing_command", get_missing_cmd, None)
+        self.ACommand = ACommand
+
+    def test_fires_on_get_cmd_object(self):
+        # The get_missing_command(cmd) hook fires when commands are delivered to the
+        # ui.
+        self.hook_missing()
         # create a command directly, should not fire
-        cmd = ACommand()
-        self.assertEqual([], hook_calls)
+        self.cmd = self.ACommand()
+        self.assertEqual([], self.hook_calls)
         # ask by name, should fire and give us our command
         cmd = commands.get_cmd_object('foo')
-        self.assertEqual([('called', 'foo')], hook_calls)
-        self.assertIsInstance(cmd, ACommand)
-        del hook_calls[:]
+        self.assertEqual([('called', 'foo')], self.hook_calls)
+        self.assertIsInstance(cmd, self.ACommand)
+        del self.hook_calls[:]
         # ask by a name that is supplied by a builtin - the hook should not
         # fire and we still get our object.
         commands.install_bzr_command_hooks()
         cmd = commands.get_cmd_object('info')
         self.assertNotEqual(None, cmd)
-        self.assertEqual(0, len(hook_calls))
+        self.assertEqual(0, len(self.hook_calls))
+
+    def test_skipped_on_HelpCommandIndex_get_topics(self):
+        # The get_missing_command(cmd_name) hook is not fired when
+        # looking up help topics.
+        self.hook_missing()
+        topic = commands.HelpCommandIndex()
+        topics = topic.get_topics('foo')
+        self.assertEqual([], self.hook_calls)
 
 
 class TestListCommandHook(tests.TestCase):
@@ -323,3 +337,10 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
+
+class TestDeprecations(tests.TestCase):
+
+    def test_shlex_split_unicode_deprecation(self):
+        res = self.applyDeprecated(
+                symbol_versioning.deprecated_in((2, 2, 0)),
+                commands.shlex_split_unicode, 'whatever')

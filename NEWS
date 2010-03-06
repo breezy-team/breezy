@@ -70,8 +70,27 @@ Bug Fixes
 * ``bzr add`` will not add conflict related files unless explicitly required.
   (Vincent Ladeuil, #322767, #414589)
 
+* ``bzr help`` will no longer trigger the get_missing_command hook when
+  doing a topic lookup. This avoids prompting (like 'no command plugins/loom,
+  did you mean log?') when getting help. In future we may trigger the hook 
+  deliberately when no help topics match from any help index.
+  (Robert Collins, #396261)
+
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
+
+* ``bzr resolve --take-this`` and ``--take-other`` now correctly renames
+  the kept file on content conflicts where one side deleted the file.
+  (Vincent Ladeuil, #529968)
+
+* ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
+  of ``backup.bzr``. This directory is ignored by bzr commands such as
+  ``add``.
+  (Parth Malwankar, #335033, #300001)
+
+* Correctly interpret "451 Rename/move failure: Directory not empty" from
+  ftp servers while trying to take a lock.
+  (Martin Pool, #528722)
 
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
@@ -81,10 +100,15 @@ Bug Fixes
   prevents ``bzr status --short`` from crashing when those files are
   present.  (John Arbash Meinel, #303275)
 
-* ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
-  of ``backup.bzr``. This directory is ignored by bzr commands such as
-  ``add``.
-  (Parth Malwankar, #335033, #300001)
+* ``bzr mkdir DIR`` will not create DIR unless DIR's parent is a versioned
+   directory. (Parth Malwankar, #138600)
+
+* SSH child processes will now ignore SIGQUIT on nix systems so breaking into
+  the debugger won't kill the session.
+  (Martin <gzlist@googlemail.com>, #162502)
+
+* Tolerate patches with leading noise in ``bzr-handle-patch``.
+  (Toshio Kuratomi, Martin Pool, #502076)
 
 * ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
   group ownership from the containing directory. This allow bzr to work
@@ -99,19 +123,85 @@ API Changes
   to be done separately.
   (Martin Pool, #507710)
 
+* New method ``BzrDir.list_branches()`` that returns a sequence of branches 
+  present in a control directory. (Jelmer Vernooij)
+
 * Remove unused ``CommandFailed`` exception.
   (Martin Pool)
+
+Internals
+*********
+
+* ``bzrlib.branchbuilder.BranchBuilder.build_snapshot`` now accepts a
+  ``message_callback`` in the same way that commit does. (Robert Collins)
+
+* ``bzrlib.builtins.Commit.run`` raises ``bzrlib.errors.BoundBranchOutOfDate``
+  rather than ``bzrlib.errors.BzrCommandError`` when the bound branch is out
+  of date. (Gary van der Merwe)
+
+* ``bzrlib.commands.run_bzr`` is more extensible: callers can supply the
+  functions to load or disable plugins if they wish to use a different
+  plugin mechanism; the --help, --version and no-command name code paths
+  now use the generic pluggable command lookup infrastructure.
+  (Robert Collins)
+
+* ``bzrlib.errors.BoundBranchOutOfDate`` has a new field ``extra_help``
+  which can be set to add extra help to the error. (Gary van der Merwe)
+
+* The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
+  ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
+  (Jelmer Vernooij)
 
 Testing
 *******
 
-* New `bzrlib.tests.test_import_tariff` can make assertions about what
+* bzr now has a ``.testr.conf`` file in its source tree configured
+  appropriately for running tests with Testrepository
+  (``https://launchpad.net/testrepository``). (Robert Collins)
+
+* Documentation about testing with ``subunit`` has been tweaked.
+  (Robert Collins)
+
+* New ``bzrlib.tests.test_import_tariff`` can make assertions about what
   Python modules are loaded, to guard against startup time or library
   dependency regressions.
   (Martin Pool)
 
 * Stop sending apport crash files to ``.cache`` in the directory from
   which ``bzr selftest`` was run.  (Martin Pool, #422350)
+
+bzr 2.1.1
+#########
+
+:2.1.1: not released yet
+
+Bug Fixes
+*********
+
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+
+* Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
+  problems importing bzrlib from a non-main thread.
+  (Elliot Murphy, #521989)
+
+* Standardize the error handling when creating a new ``StaticTuple``
+  (problems will raise TypeError). (Matt Nordhoff, #457979)
+
+* Warn if pyrex is too old to compile the new ``SimpleSet`` and
+  ``StaticTuple`` extensions, rather than having the build fail randomly.
+  (John Arbash Meinel, #449776)
+
+
+Documentation
+*************
+
+* Added a link to the Desktop Guide. (Ian Clatworthy)
+
+* Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
+* Drop Google Analytics from the core docs as they caused problems
+  in the CHM files. (Ian Clatworthy, #502010)
+
 
 bzr 2.1.0
 #########
@@ -474,13 +564,31 @@ bzr 2.0.5 (not released yet)
 ############################
 
 :Codename:
-:2.0.5:
+:2.0.5: NOT RELEASED YET
 
 Bug Fixes
 *********
 
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Cope with the lockdir ``held/info`` file being empty, which seems to
+  happen fairly often if the process is suddenly interrupted while taking
+  a lock.
+  (Martin Pool, #185103)
+
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
 
 * If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
   error, report that error rather than failing with an unhelpful
@@ -490,6 +598,10 @@ Bug Fixes
 * Running ``bzr`` command without any arguments now shows bzr
   version number along with rest of the help text.
   (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
 
 Documentation
 *************
@@ -11975,38 +12087,6 @@ Enhancements
 
 * Storage of local versions: init, add, remove, rm, info, log,
   diff, status, etc.
-
-
-bzr ?.?.? (not released yet)
-############################
-
-:Codename: template
-:2.0.2: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
 
 
 ..
