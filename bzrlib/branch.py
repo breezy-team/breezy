@@ -217,9 +217,9 @@ class Branch(object):
     def _get_fallback_repository(self, url):
         """Get the repository we fallback to at url."""
         url = urlutils.join(self.base, url)
-        a_bzrdir = bzrdir.BzrDir.open(url,
+        a_branch = Branch.open(url,
             possible_transports=[self.bzrdir.root_transport])
-        return a_bzrdir.open_branch().repository
+        return a_branch.repository
 
     def _get_tags_bytes(self):
         """Get the bytes of a serialised tags dict.
