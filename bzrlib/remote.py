@@ -2066,6 +2066,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         # 2) try direct creation via RPC
         path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
         if name is not None:
+            # XXX JRV20100304: Support creating colocated branches
             raise errors.NoColocatedBranchSupport(self)
         verb = 'BzrDir.create_branch'
         try:
