@@ -33,6 +33,7 @@ from bzrlib import (
     win32utils,
     )
 from bzrlib.tests import (
+    features,
     file_utils,
     test__walkdirs_win32,
     )
@@ -1977,7 +1978,7 @@ class TestTerminalWidth(tests.TestCase):
         osutils.terminal_width()
 
 class TestCreationOps(tests.TestCaseInTempDir):
-    _test_needs_features = [tests.ChownFeature]
+    _test_needs_features = [features.ChownFeature]
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)

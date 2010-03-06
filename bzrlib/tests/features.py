@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import os
 
 from bzrlib import tests
 from bzrlib.symbol_versioning import deprecated_in
@@ -23,3 +24,12 @@ apport = tests.ModuleAvailableFeature('apport')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 subunit = tests.ModuleAvailableFeature('subunit')
+
+class _ChownFeature(tests.Feature):
+    """os.chown is supported"""
+
+    def _probe(self):
+        return os.name == 'posix' and hasattr(os, 'chown')
+
+ChownFeature = _ChownFeature()
+

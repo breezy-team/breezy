@@ -4373,15 +4373,6 @@ class _CaseInsensitiveFilesystemFeature(Feature):
 CaseInsensitiveFilesystemFeature = _CaseInsensitiveFilesystemFeature()
 
 
-class _ChownFeature(Feature):
-    """os.chown is supported"""
-
-    def _probe(self):
-        return os.name == 'posix' and hasattr(os, 'chown')
-
-ChownFeature = _ChownFeature()
-
-
 class _CaseSensitiveFilesystemFeature(Feature):
 
     def _probe(self):
