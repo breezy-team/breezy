@@ -31,6 +31,10 @@ Compatibility Breaks
   ``bzrlib.tests.test_server``.
   (Vincent Ladeuil)
 
+* ``BranchReferenceFormat.initialize()`` now takes an optional name argument
+  as its second parameter, for consistency with the initialize() method of
+  other formats. (Jelmer Vernooij)
+
 New Features
 ************
 
@@ -112,6 +116,12 @@ Bug Fixes
 
 API Changes
 ***********
+
+* ``BranchFormat.initialize`` now takes an optional ``name`` of the colocated 
+  branch to create. (Jelmer Vernooij)
+
+* ``BzrDir.get_branch_transport`` now takes an optional ``name`` of the 
+  colocated branch to open. (Jelmer Vernooij)
 
 * New ``bzrlib.initialize`` is recommended for programs using bzrlib to 
   run when starting up; it sets up several things that previously needed
