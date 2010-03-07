@@ -97,7 +97,7 @@ class NativeSourceDistiller(SourceDistiller):
     def _distill(self, target):
         if self.is_working_tree:
             self._prepare_working_tree()
-        export(self.tree, target, None, None)
+        export(self.tree, target, None, None, use_tree_timestamp=True)
 
 
 class FullSourceDistiller(SourceDistiller):
@@ -108,7 +108,7 @@ class FullSourceDistiller(SourceDistiller):
         self.upstream_provider.provide(parent_dir)
         if self.is_working_tree:
             self._prepare_working_tree()
-        export(self.tree, target, None, None)
+        export(self.tree, target, None, None, use_tree_timestamp=True)
 
 
 class MergeModeDistiller(SourceDistiller):
@@ -152,7 +152,7 @@ class MergeModeDistiller(SourceDistiller):
                 export_dir = tempdir
             if self.is_working_tree:
                 self._prepare_working_tree()
-            export(self.tree,export_dir,None,None)
+            export(self.tree, export_dir, None, None, use_tree_timestamp=True)
             # Remove any upstream debian dir, or from previous export with
             # use_existing
             if os.path.exists(os.path.join(target, 'debian')):

@@ -171,7 +171,8 @@ class UpstreamBranchSource(UpstreamSource):
             target_filename = self._tarball_path(package, version, target_dir)
             tarball_base = "%s-%s" % (package, version)
             rev_tree = self.upstream_branch.repository.revision_tree(revid)
-            export(rev_tree, target_filename, 'tgz', tarball_base)
+            export(rev_tree, target_filename, 'tgz', tarball_base,
+                   use_tree_timestamp=True)
         finally:
             self.upstream_branch.unlock()
 
@@ -218,7 +219,8 @@ class GetOrigSourceSource(UpstreamSource):
                 if self.larstiq:
                     os.mkdir(export_dir)
                     export_dir = os.path.join(export_dir, "debian")
-                export(self.tree, export_dir, format="dir")
+                export(self.tree, export_dir, format="dir",
+                       use_tree_timestamp=True)
                 if not self._get_orig_source(base_export_dir,
                         desired_tarball_names, target_dir):
                     raise PackageVersionNotPresent(package, version, self)
@@ -291,7 +293,8 @@ class SelfSplitSource(UpstreamSource):
         try:
             export_dir = os.path.join(tmpdir,
                     "%s-%s" % (package, upstream_version))
-            export(self.tree, export_dir, format="dir")
+            export(self.tree, export_dir, format="dir",
+                   use_tree_timestamp=True)
             shutil.rmtree(os.path.join(export_dir, "debian"))
             tar = tarfile.open(target_filename, "w:gz")
             try:

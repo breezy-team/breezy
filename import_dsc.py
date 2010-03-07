@@ -59,7 +59,7 @@ from bzrlib.errors import (
 from bzrlib.export import export
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import warning, mutter, note
+from bzrlib.trace import warning, mutter
 from bzrlib.transport import (
     get_transport,
     )
