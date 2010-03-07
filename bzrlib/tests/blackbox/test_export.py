@@ -293,3 +293,13 @@ class TestExport(ExternalBase):
         tree.commit('more setup')
         out, err = self.run_bzr('export exported branch/subdir')
         self.assertEqual(['foo.txt'], os.listdir('exported'))
+
+    def test_dir_export_use_tree_timestamp(self):
+        tree = self.example_branch()
+        self.build_tree_contents([('branch/har', 'foo')])
+        tree.add('har')
+        tree.commit('setup', timestamp=42)
+        self.run_bzr('export --use-tree-timestamp t branch')
+        har_st = os.stat('t/har')
+        self.assertEquals(42, har_st.st_mtime)
+

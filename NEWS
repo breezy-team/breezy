@@ -34,6 +34,10 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr export`` now takes an optional argument ``--use-tree-timestamp``
+  to set file mtimes to the last timestamp of the last revision in which
+  they were changed rather than the current time. (Jelmer Vernooij)
+
 * If the Apport crash-reporting tool is available, bzr crashes are now
   stored into the ``/var/crash`` apport spool directory, and the user is
   invited to report them to the developers from there, either
