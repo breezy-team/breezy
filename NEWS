@@ -118,6 +118,10 @@ API Changes
   to be done separately.
   (Martin Pool, #507710)
 
+* Exporters now support a ``use_tree_timestamp`` argument to write out the 
+  timestamp of the commit in which a file revision was introduced.
+  (Jelmer Vernooij)
+
 * New method ``BzrDir.list_branches()`` that returns a sequence of branches 
   present in a control directory. (Jelmer Vernooij)
 

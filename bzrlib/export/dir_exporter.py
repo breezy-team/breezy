@@ -18,7 +18,6 @@
 
 import errno
 import os
-import StringIO
 import time
 
 from bzrlib import errors, osutils
@@ -30,7 +29,8 @@ from bzrlib.filters import (
 from bzrlib.trace import mutter
 
 
-def dir_exporter(tree, dest, root, subdir, filtered=False):
+def dir_exporter(tree, dest, root, subdir, filtered=False,
+                 use_tree_timestamp=False):
     """Export this tree to a new directory.
 
     `dest` should either not exist or should be empty. If it does not exist it
@@ -92,4 +92,8 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
             out.writelines(chunks)
         finally:
             out.close()
-        os.utime(fullpath, (now, now))
+        if use_tree_timestamp:
+            mtime = tree.get_file_mtime(tree.path2id(relpath), relpath)
+        else:
+            mtime = now
+        os.utime(fullpath, (mtime, mtime))
