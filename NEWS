@@ -14,6 +14,11 @@ bzr 2.1.1
 Bug Fixes
 *********
 
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+
 * Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
   problems importing bzrlib from a non-main thread.
   (Elliot Murphy, #521989)
@@ -21,7 +26,10 @@ Bug Fixes
 * Standardize the error handling when creating a new ``StaticTuple``
   (problems will raise TypeError). (Matt Nordhoff, #457979)
 
-* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+* Warn if pyrex is too old to compile the new ``SimpleSet`` and
+  ``StaticTuple`` extensions, rather than having the build fail randomly.
+  (John Arbash Meinel, #449776)
+
 
 Documentation
 *************
@@ -29,6 +37,9 @@ Documentation
 * Added a link to the Desktop Guide. (Ian Clatworthy)
 
 * Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
+* Drop Google Analytics from the core docs as they caused problems
+  in the CHM files. (Ian Clatworthy, #502010)
 
 
 bzr 2.1.0
@@ -392,6 +403,10 @@ Bug Fixes
 * Running ``bzr`` command without any arguments now shows bzr
   version number along with rest of the help text.
   (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
 
 Documentation
 *************
