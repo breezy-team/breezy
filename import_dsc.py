@@ -343,28 +343,16 @@ class DistributionBranch(object):
         :return: True if the upstream branch contains the specified upstream
             version of the package. False otherwise.
         """
-        tag_name = self.upstream_tag_name(version)
-        if self._has_version(self.upstream_branch, tag_name, md5=md5):
-            return True
-        tag_name = self.upstream_tag_name(version, distro="debian")
-        if self._has_version(self.upstream_branch, tag_name, md5=md5):
-            return True
-        tag_name = self.upstream_tag_name(version, distro="ubuntu")
-        if self._has_version(self.upstream_branch, tag_name, md5=md5):
-            return True
+        for tag_name in self.possible_upstream_tag_names(version):
+            if self._has_version(self.upstream_branch, tag_name, md5=md5):
+                return True
         return False
 
     def has_upstream_version_in_packaging_branch(self, version, md5=None):
         assert isinstance(version, str)
-        tag_name = self.upstream_tag_name(version)
-        if self._has_version(self.branch, tag_name, md5=md5):
-            return True
-        tag_name = self.upstream_tag_name(version, distro="debian")
-        if self._has_version(self.branch, tag_name, md5=md5):
-            return True
-        tag_name = self.upstream_tag_name(version, distro="ubuntu")
-        if self._has_version(self.branch, tag_name, md5=md5):
-            return True
+        for tag_name in self.possible_upstream_tag_names(version):
+            if self._has_version(self.branch, tag_name, md5=md5):
+                return True
         return False
 
     def contained_versions(self, versions):
@@ -463,17 +451,23 @@ class DistributionBranch(object):
         :return: the revision id corresponding to the upstream portion
             of the version
         """
-        tag_name = self.upstream_tag_name(version)
-        if self._has_version(self.upstream_branch, tag_name):
-            return self.upstream_branch.tags.lookup_tag(tag_name)
-        tag_name = self.upstream_tag_name(version, distro="debian")
-        if self._has_version(self.upstream_branch, tag_name):
-            return self.upstream_branch.tags.lookup_tag(tag_name)
-        tag_name = self.upstream_tag_name(version, distro="ubuntu")
-        if self._has_version(self.upstream_branch, tag_name):
-            return self.upstream_branch.tags.lookup_tag(tag_name)
+        for tag_name in self.possible_upstream_tag_names(version):
+            if self._has_version(self.upstream_branch, tag_name):
+                return self.upstream_branch.tags.lookup_tag(tag_name)
         tag_name = self.upstream_tag_name(version)
         return self.upstream_branch.tags.lookup_tag(tag_name)
+
+    def possible_upstream_tag_names(self, version, package=None):
+        tags = [self.upstream_tag_name(version),
+                self.upstream_tag_name(version, distro="debian"),
+                self.upstream_tag_name(version, distro="ubuntu")]
+        if package is not None:
+            tags.extend(["%s-%s" % (package, version),
+                         "%s-%s" % (package, version)])
+        tags.extend(["v%s" % version,
+                     "release-%s" % version, 
+                     version])
+        return tags
 
     def tag_version(self, version):
         """Tags the branch's last revision with the given version.
@@ -1324,9 +1318,9 @@ class DistributionBranch(object):
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
         if tarball_filename.endswith(".tar.bz2"):
-	    tar_args = 'xjf'
+            tar_args = 'xjf'
         else:
-	    tar_args = 'xzf'
+            tar_args = 'xzf'
         try:
             proc = subprocess.Popen(["tar", tar_args, tarball_filename, "-C",
                     tempdir, "--strip-components", "1"],
@@ -1346,15 +1340,9 @@ class DistributionBranch(object):
     def revid_of_upstream_version_from_branch(self, version):
         # TODO: remove the _revid_of_upstream_version_from_branch alias below.
         assert isinstance(version, str)
-        tag_name = self.upstream_tag_name(version)
-        if self._has_version(self.branch, tag_name):
-            return self.branch.tags.lookup_tag(tag_name)
-        tag_name = self.upstream_tag_name(version, distro="debian")
-        if self._has_version(self.branch, tag_name):
-            return self.branch.tags.lookup_tag(tag_name)
-        tag_name = self.upstream_tag_name(version, distro="ubuntu")
-        if self._has_version(self.branch, tag_name):
-            return self.branch.tags.lookup_tag(tag_name)
+        for tag_name in self.possible_upstream_tag_names(version):
+            if self._has_version(self.branch, tag_name):
+                return self.branch.tags.lookup_tag(tag_name)
         tag_name = self.upstream_tag_name(version)
         return self.branch.tags.lookup_tag(tag_name)
 

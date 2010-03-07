@@ -1708,3 +1708,27 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
             self.assertTrue(os.path.exists(extractor.unextracted_upstream))
         finally:
             extractor.cleanup()
+
+
+class PossibleUpstreamTagNamesTests(BuilddebTestCase):
+
+    def setUp(self):
+        super(PossibleUpstreamTagNamesTests, self).setUp()
+        self.tree = self.make_branch_and_tree('unstable')
+        root_id = self.tree.path2id("")
+        self.up_tree = self.make_branch_and_tree('unstable-upstream')
+        self.up_tree.set_root_id(root_id)
+        self.db = DistributionBranch(self.tree.branch,
+                self.up_tree.branch, tree=self.tree,
+                upstream_tree=self.up_tree)
+
+    def test_version(self):
+        self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
+            'upstream-ubuntu-3.3', 'v3.3', 'release-3.3', '3.3'],
+            self.db.possible_upstream_tag_names("3.3"))
+
+    def test_version_package(self):
+        self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
+            'upstream-ubuntu-3.3', 'bzr-bla-3.3',
+            'bzr-bla-3.3', 'v3.3', 'release-3.3', '3.3'],
+            self.db.possible_upstream_tag_names("3.3", "bzr-bla"))
