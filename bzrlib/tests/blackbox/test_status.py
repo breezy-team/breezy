@@ -612,7 +612,7 @@ class TestStatus(TestCaseWithTransport):
         self.build_tree(['file/'])
         self.assertStatusContains('kind changed:\n  file \(file => directory\)')
         tree.rename_one('file', 'directory')
-        self.assertStatusContains('renamed:\n  file/ => directory/\n' +
+        self.assertStatusContains('renamed:\n  file/ => directory/\n' \
                                   'modified:\n  directory/\n')
         rmdir('directory')
         self.assertStatusContains('removed:\n  file\n')
