@@ -1,8 +1,10 @@
-bzr-builddeb (2.4) UNRELEASED; urgency=low
+bzr-builddeb (2.4) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Switch section to vcs.
   * Allow the directory service to work with older version of python-apt.
+  * Fix compatibility with versions of bzr that don't have
+  bzrlib.utils.configobj. (Closes: #572093)
 
   [ James Westby ]
   * Correct typo that causes packages with .orig.tar.bz2 to fail to build.
