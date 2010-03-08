@@ -473,8 +473,7 @@ class PathConflict(Conflict):
         :param file_id: The retained file id.
         :param path: The retained path.
         """
-        # Rename 'item.suffix_to_remove' (note that if
-        # 'item.suffix_to_remove' has been deleted, this is a no-op)
+        # Adjust the path for the retained file id
         tid = tt.trans_id_file_id(file_id)
         parent_tid = tt.get_tree_parent(tid)
         tt.adjust_path(path, parent_tid, tid)
@@ -486,17 +485,53 @@ class PathConflict(Conflict):
 
         # Prior to bug #531967, file_id wasn't always set, there may still be
         # conflict files in the wild so we need to cope with them
-        return tree.path2id(self.conflict_path)
+        # Establish which path we should use to find back the file-id
+        possible_paths = []
+        for p in (self.path, self.conflict_path):
+            if p == '<deleted>':
+                # special hard-coded path 
+
+                # FIXME: this forbids that path to the user. That's bad but we
+                # are in recovery mode here anyway -- vila 20100305
+                continue
+            if p is not None:
+                possible_paths.append(p)
+        # Search the file-id in the parents with any path available
+        file_id = None
+        for revid in tree.get_parent_ids():
+            revtree = tree.revision_tree(revid)
+            for p in possible_paths:
+                file_id = revtree.path2id(p)
+                if file_id is not None:
+                    # Now we need to add the item as it was in the revtree to
+                    # the current tree
+
+                    # and I have no idea about how to do that for all possible
+                    # cases (well, I have some but all sound far too
+                    # complicated)
+                    return revtree, file_id
+        return None, None
 
     def action_take_this(self, tree):
-        file_id = self._get_or_infer_file_id(tree)
-        if file_id is None:
-            import pdb ; pdb.set_trace()
-        self._resolve_with_cleanups(tree, file_id, self.path)
+        if self.file_id is not None:
+            self._resolve_with_cleanups(tree, self.file_id, self.path)
+        else:
+            # Prior to bug #531967 we need to find back the file_id and restore
+            # the content from there
+            revtree, file_id = self._get_or_infer_file_id(tree)
+            tree.revert([revtree.id2path(file_id)],
+                        old_tree=revtree, backups=False)
 
     def action_take_other(self, tree):
-        # just acccept bzr proposal
-        pass
+        if self.file_id is not None:
+            # just acccept bzr proposal
+            pass
+        else:
+            # Prior to bug #531967 we need to find back the file_id and restore
+            # the content from there
+            revtree, file_id = self._get_or_infer_file_id(tree)
+            tree.revert([revtree.id2path(file_id)],
+                        old_tree=revtree, backups=False)
 
 
 class ContentsConflict(PathConflict):
