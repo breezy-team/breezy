@@ -30,7 +30,7 @@ from bzrlib.trace import mutter
 
 
 def dir_exporter(tree, dest, root, subdir, filtered=False,
-                 use_tree_timestamp=False):
+                 per_file_timestamps=False):
     """Export this tree to a new directory.
 
     `dest` should either not exist or should be empty. If it does not exist it
@@ -92,7 +92,7 @@ def dir_exporter(tree, dest, root, subdir, filtered=False,
             out.writelines(chunks)
         finally:
             out.close()
-        if use_tree_timestamp:
+        if per_file_timestamps:
             mtime = tree.get_file_mtime(tree.path2id(relpath), relpath)
         else:
             mtime = now

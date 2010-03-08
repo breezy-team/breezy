@@ -43,7 +43,7 @@ _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT
 
 
 def zip_exporter(tree, dest, root, subdir, filtered=False,
-                 use_tree_timestamp=False):
+                 per_file_timestamps=False):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -63,7 +63,7 @@ def zip_exporter(tree, dest, root, subdir, filtered=False,
 
             # zipfile.ZipFile switches all paths to forward
             # slashes anyway, so just stick with that.
-            if use_tree_timestamp:
+            if per_file_timestamps:
                 mtime = tree.get_file_mtime(ie.file_id, dp)
             else:
                 mtime = now

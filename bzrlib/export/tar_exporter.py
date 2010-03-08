@@ -32,7 +32,7 @@ from bzrlib.trace import mutter
 
 
 def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
-                 use_tree_timestamp=False):
+                 per_file_timestamps=False):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -52,7 +52,7 @@ def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
     for dp, ie in _export_iter_entries(tree, subdir):
         filename = osutils.pathjoin(root, dp).encode('utf8')
         item = tarfile.TarInfo(filename)
-        if use_tree_timestamp:
+        if per_file_timestamps:
             item.mtime = tree.get_file_mtime(ie.file_id, dp)
         else:
             item.mtime = now
@@ -93,12 +93,12 @@ def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
 
 
 def tgz_exporter(tree, dest, root, subdir, filtered=False,
-                 use_tree_timestamp=False):
+                 per_file_timestamps=False):
     tar_exporter(tree, dest, root, subdir, compression='gz',
-                 filtered=filtered, use_tree_timestamp=use_tree_timestamp)
+                 filtered=filtered, per_file_timestamps=per_file_timestamps)
 
 
 def tbz_exporter(tree, dest, root, subdir, filtered=False,
-                 use_tree_timestamp=False):
+                 per_file_timestamps=False):
     tar_exporter(tree, dest, root, subdir, compression='bz2',
-                 filtered=filtered, use_tree_timestamp=use_tree_timestamp)
+                 filtered=filtered, per_file_timestamps=per_file_timestamps)

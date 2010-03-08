@@ -2806,12 +2806,12 @@ class cmd_export(Command):
         Option('root',
                type=str,
                help="Name of the root directory inside the exported file."),
-        Option('use-tree-timestamp',
-               help='Use timestamp of last revision rather than current '
-               'time.'),
+        Option('per-file-timestamps',
+               help='Set modification time of files to that of the last '
+                    'revision in which it was changed.'),
         ]
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
-        root=None, filters=False, use_tree_timestamp=False):
+        root=None, filters=False, per_file_timestamps=False):
         from bzrlib.export import export
 
         if branch_or_subdir is None:
@@ -2825,7 +2825,7 @@ class cmd_export(Command):
         rev_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
         try:
             export(rev_tree, dest, format, root, subdir, filtered=filters,
-                   use_tree_timestamp=use_tree_timestamp)
+                   per_file_timestamps=per_file_timestamps)
         except errors.NoSuchExportFormat, e:
             raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
 
