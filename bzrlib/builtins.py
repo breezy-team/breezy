@@ -4045,7 +4045,7 @@ class cmd_revert(Command):
     def run(self, revision=None, no_backup=False, file_list=None,
             forget_merges=None):
         tree, file_list = tree_files(file_list)
-        tree.lock_write()
+        tree.lock_tree_write()
         try:
             if forget_merges:
                 tree.set_parent_ids(tree.get_parent_ids()[:1])
