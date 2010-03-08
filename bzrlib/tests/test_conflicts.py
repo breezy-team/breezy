@@ -36,7 +36,11 @@ def load_tests(standard_tests, module, loader):
         standard_tests, tests.condition_isinstance((
                 TestParametrizedResolveConflicts,
                 )))
-    tests.multiply_tests(sp_tests, resolve_conflict_scenarios(), result)
+    # Each test class define its own scenarios. This is needed for
+    # TestResolvePathConflictBefore531967 that verifies that the same tests as
+    # TestResolvePathConflict still pass.
+    for test in tests.iter_suite_tests(sp_tests):
+        tests.apply_scenarios(test, test.scenarios(), result)
 
     # No parametrization for the remaining tests
     result.addTests(remaining_tests)
@@ -209,43 +213,8 @@ class TestResolveTextConflicts(TestResolveConflicts):
     pass
 
 
-def resolve_conflict_scenarios():
-    base_scenarios = [
-        (dict(_conflict_type=conflicts.ContentsConflict,
-              _base_actions='create_file',
-              _assert_conflict='assert_ContentsConflict',
-              _item_path='file', _item_id='file-id',),
-         ('file_modified', dict(actions='modify_file',
-                                check='file_has_more_content')),
-         ('file_deleted', dict(actions='delete_file',
-                                check='file_doesnt_exist'))),
-        (dict(_conflict_type=conflicts.PathConflict,
-              _assert_conflict='assert_PathConflict',
-              _base_actions='create_dir',
-              _item_path='new-dir', _item_id='dir-id',),
-         ('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
-         ('dir_deleted', dict(actions='delete_dir', check='dir_doesnt_exist'))),
-        (dict(_conflict_type=conflicts.PathConflict,
-              _assert_conflict='assert_PathConflict',
-              _base_actions='create_dir',
-              _item_path='new-dir', _item_id='dir-id',),
-         ('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
-         ('dir_renamed2', dict(actions='rename_dir2', check='dir_renamed2'))),
-        ]
-    # Each base scenario is duplicated switching the roles of this and other
-    scenarios = []
-    for common, (tname, tdict), (oname, odict) in base_scenarios:
-        d = common.copy()
-        d.update(_this_actions=tdict['actions'], _check_this=tdict['check'],
-                 _other_actions=odict['actions'], _check_other=odict['check'])
-        scenarios.append(('%s,%s' % (tname, oname), d))
-        d = common.copy()
-        d.update(_this_actions=odict['actions'], _check_this=odict['check'],
-                 _other_actions=tdict['actions'], _check_other=tdict['check'])
-        scenarios.append(('%s,%s' % (oname, tname), d))
-    return scenarios
-
-# FIXME: Get rid of parametrized once we delete TestResolveConflicts
+# FIXME: Get rid of parametrized (in the class name) once we delete
+# TestResolveConflicts -- vila 20100308
 class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     # Set by load_tests
@@ -253,12 +222,44 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _this_actions = None
     _other_actions = None
     _conflict_type = None
+    _item_path = None
+    _item_id = None
 
     # Set by _this_actions and other_actions
     _this_path = None
     _this_id = None
     _other_path = None
     _other_id = None
+
+    def multiply_scenarios(self, base_scenarios, common_params):
+        scenarios = []
+        def adapt(d, side):
+            """Modify dict to apply to the given side.
+
+            'actions' key is turned into '_actions_this' if side is 'this' for
+            example.
+            """
+            t = {}
+            # Turn each key into _side_key
+            for k,v in d.iteritems():
+                t['_%s_%s' % (k, side)] = v
+            return t
+        # Each base scenario is duplicated switching the roles of 'this' and
+        # 'other'
+        scenarios.extend(tests.multiply_scenarios(
+            [(name, adapt(d, 'this')) for (name, d), r in base_scenarios],
+            [(name, adapt(d, 'other')) for l, (name, d) in base_scenarios]))
+        scenarios.extend(tests.multiply_scenarios(
+            [(name, adapt(d, 'other')) for (name, d), r in base_scenarios],
+            [(name, adapt(d, 'this')) for l, (name, d) in base_scenarios]))
+        # Inject the common parameters in all scenarios
+        for name, d in scenarios:
+            d.update(common_params)
+        return scenarios
+
+    def scenarios(self):
+        # Only concrete classes return actual scenarios
+        return []
 
     def setUp(self):
         super(TestParametrizedResolveConflicts, self).setUp()
@@ -269,16 +270,16 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         builder.build_snapshot('start', None, [
                 ('add', ('', 'root-id', 'directory', ''))])
         # Add a minimal base content
-        _, _, base_actions = self._get_actions(self._base_actions)()
-        builder.build_snapshot('base', ['start'], base_actions)
+        _, _, actions_base = self._get_actions(self._actions_base)()
+        builder.build_snapshot('base', ['start'], actions_base)
         # Modify the base content in branch
         (self._other_path, self._other_id,
-         other_actions) = self._get_actions(self._other_actions)()
-        builder.build_snapshot('other', ['base'], other_actions)
+         actions_other) = self._get_actions(self._actions_other)()
+        builder.build_snapshot('other', ['base'], actions_other)
         # Modify the base content in trunk
         (self._this_path, self._this_id,
-         this_actions) = self._get_actions(self._this_actions)()
-        builder.build_snapshot('this', ['base'], this_actions)
+         actions_this) = self._get_actions(self._actions_this)()
+        builder.build_snapshot('this', ['base'], actions_this)
         # builder.get_branch() tip is now 'this'
 
         builder.finish_series()
@@ -289,20 +290,6 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     def _get_check(self, name):
         return getattr(self, 'check_%s' % name)
-
-    def assert_ContentsConflict(self, c):
-        self.assertEqual(self._other_id, c.file_id)
-        self.assertEqual(self._other_path, c.path)
-
-    def assert_PathConflict(self, c):
-        # bug #531967 is about file_id not being set in some cases
-#        self.assertEqual(self._other_id, c.file_id)
-        # FIXME: PathConflicts objects are created with other/this
-        # path/conflict_path paths reversed -- vila 20100304
-        # self.assertEqual(self._other_path, c.path)
-        # self.assertEqual(self._this_path, c.conflict_path)
-        self.assertEqual(self._this_path, c.path)
-        self.assertEqual(self._other_path, c.conflict_path)
 
     def assertConflict(self, wt):
         confs = wt.conflicts()
@@ -380,6 +367,66 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self.check_resolved(wt, self._item_path, 'take_other')
         check_other = self._get_check(self._check_other)
         check_other()
+
+
+class TestResolveContentsConflict(TestParametrizedResolveConflicts):
+
+    def scenarios(self):
+        base_scenarios = [
+            (('file_modified', dict(actions='modify_file',
+                                   check='file_has_more_content')),
+             ('file_deleted', dict(actions='delete_file',
+                                   check='file_doesnt_exist'))),
+            ]
+        common = dict(_conflict_type=conflicts.ContentsConflict,
+                      _actions_base='create_file',
+                      _assert_conflict='assertContentsConflict',
+                      _item_path='file', item_id='file-id',
+                      )
+        return self.multiply_scenarios(base_scenarios, common)
+
+    def assertContentsConflict(self, c):
+        self.assertEqual(self._other_id, c.file_id)
+        self.assertEqual(self._other_path, c.path)
+
+
+class TestResolvePathConflict(TestParametrizedResolveConflicts):
+
+    def scenarios(self):
+        base_scenarios = [
+        (('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
+         ('dir_deleted', dict(actions='delete_dir', check='dir_doesnt_exist'))),
+        (('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
+         ('dir_renamed2', dict(actions='rename_dir2', check='dir_renamed2'))),
+            ]
+        common = dict(_conflict_type=conflicts.PathConflict,
+                      _assert_conflict='assert_PathConflict',
+                      _actions_base='create_dir',
+                      _item_path='new-dir', _item_id='dir-id',)
+        return self.multiply_scenarios(base_scenarios, common)
+
+    def assert_PathConflict(self, c):
+        # bug #531967 is about file_id not being set in some cases
+        self.assertEqual(self._item_id, c.file_id)
+        # FIXME: PathConflicts objects are created with other/this
+        # path/conflict_path paths reversed -- vila 20100304
+        # self.assertEqual(self._other_path, c.path)
+        # self.assertEqual(self._this_path, c.conflict_path)
+        self.assertEqual(self._this_path, c.path)
+        self.assertEqual(self._other_path, c.conflict_path)
+
+
+class TestResolvePathConflictBefore531967(TestParametrizedResolveConflicts):
+    """Same as TestResolvePathConflict but a specific conflict object.
+    """
+
+    def assert_PathConflict(self, c):
+        # bug #531967 is about file_id not being set in some cases
+        self.assertIs(None, c.file_id)
+        # Whatever this and other are saying, the same paths are used
+        self.assertEqual('<deleted>', c.path)
+        self.assertEqual(self._item_path, c.conflict_path)
+
 
 
 class TestResolveDuplicateEntry(TestResolveConflicts):
@@ -605,7 +652,7 @@ $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
 
-class TestResolvePathConflict(TestResolveConflicts):
+class OldTestResolvePathConflict(TestResolveConflicts):
 
     preamble = """
 $ bzr init trunk
