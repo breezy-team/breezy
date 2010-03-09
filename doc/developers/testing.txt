@@ -455,6 +455,29 @@ Some things to check:
   unless there is a good reason
 
 
+Testing locking behaviour
+-------------------------
+
+You may want to write tests that particular objects are or aren't locked
+during particular operations: see for example `bug 498409`__.  
+
+ __ https://launchpad.net/bugs/498409
+
+The `TestCase` base class registers hooks that record lock actions into 
+``._lock_actions`` in this format::
+
+  [
+    ('acquired', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch-lockc4au55ppz8wdym11z1aq)),
+    ('released', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch-lockc4au55ppz8wdym11z1aq)),
+    ('acquired', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/repository/lockyxb3rn4sw1oyx1jzkt45)),
+    ('released', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/repository/lockyxb3rn4sw1oyx1jzkt45)),
+    ('acquired', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch/lockh8c6t28rcjdkgxtndbje)),
+    ('released', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch/lockh8c6t28rcjdkgxtndbje)),
+    ...
+
+Alternatively you can register your own hooks to make custom assertions:
+see `TestCase._check_locks` for an example.
+
 Skipping tests
 --------------
 
