@@ -1237,7 +1237,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
             parents, basis_inv=None, propagate_caches=False):
         self._ensure_real()
         return self._real_repository.add_inventory_by_delta(basis_revision_id,
-            delta, new_revision_id, parents, basis_inv, propagate_caches)
+            delta, new_revision_id, parents, basis_inv=basis_inv,
+            propagate_caches=propagate_caches)
 
     def add_revision(self, rev_id, rev, inv=None, config=None):
         self._ensure_real()
