@@ -1232,6 +1232,8 @@ class Merge3Merger(object):
         if name_winner == "this" and parent_id_winner == "this":
             return
         if name_winner == 'conflict' or parent_id_winner == 'conflict':
+            # Creating helpers here cause problems down the road if a
+            # ContentConflict needs to be created so we should not do that
             if other_name is None or other_parent is None:
                 # 'other' has been deleted, leave a .THIS
                 parent_id = self.tt.trans_id_file_id(this_parent)
