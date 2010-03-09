@@ -1173,6 +1173,9 @@ class Merge3Merger(object):
         return 'conflict'
 
     @staticmethod
+    # FIXME: this looks unused and probably needs to be deprecated, the
+    # parameter order (this, base, other) doesn't match the other methods
+    # (base, other, this) anyway -- vila 20100308
     def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
         """Do a three-way test on a scalar.
         Return "this", "other" or "conflict", depending whether a value wins.
@@ -1228,25 +1231,34 @@ class Merge3Merger(object):
                 parent_id_winner = "other"
         if name_winner == "this" and parent_id_winner == "this":
             return
-        if name_winner == "conflict":
+        if name_winner == 'conflict' or parent_id_winner == 'conflict':
+            if other_name is None or other_parent is None:
+                # 'other' has been deleted, leave a .THIS
+                parent_id = self.tt.trans_id_file_id(this_parent)
+                trans_id = self.tt.create_path(this_name + '.THIS', parent_id)
+                transform.create_from_tree(self.tt, trans_id, self.this_tree,
+                                           file_id)
+            elif this_name is None or this_parent is None:
+                # 'this' has been deleted, leave a .OTHER
+                parent_id = self.tt.trans_id_file_id(other_parent)
+                trans_id = self.tt.create_path(other_name + '.OTHER', parent_id)
+                transform.create_from_tree(self.tt, trans_id, self.other_tree,
+                                           file_id)
             trans_id = self.tt.trans_id_file_id(file_id)
-            self._raw_conflicts.append(('name conflict', trans_id,
-                                        this_name, other_name))
-        if parent_id_winner == "conflict":
-            trans_id = self.tt.trans_id_file_id(file_id)
-            self._raw_conflicts.append(('parent conflict', trans_id,
-                                        this_parent, other_parent))
+            self._raw_conflicts.append(('path conflict', trans_id, file_id,
+                                        this_parent, this_name,
+                                        other_parent, other_name))
         if other_name is None:
             # it doesn't matter whether the result was 'other' or
             # 'conflict'-- if there's no 'other', we leave it alone.
             return
-        # if we get here, name_winner and parent_winner are set to safe values.
-        trans_id = self.tt.trans_id_file_id(file_id)
         parent_id = parents[self.winner_idx[parent_id_winner]]
         if parent_id is not None:
-            parent_trans_id = self.tt.trans_id_file_id(parent_id)
+            # if we get here, name_winner and parent_winner are set to safe
+            # values.
             self.tt.adjust_path(names[self.winner_idx[name_winner]],
-                                parent_trans_id, trans_id)
+                                self.tt.trans_id_file_id(parent_id),
+                                self.tt.trans_id_file_id(file_id))
 
     def _do_merge_contents(self, file_id):
         """Performs a merge on file_id contents."""
@@ -1531,20 +1543,32 @@ class Merge3Merger(object):
 
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
-        name_conflicts = {}
         self.cooked_conflicts.extend(transform.cook_conflicts(
                 fs_conflicts, self.tt))
         fp = transform.FinalPaths(self.tt)
         for conflict in self._raw_conflicts:
             conflict_type = conflict[0]
-            if conflict_type in ('name conflict', 'parent conflict'):
-                trans_id = conflict[1]
-                conflict_args = conflict[2:]
-                if trans_id not in name_conflicts:
-                    name_conflicts[trans_id] = {}
-                transform.unique_add(name_conflicts[trans_id], conflict_type,
-                                     conflict_args)
-            if conflict_type == 'contents conflict':
+            if conflict_type == 'path conflict':
+                (trans_id, file_id,
+                this_parent, this_name,
+                other_parent, other_name) = conflict[1:]
+                if this_parent is None or this_name is None:
+                    this_path = '<deleted>'
+                else:
+                    parent_path =  fp.get_path(
+                        self.tt.trans_id_file_id(this_parent))
+                    this_path = osutils.pathjoin(parent_path, this_name)
+                if other_parent is None or other_name is None:
+                    other_path = '<deleted>'
+                else:
+                    parent_path =  fp.get_path(
+                        self.tt.trans_id_file_id(other_parent))
+                    other_path = osutils.pathjoin(parent_path, other_name)
+                c = _mod_conflicts.Conflict.factory(
+                    'path conflict', path=this_path,
+                    conflict_path=other_path,
+                    file_id=file_id)
+            elif conflict_type == 'contents conflict':
                 for trans_id in conflict[1]:
                     file_id = self.tt.final_file_id(trans_id)
                     if file_id is not None:
@@ -1556,43 +1580,16 @@ class Merge3Merger(object):
                         break
                 c = _mod_conflicts.Conflict.factory(conflict_type,
                                                     path=path, file_id=file_id)
-                self.cooked_conflicts.append(c)
-            if conflict_type == 'text conflict':
+            elif conflict_type == 'text conflict':
                 trans_id = conflict[1]
                 path = fp.get_path(trans_id)
                 file_id = self.tt.final_file_id(trans_id)
                 c = _mod_conflicts.Conflict.factory(conflict_type,
                                                     path=path, file_id=file_id)
-                self.cooked_conflicts.append(c)
-
-        for trans_id, conflicts in name_conflicts.iteritems():
-            try:
-                this_parent, other_parent = conflicts['parent conflict']
-                if this_parent == other_parent:
-                    raise AssertionError()
-            except KeyError:
-                this_parent = other_parent = \
-                    self.tt.final_file_id(self.tt.final_parent(trans_id))
-            try:
-                this_name, other_name = conflicts['name conflict']
-                if this_name == other_name:
-                    raise AssertionError()
-            except KeyError:
-                this_name = other_name = self.tt.final_name(trans_id)
-            other_path = fp.get_path(trans_id)
-            if this_parent is not None and this_name is not None:
-                this_parent_path = \
-                    fp.get_path(self.tt.trans_id_file_id(this_parent))
-                this_path = osutils.pathjoin(this_parent_path, this_name)
             else:
-                this_path = "<deleted>"
-            file_id = self.tt.final_file_id(trans_id)
-            # FIXME: PathConflicts objects are created with other/this
-            # path/conflict_path paths reversed -- vila 20100304
-            c = _mod_conflicts.Conflict.factory('path conflict', path=this_path,
-                                                conflict_path=other_path,
-                                                file_id=file_id)
+                raise AssertionError()
             self.cooked_conflicts.append(c)
+
         self.cooked_conflicts.sort(key=_mod_conflicts.Conflict.sort_key)
 
 

@@ -92,6 +92,10 @@ Bug Fixes
   ftp servers while trying to take a lock.
   (Martin Pool, #528722)
 
+* Path conflicts now support --take-this and --take-other even when a
+  deletion is involved.
+  (Vincent Ladeuil, #531967)
+
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)

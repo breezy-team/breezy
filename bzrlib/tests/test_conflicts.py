@@ -198,6 +198,8 @@ class TestConflictStanzas(tests.TestCase):
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
 # moved to a blackbox module -- vila 20100205
 
+# FIXME: test missing for multiple conflicts
+
 # FIXME: Tests missing for DuplicateID conflict type
 class TestResolveConflicts(script.TestCaseWithTransportAndScript):
 
@@ -231,7 +233,8 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _other_path = None
     _other_id = None
 
-    def multiply_scenarios(self, base_scenarios, common_params):
+    @classmethod
+    def mirror_scenarios(klass, base_scenarios, common_params):
         scenarios = []
         def adapt(d, side):
             """Modify dict to apply to the given side.
@@ -246,18 +249,22 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
             return t
         # Each base scenario is duplicated switching the roles of 'this' and
         # 'other'
-        scenarios.extend(tests.multiply_scenarios(
-            [(name, adapt(d, 'this')) for (name, d), r in base_scenarios],
-            [(name, adapt(d, 'other')) for l, (name, d) in base_scenarios]))
-        scenarios.extend(tests.multiply_scenarios(
-            [(name, adapt(d, 'other')) for (name, d), r in base_scenarios],
-            [(name, adapt(d, 'this')) for l, (name, d) in base_scenarios]))
+        left = [l for l,r in base_scenarios]
+        right = [r for l,r in base_scenarios]
+        for (lname, ldict), (rname, rdict) in zip(left, right):
+            scenarios.extend(tests.multiply_scenarios(
+                    [(lname, adapt(ldict, 'this'))],
+                    [(rname, adapt(rdict, 'other'))]))
+            scenarios.extend(tests.multiply_scenarios(
+                    [(rname, adapt(rdict, 'this'))],
+                    [(lname, adapt(ldict, 'other'))]))
         # Inject the common parameters in all scenarios
         for name, d in scenarios:
             d.update(common_params)
         return scenarios
 
-    def scenarios(self):
+    @classmethod
+    def scenarios(klass):
         # Only concrete classes return actual scenarios
         return []
 
@@ -371,7 +378,8 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
 class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
-    def scenarios(self):
+    @classmethod
+    def scenarios(klass):
         base_scenarios = [
             (('file_modified', dict(actions='modify_file',
                                    check='file_has_more_content')),
@@ -383,7 +391,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
                       _assert_conflict='assertContentsConflict',
                       _item_path='file', item_id='file-id',
                       )
-        return self.multiply_scenarios(base_scenarios, common)
+        return klass.mirror_scenarios(base_scenarios, common)
 
     def assertContentsConflict(self, c):
         self.assertEqual(self._other_id, c.file_id)
@@ -392,7 +400,8 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
 class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
-    def scenarios(self):
+    @classmethod
+    def scenarios(klass):
         base_scenarios = [
         (('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
          ('dir_deleted', dict(actions='delete_dir', check='dir_doesnt_exist'))),
@@ -403,15 +412,10 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
                       _assert_conflict='assert_PathConflict',
                       _actions_base='create_dir',
                       _item_path='new-dir', _item_id='dir-id',)
-        return self.multiply_scenarios(base_scenarios, common)
+        return klass.mirror_scenarios(base_scenarios, common)
 
     def assert_PathConflict(self, c):
-        # bug #531967 is about file_id not being set in some cases
         self.assertEqual(self._item_id, c.file_id)
-        # FIXME: PathConflicts objects are created with other/this
-        # path/conflict_path paths reversed -- vila 20100304
-        # self.assertEqual(self._other_path, c.path)
-        # self.assertEqual(self._this_path, c.conflict_path)
         self.assertEqual(self._this_path, c.path)
         self.assertEqual(self._other_path, c.conflict_path)
 
@@ -420,13 +424,15 @@ class TestResolvePathConflictBefore531967(TestParametrizedResolveConflicts):
     """Same as TestResolvePathConflict but a specific conflict object.
     """
 
+    # FIXME: Now that bug #531697 is fixed, we need to inject a conflict object
+    # as it existed before the fix.
+
     def assert_PathConflict(self, c):
         # bug #531967 is about file_id not being set in some cases
         self.assertIs(None, c.file_id)
         # Whatever this and other are saying, the same paths are used
         self.assertEqual('<deleted>', c.path)
         self.assertEqual(self._item_path, c.conflict_path)
-
 
 
 class TestResolveDuplicateEntry(TestResolveConflicts):
