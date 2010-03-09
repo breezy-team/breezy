@@ -1173,6 +1173,7 @@ class Merge3Merger(object):
         return 'conflict'
 
     @staticmethod
+    @deprecated_method(deprecated_in((2, 2, 0)))
     def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
         """Do a three-way test on a scalar.
         Return "this", "other" or "conflict", depending whether a value wins.
