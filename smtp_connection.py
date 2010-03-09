@@ -123,7 +123,7 @@ class SMTPConnection(object):
         """
         return parseaddr(address)
 
-    def _basic_message(self, from_address, to_addresses, subject):
+    def _basic_message(self, from_address, to_addresses, subject, xhdrs=None):
         """Create the basic Message using the right Header info.
 
         This creates an email Message with no payload.
@@ -146,6 +146,10 @@ class SMTPConnection(object):
         msg['From'] = '%s <%s>' % (Header(unicode(from_user)), from_email)
         msg['User-Agent'] = 'bzr/%s' % _bzrlib_version
 
+        # MIMEMultipart doesn't support update()
+        for key in xhdrs:
+            msg[key] = xhdrs[key]
+
         to_emails = []
         to_header = []
         for addr in to_addresses:
@@ -157,7 +161,7 @@ class SMTPConnection(object):
         msg['Subject'] = Header(subject)
         return msg, from_email, to_emails
 
-    def create_email(self, from_address, to_addresses, subject, text):
+    def create_email(self, from_address, to_addresses, subject, text, xhdrs=None):
         """Create an email.Message object.
 
         This function allows you to create a basic email, and then add extra
@@ -178,7 +182,8 @@ class SMTPConnection(object):
             to_emails: the list of email addresses extracted from to_addresses
         """
         msg, from_email, to_emails = self._basic_message(from_address,
-                                                         to_addresses, subject)
+                                                         to_addresses, subject,
+                                                         xhdrs)
         payload = MIMEText(text.encode('utf-8'), 'plain', 'utf-8')
         msg.attach(payload)
         return msg, from_email, to_emails
@@ -214,7 +219,8 @@ class SMTPConnection(object):
 
     def send_text_and_attachment_email(self, from_address, to_addresses,
                                        subject, message, attachment_text,
-                                       attachment_filename='patch.diff'):
+                                       attachment_filename='patch.diff',
+                                       xhdrs=None):
         """Send a Unicode message and an 8-bit attachment.
 
         See create_email for common parameter definitions.
@@ -225,7 +231,8 @@ class SMTPConnection(object):
             give a default name for email programs to save the attachment.
         """
         msg, from_email, to_emails = self.create_email(from_address,
-                                            to_addresses, subject, message)
+                                            to_addresses, subject, message,
+                                            xhdrs)
         # Must be an 8-bit string
         assert isinstance(attachment_text, str)
 
