@@ -19,6 +19,7 @@ from bzrlib import (
     branch,
     builtins,
     errors,
+    lock,
     )
 from bzrlib.tests import transport_util
 
@@ -34,39 +35,31 @@ class TestRevert(
 
         self.start_logging_connections()
 
+        # make sure that the cwd is the branch
         os.chdir('local')
 
+        # install lock hooks to find out about cmd_revert's locking actions
+        locks_acquired = []
+        locks_released = []
+        lock.Lock.hooks.install_named_hook('lock_acquired',
+            locks_acquired.append, None)
+        lock.Lock.hooks.install_named_hook('lock_released',
+            locks_released.append, None)
+
+        # execute the revert command (There is nothing to actually revert,
+        # but locks are acquired either way.)
         revert = builtins.cmd_revert()
-        num_before = len(self._lock_actions)
         revert.run()
-        num_after = len(self._lock_actions)
 
-        # only expect the working tree to be locked and released, so 2
-        # additional entries.
-        self.assertEquals(num_before+2, num_after)
+        # make sure that only one lock is acquired and released.
+        self.assertEqual(1, len(locks_acquired))
+        self.assertEqual(1, len(locks_released))
 
-#    def test_commit_both_modified(self):
-#        self.master_wt.commit('empty commit on master')
-#        self.start_logging_connections()
-#
-#        commit = builtins.cmd_commit()
-#        # commit do not provide a directory parameter, we have to change dir
-#        # manually
-#        os.chdir('local')
-#        # cmd_commit translates BoundBranchOutOfDate into BzrCommandError
-#        self.assertRaises(errors.BzrCommandError, commit.run,
-#                          message=u'empty commit', unchanged=True)
-#        self.assertEquals(1, len(self.connections))
-#
-#    def test_commit_local(self):
-#        """Commits with --local should not connect to the master!"""
-#        self.start_logging_connections()
-#
-#        commit = builtins.cmd_commit()
-#        # commit do not provide a directory parameter, we have to change dir
-#        # manually
-#        os.chdir('local')
-#        commit.run(message=u'empty commit', unchanged=True, local=True)
-#
-#        #it shouldn't open any connections
-#        self.assertEquals(0, len(self.connections))
+        # make sure that the nonces are the same, since otherwise
+        # this would not be the same lock.
+        self.assertEqual(locks_acquired[0].details, locks_released[0].details)
+
+        # make sure that the locks are checkout locks.
+        self.assertEndsWith(locks_acquired[0].lock_url, "/checkout/lock")
+        self.assertEndsWith(locks_released[0].lock_url, "/checkout/lock")
+
