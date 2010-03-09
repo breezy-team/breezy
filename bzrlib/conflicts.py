@@ -476,15 +476,25 @@ class PathConflict(Conflict):
             else:
                 return []
 
-    def _resolve(self, tt, file_id, path, helper_path=None):
+    def _resolve(self, tt, file_id, path, winner):
         """Resolve the conflict.
 
         :param tt: The TreeTransform where the conflict is resolved.
         :param file_id: The retained file id.
         :param path: The retained path.
-        :param helper_path: The existing but unversioned path that needs to be
-            restored.
+        :param winner: 'this' or 'other' indicates which side is the winner.
         """
+        helper_path = None
+        if winner == 'this':
+            if self.path == '<deleted>':
+                return # Nothing to do
+            if self.conflict_path == '<deleted>':
+                helper_path = self.path + '.THIS'
+        elif winner == 'other':
+            if self.conflict_path == '<deleted>':
+                return  # Nothing to do
+            if self.path == '<deleted>':
+                helper_path = self.conflict_path + '.OTHER'
         if helper_path is not None:
             tt.version_file(file_id, tt.trans_id_tree_path(helper_path))
         # Adjust the path for the retained file id
@@ -528,15 +538,8 @@ class PathConflict(Conflict):
 
     def action_take_this(self, tree):
         if self.file_id is not None:
-            if self.path == '<deleted>':
-                # Nothing to do
-                return
-            if self.conflict_path == '<deleted>':
-                helper_path = self.path + '.THIS'
-            else:
-                helper_path = None
             self._resolve_with_cleanups(tree, self.file_id, self.path,
-                                        helper_path=helper_path)
+                                        winner='this')
         else:
             # Prior to bug #531967 we need to find back the file_id and restore
             # the content from there
@@ -546,16 +549,9 @@ class PathConflict(Conflict):
 
     def action_take_other(self, tree):
         if self.file_id is not None:
-            if self.conflict_path == '<deleted>':
-                # Nothing to do
-                return
-            if self.path == '<deleted>':
-                helper_path = self.conflict_path + '.OTHER'
-            else:
-                helper_path = None
             self._resolve_with_cleanups(tree, self.file_id,
                                         self.conflict_path,
-                                        helper_path=helper_path)
+                                        winner='other')
         else:
             # Prior to bug #531967 we need to find back the file_id and restore
             # the content from there
