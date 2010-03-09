@@ -439,6 +439,20 @@ class IndexGitShaMap(GitShaMap):
         from bzrlib.transport import get_transport
         return cls(get_transport(get_cache_dir()))
 
+    def repack(self):
+        assert self._builder is None
+        self.start_write_group()
+        for _, key, value in self._index.iter_all_entries():
+            self._builder.add_node(key, value)
+        to_remove = []
+        for name in self._transport.list_dir('.'):
+            if name.endswith('.rix'):
+                to_remove.append(name)
+        self.commit_write_group()
+        del self._index.indices[1:]
+        for name in to_remove:
+            self._transport.rename(name, name + '.old')
+
     def start_write_group(self):
         assert self._builder is None
         self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
