@@ -100,12 +100,18 @@ Bug Fixes
   prevents ``bzr status --short`` from crashing when those files are
   present.  (John Arbash Meinel, #303275)
 
-* Tolerate patches with leading noise in ``bzr-handle-patch``.
-  (Toshio Kuratomi, Martin Pool, #502076)
+* ``bzr mkdir DIR`` will not create DIR unless DIR's parent is a versioned
+   directory. (Parth Malwankar, #138600)
 
 * SSH child processes will now ignore SIGQUIT on nix systems so breaking into
   the debugger won't kill the session.
   (Martin <gzlist@googlemail.com>, #162502)
+
+* Allow additional arguments to
+  ``RemoteRepository.add_inventory_by_delta()``. (Jelmer Vernooij, #532631)
+
+* Tolerate patches with leading noise in ``bzr-handle-patch``.
+  (Toshio Kuratomi, Martin Pool, #502076)
 
 API Changes
 ***********
@@ -114,6 +120,9 @@ API Changes
   run when starting up; it sets up several things that previously needed
   to be done separately.
   (Martin Pool, #507710)
+
+* New method ``BzrDir.list_branches()`` that returns a sequence of branches 
+  present in a control directory. (Jelmer Vernooij)
 
 * Remove unused ``CommandFailed`` exception.
   (Martin Pool)
@@ -124,11 +133,22 @@ Internals
 * ``bzrlib.branchbuilder.BranchBuilder.build_snapshot`` now accepts a
   ``message_callback`` in the same way that commit does. (Robert Collins)
 
+* ``bzrlib.builtins.Commit.run`` raises ``bzrlib.errors.BoundBranchOutOfDate``
+  rather than ``bzrlib.errors.BzrCommandError`` when the bound branch is out
+  of date. (Gary van der Merwe)
+
 * ``bzrlib.commands.run_bzr`` is more extensible: callers can supply the
   functions to load or disable plugins if they wish to use a different
   plugin mechanism; the --help, --version and no-command name code paths
   now use the generic pluggable command lookup infrastructure.
   (Robert Collins)
+
+* ``bzrlib.errors.BoundBranchOutOfDate`` has a new field ``extra_help``
+  which can be set to add extra help to the error. (Gary van der Merwe)
+
+* The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
+  ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
+  (Jelmer Vernooij)
 
 Testing
 *******
@@ -148,6 +168,13 @@ Testing
 * Stop sending apport crash files to ``.cache`` in the directory from
   which ``bzr selftest`` was run.  (Martin Pool, #422350)
 
+* Tests no longer fail if "close() called during concurrent
+  operation on the same file object" occurs when closing the log file
+  (which can happen if a thread tries to write to the log file at the
+  wrong moment).  An warning will be written to ``stderr`` when this
+  happens, and another warning will be written if the log file could not
+  be closed after retrying 100 times.  (Andrew Bennetts, #531746)
+
 bzr 2.1.1
 #########
 
@@ -156,6 +183,8 @@ bzr 2.1.1
 Bug Fixes
 *********
 
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+
 * Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
   problems importing bzrlib from a non-main thread.
   (Elliot Murphy, #521989)
@@ -163,7 +192,10 @@ Bug Fixes
 * Standardize the error handling when creating a new ``StaticTuple``
   (problems will raise TypeError). (Matt Nordhoff, #457979)
 
-* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+* Warn if pyrex is too old to compile the new ``SimpleSet`` and
+  ``StaticTuple`` extensions, rather than having the build fail randomly.
+  (John Arbash Meinel, #449776)
+
 
 Documentation
 *************
@@ -174,6 +206,7 @@ Documentation
 
 * Drop Google Analytics from the core docs as they caused problems
   in the CHM files. (Ian Clatworthy, #502010)
+
 
 bzr 2.1.0
 #########
@@ -570,6 +603,10 @@ Bug Fixes
 * Running ``bzr`` command without any arguments now shows bzr
   version number along with rest of the help text.
   (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
 
 Documentation
 *************

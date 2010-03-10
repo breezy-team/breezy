@@ -699,10 +699,15 @@ class cmd_mkdir(Command):
 
     def run(self, dir_list):
         for d in dir_list:
-            os.mkdir(d)
             wt, dd = WorkingTree.open_containing(d)
-            wt.add([dd])
-            self.outf.write('added %s\n' % d)
+            base = os.path.dirname(dd)
+            id = wt.path2id(base)
+            if id != None:
+                os.mkdir(d)
+                wt.add([dd])
+                self.outf.write('added %s\n' % d)
+            else:
+                raise errors.NotVersionedError(path=base)
 
 
 class cmd_relpath(Command):
@@ -3169,10 +3174,11 @@ class cmd_commit(Command):
             raise errors.BzrCommandError("Commit refused because there are"
                               " unknown files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
-            raise errors.BzrCommandError(str(e) + "\n"
-            'To commit to master branch, run update and then commit.\n'
-            'You can also pass --local to commit to continue working '
-            'disconnected.')
+            e.extra_help = ("\n"
+                'To commit to master branch, run update and then commit.\n'
+                'You can also pass --local to commit to continue working '
+                'disconnected.')
+            raise
 
 
 class cmd_check(Command):
