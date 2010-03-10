@@ -201,6 +201,50 @@ Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 .. ~~~~~~~~~~~~
 
 
+Testing locking behaviour
+-------------------------
+
+In order to test the locking behaviour of commands, it is possible to install
+a hook that is called when a write lock is: acquired, released or broken.
+(Read locks also exist, they cannot be discovered in this way.)
+
+A hook can be installed by calling bzrlib.lock.Lock.hooks.install_named_hook.
+The three valid hooks are: `lock_acquired`, `lock_released` and `lock_broken`.
+
+Example::
+
+    locks_acquired = []
+    locks_released = []
+
+    lock.Lock.hooks.install_named_hook('lock_acquired',
+        locks_acquired.append, None)
+    lock.Lock.hooks.install_named_hook('lock_released',
+        locks_released.append, None)
+
+`locks_acquired` will now receive a LockResult instance for all locks acquired
+since the time the hook is installed.
+
+Note that the representation of LockResult can be confusing. As can be seen in
+the sample below::
+
+    LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch/lockh8c6t28rcjdkgxtndbje)
+
+The last 20 characters, in this case `h8c6t28rcjdkgxtndbje`, are used internally
+in the locking mechanism. The locking URL is everything before that.
+
+The last part of the URL allows you to identify the type of object that is locked.
+
+Working tree: `/checkout/lock`
+Branch: `/branch/lock`
+Repository: `/repository/lock`
+
+To test if a lock is a write lock on a working tree, one can do the following::
+
+    self.assertEndsWith(locks_acquired[0].lock_url, "/checkout/lock")
+
+See bzrlib/tests/commands/test_revert.py for an example of how to use this for
+testing locks.
+
 
 Skipping tests
 --------------
