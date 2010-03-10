@@ -469,7 +469,7 @@ class PathConflict(Conflict):
 
 
 class ContentsConflict(PathConflict):
-    """The files are of different types, or not present"""
+    """The files are of different types (or both binary), or not present"""
 
     has_files = True
 
