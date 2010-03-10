@@ -506,11 +506,7 @@ class PathConflict(Conflict):
     def _revision_tree(self, tree, revid):
         return tree.branch.repository.revision_tree(revid)
 
-    def _get_or_infer_file_id(self, tree):
-        # FIXME: Needs cleanup
-        if self.file_id is not None:
-            return self.file_id
-
+    def _infer_file_id(self, tree):
         # Prior to bug #531967, file_id wasn't always set, there may still be
         # conflict files in the wild so we need to cope with them
         # Establish which path we should use to find back the file-id
@@ -518,9 +514,6 @@ class PathConflict(Conflict):
         for p in (self.path, self.conflict_path):
             if p == '<deleted>':
                 # special hard-coded path 
-
-                # FIXME: this forbids that path to the user. That's bad but we
-                # are in recovery mode here anyway -- vila 20100305
                 continue
             if p is not None:
                 possible_paths.append(p)
@@ -531,12 +524,6 @@ class PathConflict(Conflict):
             for p in possible_paths:
                 file_id = revtree.path2id(p)
                 if file_id is not None:
-                    # Now we need to add the item as it was in the revtree to
-                    # the current tree
-
-                    # and I have no idea about how to do that for all possible
-                    # cases (well, I have some but all sound far too
-                    # complicated)
                     return revtree, file_id
         return None, None
 
@@ -547,7 +534,7 @@ class PathConflict(Conflict):
         else:
             # Prior to bug #531967 we need to find back the file_id and restore
             # the content from there
-            revtree, file_id = self._get_or_infer_file_id(tree)
+            revtree, file_id = self._infer_file_id(tree)
             tree.revert([revtree.id2path(file_id)],
                         old_tree=revtree, backups=False)
 
@@ -559,7 +546,7 @@ class PathConflict(Conflict):
         else:
             # Prior to bug #531967 we need to find back the file_id and restore
             # the content from there
-            revtree, file_id = self._get_or_infer_file_id(tree)
+            revtree, file_id = self._infer_file_id(tree)
             tree.revert([revtree.id2path(file_id)],
                         old_tree=revtree, backups=False)
 
