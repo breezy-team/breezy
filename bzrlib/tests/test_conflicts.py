@@ -315,9 +315,26 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self.assertLength(0, wt.conflicts())
         self.assertLength(0, list(wt.unknowns()))
 
+    def do_nothing(self):
+        return (None, None, [])
+
     def do_create_file(self):
         return ('file', 'file-id',
                 [('add', ('file', 'file-id', 'file', 'trunk content\n'))])
+
+    def do_create_file_a(self):
+        return ('file', 'file-a-id',
+                [('add', ('file', 'file-a-id', 'file', 'file a content\n'))])
+
+    def check_file_content_a(self):
+        self.assertFileEqual('file a content\n', 'branch/file')
+
+    def do_create_file_b(self):
+        return ('file', 'file-b-id',
+                [('add', ('file', 'file-b-id', 'file', 'file b content\n'))])
+
+    def check_file_content_b(self):
+        self.assertFileEqual('file b content\n', 'branch/file')
 
     def do_create_dir(self):
         return ('dir', 'dir-id', [('add', ('dir', 'dir-id', 'directory', ''))])
@@ -395,16 +412,12 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     _conflict_type = conflicts.ContentsConflict,
     @classmethod
     def scenarios(klass):
-        common = dict(_actions_base='create_file',
-                      _item_path='file', item_id='file-id',
-                      )
         base_scenarios = [
             (('file_modified', dict(actions='modify_file',
                                    check='file_has_more_content')),
              ('file_deleted', dict(actions='delete_file',
                                    check='file_doesnt_exist')),
-             dict(_actions_base='create_file',
-                  _item_path='file', item_id='file-id',)),
+             dict(_actions_base='create_file', _item_path='file')),
             ]
         return klass.mirror_scenarios(base_scenarios)
 
@@ -475,60 +488,24 @@ class TestResolvePathConflictBefore531967(TestResolvePathConflict):
         wt.set_conflicts(conflicts.ConflictList([c]))
 
 
-class TestResolveDuplicateEntry(TestResolveConflicts):
+class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
 
-    preamble = """
-$ bzr init trunk
-$ cd trunk
-$ echo 'trunk content' >file
-$ bzr add file
-$ bzr commit -m 'Create trunk'
+    _conflict_type = conflicts.DuplicateEntry,
+    @classmethod
+    def scenarios(klass):
+        base_scenarios = [
+            (('filea_created', dict(actions='create_file_a',
+                                    check='file_content_a')),
+             ('fileb_created', dict(actions='create_file_b',
+                                   check='file_content_b')),
+             dict(_actions_base='nothing', _item_path='file.moved')),
+            ]
+        return klass.mirror_scenarios(base_scenarios)
 
-$ echo 'trunk content too' >file2
-$ bzr add file2
-$ bzr commit -m 'Add file2 in trunk'
-
-$ bzr branch . -r 1 ../branch
-$ cd ../branch
-$ echo 'branch content' >file2
-$ bzr add file2
-$ bzr commit -m 'Add file2 in branch'
-
-$ bzr merge ../trunk
-2>+N  file2
-2>R   file2 => file2.moved
-2>Conflict adding file file2.  Moved existing file to file2.moved.
-2>1 conflicts encountered.
-"""
-
-    def test_keep_this(self):
-        self.run_script("""
-$ bzr rm file2  --force
-$ bzr mv file2.moved file2
-$ bzr resolve file2
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_keep_other(self):
-        self.failIfExists('branch/file2.moved')
-        self.run_script("""
-$ bzr rm file2.moved --force
-$ bzr resolve file2
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-        self.failIfExists('branch/file2.moved')
-
-    def test_resolve_taking_this(self):
-        self.run_script("""
-$ bzr resolve --take-this file2
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_resolve_taking_other(self):
-        self.run_script("""
-$ bzr resolve --take-other file2
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
+    def assertDuplicateEntry(self, wt, c):
+        self.assertEqual(self._this_id, c.file_id)
+        self.assertEqual(self._item_path, c.path)
+    _assert_conflict = assertDuplicateEntry
 
 
 class TestResolveUnversionedParent(TestResolveConflicts):
