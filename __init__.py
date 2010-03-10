@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Print lines matching PATTERN for specified files and revisions."""
 
 import os
 import sys
@@ -41,7 +42,7 @@ from bzrlib import (
     )
 """)
 
-version_info = (0, 0, 1, 'dev', 1)
+version_info = (0, 0, 1, 'final', 0)
 
 # FIXME: _parse_levels should be shared with bzrlib.builtins. this is a copy
 # to avoid the error
