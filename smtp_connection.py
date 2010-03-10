@@ -147,8 +147,10 @@ class SMTPConnection(object):
         msg['User-Agent'] = 'bzr/%s' % _bzrlib_version
 
         # MIMEMultipart doesn't support update()
-        for key in xhdrs:
-            msg[key] = xhdrs[key]
+        try:
+            for key in xhdrs:
+                msg[key] = xhdrs[key]
+        except TypeError: pass
 
         to_emails = []
         to_header = []
