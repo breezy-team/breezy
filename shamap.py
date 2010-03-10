@@ -411,10 +411,10 @@ class IndexGitShaMap(GitShaMap):
 
     Entries:
 
-    "git <sha1>" -> "<type> <type-data1> <type-data2>"
-    "commit revid" -> "<sha1> <tree-id>"
-    "tree fileid revid" -> "<sha1>"
-    "blob fileid revid" -> "<sha1>"
+    ("git", <sha1>, "X") -> "<type> <type-data1> <type-data2>"
+    ("commit", <revid>, "X") -> "<sha1> <tree-id>"
+    ("tree", <fileid>, <revid>) -> "<sha1>"
+    ("blob", <fileid>, <revid>) -> "<sha1>"
     """
 
     def __init__(self, transport=None):
@@ -513,6 +513,7 @@ class IndexGitShaMap(GitShaMap):
     def add_entry(self, hexsha, type, type_data):
         """Add a new entry to the database.
         """
+        assert type in ("commit", "tree", "blob")
         if hexsha is not None:
             self._name.update(hexsha)
             try:
