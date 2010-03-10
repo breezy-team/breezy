@@ -34,7 +34,8 @@ def test_suite():
 
 sample_config=("[DEFAULT]\n"
                "post_commit_to=demo@example.com\n"
-               "post_commit_sender=Sample <foo@example.com>\n")
+               "post_commit_sender=Sample <foo@example.com>\n"
+               "revision_mail_headers=X-Cheese: to the rescue!\n")
 
 unconfigured_config=("[DEFAULT]\n"
                      "email=Robert <foo@example.com>\n")
@@ -149,6 +150,10 @@ class TestGetTo(TestCaseInTempDir):
     def test_diff_filename(self):
         sender = self.get_sender()
         self.assertEqual('patch-1.diff', sender.diff_filename())
+
+    def test_headers(self):
+        sender = self.get_sender()
+	self.assertEqual({'X-Cheese': 'to the rescue!'}, sender.extra_headers())
 
     def get_sender(self, text=sample_config):
         self.branch = BzrDir.create_branch_convenience('.')
