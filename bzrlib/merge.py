@@ -1173,9 +1173,6 @@ class Merge3Merger(object):
         return 'conflict'
 
     @staticmethod
-    # FIXME: this looks unused and probably needs to be deprecated, the
-    # parameter order (this, base, other) doesn't match the other methods
-    # (base, other, this) anyway -- vila 20100308
     def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
         """Do a three-way test on a scalar.
         Return "this", "other" or "conflict", depending whether a value wins.
@@ -1234,18 +1231,6 @@ class Merge3Merger(object):
         if name_winner == 'conflict' or parent_id_winner == 'conflict':
             # Creating helpers here cause problems down the road if a
             # ContentConflict needs to be created so we should not do that
-            if other_name is None or other_parent is None:
-                # 'other' has been deleted, leave a .THIS
-                parent_id = self.tt.trans_id_file_id(this_parent)
-                trans_id = self.tt.create_path(this_name + '.THIS', parent_id)
-                transform.create_from_tree(self.tt, trans_id, self.this_tree,
-                                           file_id)
-            elif this_name is None or this_parent is None:
-                # 'this' has been deleted, leave a .OTHER
-                parent_id = self.tt.trans_id_file_id(other_parent)
-                trans_id = self.tt.create_path(other_name + '.OTHER', parent_id)
-                transform.create_from_tree(self.tt, trans_id, self.other_tree,
-                                           file_id)
             trans_id = self.tt.trans_id_file_id(file_id)
             self._raw_conflicts.append(('path conflict', trans_id, file_id,
                                         this_parent, this_name,

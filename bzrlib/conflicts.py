@@ -463,18 +463,8 @@ class PathConflict(Conflict):
         return s
 
     def associated_filenames(self):
-        if self.file_id is None:
-            return []
-        else:
-            # FIXME: This may be too precise. associated_filenames() is really
-            # about *potentially* existing files, so we may just avoid the
-            # tests against <deleted>
-            if self.path == '<deleted>':
-                return [self.conflict_path + '.OTHER']
-            elif self.conflict_path == '<deleted>':
-                return [self.path + '.THIS']
-            else:
-                return []
+        # No additional files have been generated here
+        return []
 
     def _resolve(self, tt, file_id, path, winner):
         """Resolve the conflict.
@@ -484,19 +474,29 @@ class PathConflict(Conflict):
         :param path: The retained path.
         :param winner: 'this' or 'other' indicates which side is the winner.
         """
-        helper_path = None
+        path_to_create = None
         if winner == 'this':
             if self.path == '<deleted>':
                 return # Nothing to do
             if self.conflict_path == '<deleted>':
-                helper_path = self.path + '.THIS'
+                path_to_create = self.path
+                revid = tt._tree.get_parent_ids()[0]
         elif winner == 'other':
             if self.conflict_path == '<deleted>':
                 return  # Nothing to do
             if self.path == '<deleted>':
-                helper_path = self.conflict_path + '.OTHER'
-        if helper_path is not None:
-            tt.version_file(file_id, tt.trans_id_tree_path(helper_path))
+                path_to_create = self.conflict_path
+                # FIXME: If there are more than two parents we may need to
+                # iterate. Taking the last parent is the safer bet in the mean
+                # time. -- vila 20100309
+                revid = tt._tree.get_parent_ids()[-1]
+        if path_to_create is not None:
+            tid = tt.trans_id_tree_path(path_to_create)
+            transform.create_from_tree(
+                tt, tt.trans_id_tree_path(path_to_create),
+                tt._tree.revision_tree(revid), file_id)
+            tt.version_file(file_id, tid)
+
         # Adjust the path for the retained file id
         tid = tt.trans_id_file_id(file_id)
         parent_tid = tt.get_tree_parent(tid)
@@ -504,6 +504,7 @@ class PathConflict(Conflict):
         tt.apply()
 
     def _get_or_infer_file_id(self, tree):
+        # FIXME: Needs cleanup
         if self.file_id is not None:
             return self.file_id
 
