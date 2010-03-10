@@ -342,6 +342,13 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self.failIfExists('branch/file')
         self.failUnlessExists('branch/new-file')
 
+    def do_rename_file2(self):
+        return ('new-file2', 'file-id', [('rename', ('file', 'new-file2'))])
+
+    def check_file_renamed2(self):
+        self.failIfExists('branch/file')
+        self.failUnlessExists('branch/new-file2')
+
     def do_rename_dir(self):
         return ('new-dir', 'dir-id', [('rename', ('dir', 'new-dir'))])
 
@@ -414,25 +421,31 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
     @classmethod
     def scenarios(klass):
-        for_dirs = dict(_actions_base='create_dir',
+        for_file = dict(_actions_base='create_file',
+                  _item_path='new-file', _item_id='file-id',)
+        for_dir = dict(_actions_base='create_dir',
                         _item_path='new-dir', _item_id='dir-id',)
         base_scenarios = [
             (('file_renamed',
               dict(actions='rename_file', check='file_renamed')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),
-             dict(_actions_base='create_file',
-                  _item_path='new-file', _item_id='file-id',)),
+             for_file),
+            (('file_renamed',
+              dict(actions='rename_file', check='file_renamed')),
+             ('file_renamed2',
+              dict(actions='rename_file2', check='file_renamed2')),
+             for_file),
             (('dir_renamed',
               dict(actions='rename_dir', check='dir_renamed')),
              ('dir_deleted',
               dict(actions='delete_dir', check='dir_doesnt_exist')),
-             for_dirs),
+             for_dir),
             (('dir_renamed',
               dict(actions='rename_dir', check='dir_renamed')),
              ('dir_renamed2',
               dict(actions='rename_dir2', check='dir_renamed2')),
-             for_dirs),
+             for_dir),
         ]
         return klass.mirror_scenarios(base_scenarios)
 
@@ -681,55 +694,6 @@ $ bzr commit --strict -m 'No more conflicts nor unknown files'
     def test_resolve_taking_other(self):
         self.run_script("""
 $ bzr resolve --take-other dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-
-class OldTestResolvePathConflict(TestResolveConflicts):
-
-    preamble = """
-$ bzr init trunk
-$ cd trunk
-$ echo 'Boo!' >file
-$ bzr add
-$ bzr commit -m 'Create trunk'
-
-$ bzr mv file file-in-trunk
-$ bzr commit -m 'Renamed to file-in-trunk'
-
-$ bzr branch . -r 1 ../branch
-$ cd ../branch
-$ bzr mv file file-in-branch
-$ bzr commit -m 'Renamed to file-in-branch'
-
-$ bzr merge ../trunk
-2>R   file-in-branch => file-in-trunk
-2>Path conflict: file-in-branch / file-in-trunk
-2>1 conflicts encountered.
-"""
-
-    def test_keep_source(self):
-        self.run_script("""
-$ bzr resolve file-in-trunk
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_keep_target(self):
-        self.run_script("""
-$ bzr mv file-in-trunk file-in-branch
-$ bzr resolve file-in-branch
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_resolve_taking_this(self):
-        self.run_script("""
-$ bzr resolve --take-this file-in-branch
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_resolve_taking_other(self):
-        self.run_script("""
-$ bzr resolve --take-other file-in-branch
 $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
