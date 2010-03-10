@@ -516,7 +516,8 @@ class IndexGitShaMap(GitShaMap):
         if hexsha is not None:
             self._name.update(hexsha)
             try:
-                self._builder.add_node(("git", hexsha, "X"), " ".join((type, type_data[0], type_data[1])))
+                self._builder.add_node(("git", hexsha, "X"),
+                    " ".join((type, type_data[0], type_data[1])))
             except bzrlib.errors.BadIndexDuplicateKey:
                 pass # Multiple bzr objects can have the same contents
         else:
@@ -525,7 +526,8 @@ class IndexGitShaMap(GitShaMap):
             hexsha = ""
             self._name.update(type + " ".join(type_data))
         if type == "commit":
-            self._builder.add_node(("commit", type_data[0], "X"), " ".join((hexsha, type_data[1])))
+            self._builder.add_node(("commit", type_data[0], "X"),
+                " ".join((hexsha, type_data[1])))
         else:
             self._builder.add_node((type, type_data[0], type_data[1]), hexsha)
 
