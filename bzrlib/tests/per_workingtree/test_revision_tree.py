@@ -117,12 +117,7 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
         self.addCleanup(tree.unlock)
         parents = tree.get_parent_ids()
         self.assertEqual(['this', 'other'], parents)
-        try:
-            basis = tree.revision_tree(parents[0])
-        except errors.NoSuchRevisionInTree:
-            raise tests.TestNotApplicable(
-                "Tree type %s doesn't cache the basis revision tree."
-                % type(tree))
+        basis = tree.revision_tree(parents[0])
         basis.lock_read()
         self.addCleanup(basis.unlock)
         self.assertRaises(errors.NoSuchId, basis.kind, 'a-id')
@@ -134,7 +129,6 @@ class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
             raise tests.TestNotApplicable(
                 'Tree type %s caches only the basis revision tree.'
                 % type(tree))
-
         other.lock_read()
         self.addCleanup(other.unlock)
         self.assertRaises(errors.NoSuchId, other.kind, 'b-id')
