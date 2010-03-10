@@ -498,13 +498,14 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
                                     check='file_content_a')),
              ('fileb_created', dict(actions='create_file_b',
                                    check='file_content_b')),
-             dict(_actions_base='nothing', _item_path='file.moved')),
+             dict(_actions_base='nothing', _item_path='file')),
             ]
         return klass.mirror_scenarios(base_scenarios)
 
     def assertDuplicateEntry(self, wt, c):
         self.assertEqual(self._this_id, c.file_id)
-        self.assertEqual(self._item_path, c.path)
+        self.assertEqual(self._item_path + '.moved', c.path)
+        self.assertEqual(self._item_path, c.conflict_path)
     _assert_conflict = assertDuplicateEntry
 
 
