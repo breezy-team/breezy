@@ -22,6 +22,9 @@
   * Cope with different encodings better, rather than just stripping out 
     unknown characters. (#529460, Jelmer Vernooij)
 
+  * Support ``run_hooks`` argument to ``InterGitRemoteLocalBranch.pull()``.
+    (#524843, Jelmer Vernooij)
+
  FEATURES
 
   * Support (dumb) HTTP repositories. (#373688, Jelmer Vernooij)

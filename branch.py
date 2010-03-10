@@ -547,7 +547,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         return refs, stop_revision
 
     def pull(self, stop_revision=None, overwrite=False,
-        possible_transports=None, local=False):
+        possible_transports=None, run_hooks=True,local=False):
         # This type of branch can't be bound.
         if local:
             raise errors.LocalRequiresBoundBranch()
