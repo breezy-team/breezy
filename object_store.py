@@ -80,14 +80,17 @@ class BazaarObjectStore(BaseObjectStore):
             missing_revids.update(heads)
         if NULL_REVISION in missing_revids:
             missing_revids.remove(NULL_REVISION)
-        pb = ui.ui_factory.nested_progress_bar()
+        self._idmap.start_write_group()
         try:
-            for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
-                pb.update("updating git map", i, len(missing_revids))
-                self._update_sha_map_revision(revid)
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
+                    pb.update("updating git map", i, len(missing_revids))
+                    self._update_sha_map_revision(revid)
+            finally:
+                pb.finished()
         finally:
-            pb.finished()
-        self._idmap.commit_write_group()
+            self._idmap.commit_write_group()
 
     def __iter__(self):
         self._update_sha_map()
@@ -147,6 +150,7 @@ class BazaarObjectStore(BaseObjectStore):
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
                 if ret is None:
+                    # Empty directory
                     hexsha = None
                 else:
                     hexsha = ret.id
