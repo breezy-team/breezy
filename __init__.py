@@ -58,6 +58,9 @@ How emails are sent is determined by the value of the configuration option
  - Any other value: Run the value expecting it to behave like ``/usr/bin/mail``
    - in particular supporting the -s and -a options.
 
+When using smtplib, you can specify additional headers to be included in the
+mail by setting the 'revision_mail_headers' configuration option.
+
 """
 
 
