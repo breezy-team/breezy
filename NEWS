@@ -92,6 +92,10 @@ Bug Fixes
   ftp servers while trying to take a lock.
   (Martin Pool, #528722)
 
+* DirStateRevisionTree.kind() was returning wrong result when 'kind'
+  changes occured between the workingtree and one of its parents.
+  (Vincent Ladeuil, #533437)
+
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)
