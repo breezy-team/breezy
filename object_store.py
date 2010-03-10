@@ -63,6 +63,9 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             self.mapping = mapping
         self._idmap = SqliteGitShaMap.from_repository(repository)
+        self.start_write_group = self._idmap.start_write_group
+        self.abort_write_group = self._idmap.abort_write_group
+        self.commit_write_group = self._idmap.commit_write_group
 
     def _update_sha_map(self, stop_revision=None):
         graph = self.repository.get_graph()
@@ -80,7 +83,7 @@ class BazaarObjectStore(BaseObjectStore):
             missing_revids.update(heads)
         if NULL_REVISION in missing_revids:
             missing_revids.remove(NULL_REVISION)
-        self._idmap.start_write_group()
+        self.start_write_group()
         try:
             pb = ui.ui_factory.nested_progress_bar()
             try:
@@ -89,8 +92,11 @@ class BazaarObjectStore(BaseObjectStore):
                     self._update_sha_map_revision(revid)
             finally:
                 pb.finished()
-        finally:
-            self._idmap.commit_write_group()
+        except:
+            self.abort_write_group()
+            raise
+        else:
+            self.commit_write_group()
 
     def __iter__(self):
         self._update_sha_map()
