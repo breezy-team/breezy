@@ -245,6 +245,14 @@ To test if a lock is a write lock on a working tree, one can do the following::
 See bzrlib/tests/commands/test_revert.py for an example of how to use this for
 testing locks.
 
+Note: There is one special case of a lock that is created during the creation of
+the '.bzr' directory, for example when a new branch is initialized.
+If this is the case, the LockResult will look like this::
+
+    LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch-lockc4au55ppz8wdym11z1aq)
+
+or `/branch-lock`
+
 
 Skipping tests
 --------------
