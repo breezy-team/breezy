@@ -25,6 +25,11 @@
   * Support ``run_hooks`` argument to ``InterGitRemoteLocalBranch.pull()``.
     (#524843, Jelmer Vernooij)
 
+ PERFORMANCE
+
+  * Don't import head revision twice when pulling from Git.
+    (Jelmer Vernooij)
+
  FEATURES
 
   * Support (dumb) HTTP repositories. (#373688, Jelmer Vernooij)

@@ -362,7 +362,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     # TODO: a more (memory-)efficient implementation of this
     graph = []
     checked = set()
-    heads = list(heads)
+    heads = list(set(heads))
     parent_invs_cache = lru_cache.LRUSizeCache(compute_size=approx_inv_size,
                                                max_size=MAX_INV_CACHE_SIZE)
     # Find and convert commit objects
@@ -372,7 +372,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         head = heads.pop()
         assert isinstance(head, str)
         try:
-            o = lookup_object(head)
+            o = object_iter[head]
         except KeyError:
             trace.mutter('missing head %s', head)
             continue
@@ -386,7 +386,8 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
                     (rev.revision_id, o.tree))
             heads.extend([p for p in o.parents if p not in checked])
         elif isinstance(o, Tag):
-            heads.append(o.object[1])
+            if o.object[1] not in checked:
+                heads.append(o.object[1])
         else:
             trace.warning("Unable to import head object %r" % o)
         checked.add(o.id)
