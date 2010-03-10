@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -145,7 +145,7 @@ def error(*args, **kwargs):
     _bzr_logger.error(*args, **kwargs)
 
 
-def show_error(msg):
+def show_error(*args, **kwargs):
     """Show an error message to the user.
 
     Don't use this for exceptions, use report_exception instead.

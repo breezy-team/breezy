@@ -167,13 +167,13 @@ class Branch(object):
         """
         control = bzrdir.BzrDir.open(base, _unsupported,
                                      possible_transports=possible_transports)
-        return control.open_branch(_unsupported)
+        return control.open_branch(unsupported=_unsupported)
 
     @staticmethod
     def open_from_transport(transport, _unsupported=False):
         """Open the branch rooted at transport"""
         control = bzrdir.BzrDir.open_from_transport(transport, _unsupported)
-        return control.open_branch(_unsupported)
+        return control.open_branch(unsupported=_unsupported)
 
     @staticmethod
     def open_containing(url, possible_transports=None):
