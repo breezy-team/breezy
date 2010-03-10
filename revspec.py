@@ -15,7 +15,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """Custom revision specifier for Subversion."""
 
-# Please note that imports are delayed as much as possible here since 
+# Please note that imports are delayed as much as possible here since
 # if DWIM revspecs are supported this module is imported by __init__.py.
 
 from bzrlib.errors import (
@@ -43,7 +43,7 @@ class RevisionSpec_git(RevisionSpec):
 
     help_txt = """Selects a revision using a Git revision sha1.
     """
-    
+
     prefix = 'git:'
     wants_revision_history = False
 
@@ -51,8 +51,12 @@ class RevisionSpec_git(RevisionSpec):
         from bzrlib.plugins.git.errors import (
             GitSmartRemoteNotSupported,
             )
+        from bzrlib.plugins.git.mapping import (
+            default_mapping,
+            )
 
-        bzr_revid = branch.mapping.revision_id_foreign_to_bzr(sha1)
+        bzr_revid = getattr(branch.repository, "lookup_foreign_revision_id",
+                              default_mapping.revision_id_foreign_to_bzr)(sha1)
         try:
             if branch.repository.has_revision(bzr_revid):
                 history = self._history(branch, bzr_revid)

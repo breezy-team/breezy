@@ -1,4 +1,5 @@
 # Copyright (C) 2007 Jelmer Vernooij <jelmer@samba.org>
+# -*- encoding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -91,6 +92,54 @@ class TestImportCommit(tests.TestCase):
         self.assertEquals("180", rev.properties['author-timezone'])
         self.assertEquals("git-v1:" + c.id, rev.revision_id)
 
+    def test_explicit_encoding(self):
+        c = Commit()
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer"
+        c.commit_time = 4
+        c.author_time = 5
+        c.commit_timezone = 60 * 5
+        c.author_timezone = 60 * 3
+        c.author = u"Authér".encode("iso8859-1")
+        c.encoding = "iso8859-1"
+        c.serialize()
+        rev = BzrGitMappingv1().import_commit(c)
+        self.assertEquals(u"Authér", rev.properties['author'])
+        self.assertEquals("iso8859-1", rev.properties["git-explicit-encoding"])
+        self.assertTrue("git-implicit-encoding" not in rev.properties)
+
+    def test_implicit_encoding_fallback(self):
+        c = Commit()
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer"
+        c.commit_time = 4
+        c.author_time = 5
+        c.commit_timezone = 60 * 5
+        c.author_timezone = 60 * 3
+        c.author = u"Authér".encode("latin1")
+        c.serialize()
+        rev = BzrGitMappingv1().import_commit(c)
+        self.assertEquals(u"Authér", rev.properties['author'])
+        self.assertEquals("latin1", rev.properties["git-implicit-encoding"])
+        self.assertTrue("git-explicit-encoding" not in rev.properties)
+
+    def test_implicit_encoding_utf8(self):
+        c = Commit()
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer"
+        c.commit_time = 4
+        c.author_time = 5
+        c.commit_timezone = 60 * 5
+        c.author_timezone = 60 * 3
+        c.author = u"Authér".encode("utf-8")
+        c.serialize()
+        rev = BzrGitMappingv1().import_commit(c)
+        self.assertEquals(u"Authér", rev.properties['author'])
+        self.assertTrue("git-explicit-encoding" not in rev.properties)
+        self.assertTrue("git-implicit-encoding" not in rev.properties)
 
 
 class RoundtripRevisionsFromGit(tests.TestCase):
@@ -116,12 +165,26 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         self.assertEquals(commit1.author_time, commit2.author_time)
         self.assertEquals(commit1.author_timezone, commit2.author_timezone)
         self.assertEquals(commit1.message, commit2.message)
+        self.assertEquals(commit1.encoding, commit2.encoding)
 
     def test_commit(self):
         c = Commit()
         c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
         c.message = "Some message"
         c.committer = "Committer <Committer>"
+        c.commit_time = 4
+        c.commit_timezone = -60 * 3
+        c.author_time = 5
+        c.author_timezone = 60 * 2
+        c.author = "Author <author>"
+        self.assertRoundtripCommit(c)
+
+    def test_commit_encoding(self):
+        c = Commit()
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer <Committer>"
+        c.encoding = 'iso8859-1'
         c.commit_time = 4
         c.commit_timezone = -60 * 3
         c.author_time = 5

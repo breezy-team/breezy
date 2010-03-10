@@ -77,6 +77,14 @@ class GitDir(bzrdir.BzrDir):
     def cloning_metadir(self, stacked=False):
         return get_rich_root_format(stacked)
 
+    def _branch_name_to_ref(self, name):
+        if name is None and name != "HEAD":
+            return "HEAD"
+        if not "/" in name:
+            return "refs/heads/%s" % name
+        else:
+            return name
+
 
 class LocalGitDir(GitDir):
     """An adapter to the '.git' dir used by git."""
@@ -111,29 +119,46 @@ class LocalGitDir(GitDir):
     get_repository_transport = get_branch_transport
     get_workingtree_transport = get_branch_transport
 
-    def open_branch(self, ignore_fallbacks=None):
+
+    def open_branch(self, ignore_fallbacks=None, name=None, unsupported=False):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
-        return LocalGitBranch(self, repo, "HEAD", self._lockfiles)
+        return LocalGitBranch(self, repo, self._branch_name_to_ref(name),
+            self._lockfiles)
+
+    def destroy_branch(self, name=None):
+        del self._git.refs[self._branch_name_to_ref(name)]
+
+    def list_branches(self):
+        ret = []
+        for name in self._git.get_refs():
+            ret.append(self.open_branch(name=name))
+        return ret
 
     def open_repository(self, shared=False):
         """'open' a repository for this dir."""
         return self._gitrepository_class(self, self._lockfiles)
 
     def open_workingtree(self, recommend_upgrade=True):
-        if not self._git.bare and self._git.has_index():
-            from bzrlib.plugins.git.workingtree import GitWorkingTree
-            return GitWorkingTree(self, self.open_repository(), 
-                                                  self.open_branch())
+        if not self._git.bare:
+            from dulwich.errors import NoIndexPresent
+            try:
+                from bzrlib.plugins.git.workingtree import GitWorkingTree
+                return GitWorkingTree(self, self.open_repository(),
+                                                      self.open_branch())
+            except NoIndexPresent:
+                pass
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)
 
     def create_repository(self, shared=False):
         return self.open_repository()
 
-    def create_branch(self):
-        return self.open_branch()
+    def create_branch(self, name=None):
+        refname = self._branch_name_to_ref(name)
+        self._git.refs[refname] = "0" * 40
+        return self.open_branch(name)
 
     def backup_bzrdir(self):
         if self._git.bare:

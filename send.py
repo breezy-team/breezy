@@ -82,19 +82,19 @@ class GitDiffTree(_mod_diff.DiffTree):
             # is, missing) in both trees are skipped as well.
             if parent == (None, None) or kind == (None, None):
                 continue
-            path_encoded = (get_encoded_path(paths[0]), 
+            path_encoded = (get_encoded_path(paths[0]),
                             get_encoded_path(paths[1]))
             present = ((kind[0] is not None and versioned[0]),
                        (kind[1] is not None and versioned[1]))
             contents = (get_blob(present[0], trees[0], file_id),
                         get_blob(present[1], trees[1], file_id))
             renamed = (parent[0], name[0]) != (parent[1], name[1])
-            mode = (get_file_mode(trees[0], path_encoded[0], 
-                                  kind[0], executable[0]), 
-                    get_file_mode(trees[1], path_encoded[1], 
+            mode = (get_file_mode(trees[0], path_encoded[0],
+                                  kind[0], executable[0]),
+                    get_file_mode(trees[1], path_encoded[1],
                                   kind[1], executable[1]))
-            write_blob_diff(self.to_file, 
-                (path_encoded[0], mode[0], contents[0]), 
+            write_blob_diff(self.to_file,
+                (path_encoded[0], mode[0], contents[0]),
                 (path_encoded[1], mode[1], contents[1]))
             has_changes |= (changed_content or renamed)
         return has_changes
@@ -118,10 +118,10 @@ class GitMergeDirective(merge_directive._BaseMergeDirective):
         tree_1 = repository.revision_tree(lhs_parent)
         tree_2 = repository.revision_tree(revision_id)
         contents = StringIO()
-        differ = GitDiffTree.from_trees_options(tree_1, tree_2, 
+        differ = GitDiffTree.from_trees_options(tree_1, tree_2,
                 contents, 'utf8', None, 'a/', 'b/', None)
         differ.show_diff(None, None)
-        write_commit_patch(s, commit, contents.getvalue(), (num, total), 
+        write_commit_patch(s, commit, contents.getvalue(), (num, total),
                            version_tail)
         summary = "%04d-%s" % (num, get_summary(commit))
         return summary, s.getvalue()
@@ -140,16 +140,16 @@ class GitMergeDirective(merge_directive._BaseMergeDirective):
             todo = graph.find_difference(submit_revision_id, revision_id)[1]
             total = len(todo)
             for i, revid in enumerate(graph.iter_topo_order(todo)):
-                patches.append(cls._generate_commit(repository, revid, i+1, 
+                patches.append(cls._generate_commit(repository, revid, i+1,
                                                     total))
         finally:
             submit_branch.unlock()
-        return cls(revision_id, None, time, timezone, target_branch, 
-            "".join([patch for (summary, patch) in patches]), 
+        return cls(revision_id, None, time, timezone, target_branch,
+            "".join([patch for (summary, patch) in patches]),
             None, public_branch, message)
 
 
-def send_git(branch, revision_id, submit_branch, public_branch, no_patch, 
+def send_git(branch, revision_id, submit_branch, public_branch, no_patch,
              no_bundle, message, base_revision_id):
     if no_patch:
         raise errors.BzrCommandError("no patch not supported for git-am style patches")

@@ -34,7 +34,8 @@ def format_hg_metadata(renames, branch, extra):
             extra_message += "rename : " + oldfile + " => " + newfile + "\n"
 
     for key, value in extra.iteritems():
-        if key in ('author', 'committer', 'encoding', 'message', 'branch', 'hg-git'):
+        if key in ('author', 'committer', 'encoding', 'message', 'branch',
+                   'hg-git'):
             continue
         else:
             extra_message += "extra : " + key + " : " +  urllib.quote(value) + "\n"
@@ -49,7 +50,7 @@ def extract_hg_metadata(message):
     """Extract Mercurial metadata from a commit message.
 
     :param message: Commit message to extract from
-    :return: Tuple with original commit message, renames, branch and 
+    :return: Tuple with original commit message, renames, branch and
         extra data.
     """
     split = message.split("\n--HG--\n", 1)

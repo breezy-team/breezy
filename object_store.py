@@ -63,29 +63,35 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping = default_mapping
         else:
             self.mapping = mapping
-        try:
-            self._idmap = IndexGitShaMap.from_repository(repository)
-        except ImportError:
-            self._idmap = SqliteGitShaMap.from_repository(repository)
+        self._idmap = IndexGitShaMap.from_repository(repository)
 
     def _update_sha_map(self, stop_revision=None):
-        if stop_revision is None:
-            all_revids = self.repository.all_revision_ids()
-        else:
-            all_revids = self.repository.get_ancestry(stop_revision)
-            first = all_revids.pop(0) # Pop leading None
-            assert first is None
         graph = self.repository.get_graph()
-        missing_revids = self._idmap.missing_revisions(all_revids)
+        if stop_revision is None:
+            heads = graph.heads(self.repository.all_revision_ids())
+        else:
+            heads = set([stop_revision])
+        missing_revids = self._idmap.missing_revisions(heads)
+        while heads:
+            parents = graph.get_parent_map(heads)
+            todo = set()
+            for p in parents.values():
+                todo.update([x for x in p if x not in missing_revids])
+            heads = self._idmap.missing_revisions(todo)
+            missing_revids.update(heads)
+        if NULL_REVISION in missing_revids:
+            missing_revids.remove(NULL_REVISION)
         self._idmap.start_write_group()
-        pb = ui.ui_factory.nested_progress_bar()
         try:
-            for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
-                pb.update("updating git map", i, len(missing_revids))
-                self._update_sha_map_revision(revid)
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
+                    pb.update("updating git map", i, len(missing_revids))
+                    self._update_sha_map_revision(revid)
+            finally:
+                pb.finished()
         finally:
             self._idmap.commit_write_group()
-            pb.finished()
 
     def __iter__(self):
         self._update_sha_map()
@@ -131,8 +137,10 @@ class BazaarObjectStore(BaseObjectStore):
     def _get_ie_object(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
             return self._get_tree(entry.file_id, inv.revision_id, inv, unusual_modes)
-        elif entry.kind in ("file", "symlink"):
-            return self._get_blob(entry.file_id, entry.revision)
+        elif entry.kind == "symlink":
+            return self._get_blob_for_symlink(entry.symlink_target)
+        elif entry.kind == "file":
+            return self._get_blob_for_file(entry.file_id, entry.revision)
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
 
@@ -162,17 +170,47 @@ class BazaarObjectStore(BaseObjectStore):
     def _get_ie_sha1(self, entry, inv, unusual_modes):
         return self._get_ie_object_or_sha1(entry, inv, unusual_modes)[0]
 
+    def _get_blob_for_symlink(self, symlink_target, expected_sha=None):
+        """Return a Git Blob object for symlink.
+
+        :param symlink_target: target of symlink.
+        """
+        if type(symlink_target) == unicode:
+            symlink_target = symlink_target.encode('utf-8')
+        blob = Blob()
+        blob._text = symlink_target
+        self._check_expected_sha(expected_sha, blob)
+        return blob
+
+    def _get_blob_for_file(self, fileid, revision, expected_sha=None):
+        """Return a Git Blob object from a fileid and revision stored in bzr.
+
+        :param fileid: File id of the text
+        :param revision: Revision of the text
+        """
+        blob = Blob()
+        chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
+        blob._text = "".join(chunks)
+        self._check_expected_sha(expected_sha, blob)
+        return blob
+
     def _get_blob(self, fileid, revision, expected_sha=None):
         """Return a Git Blob object from a fileid and revision stored in bzr.
 
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
-        blob = Blob()
-        blob._text = "".join(chunks)
-        self._check_expected_sha(expected_sha, blob)
-        return blob
+        inv = self.repository.get_inventory(revision)
+        entry = inv[fileid]
+
+        if entry.kind == 'file':
+            return self._get_blob_for_file(entry.file_id, entry.revision,
+                                           expected_sha=expected_sha)
+        elif entry.kind == 'symlink':
+            return self._get_blob_for_symlink(entry.symlink_target,
+                                              expected_sha=expected_sha)
+        else:
+            raise AssertionError
 
     def _get_tree(self, fileid, revid, inv, unusual_modes, expected_sha=None):
         """Return a Git Tree object from a file id and a revision stored in bzr.
@@ -206,8 +244,11 @@ class BazaarObjectStore(BaseObjectStore):
         try:
             return self._idmap.lookup_commit(revid)
         except KeyError:
-            self._update_sha_map(revid)
-            return self._idmap.lookup_commit(revid)
+            try:
+                return mapping_registry.parse_revision_id(revid)[0]
+            except errors.InvalidRevisionId:
+                self._update_sha_map(revid)
+                return self._idmap.lookup_commit(revid)
 
     def get_raw(self, sha):
         """Get the raw representation of a Git object by SHA1.

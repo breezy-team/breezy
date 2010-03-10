@@ -36,7 +36,6 @@ from bzrlib import (
     osutils,
     transport,
     tree,
-    urlutils,
     workingtree,
     )
 from bzrlib.decorators import (
@@ -67,7 +66,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._branch = branch
         self._transport = bzrdir.transport
 
-        self.controldir = urlutils.join(self.repository._git._controldir, 'bzr')
+        self.controldir = self.bzrdir.transport.local_abspath('bzr')
 
         try:
             os.makedirs(self.controldir)

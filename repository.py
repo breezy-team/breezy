@@ -17,12 +17,10 @@
 
 """An adapter between a Git Repository and a Bazaar Branch"""
 
-import bzrlib
 from bzrlib import (
     errors,
     graph,
     inventory,
-    osutils,
     repository,
     revision,
     revisiontree,
@@ -41,7 +39,6 @@ from bzrlib.plugins.git.mapping import (
     )
 from bzrlib.plugins.git.tree import (
     GitRevisionTree,
-    InterGitRevisionTrees,
     )
 from bzrlib.plugins.git.versionedfiles import (
     GitRevisions,
@@ -73,7 +70,7 @@ class GitRepository(ForeignRepository):
     def supports_rich_root(self):
         return True
 
-    def _warn_if_deprecated(self):
+    def _warn_if_deprecated(self, branch=None):
         # This class isn't deprecated
         pass
 
@@ -111,7 +108,7 @@ class LocalGitRepository(GitRepository):
         self.texts = GitTexts(self)
 
     def all_revision_ids(self):
-        ret = set([revision.NULL_REVISION])
+        ret = set([])
         heads = self._git.refs.as_dict('refs/heads')
         if heads == {}:
             return ret
@@ -165,8 +162,6 @@ class LocalGitRepository(GitRepository):
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
         """Lookup a revision id.
 
-        :param revid: Bazaar revision id.
-        :return: Tuple with git revisionid and mapping.
         """
         if mapping is None:
             mapping = self.get_mapping()
@@ -226,6 +221,19 @@ class LocalGitRepository(GitRepository):
         progress=None):
         return self._git.fetch_objects(determine_wants, graph_walker, progress)
 
+    def _get_versioned_file_checker(self, text_key_references=None,
+                        ancestors=None):
+        return GitVersionedFileChecker(self,
+            text_key_references=text_key_references, ancestors=ancestors)
+    
+
+class GitVersionedFileChecker(repository._VersionedFileChecker):
+
+    file_ids = []
+
+    def _check_file_version_parents(self, texts, progress_bar):
+        return {}, []
+
 
 class GitRepositoryFormat(repository.RepositoryFormat):
     """Git repository format."""
@@ -243,7 +251,9 @@ class GitRepositoryFormat(repository.RepositoryFormat):
         return target_repo_format.rich_root_data
 
     def get_foreign_tests_repository_factory(self):
-        from bzrlib.plugins.git.tests.test_repository import ForeignTestsRepositoryFactory
+        from bzrlib.plugins.git.tests.test_repository import (
+            ForeignTestsRepositoryFactory,
+            )
         return ForeignTestsRepositoryFactory()
 
     def network_name(self):

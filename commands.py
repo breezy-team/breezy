@@ -107,7 +107,7 @@ class cmd_git_import(Command):
                 except NotBranchError:
                     head_branch = head_bzrdir.create_branch()
                 revid = mapping.revision_id_foreign_to_bzr(ref)
-                source_branch = GitBranch(source_repo.bzrdir, source_repo, 
+                source_branch = GitBranch(source_repo.bzrdir, source_repo,
                     name, None, tags)
                 source_branch.head = ref
                 if head_branch.last_revision() != revid:
@@ -119,7 +119,7 @@ class cmd_git_import(Command):
 
 class cmd_git_object(Command):
     """List or display Git objects by SHA.
-    
+
     Cat a particular object's Git representation if a SHA is specified.
     List all available SHAs otherwise.
     """
@@ -128,7 +128,7 @@ class cmd_git_object(Command):
 
     aliases = ["git-objects", "git-cat"]
     takes_args = ["sha1?"]
-    takes_options = [Option('directory', 
+    takes_options = [Option('directory',
         short_name='d',
         help='Location of repository.', type=unicode),
         Option('pretty', help='Pretty-print objects.')]

@@ -81,7 +81,8 @@ def lazy_check_versions():
     try:
         from dulwich import __version__ as dulwich_version
     except ImportError:
-        raise bzr_errors.DependencyNotPresent("dulwich", "bzr-git: Please install dulwich, https://launchpad.net/dulwich")
+        raise bzr_errors.DependencyNotPresent("dulwich",
+            "bzr-git: Please install dulwich, https://launchpad.net/dulwich")
     else:
         if dulwich_version < dulwich_minimum_version:
             raise bzr_errors.DependencyNotPresent("dulwich", "bzr-git: Dulwich is too old; at least %d.%d.%d is required" % dulwich_minimum_version)
@@ -127,33 +128,29 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
 
         """
         lazy_check_versions()
-        import dulwich
         # we dont grok readonly - git isn't integrated with transport.
-        url = transport.base
-        if url.startswith('readonly+'):
-            url = url[len('readonly+'):]
-
-        try:
+        from bzrlib.transport.local import LocalTransport
+        if isinstance(transport, LocalTransport):
+            import dulwich
             gitrepo = dulwich.repo.Repo(transport.local_abspath(".").encode(osutils._fs_enc))
-        except bzr_errors.NotLocalUrl:
-            raise bzr_errors.NotBranchError(path=transport.base)
+        else:
+            from bzrlib.plugins.git.transportgit import TransportRepo
+            gitrepo = TransportRepo(transport)
         from bzrlib.plugins.git.dir import LocalGitDir, GitLockableFiles, GitLock
         lockfiles = GitLockableFiles(transport, GitLock())
         return LocalGitDir(transport, lockfiles, gitrepo, self)
 
     @classmethod
     def probe_transport(klass, transport):
-        """Our format is present if the transport ends in '.not/'."""
-        from bzrlib.transport.local import LocalTransport
-
-        if not isinstance(transport, LocalTransport):
+        try:
+            if not (transport.has('info/refs') or transport.has('.git/branches') or 
+                    transport.has('branches')):
+                raise bzr_errors.NotBranchError(path=transport.base)
+        except bzr_errors.NoSuchFile:
             raise bzr_errors.NotBranchError(path=transport.base)
-
-        # This should quickly filter out most things that are not
-        # git repositories, saving us the trouble from loading dulwich.
-        if not transport.has(".git") and not transport.has("objects"):
+        from bzrlib import urlutils
+        if urlutils.split(transport.base)[1] == ".git":
             raise bzr_errors.NotBranchError(path=transport.base)
-
         lazy_check_versions()
         import dulwich
         format = klass()

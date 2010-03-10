@@ -31,6 +31,7 @@ from bzrlib import (
     )
 from bzrlib.branch import (
     Branch,
+    InterBranch,
     )
 from bzrlib.bzrdir import (
     BzrDir,
@@ -158,6 +159,18 @@ class BranchTests(tests.TestCaseInTempDir):
         os.chdir("..")
         return "d", gitsha
 
+    def make_tworev_branch(self):
+        os.mkdir("d")
+        os.chdir("d")
+        GitRepo.init('.')
+        bb = tests.GitBranchBuilder()
+        bb.set_file("foobar", "foo\nbar\n", False)
+        mark1 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        mark2 = bb.commit("Somebody <somebody@someorg.org>", "mymsg")
+        marks = bb.finish()
+        os.chdir("..")
+        return "d", (marks[mark1], marks[mark2])
+
     def clone_git_branch(self, from_url, to_url):
         from_dir = BzrDir.open(from_url)
         to_dir = from_dir.sprout(to_url)
@@ -180,6 +193,47 @@ class BranchTests(tests.TestCaseInTempDir):
         newbranch = self.clone_git_branch(path, "f")
         self.assertEquals({"lala": revid}, newbranch.tags.get_tag_dict())
         self.assertEquals([revid], newbranch.repository.all_revision_ids())
+
+    def test_interbranch_pull(self):
+        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        oldrepo = Repository.open(path)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        newbranch = self.make_branch('g')
+        inter_branch = InterBranch.get(Branch.open(path), newbranch)
+        inter_branch.pull()
+        self.assertEquals(revid2, newbranch.last_revision())
+
+    def test_interbranch_pull_noop(self):
+        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        oldrepo = Repository.open(path)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        newbranch = self.make_branch('g')
+        inter_branch = InterBranch.get(Branch.open(path), newbranch)
+        inter_branch.pull()
+        # This is basically "assertNotRaises"
+        inter_branch.pull()
+        self.assertEquals(revid2, newbranch.last_revision())
+
+    def test_interbranch_pull_stop_revision(self):
+        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        oldrepo = Repository.open(path)
+        revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
+        newbranch = self.make_branch('g')
+        inter_branch = InterBranch.get(Branch.open(path), newbranch)
+        inter_branch.pull(stop_revision=revid1)
+        self.assertEquals(revid1, newbranch.last_revision())
+
+    def test_interbranch_limited_pull(self):
+        path, (gitsha1, gitsha2) = self.make_tworev_branch()
+        oldrepo = Repository.open(path)
+        revid1 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha1)
+        revid2 = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha2)
+        newbranch = self.make_branch('g')
+        inter_branch = InterBranch.get(Branch.open(path), newbranch)
+        inter_branch.pull(limit=1)
+        self.assertEquals(revid1, newbranch.last_revision())
+        inter_branch.pull(limit=1)
+        self.assertEquals(revid2, newbranch.last_revision())
 
 
 class ForeignTestsBranchFactory(object):

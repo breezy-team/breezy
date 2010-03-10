@@ -14,9 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import bzrlib
 from bzrlib import (
     config,
+    debug,
     tag,
     trace,
     ui,
@@ -28,9 +28,6 @@ from bzrlib.errors import (
     NoSuchFile,
     NoSuchRevision,
     NotLocalUrl,
-    )
-from bzrlib.trace import (
-    info,
     )
 from bzrlib.transport import (
     Transport,
@@ -75,20 +72,37 @@ import urlparse
 from dulwich.pack import load_pack_index
 
 
-# Don't run any tests on GitSmartTransport as it is not intended to be 
+# Don't run any tests on GitSmartTransport as it is not intended to be
 # a full implementation of Transport
 def get_test_permutations():
     return []
+
+
+def split_git_url(url):
+    """Split a Git URL.
+
+    :param url: Git URL
+    :return: Tuple with host, port, username, path.
+    """
+    (scheme, _, loc, _, _) = urlparse.urlsplit(url)
+    hostport, escaped_path = urllib.splithost(loc)
+    path = urllib.unquote(escaped_path)
+    if path.startswith("/~"):
+        path = path[1:]
+    (username, hostport) = urllib.splituser(hostport)
+    (host, port) = urllib.splitnport(hostport, None)
+    return (host, port, username, path)
 
 
 class GitSmartTransport(Transport):
 
     def __init__(self, url, _client=None):
         Transport.__init__(self, url)
-        (scheme, _, loc, _, _) = urlparse.urlsplit(url)
-        hostport, self._path = urllib.splithost(loc)
-        (self._username, hostport) = urllib.splituser(hostport)
-        (self._host, self._port) = urllib.splitnport(hostport, None)
+        (self._host, self._port, self._username, self._path) = \
+            split_git_url(url)
+        if 'transport' in debug.debug_flags:
+            trace.mutter('host: %r, user: %r, port: %r, path: %r',
+                         self._host, self._username, self._port, self._path)
         self._client = _client
 
     def external_url(self):
@@ -106,10 +120,10 @@ class GitSmartTransport(Transport):
     def fetch_pack(self, determine_wants, graph_walker, pack_data, progress=None):
         if progress is None:
             def progress(text):
-                info("git: %s" % text)
+                trace.info("git: %s" % text)
         client = self._get_client(thin_packs=False)
         try:
-            return client.fetch_pack(self._get_path(), determine_wants, 
+            return client.fetch_pack(self._get_path(), determine_wants,
                 graph_walker, pack_data, progress)
         except GitProtocolError, e:
             raise BzrError(e)
@@ -117,7 +131,7 @@ class GitSmartTransport(Transport):
     def send_pack(self, get_changed_refs, generate_pack_contents):
         client = self._get_client(thin_packs=False)
         try:
-            return client.send_pack(self._get_path(), get_changed_refs, 
+            return client.send_pack(self._get_path(), get_changed_refs,
                 generate_pack_contents)
         except GitProtocolError, e:
             raise BzrError(e)
@@ -181,10 +195,11 @@ class RemoteGitDir(GitDir):
     def open_repository(self):
         return RemoteGitRepository(self, self._lockfiles)
 
-    def open_branch(self, ignore_fallbacks=False):
+    def open_branch(self, ignore_fallbacks=False, name=None,
+                    unsupported=False):
         repo = self.open_repository()
-        # TODO: Support for multiple branches in one bzrdir in bzrlib!
-        return RemoteGitBranch(self, repo, "HEAD", self._lockfiles)
+        refname = self._branch_name_to_ref(name)
+        return RemoteGitBranch(self, repo, refname, self._lockfiles)
 
     def open_workingtree(self, recommend_upgrade=False):
         raise NotLocalUrl(self.transport.base)
@@ -253,11 +268,11 @@ class RemoteGitRepository(GitRepository):
     def get_refs(self):
         if self._refs is not None:
             return self._refs
-        self._refs = self.bzrdir.root_transport.fetch_pack(lambda x: [], None, 
+        self._refs = self.bzrdir.root_transport.fetch_pack(lambda x: [], None,
             lambda x: None, lambda x: trace.mutter("git: %s" % x))
         return self._refs
 
-    def fetch_pack(self, determine_wants, graph_walker, pack_data, 
+    def fetch_pack(self, determine_wants, graph_walker, pack_data,
                    progress=None):
         return self._transport.fetch_pack(determine_wants, graph_walker,
                                           pack_data, progress)
@@ -265,9 +280,11 @@ class RemoteGitRepository(GitRepository):
     def send_pack(self, get_changed_refs, generate_pack_contents):
         return self._transport.send_pack(get_changed_refs, generate_pack_contents)
 
-    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref, progress=None):
+    def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
+                      progress=None):
         fd, path = tempfile.mkstemp(suffix=".pack")
-        self.fetch_pack(determine_wants, graph_walker, lambda x: os.write(fd, x), progress)
+        self.fetch_pack(determine_wants, graph_walker,
+            lambda x: os.write(fd, x), progress)
         os.close(fd)
         if os.path.getsize(path) == 0:
             return EmptyObjectStoreIterator()
@@ -302,7 +319,7 @@ class RemoteGitBranch(GitBranch):
 
     def __init__(self, bzrdir, repository, name, lockfiles):
         self._ref = None
-        super(RemoteGitBranch, self).__init__(bzrdir, repository, name, 
+        super(RemoteGitBranch, self).__init__(bzrdir, repository, name,
                 lockfiles)
 
     def revision_history(self):
@@ -332,7 +349,7 @@ class RemoteGitBranch(GitBranch):
     def _synchronize_history(self, destination, revision_id):
         """See Branch._synchronize_history()."""
         destination.generate_revision_history(self.last_revision())
- 
+
     def get_push_location(self):
         return None
 

@@ -150,7 +150,11 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
         ie.revision = revision_id
         assert file_id is not None
         assert ie.revision is not None
-        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, blob.data)])
+        if ie.kind == 'symlink':
+            data = ''
+        else: 
+            data = blob.data
+        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, data)])
         shamap = [(hexsha, "blob", (ie.file_id, ie.revision))]
     else:
         shamap = []
@@ -180,7 +184,8 @@ def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie,
         oldpath = None
     else:
         oldpath = path
-        if base_ie.kind == ie.kind and base_ie.reference_revision == ie.reference_revision:
+        if (base_ie.kind == ie.kind and
+            base_ie.reference_revision == ie.reference_revision):
             ie.revision = base_ie.revision
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
     texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), None, "")])
@@ -288,8 +293,60 @@ def approx_inv_size(inv):
     return len(inv) * 1024
 
 
+def import_git_commit(repo, mapping, head, lookup_object,
+                      target_git_object_retriever, parent_invs_cache):
+    o = lookup_object(head)
+    rev = mapping.import_commit(o)
+    # We have to do this here, since we have to walk the tree and
+    # we need to make sure to import the blobs / trees with the right
+    # path; this may involve adding them more than once.
+    parent_invs = []
+    for parent_id in rev.parent_ids:
+        try:
+            parent_invs.append(parent_invs_cache[parent_id])
+        except KeyError:
+            parent_inv = repo.get_inventory(parent_id)
+            parent_invs.append(parent_inv)
+            parent_invs_cache[parent_id] = parent_inv
+    if parent_invs == []:
+        base_inv = Inventory(root_id=None)
+        base_ie = None
+    else:
+        base_inv = parent_invs[0]
+        base_ie = base_inv.root
+    inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
+            mapping, "", o.tree, base_inv, base_ie, None, rev.revision_id,
+            parent_invs, target_git_object_retriever._idmap, lookup_object,
+            allow_submodules=getattr(repo._format, "supports_tree_reference", False))
+    target_git_object_retriever._idmap.add_entries(shamap)
+    if unusual_modes != {}:
+        for path, mode in unusual_modes.iteritems():
+            warn_unusual_mode(rev.foreign_revid, path, mode)
+        mapping.import_unusual_file_modes(rev, unusual_modes)
+    try:
+        basis_id = rev.parent_ids[0]
+    except IndexError:
+        basis_id = NULL_REVISION
+        base_inv = None
+    rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
+              inv_delta, rev.revision_id, rev.parent_ids,
+              base_inv)
+    parent_invs_cache[rev.revision_id] = inv
+    repo.add_revision(rev.revision_id, rev)
+    if "verify" in debug.debug_flags:
+        new_unusual_modes = mapping.export_unusual_file_modes(rev)
+        if new_unusual_modes != unusual_modes:
+            raise AssertionError("unusual modes don't match: %r != %r" % (unusual_modes, new_unusual_modes))
+        objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping, unusual_modes)
+        for sha1, newobj, path in objs:
+            assert path is not None
+            oldobj = tree_lookup_path(lookup_object, o.tree, path)
+            if oldobj != newobj:
+                raise AssertionError("%r != %r in %s" % (oldobj, newobj, path))
+
+
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
-        heads, pb=None):
+        heads, pb=None, limit=None):
     """Import a set of git objects into a bzr repository.
 
     :param repo: Target Bazaar repository
@@ -336,59 +393,31 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
     del checked
     # Order the revisions
     # Create the inventory objects
-    for i, head in enumerate(topo_sort(graph)):
-        if pb is not None:
-            pb.update("fetching revisions", i, len(graph))
-        o = lookup_object(head)
-        rev = mapping.import_commit(o)
-        # We have to do this here, since we have to walk the tree and
-        # we need to make sure to import the blobs / trees with the right
-        # path; this may involve adding them more than once.
-        parent_invs = []
-        for parent_id in rev.parent_ids:
-            try:
-                parent_invs.append(parent_invs_cache[parent_id])
-            except KeyError:
-                parent_inv = repo.get_inventory(parent_id)
-                parent_invs.append(parent_inv)
-                parent_invs_cache[parent_id] = parent_inv
-        if parent_invs == []:
-            base_inv = Inventory(root_id=None)
-            base_ie = None
-        else:
-            base_inv = parent_invs[0]
-            base_ie = base_inv.root
-        inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
-                mapping, "", o.tree, base_inv, base_ie, None, rev.revision_id,
-                parent_invs, target_git_object_retriever._idmap, lookup_object,
-                allow_submodules=getattr(repo._format, "supports_tree_reference", False))
-        target_git_object_retriever._idmap.add_entries(shamap)
-        if unusual_modes != {}:
-            for path, mode in unusual_modes.iteritems():
-                warn_unusual_mode(rev.foreign_revid, path, mode)
-            mapping.import_unusual_file_modes(rev, unusual_modes)
+    batch_size = 100
+    revision_ids = topo_sort(graph)
+    pack_hints = []
+    if limit is not None:
+        revision_ids = revision_ids[:limit]
+    last_imported = None
+    for offset in range(0, len(revision_ids), batch_size):
+        repo.start_write_group()
         try:
-            basis_id = rev.parent_ids[0]
-        except IndexError:
-            basis_id = NULL_REVISION
-            base_inv = None
-        rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
-                  inv_delta, rev.revision_id, rev.parent_ids,
-                  base_inv)
-        parent_invs_cache[rev.revision_id] = inv
-        repo.add_revision(rev.revision_id, rev)
-        if "verify" in debug.debug_flags:
-            new_unusual_modes = mapping.export_unusual_file_modes(rev)
-            if new_unusual_modes != unusual_modes:
-                raise AssertionError("unusual modes don't match: %r != %r" % (unusual_modes, new_unusual_modes))
-            objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping, unusual_modes)
-            for sha1, newobj, path in objs:
-                assert path is not None
-                oldobj = tree_lookup_path(lookup_object, o.tree, path)
-                if oldobj != newobj:
-                    raise AssertionError("%r != %r in %s" % (oldobj, newobj, path))
-
+            for i, head in enumerate(revision_ids[offset:offset+batch_size]):
+                if pb is not None:
+                    pb.update("fetching revisions", offset+i, len(revision_ids))
+                import_git_commit(repo, mapping, head, lookup_object,
+                                  target_git_object_retriever,
+                                  parent_invs_cache)
+                last_imported = head
+        except:
+            repo.abort_write_group()
+            raise
+        else:
+            hint = repo.commit_write_group()
+            if hint is not None:
+                pack_hints.extend(hint)
     target_git_object_retriever._idmap.commit_write_group()
+    return pack_hints, last_imported
 
 
 class InterGitRepository(InterRepository):
@@ -431,7 +460,7 @@ class InterGitNonGitRepository(InterGitRepository):
             else:
                 ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
-        pack_hint = self.fetch_objects(determine_wants, mapping, pb)
+        pack_hint = self.fetch_objects(determine_wants, mapping, pb)[0]
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
         if interesting_heads is not None:
@@ -465,7 +494,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         map(all_parents.update, parent_map.itervalues())
         return set(all_revs) - all_parents
 
-    def fetch_objects(self, determine_wants, mapping, pb=None):
+    def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         def progress(text):
             report_git_progress(pb, text)
         store = BazaarObjectStore(self.target, mapping)
@@ -485,16 +514,11 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             if pb is None:
                 create_pb = pb = ui.ui_factory.nested_progress_bar()
             try:
-                self.target.start_write_group()
-                try:
-                    objects_iter = self.source.fetch_objects(
-                                record_determine_wants, graph_walker,
-                                store.get_raw, progress)
-                    import_git_objects(self.target, mapping, objects_iter,
-                            store, recorded_wants, pb)
-                finally:
-                    pack_hint = self.target.commit_write_group()
-                return pack_hint
+                objects_iter = self.source.fetch_objects(
+                            record_determine_wants, graph_walker,
+                            store.get_raw, progress)
+                return import_git_objects(self.target, mapping,
+                    objects_iter, store, recorded_wants, pb, limit)
             finally:
                 if create_pb:
                     create_pb.finished()
@@ -514,7 +538,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a local Git into a non-Git
     repository."""
 
-    def fetch_objects(self, determine_wants, mapping, pb=None):
+    def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         wants = determine_wants(self.source._git.get_refs())
         create_pb = None
         if pb is None:
@@ -523,14 +547,9 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         try:
             self.target.lock_write()
             try:
-                self.target.start_write_group()
-                try:
-                    import_git_objects(self.target, mapping,
-                            self.source._git.object_store,
-                            target_git_object_retriever, wants, pb)
-                finally:
-                    pack_hint = self.target.commit_write_group()
-                return pack_hint
+                return import_git_objects(self.target, mapping,
+                    self.source._git.object_store, target_git_object_retriever,
+                    wants, pb, limit)
             finally:
                 self.target.unlock()
         finally:
@@ -553,16 +572,19 @@ class InterGitGitRepository(InterGitRepository):
         def progress(text):
             trace.note("git: %s", text)
         graphwalker = self.target._git.get_graph_walker()
-        if isinstance(self.source, LocalGitRepository) and isinstance(self.target, LocalGitRepository):
+        if (isinstance(self.source, LocalGitRepository) and
+            isinstance(self.target, LocalGitRepository)):
             return self.source._git.fetch(self.target._git, determine_wants,
                 progress)
-        elif isinstance(self.source, LocalGitRepository) and isinstance(self.target, RemoteGitRepository):
+        elif (isinstance(self.source, LocalGitRepository) and
+              isinstance(self.target, RemoteGitRepository)):
             raise NotImplementedError
-        elif isinstance(self.source, RemoteGitRepository) and isinstance(self.target, LocalGitRepository):
+        elif (isinstance(self.source, RemoteGitRepository) and
+              isinstance(self.target, LocalGitRepository)):
             f, commit = self.target._git.object_store.add_thin_pack()
             try:
-                refs = self.source._git.fetch_pack(determine_wants, graphwalker,
-                                                   f.write, progress)
+                refs = self.source._git.fetch_pack(determine_wants,
+                    graphwalker, f.write, progress)
                 commit()
                 return refs
             except:
@@ -586,7 +608,7 @@ class InterGitGitRepository(InterGitRepository):
             determine_wants = r.object_store.determine_wants_all
         else:
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
-        return self.fetch_objects(determine_wants, mapping)
+        return self.fetch_objects(determine_wants, mapping)[0]
 
 
     @staticmethod

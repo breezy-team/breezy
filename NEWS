@@ -1,4 +1,35 @@
-0.4.3	UNRELEASED
+0.5.0	UNRELEASED
+
+ BUG FIXES
+ 
+  * Avoid storing texts of symlinks, which causes checksum errors in 
+    `bzr check`. (#512323, INADA Naoki, Jelmer Vernooij)
+
+  * Support committing to a git branch from a bzr working tree. (#506174,
+	Jelmer Vernooij)
+
+  * Support executable symlinks. (#512871, INADA Naoki, Jelmer Vernooij)
+
+  * When unpacking URLs, strip leftmost slash to match gits 
+    behaviour. (#445156, Jelmer Vernooij)
+
+  * Support merging tags to a local Git repository.
+    (#4445230, Jelmer Vernooij)
+
+  * InterFromGitBranch.pull() supports an optional limit argument to limit
+    how many revisions to import in one go. (Michael Hudson)
+
+  * Cope with different encodings better, rather than just stripping out 
+    unknown characters. (#529460, Jelmer Vernooij)
+
+  * Support ``run_hooks`` argument to ``InterGitRemoteLocalBranch.pull()``.
+    (#524843, Jelmer Vernooij)
+
+ FEATURES
+
+  * Support (dumb) HTTP repositories. (#373688, Jelmer Vernooij)
+
+0.4.3	2010-01-19
 
  BUG FIXES
 
@@ -10,6 +41,11 @@
     the control directory path. (Jelmer Vernooij)
 
   * Fix fetching between git repositories. (#449507, Jelmer Vernooij)
+
+  * Refuse pulling into non-rich-root branches rather than erroring 
+    out with an AttributeError. (#449507, Jelmer Vernooij)
+
+  * Unquote paths extracted from URLs. (#445156, Jelmer Vernooij)
 
  PERFORMANCE
 

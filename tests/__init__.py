@@ -241,6 +241,7 @@ def test_suite():
         'test_dir',
         'test_fetch',
         'test_mapping',
+        'test_remote',
         'test_repository',
         'test_shamap',
         'test_blackbox',

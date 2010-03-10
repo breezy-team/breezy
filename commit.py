@@ -21,6 +21,7 @@
 from dulwich.index import (
     commit_tree,
     )
+import os
 import stat
 
 from bzrlib.repository import (
@@ -93,7 +94,8 @@ class GitCommitBuilder(CommitBuilder):
                 mode |= 0111
             self._any_changes = True
             self._blobs[path[1].encode("utf-8")] = (mode, sha)
-            yield file_id, path, (None, None)
+            file_sha1 = workingtree.get_file_sha1(file_id, path[1])
+            yield file_id, path[1], (file_sha1, os.lstat(workingtree.abspath(path[1])))
         # Fill in entries that were not changed
         basis_tree = workingtree.basis_tree()
         assert basis_tree.get_revision_id() == basis_revid
@@ -127,4 +129,6 @@ class GitCommitBuilder(CommitBuilder):
         c.author_timezone = self._timezone
         c.message = message.encode("utf-8")
         self.store.add_object(c)
-        return self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
+        self._new_revision_id = self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
+        self.repository.commit_write_group()
+        return self._new_revision_id

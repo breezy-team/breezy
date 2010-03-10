@@ -1,3 +1,5 @@
+# Copyright (C) 2008 Jelmer Vernooij
+# Copyright (C) 2008 John Carr
 # Copyright (C) 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -78,7 +80,7 @@ class BzrBackend(Backend):
         return ret
 
     def apply_pack(self, refs, read):
-        """ apply pack from client to current repository """
+        """apply pack from client to current repository"""
 
         fd, path = tempfile.mkstemp(suffix=".pack")
         f = os.fdopen(fd, 'w')
@@ -113,7 +115,10 @@ class BzrBackend(Backend):
                 import_git_objects(target, self.mapping, objects,
                                    BazaarObjectStore (target, self.mapping),
                                    heads)
-            finally:
+            except:
+                target.abort_write_group()
+                raise
+            else:
                 target.commit_write_group()
         finally:
             target.unlock()
@@ -144,7 +149,7 @@ class BzrBackend(Backend):
 
         # If this is a Git repository, just use the existing fetch_objects implementation.
         if getattr(repo, "fetch_objects", None) is not None:
-            return repo.fetch_objects(determine_wants, graph_walker, None, progress)
+            return repo.fetch_objects(determine_wants, graph_walker, None, progress)[0]
 
         wants = determine_wants(self.get_refs())
         graph_walker.reset()
