@@ -374,7 +374,6 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         try:
             o = object_iter[head]
         except KeyError:
-            trace.mutter('missing head %s', head)
             continue
         if isinstance(o, Commit):
             rev = mapping.import_commit(o)
