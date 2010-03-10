@@ -237,7 +237,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _other_id = None
 
     @classmethod
-    def mirror_scenarios(klass, common_params, base_scenarios):
+    def mirror_scenarios(klass, base_scenarios):
         scenarios = []
         def adapt(d, side):
             """Modify dict to apply to the given side.
@@ -252,18 +252,19 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
             return t
         # Each base scenario is duplicated switching the roles of 'this' and
         # 'other'
-        left = [l for l,r in base_scenarios]
-        right = [r for l,r in base_scenarios]
-        for (lname, ldict), (rname, rdict) in zip(left, right):
-            scenarios.extend(tests.multiply_scenarios(
-                    [(lname, adapt(ldict, 'this'))],
-                    [(rname, adapt(rdict, 'other'))]))
-            scenarios.extend(tests.multiply_scenarios(
+        left = [l for l, r, c in base_scenarios]
+        right = [r for l, r, c in base_scenarios]
+        common = [c for l, r, c in base_scenarios]
+        for (lname, ldict), (rname, rdict), common in zip(left, right, common):
+            a = tests.multiply_scenarios([(lname, adapt(ldict, 'this'))],
+                                         [(rname, adapt(rdict, 'other'))])
+            b = tests.multiply_scenarios(
                     [(rname, adapt(rdict, 'this'))],
-                    [(lname, adapt(ldict, 'other'))]))
-        # Inject the common parameters in all scenarios
-        for name, d in scenarios:
-            d.update(common_params)
+                    [(lname, adapt(ldict, 'other'))])
+            # Inject the common parameters in all scenarios
+            for name, d in a + b:
+                d.update(common)
+            scenarios.extend(a + b)
         return scenarios
 
     @classmethod
@@ -306,7 +307,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self.assertLength(1, confs)
         c = confs[0]
         self.assertIsInstance(c, self._conflict_type)
-        self._assert_conflict(c)
+        self._assert_conflict(wt, c)
 
     def check_resolved(self, wt, path, action):
         conflicts.resolve(wt, [path], action=action)
@@ -333,6 +334,13 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     def check_file_doesnt_exist(self):
         self.failIfExists('branch/file')
+
+    def do_rename_file(self):
+        return ('new-file', 'file-id', [('rename', ('file', 'new-file'))])
+
+    def check_file_renamed(self):
+        self.failIfExists('branch/file')
+        self.failUnlessExists('branch/new-file')
 
     def do_rename_dir(self):
         return ('new-dir', 'dir-id', [('rename', ('dir', 'new-dir'))])
@@ -387,11 +395,13 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
             (('file_modified', dict(actions='modify_file',
                                    check='file_has_more_content')),
              ('file_deleted', dict(actions='delete_file',
-                                   check='file_doesnt_exist'))),
+                                   check='file_doesnt_exist')),
+             dict(_actions_base='create_file',
+                  _item_path='file', item_id='file-id',)),
             ]
-        return klass.mirror_scenarios(common, base_scenarios)
+        return klass.mirror_scenarios(base_scenarios)
 
-    def assertContentsConflict(self, c):
+    def assertContentsConflict(self, wt, c):
         self.assertEqual(self._other_id, c.file_id)
         self.assertEqual(self._other_path, c.path)
     _assert_conflict = assertContentsConflict
@@ -404,36 +414,52 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
     @classmethod
     def scenarios(klass):
-        common = dict(_actions_base='create_dir',
-                      _item_path='new-dir', _item_id='dir-id',)
+        for_dirs = dict(_actions_base='create_dir',
+                        _item_path='new-dir', _item_id='dir-id',)
         base_scenarios = [
-        (('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
-         ('dir_deleted', dict(actions='delete_dir', check='dir_doesnt_exist'))),
-        (('dir_renamed', dict(actions='rename_dir', check='dir_renamed')),
-         ('dir_renamed2', dict(actions='rename_dir2', check='dir_renamed2'))),
-            ]
-        return klass.mirror_scenarios(common, base_scenarios)
+            (('file_renamed',
+              dict(actions='rename_file', check='file_renamed')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_doesnt_exist')),
+             dict(_actions_base='create_file',
+                  _item_path='new-file', _item_id='file-id',)),
+            (('dir_renamed',
+              dict(actions='rename_dir', check='dir_renamed')),
+             ('dir_deleted',
+              dict(actions='delete_dir', check='dir_doesnt_exist')),
+             for_dirs),
+            (('dir_renamed',
+              dict(actions='rename_dir', check='dir_renamed')),
+             ('dir_renamed2',
+              dict(actions='rename_dir2', check='dir_renamed2')),
+             for_dirs),
+        ]
+        return klass.mirror_scenarios(base_scenarios)
 
-    def assertPathConflict(self, c):
+    def do_delete_file(self):
+        sup = super(TestResolvePathConflict, self).do_delete_file()
+        # PathConflicts handle deletion differently and requires a special
+        # hard-coded value
+        return ('<deleted>',) + sup[1:]
+
+    def assertPathConflict(self, wt, c):
         self.assertEqual(self._item_id, c.file_id)
         self.assertEqual(self._this_path, c.path)
         self.assertEqual(self._other_path, c.conflict_path)
     _assert_conflict = assertPathConflict
 
 
-class TestResolvePathConflictBefore531967(TestParametrizedResolveConflicts):
+class TestResolvePathConflictBefore531967(TestResolvePathConflict):
     """Same as TestResolvePathConflict but a specific conflict object.
     """
 
-    # FIXME: Now that bug #531697 is fixed, we need to inject a conflict object
-    # as it existed before the fix.
-
     def assertPathConflict(self, c):
-        # bug #531967 is about file_id not being set in some cases
-        self.assertIs(None, c.file_id)
-        # Whatever this and other are saying, the same paths are used
-        self.assertEqual('<deleted>', c.path)
-        self.assertEqual(self._item_path, c.conflict_path)
+        # We create a conflict object as it was created before the fix and
+        # inject it into the working tree, the test will exercise the
+        # compatibility code.
+        old_c = conflicts.PathConflict('<deleted>', self._item_path,
+                                       file_id=None)
+        wt.set_conflicts(conflicts.ConflictList([c]))
 
 
 class TestResolveDuplicateEntry(TestResolveConflicts):
