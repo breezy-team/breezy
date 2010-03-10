@@ -170,7 +170,10 @@ class EmailSender(object):
     def extra_headers(self):
         """Additional headers to include when sending."""
         result = {}
-        for line in self.config.get_user_option('post_commit_headers'):
+        headers = self.config.get_user_option('post_commit_headers')
+        if type(headers) != list:
+            headers = [headers]
+        for line in headers:
             try:
                 key,value = line.split(": ")
                 result[key] = value
