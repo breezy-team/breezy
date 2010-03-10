@@ -236,14 +236,14 @@ class EmailSender(object):
         subject = self.subject()
         from_addr = self.from_address()
         to_addrs = self.to()
-        xhdrs = self.extra_headers()
         if isinstance(to_addrs, basestring):
             to_addrs = [to_addrs]
 
         smtp = self._smtplib_implementation(self.config)
         smtp.send_text_and_attachment_email(from_addr, to_addrs,
                                             subject, body, diff,
-                                            self.diff_filename(), xhdrs)
+                                            self.diff_filename(),
+                                            self.extra_headers())
 
     def should_send(self):
         result = self.config.get_user_option('post_commit_difflimit')
