@@ -494,7 +494,7 @@ class PathConflict(Conflict):
             tid = tt.trans_id_tree_path(path_to_create)
             transform.create_from_tree(
                 tt, tt.trans_id_tree_path(path_to_create),
-                tt._tree.revision_tree(revid), file_id)
+                self._revision_tree(tt._tree, revid), file_id)
             tt.version_file(file_id, tid)
 
         # Adjust the path for the retained file id
@@ -502,6 +502,9 @@ class PathConflict(Conflict):
         parent_tid = tt.get_tree_parent(tid)
         tt.adjust_path(path, parent_tid, tid)
         tt.apply()
+
+    def _revision_tree(self, tree, revid):
+        return tree.branch.repository.revision_tree(revid)
 
     def _get_or_infer_file_id(self, tree):
         # FIXME: Needs cleanup
@@ -524,7 +527,7 @@ class PathConflict(Conflict):
         # Search the file-id in the parents with any path available
         file_id = None
         for revid in tree.get_parent_ids():
-            revtree = tree.revision_tree(revid)
+            revtree = self._revision_tree(tree, revid)
             for p in possible_paths:
                 file_id = revtree.path2id(p)
                 if file_id is not None:
