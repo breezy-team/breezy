@@ -3,7 +3,7 @@ from distutils.core import setup
 
 bzr_plugin_name = 'grep'
 
-bzr_plugin_version = (0, 0, 1, 'final', 0)
+bzr_plugin_version = (0, 1, 0, 'dev', 0)
 
 bzr_commands = ['grep']
 
