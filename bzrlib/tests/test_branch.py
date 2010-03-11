@@ -132,7 +132,7 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, _found=False, ignore_fallbacks=False):
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
         return "opened branch."
 
 
