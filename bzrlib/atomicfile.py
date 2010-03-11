@@ -60,7 +60,7 @@ class AtomicFile(object):
 
         self.realfilename = filename
 
-        flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY
+        flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY | osutils.O_NOINHERIT
         if mode == 'wb':
             flags |= osutils.O_BINARY
         elif mode != 'wt':

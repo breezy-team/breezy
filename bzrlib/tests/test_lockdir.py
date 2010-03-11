@@ -666,6 +666,25 @@ class TestLockDir(TestCaseWithTransport):
         # no kibble
         check_dir(['held'])
 
+    def test_no_lockdir_info(self):
+        """We can cope with empty info files."""
+        # This seems like a fairly common failure case - see
+        # <https://bugs.edge.launchpad.net/bzr/+bug/185103> and all its dupes.
+        # Processes are often interrupted after opening the file
+        # before the actual contents are committed.
+        t = self.get_transport()
+        t.mkdir('test_lock')
+        t.mkdir('test_lock/held')
+        t.put_bytes('test_lock/held/info', '')
+        lf = LockDir(t, 'test_lock')
+        info = lf.peek()
+        formatted_info = lf._format_lock_info(info)
+        self.assertEquals(
+            ['lock %s' % t.abspath('test_lock'),
+             'held by <unknown> on host <unknown> [process #<unknown>]',
+             'locked (unknown)'],
+            formatted_info)
+
 
 class TestLockDirHooks(TestCaseWithTransport):
 

@@ -22,8 +22,13 @@ Bug Fixes
 * Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
   (Martin Pool, #331095)
 
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
 * Fixed CHM generation by moving the NEWS section template into
   a separate file. (Ian Clatworthy, #524184)
+
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
 
 * Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
   problems importing bzrlib from a non-main thread.
@@ -32,12 +37,20 @@ Bug Fixes
 * Standardize the error handling when creating a new ``StaticTuple``
   (problems will raise TypeError). (Matt Nordhoff, #457979)
 
-* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+* Warn if pyrex is too old to compile the new ``SimpleSet`` and
+  ``StaticTuple`` extensions, rather than having the build fail randomly.
+  (John Arbash Meinel, #449776)
+
 
 Documentation
 *************
 
+* Added a link to the Desktop Guide. (Ian Clatworthy)
+
 * Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
+* Drop Google Analytics from the core docs as they caused problems
+  in the CHM files. (Ian Clatworthy, #502010)
 
 API Changes
 ***********
@@ -383,6 +396,18 @@ Bug Fixes
 * Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
   (Martin Pool, #331095)
 
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Cope with the lockdir ``held/info`` file being empty, which seems to
+  happen fairly often if the process is suddenly interrupted while taking
+  a lock.
+  (Martin Pool, #185103)
+
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
 
@@ -394,13 +419,19 @@ Bug Fixes
   ``UnboundLocalError``.
   (Andrew Bennetts, #423563)
 
+* Running ``bzr`` command without any arguments now shows bzr
+  version number along with rest of the help text.
+  (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
+
 Documentation
 *************
 
 * Added ``location-alias`` help topic.
   (Andrew Bennetts, #337834)
-
-
 
 bzr 2.0.4
 #########
