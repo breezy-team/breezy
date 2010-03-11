@@ -1786,10 +1786,13 @@ def copy_tree(from_path, to_path, handlers={}):
 
 
 def copy_ownership(dst, src=None):
-    """copy usr/grp ownership from src file/dir to dst file/dir.
-    If src is None, the containing directory is used as source."""
-    if os.name != 'posix':
-        return False
+    """Copy usr/grp ownership from src file/dir to dst file/dir.
+
+    If src is None, the containing directory is used as source. If chown
+    fails, the error is ignored and a warning is printed.
+    """
+    has_chown = getattr(os, 'chown')
+    if has_chown is None: return
 
     if src == None:
         src = os.path.dirname(dst)
@@ -1800,24 +1803,28 @@ def copy_ownership(dst, src=None):
         s = os.stat(src)
         os.chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
-        trace.warning("IOError: %s. Unable to copy ownership from '%s' to '%s'" % (e, src, dst))
-    return True
+        trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
 
 
 def mkdir_with_ownership(path, ownership_src=None):
-    """creates the directory 'path' with specified ownership.
+    """Create the directory 'path' with specified ownership.
+
     If ownership_src is given, copies (chown) usr/grp ownership
     from 'ownership_src' to 'path'. If ownership_src is None, use the
-    containing dir ownership"""
+    containing dir ownership.
+    """
     os.mkdir(path)
     copy_ownership(path, ownership_src)
 
 
 def open_with_ownership(filename, mode='r', bufsize=-1, ownership_src=None):
-    """open a file with the specified ownership.
+    """Open the file 'filename' with the specified ownership.
+
     If ownership_src is specified, copy usr/grp ownership from ownership_src
     to filename. If ownership_src is None, copy ownership from containing
-    directory."""
+    directory.
+    Returns the opened file object.
+    """
     f = open(filename, mode, bufsize)
     copy_ownership(filename, ownership_src)
     return f

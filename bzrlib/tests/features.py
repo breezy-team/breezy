@@ -31,5 +31,5 @@ class _ChownFeature(tests.Feature):
     def _probe(self):
         return os.name == 'posix' and hasattr(os, 'chown')
 
-ChownFeature = _ChownFeature()
+chown_feature = _ChownFeature()
 

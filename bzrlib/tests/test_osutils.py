@@ -1978,7 +1978,7 @@ class TestTerminalWidth(tests.TestCase):
         osutils.terminal_width()
 
 class TestCreationOps(tests.TestCaseInTempDir):
-    _test_needs_features = [features.ChownFeature]
+    _test_needs_features = [features.chown_feature]
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)
@@ -1991,7 +1991,8 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.path, self.uid, self.gid = path, uid, gid
 
     def test_mkdir_with_ownership_chown(self):
-        """ensure that osutils.mkdir_with_ownership chowns correctly with ownership_src arg"""
+        """Ensure that osutils.mkdir_with_ownership chowns correctly with ownership_src.
+        """
         ownsrc = '/'
         osutils.mkdir_with_ownership('foo', ownsrc)
 
@@ -2001,7 +2002,8 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.gid, s.st_gid)
 
     def test_open_with_ownership_chown(self):
-        """ensure that osutils.open_with_ownership chowns correctly with ownership_src arg"""
+        """Ensure that osutils.open_with_ownership chowns correctly with ownership_src.
+        """
         ownsrc = '/'
         f = osutils.open_with_ownership('foo', 'w', ownership_src=ownsrc)
 
