@@ -1094,7 +1094,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         tree_transport = self.bzrdir.root_transport.clone(sub_path)
         if tree_transport.base != branch_transport.base:
             tree_bzrdir = format.initialize_on_transport(tree_transport)
-            branch.BranchReferenceFormat().initialize(tree_bzrdir, new_branch)
+            branch.BranchReferenceFormat().initialize(tree_bzrdir,
+                target_branch=new_branch)
         else:
             tree_bzrdir = branch_bzrdir
         wt = tree_bzrdir.create_workingtree(_mod_revision.NULL_REVISION)

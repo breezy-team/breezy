@@ -379,6 +379,23 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(committed.properties["branch-nick"],
                          "My happy branch")
 
+    def test_create_colocated(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        self.assertEquals(0, len(repo.bzrdir.list_branches()))
+        try:
+            child_branch1 = self.branch_format.initialize(repo.bzrdir, 
+                name='branch1')
+        except (errors.UninitializableFormat, errors.NoColocatedBranchSupport):
+            # branch references are not default init'able and
+            # not all bzrdirs support colocated branches.
+            return
+        self.assertEquals(1, len(repo.bzrdir.list_branches()))
+        self.branch_format.initialize(repo.bzrdir, name='branch2')
+        self.assertEquals(2, len(repo.bzrdir.list_branches()))
+
     def test_create_open_branch_uses_repository(self):
         try:
             repo = self.make_repository('.', shared=True)
