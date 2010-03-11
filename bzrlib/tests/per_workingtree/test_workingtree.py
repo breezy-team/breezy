@@ -423,7 +423,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         made_control = self.bzrdir_format.initialize('new')
         source.branch.repository.clone(made_control)
         source.branch.clone(made_control)
-        made_tree = self.workingtree_format.initialize(made_control, revision_id='a')
+        made_tree = self.workingtree_format.initialize(made_control,
+            revision_id='a')
         self.assertEqual(['a'], made_tree.get_parent_ids())
 
     def test_update_sets_last_revision(self):
@@ -447,7 +448,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        branch.BranchReferenceFormat().initialize(checkout,
+            target_branch=main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -514,7 +516,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        branch.BranchReferenceFormat().initialize(checkout,
+            target_branch=main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')

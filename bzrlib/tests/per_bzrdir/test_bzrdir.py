@@ -534,7 +534,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -637,7 +637,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -702,7 +702,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -977,7 +977,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -997,7 +997,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_tree.branch)
+                target_branch=referenced_tree.branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1023,7 +1023,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_tree.branch)
+                target_branch=referenced_tree.branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1088,7 +1088,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1114,7 +1114,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1886,7 +1886,7 @@ class TestBreakLock(TestCaseWithBzrDir):
         thisdir = self.make_bzrdir('this')
         try:
             bzrlib.branch.BranchReferenceFormat().initialize(
-                thisdir, master)
+                thisdir, target_branch=master)
         except errors.IncompatibleFormat:
             return
         unused_repo = thisdir.create_repository()

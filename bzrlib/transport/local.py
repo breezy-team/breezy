@@ -481,7 +481,7 @@ class LocalTransport(transport.Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            return os.stat(path)
+            return os.lstat(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
@@ -514,6 +514,33 @@ class LocalTransport(transport.Transport):
             os.rmdir(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
+    if osutils.host_os_dereferences_symlinks():
+        def readlink(self, relpath):
+            """See Transport.readlink."""
+            return osutils.readlink(self._abspath(relpath))
+
+    if osutils.hardlinks_good():
+        def hardlink(self, source, link_name):
+            """See Transport.link."""
+            try:
+                os.link(self._abspath(source), self._abspath(link_name))
+            except (IOError, OSError), e:
+                self._translate_error(e, source)
+
+    if osutils.has_symlinks():
+        def symlink(self, source, link_name):
+            """See Transport.symlink."""
+            abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
+            source_rel = urlutils.file_relpath(
+                urlutils.strip_trailing_slash(abs_link_dirpath),
+                urlutils.strip_trailing_slash(self.abspath(source))
+            )
+
+            try:
+                os.symlink(source_rel, self._abspath(link_name))
+            except (IOError, OSError), e:
+                self._translate_error(e, source_rel)
 
     def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':
