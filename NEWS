@@ -1,0 +1,6 @@
+bzr-grep 0.1.0 (dev)
+* --recursive is now default (Parth Malwankar, #536688)
+
+bzr-grep 0.0.1-final - 10-Mar-2010
+* Initial release
+
