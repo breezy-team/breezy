@@ -37,6 +37,10 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr export`` now takes an optional argument ``--per-file-timestamps``
+  to set file mtimes to the last timestamp of the last revision in which
+  they were changed rather than the current time. (Jelmer Vernooij)
+
 * If the Apport crash-reporting tool is available, bzr crashes are now
   stored into the ``/var/crash`` apport spool directory, and the user is
   invited to report them to the developers from there, either
@@ -146,6 +150,10 @@ API Changes
   run when starting up; it sets up several things that previously needed
   to be done separately.
   (Martin Pool, #507710)
+
+* Exporters now support a ``per_file_timestamps`` argument to write out the 
+  timestamp of the commit in which a file revision was introduced.
+  (Jelmer Vernooij)
 
 * New method ``BzrDir.list_branches()`` that returns a sequence of branches 
   present in a control directory. (Jelmer Vernooij)
