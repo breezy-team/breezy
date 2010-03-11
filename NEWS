@@ -34,7 +34,7 @@ Compatibility Breaks
 New Features
 ************
 
-* ``bzr export`` now takes an optional argument ``--use-tree-timestamp``
+* ``bzr export`` now takes an optional argument ``--per-file-timestamps``
   to set file mtimes to the last timestamp of the last revision in which
   they were changed rather than the current time. (Jelmer Vernooij)
 
@@ -122,7 +122,7 @@ API Changes
   to be done separately.
   (Martin Pool, #507710)
 
-* Exporters now support a ``use_tree_timestamp`` argument to write out the 
+* Exporters now support a ``per_file_timestamps`` argument to write out the 
   timestamp of the commit in which a file revision was introduced.
   (Jelmer Vernooij)
 
