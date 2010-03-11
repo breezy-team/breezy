@@ -86,7 +86,7 @@ Limitations of stacked branches
 
 Currently, you cannot commit to a stacked branch, due to `bug 375013`_.
 
-.. bug 375013: https://bugs.launchpad.net/bzr/+bug/375013
+.. _bug 375013: https://bugs.launchpad.net/bzr/+bug/375013
 
 The important thing to remember about a stacked branch is that the
 stacked-on branch needs to be available for almost all operations. This is
