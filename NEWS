@@ -8,7 +8,6 @@ Bazaar Release Notes
 bzr 2.2.0b1
 ###########
 
-:Codename: ???
 :2.2.0b1: Not released yet
 
 Compatibility Breaks
@@ -123,6 +122,9 @@ API Changes
 
 * New method ``BzrDir.list_branches()`` that returns a sequence of branches 
   present in a control directory. (Jelmer Vernooij)
+
+* New transport methods ``readlink``, ``symlink`` and ``hardlink``.
+  (Neil Santos)
 
 * Remove unused ``CommandFailed`` exception.
   (Martin Pool)
