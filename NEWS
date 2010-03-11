@@ -96,6 +96,10 @@ Bug Fixes
   ftp servers while trying to take a lock.
   (Martin Pool, #528722)
 
+* DirStateRevisionTree.kind() was returning wrong result when 'kind'
+  changes occured between the workingtree and one of its parents.
+  (Vincent Ladeuil, #533437)
+
 * Fix stub sftp test server to call os.getcwdu().
   (Vincent Ladeuil, #526211, #526353)
 
