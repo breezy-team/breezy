@@ -116,17 +116,20 @@ class GitCommitBuilder(CommitBuilder):
             if entry is None:
                 del self._blobs[path]
 
+    def _iterblobs(self):
+        return ((path, sha, mode) for (path, (mode, sha)) in self._blobs.iteritems())
+
     def commit(self, message):
         c = Commit()
         c.parents = [self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents]
-        c.tree = commit_tree(self.store,
-                [(path, sha, mode) for (path, (mode, sha)) in self._blobs.iteritems()])
+        c.tree = commit_tree(self.store, self._iterblobs())
         c.committer = self._committer
         c.author = self._revprops.get('author', self._committer)
         c.commit_time = int(self._timestamp)
         c.author_time = int(self._timestamp)
         c.commit_timezone = self._timezone
         c.author_timezone = self._timezone
+        c.encoding = 'utf-8'
         c.message = message.encode("utf-8")
         self.store.add_object(c)
         self._new_revision_id = self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
