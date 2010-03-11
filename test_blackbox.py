@@ -107,7 +107,7 @@ class TestRebaseSimple(ExternalBase):
         self.make_file('hoooi', "someone else's data")
         self.run_bzr('add')
         self.run_bzr('commit -m these')
-        # pick up just rev 2 and discard 3 & 4 from feature
+        # pick up just rev 2 and 3 and discard 4 from feature
         self.check_output('', 'rebase -r2..3 ../main')
         # our rev 2 is now rev3:
         self.check_output('3\n', 'revno')

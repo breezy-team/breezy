@@ -1,3 +1,9 @@
+0.5.6	UNRELEASED
+
+  BUG FIXES
+
+   * Treat a stop revision as inclusive, not exclusive.
+
 0.5.5	2009-12-15
 
   BUG FIXES
