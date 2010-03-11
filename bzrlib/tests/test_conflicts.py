@@ -302,19 +302,6 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     def _get_check(self, name):
         return getattr(self, 'check_%s' % name)
 
-    def assertConflict(self, wt):
-        confs = wt.conflicts()
-        self.assertLength(1, confs)
-        c = confs[0]
-        self.assertIsInstance(c, self._conflict_type)
-        self._assert_conflict(wt, c)
-
-    def check_resolved(self, wt, path, action):
-        conflicts.resolve(wt, [path], action=action)
-        # Check that we don't have any conflicts nor unknown left
-        self.assertLength(0, wt.conflicts())
-        self.assertLength(0, list(wt.unknowns()))
-
     def do_nothing(self):
         return (None, None, [])
 
@@ -392,17 +379,34 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         wt.merge_from_branch(b, 'other')
         return wt
 
+    def assertConflict(self, wt):
+        confs = wt.conflicts()
+        self.assertLength(1, confs)
+        c = confs[0]
+        self.assertIsInstance(c, self._conflict_type)
+        self._assert_conflict(wt, c)
+
+    def _get_resolve_path_arg(self, wt, action):
+        return self._item_path
+
+    def check_resolved(self, wt, action):
+        path = self._get_resolve_path_arg(wt, action)
+        conflicts.resolve(wt, [path], action=action)
+        # Check that we don't have any conflicts nor unknown left
+        self.assertLength(0, wt.conflicts())
+        self.assertLength(0, list(wt.unknowns()))
+
     def test_resolve_taking_this(self):
         wt = self._merge_other_into_this()
         self.assertConflict(wt)
-        self.check_resolved(wt, self._item_path, 'take_this')
+        self.check_resolved(wt, 'take_this')
         check_this = self._get_check(self._check_this)
         check_this()
 
     def test_resolve_taking_other(self):
         wt = self._merge_other_into_this()
         self.assertConflict(wt)
-        self.check_resolved(wt, self._item_path, 'take_other')
+        self.check_resolved(wt, 'take_other')
         check_other = self._get_check(self._check_other)
         check_other()
 
@@ -676,7 +680,60 @@ $ bzr commit --strict -m 'No more conflicts nor unknown files'
 """)
 
 
-class TestResolveParentLoop(TestResolveConflicts):
+class TestResolveParentLoop(TestParametrizedResolveConflicts):
+
+    _conflict_type = conflicts.ParentLoop,
+    @classmethod
+    def scenarios(klass):
+        base_scenarios = [
+            (('dir1_under_dir2', dict(actions='rename_dir1_under_dir2',
+                                      check='dir1_moved')),
+             ('dir2_under_dir1', dict(actions='rename_dir2_under_dir1',
+                                      check='dir2_moved')),
+             dict(_actions_base='create_dir1_dir2')),
+            ]
+        return klass.mirror_scenarios(base_scenarios)
+
+    def do_create_dir1_dir2(self):
+        return (None, None,
+                [('add', ('dir1', 'dir1-id', 'directory', '')),
+                 ('add', ('dir2', 'dir2-id', 'directory', '')),])
+
+    def do_rename_dir1_under_dir2(self):
+        # Note that 'dir2/dir1' is the *targeted* path, and 'dir2-id' the
+        # *targeted* parent-id
+        return ('dir1/dir2', 'dir2-id', [('rename', ('dir1', 'dir2/dir1'))])
+
+    def check_dir1_moved(self):
+        self.failIfExists('branch/dir1')
+        self.failUnlessExists('branch/dir2/dir1')
+
+    def do_rename_dir2_under_dir1(self):
+        # Note that 'dir1/dir2' is the *targeted* path, and 'dir1-id' the
+        # *targeted* parent-id
+        return ('dir2/dir1', 'dir1-id', [('rename', ('dir2', 'dir1/dir2'))])
+
+    def check_dir2_moved(self):
+        self.failIfExists('branch/dir2')
+        self.failUnlessExists('branch/dir1/dir2')
+
+    def _get_resolve_path_arg(self, wt, action):
+        # ParentLoop is unsual as it says: 
+        # moving <conflict_path> into <path>.  Cancelled move.
+        # But since <path> doesn't exist in the working tree, we need to use
+        # <conflict_path> instead
+        path = self._other_path
+        return path
+
+    def assertParentLoop(self, wt, c):
+        self.assertEqual(self._this_id, c.file_id)
+        self.assertEqual(wt.id2path(self._this_id), c.path)
+        self.assertEqual(self._other_id, c.conflict_file_id)
+        self.assertEqual(self._other_path, c.conflict_path)
+    _assert_conflict = assertParentLoop
+
+
+class OldTestResolveParentLoop(TestResolveConflicts):
 
     preamble = """
 $ bzr init trunk
