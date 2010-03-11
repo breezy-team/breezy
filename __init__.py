@@ -63,9 +63,9 @@ class cmd_grep(Command):
 
     This command searches the specified files and revisions for a given pattern.
     The pattern is specified as a Python regular expressions[1].
-    If the file name is not specified the file revisions in the current directory
-    are searched. If the revision number is not specified, the latest revision is
-    searched.
+    If the file name is not specified, the revisions starting with the current
+    directory are searched recursively. If the revision number is not specified,
+    the latest revision is searched.
 
     Note that this command is different from POSIX grep in that it searches the
     revisions of the branch and not the working copy. Unversioned files and
@@ -87,15 +87,15 @@ class cmd_grep(Command):
         Option('ignore-case', short_name='i',
                help='ignore case distinctions while matching.'),
         Option('no-recurse',
-               help="Don't recurse into subdirectories."),
+               help="Don't recurse into subdirectories. (default is --recurse)"),
         Option('from-root',
                help='Search for pattern starting from the root of the branch. '
-               '(implies --recursive)'),
+               '(implies --recurse)'),
         Option('null', short_name='Z',
                help='Write an ASCII NUL (\\0) separator '
                'between output lines rather than a newline.'),
         Option('levels',
-           help='Number of levels to display - 0 for all, 1 for collapsed (default).',
+           help='Number of levels to display - 0 for all, 1 for collapsed (1 is default).',
            argname='N',
            type=_parse_levels),
         ]
