@@ -26,7 +26,6 @@ import tempfile
 
 from debian_bundle.changelog import Version
 
-from bzrlib.export import export
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
 
@@ -38,6 +37,7 @@ from bzrlib.plugins.builddeb.errors import (
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 from bzrlib.plugins.builddeb.util import (
+    export,
     get_snapshot_revision,
     tarball_name,
     )
@@ -171,8 +171,7 @@ class UpstreamBranchSource(UpstreamSource):
             target_filename = self._tarball_path(package, version, target_dir)
             tarball_base = "%s-%s" % (package, version)
             rev_tree = self.upstream_branch.repository.revision_tree(revid)
-            export(rev_tree, target_filename, 'tgz', tarball_base,
-                   use_tree_timestamp=True)
+            export(rev_tree, target_filename, 'tgz', tarball_base)
         finally:
             self.upstream_branch.unlock()
 
@@ -219,8 +218,7 @@ class GetOrigSourceSource(UpstreamSource):
                 if self.larstiq:
                     os.mkdir(export_dir)
                     export_dir = os.path.join(export_dir, "debian")
-                export(self.tree, export_dir, format="dir",
-                       use_tree_timestamp=True)
+                export(self.tree, export_dir, format="dir")
                 if not self._get_orig_source(base_export_dir,
                         desired_tarball_names, target_dir):
                     raise PackageVersionNotPresent(package, version, self)
@@ -293,8 +291,7 @@ class SelfSplitSource(UpstreamSource):
         try:
             export_dir = os.path.join(tmpdir,
                     "%s-%s" % (package, upstream_version))
-            export(self.tree, export_dir, format="dir",
-                   use_tree_timestamp=True)
+            export(self.tree, export_dir, format="dir")
             shutil.rmtree(os.path.join(export_dir, "debian"))
             tar = tarfile.open(target_filename, "w:gz")
             try:

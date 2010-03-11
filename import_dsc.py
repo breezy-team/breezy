@@ -56,7 +56,6 @@ from bzrlib.errors import (
         NoWorkingTree,
         UnrelatedBranches,
         )
-from bzrlib.export import export
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.revision import NULL_REVISION
 from bzrlib.trace import warning, mutter
@@ -72,6 +71,7 @@ from bzrlib.plugins.builddeb.errors import (
                 UpstreamBranchAlreadyMerged,
                 )
 from bzrlib.plugins.builddeb.util import (
+    export,
     get_commit_info_from_changelog,
     get_snapshot_revision,
     open_file_via_transport,
