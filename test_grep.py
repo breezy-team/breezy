@@ -116,14 +116,14 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '-Z', 'line[1-3]'])
         self.assertTrue(out == "file0.txt:line1\0file0.txt:line2\0file0.txt:line3\0")
 
-    def test_versioned_file_in_dir_no_recurse(self):
-        """should not recurse without --no-recurse"""
+    def test_versioned_file_in_dir_no_recursive(self):
+        """should not recurse with --no-recursive"""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
         self._mk_versioned_dir('dir0')
         self._mk_versioned_file('dir0/file0.txt')
-        out, err = self.run_bzr(['grep', '--no-recurse', 'line1'])
+        out, err = self.run_bzr(['grep', '--no-recursive', 'line1'])
         self.assertFalse(self._str_contains(out, "file0.txt:line1"))
 
     def test_versioned_file_in_dir_recurse(self):
@@ -216,7 +216,7 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '--from-root', 'line1'])
         self.assertTrue(self._str_contains(out, "^dir0/dir1/file0.txt:line1"))
 
-        out, err = self.run_bzr(['grep', '--no-recurse', 'line1'])
+        out, err = self.run_bzr(['grep', '--no-recursive', 'line1'])
         self.assertFalse(self._str_contains(out, "file0.txt"))
 
     def test_ignore_case_no_match(self):
