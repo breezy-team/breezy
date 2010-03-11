@@ -92,7 +92,7 @@ class cmd_grep(Command):
                help='Search for pattern starting from the root of the branch. '
                '(implies --recursive)'),
         Option('null', short_name='Z',
-               help='Write an ascii NUL (\\0) separator '
+               help='Write an ASCII NUL (\\0) separator '
                'between output lines rather than a newline.'),
         Option('levels',
            help='Number of levels to display - 0 for all, 1 for collapsed (default).',
