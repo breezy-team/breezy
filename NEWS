@@ -14,10 +14,21 @@ bzr 2.1.1
 Bug Fixes
 *********
 
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
 * Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
 
 * Fix stub sftp test server to call os.getcwdu().
   (Vincent Ladeuil, #526211, #526353)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
 
 * Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
 
@@ -42,6 +53,14 @@ Documentation
 
 * Drop Google Analytics from the core docs as they caused problems
   in the CHM files. (Ian Clatworthy, #502010)
+
+API Changes
+***********
+
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
 
 
 bzr 2.1.0
@@ -367,8 +386,8 @@ Testing
   (Martin Pool)
 
 
-bzr 2.0.5 (not released yet)
-############################
+bzr 2.0.5
+#########
 
 :Codename:
 :2.0.5: NOT RELEASED YET
