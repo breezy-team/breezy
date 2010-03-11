@@ -1351,6 +1351,27 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
+def set_signal_handler(signum, handler, restart_syscall=True):
+    """A wrapper for signal.signal that also calls siginterrupt(signum, False)
+    on platforms that support that.
+
+    :param restart_syscall: if set, allow syscalls interrupted by a signal to
+        automatically restart (by calling `signal.siginterrupt(signum,
+        False)`).  May be ignored if the feature is not available on this
+        platform or Python version.
+    """
+    old_handler = signal.signal(signum, handler)
+    if restart_syscall:
+        try:
+            siginterrupt = signal.siginterrupt
+        except AttributeError: # siginterrupt doesn't exist on this platform, or for this version of
+            # Python.
+            pass
+        else:
+            siginterrupt(signum, False)
+    return old_handler
+
+
 default_terminal_width = 80
 """The default terminal width for ttys.
 
@@ -1458,7 +1479,7 @@ def watch_sigwinch():
             # the current design -- vila 20091216
             pass
         else:
-            signal.signal(signal.SIGWINCH, _terminal_size_changed)
+            set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
         _registered_sigwinch = True
 
 

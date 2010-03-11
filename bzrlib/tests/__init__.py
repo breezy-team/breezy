@@ -1671,7 +1671,33 @@ class TestCase(testtools.TestCase):
                 unicodestr = log_contents.decode('utf8', 'replace')
                 log_contents = unicodestr.encode('utf8')
             if not keep_log_file:
-                self._log_file.close()
+                close_attempts = 0
+                max_close_attempts = 100
+                first_close_error = None
+                while close_attempts < max_close_attempts:
+                    close_attempts += 1
+                    try:
+                        self._log_file.close()
+                    except IOError, ioe:
+                        if ioe.errno is None:
+                            # No errno implies 'close() called during
+                            # concurrent operation on the same file object', so
+                            # retry.  Probably a thread is trying to write to
+                            # the log file.
+                            if first_close_error is None:
+                                first_close_error = ioe
+                            continue
+                        raise
+                    else:
+                        break
+                if close_attempts > 1:
+                    sys.stderr.write(
+                        'Unable to close log file on first attempt, '
+                        'will retry: %s\n' % (first_close_error,))
+                    if close_attempts == max_close_attempts:
+                        sys.stderr.write(
+                            'Unable to close log file after %d attempts.\n'
+                            % (max_close_attempts,))
                 self._log_file = None
                 # Permit multiple calls to get_log until we clean it up in
                 # finishLogFile
