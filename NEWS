@@ -22,6 +22,8 @@ Bug Fixes
 * Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
   (Martin Pool, #331095)
 
+* Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
+
 * Fix stub sftp test server to call os.getcwdu().
   (Vincent Ladeuil, #526211, #526353)
 
