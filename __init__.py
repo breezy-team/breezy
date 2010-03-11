@@ -86,8 +86,8 @@ class cmd_grep(Command):
                help='show 1-based line number.'),
         Option('ignore-case', short_name='i',
                help='ignore case distinctions while matching.'),
-        Option('recursive', short_name='R',
-               help='Recurse into subdirectories.'),
+        Option('no-recurse',
+               help="Don't recurse into subdirectories."),
         Option('from-root',
                help='Search for pattern starting from the root of the branch. '
                '(implies --recursive)'),
@@ -102,8 +102,10 @@ class cmd_grep(Command):
 
 
     @display_command
-    def run(self, verbose=False, ignore_case=False, recursive=False, from_root=False,
+    def run(self, verbose=False, ignore_case=False, no_recurse=False, from_root=False,
             null=False, levels=None, line_number=False, path_list=None, revision=None, pattern=None):
+
+        recursive = not no_recurse
 
         if levels==None:
             levels=1

@@ -117,25 +117,23 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(out == "file0.txt:line1\0file0.txt:line2\0file0.txt:line3\0")
 
     def test_versioned_file_in_dir_no_recurse(self):
-        """should not recurse without -R"""
+        """should not recurse without --no-recurse"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+        out, err = self.run_bzr(['grep', '--no-recurse', 'line1'])
+        self.assertFalse(self._str_contains(out, "file0.txt:line1"))
+
+    def test_versioned_file_in_dir_recurse(self):
+        """should recurse by default"""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
         self._mk_versioned_dir('dir0')
         self._mk_versioned_file('dir0/file0.txt')
         out, err = self.run_bzr(['grep', 'line1'])
-        self.assertFalse(self._str_contains(out, "file0.txt:line1"))
-
-    def test_versioned_file_in_dir_recurse(self):
-        """should find pattern in hierarchy with -R"""
-        wd = 'foobar0'
-        self.make_branch_and_tree(wd)
-        os.chdir(wd)
-        self._mk_versioned_dir('dir0')
-        self._mk_versioned_file('dir0/file0.txt')
-        out, err = self.run_bzr(['grep', '-R', 'line1'])
-        self.assertTrue(self._str_contains(out, "^dir0/file0.txt:line1"))
-        out, err = self.run_bzr(['grep', '--recursive', 'line1'])
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt:line1"))
 
     def test_versioned_file_within_dir(self):
@@ -199,7 +197,7 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', 'line1', 'dir0/dir00'])
         self.assertTrue(self._str_contains(out, "^dir0/dir00/file0.txt:line1"))
 
-        out, err = self.run_bzr(['grep', '-R', 'line1'])
+        out, err = self.run_bzr(['grep', 'line1'])
         self.assertTrue(self._str_contains(out, "^dir0/dir00/file0.txt:line1"))
 
     def test_versioned_file_within_dir_two_levels(self):
@@ -211,11 +209,14 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_dir('dir0/dir1')
         self._mk_versioned_file('dir0/dir1/file0.txt')
         os.chdir('dir0')
-        out, err = self.run_bzr(['grep', '-R', 'line1'])
+
+        out, err = self.run_bzr(['grep', 'line1'])
         self.assertTrue(self._str_contains(out, "^dir1/file0.txt:line1"))
+
         out, err = self.run_bzr(['grep', '--from-root', 'line1'])
         self.assertTrue(self._str_contains(out, "^dir0/dir1/file0.txt:line1"))
-        out, err = self.run_bzr(['grep', 'line1'])
+
+        out, err = self.run_bzr(['grep', '--no-recurse', 'line1'])
         self.assertFalse(self._str_contains(out, "file0.txt"))
 
     def test_ignore_case_no_match(self):
@@ -332,11 +333,11 @@ class TestGrep(tests.TestCaseWithTransport):
         self._update_file('dir0/file0.txt', "v5 text\n")    # rev5
 
         # v4 should not be present in revno 3
-        out, err = self.run_bzr(['grep', '-r', 'last:3', '-R', 'v4'])
+        out, err = self.run_bzr(['grep', '-r', 'last:3', 'v4'])
         self.assertFalse(self._str_contains(out, "^dir0/file0.txt"))
 
         # v4 should be present in revno 4
-        out, err = self.run_bzr(['grep', '-r', 'last:2', '-R', 'v4'])
+        out, err = self.run_bzr(['grep', '-r', 'last:2', 'v4'])
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt~4:v4"))
 
     def test_revno_range_basic_history_grep(self):
@@ -375,7 +376,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._update_file('dir0/file0.txt', "v5 text\n")    # rev5
         self._update_file('dir0/file0.txt', "v6 text\n")    # rev6
 
-        out, err = self.run_bzr(['grep', '-R', '-r', '2..5', 'v3'])
+        out, err = self.run_bzr(['grep', '-r', '2..5', 'v3'])
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt~3:v3"))
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt~4:v3"))
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt~5:v3"))
