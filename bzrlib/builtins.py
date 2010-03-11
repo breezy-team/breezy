@@ -3174,10 +3174,11 @@ class cmd_commit(Command):
             raise errors.BzrCommandError("Commit refused because there are"
                               " unknown files in the working tree.")
         except errors.BoundBranchOutOfDate, e:
-            raise errors.BzrCommandError(str(e) + "\n"
-            'To commit to master branch, run update and then commit.\n'
-            'You can also pass --local to commit to continue working '
-            'disconnected.')
+            e.extra_help = ("\n"
+                'To commit to master branch, run update and then commit.\n'
+                'You can also pass --local to commit to continue working '
+                'disconnected.')
+            raise
 
 
 class cmd_check(Command):

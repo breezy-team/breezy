@@ -8,7 +8,6 @@ Bazaar Release Notes
 bzr 2.2.0b1
 ###########
 
-:Codename: ???
 :2.2.0b1: Not released yet
 
 Compatibility Breaks
@@ -65,6 +64,11 @@ Bug Fixes
 * Allow exporting a single file using ``bzr export``.
   (Michal Junák, #511987)
 
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
 * Avoid infinite recursion when probing for apport.
   (Vincent Ladeuil, #516934)
 
@@ -96,6 +100,13 @@ Bug Fixes
   ftp servers while trying to take a lock.
   (Martin Pool, #528722)
 
+* DirStateRevisionTree.kind() was returning wrong result when 'kind'
+  changes occured between the workingtree and one of its parents.
+  (Vincent Ladeuil, #533437)
+
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)
@@ -111,6 +122,9 @@ Bug Fixes
   the debugger won't kill the session.
   (Martin <gzlist@googlemail.com>, #162502)
 
+* Allow additional arguments to
+  ``RemoteRepository.add_inventory_by_delta()``. (Jelmer Vernooij, #532631)
+
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
 
@@ -123,6 +137,11 @@ API Changes
 * ``BzrDir.get_branch_transport`` now takes an optional ``name`` of the 
   colocated branch to open. (Jelmer Vernooij)
 
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
+
 * New ``bzrlib.initialize`` is recommended for programs using bzrlib to 
   run when starting up; it sets up several things that previously needed
   to be done separately.
@@ -130,6 +149,9 @@ API Changes
 
 * New method ``BzrDir.list_branches()`` that returns a sequence of branches 
   present in a control directory. (Jelmer Vernooij)
+
+* New transport methods ``readlink``, ``symlink`` and ``hardlink``.
+  (Neil Santos)
 
 * Remove unused ``CommandFailed`` exception.
   (Martin Pool)
@@ -140,11 +162,18 @@ Internals
 * ``bzrlib.branchbuilder.BranchBuilder.build_snapshot`` now accepts a
   ``message_callback`` in the same way that commit does. (Robert Collins)
 
+* ``bzrlib.builtins.Commit.run`` raises ``bzrlib.errors.BoundBranchOutOfDate``
+  rather than ``bzrlib.errors.BzrCommandError`` when the bound branch is out
+  of date. (Gary van der Merwe)
+
 * ``bzrlib.commands.run_bzr`` is more extensible: callers can supply the
   functions to load or disable plugins if they wish to use a different
   plugin mechanism; the --help, --version and no-command name code paths
   now use the generic pluggable command lookup infrastructure.
   (Robert Collins)
+
+* ``bzrlib.errors.BoundBranchOutOfDate`` has a new field ``extra_help``
+  which can be set to add extra help to the error. (Gary van der Merwe)
 
 * The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
   ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
@@ -168,6 +197,13 @@ Testing
 * Stop sending apport crash files to ``.cache`` in the directory from
   which ``bzr selftest`` was run.  (Martin Pool, #422350)
 
+* Tests no longer fail if "close() called during concurrent
+  operation on the same file object" occurs when closing the log file
+  (which can happen if a thread tries to write to the log file at the
+  wrong moment).  An warning will be written to ``stderr`` when this
+  happens, and another warning will be written if the log file could not
+  be closed after retrying 100 times.  (Andrew Bennetts, #531746)
+
 bzr 2.1.1
 #########
 
@@ -176,6 +212,24 @@ bzr 2.1.1
 Bug Fixes
 *********
 
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
+
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
+
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+
 * Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
   problems importing bzrlib from a non-main thread.
   (Elliot Murphy, #521989)
@@ -183,7 +237,10 @@ Bug Fixes
 * Standardize the error handling when creating a new ``StaticTuple``
   (problems will raise TypeError). (Matt Nordhoff, #457979)
 
-* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+* Warn if pyrex is too old to compile the new ``SimpleSet`` and
+  ``StaticTuple`` extensions, rather than having the build fail randomly.
+  (John Arbash Meinel, #449776)
+
 
 Documentation
 *************
@@ -194,6 +251,15 @@ Documentation
 
 * Drop Google Analytics from the core docs as they caused problems
   in the CHM files. (Ian Clatworthy, #502010)
+
+API Changes
+***********
+
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
+
 
 bzr 2.1.0
 #########
@@ -552,8 +618,8 @@ Testing
   (Martin Pool)
 
 
-bzr 2.0.5 (not released yet)
-############################
+bzr 2.0.5
+#########
 
 :Codename:
 :2.0.5: NOT RELEASED YET
@@ -590,6 +656,10 @@ Bug Fixes
 * Running ``bzr`` command without any arguments now shows bzr
   version number along with rest of the help text.
   (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
 
 Documentation
 *************

@@ -1202,6 +1202,18 @@ class Transport(object):
         count = self._iterate_over(relpaths, gather, pb, 'stat', expand=False)
         return stats
 
+    def readlink(self, relpath):
+        """Return a string representing the path to which the symbolic link points."""
+        raise errors.TransportNotPossible("Dereferencing symlinks is not supported on %s" % self)
+
+    def hardlink(self, source, link_name):
+        """Create a hardlink pointing to source named link_name."""
+        raise errors.TransportNotPossible("Hard links are not supported on %s" % self)
+
+    def symlink(self, source, link_name):
+        """Create a symlink pointing to source named link_name."""
+        raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
+
     def listable(self):
         """Return True if this store supports listing."""
         raise NotImplementedError(self.listable)
@@ -1831,6 +1843,6 @@ register_lazy_transport('ssh:', 'bzrlib.transport.remote',
 
 
 transport_server_registry = registry.Registry()
-transport_server_registry.register_lazy('bzr', 'bzrlib.smart.server', 
+transport_server_registry.register_lazy('bzr', 'bzrlib.smart.server',
     'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
 transport_server_registry.default_key = 'bzr'

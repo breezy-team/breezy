@@ -1813,6 +1813,8 @@ class BzrDirFormat(object):
     Once a format is deprecated, just deprecate the initialize and open
     methods on the format class. Do not deprecate the object, as the
     object will be created every system load.
+
+    :cvar colocated_branches: Whether this formats supports colocated branches.
     """
 
     _default_format = None
