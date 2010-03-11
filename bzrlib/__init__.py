@@ -35,7 +35,7 @@ if getattr(sys, '_bzr_lazy_regex', False):
 IGNORE_FILENAME = ".bzrignore"
 
 
-__copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
+__copyright__ = "Copyright 2005-2010 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
