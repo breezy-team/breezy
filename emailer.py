@@ -167,6 +167,19 @@ class EmailSender(object):
             result = self.config.username()
         return result
 
+    def extra_headers(self):
+        """Additional headers to include when sending."""
+        result = {}
+        headers = self.config.get_user_option('revision_mail_headers')
+        if not headers:
+            return
+        if type(headers) is not list:
+            headers = [headers]
+        for line in headers:
+            key, value = line.split(": ", 1)
+            result[key] = value
+        return result
+
     def send(self):
         """Send the email.
 
@@ -229,7 +242,8 @@ class EmailSender(object):
         smtp = self._smtplib_implementation(self.config)
         smtp.send_text_and_attachment_email(from_addr, to_addrs,
                                             subject, body, diff,
-                                            self.diff_filename())
+                                            self.diff_filename(),
+                                            self.extra_headers())
 
     def should_send(self):
         result = self.config.get_user_option('post_commit_difflimit')
