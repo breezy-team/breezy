@@ -26,8 +26,6 @@ when the branch is opened.  Clients should typically do
 # called tags* are ctags files... mbp 20070220.
 
 
-from warnings import warn
-
 from bzrlib import (
     bencode,
     errors,
@@ -253,3 +251,20 @@ class BasicTags(_Tags):
 
 def _merge_tags_if_possible(from_branch, to_branch):
     from_branch.tags.merge_to(to_branch.tags)
+
+
+dwim_determine_tag_name_functions = []
+
+
+def determine_tag_name(branch, revision_id):
+    """Determine the tag name for a revision.
+
+    :param branch: Branch in which the revision can be found.
+    :param revision_id: Revision id of the revision.
+    :return: A tag name or None if no tag name could be determined.
+    """
+    for dwim_get_tag_name in dwim_determine_tag_name_functions:
+        ret = dwim_get_tag_name(branch, revision_id)
+        if ret is not None:
+            return ret
+    return None

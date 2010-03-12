@@ -183,6 +183,9 @@ Internals
 * ``bzrlib.errors.BoundBranchOutOfDate`` has a new field ``extra_help``
   which can be set to add extra help to the error. (Gary van der Merwe)
 
+* New function ``determine_tag_name`` that can be used to find a 
+  default tag name for a particular revision. (Jelmer Vernooij)
+
 * The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
   ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
   (Jelmer Vernooij)

@@ -16,15 +16,14 @@
 
 
 from bzrlib import (
-    branch,
     bzrdir,
     errors,
     tag,
     )
 from bzrlib.tag import (
     BasicTags,
-    _merge_tags_if_possible,
     DisabledTags,
+    determine_tag_name,
     )
 from bzrlib.tests import (
     KnownFailure,
@@ -184,3 +183,51 @@ class DisabledTagsTests(TestCaseWithTransport):
 
     def test_get_reverse_tag_dict(self):
         self.assertEqual(self.tags.get_reverse_tag_dict(), {})
+
+
+class DetermineTagTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(DetermineTagTests, self).setUp()
+        self.builder = self.make_branch_builder('.')
+        self.builder.build_snapshot('foo', None,
+            [('add', ('', None, 'directory', None))],
+            message='foo')
+        self.branch = self.builder.get_branch()
+        self.tags = self.branch.tags
+        self._old_tag_name_functions = []
+
+    def _clear_tag_name_functions(self):
+        self._old_tag_name_functions = tag.dwim_determine_tag_name_functions
+        self.addCleanup(self._restore_tag_name_functions)
+        tag.dwim_determine_tag_name_functions = []
+
+    def _restore_tag_name_functions(self):
+        tag.dwim_determine_tag_name_functions = self._old_tag_name_functions
+
+    def check_with_tag_name_functions(self, tag_name, fns, revid):
+        self._clear_tag_name_functions()
+        tag.dwim_determine_tag_name_functions.extend(fns)
+        self.assertEquals(tag_name, determine_tag_name(self.branch, revid))
+
+    def test_no_functions(self):
+        rev = self.branch.last_revision()
+        self.assertEquals(None, determine_tag_name(self.branch, rev))
+
+    def test_returns_tag_name(self):
+        def get_tag_name(br, revid):
+            return "foo"
+        self.check_with_tag_name_functions("foo", [get_tag_name],
+            self.branch.last_revision())
+    
+    def test_uses_first_return(self):
+        get_tag_name_1 = lambda br, revid: "foo1"
+        get_tag_name_2 = lambda br, revid: "foo2"
+        self.check_with_tag_name_functions("foo1", 
+            [get_tag_name_1, get_tag_name_2], self.branch.last_revision())
+
+    def test_ignores_none(self):
+        get_tag_name_1 = lambda br, revid: None
+        get_tag_name_2 = lambda br, revid: "foo2"
+        self.check_with_tag_name_functions("foo2", 
+            [get_tag_name_1, get_tag_name_2], self.branch.last_revision())
