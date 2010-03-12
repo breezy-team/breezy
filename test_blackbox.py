@@ -109,10 +109,9 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('commit -m these')
         # pick up just rev 2 and 3 and discard 4 from feature
         self.check_output('', 'rebase -r2..3 ../main')
-        # our rev 2 is now rev3:
-        self.check_output('3\n', 'revno')
-        # content added from our old revisions 3 and 4 should be gone.
-        self.failIfExists('hooi')
+        # our rev 2 is now rev3 and 3 is now rev4:
+        self.check_output('4\n', 'revno')
+        # content added from our old revisions 4 should be gone.
         self.failIfExists('hoooi')
 
     def test_range_open_end(self):
