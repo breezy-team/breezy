@@ -227,16 +227,12 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _base_actions = None
     _this_actions = None
     _other_actions = None
-    _item_path = None
-    _item_id = None
 
-    # Set by _this_actions and other_actions
-    # FIXME: rename them this_args and other_args so the tests can use them
-    # more freely
-    _this_path = None
-    _this_id = None
-    _other_path = None
-    _other_id = None
+    # Set by _this_actions and other_actions for more refined checks about the
+    # conflict object. Each daughter class should describe the associated
+    # semantic
+    _this_args = None
+    _other_args = None
 
     @classmethod
     def mirror_scenarios(klass, base_scenarios):
@@ -283,14 +279,14 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         builder.build_snapshot('start', None, [
                 ('add', ('', 'root-id', 'directory', ''))])
         # Add a minimal base content
-        _, _, actions_base = self._get_actions(self._actions_base)()
+        (_, actions_base) = self._get_actions(self._actions_base)()
         builder.build_snapshot('base', ['start'], actions_base)
         # Modify the base content in branch
-        (self._other_path, self._other_id,
+        (self._other_args,
          actions_other) = self._get_actions(self._actions_other)()
         builder.build_snapshot('other', ['base'], actions_other)
         # Modify the base content in trunk
-        (self._this_path, self._this_id,
+        (self._this_args,
          actions_this) = self._get_actions(self._actions_this)()
         builder.build_snapshot('this', ['base'], actions_this)
         # builder.get_branch() tip is now 'this'
@@ -305,75 +301,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         return getattr(self, 'check_%s' % name)
 
     def do_nothing(self):
-        return (None, None, [])
-
-    def do_create_file(self):
-        return ('file', 'file-id',
-                [('add', ('file', 'file-id', 'file', 'trunk content\n'))])
-
-    def do_create_file_a(self):
-        return ('file', 'file-a-id',
-                [('add', ('file', 'file-a-id', 'file', 'file a content\n'))])
-
-    def check_file_content_a(self):
-        self.assertFileEqual('file a content\n', 'branch/file')
-
-    def do_create_file_b(self):
-        return ('file', 'file-b-id',
-                [('add', ('file', 'file-b-id', 'file', 'file b content\n'))])
-
-    def check_file_content_b(self):
-        self.assertFileEqual('file b content\n', 'branch/file')
-
-    def do_create_dir(self):
-        return ('dir', 'dir-id', [('add', ('dir', 'dir-id', 'directory', ''))])
-
-    def do_modify_file(self):
-        return ('file', 'file-id',
-                [('modify', ('file-id', 'trunk content\nmore content\n'))])
-
-    def check_file_has_more_content(self):
-        self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
-
-    def do_delete_file(self):
-        return ('file', 'file-id', [('unversion', 'file-id')])
-
-    def check_file_doesnt_exist(self):
-        self.failIfExists('branch/file')
-
-    def do_rename_file(self):
-        return ('new-file', 'file-id', [('rename', ('file', 'new-file'))])
-
-    def check_file_renamed(self):
-        self.failIfExists('branch/file')
-        self.failUnlessExists('branch/new-file')
-
-    def do_rename_file2(self):
-        return ('new-file2', 'file-id', [('rename', ('file', 'new-file2'))])
-
-    def check_file_renamed2(self):
-        self.failIfExists('branch/file')
-        self.failUnlessExists('branch/new-file2')
-
-    def do_rename_dir(self):
-        return ('new-dir', 'dir-id', [('rename', ('dir', 'new-dir'))])
-
-    def check_dir_renamed(self):
-        self.failIfExists('branch/dir')
-        self.failUnlessExists('branch/new-dir')
-
-    def do_rename_dir2(self):
-        return ('new-dir2', 'dir-id', [('rename', ('dir', 'new-dir2'))])
-
-    def check_dir_renamed2(self):
-        self.failIfExists('branch/dir')
-        self.failUnlessExists('branch/new-dir2')
-
-    def do_delete_dir(self):
-        return ('<deleted>', 'dir-id', [('unversion', 'dir-id')])
-
-    def check_dir_doesnt_exist(self):
-        self.failIfExists('branch/dir')
+        return ([], [])
 
     def _merge_other_into_this(self):
         b = self.builder.get_branch()
@@ -389,7 +317,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self._assert_conflict(wt, c)
 
     def _get_resolve_path_arg(self, wt, action):
-        return self._item_path
+        raise NotImplementedError(self._get_resolve_path_arg)
 
     def check_resolved(self, wt, action):
         path = self._get_resolve_path_arg(wt, action)
@@ -416,6 +344,13 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
     _conflict_type = conflicts.ContentsConflict,
+
+    # Both args are a list containing:
+    # - path involved
+    # - file-id involved
+    _this_args = None
+    _other_args = None
+
     @classmethod
     def scenarios(klass):
         base_scenarios = [
@@ -423,13 +358,37 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
                                    check='file_has_more_content')),
              ('file_deleted', dict(actions='delete_file',
                                    check='file_doesnt_exist')),
-             dict(_actions_base='create_file', _item_path='file')),
+             dict(_actions_base='create_file')),
             ]
         return klass.mirror_scenarios(base_scenarios)
 
+    def do_create_file(self):
+        return (['file', 'file-id'],
+                [('add', ('file', 'file-id', 'file', 'trunk content\n'))])
+
+    def do_modify_file(self):
+        return (['file', 'file-id'],
+                [('modify', ('file-id', 'trunk content\nmore content\n'))])
+
+    def check_file_has_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/file')
+
+    def do_delete_file(self):
+        return (['file', 'file-id'], [('unversion', 'file-id')])
+
+    def check_file_doesnt_exist(self):
+        self.failIfExists('branch/file')
+
+    def _get_resolve_path_arg(self, wt, action):
+        tpath, tfile_id = self._this_args
+        opath, ofile_id = self._other_args
+        self.assertEqual(tpath, opath) # Sanity check
+        return opath
+
     def assertContentsConflict(self, wt, c):
-        self.assertEqual(self._other_id, c.file_id)
-        self.assertEqual(self._other_path, c.path)
+        opath, ofile_id = self._other_args
+        self.assertEqual(ofile_id, c.file_id)
+        self.assertEqual(opath, c.path)
     _assert_conflict = assertContentsConflict
 
 
@@ -437,6 +396,12 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
     _conflict_type = conflicts.PathConflict,
+
+    # Both args are a list containing:
+    # - path involved (can be '<deleted>')
+    # - file-id involved
+    _this_args = None
+    _other_args = None
 
     @classmethod
     def scenarios(klass):
@@ -468,16 +433,72 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
         ]
         return klass.mirror_scenarios(base_scenarios)
 
+    def do_create_file(self):
+        return (['file', 'file-id'],
+                [('add', ('file', 'file-id', 'file', 'trunk content\n'))])
+
+    def do_create_dir(self):
+        return (['dir', 'dir-id'],
+                [('add', ('dir', 'dir-id', 'directory', ''))])
+
+    def do_rename_file(self):
+        return (['new-file', 'file-id'], [('rename', ('file', 'new-file'))])
+
+    def check_file_renamed(self):
+        self.failIfExists('branch/file')
+        self.failUnlessExists('branch/new-file')
+
+    def do_rename_file2(self):
+        return (['new-file2', 'file-id'], [('rename', ('file', 'new-file2'))])
+
+    def check_file_renamed2(self):
+        self.failIfExists('branch/file')
+        self.failUnlessExists('branch/new-file2')
+
+    def do_rename_dir(self):
+        return (['new-dir', 'dir-id'], [('rename', ('dir', 'new-dir'))])
+
+    def check_dir_renamed(self):
+        self.failIfExists('branch/dir')
+        self.failUnlessExists('branch/new-dir')
+
+    def do_rename_dir2(self):
+        return (['new-dir2', 'dir-id'], [('rename', ('dir', 'new-dir2'))])
+
+    def check_dir_renamed2(self):
+        self.failIfExists('branch/dir')
+        self.failUnlessExists('branch/new-dir2')
+
     def do_delete_file(self):
-        sup = super(TestResolvePathConflict, self).do_delete_file()
         # PathConflicts handle deletion differently and requires a special
         # hard-coded value
-        return ('<deleted>',) + sup[1:]
+        return (['<deleted>', 'file-id'], [('unversion', 'file-id')])
+
+    def check_file_doesnt_exist(self):
+        self.failIfExists('branch/file')
+
+    def do_delete_dir(self):
+        return (['<deleted>', 'dir-id'], [('unversion', 'dir-id')])
+
+    def check_dir_doesnt_exist(self):
+        self.failIfExists('branch/dir')
+
+    def _get_resolve_path_arg(self, wt, action):
+        tpath, tfile_id = self._this_args
+        opath, ofile_id = self._other_args
+        if tpath == '<deleted>':
+            path = opath
+        else:
+            path = tpath
+        return path
 
     def assertPathConflict(self, wt, c):
-        self.assertEqual(self._item_id, c.file_id)
-        self.assertEqual(self._this_path, c.path)
-        self.assertEqual(self._other_path, c.conflict_path)
+        tpath, tfile_id = self._this_args
+        opath, ofile_id = self._other_args
+        self.assertEqual(tfile_id, ofile_id) # Sanity check
+        self.assertEqual(tfile_id, c.file_id)
+        self.assertEqual(tpath, c.path)
+        self.assertEqual(opath, c.conflict_path)
     _assert_conflict = assertPathConflict
 
 
@@ -497,6 +518,13 @@ class TestResolvePathConflictBefore531967(TestResolvePathConflict):
 class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
 
     _conflict_type = conflicts.DuplicateEntry,
+
+    # Both args are a list containing:
+    # - path involved
+    # - file-id involved
+    _this_args = None
+    _other_args = None
+
     @classmethod
     def scenarios(klass):
         base_scenarios = [
@@ -504,14 +532,35 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
                                     check='file_content_a')),
              ('fileb_created', dict(actions='create_file_b',
                                    check='file_content_b')),
-             dict(_actions_base='nothing', _item_path='file')),
+             dict(_actions_base='nothing')),
             ]
         return klass.mirror_scenarios(base_scenarios)
 
+    def do_create_file_a(self):
+        return (['file', 'file-a-id'],
+                [('add', ('file', 'file-a-id', 'file', 'file a content\n'))])
+
+    def check_file_content_a(self):
+        self.assertFileEqual('file a content\n', 'branch/file')
+
+    def do_create_file_b(self):
+        return (['file', 'file-b-id'],
+                [('add', ('file', 'file-b-id', 'file', 'file b content\n'))])
+
+    def check_file_content_b(self):
+        self.assertFileEqual('file b content\n', 'branch/file')
+
+    def _get_resolve_path_arg(self, wt, action):
+        tpath, tfile_id = self._this_args
+        return tpath
+
     def assertDuplicateEntry(self, wt, c):
-        self.assertEqual(self._this_id, c.file_id)
-        self.assertEqual(self._item_path + '.moved', c.path)
-        self.assertEqual(self._item_path, c.conflict_path)
+        tpath, tfile_id = self._this_args
+        opath, ofile_id = self._other_args
+        self.assertEqual(tpath, opath) # Sanity check
+        self.assertEqual(tfile_id, c.file_id)
+        self.assertEqual(tpath + '.moved', c.path)
+        self.assertEqual(tpath, c.conflict_path)
     _assert_conflict = assertDuplicateEntry
 
 
@@ -685,6 +734,15 @@ $ bzr commit --strict -m 'No more conflicts nor unknown files'
 class TestResolveParentLoop(TestParametrizedResolveConflicts):
 
     _conflict_type = conflicts.ParentLoop,
+
+    # Both args are a list containing:
+    # dir_id: the directory being moved
+    # target_id: The target directory
+    # xfail: whether the test is expected to fail if the action is involved as
+    #   'other'
+    _this_args = None
+    _other_args = None
+
     @classmethod
     def scenarios(klass):
         base_scenarios = [
@@ -702,29 +760,29 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return klass.mirror_scenarios(base_scenarios)
 
     def do_create_dir1_dir2(self):
-        return (None, None,
+        return ([None, None, False],
                 [('add', ('dir1', 'dir1-id', 'directory', '')),
                  ('add', ('dir2', 'dir2-id', 'directory', '')),
                  ])
 
     def do_move_dir1_into_dir2(self):
-        # The arguments are the file-id to move and the targeted file-id dir.
-        return ('dir1-id', 'dir2-id', [('rename', ('dir1', 'dir2/dir1'))])
+        return (['dir1-id', 'dir2-id', False],
+                [('rename', ('dir1', 'dir2/dir1'))])
 
     def check_dir1_moved(self):
         self.failIfExists('branch/dir1')
         self.failUnlessExists('branch/dir2/dir1')
 
     def do_move_dir2_into_dir1(self):
-        # The arguments are the file-id to move and the targeted file-id dir.
-        return ('dir2-id', 'dir1-id', [('rename', ('dir2', 'dir1/dir2'))])
+        return (['dir2-id', 'dir1-id', False],
+                [('rename', ('dir2', 'dir1/dir2'))])
 
     def check_dir2_moved(self):
         self.failIfExists('branch/dir2')
         self.failUnlessExists('branch/dir1/dir2')
 
     def do_create_dir1_4(self):
-        return (None, None,
+        return ([None, None, False],
                 [('add', ('dir1', 'dir1-id', 'directory', '')),
                  ('add', ('dir1/dir2', 'dir2-id', 'directory', '')),
                  ('add', ('dir3', 'dir3-id', 'directory', '')),
@@ -732,8 +790,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
                  ])
 
     def do_move_dir1_into_dir4(self):
-        # The arguments are the file-id to move and the targeted file-id dir.
-        return ('dir1-id', 'dir4-id',
+        return (['dir1-id', 'dir4-id', True],
                 [('rename', ('dir1', 'dir3/dir4/dir1'))])
 
     def check_dir1_2_moved(self):
@@ -742,8 +799,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         self.failUnlessExists('branch/dir3/dir4/dir1/dir2')
 
     def do_move_dir3_into_dir2(self):
-        # The arguments are the file-id to move and the targeted file-id dir.
-        return ('dir3-id', 'dir2-id',
+        return (['dir3-id', 'dir2-id', True],
                 [('rename', ('dir3', 'dir1/dir2/dir3'))])
 
     def check_dir3_4_moved(self):
@@ -756,20 +812,18 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         # moving <conflict_path> into <path>.  Cancelled move.
         # But since <path> doesn't exist in the working tree, we need to use
         # <conflict_path> instead
-        path = wt.id2path(self._other_id)
+        odir_id, otarget_id, oxfail = self._other_args
+        path = wt.id2path(odir_id)
         return path
 
     def assertParentLoop(self, wt, c):
+        # FIXME: use the xfail arg
         if 'taking_other(' in self.id() and 'dir4' in self.id():
             raise tests.KnownFailure(
                 "ParentLoop doesn't carry enough info to resolve")
-        # The relevant file-ids are other_args swapped (which is the main
-        # reason why they should be renamed other_args instead of Other_path
-        # and other_id). In the conflict object, they represent:
-        # c.file_id: the directory being moved
-        # c.conflict_id_id: The target directory
-        self.assertEqual(self._other_path, c.file_id)
-        self.assertEqual(self._other_id, c.conflict_file_id)
+        odir_id, otarget_id, oxfail = self._other_args
+        self.assertEqual(odir_id, c.file_id)
+        self.assertEqual(otarget_id, c.conflict_file_id)
         # The conflict paths are irrelevant (they are deterministic but not
         # worth checking since they don't provide the needed information
         # anyway)
