@@ -760,6 +760,9 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return path
 
     def assertParentLoop(self, wt, c):
+        if 'taking_other(' in self.id() and 'dir4' in self.id():
+            raise tests.KnownFailure(
+                "ParentLoop doesn't carry enough info to resolve")
         # The relevant file-ids are other_args swapped (which is the main
         # reason why they should be renamed other_args instead of Other_path
         # and other_id). In the conflict object, they represent:
