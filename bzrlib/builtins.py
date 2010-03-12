@@ -5262,7 +5262,7 @@ class cmd_tag(Command):
     """
 
     _see_also = ['commit', 'tags']
-    takes_args = ['tag_name']
+    takes_args = ['tag_name?']
     takes_options = [
         Option('delete',
             help='Delete this tag rather than placing it.',
@@ -5278,16 +5278,19 @@ class cmd_tag(Command):
         'revision',
         ]
 
-    def run(self, tag_name,
+    def run(self, tag_name=None,
             delete=None,
             directory='.',
             force=None,
             revision=None,
             ):
+        from bzrlib.tag import determine_tag_name
         branch, relpath = Branch.open_containing(directory)
         branch.lock_write()
         self.add_cleanup(branch.unlock)
         if delete:
+            if tag_name is None:
+                raise errors.BzrCommandError("No tag specified to delete.")
             branch.tags.delete_tag(tag_name)
             self.outf.write('Deleted tag %s.\n' % tag_name)
         else:
@@ -5299,6 +5302,11 @@ class cmd_tag(Command):
                 revision_id = revision[0].as_revision_id(branch)
             else:
                 revision_id = branch.last_revision()
+            if tag_name is None:
+                tag_name = determine_tag_name(branch, revision_id)
+                if tag_name is None:
+                    raise errors.BzrCommandError(
+                        "Please specify a tag name.")
             if (not force) and branch.tags.has_tag(tag_name):
                 raise errors.TagAlreadyExists(tag_name)
             branch.tags.set_tag(tag_name, revision_id)

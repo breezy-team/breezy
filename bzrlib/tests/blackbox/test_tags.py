@@ -16,7 +16,10 @@
 
 """Tests for commands related to tags"""
 
-from bzrlib import bzrdir
+from bzrlib import (
+    bzrdir,
+    tag,
+    )
 from bzrlib.branch import (
     Branch,
     )
@@ -47,6 +50,15 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(err,
             "Tags can only be placed on a single revision")
 
+    def test_automatic_tag_name(self):
+        def get_tag_name(branch, revid):
+            return "mytag"
+        tag.dwim_determine_tag_name_functions.append(get_tag_name)
+        self.addCleanup(
+            lambda: tag.dwim_determine_tag_name_functions.remove(get_tag_name))
+        out, err = self.run_bzr('tag -d branch')
+        self.assertContainsRe(out, 'Created tag mytag.')
+
     def test_tag_current_rev(self):
         t = self.make_branch_and_tree('branch')
         t.commit(allow_pointless=True, message='initial commit',
@@ -72,6 +84,10 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
         # ... but can if you use --force
         out, err = self.run_bzr('tag -d branch NEWTAG --force')
+
+    def test_tag_delete_requires_name(self):
+        out, err = self.run_bzr('tag -d branch', retcode=3)
+        self.assertContainsRe(err, 'Please specify a tag name\\.')
 
     def test_branch_push_pull_merge_copies_tags(self):
         t = self.make_branch_and_tree('branch1')

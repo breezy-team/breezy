@@ -51,6 +51,9 @@ New Features
   treats backslash as an escape character on Windows.   (Gordon Tyler,
   #392248)
 
+* Tag names can now be determined automatically by hooks if they are 
+  not specified on the command line. (Jelmer Vernooij)
+
 * Tree-shape conflicts can be resolved by providing ``--take-this`` and
   ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
   as resolved is still accessible via the ``--done`` default action.
