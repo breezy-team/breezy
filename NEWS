@@ -164,6 +164,10 @@ Testing
 * Documentation about testing with ``subunit`` has been tweaked.
   (Robert Collins)
 
+* Known failures has been added for resolve --take-other on ParentLoop
+  conflicts. This reflects bug #537956 without fixing it.
+  (Vincent Ladeuil)
+
 * New ``bzrlib.tests.test_import_tariff`` can make assertions about what
   Python modules are loaded, to guard against startup time or library
   dependency regressions.
