@@ -581,7 +581,8 @@ class AggregateIndex(object):
         """
         self._reload_func = reload_func
         self.index_to_pack = {}
-        self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
+        self.combined_index = CombinedGraphIndex([], reload_func=reload_func,
+                auto_reorder=True)
         self.data_access = _DirectPackAccess(self.index_to_pack,
                                              reload_func=reload_func,
                                              flush_func=flush_func)

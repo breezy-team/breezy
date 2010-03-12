@@ -1233,7 +1233,7 @@ class CombinedGraphIndex(object):
     in the index list.
     """
 
-    def __init__(self, indices, reload_func=None):
+    def __init__(self, indices, reload_func=None, auto_reorder=False):
         """Create a CombinedGraphIndex backed by indices.
 
         :param indices: An ordered list of indices to query for data.
@@ -1243,6 +1243,7 @@ class CombinedGraphIndex(object):
         """
         self._indices = indices
         self._reload_func = reload_func
+        self._auto_reorder = auto_reorder
 
     def __repr__(self):
         return "%s(%s)" % (
@@ -1313,17 +1314,23 @@ class CombinedGraphIndex(object):
             efficient order for the index.
         """
         keys = set(keys)
+        hit_indices = []
         while True:
             try:
                 for index in self._indices:
                     if not keys:
-                        return
+                        break
+                    index_hit = False
                     for node in index.iter_entries(keys):
                         keys.remove(node[1])
                         yield node
-                return
+                        index_hit = True
+                    if index_hit:
+                        hit_indices.append(index)
+                break
             except errors.NoSuchFile:
                 self._reload_or_raise()
+        self._move_to_front(hit_indices)
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -1349,17 +1356,37 @@ class CombinedGraphIndex(object):
         if not keys:
             return
         seen_keys = set()
+        hit_indices = []
         while True:
             try:
                 for index in self._indices:
+                    index_hit = False
                     for node in index.iter_entries_prefix(keys):
                         if node[1] in seen_keys:
                             continue
                         seen_keys.add(node[1])
                         yield node
-                return
+                        index_hit = True
+                    if index_hit:
+                        hit_indices.append(index)
+                break
             except errors.NoSuchFile:
                 self._reload_or_raise()
+        self._move_to_front(hit_indices)
+
+    def _move_to_front(self, hit_indices):
+        """Rearrange self._indices so that hit_indices are first.
+
+        Order is maintained as much as possible, e.g. the first unhit index
+        will be the first index in _indices after the hit_indices, and the
+        hit_indices will be present in exactly the order they are passed to
+        _move_to_front.
+        """
+        if not self._auto_reorder:
+            return
+        unhit_indices = [
+            idx for idx in self._indices if idx not in hit_indices]
+        self._indices = hit_indices + unhit_indices
 
     def find_ancestry(self, keys, ref_list_num):
         """Find the complete ancestry for the given set of keys.
