@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007, 2008, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,15 +65,6 @@ _plugins_disabled = False
 
 def are_plugins_disabled():
     return _plugins_disabled
-
-
-@deprecated_function(deprecated_in((2, 0, 0)))
-def get_default_plugin_path():
-    """Get the DEFAULT_PLUGIN_PATH"""
-    global DEFAULT_PLUGIN_PATH
-    if DEFAULT_PLUGIN_PATH is None:
-        DEFAULT_PLUGIN_PATH = osutils.pathjoin(config.config_dir(), 'plugins')
-    return DEFAULT_PLUGIN_PATH
 
 
 def disable_plugins():
