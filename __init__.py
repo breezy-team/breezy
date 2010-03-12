@@ -52,19 +52,13 @@ plugin_cmds.register_lazy('cmd_foreign_mapping_upgrade', [],
 
 
 def test_suite():
-    """Determine the testsuite for bzr-rewrite."""
+    """Returns the testsuite for bzr-rewrite."""
     from unittest import TestSuite
-    from bzrlib.tests import TestUtil
-
-    loader = TestUtil.TestLoader()
+    from bzrlib.plugins.rewrite import tests
     suite = TestSuite()
-    testmod_names = [
-        'test_blackbox',
-        'test_maptree',
-        'test_pseudonyms',
-        'test_rebase',
-        'test_upgrade']
-    suite.addTest(loader.loadTestsFromModuleNames(
-                              ["%s.%s" % (__name__, i) for i in testmod_names]))
-
+    suite.addTest(tests.test_suite())
     return suite
+
+
+
+
