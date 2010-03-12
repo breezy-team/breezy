@@ -1407,6 +1407,8 @@ class RepositoryPackCollection(object):
         else:
             # used to determine if we're using a chk_index elsewhere.
             self.chk_index = None
+        # Tell all the CombinedGraphIndex objects about each other, so they can
+        # share hints about which pack names to search first.
         all_combined = [agg_idx.combined_index for agg_idx in all_indices]
         for combined_idx in all_combined:
             combined_idx._sibling_indices = set(all_combined).difference([combined_idx])

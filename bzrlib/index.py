@@ -1240,11 +1240,20 @@ class CombinedGraphIndex(object):
         :param reload_func: A function to call if we find we are missing an
             index. Should have the form reload_func() => True/False to indicate
             if reloading actually changed anything.
+        :param auto_reorder: Reorder the list of indices after every lookup to
+            put the indices that had the result(s) of the lookup first, to
+            speed future lookups (which are likely to need the same indices as
+            previous ones).
         """
         self._indices = indices
         self._reload_func = reload_func
         self._auto_reorder = auto_reorder
+        # Sibling indices are other CombinedGraphIndex that we should call
+        # _move_to_front_by_name on when we auto-reorder ourself.
         self._sibling_indices = []
+        # A list of names that corresponds to the instances in self._indices,
+        # so _index_names[0] is always the name for _indices[0], etc.  Sibling
+        # indices must all use the same set of names as each other.
         self._index_names = []
 
     def __repr__(self):
@@ -1279,6 +1288,10 @@ class CombinedGraphIndex(object):
 
         :param pos: The position to insert the index.
         :param index: The index to insert.
+        :param name: a name for this index, e.g. a pack name.  These names can
+            be used to reflect index reorderings (see auto_reorder param of
+            constructor) to related CombinedGraphIndex instances that use the
+            same names.
         """
         self._indices.insert(pos, index)
         self._index_names.insert(pos, name)
@@ -1312,8 +1325,8 @@ class CombinedGraphIndex(object):
         value and are only reported once.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (index, key, reference_lists, value). There is no
-            defined order for the result iteration - it will be in the most
+        :return: An iterable of (index, key, reference_lists, value). There is
+            no defined order for the result iteration - it will be in the most
             efficient order for the index.
         """
         keys = set(keys)
@@ -1377,18 +1390,29 @@ class CombinedGraphIndex(object):
                 self._reload_or_raise()
         self._move_to_front(hit_indices)
 
-    def _move_to_front(self, hit_indices, no_sib_update=False):
+    def _move_to_front(self, hit_indices):
         """Rearrange self._indices so that hit_indices are first.
 
         Order is maintained as much as possible, e.g. the first unhit index
         will be the first index in _indices after the hit_indices, and the
         hit_indices will be present in exactly the order they are passed to
         _move_to_front.
+
+        _move_to_front propagates to all objects in self._sibling_indices by
+        calling _move_to_front_by_name.
         """
         if not self._auto_reorder:
             return
-        names = self._index_names
-        indices_info = zip(names, self._indices)
+        hit_names = self._move_to_front_by_index(hit_indices)
+        for sibling_idx in self._sibling_indices:
+            sibling_idx._move_to_front_by_name(hit_names)
+
+    def _move_to_front_by_index(self, hit_indices):
+        """Core logic for _move_to_front.
+        
+        Returns a list of names corresponding to the hit_indices param.
+        """
+        indices_info = zip(self._index_names, self._indices)
         hit_indices_info = []
         hit_names = []
         unhit_indices_info = []
@@ -1402,11 +1426,14 @@ class CombinedGraphIndex(object):
         final_info = hit_indices_info + unhit_indices_info
         self._indices = [idx for (name, idx) in final_info]
         self._index_names = [name for (name, idx) in final_info]
-        if self._sibling_indices and not no_sib_update:
-            for sibling_idx in self._sibling_indices:
-                sibling_idx._move_to_front_by_name(hit_names)
+        return hit_names
 
     def _move_to_front_by_name(self, hit_names):
+        """Moves indices named by 'hit_names' to front of the search order, as
+        described in _move_to_front.
+        """
+        # Translate names to index instances, and then call
+        # _move_to_front_by_index.
         if not self._auto_reorder:
             return
         indices_info = zip(self._index_names, self._indices)
@@ -1414,7 +1441,7 @@ class CombinedGraphIndex(object):
         for name, idx in indices_info:
             if name in hit_names:
                 hit_indices.append(idx)
-        self._move_to_front(hit_indices, True)
+        self._move_to_front_by_index(hit_indices)
 
     def find_ancestry(self, keys, ref_list_num):
         """Find the complete ancestry for the given set of keys.
@@ -1427,6 +1454,7 @@ class CombinedGraphIndex(object):
             we care about.
         :return: (parent_map, missing_keys)
         """
+        # XXX: make this call _move_to_front?
         missing_keys = set()
         parent_map = {}
         keys_to_lookup = set(keys)
