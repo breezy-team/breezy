@@ -817,16 +817,15 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return path
 
     def assertParentLoop(self, wt, c):
-        # FIXME: use the xfail arg
-        if 'taking_other(' in self.id() and 'dir4' in self.id():
-            raise tests.KnownFailure(
-                "ParentLoop doesn't carry enough info to resolve")
         odir_id, otarget_id, oxfail = self._other_args
         self.assertEqual(odir_id, c.file_id)
         self.assertEqual(otarget_id, c.conflict_file_id)
         # The conflict paths are irrelevant (they are deterministic but not
         # worth checking since they don't provide the needed information
         # anyway)
+        if oxfail:
+            raise tests.KnownFailure(
+                "ParentLoop doesn't carry enough info to resolve --take-other")
     _assert_conflict = assertParentLoop
 
 
