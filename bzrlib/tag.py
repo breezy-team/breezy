@@ -31,6 +31,9 @@ from bzrlib import (
     errors,
     trace,
     )
+from bzrlib.branch import (
+    Branch,
+    )
 
 
 class _Tags(object):
@@ -253,9 +256,6 @@ def _merge_tags_if_possible(from_branch, to_branch):
     from_branch.tags.merge_to(to_branch.tags)
 
 
-automatic_tag_name_functions = []
-
-
 def automatic_tag_name(branch, revision_id):
     """Try to automatically find the tag name for a revision.
 
@@ -263,7 +263,7 @@ def automatic_tag_name(branch, revision_id):
     :param revision_id: Revision id of the revision.
     :return: A tag name or None if no tag name could be automaticd.
     """
-    for get_tag_name in automatic_tag_name_functions:
+    for get_tag_name in Branch.hooks['automatic_tag_name']:
         ret = get_tag_name(branch, revision_id)
         if ret is not None:
             return ret

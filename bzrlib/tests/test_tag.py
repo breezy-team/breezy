@@ -16,6 +16,7 @@
 
 
 from bzrlib import (
+    branch as _mod_branch,
     bzrdir,
     errors,
     tag,
@@ -205,11 +206,6 @@ class AutomaticTagNameTests(TestCaseWithTransport):
     def _restore_tag_name_functions(self):
         tag.automatic_tag_name_functions = self._old_tag_name_functions
 
-    def check_with_tag_name_functions(self, tag_name, fns, revid):
-        self._clear_tag_name_functions()
-        tag.automatic_tag_name_functions.extend(fns)
-        self.assertEquals(tag_name, automatic_tag_name(self.branch, revid))
-
     def test_no_functions(self):
         rev = self.branch.last_revision()
         self.assertEquals(None, automatic_tag_name(self.branch, rev))
@@ -217,17 +213,27 @@ class AutomaticTagNameTests(TestCaseWithTransport):
     def test_returns_tag_name(self):
         def get_tag_name(br, revid):
             return "foo"
-        self.check_with_tag_name_functions("foo", [get_tag_name],
-            self.branch.last_revision())
+        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name, 'get tag name foo')
+        self.assertEquals("foo", automatic_tag_name(self.branch, 
+            self.branch.last_revision()))
     
     def test_uses_first_return(self):
         get_tag_name_1 = lambda br, revid: "foo1"
         get_tag_name_2 = lambda br, revid: "foo2"
-        self.check_with_tag_name_functions("foo1", 
-            [get_tag_name_1, get_tag_name_2], self.branch.last_revision())
+        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_1, 'tagname1')
+        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_2, 'tagname2')
+        self.assertEquals("foo1", automatic_tag_name(self.branch, 
+            self.branch.last_revision()))
 
     def test_ignores_none(self):
         get_tag_name_1 = lambda br, revid: None
         get_tag_name_2 = lambda br, revid: "foo2"
-        self.check_with_tag_name_functions("foo2", 
-            [get_tag_name_1, get_tag_name_2], self.branch.last_revision())
+        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_1, 'tagname1')
+        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_2, 'tagname2')
+        self.assertEquals("foo2", automatic_tag_name(self.branch, 
+            self.branch.last_revision()))
