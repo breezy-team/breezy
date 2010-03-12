@@ -20,32 +20,22 @@
 # affects the global state of the process.  See bzrlib/plugins.py for more
 # comments.
 
+from cStringIO import StringIO
 import logging
 import os
-from StringIO import StringIO
 import sys
-import zipfile
 
+import bzrlib
 from bzrlib import (
     osutils,
     plugin,
     tests,
     )
-import bzrlib.plugin
-import bzrlib.plugins
-import bzrlib.commands
-import bzrlib.help
-from bzrlib.tests import (
-    TestCase,
-    TestCaseInTempDir,
-    TestUtil,
-    )
-from bzrlib.osutils import pathjoin, abspath, normpath
 
 
 # TODO: Write a test for plugin decoration of commands.
 
-class TestLoadingPlugins(TestCaseInTempDir):
+class TestLoadingPlugins(tests.TestCaseInTempDir):
 
     activeattributes = {}
 
@@ -242,7 +232,7 @@ class TestLoadingPlugins(TestCaseInTempDir):
             "it to 'bad_plugin_name_'\.")
 
 
-class TestPlugins(TestCaseInTempDir):
+class TestPlugins(tests.TestCaseInTempDir):
 
     def setup_plugin(self, source=""):
         # This test tests a new plugin appears in bzrlib.plugin.plugins().
@@ -275,29 +265,31 @@ class TestPlugins(TestCaseInTempDir):
         plugins = bzrlib.plugin.plugins()
         plugin = plugins['plugin']
         plugin_path = self.test_dir + '/plugin.py'
-        self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
+        self.assertIsSameRealPath(plugin_path, osutils.normpath(plugin.path()))
 
     def test_plugin_get_path_py_not_pyc(self):
-        self.setup_plugin()         # after first import there will be plugin.pyc
+        # first import creates plugin.pyc
+        self.setup_plugin()
         self.teardown_plugin()
         bzrlib.plugin.load_from_path(['.']) # import plugin.pyc
         plugins = bzrlib.plugin.plugins()
         plugin = plugins['plugin']
         plugin_path = self.test_dir + '/plugin.py'
-        self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
+        self.assertIsSameRealPath(plugin_path, osutils.normpath(plugin.path()))
 
     def test_plugin_get_path_pyc_only(self):
-        self.setup_plugin()         # after first import there will be plugin.pyc
+        # first import creates plugin.pyc (or plugin.pyo depending on __debug__)
+        self.setup_plugin()
         self.teardown_plugin()
         os.unlink(self.test_dir + '/plugin.py')
-        bzrlib.plugin.load_from_path(['.']) # import plugin.pyc
+        bzrlib.plugin.load_from_path(['.']) # import plugin.pyc (or .pyo)
         plugins = bzrlib.plugin.plugins()
         plugin = plugins['plugin']
         if __debug__:
             plugin_path = self.test_dir + '/plugin.pyc'
         else:
             plugin_path = self.test_dir + '/plugin.pyo'
-        self.assertIsSameRealPath(plugin_path, normpath(plugin.path()))
+        self.assertIsSameRealPath(plugin_path, osutils.normpath(plugin.path()))
 
     def test_no_test_suite_gives_None_for_test_suite(self):
         self.setup_plugin()
@@ -312,7 +304,7 @@ class TestPlugins(TestCaseInTempDir):
 
     def test_no_load_plugin_tests_gives_None_for_load_plugin_tests(self):
         self.setup_plugin()
-        loader = TestUtil.TestLoader()
+        loader = tests.TestUtil.TestLoader()
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual(None, plugin.load_plugin_tests(loader))
 
@@ -321,7 +313,7 @@ class TestPlugins(TestCaseInTempDir):
 def load_tests(standard_tests, module, loader):
     return 'foo'"""
         self.setup_plugin(source)
-        loader = TestUtil.TestLoader()
+        loader = tests.TestUtil.TestLoader()
         plugin = bzrlib.plugin.plugins()['plugin']
         self.assertEqual('foo', plugin.load_plugin_tests(loader))
 
@@ -398,7 +390,7 @@ def load_tests(standard_tests, module, loader):
         self.assertEqual("1.2.3.final.2", plugin.__version__)
 
 
-class TestPluginHelp(TestCaseInTempDir):
+class TestPluginHelp(tests.TestCaseInTempDir):
 
     def split_help_commands(self):
         help = {}
@@ -433,10 +425,10 @@ class TestPluginHelp(TestCaseInTempDir):
     def test_plugin_help_shows_plugin(self):
         # Create a test plugin
         os.mkdir('plugin_test')
-        f = open(pathjoin('plugin_test', 'myplug.py'), 'w')
+        f = open(osutils.pathjoin('plugin_test', 'myplug.py'), 'w')
         f.write("""\
-import bzrlib.commands
-class cmd_myplug(bzrlib.commands.Command):
+from bzrlib import commands
+class cmd_myplug(commands.Command):
     '''Just a simple test plugin.'''
     aliases = ['mplg']
     def run(self):
