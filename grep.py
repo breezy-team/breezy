@@ -81,6 +81,10 @@ def _make_display_path(relpath, path):
 
 def versioned_file_grep(tree, id, relpath, path, patternc, eol_marker,
         line_number, revno, print_revno, outf, path_prefix = None):
+    """Create a file object for the specified id and pass it on to _file_grep.
+    """
+
+    path = _make_display_path(relpath, path)
 
     # test and skip binary files
     str_file = cStringIO.StringIO(tree.get_file_text(id))
@@ -96,8 +100,6 @@ def versioned_file_grep(tree, id, relpath, path, patternc, eol_marker,
 def _file_grep(file_iter, relpath, path, patternc, eol_marker,
         line_number, revno, print_revno, outf, path_prefix):
 
-    path = _make_display_path(relpath, path)
-
     if path_prefix and path_prefix != '.':
         # user has passed a dir arg, show that as result prefix
         path = osutils.pathjoin(path_prefix, path)
@@ -109,6 +111,8 @@ def _file_grep(file_iter, relpath, path, patternc, eol_marker,
     fmt_with_n = path + revfmt + ":%d:%s" + eol_marker
     fmt_without_n = path + revfmt + ":%s" + eol_marker
 
+    # grep through iterable file object and print out the lines
+    # matching the compiled pattern in the specified format.
     index = 1
     for line in file_iter:
         res = patternc.search(line)
