@@ -88,6 +88,7 @@ def _extract_git_svn_id(rev):
     if branch_path is not None:
         yield ("svn", "%s:%d:%s" % (uuid, revnum, urllib.quote(branch_path)))
 
+
 def _extract_foreign_revision(rev):
     # Perhaps 'rev' is a foreign revision ?
     if getattr(rev, "foreign_revid", None) is not None:
