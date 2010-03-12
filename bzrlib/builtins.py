@@ -3134,9 +3134,11 @@ class cmd_commit(Command):
                 my_message = my_message.replace('\r\n', '\n')
                 my_message = my_message.replace('\r', '\n')
             if my_message is None and not file:
+                # t is the status of the tree
                 t = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
                         output_encoding=osutils.get_user_encoding())
+                # start_message is the template generated from hooks
                 start_message = generate_commit_message_template(commit_obj)
                 my_message = edit_commit_message_encoded(t,
                     start_message=start_message)

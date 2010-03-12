@@ -236,6 +236,7 @@ class Commit(object):
             commit.
         """
         operation = OperationWithCleanups(self._commit)
+        self.revprops = revprops or {}
         return operation.run(
                message=message,
                timestamp=timestamp,
@@ -246,7 +247,6 @@ class Commit(object):
                allow_pointless=allow_pointless,
                strict=strict,
                verbose=verbose,
-               revprops=revprops,
                working_tree=working_tree,
                local=local,
                reporter=reporter,
@@ -257,7 +257,7 @@ class Commit(object):
                possible_master_transports=possible_master_transports)
 
     def _commit(self, operation, message, timestamp, timezone, committer,
-            specific_files, rev_id, allow_pointless, strict, verbose, revprops,
+            specific_files, rev_id, allow_pointless, strict, verbose,
             working_tree, local, reporter, config, message_callback, recursive,
             exclude, possible_master_transports):
         mutter('preparing to commit')
@@ -299,7 +299,6 @@ class Commit(object):
             self.specific_files = None
             
         self.allow_pointless = allow_pointless
-        self.revprops = revprops
         self.message_callback = message_callback
         self.timestamp = timestamp
         self.timezone = timezone
@@ -371,7 +370,7 @@ class Commit(object):
         # Collect the changes
         self._set_progress_stage("Collecting changes", counter=True)
         self.builder = self.branch.get_commit_builder(self.parents,
-            self.config, timestamp, timezone, committer, revprops, rev_id)
+            self.config, timestamp, timezone, committer, self.revprops, rev_id)
 
         try:
             self.builder.will_record_deletes()
