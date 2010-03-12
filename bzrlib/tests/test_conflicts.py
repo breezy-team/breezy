@@ -231,6 +231,8 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _item_id = None
 
     # Set by _this_actions and other_actions
+    # FIXME: rename them this_args and other_args so the tests can use them
+    # more freely
     _this_path = None
     _this_id = None
     _other_path = None
@@ -686,50 +688,88 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
     @classmethod
     def scenarios(klass):
         base_scenarios = [
-            (('dir1_under_dir2', dict(actions='rename_dir1_under_dir2',
+            (('dir1_into_dir2', dict(actions='move_dir1_into_dir2',
                                       check='dir1_moved')),
-             ('dir2_under_dir1', dict(actions='rename_dir2_under_dir1',
+             ('dir2_into_dir1', dict(actions='move_dir2_into_dir1',
                                       check='dir2_moved')),
              dict(_actions_base='create_dir1_dir2')),
+            (('dir1_into_dir4', dict(actions='move_dir1_into_dir4',
+                                      check='dir1_2_moved')),
+             ('dir3_into_dir2', dict(actions='move_dir3_into_dir2',
+                                      check='dir3_4_moved')),
+             dict(_actions_base='create_dir1_4')),
             ]
         return klass.mirror_scenarios(base_scenarios)
 
     def do_create_dir1_dir2(self):
         return (None, None,
                 [('add', ('dir1', 'dir1-id', 'directory', '')),
-                 ('add', ('dir2', 'dir2-id', 'directory', '')),])
+                 ('add', ('dir2', 'dir2-id', 'directory', '')),
+                 ])
 
-    def do_rename_dir1_under_dir2(self):
-        # Note that 'dir2/dir1' is the *targeted* path, and 'dir2-id' the
-        # *targeted* parent-id
-        return ('dir1/dir2', 'dir2-id', [('rename', ('dir1', 'dir2/dir1'))])
+    def do_move_dir1_into_dir2(self):
+        # The arguments are the file-id to move and the targeted file-id dir.
+        return ('dir1-id', 'dir2-id', [('rename', ('dir1', 'dir2/dir1'))])
 
     def check_dir1_moved(self):
         self.failIfExists('branch/dir1')
         self.failUnlessExists('branch/dir2/dir1')
 
-    def do_rename_dir2_under_dir1(self):
-        # Note that 'dir1/dir2' is the *targeted* path, and 'dir1-id' the
-        # *targeted* parent-id
-        return ('dir2/dir1', 'dir1-id', [('rename', ('dir2', 'dir1/dir2'))])
+    def do_move_dir2_into_dir1(self):
+        # The arguments are the file-id to move and the targeted file-id dir.
+        return ('dir2-id', 'dir1-id', [('rename', ('dir2', 'dir1/dir2'))])
 
     def check_dir2_moved(self):
         self.failIfExists('branch/dir2')
         self.failUnlessExists('branch/dir1/dir2')
+
+    def do_create_dir1_4(self):
+        return (None, None,
+                [('add', ('dir1', 'dir1-id', 'directory', '')),
+                 ('add', ('dir1/dir2', 'dir2-id', 'directory', '')),
+                 ('add', ('dir3', 'dir3-id', 'directory', '')),
+                 ('add', ('dir3/dir4', 'dir4-id', 'directory', '')),
+                 ])
+
+    def do_move_dir1_into_dir4(self):
+        # The arguments are the file-id to move and the targeted file-id dir.
+        return ('dir1-id', 'dir4-id',
+                [('rename', ('dir1', 'dir3/dir4/dir1'))])
+
+    def check_dir1_2_moved(self):
+        self.failIfExists('branch/dir1')
+        self.failUnlessExists('branch/dir3/dir4/dir1')
+        self.failUnlessExists('branch/dir3/dir4/dir1/dir2')
+
+    def do_move_dir3_into_dir2(self):
+        # The arguments are the file-id to move and the targeted file-id dir.
+        return ('dir3-id', 'dir2-id',
+                [('rename', ('dir3', 'dir1/dir2/dir3'))])
+
+    def check_dir3_4_moved(self):
+        self.failIfExists('branch/dir3')
+        self.failUnlessExists('branch/dir1/dir2/dir3')
+        self.failUnlessExists('branch/dir1/dir2/dir3/dir4')
 
     def _get_resolve_path_arg(self, wt, action):
         # ParentLoop is unsual as it says: 
         # moving <conflict_path> into <path>.  Cancelled move.
         # But since <path> doesn't exist in the working tree, we need to use
         # <conflict_path> instead
-        path = self._other_path
+        path = wt.id2path(self._other_id)
         return path
 
     def assertParentLoop(self, wt, c):
-        self.assertEqual(self._this_id, c.file_id)
-        self.assertEqual(wt.id2path(self._this_id), c.path)
+        # The relevant file-ids are other_args swapped (which is the main
+        # reason why they should be renamed other_args instead of Other_path
+        # and other_id). In the conflict object, they represent:
+        # c.file_id: the directory being moved
+        # c.conflict_id_id: The target directory
+        self.assertEqual(self._other_path, c.file_id)
         self.assertEqual(self._other_id, c.conflict_file_id)
-        self.assertEqual(self._other_path, c.conflict_path)
+        # The conflict paths are irrelevant (they are deterministic but not
+        # worth checking since they don't provide the needed information
+        # anyway)
     _assert_conflict = assertParentLoop
 
 

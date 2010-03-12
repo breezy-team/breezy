@@ -704,7 +704,7 @@ class ParentLoop(HandledPathConflict):
 
     typestring = 'parent loop'
 
-    format = 'Conflict moving %(conflict_path)s into %(path)s.  %(action)s.'
+    format = 'Conflict moving %(path)s into %(conflict_path)s. %(action)s.'
 
     def action_take_this(self, tree):
         # just acccept bzr proposal
