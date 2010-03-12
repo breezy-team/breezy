@@ -5284,7 +5284,6 @@ class cmd_tag(Command):
             force=None,
             revision=None,
             ):
-        from bzrlib.tag import automatic_tag_name
         branch, relpath = Branch.open_containing(directory)
         branch.lock_write()
         self.add_cleanup(branch.unlock)
@@ -5303,7 +5302,7 @@ class cmd_tag(Command):
             else:
                 revision_id = branch.last_revision()
             if tag_name is None:
-                tag_name = automatic_tag_name(branch, revision_id)
+                tag_name = branch.automatic_tag_name(revision_id)
                 if tag_name is None:
                     raise errors.BzrCommandError(
                         "Please specify a tag name.")

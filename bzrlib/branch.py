@@ -1366,6 +1366,18 @@ class Branch(object):
     def supports_tags(self):
         return self._format.supports_tags()
 
+    def automatic_tag_name(self, revision_id):
+        """Try to automatically find the tag name for a revision.
+
+        :param revision_id: Revision id of the revision.
+        :return: A tag name or None if no tag name could be automaticd.
+        """
+        for hook in Branch.hooks['automatic_tag_name']:
+            ret = hook(self, revision_id)
+            if ret is not None:
+                return ret
+        return None
+
     def _check_if_descendant_or_diverged(self, revision_a, revision_b, graph,
                                          other_branch):
         """Ensure that revision_b is a descendant of revision_a.

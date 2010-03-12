@@ -24,7 +24,6 @@ from bzrlib import (
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
-    automatic_tag_name,
     )
 from bzrlib.tests import (
     KnownFailure,
@@ -186,54 +185,4 @@ class DisabledTagsTests(TestCaseWithTransport):
         self.assertEqual(self.tags.get_reverse_tag_dict(), {})
 
 
-class AutomaticTagNameTests(TestCaseWithTransport):
 
-    def setUp(self):
-        super(AutomaticTagNameTests, self).setUp()
-        self.builder = self.make_branch_builder('.')
-        self.builder.build_snapshot('foo', None,
-            [('add', ('', None, 'directory', None))],
-            message='foo')
-        self.branch = self.builder.get_branch()
-        self.tags = self.branch.tags
-        self._old_tag_name_functions = []
-
-    def _clear_tag_name_functions(self):
-        self._old_tag_name_functions = tag.automatic_tag_name_functions
-        self.addCleanup(self._restore_tag_name_functions)
-        tag.automatic_tag_name_functions = []
-
-    def _restore_tag_name_functions(self):
-        tag.automatic_tag_name_functions = self._old_tag_name_functions
-
-    def test_no_functions(self):
-        rev = self.branch.last_revision()
-        self.assertEquals(None, automatic_tag_name(self.branch, rev))
-
-    def test_returns_tag_name(self):
-        def get_tag_name(br, revid):
-            return "foo"
-        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
-            get_tag_name, 'get tag name foo')
-        self.assertEquals("foo", automatic_tag_name(self.branch, 
-            self.branch.last_revision()))
-    
-    def test_uses_first_return(self):
-        get_tag_name_1 = lambda br, revid: "foo1"
-        get_tag_name_2 = lambda br, revid: "foo2"
-        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
-            get_tag_name_1, 'tagname1')
-        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
-            get_tag_name_2, 'tagname2')
-        self.assertEquals("foo1", automatic_tag_name(self.branch, 
-            self.branch.last_revision()))
-
-    def test_ignores_none(self):
-        get_tag_name_1 = lambda br, revid: None
-        get_tag_name_2 = lambda br, revid: "foo2"
-        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
-            get_tag_name_1, 'tagname1')
-        _mod_branch.Branch.hooks.install_named_hook('automatic_tag_name',
-            get_tag_name_2, 'tagname2')
-        self.assertEquals("foo2", automatic_tag_name(self.branch, 
-            self.branch.last_revision()))
