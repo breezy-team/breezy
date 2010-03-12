@@ -1244,6 +1244,8 @@ class CombinedGraphIndex(object):
         self._indices = indices
         self._reload_func = reload_func
         self._auto_reorder = auto_reorder
+        self._sibling_indices = []
+        self._index_names = []
 
     def __repr__(self):
         return "%s(%s)" % (
@@ -1272,13 +1274,14 @@ class CombinedGraphIndex(object):
 
     has_key = _has_key_from_parent_map
 
-    def insert_index(self, pos, index):
+    def insert_index(self, pos, index, name=None):
         """Insert a new index in the list of indices to query.
 
         :param pos: The position to insert the index.
         :param index: The index to insert.
         """
         self._indices.insert(pos, index)
+        self._index_names.insert(pos, name)
 
     def iter_all_entries(self):
         """Iterate over all keys within the index
@@ -1374,7 +1377,7 @@ class CombinedGraphIndex(object):
                 self._reload_or_raise()
         self._move_to_front(hit_indices)
 
-    def _move_to_front(self, hit_indices):
+    def _move_to_front(self, hit_indices, no_sib_update=False):
         """Rearrange self._indices so that hit_indices are first.
 
         Order is maintained as much as possible, e.g. the first unhit index
@@ -1384,9 +1387,34 @@ class CombinedGraphIndex(object):
         """
         if not self._auto_reorder:
             return
-        unhit_indices = [
-            idx for idx in self._indices if idx not in hit_indices]
-        self._indices = hit_indices + unhit_indices
+        names = self._index_names
+        indices_info = zip(names, self._indices)
+        hit_indices_info = []
+        hit_names = []
+        unhit_indices_info = []
+        for name, idx in indices_info:
+            if idx in hit_indices:
+                info = hit_indices_info
+                hit_names.append(name)
+            else:
+                info = unhit_indices_info
+            info.append((name, idx))
+        final_info = hit_indices_info + unhit_indices_info
+        self._indices = [idx for (name, idx) in final_info]
+        self._index_names = [name for (name, idx) in final_info]
+        if self._sibling_indices and not no_sib_update:
+            for sibling_idx in self._sibling_indices:
+                sibling_idx._move_to_front_by_name(hit_names)
+
+    def _move_to_front_by_name(self, hit_names):
+        if not self._auto_reorder:
+            return
+        indices_info = zip(self._index_names, self._indices)
+        hit_indices = []
+        for name, idx in indices_info:
+            if name in hit_names:
+                hit_indices.append(idx)
+        self._move_to_front(hit_indices, True)
 
     def find_ancestry(self, keys, ref_list_num):
         """Find the complete ancestry for the given set of keys.
