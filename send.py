@@ -68,10 +68,10 @@ class GitDiffTree(_mod_diff.DiffTree):
                 return path.encode(self.path_encoding, "replace")
         def get_file_mode(tree, path, kind, executable):
             if path is None:
-                return None
+                return 0
             return object_mode(kind, executable)
         def get_blob(present, tree, file_id):
-            if present is not None:
+            if present:
                 return Blob.from_string(tree.get_file(file_id).read())
             else:
                 return None
@@ -84,8 +84,10 @@ class GitDiffTree(_mod_diff.DiffTree):
                 continue
             path_encoded = (get_encoded_path(paths[0]),
                             get_encoded_path(paths[1]))
-            present = ((kind[0] is not None and versioned[0]),
-                       (kind[1] is not None and versioned[1]))
+            present = ((kind[0] not in (None, 'directory')),
+                       (kind[1] not in (None, 'directory')))
+            if not present[0] and not present[1]:
+                continue
             contents = (get_blob(present[0], trees[0], file_id),
                         get_blob(present[1], trees[1], file_id))
             renamed = (parent[0], name[0]) != (parent[1], name[1])

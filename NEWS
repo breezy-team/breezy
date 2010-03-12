@@ -25,6 +25,9 @@
   * Support ``run_hooks`` argument to ``InterGitRemoteLocalBranch.pull()``.
     (#524843, Jelmer Vernooij)
 
+  * Properly ignore directories when creating bundles, deal with new files.
+    (#456849, Jelmer Vernooij)
+
  PERFORMANCE
 
   * Don't import head revision twice when pulling from Git.
