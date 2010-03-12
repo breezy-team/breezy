@@ -64,7 +64,7 @@ class MergeDirectiveHooks(hooks.Hooks):
             " provided to the next.", (1, 15, 0), False))
 
 
-class _BaseMergeDirective(object):
+class BaseMergeDirective(object):
 
     hooks = MergeDirectiveHooks()
 
@@ -91,6 +91,20 @@ class _BaseMergeDirective(object):
         self.patch = patch
         self.source_branch = source_branch
         self.message = message
+
+    def to_lines(self):
+        """Serialize as a list of lines
+
+        :return: a list of lines
+        """
+        raise NotImplementedError(self.to_lines)
+
+    def get_raw_bundle(self):
+        """Return the bundle for this merge directive.
+
+        :return: bundle text or None if there is no bundle
+        """
+        return None
 
     def _to_lines(self, base_revision=False):
         """Serialize as a list of lines
@@ -303,7 +317,7 @@ class _BaseMergeDirective(object):
                                           basename, body)
 
 
-class MergeDirective(_BaseMergeDirective):
+class MergeDirective(BaseMergeDirective):
 
     """A request to perform a merge into a branch.
 
@@ -338,7 +352,7 @@ class MergeDirective(_BaseMergeDirective):
         :param source_branch: A public location to merge the revision from
         :param message: The message to use when committing this merge
         """
-        _BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
+        BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
             timezone, target_branch, patch, source_branch, message)
         if patch_type not in (None, 'diff', 'bundle'):
             raise ValueError(patch_type)
@@ -428,7 +442,7 @@ class MergeDirective(_BaseMergeDirective):
         return None, self.revision_id, 'inapplicable'
 
 
-class MergeDirective2(_BaseMergeDirective):
+class MergeDirective2(BaseMergeDirective):
 
     _format_string = 'Bazaar merge directive format 2 (Bazaar 0.90)'
 
@@ -437,7 +451,7 @@ class MergeDirective2(_BaseMergeDirective):
                  bundle=None, base_revision_id=None):
         if source_branch is None and bundle is None:
             raise errors.NoMergeSource()
-        _BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
+        BaseMergeDirective.__init__(self, revision_id, testament_sha1, time,
             timezone, target_branch, patch, source_branch, message)
         self.bundle = bundle
         self.base_revision_id = base_revision_id
