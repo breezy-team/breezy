@@ -57,8 +57,9 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
             for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
                 from_dir=from_dir, recursive=recursive):
                 if fc == 'V' and fkind == 'file':
-                    file_grep(tree, fid, rpath, fp, compiled_pattern,
-                        eol_marker, line_number, revno, print_revno, outf, path_prefix)
+                    versioned_file_grep(tree, fid, rpath, fp,
+                        compiled_pattern, eol_marker, line_number,
+                        revno, print_revno, outf, path_prefix)
         finally:
             tree.unlock()
 
@@ -78,8 +79,22 @@ def _make_display_path(relpath, path):
     return path
 
 
-def file_grep(tree, id, relpath, path, patternc, eol_marker,
+def versioned_file_grep(tree, id, relpath, path, patternc, eol_marker,
         line_number, revno, print_revno, outf, path_prefix = None):
+
+    # test and skip binary files
+    str_file = cStringIO.StringIO(tree.get_file_text(id))
+    try:
+        file_iter = textfile.text_file(str_file)
+    except errors.BinaryFile, e:
+        trace.warning("Binary file '%s' skipped." % path)
+        return
+
+    _file_grep(file_iter, relpath, path, patternc, eol_marker,
+        line_number, revno, print_revno, outf, path_prefix)
+
+def _file_grep(file_iter, relpath, path, patternc, eol_marker,
+        line_number, revno, print_revno, outf, path_prefix):
 
     path = _make_display_path(relpath, path)
 
@@ -93,14 +108,6 @@ def file_grep(tree, id, relpath, path, patternc, eol_marker,
 
     fmt_with_n = path + revfmt + ":%d:%s" + eol_marker
     fmt_without_n = path + revfmt + ":%s" + eol_marker
-
-    # test and skip binary files
-    str_file = cStringIO.StringIO(tree.get_file_text(id))
-    try:
-        file_iter = textfile.text_file(str_file)
-    except errors.BinaryFile, e:
-        trace.warning("Binary file '%s' skipped." % path)
-        return
 
     index = 1
     for line in file_iter:

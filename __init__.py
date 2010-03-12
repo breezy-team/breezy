@@ -177,8 +177,9 @@ class cmd_grep(Command):
                     else:
                         tree.lock_read()
                         try:
-                            grep.file_grep(tree, id, '.', path, patternc, eol_marker,
-                                line_number, revno, print_revno, self.outf)
+                            grep.versioned_file_grep(tree, id, '.', path,
+                                patternc, eol_marker, line_number, revno,
+                                print_revno, self.outf)
                         finally:
                             tree.unlock()
             finally:
