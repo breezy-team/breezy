@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,15 +42,6 @@ from bzrlib.tests import (
     )
 from bzrlib.osutils import pathjoin, abspath, normpath
 
-
-PLUGIN_TEXT = """\
-import bzrlib.commands
-class cmd_myplug(bzrlib.commands.Command):
-    '''Just a simple test plugin.'''
-    aliases = ['mplg']
-    def run(self):
-        print 'Hello from my plugin'
-"""
 
 # TODO: Write a test for plugin decoration of commands.
 
@@ -443,7 +434,16 @@ class TestPluginHelp(TestCaseInTempDir):
         # Create a test plugin
         os.mkdir('plugin_test')
         f = open(pathjoin('plugin_test', 'myplug.py'), 'w')
-        f.write(PLUGIN_TEXT)
+        f.write("""\
+import bzrlib.commands
+class cmd_myplug(bzrlib.commands.Command):
+    '''Just a simple test plugin.'''
+    aliases = ['mplg']
+    def run(self):
+        print 'Hello from my plugin'
+
+"""
+)
         f.close()
 
         try:
@@ -627,7 +627,7 @@ class TestLoadFromPath(tests.TestCaseInTempDir):
         self.assertEqual(path, bzrlib.plugins.__path__)
 
 
-class TestEnvPluginPath(tests.TestCaseInTempDir):
+class TestEnvPluginPath(tests.TestCase):
 
     def setUp(self):
         super(TestEnvPluginPath, self).setUp()
@@ -680,7 +680,7 @@ class TestEnvPluginPath(tests.TestCaseInTempDir):
         self.check_path([self.user, self.core, self.site],
                         ['+user', '+user'])
         # And only the first reference is kept (since the later references will
-        # onnly produce <plugin> already loaded mutters)
+        # only produce '<plugin> already loaded' mutters)
         self.check_path([self.user, self.core, self.site],
                         ['+user', '+user', '+core',
                          '+user', '+site', '+site',

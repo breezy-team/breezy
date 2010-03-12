@@ -179,7 +179,7 @@ def get_standard_plugins_path():
     paths = []
     for p in env_paths + defaults:
         if p.startswith('+'):
-            # Resolve reference if they are known
+            # Resolve references if they are known
             try:
                 p = refs[p[1:]]
             except KeyError:
