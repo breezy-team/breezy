@@ -848,7 +848,7 @@ $ bzr mv dir1 dir2
 $ bzr commit -m 'Moved dir1 into dir2'
 
 $ bzr merge ../trunk
-2>Conflict moving dir2/dir1 into dir2.  Cancelled move.
+2>Conflict moving dir2 into dir2/dir1. Cancelled move.
 2>1 conflicts encountered.
 """
 
