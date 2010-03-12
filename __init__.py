@@ -61,6 +61,7 @@ def test_suite():
     testmod_names = [
         'test_blackbox',
         'test_maptree',
+        'test_pseudonyms',
         'test_rebase',
         'test_upgrade']
     suite.addTest(loader.loadTestsFromModuleNames(
