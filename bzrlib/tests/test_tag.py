@@ -23,7 +23,7 @@ from bzrlib import (
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
-    determine_tag_name,
+    automatic_tag_name,
     )
 from bzrlib.tests import (
     KnownFailure,
@@ -185,10 +185,10 @@ class DisabledTagsTests(TestCaseWithTransport):
         self.assertEqual(self.tags.get_reverse_tag_dict(), {})
 
 
-class DetermineTagTests(TestCaseWithTransport):
+class AutomaticTagNameTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(DetermineTagTests, self).setUp()
+        super(AutomaticTagNameTests, self).setUp()
         self.builder = self.make_branch_builder('.')
         self.builder.build_snapshot('foo', None,
             [('add', ('', None, 'directory', None))],
@@ -198,21 +198,21 @@ class DetermineTagTests(TestCaseWithTransport):
         self._old_tag_name_functions = []
 
     def _clear_tag_name_functions(self):
-        self._old_tag_name_functions = tag.dwim_determine_tag_name_functions
+        self._old_tag_name_functions = tag.automatic_tag_name_functions
         self.addCleanup(self._restore_tag_name_functions)
-        tag.dwim_determine_tag_name_functions = []
+        tag.automatic_tag_name_functions = []
 
     def _restore_tag_name_functions(self):
-        tag.dwim_determine_tag_name_functions = self._old_tag_name_functions
+        tag.automatic_tag_name_functions = self._old_tag_name_functions
 
     def check_with_tag_name_functions(self, tag_name, fns, revid):
         self._clear_tag_name_functions()
-        tag.dwim_determine_tag_name_functions.extend(fns)
-        self.assertEquals(tag_name, determine_tag_name(self.branch, revid))
+        tag.automatic_tag_name_functions.extend(fns)
+        self.assertEquals(tag_name, automatic_tag_name(self.branch, revid))
 
     def test_no_functions(self):
         rev = self.branch.last_revision()
-        self.assertEquals(None, determine_tag_name(self.branch, rev))
+        self.assertEquals(None, automatic_tag_name(self.branch, rev))
 
     def test_returns_tag_name(self):
         def get_tag_name(br, revid):

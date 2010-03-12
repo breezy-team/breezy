@@ -57,9 +57,9 @@ class TestTagging(TestCaseWithTransport):
     def test_automatic_tag_name(self):
         def get_tag_name(branch, revid):
             return "mytag"
-        tag.dwim_determine_tag_name_functions.append(get_tag_name)
+        tag.automatic_tag_name_functions.append(get_tag_name)
         self.addCleanup(
-            lambda: tag.dwim_determine_tag_name_functions.remove(get_tag_name))
+            lambda: tag.automatic_tag_name_functions.remove(get_tag_name))
         out, err = self.run_bzr('tag -d branch')
         self.assertContainsRe(out, 'Created tag mytag.')
 
