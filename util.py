@@ -533,4 +533,4 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
             filtered=filtered, per_file_timestamps=True)
     else:
         return bzr_export(tree, dest, format=format, root=root, subdir=subdir,
-            filtered=filtered, per_file_timestamps=True)
+            filtered=filtered)
