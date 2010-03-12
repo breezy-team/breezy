@@ -830,57 +830,6 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
     _assert_conflict = assertParentLoop
 
 
-class OldTestResolveParentLoop(TestResolveConflicts):
-
-    preamble = """
-$ bzr init trunk
-$ cd trunk
-$ bzr mkdir dir1
-$ bzr mkdir dir2
-$ bzr commit -m 'Create trunk'
-
-$ bzr mv dir2 dir1
-$ bzr commit -m 'Moved dir2 into dir1'
-
-$ bzr branch . -r 1 ../branch
-$ cd ../branch
-$ bzr mv dir1 dir2
-$ bzr commit -m 'Moved dir1 into dir2'
-
-$ bzr merge ../trunk
-2>Conflict moving dir2 into dir2/dir1. Cancelled move.
-2>1 conflicts encountered.
-"""
-
-    def test_take_this(self):
-        self.run_script("""
-$ bzr resolve dir2
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_take_other(self):
-        self.run_script("""
-$ bzr mv dir2/dir1 dir1
-$ bzr mv dir2 dir1
-$ bzr resolve dir2
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-
-    def test_resolve_taking_this(self):
-        self.run_script("""
-$ bzr resolve --take-this dir2
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-        self.failUnlessExists('dir2')
-
-    def test_resolve_taking_other(self):
-        self.run_script("""
-$ bzr resolve --take-other dir2
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
-""")
-        self.failUnlessExists('dir1')
-
-
 class TestResolveNonDirectoryParent(TestResolveConflicts):
 
     preamble = """
