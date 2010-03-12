@@ -50,6 +50,10 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(err,
             "Tags can only be placed on a single revision")
 
+    def test_no_tag_name(self):
+        out, err = self.run_bzr('tag -d branch', retcode=3)
+        self.assertContainsRe(err, 'Please specify a tag name.')
+
     def test_automatic_tag_name(self):
         def get_tag_name(branch, revid):
             return "mytag"
