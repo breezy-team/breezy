@@ -63,15 +63,25 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
             tree.unlock()
 
 
-def file_grep(tree, id, relpath, path, patternc, eol_marker,
-        line_number, revno, print_revno, outf, path_prefix = None):
+def _make_display_path(relpath, path):
+    """Return path string relative to user cwd.
 
+    Take tree's 'relpath' and user supplied 'path', and return path
+    that can be displayed to the user.
+    """
     if relpath:
         # update path so to display it w.r.t cwd
         # handle windows slash separator
         path = osutils.normpath(osutils.pathjoin(relpath, path))
         path = path.replace('\\', '/')
         path = path.replace(relpath + '/', '', 1)
+    return path
+
+
+def file_grep(tree, id, relpath, path, patternc, eol_marker,
+        line_number, revno, print_revno, outf, path_prefix = None):
+
+    path = _make_display_path(relpath, path)
 
     if path_prefix and path_prefix != '.':
         # user has passed a dir arg, show that as result prefix
@@ -87,13 +97,13 @@ def file_grep(tree, id, relpath, path, patternc, eol_marker,
     # test and skip binary files
     str_file = cStringIO.StringIO(tree.get_file_text(id))
     try:
-        iter_file = textfile.text_file(str_file)
+        file_iter = textfile.text_file(str_file)
     except errors.BinaryFile, e:
         trace.warning("Binary file '%s' skipped." % path)
         return
 
     index = 1
-    for line in iter_file:
+    for line in file_iter:
         res = patternc.search(line)
         if res:
             if line_number:
