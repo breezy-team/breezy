@@ -61,31 +61,40 @@ class SubversionBranchUrlFinder(object):
 svn_branch_path_finder = SubversionBranchUrlFinder()
 
 
-def extract_foreign_revids(rev):
-    """Find ids of semi-equivalent revisions in foreign VCS'es.
+def _extract_converted_from_revid(rev):
+    if not "converted-from" in rev.properties:
+        return
 
-    :param: Bazaar revision object
-    :return: Set with semi-equivalent revisions.
-    """
-    ret = set()
-    if "converted-from" in rev.properties:
-        for line in rev.properties.get("converted-from", "").splitlines():
-            (kind, serialized_foreign_revid) = line.split(" ", 1)
-            ret.add((kind, serialized_foreign_revid))
-    # Maybe an older-style launchpad-cscvs import ?
-    if "cscvs-svn-branch-path" in rev.properties:
-        ret.add(("svn", "%s:%s:%s" % (
-             rev.properties["cscvs-svn-repository-uuid"],
-             rev.properties["cscvs-svn-revision-number"],
-             urllib.quote(rev.properties["cscvs-svn-branch-path"].strip("/")))))
-    if "git-svn-id" in rev.properties:
-        (full_url, revnum, uuid) = parse_git_svn_id(rev.properties['git-svn-id'])
-        branch_path = svn_branch_path_finder.find_branch_path(uuid, full_url)
-        if branch_path is not None:
-            ret.add(("svn", "%s:%d:%s" % (uuid, revnum, urllib.quote(branch_path))))
+    for line in rev.properties.get("converted-from", "").splitlines():
+        (kind, serialized_foreign_revid) = line.split(" ", 1)
+        yield (kind, serialized_foreign_revid)
+
+
+def _extract_cscvs(rev):
+    """Older-style launchpad-cscvs import."""
+    if not "cscvs-svn-branch-path" in rev.properties:
+        return
+    yield ("svn", "%s:%s:%s" % (
+         rev.properties["cscvs-svn-repository-uuid"],
+         rev.properties["cscvs-svn-revision-number"],
+         urllib.quote(rev.properties["cscvs-svn-branch-path"].strip("/"))))
+
+
+def _extract_git_svn_id(rev):
+    if not "git-svn-id" in rev.properties:
+        return
+    (full_url, revnum, uuid) = parse_git_svn_id(rev.properties['git-svn-id'])
+    branch_path = svn_branch_path_finder.find_branch_path(uuid, full_url)
+    if branch_path is not None:
+        yield ("svn", "%s:%d:%s" % (uuid, revnum, urllib.quote(branch_path)))
+
+def _extract_foreign_revision(rev):
     # Perhaps 'rev' is a foreign revision ?
     if getattr(rev, "foreign_revid", None) is not None:
-        ret.add(("svn", rev.mapping.vcs.serialize_foreign_revid(rev.foreign_revid)))
+        yield ("svn", rev.mapping.vcs.serialize_foreign_revid(rev.foreign_revid))
+
+
+def _extract_foreign_revid(rev):
     # Try parsing the revision id
     try:
         foreign_revid, mapping = \
@@ -93,9 +102,29 @@ def extract_foreign_revids(rev):
     except errors.InvalidRevisionId:
         pass
     else:
-        ret.add((mapping.vcs.abbreviation,
-            mapping.vcs.serialize_foreign_revid(foreign_revid)))
+        yield (mapping.vcs.abbreviation,
+            mapping.vcs.serialize_foreign_revid(foreign_revid))
 
+
+
+_foreign_revid_extractors = [
+    _extract_converted_from_revid,
+    _extract_cscvs,
+    _extract_git_svn_id,
+    _extract_foreign_revision,
+    _extract_foreign_revid,
+    ]
+
+
+def extract_foreign_revids(rev):
+    """Find ids of semi-equivalent revisions in foreign VCS'es.
+
+    :param: Bazaar revision object
+    :return: Set with semi-equivalent revisions.
+    """
+    ret = set()
+    for extractor in _foreign_revid_extractors:
+        ret.update(extractor(rev))
     return ret
 
 
