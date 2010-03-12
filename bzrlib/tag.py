@@ -263,8 +263,8 @@ def automatic_tag_name(branch, revision_id):
     :param revision_id: Revision id of the revision.
     :return: A tag name or None if no tag name could be automaticd.
     """
-    for get_tag_name in Branch.hooks['automatic_tag_name']:
-        ret = get_tag_name(branch, revision_id)
+    for hook in Branch.hooks['automatic_tag_name']:
+        ret = hook(branch, revision_id)
         if ret is not None:
             return ret
     return None
