@@ -58,19 +58,20 @@ def _parse_levels(s):
 class cmd_grep(Command):
     """Print lines matching PATTERN for specified files and revisions.
 
-    This command searches the specified files and revisions for a given pattern.
-    The pattern is specified as a Python regular expressions[1].
-    If the file name is not specified, the revisions starting with the current
-    directory are searched recursively. If the revision number is not specified,
-    the latest revision is searched.
+    This command searches the specified files and revisions for a given
+    pattern.  The pattern is specified as a Python regular expressions[1].
 
-    Note that this command is different from POSIX grep in that it searches the
-    revisions of the branch and not the working copy. Unversioned files and
-    uncommitted changes are not seen.
+    If the file name is not specified, the revisions starting with the
+    current directory are searched recursively. If the revision number is
+    not specified, the working copy is searched. To search the last committed
+    revision, use the '-r -1' or '-r last:1' option.
 
-    When searching a pattern, the output is shown in the 'filepath:string' format.
-    If a revision is explicitly searched, the output is shown as 'filepath~N:string',
-    where N is the revision number.
+    Unversioned files are not searched unless explicitly specified on the
+    command line.
+
+    When searching a pattern, the output is shown in the 'filepath:string'
+    format. If a revision is explicitly searched, the output is shown as
+    'filepath~N:string', where N is the revision number.
 
     [1] http://docs.python.org/library/re.html#regular-expression-syntax
     """

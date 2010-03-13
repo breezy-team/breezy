@@ -34,10 +34,11 @@ class TestGrep(tests.TestCaseWithTransport):
             self.run_bzr(['add', path])
             self.run_bzr(['ci', '-m', '"' + path + '"'])
 
-    def _update_file(self, path, text):
+    def _update_file(self, path, text, checkin=True):
         """append text to file 'path' and check it in"""
         open(path, 'a').write(text)
-        self.run_bzr(['ci', '-m', '"' + path + '"'])
+        if checkin:
+            self.run_bzr(['ci', '-m', '"' + path + '"'])
 
     def _mk_unknown_file(self, path, line_prefix='line', total_lines=10):
         self._mk_file(path, line_prefix, total_lines, versioned=False)
@@ -70,14 +71,27 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "file0.txt:line1"))
 
     def test_basic_versioned_file(self):
+        """Search for pattern in specfic file"""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.txt')
+        out, err = self.run_bzr(['grep', '-r', '1', 'line1', 'file0.txt'])
+        self.assertTrue(self._str_contains(out, "file0.txt~1:line1"))
+
+    def test_basic_wtree_file(self):
         """search for pattern in specfic file"""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
         self._mk_versioned_file('file0.txt')
-        out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
-        self.assertTrue(self._str_contains(out, "file0.txt:line1"))
-        self.assertFalse(self._str_contains(err, "warning: skipped.*file0.txt.*\."))
+        self._update_file('file0.txt', 'ABC\n', checkin=False)
+
+        out, err = self.run_bzr(['grep', 'ABC', 'file0.txt'])
+        self.assertTrue(self._str_contains(out, "file0.txt:ABC"))
+
+        out, err = self.run_bzr(['grep', '-r', 'last:1', 'ABC', 'file0.txt'])
+        self.assertFalse(self._str_contains(out, "file0.txt"))
 
     def test_multiple_files(self):
         """search for pattern in multiple files"""
