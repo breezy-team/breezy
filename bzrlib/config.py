@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -866,12 +866,16 @@ def crash_dir():
 
     This doesn't implicitly create it.
 
-    On Windows it's in the config directory; elsewhere in the XDG cache directory.
+    On Windows it's in the config directory; elsewhere it's /var/crash
+    which may be monitored by apport.  It can be overridden by
+    $APPORT_CRASH_DIR.
     """
     if sys.platform == 'win32':
         return osutils.pathjoin(config_dir(), 'Crash')
     else:
-        return osutils.pathjoin(xdg_cache_dir(), 'crash')
+        # XXX: hardcoded in apport_python_hook.py; therefore here too -- mbp
+        # 2010-01-31
+        return os.environ.get('APPORT_CRASH_DIR', '/var/crash')
 
 
 def xdg_cache_dir():

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,19 +16,15 @@
 
 """UI tests for the test framework."""
 
-import bzrlib.transport
 from bzrlib import (
     benchmarks,
     tests,
     )
-from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
-                          features,
-                          TestCase,
-                          TestCaseInTempDir,
-                          TestSkipped,
-                          )
-
+    features,
+    stub_sftp,
+    )
+from bzrlib.transport import memory
 
 class SelfTestPatch:
 
@@ -51,7 +47,7 @@ class SelfTestPatch:
             tests.selftest = original_selftest
 
 
-class TestOptionsWritingToDisk(TestCaseInTempDir, SelfTestPatch):
+class TestOptionsWritingToDisk(tests.TestCaseInTempDir, SelfTestPatch):
 
     def test_benchmark_runs_benchmark_tests(self):
         """selftest --benchmark should change the suite factory."""
@@ -69,7 +65,7 @@ class TestOptionsWritingToDisk(TestCaseInTempDir, SelfTestPatch):
         self.assertEqual(0, len(lines))
 
 
-class TestOptions(TestCase, SelfTestPatch):
+class TestOptions(tests.TestCase, SelfTestPatch):
 
     def test_load_list(self):
         params = self.get_params_passed_to_core('selftest --load-list foo')
@@ -80,16 +76,14 @@ class TestOptions(TestCase, SelfTestPatch):
         # version.
         self.requireFeature(features.paramiko)
         params = self.get_params_passed_to_core('selftest --transport=sftp')
-        self.assertEqual(bzrlib.transport.sftp.SFTPAbsoluteServer,
+        self.assertEqual(stub_sftp.SFTPAbsoluteServer,
             params[1]["transport"])
 
     def test_transport_set_to_memory(self):
         # Test that we can pass a transport to the selftest core - memory
         # version.
-        import bzrlib.transport.memory
         params = self.get_params_passed_to_core('selftest --transport=memory')
-        self.assertEqual(bzrlib.transport.memory.MemoryServer,
-            params[1]["transport"])
+        self.assertEqual(memory.MemoryServer, params[1]["transport"])
 
     def test_parameters_passed_to_core(self):
         params = self.get_params_passed_to_core('selftest --list-only')

@@ -1,5 +1,4 @@
-# Copyright (C) 2006, 2009 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -171,9 +170,9 @@ Updated to revision 2 of branch %s
         # get all three files and a pending merge.
         out, err = self.run_bzr('update checkout')
         self.assertEqual('', out)
-        self.assertEqualDiff("""+N  file
+        self.assertEqualDiff("""+N  file_b
 All changes applied successfully.
-+N  file_b
++N  file
 All changes applied successfully.
 Updated to revision 1 of branch %s
 Your local commits will now show as pending merges with 'bzr status', and can be committed with 'bzr commit'.
@@ -196,7 +195,8 @@ Your local commits will now show as pending merges with 'bzr status', and can be
 
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
-        branch.BranchReferenceFormat().initialize(checkout_dir, master.branch)
+        branch.BranchReferenceFormat().initialize(checkout_dir,
+            target_branch=master.branch)
         checkout1 = checkout_dir.create_workingtree('m1')
 
         # Create a second branch, with an extra commit
@@ -242,9 +242,6 @@ Updated to revision 2 of branch %s
         self.run_bzr('update checkout')
 
     def test_update_dash_r(self):
-        # Test that 'bzr update' works correctly when you have
-        # an update in the master tree, and a lightweight checkout
-        # which has merged another branch
         master = self.make_branch_and_tree('master')
         os.chdir('master')
         self.build_tree(['./file1'])
@@ -266,9 +263,6 @@ $ bzr update -r 1
         self.assertEquals(['m1'], master.get_parent_ids())
 
     def test_update_dash_r_outside_history(self):
-        # Test that 'bzr update' works correctly when you have
-        # an update in the master tree, and a lightweight checkout
-        # which has merged another branch
         master = self.make_branch_and_tree('master')
         self.build_tree(['master/file1'])
         master.add(['file1'])
@@ -315,3 +309,62 @@ $ bzr update -r revid:m2
 2>All changes applied successfully.
 2>Updated to revision 2 of branch .../master
 ''')
+
+    def test_update_checkout_prevent_double_merge(self):
+        """"Launchpad bug 113809 in bzr "update performs two merges"
+        https://launchpad.net/bugs/113809"""
+        master = self.make_branch_and_tree('master')
+        self.build_tree_contents([('master/file', 'initial contents\n')])
+        master.add(['file'])
+        master.commit('one', rev_id='m1')
+
+        checkout = master.branch.create_checkout('checkout')
+        lightweight = checkout.branch.create_checkout('lightweight',
+                                                      lightweight=True)
+
+        # time to create a mess
+        # add a commit to the master
+        self.build_tree_contents([('master/file', 'master\n')])
+        master.commit('two', rev_id='m2')
+        self.build_tree_contents([('master/file', 'master local changes\n')])
+
+        # local commit on the checkout
+        self.build_tree_contents([('checkout/file', 'checkout\n')])
+        checkout.commit('tree', rev_id='c2', local=True)
+        self.build_tree_contents([('checkout/file',
+                                   'checkout local changes\n')])
+
+        # lightweight 
+        self.build_tree_contents([('lightweight/file',
+                                   'lightweight local changes\n')])
+
+        # now update (and get conflicts)
+        out, err = self.run_bzr('update lightweight', retcode=1)
+        self.assertEqual('', out)
+        # NB: these conflicts are actually in the source code
+        self.assertFileEqual('''\
+<<<<<<< TREE
+lightweight local changes
+=======
+checkout
+>>>>>>> MERGE-SOURCE
+''',
+                             'lightweight/file')
+
+        # resolve it
+        self.build_tree_contents([('lightweight/file',
+                                   'lightweight+checkout\n')])
+        self.run_bzr('resolve lightweight/file')
+
+        # check we get the second conflict
+        out, err = self.run_bzr('update lightweight', retcode=1)
+        self.assertEqual('', out)
+        # NB: these conflicts are actually in the source code
+        self.assertFileEqual('''\
+<<<<<<< TREE
+lightweight+checkout
+=======
+master
+>>>>>>> MERGE-SOURCE
+''',
+                             'lightweight/file')

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -905,7 +905,7 @@ class TestMap(TestCaseWithStore):
         # Unmapping the new node will check the existing nodes to see if they
         # would fit.
         # Clear the page cache so we ensure we have to read all the children
-        chk_map._page_cache.clear()
+        chk_map.clear_cache()
         chkmap.unmap(('aad',))
         self.assertIsInstance(chkmap._root_node._items['aaa'], LeafNode)
         self.assertIsInstance(chkmap._root_node._items['aab'], LeafNode)
@@ -945,12 +945,12 @@ class TestMap(TestCaseWithStore):
         # Now clear the page cache, and only include 2 of the children in the
         # cache
         aab_key = chkmap._root_node._items['aab']
-        aab_bytes = chk_map._page_cache[aab_key]
+        aab_bytes = chk_map._get_cache()[aab_key]
         aac_key = chkmap._root_node._items['aac']
-        aac_bytes = chk_map._page_cache[aac_key]
-        chk_map._page_cache.clear()
-        chk_map._page_cache[aab_key] = aab_bytes
-        chk_map._page_cache[aac_key] = aac_bytes
+        aac_bytes = chk_map._get_cache()[aac_key]
+        chk_map.clear_cache()
+        chk_map._get_cache()[aab_key] = aab_bytes
+        chk_map._get_cache()[aac_key] = aac_bytes
 
         # Unmapping the new node will check the nodes from the page cache
         # first, and not have to read in 'aaa'
