@@ -5743,6 +5743,15 @@ class cmd_hooks(Command):
 class cmd_remove_branch(Command):
     """Remove a branch.
 
+    This will remove the branch from the specified location but 
+    will keep any working tree or repositories in place.
+
+    :Examples:
+
+      Remove the branch at repo/trunk:
+
+        bzr remove-branch repo/trunk
+
     """
 
     takes_args = ["location?"]
