@@ -54,7 +54,7 @@ class cmd_bundle_info(Command):
         from bzrlib import osutils
         term_encoding = osutils.get_terminal_encoding()
         bundle_info = read_mergeable_from_url(location)
-        if isinstance(bundle_info, merge_directive._BaseMergeDirective):
+        if isinstance(bundle_info, merge_directive.BaseMergeDirective):
             bundle_file = StringIO(bundle_info.get_raw_bundle())
             bundle_info = read_bundle(bundle_file)
         else:

@@ -5143,7 +5143,7 @@ class cmd_send(Command):
                short_name='f',
                type=unicode),
         Option('output', short_name='o',
-               help='Write merge directive to this file; '
+               help='Write merge directive to this file or directory; '
                     'use - for stdout.',
                type=unicode),
         Option('strict',

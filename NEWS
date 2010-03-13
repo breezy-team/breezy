@@ -135,6 +135,10 @@ Bug Fixes
 API Changes
 ***********
 
+* ``bzrlib.merge_directive._BaseMergeDirective`` has been renamed to 
+  ``bzrlib.merge_directive.BaseMergeDirective`` and is now public.
+  (Jelmer Vernooij)
+
 * ``BranchFormat.initialize`` now takes an optional ``name`` of the colocated 
   branch to create. (Jelmer Vernooij)
 
