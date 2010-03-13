@@ -31,10 +31,7 @@ import re
 import grep
 
 import bzrlib
-from bzrlib.builtins import _get_revision_range
-from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid
-from bzrlib.workingtree import WorkingTree
-from bzrlib import log as logcmd
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib import (
     osutils,
     bzrdir,
@@ -125,11 +122,6 @@ class cmd_grep(Command):
             # grep on latest revision by default
             revision = [RevisionSpec.from_string("last:1")]
 
-        start_rev = revision[0]
-        end_rev = revision[0]
-        if len(revision) == 2:
-            end_rev = revision[1]
-
         eol_marker = '\n'
         if null:
             eol_marker = '\0'
@@ -139,54 +131,8 @@ class cmd_grep(Command):
             re_flags = re.IGNORECASE
         patternc = grep.compile_pattern(pattern, re_flags)
 
-        wt, relpath = WorkingTree.open_containing('.')
-
-        start_revid = start_rev.as_revision_id(wt.branch)
-        end_revid   = end_rev.as_revision_id(wt.branch)
-
-        given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
-
-        # edge case: we have a repo created with 'bzr init' and it has no
-        # revisions (revno: 0)
-        try:
-            given_revs = list(given_revs)
-        except errors.NoSuchRevision, e:
-            raise errors.BzrCommandError('No revisions found for grep.')
-
-        for revid, revno, merge_depth in given_revs:
-            if levels == 1 and merge_depth != 0:
-                # with level=1 show only top level
-                continue
-
-            wt.lock_read()
-            rev = RevisionSpec_revid.from_string("revid:"+revid)
-            try:
-                for path in path_list:
-                    tree = rev.as_tree(wt.branch)
-                    path_for_id = osutils.pathjoin(relpath, path)
-                    id = tree.path2id(path_for_id)
-                    if not id:
-                        self._skip_file(path)
-                        continue
-
-                    if osutils.isdir(path):
-                        path_prefix = path
-                        grep.dir_grep(tree, path, relpath, recursive, line_number,
-                            patternc, from_root, eol_marker, revno, print_revno,
-                            self.outf, path_prefix)
-                    else:
-                        tree.lock_read()
-                        try:
-                            grep.versioned_file_grep(tree, id, '.', path,
-                                patternc, eol_marker, line_number, revno,
-                                print_revno, self.outf)
-                        finally:
-                            tree.unlock()
-            finally:
-                wt.unlock()
-
-    def _skip_file(self, path):
-        trace.warning("warning: skipped unknown file '%s'." % path)
+        grep.versioned_grep(revision, patternc, path_list, recursive, line_number,
+            from_root, eol_marker, print_revno, levels, self.outf)
 
 
 register_command(cmd_grep)
