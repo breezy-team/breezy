@@ -61,13 +61,7 @@ def versioned_grep(revision, compiled_pattern, path_list, recursive,
     end_revid   = end_rev.as_revision_id(wt.branch)
 
     given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
-
-    # edge case: we have a repo created with 'bzr init' and it has no
-    # revisions (revno: 0)
-    try:
-        given_revs = list(given_revs)
-    except errors.NoSuchRevision, e:
-        raise errors.BzrCommandError('No revisions found for grep.')
+    given_revs = list(given_revs)
 
     for revid, revno, merge_depth in given_revs:
         if levels == 1 and merge_depth != 0:
@@ -105,16 +99,15 @@ def workingtree_grep(compiled_pattern, path_list, recursive,
         line_number, from_root, eol_marker, outf):
     revno = print_revno = None # for working tree set revno to None
     for path in path_list:
-        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(path)
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch('.')
         if osutils.isdir(path):
             path_prefix = path
             dir_grep(tree, path, relpath, recursive, line_number,
                 compiled_pattern, from_root, eol_marker, revno, print_revno,
                 outf, path_prefix)
         else:
-            path_prefix = ''
             _file_grep(open(path).read(), '.', path, compiled_pattern, eol_marker,
-                line_number, revno, print_revno, outf, path_prefix)
+                line_number, revno, print_revno, outf)
 
 
 def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
@@ -124,14 +117,14 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
         if relpath:
             rpath = osutils.pathjoin('..',relpath)
 
+        from_dir = osutils.pathjoin(relpath, path)
+        if from_root:
+            # start searching recursively from root
+            from_dir=None
+            recursive=True
+
         tree.lock_read()
         try:
-            from_dir = osutils.pathjoin(relpath, path)
-            if from_root:
-                # start searching recursively from root
-                from_dir=None
-                recursive=True
-
             for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
                 from_dir=from_dir, recursive=recursive):
                 if fc == 'V' and fkind == 'file':
@@ -141,8 +134,12 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
                             revno, print_revno, outf, path_prefix)
                     else:
                         # we are grepping working tree.
-                        _file_grep(open(fp).read(), rpath, fp, compiled_pattern, eol_marker,
-                        line_number, revno, print_revno, outf, path_prefix)
+                        if from_dir == None:
+                            from_dir = '.'
+
+                        path_for_file = osutils.pathjoin(tree.basedir, from_dir, fp)
+                        _file_grep(open(path_for_file).read(), rpath, fp, compiled_pattern,
+                            eol_marker, line_number, revno, print_revno, outf, path_prefix)
         finally:
             tree.unlock()
 
@@ -173,7 +170,7 @@ def versioned_file_grep(tree, id, relpath, path, patternc, eol_marker,
         line_number, revno, print_revno, outf, path_prefix)
 
 def _file_grep(file_text, relpath, path, patternc, eol_marker,
-        line_number, revno, print_revno, outf, path_prefix):
+        line_number, revno, print_revno, outf, path_prefix=None):
 
     # test and skip binary files
     str_file = cStringIO.StringIO(file_text)

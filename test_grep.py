@@ -58,23 +58,16 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_dir(path, versioned=True)
 
     def test_basic_unknown_file(self):
-        """search for pattern in specfic file. should issue warning."""
+        """Search for pattern in specfic file.
+
+        If specified file is unknown, grep it anyway."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
         self._mk_versioned_file('filex.txt') # force rev to revno:1 and not revno:0
         self._mk_unknown_file('file0.txt')
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
-        self.assertFalse(self._str_contains(out, "file0.txt:line1"))
-        self.assertTrue(self._str_contains(err, "warning: skipped.*file0.txt.*\."))
-
-    def test_revno0(self):
-        """search for pattern in when only revno0 is present"""
-        wd = 'foobar0'
-        self.make_branch_and_tree(wd)   # only revno 0 in branch
-        os.chdir(wd)
-        out, err = self.run_bzr(['grep', 'line1'], retcode=3)
-        self.assertTrue(self._str_contains(err, "ERROR: No revisions found"))
+        self.assertTrue(self._str_contains(out, "file0.txt:line1"))
 
     def test_basic_versioned_file(self):
         """search for pattern in specfic file"""
@@ -422,13 +415,13 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "file0.txt:line1"))
         self.assertTrue(self._str_contains(out, "file1.txt:line1"))
 
-        out, err = self.run_bzr(['grep', '--levels=0', 'line1'])
+        out, err = self.run_bzr(['grep', '-r', 'last:1', '--levels=0', 'line1'])
         self.assertTrue(self._str_contains(out, "file0.txt~2:line1"))
         self.assertTrue(self._str_contains(out, "file1.txt~2:line1"))
         self.assertTrue(self._str_contains(out, "file0.txt~1.1.1:line1"))
         self.assertTrue(self._str_contains(out, "file1.txt~1.1.1:line1"))
 
-        out, err = self.run_bzr(['grep', '-n', '--levels=0', 'line1'])
+        out, err = self.run_bzr(['grep', '-r',  '-1', '-n', '--levels=0', 'line1'])
         self.assertTrue(self._str_contains(out, "file0.txt~2:1:line1"))
         self.assertTrue(self._str_contains(out, "file1.txt~2:1:line1"))
         self.assertTrue(self._str_contains(out, "file0.txt~1.1.1:1:line1"))
