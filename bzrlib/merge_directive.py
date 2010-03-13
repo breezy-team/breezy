@@ -65,6 +65,11 @@ class MergeDirectiveHooks(hooks.Hooks):
 
 
 class BaseMergeDirective(object):
+    """A request to perform a merge into a branch.
+
+    This is the base class that all merge directive implementations 
+    should derive from.
+    """
 
     hooks = MergeDirectiveHooks()
 
