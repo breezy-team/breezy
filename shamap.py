@@ -530,7 +530,10 @@ class IndexGitShaMap(GitShaMap):
             self._builder.add_node(("commit", type_data[0], "X"),
                 " ".join((hexsha, type_data[1])))
         else:
-            self._builder.add_node((type, type_data[0], type_data[1]), hexsha)
+            try:
+                self._builder.add_node((type, type_data[0], type_data[1]), hexsha)
+            except bzrlib.errors.BadIndexDuplicateKey:
+                pass # A particular Git object can be created from multiple bzr objects..
 
     def lookup_tree(self, fileid, revid):
         sha = self._get_entry(("tree", fileid, revid))
