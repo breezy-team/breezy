@@ -38,7 +38,7 @@ class TestGrep(tests.TestCaseWithTransport):
         """append text to file 'path' and check it in"""
         open(path, 'a').write(text)
         if checkin:
-            self.run_bzr(['ci', '-m', '"' + path + '"'])
+            self.run_bzr(['ci', path, '-m', '"' + path + '"'])
 
     def _mk_unknown_file(self, path, line_prefix='line', total_lines=10):
         self._mk_file(path, line_prefix, total_lines, versioned=False)
@@ -94,21 +94,47 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertFalse(self._str_contains(out, "file0.txt"))
 
     def test_multiple_files(self):
-        """search for pattern in multiple files"""
+        """Search for pattern in multiple files."""
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
         self._mk_versioned_file('file0.txt', total_lines=2)
         self._mk_versioned_file('file1.txt', total_lines=2)
         self._mk_versioned_file('file2.txt', total_lines=2)
-        out, err = self.run_bzr(['grep', 'line[1-2]'])
+        out, err = self.run_bzr(['grep', '-r', 'last:1', 'line[1-2]'])
 
-        self.assertTrue(self._str_contains(out, "file0.txt:line1"))
-        self.assertTrue(self._str_contains(out, "file0.txt:line2"))
-        self.assertTrue(self._str_contains(out, "file1.txt:line1"))
-        self.assertTrue(self._str_contains(out, "file1.txt:line2"))
-        self.assertTrue(self._str_contains(out, "file2.txt:line1"))
-        self.assertTrue(self._str_contains(out, "file2.txt:line2"))
+        self.assertTrue(self._str_contains(out, "file0.txt~.:line1"))
+        self.assertTrue(self._str_contains(out, "file0.txt~.:line2"))
+        self.assertTrue(self._str_contains(out, "file1.txt~.:line1"))
+        self.assertTrue(self._str_contains(out, "file1.txt~.:line2"))
+        self.assertTrue(self._str_contains(out, "file2.txt~.:line1"))
+        self.assertTrue(self._str_contains(out, "file2.txt~.:line2"))
+
+    def test_multiple_wtree_files(self):
+        """Search for pattern in multiple files in working tree."""
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.txt', total_lines=2)
+        self._mk_versioned_file('file1.txt', total_lines=2)
+        self._mk_versioned_file('file2.txt', total_lines=2)
+        self._update_file('file0.txt', 'HELLO\n', checkin=False)
+        self._update_file('file1.txt', 'HELLO\n', checkin=True)
+        self._update_file('file2.txt', 'HELLO\n', checkin=False)
+
+        out, err = self.run_bzr(['grep', 'HELLO',
+            'file0.txt', 'file1.txt', 'file2.txt'])
+
+        self.assertTrue(self._str_contains(out, "file0.txt:HELLO"))
+        self.assertTrue(self._str_contains(out, "file1.txt:HELLO"))
+        self.assertTrue(self._str_contains(out, "file2.txt:HELLO"))
+
+        out, err = self.run_bzr(['grep', 'HELLO', '-r', 'last:1',
+            'file0.txt', 'file1.txt', 'file2.txt'])
+
+        self.assertFalse(self._str_contains(out, "file0.txt"))
+        self.assertTrue(self._str_contains(out, "file1.txt~.:HELLO"))
+        self.assertFalse(self._str_contains(out, "file2.txt"))
 
     def test_null_option(self):
         """--null option should use NUL instead of newline"""

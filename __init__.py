@@ -67,7 +67,7 @@ class cmd_grep(Command):
     revision, use the '-r -1' or '-r last:1' option.
 
     Unversioned files are not searched unless explicitly specified on the
-    command line.
+    command line. Unversioned directores are not searched.
 
     When searching a pattern, the output is shown in the 'filepath:string'
     format. If a revision is explicitly searched, the output is shown as
