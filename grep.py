@@ -21,6 +21,7 @@ import re
 import cStringIO
 
 from bzrlib import log as logcmd
+from bzrlib import bzrdir
 from bzrlib.workingtree import WorkingTree
 from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid
 from bzrlib import (
@@ -100,6 +101,21 @@ def versioned_grep(revision, compiled_pattern, path_list, recursive,
         finally:
             wt.unlock()
 
+def workingtree_grep(compiled_pattern, path_list, recursive,
+        line_number, from_root, eol_marker, outf):
+    revno = print_revno = None # for working tree set revno to None
+    for path in path_list:
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(path)
+        if osutils.isdir(path):
+            path_prefix = path
+            dir_grep(tree, path, relpath, recursive, line_number,
+                compiled_pattern, from_root, eol_marker, revno, print_revno,
+                outf, path_prefix)
+        else:
+            path_prefix = ''
+            _file_grep(open(path).read(), '.', path, compiled_pattern, eol_marker,
+                line_number, revno, print_revno, outf, path_prefix)
+
 
 def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
     from_root, eol_marker, revno, print_revno, outf, path_prefix):
@@ -119,9 +135,14 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
             for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
                 from_dir=from_dir, recursive=recursive):
                 if fc == 'V' and fkind == 'file':
-                    versioned_file_grep(tree, fid, rpath, fp,
-                        compiled_pattern, eol_marker, line_number,
-                        revno, print_revno, outf, path_prefix)
+                    if revno != None:
+                        versioned_file_grep(tree, fid, rpath, fp,
+                            compiled_pattern, eol_marker, line_number,
+                            revno, print_revno, outf, path_prefix)
+                    else:
+                        # we are grepping working tree.
+                        _file_grep(open(fp).read(), rpath, fp, compiled_pattern, eol_marker,
+                        line_number, revno, print_revno, outf, path_prefix)
         finally:
             tree.unlock()
 
@@ -147,20 +168,20 @@ def versioned_file_grep(tree, id, relpath, path, patternc, eol_marker,
     """
 
     path = _make_display_path(relpath, path)
+    file_text = tree.get_file_text(id)
+    _file_grep(file_text, relpath, path, patternc, eol_marker,
+        line_number, revno, print_revno, outf, path_prefix)
+
+def _file_grep(file_text, relpath, path, patternc, eol_marker,
+        line_number, revno, print_revno, outf, path_prefix):
 
     # test and skip binary files
-    str_file = cStringIO.StringIO(tree.get_file_text(id))
+    str_file = cStringIO.StringIO(file_text)
     try:
         file_iter = textfile.text_file(str_file)
     except errors.BinaryFile, e:
         trace.warning("Binary file '%s' skipped." % path)
         return
-
-    _file_grep(file_iter, relpath, path, patternc, eol_marker,
-        line_number, revno, print_revno, outf, path_prefix)
-
-def _file_grep(file_iter, relpath, path, patternc, eol_marker,
-        line_number, revno, print_revno, outf, path_prefix):
 
     if path_prefix and path_prefix != '.':
         # user has passed a dir arg, show that as result prefix

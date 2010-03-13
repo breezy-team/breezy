@@ -118,10 +118,6 @@ class cmd_grep(Command):
             # print revision numbers as we may be showing multiple revisions
             print_revno = True
 
-        if revision == None:
-            # grep on latest revision by default
-            revision = [RevisionSpec.from_string("last:1")]
-
         eol_marker = '\n'
         if null:
             eol_marker = '\0'
@@ -131,8 +127,13 @@ class cmd_grep(Command):
             re_flags = re.IGNORECASE
         patternc = grep.compile_pattern(pattern, re_flags)
 
-        grep.versioned_grep(revision, patternc, path_list, recursive, line_number,
-            from_root, eol_marker, print_revno, levels, self.outf)
+        if revision == None:
+            grep.workingtree_grep(patternc, path_list, recursive,
+                line_number, from_root, eol_marker, self.outf)
+        else:
+            grep.versioned_grep(revision, patternc, path_list,
+                recursive, line_number, from_root, eol_marker,
+                print_revno, levels, self.outf)
 
 
 register_command(cmd_grep)
