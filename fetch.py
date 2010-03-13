@@ -338,11 +338,14 @@ def import_git_commit(repo, mapping, head, lookup_object,
         if new_unusual_modes != unusual_modes:
             raise AssertionError("unusual modes don't match: %r != %r" % (unusual_modes, new_unusual_modes))
         objs = inventory_to_tree_and_blobs(inv, repo.texts, mapping, unusual_modes)
-        for sha1, newobj, path in objs:
+        for newsha1, newobj, path in objs:
             assert path is not None
-            oldobj = tree_lookup_path(lookup_object, o.tree, path)
-            if oldobj != newobj:
-                raise AssertionError("%r != %r in %s" % (oldobj, newobj, path))
+            if path == "":
+                oldsha1 = o.tree
+            else:
+                (oldmode, oldsha1) = tree_lookup_path(lookup_object, o.tree, path)
+            if oldsha1 != newsha1:
+                raise AssertionError("%r != %r in %s" % (oldsha1, newsha1, path))
 
 
 def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
