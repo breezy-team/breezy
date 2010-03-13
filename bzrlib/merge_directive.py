@@ -69,9 +69,14 @@ class BaseMergeDirective(object):
 
     This is the base class that all merge directive implementations 
     should derive from.
+
+    :cvar multiple_output_files: Whether or not this merge directive 
+        stores a set of revisions in more than one file
     """
 
     hooks = MergeDirectiveHooks()
+
+    multiple_output_files = False
 
     def __init__(self, revision_id, testament_sha1, time, timezone,
                  target_branch, patch=None, source_branch=None, message=None,
@@ -104,6 +109,13 @@ class BaseMergeDirective(object):
         """
         raise NotImplementedError(self.to_lines)
 
+    def to_files(self):
+        """Serialize as a set of files.
+
+        :return: List of tuples with filename and contents as lines
+        """
+        raise NotImplementedError(self.to_files)
+
     def get_raw_bundle(self):
         """Return the bundle for this merge directive.
 
@@ -129,6 +141,13 @@ class BaseMergeDirective(object):
         lines.extend(rio.to_patch_lines(stanza))
         lines.append('# \n')
         return lines
+
+    def write_to_directory(self, path):
+        """Write this merge directive to a series of files in a directory.
+
+        :param path: Filesystem path to write to
+        """
+        raise NotImplementedError(self.write_to_directory)
 
     @classmethod
     def from_objects(klass, repository, revision_id, time, timezone,
