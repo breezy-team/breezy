@@ -68,6 +68,7 @@ import os
 import tempfile
 import urllib
 import urlparse
+urlparse.uses_netloc.extend(['git', 'git+ssh'])
 
 from dulwich.pack import load_pack_index
 
