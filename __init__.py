@@ -13,15 +13,14 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+"""Print lines matching PATTERN for specified files and revisions."""
 
 import os
 import sys
 
 from bzrlib import errors
 from bzrlib.commands import Command, register_command, display_command
-from bzrlib.option import (
-    Option,
-    )
+from bzrlib.option import Option, ListOption
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -30,10 +29,7 @@ import re
 import grep
 
 import bzrlib
-from bzrlib.builtins import _get_revision_range
-from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid
-from bzrlib.workingtree import WorkingTree
-from bzrlib import log as logcmd
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib import (
     osutils,
     bzrdir,
@@ -41,7 +37,7 @@ from bzrlib import (
     )
 """)
 
-version_info = (0, 0, 1, 'dev', 1)
+version_info = (0, 1, 0, 'dev', 0)
 
 # FIXME: _parse_levels should be shared with bzrlib.builtins. this is a copy
 # to avoid the error
@@ -60,19 +56,26 @@ def _parse_levels(s):
 class cmd_grep(Command):
     """Print lines matching PATTERN for specified files and revisions.
 
-    This command searches the specified files and revisions for a given pattern.
-    The pattern is specified as a Python regular expressions[1].
-    If the file name is not specified the file revisions in the current directory
-    are searched. If the revision number is not specified, the latest revision is
-    searched.
+    This command searches the specified files and revisions for a given
+    pattern.  The pattern is specified as a Python regular expressions[1].
 
-    Note that this command is different from POSIX grep in that it searches the
-    revisions of the branch and not the working copy. Unversioned files and
-    uncommitted changes are not seen.
+    If the file name is not specified, the revisions starting with the
+    current directory are searched recursively. If the revision number is
+    not specified, the working copy is searched. To search the last committed
+    revision, use the '-r -1' or '-r last:1' option.
 
-    When searching a pattern, the output is shown in the 'filepath:string' format.
-    If a revision is explicitly searched, the output is shown as 'filepath~N:string',
-    where N is the revision number.
+    Unversioned files are not searched unless explicitly specified on the
+    command line. Unversioned directores are not searched.
+
+    When searching a pattern, the output is shown in the 'filepath:string'
+    format. If a revision is explicitly searched, the output is shown as
+    'filepath~N:string', where N is the revision number.
+
+    --include and --exclude options can be used to search only (or exclude
+    from search) files with base name matches the specified Unix style GLOB
+    pattern.  The GLOB pattern an use *, ?, and [...] as wildcards, and \\
+    to quote wildcard or backslash character literally. Note that the glob
+    pattern is not a regular expression.
 
     [1] http://docs.python.org/library/re.html#regular-expression-syntax
     """
@@ -85,24 +88,32 @@ class cmd_grep(Command):
                help='show 1-based line number.'),
         Option('ignore-case', short_name='i',
                help='ignore case distinctions while matching.'),
-        Option('recursive', short_name='R',
-               help='Recurse into subdirectories.'),
+        Option('no-recursive',
+               help="Don't recurse into subdirectories. (default is --recursive)"),
         Option('from-root',
                help='Search for pattern starting from the root of the branch. '
                '(implies --recursive)'),
         Option('null', short_name='Z',
-               help='Write an ascii NUL (\\0) separator '
+               help='Write an ASCII NUL (\\0) separator '
                'between output lines rather than a newline.'),
         Option('levels',
-           help='Number of levels to display - 0 for all, 1 for collapsed (default).',
+           help='Number of levels to display - 0 for all, 1 for collapsed (1 is default).',
            argname='N',
            type=_parse_levels),
+        ListOption('include', type=str, argname='glob',
+            help="Search only files whose base name matches GLOB."),
+        ListOption('exclude', type=str, argname='glob',
+            help="Skip files whose base name matches GLOB."),
         ]
 
 
     @display_command
-    def run(self, verbose=False, ignore_case=False, recursive=False, from_root=False,
-            null=False, levels=None, line_number=False, path_list=None, revision=None, pattern=None):
+    def run(self, verbose=False, ignore_case=False, no_recursive=False,
+            from_root=False, null=False, levels=None, line_number=False,
+            path_list=None, revision=None, pattern=None, include=None,
+            exclude=None):
+
+        recursive = not no_recursive
 
         if levels==None:
             levels=1
@@ -118,15 +129,6 @@ class cmd_grep(Command):
             # print revision numbers as we may be showing multiple revisions
             print_revno = True
 
-        if revision == None:
-            # grep on latest revision by default
-            revision = [RevisionSpec.from_string("last:1")]
-
-        start_rev = revision[0]
-        end_rev = revision[0]
-        if len(revision) == 2:
-            end_rev = revision[1]
-
         eol_marker = '\n'
         if null:
             eol_marker = '\0'
@@ -136,53 +138,14 @@ class cmd_grep(Command):
             re_flags = re.IGNORECASE
         patternc = grep.compile_pattern(pattern, re_flags)
 
-        wt, relpath = WorkingTree.open_containing('.')
-
-        start_revid = start_rev.as_revision_id(wt.branch)
-        end_revid   = end_rev.as_revision_id(wt.branch)
-
-        given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
-
-        # edge case: we have a repo created with 'bzr init' and it has no
-        # revisions (revno: 0)
-        try:
-            given_revs = list(given_revs)
-        except errors.NoSuchRevision, e:
-            raise errors.BzrCommandError('No revisions found for grep.')
-
-        for revid, revno, merge_depth in given_revs:
-            if levels == 1 and merge_depth != 0:
-                # with level=1 show only top level
-                continue
-
-            wt.lock_read()
-            rev = RevisionSpec_revid.from_string("revid:"+revid)
-            try:
-                for path in path_list:
-                    tree = rev.as_tree(wt.branch)
-                    path_for_id = osutils.pathjoin(relpath, path)
-                    id = tree.path2id(path_for_id)
-                    if not id:
-                        self._skip_file(path)
-                        continue
-
-                    if osutils.isdir(path):
-                        path_prefix = path
-                        grep.dir_grep(tree, path, relpath, recursive, line_number,
-                            patternc, from_root, eol_marker, revno, print_revno,
-                            self.outf, path_prefix)
-                    else:
-                        tree.lock_read()
-                        try:
-                            grep.file_grep(tree, id, '.', path, patternc, eol_marker,
-                                line_number, revno, print_revno, self.outf)
-                        finally:
-                            tree.unlock()
-            finally:
-                wt.unlock()
-
-    def _skip_file(self, path):
-        trace.warning("warning: skipped unknown file '%s'." % path)
+        if revision == None:
+            grep.workingtree_grep(patternc, path_list, recursive,
+                line_number, from_root, eol_marker, include, exclude,
+                self.outf)
+        else:
+            grep.versioned_grep(revision, patternc, path_list,
+                recursive, line_number, from_root, eol_marker,
+                print_revno, levels, include, exclude, self.outf)
 
 
 register_command(cmd_grep)

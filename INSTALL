@@ -1,0 +1,13 @@
+'bzr-grep' is a bazaar plugin so you need to install it
+in your bazaar plugins directory.
+
+    $ bzr branch lp:bzr-grep ~/.bazaar/plugins/grep
+
+If you have it downloaded, simply move it into the plugins directory.
+
+    $ mv bzr-grep ~/.bazaar/plugins/grep
+
+You may have to create the 'plugins' directory first.
+Also, note that the plugin should be placed as 'grep' and NOT
+'bzr-grep' in the plugins directory.
+
