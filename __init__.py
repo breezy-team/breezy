@@ -20,9 +20,7 @@ import sys
 
 from bzrlib import errors
 from bzrlib.commands import Command, register_command, display_command
-from bzrlib.option import (
-    Option,
-    )
+from bzrlib.option import Option, ListOption
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -73,6 +71,11 @@ class cmd_grep(Command):
     format. If a revision is explicitly searched, the output is shown as
     'filepath~N:string', where N is the revision number.
 
+    --include and --exclude options can be used to search only (or exclude
+    from search) files with base name matches the specified Unix style GLOB
+    pattern.  The GLOB pattern an use *, ?, and [...] as wildcards, and \\
+    to quote wildcard or backslash character literally.
+
     [1] http://docs.python.org/library/re.html#regular-expression-syntax
     """
 
@@ -96,12 +99,18 @@ class cmd_grep(Command):
            help='Number of levels to display - 0 for all, 1 for collapsed (1 is default).',
            argname='N',
            type=_parse_levels),
+        ListOption('include', type=str, argname='glob',
+            help="Search only files whose base name matches GLOB."),
+        ListOption('exclude', type=str, argname='glob',
+            help="Skip files whose base name matches GLOB."),
         ]
 
 
     @display_command
-    def run(self, verbose=False, ignore_case=False, no_recursive=False, from_root=False,
-            null=False, levels=None, line_number=False, path_list=None, revision=None, pattern=None):
+    def run(self, verbose=False, ignore_case=False, no_recursive=False,
+            from_root=False, null=False, levels=None, line_number=False,
+            path_list=None, revision=None, pattern=None, include=None,
+            exclude=None):
 
         recursive = not no_recursive
 
