@@ -74,7 +74,8 @@ class cmd_grep(Command):
     --include and --exclude options can be used to search only (or exclude
     from search) files with base name matches the specified Unix style GLOB
     pattern.  The GLOB pattern an use *, ?, and [...] as wildcards, and \\
-    to quote wildcard or backslash character literally.
+    to quote wildcard or backslash character literally. Note that the glob
+    pattern is not a regular expression.
 
     [1] http://docs.python.org/library/re.html#regular-expression-syntax
     """

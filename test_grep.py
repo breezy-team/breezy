@@ -98,6 +98,65 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '-r', 'last:1', 'ABC', 'file0.txt'])
         self.assertFalse(self._str_contains(out, "file0.txt"))
 
+    def test_versioned_basic_include(self):
+        """(versioned) Ensure that --include flag is respected.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.aa')
+        self._mk_versioned_file('file0.bb')
+        self._mk_versioned_file('file0.cc')
+        out, err = self.run_bzr(['grep', '-r', 'last:1',
+            '--include', '*.aa', '--include', '*.bb', 'line1'])
+        self.assertTrue(self._str_contains(out, "file0.aa~.:line1"))
+        self.assertTrue(self._str_contains(out, "file0.bb~.:line1"))
+        self.assertFalse(self._str_contains(out, "file0.cc"))
+
+    def test_wtree_basic_include(self):
+        """(wtree) Ensure that --include flag is respected.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.aa')
+        self._mk_versioned_file('file0.bb')
+        self._mk_versioned_file('file0.cc')
+        out, err = self.run_bzr(['grep', '--include', '*.aa',
+            '--include', '*.bb', 'line1'])
+        self.assertTrue(self._str_contains(out, "file0.aa:line1"))
+        self.assertTrue(self._str_contains(out, "file0.bb:line1"))
+        self.assertFalse(self._str_contains(out, "file0.cc"))
+
+    def test_versioned_basic_exclude(self):
+        """(versioned) Ensure that --exclude flag is respected.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.aa')
+        self._mk_versioned_file('file0.bb')
+        self._mk_versioned_file('file0.cc')
+        out, err = self.run_bzr(['grep', '-r', 'last:1',
+            '--exclude', '*.cc', 'line1'])
+        self.assertTrue(self._str_contains(out, "file0.aa~.:line1"))
+        self.assertTrue(self._str_contains(out, "file0.bb~.:line1"))
+        self.assertFalse(self._str_contains(out, "file0.cc"))
+
+    def test_wtree_basic_exclude(self):
+        """(wtree) Ensure that --exclude flag is respected.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_file('file0.aa')
+        self._mk_versioned_file('file0.bb')
+        self._mk_versioned_file('file0.cc')
+        out, err = self.run_bzr(['grep', '--exclude', '*.cc', 'line1'])
+        self.assertTrue(self._str_contains(out, "file0.aa:line1"))
+        self.assertTrue(self._str_contains(out, "file0.bb:line1"))
+        self.assertFalse(self._str_contains(out, "file0.cc"))
+
     def test_versioned_multiple_files(self):
         """(versioned) Search for pattern in multiple files.
         """

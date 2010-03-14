@@ -44,9 +44,6 @@ def compile_pattern(pattern, flags=0):
         raise errors.BzrError("Invalid pattern: '%s'" % pattern)
     return patternc
 
-def _skip_file(path):
-    trace.warning("warning: skipped unknown file '%s'." % path)
-
 
 def versioned_grep(revision, compiled_pattern, path_list, recursive,
         line_number, from_root, eol_marker, print_revno, levels,
@@ -78,7 +75,7 @@ def versioned_grep(revision, compiled_pattern, path_list, recursive,
                 path_for_id = osutils.pathjoin(relpath, path)
                 id = tree.path2id(path_for_id)
                 if not id:
-                    _skip_file(path)
+                    trace.warning("Skipped unknown file '%s'." % path)
                     continue
 
                 if osutils.isdir(path):
