@@ -1,7 +1,8 @@
 bzr-grep 0.1.0 (dev)
 * --recursive is now default. (Parth Malwankar, #536688)
 * ``bzr grep`` searches working copy by default. (Parth Malwankar, #537072)
+* --include/exclude=GLOB is now supported. (Parth Malwankar, #529889)
 
 bzr-grep 0.0.1-final - 10-Mar-2010
-* Initial release
+* Initial release (Parth Malwankar)
 
