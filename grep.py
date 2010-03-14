@@ -19,6 +19,7 @@ lazy_import(globals(), """
 import os
 import re
 import cStringIO
+from fnmatch import fnmatch
 
 from bzrlib import log as logcmd
 from bzrlib import bzrdir
@@ -48,7 +49,8 @@ def _skip_file(path):
 
 
 def versioned_grep(revision, compiled_pattern, path_list, recursive,
-        line_number, from_root, eol_marker, print_revno, levels, outf):
+        line_number, from_root, eol_marker, print_revno, levels,
+        include, exclude, outf):
 
     wt, relpath = WorkingTree.open_containing('.')
 
@@ -83,35 +85,35 @@ def versioned_grep(revision, compiled_pattern, path_list, recursive,
                     path_prefix = path
                     dir_grep(tree, path, relpath, recursive, line_number,
                         compiled_pattern, from_root, eol_marker, revno, print_revno,
-                        outf, path_prefix)
+                        include, exclude, outf, path_prefix)
                 else:
                     tree.lock_read()
                     try:
                         versioned_file_grep(tree, id, '.', path,
                             compiled_pattern, eol_marker, line_number, revno,
-                            print_revno, outf)
+                            print_revno, include, exclude, outf)
                     finally:
                         tree.unlock()
         finally:
             wt.unlock()
 
 def workingtree_grep(compiled_pattern, path_list, recursive,
-        line_number, from_root, eol_marker, outf):
+        line_number, from_root, eol_marker, include, exclude, outf):
     revno = print_revno = None # for working tree set revno to None
     for path in path_list:
-        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch('.')
+        tree, branch, relpath = \
+            bzrdir.BzrDir.open_containing_tree_or_branch('.')
         if osutils.isdir(path):
             path_prefix = path
             dir_grep(tree, path, relpath, recursive, line_number,
                 compiled_pattern, from_root, eol_marker, revno, print_revno,
-                outf, path_prefix)
+                include, exclude, outf, path_prefix)
         else:
             _file_grep(open(path).read(), '.', path, compiled_pattern, eol_marker,
-                line_number, revno, print_revno, outf)
-
+                line_number, revno, print_revno, include, exclude, outf)
 
 def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
-    from_root, eol_marker, revno, print_revno, outf, path_prefix):
+    from_root, eol_marker, revno, print_revno, include, exclude, outf, path_prefix):
         # setup relpath to open files relative to cwd
         rpath = relpath
         if relpath:
@@ -127,19 +129,21 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
         try:
             for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
                 from_dir=from_dir, recursive=recursive):
+
                 if fc == 'V' and fkind == 'file':
                     if revno != None:
                         versioned_file_grep(tree, fid, rpath, fp,
                             compiled_pattern, eol_marker, line_number,
-                            revno, print_revno, outf, path_prefix)
+                            revno, print_revno, include, exclude, outf, path_prefix)
                     else:
                         # we are grepping working tree.
                         if from_dir == None:
                             from_dir = '.'
 
                         path_for_file = osutils.pathjoin(tree.basedir, from_dir, fp)
-                        _file_grep(open(path_for_file).read(), rpath, fp, compiled_pattern,
-                            eol_marker, line_number, revno, print_revno, outf, path_prefix)
+                        _file_grep(open(path_for_file).read(), rpath, fp,
+                            compiled_pattern, eol_marker, line_number, revno,
+                            print_revno, include, exclude, outf, path_prefix)
         finally:
             tree.unlock()
 
@@ -160,17 +164,33 @@ def _make_display_path(relpath, path):
 
 
 def versioned_file_grep(tree, id, relpath, path, patternc, eol_marker,
-        line_number, revno, print_revno, outf, path_prefix = None):
+        line_number, revno, print_revno, include, exclude, outf,
+        path_prefix = None):
     """Create a file object for the specified id and pass it on to _file_grep.
     """
 
     path = _make_display_path(relpath, path)
     file_text = tree.get_file_text(id)
     _file_grep(file_text, relpath, path, patternc, eol_marker,
-        line_number, revno, print_revno, outf, path_prefix)
+        line_number, revno, print_revno, include, exclude, outf, path_prefix)
+
+def _path_in_glob_list(path, glob_list):
+    present = False
+    for glob in glob_list:
+        if fnmatch(path, glob):
+            present = True
+            break
+    return present
 
 def _file_grep(file_text, relpath, path, patternc, eol_marker,
-        line_number, revno, print_revno, outf, path_prefix=None):
+        line_number, revno, print_revno, include, exclude, outf,
+        path_prefix=None):
+
+    if include and not _path_in_glob_list(path, include):
+        return
+
+    if exclude and _path_in_glob_list(path, exclude):
+        return
 
     # test and skip binary files
     str_file = cStringIO.StringIO(file_text)

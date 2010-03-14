@@ -139,11 +139,12 @@ class cmd_grep(Command):
 
         if revision == None:
             grep.workingtree_grep(patternc, path_list, recursive,
-                line_number, from_root, eol_marker, self.outf)
+                line_number, from_root, eol_marker, include, exclude,
+                self.outf)
         else:
             grep.versioned_grep(revision, patternc, path_list,
                 recursive, line_number, from_root, eol_marker,
-                print_revno, levels, self.outf)
+                print_revno, levels, include, exclude, self.outf)
 
 
 register_command(cmd_grep)
