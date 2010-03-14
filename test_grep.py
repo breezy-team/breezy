@@ -65,10 +65,13 @@ class TestGrep(tests.TestCaseWithTransport):
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
-        self._mk_versioned_file('filex.txt') # force rev to revno:1 and not revno:0
         self._mk_unknown_file('file0.txt')
+
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
         self.assertTrue(self._str_contains(out, "file0.txt:line1"))
+
+        out, err = self.run_bzr(['grep', 'line1'])
+        self.assertFalse(self._str_contains(out, "file0.txt"))
 
     def test_versioned_basic_file(self):
         """(versioned) Search for pattern in specfic file.
