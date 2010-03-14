@@ -73,7 +73,7 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', 'line1'])
         self.assertFalse(self._str_contains(out, "file0.txt"))
 
-    def test_versioned_basic_file(self):
+    def test_ver_basic_file(self):
         """(versioned) Search for pattern in specfic file.
         """
         wd = 'foobar0'
@@ -98,7 +98,7 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '-r', 'last:1', 'ABC', 'file0.txt'])
         self.assertFalse(self._str_contains(out, "file0.txt"))
 
-    def test_versioned_basic_include(self):
+    def test_ver_basic_include(self):
         """(versioned) Ensure that --include flag is respected.
         """
         wd = 'foobar0'
@@ -128,7 +128,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "file0.bb:line1"))
         self.assertFalse(self._str_contains(out, "file0.cc"))
 
-    def test_versioned_basic_exclude(self):
+    def test_ver_basic_exclude(self):
         """(versioned) Ensure that --exclude flag is respected.
         """
         wd = 'foobar0'
@@ -157,7 +157,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "file0.bb:line1"))
         self.assertFalse(self._str_contains(out, "file0.cc"))
 
-    def test_versioned_multiple_files(self):
+    def test_ver_multiple_files(self):
         """(versioned) Search for pattern in multiple files.
         """
         wd = 'foobar0'
@@ -202,7 +202,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "file1.txt~.:HELLO"))
         self.assertFalse(self._str_contains(out, "file2.txt"))
 
-    def test_versioned_null_option(self):
+    def test_ver_null_option(self):
         """(versioned) --null option should use NUL instead of newline.
         """
         wd = 'foobar0'
@@ -284,6 +284,36 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', '-r', 'last:1', 'line1'])
         self.assertTrue(self._str_contains(out, "^file0.txt~.:line1"))
 
+    def test_versioned_include_file_within_dir(self):
+        """(versioned) Ensure --include is respected with file within dir.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+        self._mk_versioned_file('dir0/file1.aa')
+        os.chdir('dir0')
+        out, err = self.run_bzr(['grep', '-r', 'last:1',
+            '--include', '*.aa', 'line1'])
+        self.assertTrue(self._str_contains(out, "^file1.aa~.:line1"))
+        self.assertFalse(self._str_contains(out, "file0.txt"))
+
+    def test_versioned_exclude_file_within_dir(self):
+        """(versioned) Ensure --exclude is respected with file within dir.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+        self._mk_versioned_file('dir0/file1.aa')
+        os.chdir('dir0')
+        out, err = self.run_bzr(['grep', '-r', 'last:1',
+            '--exclude', '*.txt', 'line1'])
+        self.assertTrue(self._str_contains(out, "^file1.aa~.:line1"))
+        self.assertFalse(self._str_contains(out, "file0.txt"))
+
     def test_wtree_file_within_dir(self):
         """(wtree) Search for pattern while in nested dir.
         """
@@ -296,7 +326,36 @@ class TestGrep(tests.TestCaseWithTransport):
         out, err = self.run_bzr(['grep', 'line1'])
         self.assertTrue(self._str_contains(out, "^file0.txt:line1"))
 
-    def test_versioned_files_from_outside_dir(self):
+    def test_wtree_include_file_within_dir(self):
+        """(wtree) Ensure --include is respected with file within dir.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+        self._mk_versioned_file('dir0/file1.aa')
+        os.chdir('dir0')
+        out, err = self.run_bzr(['grep', '--include', '*.aa', 'line1'])
+        self.assertTrue(self._str_contains(out, "^file1.aa:line1"))
+        self.assertFalse(self._str_contains(out, "file0.txt"))
+
+    def test_wtree_exclude_file_within_dir(self):
+        """(wtree) Ensure --exclude is respected with file within dir.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.txt')
+        self._mk_versioned_file('dir0/file1.aa')
+        os.chdir('dir0')
+        out, err = self.run_bzr(['grep', '--exclude', '*.txt', 'line1'])
+        self.assertTrue(self._str_contains(out, "^file1.aa:line1"))
+        self.assertFalse(self._str_contains(out, "file0.txt"))
+
+
+    def test_ver_files_from_outside_dir(self):
         """(versioned) Grep for pattern with dirs passed as argument.
         """
         wd = 'foobar0'
@@ -309,11 +368,98 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_dir('dir1')
         self._mk_versioned_file('dir1/file1.txt')
 
-        out, err = self.run_bzr(['grep', 'line1', 'dir0', 'dir1'])
+        out, err = self.run_bzr(['grep', '-r', 'last:1', 'line1', 'dir0', 'dir1'])
         self.assertTrue(self._str_contains(out, "^dir0/file0.txt~.:line1"))
         self.assertTrue(self._str_contains(out, "^dir1/file1.txt~.:line1"))
 
-    def test_wtree_files_from_outside_dir(self):
+    def test_versioned_include_from_outside_dir(self):
+        """(versioned) Ensure --include is respected during recursive search.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.aa')
+
+        self._mk_versioned_dir('dir1')
+        self._mk_versioned_file('dir1/file1.bb')
+
+        self._mk_versioned_dir('dir2')
+        self._mk_versioned_file('dir2/file2.cc')
+
+        out, err = self.run_bzr(['grep', '-r', 'last:1',
+            '--include', '*.aa', '--include', '*.bb', 'line1'])
+        self.assertTrue(self._str_contains(out, "^dir0/file0.aa~.:line1"))
+        self.assertTrue(self._str_contains(out, "^dir1/file1.bb~.:line1"))
+        self.assertFalse(self._str_contains(out, "file1.cc"))
+
+    def test_wtree_include_from_outside_dir(self):
+        """(wtree) Ensure --include is respected during recursive search.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.aa')
+
+        self._mk_versioned_dir('dir1')
+        self._mk_versioned_file('dir1/file1.bb')
+
+        self._mk_versioned_dir('dir2')
+        self._mk_versioned_file('dir2/file2.cc')
+
+        out, err = self.run_bzr(['grep', '--include', '*.aa',
+            '--include', '*.bb', 'line1'])
+        self.assertTrue(self._str_contains(out, "^dir0/file0.aa:line1"))
+        self.assertTrue(self._str_contains(out, "^dir1/file1.bb:line1"))
+        self.assertFalse(self._str_contains(out, "file1.cc"))
+
+    def test_versioned_exclude_from_outside_dir(self):
+        """(versioned) Ensure --exclude is respected during recursive search.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.aa')
+
+        self._mk_versioned_dir('dir1')
+        self._mk_versioned_file('dir1/file1.bb')
+
+        self._mk_versioned_dir('dir2')
+        self._mk_versioned_file('dir2/file2.cc')
+
+        out, err = self.run_bzr(['grep', '-r', 'last:1',
+            '--exclude', '*.cc', 'line1'])
+        self.assertTrue(self._str_contains(out, "^dir0/file0.aa~.:line1"))
+        self.assertTrue(self._str_contains(out, "^dir1/file1.bb~.:line1"))
+        self.assertFalse(self._str_contains(out, "file1.cc"))
+
+    def test_wtree_exclude_from_outside_dir(self):
+        """(wtree) Ensure --exclude is respected during recursive search.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+
+        self._mk_versioned_dir('dir0')
+        self._mk_versioned_file('dir0/file0.aa')
+
+        self._mk_versioned_dir('dir1')
+        self._mk_versioned_file('dir1/file1.bb')
+
+        self._mk_versioned_dir('dir2')
+        self._mk_versioned_file('dir2/file2.cc')
+
+        out, err = self.run_bzr(['grep', '--exclude', '*.cc', 'line1'])
+        self.assertTrue(self._str_contains(out, "^dir0/file0.aa:line1"))
+        self.assertTrue(self._str_contains(out, "^dir1/file1.bb:line1"))
+        self.assertFalse(self._str_contains(out, "file1.cc"))
+
+    def test_workingtree_files_from_outside_dir(self):
         """(wtree) Grep for pattern with dirs passed as argument.
         """
         wd = 'foobar0'
