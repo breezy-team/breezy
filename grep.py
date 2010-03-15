@@ -218,17 +218,18 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
     for line in file_iter:
         res = patternc.search(line)
         if res:
+            line = line.rstrip()
             if line_number:
                 if print_revno:
-                    out = (revno, index, line.strip())
+                    out = (revno, index, line)
                 else:
-                    out = (index, line.strip())
+                    out = (index, line)
                 outf.write(fmt_with_n % out)
             else:
                 if print_revno:
-                    out = (revno, line.strip())
+                    out = (revno, line)
                 else:
-                    out = (line.strip(),)
+                    out = (line,)
                 outf.write(fmt_without_n % out)
 
         index += 1
