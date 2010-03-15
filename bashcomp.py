@@ -28,13 +28,9 @@ from bzrlib import (
 import re
 
 head="""\
-# Programmable completion for the Bazaar-NG bzr command under bash. Source
-# this file (or on some systems add it to ~/.bash_completion and start a new
-# shell) and bash's completion mechanism will know all about bzr's options!
-
-# Known to work with bash 2.05a with programmable completion and extended
-# pattern matching enabled (use 'shopt -s extglob progcomp' to enable
-# these if they are not already enabled).
+# Programmable completion for the Bazaar-NG bzr command under bash.
+# Known to work with bash 2.05a as well as bash 4.1.2, and probably
+# all versions in between as well.
 
 # Based originally on the svn bash completition script.
 # Customized by Sven Wilhelm/Icecrash.com

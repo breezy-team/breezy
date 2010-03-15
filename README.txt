@@ -90,7 +90,7 @@ system, or have a look at the command line help::
 
 .. _distutils: http://docs.python.org/install/index.html
 .. _setuptools: http://peak.telecommunity.com/DevCenter/setuptools#what-your-users-should-know
-.. _distribute: http://packages.python.org/distribute/setuptools.html
+.. _distribute: http://packages.python.org/distribute/setuptools.html#what-your-users-should-know
 
 -----
 Using
@@ -99,13 +99,38 @@ Using
 Using as a plugin
 -----------------
 
-This is the preferred method of generating initializing the
-completion, as it will ensure proper bzr initialization.
+This is the preferred method of generating the completion function, as
+it will ensure proper bzr initialization.
 
 ::
 
   eval "`bzr bash-completion`"
 
+Lazy initialization
+-------------------
+
+Running the above command automatically from your ``~/.bashrc`` file
+or similar can cause annoying delays in the startup of your shell.
+To avoid this problem, you can delay the generation of the completion
+function until you actually need it.
+
+To do so, source the file ``lazy.sh`` shipped with this package from
+your ``~/.bashrc`` file or add it to your ``~/.bash_completion`` if
+your setup uses such a file. On a system-wide installation, the
+directory ``/usr/share/bash-completion/`` might contain such bash
+completion scripts.
+
+If you installed bzr-bash-completion from the repository or a source
+tarball, you find the ``lazy.sh`` script in the root of the source
+tree. If you installed the plugin using easy_install, you should grab
+the script manually from the bzr repository, e.g. through the bazaar
+web interface on launchpad.
+
+Note that the full completion function is generated only once per
+shell session. If you update your bzr installation or change the set
+of installed plugins, then you might wish to regenerate the completion
+function manually as described above in order for completion to take
+these changes into account.
 
 Using as a script
 -----------------
