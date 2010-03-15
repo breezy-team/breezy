@@ -207,8 +207,10 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
     fmt_rev = path + "~%s:%s" + eol_marker
     fmt_rev_n = path + "~%s:%d:%s" + eol_marker
 
-    # grep through iterable file object and print out the lines
-    # matching the compiled pattern in the specified format.
+    # for better performance we moved formatting conditionals out
+    # of the core loop. hence, the core loop is somewhat duplicated
+    # for various combinations of formatting options.
+
     if print_revno and line_number:
 
         pfmt = fmt_rev_n
@@ -241,6 +243,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
             index += 1
 
     else:
+
         pfmt = fmt
         for line in file_text.split("\n"):
             res = patternc.search(line)
