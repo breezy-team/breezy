@@ -99,7 +99,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertFalse(self._str_contains(out, "file0.txt"))
 
     def test_ver_basic_include(self):
-        """(versioned) Ensure that --include flag is respected.
+        """(versioned) Ensure that -I flag is respected.
         """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
@@ -113,6 +113,12 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "file0.bb~.:line1"))
         self.assertFalse(self._str_contains(out, "file0.cc"))
 
+        out, err = self.run_bzr(['grep', '-r', 'last:1',
+            '-I', '*.aa', '-I', '*.bb', 'line1'])
+        self.assertTrue(self._str_contains(out, "file0.aa~.:line1"))
+        self.assertTrue(self._str_contains(out, "file0.bb~.:line1"))
+        self.assertFalse(self._str_contains(out, "file0.cc"))
+
     def test_wtree_basic_include(self):
         """(wtree) Ensure that --include flag is respected.
         """
@@ -122,6 +128,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_file('file0.aa')
         self._mk_versioned_file('file0.bb')
         self._mk_versioned_file('file0.cc')
+
         out, err = self.run_bzr(['grep', '--include', '*.aa',
             '--include', '*.bb', 'line1'])
         self.assertTrue(self._str_contains(out, "file0.aa:line1"))
@@ -137,8 +144,15 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_file('file0.aa')
         self._mk_versioned_file('file0.bb')
         self._mk_versioned_file('file0.cc')
+
         out, err = self.run_bzr(['grep', '-r', 'last:1',
             '--exclude', '*.cc', 'line1'])
+        self.assertTrue(self._str_contains(out, "file0.aa~.:line1"))
+        self.assertTrue(self._str_contains(out, "file0.bb~.:line1"))
+        self.assertFalse(self._str_contains(out, "file0.cc"))
+
+        out, err = self.run_bzr(['grep', '-r', 'last:1',
+            '-X', '*.cc', 'line1'])
         self.assertTrue(self._str_contains(out, "file0.aa~.:line1"))
         self.assertTrue(self._str_contains(out, "file0.bb~.:line1"))
         self.assertFalse(self._str_contains(out, "file0.cc"))

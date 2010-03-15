@@ -100,9 +100,9 @@ class cmd_grep(Command):
            help='Number of levels to display - 0 for all, 1 for collapsed (1 is default).',
            argname='N',
            type=_parse_levels),
-        ListOption('include', type=str, argname='glob',
+        ListOption('include', type=str, argname='glob', short_name='I',
             help="Search only files whose base name matches GLOB."),
-        ListOption('exclude', type=str, argname='glob',
+        ListOption('exclude', type=str, argname='glob', short_name='X',
             help="Skip files whose base name matches GLOB."),
         ]
 
