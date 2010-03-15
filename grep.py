@@ -84,31 +84,32 @@ def versioned_grep(revision, compiled_pattern, path_list, recursive,
                         compiled_pattern, from_root, eol_marker, revno, print_revno,
                         include, exclude, verbose, outf, path_prefix)
                 else:
-                    tree.lock_read()
-                    try:
-                        versioned_file_grep(tree, id, '.', path,
-                            compiled_pattern, eol_marker, line_number, revno,
-                            print_revno, include, exclude, verbose, outf)
-                    finally:
-                        tree.unlock()
+                    versioned_file_grep(tree, id, '.', path,
+                        compiled_pattern, eol_marker, line_number, revno,
+                        print_revno, include, exclude, verbose, outf)
         finally:
             wt.unlock()
 
 def workingtree_grep(compiled_pattern, path_list, recursive,
         line_number, from_root, eol_marker, include, exclude, verbose, outf):
     revno = print_revno = None # for working tree set revno to None
-    for path in path_list:
-        tree, branch, relpath = \
-            bzrdir.BzrDir.open_containing_tree_or_branch('.')
-        if osutils.isdir(path):
-            path_prefix = path
-            dir_grep(tree, path, relpath, recursive, line_number,
-                compiled_pattern, from_root, eol_marker, revno, print_revno,
-                include, exclude, verbose, outf, path_prefix)
-        else:
-            _file_grep(open(path).read(), '.', path, compiled_pattern,
-                eol_marker, line_number, revno, print_revno, include,
-                exclude, verbose, outf)
+
+    tree, branch, relpath = \
+        bzrdir.BzrDir.open_containing_tree_or_branch('.')
+    tree.lock_read()
+    try:
+        for path in path_list:
+            if osutils.isdir(path):
+                path_prefix = path
+                dir_grep(tree, path, relpath, recursive, line_number,
+                    compiled_pattern, from_root, eol_marker, revno, print_revno,
+                    include, exclude, verbose, outf, path_prefix)
+            else:
+                _file_grep(open(path).read(), '.', path, compiled_pattern,
+                    eol_marker, line_number, revno, print_revno, include,
+                    exclude, verbose, outf)
+    finally:
+        tree.unlock()
 
 def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
         from_root, eol_marker, revno, print_revno, include, exclude, verbose,
@@ -124,28 +125,24 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
         from_dir=None
         recursive=True
 
-    tree.lock_read()
-    try:
-        for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
-            from_dir=from_dir, recursive=recursive):
+    for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
+        from_dir=from_dir, recursive=recursive):
 
-            if fc == 'V' and fkind == 'file':
-                if revno != None:
-                    versioned_file_grep(tree, fid, rpath, fp,
-                        compiled_pattern, eol_marker, line_number,
-                        revno, print_revno, include, exclude, verbose,
-                        outf, path_prefix)
-                else:
-                    # we are grepping working tree.
-                    if from_dir == None:
-                        from_dir = '.'
+        if fc == 'V' and fkind == 'file':
+            if revno != None:
+                versioned_file_grep(tree, fid, rpath, fp,
+                    compiled_pattern, eol_marker, line_number,
+                    revno, print_revno, include, exclude, verbose,
+                    outf, path_prefix)
+            else:
+                # we are grepping working tree.
+                if from_dir == None:
+                    from_dir = '.'
 
-                    path_for_file = osutils.pathjoin(tree.basedir, from_dir, fp)
-                    _file_grep(open(path_for_file).read(), rpath, fp,
-                        compiled_pattern, eol_marker, line_number, revno,
-                        print_revno, include, exclude, verbose, outf, path_prefix)
-    finally:
-        tree.unlock()
+                path_for_file = osutils.pathjoin(tree.basedir, from_dir, fp)
+                _file_grep(open(path_for_file).read(), rpath, fp,
+                    compiled_pattern, eol_marker, line_number, revno,
+                    print_revno, include, exclude, verbose, outf, path_prefix)
 
 
 def _make_display_path(relpath, path):
