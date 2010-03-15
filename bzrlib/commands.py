@@ -73,6 +73,12 @@ class CommandInfo(object):
 
 class CommandRegistry(registry.Registry):
 
+    overridden_registry = None
+    """Look in this registry for commands being overridden by this registry.
+
+    This can be used to tell plugin commands about the builtin they're decorating.
+    """
+
     @staticmethod
     def _get_name(command_name):
         if command_name.startswith("cmd_"):
@@ -93,7 +99,12 @@ class CommandRegistry(registry.Registry):
         try:
             previous = self.get(k_unsquished)
         except KeyError:
-            previous = _builtin_commands().get(k_unsquished)
+            previous = None
+            if self.overridden_registry:
+                try:
+                    previous = self.overridden_registry.get(k_unsquished)
+                except KeyError:
+                    pass
         info = CommandInfo.from_command(cmd)
         try:
             registry.Registry.register(self, k_unsquished, cmd,
@@ -120,6 +131,7 @@ class CommandRegistry(registry.Registry):
 
 plugin_cmds = CommandRegistry()
 builtin_command_registry = CommandRegistry()
+plugin_cmds.overridden_registry = builtin_command_registry
 
 
 def register_command(cmd, decorate=False):
@@ -135,6 +147,7 @@ def _unsquish_command_name(cmd):
     return cmd[4:].replace('_','-')
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def _builtin_commands():
     """Return a dict of {name: cmd_class} for builtin commands.
 
@@ -271,13 +284,15 @@ def probe_for_provider(cmd_name):
 
 def _get_bzr_command(cmd_or_None, cmd_name):
     """Get a command from bzr's core."""
-    cmds = _builtin_commands()
     try:
-        return cmds[cmd_name]()
+        cmd_class = builtin_command_registry.get(cmd_name)
     except KeyError:
         pass
-    # look for any command which claims this as an alias
-    for real_cmd_name, cmd_class in cmds.iteritems():
+    else:
+        return cmd_class()
+    # look for any command which claims this as an alias; this is a bit
+    # inefficient because it will load everything
+    for real_cmd_name, cmd_class in builtin_command_registry.iteritems():
         if cmd_name in cmd_class.aliases:
             return cmd_class()
     return cmd_or_None
