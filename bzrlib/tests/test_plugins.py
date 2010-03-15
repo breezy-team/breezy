@@ -689,7 +689,7 @@ class TestEnvPluginPath(tests.TestCase):
                          '+user', '+site', '+site',
                          '+core'])
 
-    def test_disable_overrides_disable(self):
+    def test_disable_overrides_enable(self):
         self.check_path([self.core, self.site], ['-user', '+user'])
 
     def test_disable_core(self):
