@@ -193,10 +193,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         return
 
     # test and skip binary files
-    str_file = cStringIO.StringIO(file_text)
-    try:
-        file_iter = textfile.text_file(str_file)
-    except errors.BinaryFile, e:
+    if '\x00' in file_text[:1024]:
         if verbose:
             trace.warning("Binary file '%s' skipped." % path)
         return
@@ -215,7 +212,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
     # grep through iterable file object and print out the lines
     # matching the compiled pattern in the specified format.
     index = 1
-    for line in file_iter:
+    for line in file_text.split("\n"):
         res = patternc.search(line)
         if res:
             line = line.rstrip()
