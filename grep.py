@@ -186,16 +186,16 @@ def _path_in_glob_list(path, glob_list):
 def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         revno, print_revno, include, exclude, verbose, outf, path_prefix=None):
 
-    if include and not _path_in_glob_list(path, include):
-        return
-
-    if exclude and _path_in_glob_list(path, exclude):
-        return
-
     # test and skip binary files
     if '\x00' in file_text[:1024]:
         if verbose:
             trace.warning("Binary file '%s' skipped." % path)
+        return
+
+    if include and not _path_in_glob_list(path, include):
+        return
+
+    if exclude and _path_in_glob_list(path, exclude):
         return
 
     if path_prefix and path_prefix != '.':
