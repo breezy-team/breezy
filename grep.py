@@ -202,33 +202,50 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         # user has passed a dir arg, show that as result prefix
         path = osutils.pathjoin(path_prefix, path)
 
-    revfmt = ''
-    if print_revno:
-        revfmt = "~%s"
-
-    fmt_with_n = path + revfmt + ":%d:%s" + eol_marker
-    fmt_without_n = path + revfmt + ":%s" + eol_marker
+    fmt = path + ":%s" + eol_marker
+    fmt_n = path + ":%d:%s" + eol_marker
+    fmt_rev = path + "~%s:%s" + eol_marker
+    fmt_rev_n = path + "~%s:%d:%s" + eol_marker
 
     # grep through iterable file object and print out the lines
     # matching the compiled pattern in the specified format.
-    index = 1
-    for line in file_text.split("\n"):
-        res = patternc.search(line)
-        if res:
-            line = line.rstrip()
-            if line_number:
-                if print_revno:
-                    out = (revno, index, line)
-                else:
-                    out = (index, line)
-                outf.write(fmt_with_n % out)
-            else:
-                if print_revno:
-                    out = (revno, line)
-                else:
-                    out = (line,)
-                outf.write(fmt_without_n % out)
+    if print_revno and line_number:
 
-        index += 1
+        pfmt = fmt_rev_n
+        index = 1
+        for line in file_text.split("\n"):
+            res = patternc.search(line)
+            if res:
+                line = line.rstrip()
+                outf.write(pfmt % (revno, index, line))
+            index += 1
+
+    elif print_revno and not line_number:
+
+        pfmt = fmt_rev
+        for line in file_text.split("\n"):
+            res = patternc.search(line)
+            if res:
+                line = line.rstrip()
+                outf.write(pfmt % (revno, line))
+
+    elif not print_revno and line_number:
+
+        pfmt = fmt_n
+        index = 1
+        for line in file_text.split("\n"):
+            res = patternc.search(line)
+            if res:
+                line = line.rstrip()
+                outf.write(pfmt % (index, line))
+            index += 1
+
+    else:
+        pfmt = fmt
+        for line in file_text.split("\n"):
+            res = patternc.search(line)
+            if res:
+                line = line.rstrip()
+                outf.write(pfmt % (line,))
 
 
