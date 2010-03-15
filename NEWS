@@ -37,6 +37,8 @@
 
   * Support (dumb) HTTP repositories. (#373688, Jelmer Vernooij)
 
+  * Implement API for colocated branches. (#380871, Jelmer Vernooij)
+
 0.4.3	2010-01-19
 
  BUG FIXES
