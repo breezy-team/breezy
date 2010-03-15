@@ -217,7 +217,6 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         index = 1
         for line in file_text.split("\n"):
             if patternc.search(line):
-                line = line.rstrip()
                 outf.write(pfmt % (revno, index, line))
             index += 1
 
@@ -226,7 +225,6 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         pfmt = fmt_rev
         for line in file_text.split("\n"):
             if patternc.search(line):
-                line = line.rstrip()
                 outf.write(pfmt % (revno, line))
 
     elif not print_revno and line_number:
@@ -235,7 +233,6 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         index = 1
         for line in file_text.split("\n"):
             if patternc.search(line):
-                line = line.rstrip()
                 outf.write(pfmt % (index, line))
             index += 1
 
@@ -244,7 +241,6 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         pfmt = fmt
         for line in file_text.split("\n"):
             if patternc.search(line):
-                line = line.rstrip()
                 outf.write(pfmt % (line,))
 
 
