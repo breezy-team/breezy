@@ -119,7 +119,7 @@ class CommandRegistry(registry.Registry):
 
 
 plugin_cmds = CommandRegistry()
-builtin_cmds = CommandRegistry()
+builtin_command_registry = CommandRegistry()
 
 
 def register_command(cmd, decorate=False):
@@ -136,17 +136,21 @@ def _unsquish_command_name(cmd):
 
 
 def _builtin_commands():
+    """Return a dict of {name: cmd_class} for builtin commands.
+
+    :deprecated: Use the builtin_command_registry registry instead
+    """
     # return dict(name: cmd_class)
-    return dict(builtin_cmds.items())
+    return dict(builtin_command_registry.items())
 
 
 def _register_builtin_commands():
-    if builtin_cmds.keys():
+    if builtin_command_registry.keys():
         # only load once
         return
     import bzrlib.builtins
     for cmd_class in _scan_module_for_commands(bzrlib.builtins).values():
-        builtin_cmds.register(cmd_class)
+        builtin_command_registry.register(cmd_class)
 
 
 def _scan_module_for_commands(module):
@@ -183,7 +187,7 @@ def builtin_command_names():
     Use of all_command_names() is encouraged rather than builtin_command_names
     and/or plugin_command_names.
     """
-    return _builtin_commands().keys()
+    return builtin_command_registry.keys()
 
 
 def plugin_command_names():
