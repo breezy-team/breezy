@@ -135,6 +135,10 @@ plugin_cmds.overridden_registry = builtin_command_registry
 
 
 def register_command(cmd, decorate=False):
+    """Register a plugin command.
+
+    Should generally be avoided in favor of lazy registration. 
+    """
     global plugin_cmds
     return plugin_cmds.register(cmd, decorate)
 
@@ -176,7 +180,10 @@ def _scan_module_for_commands(module):
 
 
 def _list_bzr_commands(names):
-    """Find commands from bzr's core and plugins."""
+    """Find commands from bzr's core and plugins.
+    
+    This is not the public interface, just the default hook called by all_command_names.
+    """
     # to eliminate duplicates
     names.update(builtin_command_names())
     names.update(plugin_command_names())
