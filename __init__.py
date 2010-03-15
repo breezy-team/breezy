@@ -37,7 +37,7 @@ from bzrlib import (
     )
 """)
 
-version_info = (0, 1, 0, 'final', 0)
+version_info = (0, 2, 0, 'dev', 0)
 
 # FIXME: _parse_levels should be shared with bzrlib.builtins. this is a copy
 # to avoid the error
@@ -141,11 +141,12 @@ class cmd_grep(Command):
         if revision == None:
             grep.workingtree_grep(patternc, path_list, recursive,
                 line_number, from_root, eol_marker, include, exclude,
-                self.outf)
+                verbose, self.outf)
         else:
             grep.versioned_grep(revision, patternc, path_list,
                 recursive, line_number, from_root, eol_marker,
-                print_revno, levels, include, exclude, self.outf)
+                print_revno, levels, include, exclude, verbose,
+                self.outf)
 
 
 register_command(cmd_grep)

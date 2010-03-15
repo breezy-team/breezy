@@ -893,12 +893,14 @@ class TestGrep(tests.TestCaseWithTransport):
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
-        self._mk_versioned_file('file0.txt')
-        self._update_file('file0.txt', "\x00lineNN\x00\n")
-        out, err = self.run_bzr(['grep', '-r', 'last:1',
-            'lineNN', 'file0.txt'])
-        self.assertFalse(self._str_contains(out, "file0.txt"))
-        self.assertTrue(self._str_contains(err, "Binary file.*file0.txt.*skipped"))
+        self._mk_versioned_file('file0.bin')
+        self._update_file('file0.bin', "\x00lineNN\x00\n")
+
+        # note: set --verbose/-v flag to get the skip message.
+        out, err = self.run_bzr(['grep', '-v', '-r', 'last:1',
+            'lineNN', 'file0.bin'])
+        self.assertFalse(self._str_contains(out, "file0.bin"))
+        self.assertTrue(self._str_contains(err, "Binary file.*file0.bin.*skipped"))
 
     def test_wtree_binary_file_grep(self):
         """(wtree) Grep for pattern in binary file.
@@ -906,9 +908,16 @@ class TestGrep(tests.TestCaseWithTransport):
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
-        self._mk_versioned_file('file0.txt')
-        self._update_file('file0.txt', "\x00lineNN\x00\n")
-        out, err = self.run_bzr(['grep', 'lineNN', 'file0.txt'])
-        self.assertFalse(self._str_contains(out, "file0.txt:line1"))
-        self.assertTrue(self._str_contains(err, "Binary file.*file0.txt.*skipped"))
+        self._mk_versioned_file('file0.bin')
+        self._update_file('file0.bin', "\x00lineNN\x00\n")
+
+        # note: set --verbose/-v flag to get the skip message.
+        out, err = self.run_bzr(['grep', '-v', 'lineNN', 'file0.bin'])
+        self.assertFalse(self._str_contains(out, "file0.bin:line1"))
+        self.assertTrue(self._str_contains(err, "Binary file.*file0.bin.*skipped"))
+
+        # binary warning should not be shown without --verbose
+        out, err = self.run_bzr(['grep', 'lineNN', 'file0.bin'])
+        self.assertFalse(self._str_contains(out, "file0.bin:line1"))
+        self.assertFalse(self._str_contains(err, "Binary file"))
 
