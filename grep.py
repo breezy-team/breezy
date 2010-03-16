@@ -198,7 +198,7 @@ def _path_in_glob_list(path, glob_list):
     return present
 
 
-_user_encoding = osutils.get_user_encoding()
+_terminal_encoding = osutils.get_terminal_encoding()
 
 def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         revno, print_revno, include, exclude, verbose, outf, path_prefix=None):
@@ -212,10 +212,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         # user has passed a dir arg, show that as result prefix
         path = osutils.pathjoin(path_prefix, path)
 
-    fmt = path + ":%s" + eol_marker
-    fmt_n = path + ":%d:%s" + eol_marker
-    fmt_rev = path + "~%s:%s" + eol_marker
-    fmt_rev_n = path + "~%s:%d:%s" + eol_marker
+    path = path.encode(_terminal_encoding, 'replace')
 
     # for better performance we moved formatting conditionals out
     # of the core loop. hence, the core loop is somewhat duplicated
@@ -223,34 +220,34 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
 
     if print_revno and line_number:
 
-        pfmt = fmt_rev_n
+        pfmt = "~%s:%d:%s".encode(_terminal_encoding)
         for index, line in enumerate(file_text.split("\n")):
             if patternc.search(line):
-                line = line.decode(_user_encoding, 'replace')
-                outf.write(pfmt % (revno, index+1, line))
+                line = line.decode(_terminal_encoding, 'replace')
+                outf.write(path + (pfmt % (revno, index+1, line)) + eol_marker)
 
     elif print_revno and not line_number:
 
-        pfmt = fmt_rev
+        pfmt = "~%s:%s".encode(_terminal_encoding)
         for line in file_text.split("\n"):
             if patternc.search(line):
-                line = line.decode(_user_encoding, 'replace')
-                outf.write(pfmt % (revno, line))
+                line = line.decode(_terminal_encoding, 'replace')
+                outf.write(path + (pfmt % (revno, line)) + eol_marker)
 
     elif not print_revno and line_number:
 
-        pfmt = fmt_n
+        pfmt = ":%d:%s".encode(_terminal_encoding)
         for index, line in enumerate(file_text.split("\n")):
             if patternc.search(line):
-                line = line.decode(_user_encoding, 'replace')
-                outf.write(pfmt % (index+1, line))
+                line = line.decode(_terminal_encoding, 'replace')
+                outf.write(path + (pfmt % (index+1, line)) + eol_marker)
 
     else:
 
-        pfmt = fmt
+        pfmt = ":%s".encode(_terminal_encoding)
         for line in file_text.split("\n"):
             if patternc.search(line):
-                line = line.decode(_user_encoding, 'replace')
-                outf.write(pfmt % (line,))
+                line = line.decode(_terminal_encoding, 'replace')
+                outf.write(path + (pfmt % (line,)) + eol_marker)
 
 

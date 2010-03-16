@@ -80,6 +80,7 @@ class cmd_grep(Command):
     [1] http://docs.python.org/library/re.html#regular-expression-syntax
     """
 
+    encoding_type = 'exact'
     takes_args = ['pattern', 'path*']
     takes_options = [
         'verbose',
