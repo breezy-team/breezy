@@ -51,6 +51,10 @@ def versioned_grep(revision, compiled_pattern, path_list, recursive,
 
     wt, relpath = WorkingTree.open_containing('.')
 
+    # We do an optimization below. For grepping a specific revison
+    # We don't need to call _graph_view_revisions which is slow.
+    # We create the start_rev_tuple for only that specific revision.
+    # _graph_view_revisions is used only for revision range.
     start_rev = revision[0]
     start_revid = start_rev.as_revision_id(wt.branch)
     srevno_tuple = wt.branch.revision_id_to_dotted_revno(start_revid)
