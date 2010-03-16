@@ -1235,7 +1235,7 @@ class DistributionBranch(object):
         base_path = osutils.dirname(dsc_filename)
         dsc = deb822.Dsc(open(dsc_filename).read())
         version = Version(dsc['Version'])
-        format = dsc['Format'].strip()
+        format = dsc.get('Format', '1.0').strip()
         extractor_cls = SOURCE_EXTRACTORS.get(format)
         if extractor_cls is None:
             raise AssertionError("Don't know how to import source format %s yet"
