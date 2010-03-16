@@ -16,6 +16,7 @@
 
 import os
 import re
+import unicodedata as ud
 
 from bzrlib import tests, osutils
 
@@ -224,11 +225,15 @@ class TestGrep(tests.TestCaseWithTransport):
         os.chdir(wd)
         self._mk_versioned_file('file0.txt', total_lines=3)
 
+        nref = ud.normalize(u'NFC', u"file0.txt~1:line1\0file0.txt~1:line2\0file0.txt~1:line3\0")
+
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--null', 'line[1-3]'])
-        self.assertTrue(out == "file0.txt~1:line1\0file0.txt~1:line2\0file0.txt~1:line3\0")
+        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        self.assertTrue(nout == nref)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '-Z', 'line[1-3]'])
-        self.assertTrue(out == "file0.txt~1:line1\0file0.txt~1:line2\0file0.txt~1:line3\0")
+        nout = ud.normalize(u'NFC', out.decode('utf-8', 'ignore'))
+        self.assertTrue(nout == nref)
 
     def test_wtree_null_option(self):
         """(wtree) --null option should use NUL instead of newline.
