@@ -90,7 +90,16 @@ def set_plugins_path(path=None):
     """
     if path is None:
         path = get_standard_plugins_path()
-    _mod_plugins.__path__ = path
+    # Set up a blacklist for disabled plugins if any
+    clean = []
+    PluginBlackListImporter.blacklist = {}
+    for p in path:
+        if p.startswith('-'):
+            PluginBlackListImporter.blacklist[
+                'bzrlib.plugins.%s' % p[1:]] = True
+        else:
+             clean.append(p)
+    _mod_plugins.__path__ = clean
     return path
 
 
@@ -478,15 +487,17 @@ class PlugIn(object):
     __version__ = property(_get__version__)
 
 
-blacklist = {}
+class _PluginBlackListImporter(object):
 
-
-class PluginBlackListImporter(object):
+    def __init__(self):
+        self.blacklist = {}
 
     def find_module(self, fullname, parent_path=None):
-        if fullname in blacklist:
+        if fullname in self.blacklist:
             raise ImportError('%s is disabled' % fullname)
         return None
-sys.meta_path.append(PluginBlackListImporter())
+
+PluginBlackListImporter = _PluginBlackListImporter()
+sys.meta_path.append(PluginBlackListImporter)
 
 

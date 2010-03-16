@@ -42,7 +42,9 @@ class TestPluginMixin(object):
         if file_name is None:
             file_name = name + '.py'
         # 'source' must not fail to load
-        f = open(osutils.pathjoin(dir, file_name), 'w')
+        path = osutils.pathjoin(dir, file_name)
+        f = open(path, 'w')
+        self.addCleanup(os.unlink, path)
         try:
             f.write(source + '\n')
         finally:
@@ -51,6 +53,7 @@ class TestPluginMixin(object):
     def create_plugin_package(self, name, source='', dir='.'):
         plugin_dir = osutils.pathjoin(dir, name)
         os.mkdir(plugin_dir)
+        self.addCleanup(osutils.rmtree, plugin_dir)
         self.create_plugin(name, source, dir=plugin_dir,
                            file_name='__init__.py')
 
@@ -742,19 +745,22 @@ class TestEnvPluginPath(tests.TestCase):
 
 class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
 
-    def test_cannot_import(self):
+    def setUp(self):
+        super(TestDisablePlugin, self).setUp()
         self.create_plugin_package('test_foo')
-        plugin.set_plugins_path(['.'])
-        plugin.blacklist['bzrlib.plugins.test_foo'] = True
+        # Make sure we don't pollute the plugins namespace
+        self.overrideAttr(plugins, '__path__')
+        # Be paranoid in case a test fail
+        self.addCleanup(self._unregister_plugin, 'test_foo')
+        plugin.set_plugins_path(['.', '-test_foo'])
+
+    def test_cannot_import(self):
         try:
             import bzrlib.plugins.test_foo
         except ImportError:
             pass
-        else:
-            self.fail('test_foo import succeeded')
+        self.assertPluginUnknown('test_foo')
 
     def test_not_loaded(self):
-        self.create_plugin_package('test_foo')
-        plugin.blacklist['bzrlib.plugins.test_foo'] = True
-        plugin.load_plugins(plugin.set_plugins_path(['.']))
+        plugin.load_plugins()
         self.assertPluginUnknown('test_foo')
