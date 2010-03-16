@@ -60,7 +60,6 @@ def versioned_grep(revision, compiled_pattern, path_list, recursive,
     end_revid   = end_rev.as_revision_id(wt.branch)
 
     given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
-    given_revs = list(given_revs)
 
     for revid, revno, merge_depth in given_revs:
         if levels == 1 and merge_depth != 0:
