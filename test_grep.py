@@ -882,13 +882,13 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertTrue(self._str_contains(out, "file0.txt:line1"))
         self.assertTrue(self._str_contains(out, "file1.txt:line1"))
 
-        out, err = self.run_bzr(['grep', '-r', 'last:1', '--levels=0', 'line1'])
+        out, err = self.run_bzr(['grep', '-r', 'last:1..', '--levels=0', 'line1'])
         self.assertTrue(self._str_contains(out, "file0.txt~2:line1"))
         self.assertTrue(self._str_contains(out, "file1.txt~2:line1"))
         self.assertTrue(self._str_contains(out, "file0.txt~1.1.1:line1"))
         self.assertTrue(self._str_contains(out, "file1.txt~1.1.1:line1"))
 
-        out, err = self.run_bzr(['grep', '-r',  '-1', '-n', '--levels=0', 'line1'])
+        out, err = self.run_bzr(['grep', '-r',  '-1..', '-n', '--levels=0', 'line1'])
         self.assertTrue(self._str_contains(out, "file0.txt~2:1:line1"))
         self.assertTrue(self._str_contains(out, "file1.txt~2:1:line1"))
         self.assertTrue(self._str_contains(out, "file0.txt~1.1.1:1:line1"))
