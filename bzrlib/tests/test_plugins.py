@@ -67,11 +67,11 @@ class TestPluginMixin(object):
             delattr(bzrlib.plugins, name)
 
     def assertPluginUnknown(self, name):
-        self.failIf(getattr(bzrlib.plugins, 'plugin', None) is not None)
+        self.failIf(getattr(bzrlib.plugins, name, None) is not None)
         self.failIf('bzrlib.plugins.%s' % name in sys.modules)
 
     def assertPluginKnown(self, name):
-        self.failUnless(getattr(bzrlib.plugins, 'plugin', None) is not None)
+        self.failUnless(getattr(bzrlib.plugins, name, None) is not None)
         self.failUnless('bzrlib.plugins.%s' % name in sys.modules)
 
 
@@ -761,6 +761,11 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         except ImportError:
             pass
         self.assertPluginUnknown('test_foo')
+
+    def test_regular_load(self):
+        self.overrideAttr(plugin, '_loaded', False)
+        plugin.load_plugins(['.'])
+        self.assertPluginKnown('test_foo')
 
     def test_not_loaded(self):
         self.warnings = []
