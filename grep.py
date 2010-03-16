@@ -180,9 +180,11 @@ def _path_in_glob_list(path, glob_list):
             break
     return present
 
+
+_user_encoding = osutils.get_user_encoding()
+
 def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         revno, print_revno, include, exclude, verbose, outf, path_prefix=None):
-
     # test and skip binary files
     if '\x00' in file_text[:1024]:
         if verbose:
@@ -213,6 +215,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         pfmt = fmt_rev_n
         for index, line in enumerate(file_text.split("\n")):
             if patternc.search(line):
+                line = line.decode(_user_encoding, 'replace')
                 outf.write(pfmt % (revno, index+1, line))
 
     elif print_revno and not line_number:
@@ -220,6 +223,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         pfmt = fmt_rev
         for line in file_text.split("\n"):
             if patternc.search(line):
+                line = line.decode(_user_encoding, 'replace')
                 outf.write(pfmt % (revno, line))
 
     elif not print_revno and line_number:
@@ -227,6 +231,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         pfmt = fmt_n
         for index, line in enumerate(file_text.split("\n")):
             if patternc.search(line):
+                line = line.decode(_user_encoding, 'replace')
                 outf.write(pfmt % (index+1, line))
 
     else:
@@ -234,6 +239,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
         pfmt = fmt
         for line in file_text.split("\n"):
             if patternc.search(line):
+                line = line.decode(_user_encoding, 'replace')
                 outf.write(pfmt % (line,))
 
 
