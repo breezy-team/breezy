@@ -221,7 +221,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
     if print_revno and line_number:
 
         pfmt = "~%s:%d:%s".encode(_terminal_encoding)
-        for index, line in enumerate(file_text.split("\n")):
+        for index, line in enumerate(file_text.splitlines()):
             if patternc.search(line):
                 line = line.decode(_terminal_encoding, 'replace')
                 outf.write(path + (pfmt % (revno, index+1, line)) + eol_marker)
@@ -229,7 +229,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
     elif print_revno and not line_number:
 
         pfmt = "~%s:%s".encode(_terminal_encoding)
-        for line in file_text.split("\n"):
+        for line in file_text.splitlines():
             if patternc.search(line):
                 line = line.decode(_terminal_encoding, 'replace')
                 outf.write(path + (pfmt % (revno, line)) + eol_marker)
@@ -237,7 +237,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
     elif not print_revno and line_number:
 
         pfmt = ":%d:%s".encode(_terminal_encoding)
-        for index, line in enumerate(file_text.split("\n")):
+        for index, line in enumerate(file_text.splitlines()):
             if patternc.search(line):
                 line = line.decode(_terminal_encoding, 'replace')
                 outf.write(path + (pfmt % (index+1, line)) + eol_marker)
@@ -245,7 +245,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
     else:
 
         pfmt = ":%s".encode(_terminal_encoding)
-        for line in file_text.split("\n"):
+        for line in file_text.splitlines():
             if patternc.search(line):
                 line = line.decode(_terminal_encoding, 'replace')
                 outf.write(path + (pfmt % (line,)) + eol_marker)
