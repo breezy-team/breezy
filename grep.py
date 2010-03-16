@@ -111,6 +111,14 @@ def workingtree_grep(compiled_pattern, path_list, recursive,
     finally:
         tree.unlock()
 
+def _skip_file(include, exclude, path):
+    if include and not _path_in_glob_list(path, include):
+        return True
+    if exclude and _path_in_glob_list(path, exclude):
+        return True
+    return False
+
+
 def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
         from_root, eol_marker, revno, print_revno, include, exclude, verbose,
         outf, path_prefix):
@@ -127,6 +135,9 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
 
     for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
         from_dir=from_dir, recursive=recursive):
+
+        if _skip_file(include, exclude, fp):
+            continue
 
         if fc == 'V' and fkind == 'file':
             if revno != None:
@@ -189,12 +200,6 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
     if '\x00' in file_text[:1024]:
         if verbose:
             trace.warning("Binary file '%s' skipped." % path)
-        return
-
-    if include and not _path_in_glob_list(path, include):
-        return
-
-    if exclude and _path_in_glob_list(path, exclude):
         return
 
     if path_prefix and path_prefix != '.':
