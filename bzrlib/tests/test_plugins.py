@@ -31,6 +31,7 @@ from bzrlib import (
     plugin,
     plugins,
     tests,
+    trace,
     )
 
 
@@ -752,9 +753,9 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         self.overrideAttr(plugins, '__path__')
         # Be paranoid in case a test fail
         self.addCleanup(self._unregister_plugin, 'test_foo')
-        plugin.set_plugins_path(['.', '-test_foo'])
 
     def test_cannot_import(self):
+        plugin.set_plugins_path(['.', '-test_foo'])
         try:
             import bzrlib.plugins.test_foo
         except ImportError:
@@ -762,5 +763,13 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertPluginUnknown('test_foo')
 
     def test_not_loaded(self):
-        plugin.load_plugins()
+        self.warnings = []
+        def captured_warning(*args, **kwargs):
+            self.warnings.append((args, kwargs))
+        self.overrideAttr(trace, 'warning', captured_warning)
+        self.overrideAttr(plugin, '_loaded', False)
+        plugin.load_plugins(plugin.set_plugins_path(['.', '-test_foo']))
         self.assertPluginUnknown('test_foo')
+        # Make sure we don't warn about the plugin ImportError since this has
+        # been *requested* by the user.
+        self.assertLength(0, self.warnings)

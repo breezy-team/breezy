@@ -299,6 +299,8 @@ def load_from_dir(d):
             plugin_names.add(f)
 
     for name in plugin_names:
+        if ('bzrlib.plugins.%s' % name) in PluginBlackListImporter.blacklist:
+            continue
         try:
             exec "import bzrlib.plugins.%s" % name in {}
         except KeyboardInterrupt:
