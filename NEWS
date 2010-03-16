@@ -1,4 +1,8 @@
 bzr-grep 0.2.0-dev
+* Significant performance improvement. Working tree grep for bzr.dev
+  has gone from ~7.5s to ~1s. (Parth Malwankar, #539028)
+* Better unicode handling. bzr-grep no longer crashes with UnicodeDecode
+  error for some outputs. (Parth Malwankar, #539258)
 * 'binary file skipped' warning is not shows without --verbose flag
   (Parth Malwankar, #539031)
 
