@@ -220,6 +220,8 @@ class TestGrep(tests.TestCaseWithTransport):
     def test_ver_null_option(self):
         """(versioned) --null option should use NUL instead of newline.
         """
+	if os.name != 'posix':
+	    return
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
