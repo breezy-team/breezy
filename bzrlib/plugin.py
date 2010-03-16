@@ -183,8 +183,8 @@ def get_standard_plugins_path():
             try:
                 p = refs[p[1:]]
             except KeyError:
-                # Leave them untouched otherwise, user may have paths starting
-                # with '+'...
+                # Leave them untouched so user can still use paths starting
+                # with '+'
                 pass
         _append_new_path(paths, p)
 
@@ -202,7 +202,7 @@ def load_plugins(path=None):
     files (and whatever other extensions are used in the platform,
     such as *.pyd).
 
-    load_from_dirs() provides the underlying mechanism and is called with
+    load_from_path() provides the underlying mechanism and is called with
     the default directory list to provide the normal behaviour.
 
     :param path: The list of paths to search for plugins.  By default,
@@ -476,3 +476,17 @@ class PlugIn(object):
         return version_string
 
     __version__ = property(_get__version__)
+
+
+blacklist = {}
+
+
+class PluginBlackListImporter(object):
+
+    def find_module(self, fullname, parent_path=None):
+        if fullname in blacklist:
+            raise ImportError('%s is disabled' % fullname)
+        return None
+sys.meta_path.append(PluginBlackListImporter())
+
+

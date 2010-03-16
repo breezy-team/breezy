@@ -38,6 +38,22 @@ from bzrlib import (
 
 class TestPluginMixin(object):
 
+    def create_plugin(self, name, source='', dir='.', file_name=None):
+        if file_name is None:
+            file_name = name + '.py'
+        # 'source' must not fail to load
+        f = open(osutils.pathjoin(dir, file_name), 'w')
+        try:
+            f.write(source + '\n')
+        finally:
+            f.close()
+
+    def create_plugin_package(self, name, source='', dir='.'):
+        plugin_dir = osutils.pathjoin(dir, name)
+        os.mkdir(plugin_dir)
+        self.create_plugin(name, source, dir=plugin_dir,
+                           file_name='__init__.py')
+
     def _unregister_plugin(self, name):
         """Remove the plugin from sys.modules and the bzrlib namespace."""
         py_name = 'bzrlib.plugins.%s' % name
@@ -723,3 +739,22 @@ class TestEnvPluginPath(tests.TestCase):
         self.check_path(['+foo', '-bar', self.core, self.site],
                         ['+foo', '-bar'])
 
+
+class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
+
+    def test_cannot_import(self):
+        self.create_plugin_package('test_foo')
+        plugin.set_plugins_path(['.'])
+        plugin.blacklist['bzrlib.plugins.test_foo'] = True
+        try:
+            import bzrlib.plugins.test_foo
+        except ImportError:
+            pass
+        else:
+            self.fail('test_foo import succeeded')
+
+    def test_not_loaded(self):
+        self.create_plugin_package('test_foo')
+        plugin.blacklist['bzrlib.plugins.test_foo'] = True
+        plugin.load_plugins(plugin.set_plugins_path(['.']))
+        self.assertPluginUnknown('test_foo')
