@@ -52,14 +52,17 @@ def versioned_grep(revision, compiled_pattern, path_list, recursive,
     wt, relpath = WorkingTree.open_containing('.')
 
     start_rev = revision[0]
-    end_rev = revision[0]
+    start_revid = start_rev.as_revision_id(wt.branch)
+    srevno_tuple = wt.branch.revision_id_to_dotted_revno(start_revid)
+    start_revno = '.'.join(map(str, srevno_tuple))
+    start_rev_tuple = (start_revid, start_revno, 0)
+
     if len(revision) == 2:
         end_rev = revision[1]
-
-    start_revid = start_rev.as_revision_id(wt.branch)
-    end_revid   = end_rev.as_revision_id(wt.branch)
-
-    given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
+        end_revid   = end_rev.as_revision_id(wt.branch)
+        given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
+    else:
+        given_revs = [start_rev_tuple]
 
     for revid, revno, merge_depth in given_revs:
         if levels == 1 and merge_depth != 0:
