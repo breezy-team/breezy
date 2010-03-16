@@ -259,44 +259,61 @@ def load_from_path(dirs):
 load_from_dirs = load_from_path
 
 
+def _check_plugin_module(dir, name):
+    """Check if there is a valid python module that can be loaded as a plugin.
+
+    :param path: An existing file path, either a python file or a package
+        directory.
+
+    :return: (name, path, description) name is the module name, path is the
+        file to load and description is the tuple returned by
+        imp.get_suffixes().
+    """
+    path = osutils.pathjoin(dir, name)
+    if os.path.isdir(path):
+        # Check for a valid __init__.py file, valid suffixes depends on -O and
+        # can be .py, .pyc and .pyo
+        for suffix, mode, kind in imp.get_suffixes():
+            if kind in (imp.PY_SOURCE, imp.PY_COMPILED):
+                # We don't recognize compiled modules (.so, .dll, etc)
+                continue
+            if os.path.isfile(osutils.pathjoin(path, '__init__.py%s' % suffix)):
+                return name, path, (suffix, mode, kind)
+    else:
+        for suffix, mode, kind in imp.get_suffixes():
+            if name.endswith(suffix):
+                # Clean up the module name
+                name = name[:-len(suffix)]
+                if kind == imp.C_EXTENSION and name.endswith('module'):
+                    name = name[:-len('module')]
+                return name, path, (suffix, mode, kind)
+    # There is no python module here
+    return None, None, (None, None, None)
+
+
 def load_from_dir(d):
     """Load the plugins in directory d.
 
     d must be in the plugins module path already.
+    This function is called once for each directory in the module path.
     """
-    # Get the list of valid python suffixes for __init__.py?
-    # this includes .py, .pyc, and .pyo (depending on if we are running -O)
-    # but it doesn't include compiled modules (.so, .dll, etc)
-    valid_suffixes = [suffix for suffix, mod_type, flags in imp.get_suffixes()
-                              if flags in (imp.PY_SOURCE, imp.PY_COMPILED)]
-    package_entries = ['__init__'+suffix for suffix in valid_suffixes]
     plugin_names = set()
-    for f in os.listdir(d):
-        path = osutils.pathjoin(d, f)
-        if os.path.isdir(path):
-            for entry in package_entries:
-                # This directory should be a package, and thus added to
-                # the list
-                if os.path.isfile(osutils.pathjoin(path, entry)):
-                    break
-            else: # This directory is not a package
-                continue
-        else:
-            for suffix_info in imp.get_suffixes():
-                if f.endswith(suffix_info[0]):
-                    f = f[:-len(suffix_info[0])]
-                    if suffix_info[2] == imp.C_EXTENSION and f.endswith('module'):
-                        f = f[:-len('module')]
-                    break
+    for p in os.listdir(d):
+        name, path, desc = _check_plugin_module(d, p)
+        if name is not None:
+            if name == '__init__':
+                # We do nothing with the __init__.py file in directories from
+                # the bzrlib.plugins module path, we may want to, one day
+                # -- vila 20100316.
+                continue # We don't load __init__.py in the plugins dirs
+            elif getattr(_mod_plugins, name, None) is not None:
+                # The module has already been loaded from another directory
+                # during a previous call.
+                # FIXME: There should be a better way to report masked plugins
+                # -- vila 20100316
+                trace.mutter('Plugin name %s already loaded', name)
             else:
-                continue
-        if f == '__init__':
-            continue # We don't load __init__.py again in the plugin dir
-        elif getattr(_mod_plugins, f, None):
-            trace.mutter('Plugin name %s already loaded', f)
-        else:
-            # trace.mutter('add plugin name %s', f)
-            plugin_names.add(f)
+                plugin_names.add(name)
 
     for name in plugin_names:
         if ('bzrlib.plugins.%s' % name) in PluginBlackListImporter.blacklist:
@@ -312,7 +329,6 @@ def load_from_dir(d):
                 (name, e.wanted, e.api, e.minimum, e.current))
         except Exception, e:
             trace.warning("%s" % e)
-            ## import pdb; pdb.set_trace()
             if re.search('\.|-| ', name):
                 sanitised_name = re.sub('[-. ]', '_', name)
                 if sanitised_name.startswith('bzr_'):
@@ -501,5 +517,3 @@ class _PluginBlackListImporter(object):
 
 PluginBlackListImporter = _PluginBlackListImporter()
 sys.meta_path.append(PluginBlackListImporter)
-
-
