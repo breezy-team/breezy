@@ -228,7 +228,7 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
 
     elif print_revno and not line_number:
 
-        pfmt = "~%s:%s".encode(_terminal_encoding)
+        pfmt = "~%s:%s".encode(_terminal_encoding, 'replace')
         for line in file_text.splitlines():
             if patternc.search(line):
                 line = line.decode(_terminal_encoding, 'replace')
