@@ -755,7 +755,8 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         self.addCleanup(self._unregister_plugin, 'test_foo')
 
     def test_cannot_import(self):
-        plugin.set_plugins_path(['.', '-test_foo'])
+        osutils.set_or_unset_env('BZR_DISABLE_PLUGINS', 'test_foo')
+        plugin.set_plugins_path(['.'])
         try:
             import bzrlib.plugins.test_foo
         except ImportError:
@@ -773,7 +774,8 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
             self.warnings.append((args, kwargs))
         self.overrideAttr(trace, 'warning', captured_warning)
         self.overrideAttr(plugin, '_loaded', False)
-        plugin.load_plugins(plugin.set_plugins_path(['.', '-test_foo']))
+        osutils.set_or_unset_env('BZR_DISABLE_PLUGINS', 'test_foo')
+        plugin.load_plugins(plugin.set_plugins_path(['.']))
         self.assertPluginUnknown('test_foo')
         # Make sure we don't warn about the plugin ImportError since this has
         # been *requested* by the user.
