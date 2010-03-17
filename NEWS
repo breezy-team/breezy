@@ -55,6 +55,13 @@ New Features
   a list of plugin names separated by ':' (';' on windows).
   (Vincent Ladeuil, #411413)
 
+* Plugins can be loaded from arbitrary locations by defining
+  ``BZR_PLUGINS_AT`` as a list of name@path separated by ':' (';'
+  on windows). This takes precedence over ``BZR_PLUGIN_PATH`` for
+  the specified plugins. This targeted at plugin developers for
+  punctual needs and *not* intended to replace
+  ``BZR_PLUGIN_PATH``.  (Vincent Ladeuil, #82693)
+
 * Tree-shape conflicts can be resolved by providing ``--take-this`` and
   ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
   as resolved is still accessible via the ``--done`` default action.
