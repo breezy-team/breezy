@@ -90,13 +90,17 @@ def set_plugins_path(path=None):
     """
     if path is None:
         path = get_standard_plugins_path()
-    # Set up a blacklist for disabled plugins if any
+    # Set up a blacklist for disabled plugins and record the specific paths to
+    # use if any
     clean = []
-    PluginBlackListImporter.blacklist = {}
+    PluginImporter.reset()
     for p in path:
         if p.startswith('-'):
-            PluginBlackListImporter.blacklist[
-                'bzrlib.plugins.%s' % p[1:]] = True
+            PluginImporter.blacklist.add('bzrlib.plugins.%s' % p[1:])
+        elif '@' in p:
+            plugin_name, plugin_path = p.split('@')
+            PluginImporter.specific_paths[
+                'bzrlib.plugins.%s' % plugin_name] = plugin_path
         else:
              clean.append(p)
     _mod_plugins.__path__ = clean
@@ -259,7 +263,7 @@ def load_from_path(dirs):
 load_from_dirs = load_from_path
 
 
-def _check_plugin_module(dir, name):
+def _find_plugin_module(dir, name):
     """Check if there is a valid python module that can be loaded as a plugin.
 
     :param path: An existing file path, either a python file or a package
@@ -274,11 +278,12 @@ def _check_plugin_module(dir, name):
         # Check for a valid __init__.py file, valid suffixes depends on -O and
         # can be .py, .pyc and .pyo
         for suffix, mode, kind in imp.get_suffixes():
-            if kind in (imp.PY_SOURCE, imp.PY_COMPILED):
+            if kind not in (imp.PY_SOURCE, imp.PY_COMPILED):
                 # We don't recognize compiled modules (.so, .dll, etc)
                 continue
-            if os.path.isfile(osutils.pathjoin(path, '__init__.py%s' % suffix)):
-                return name, path, (suffix, mode, kind)
+            init_path = osutils.pathjoin(path, '__init__' + suffix)
+            if os.path.isfile(init_path):
+                return name, init_path, (suffix, mode, kind)
     else:
         for suffix, mode, kind in imp.get_suffixes():
             if name.endswith(suffix):
@@ -299,7 +304,7 @@ def load_from_dir(d):
     """
     plugin_names = set()
     for p in os.listdir(d):
-        name, path, desc = _check_plugin_module(d, p)
+        name, path, desc = _find_plugin_module(d, p)
         if name is not None:
             if name == '__init__':
                 # We do nothing with the __init__.py file in directories from
@@ -316,7 +321,7 @@ def load_from_dir(d):
                 plugin_names.add(name)
 
     for name in plugin_names:
-        if ('bzrlib.plugins.%s' % name) in PluginBlackListImporter.blacklist:
+        if ('bzrlib.plugins.%s' % name) in PluginImporter.blacklist:
             continue
         try:
             exec "import bzrlib.plugins.%s" % name in {}
@@ -505,15 +510,48 @@ class PlugIn(object):
     __version__ = property(_get__version__)
 
 
-class _PluginBlackListImporter(object):
+class _PluginImporter(object):
 
     def __init__(self):
-        self.blacklist = {}
+        self.reset()
+
+    def reset(self):
+        self.blacklist = set()
+        self.specific_paths = {}
 
     def find_module(self, fullname, parent_path=None):
+        if not fullname.startswith('bzrlib.plugins.'):
+            return None
         if fullname in self.blacklist:
             raise ImportError('%s is disabled' % fullname)
+        if fullname in self.specific_paths:
+            return self
         return None
 
-PluginBlackListImporter = _PluginBlackListImporter()
-sys.meta_path.append(PluginBlackListImporter)
+    def load_module(self, fullname):
+        # We are called only for specific paths
+        plugin_dir = self.specific_paths[fullname]
+        candidate = None
+        for p in os.listdir(plugin_dir):
+            name, path, (
+                suffix, mode, kind) = _find_plugin_module(plugin_dir, p)
+            if name is not None:
+                candidate = (name, path, suffix, mode, kind)
+            if kind == imp.PY_SOURCE:
+                # We favour imp.PY_SOURCE (which will use the compiled version
+                # if available) over imp.PY_COMPILED (which is used only if the
+                # source is not available)
+                break
+        if candidate is None:
+            raise ImportError('%s cannot be loaded from %s'
+                              % (fullname, plugin_dir))
+        f = open(path, mode)
+        try:
+            mod = imp.load_module(fullname, f, path, (suffix, mode, kind))
+            return mod
+        finally:
+            f.close()
+
+
+PluginImporter = _PluginImporter()
+sys.meta_path.append(PluginImporter)

@@ -53,7 +53,7 @@ class TestPluginMixin(object):
 
     def create_plugin_package(self, name, source='', dir='.'):
         plugin_dir = osutils.pathjoin(dir, name)
-        os.mkdir(plugin_dir)
+        os.makedirs(plugin_dir)
         self.addCleanup(osutils.rmtree, plugin_dir)
         self.create_plugin(name, source, dir=plugin_dir,
                            file_name='__init__.py')
@@ -772,9 +772,45 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         def captured_warning(*args, **kwargs):
             self.warnings.append((args, kwargs))
         self.overrideAttr(trace, 'warning', captured_warning)
+        # Reset the flag that protect against double loading
         self.overrideAttr(plugin, '_loaded', False)
-        plugin.load_plugins(plugin.set_plugins_path(['.', '-test_foo']))
+        plugin.load_plugins(['.', '-test_foo'])
         self.assertPluginUnknown('test_foo')
         # Make sure we don't warn about the plugin ImportError since this has
         # been *requested* by the user.
         self.assertLength(0, self.warnings)
+
+
+class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
+
+    def setUp(self):
+        super(TestLoadPluginAt, self).setUp()
+        # Make sure we don't pollute the plugins namespace
+        self.overrideAttr(plugins, '__path__')
+        # Be paranoid in case a test fail
+        self.addCleanup(self._unregister_plugin, 'test_foo')
+        # Reset the flag that protect against double loading
+        self.overrideAttr(plugin, '_loaded', False)
+        # Create the same plugin in two directories
+        self.create_plugin_package('test_foo', dir='a')
+        self.create_plugin_package('test_foo', dir='b')
+
+    def test_regular_load(self):
+        plugin.load_plugins(['a'])
+        self.assertPluginKnown('test_foo')
+
+    def test_import(self):
+        plugin.set_plugins_path(['test_foo@a'])
+        try:
+            import bzrlib.plugins.test_foo
+        except ImportError:
+            pass
+        self.assertPluginKnown('test_foo')
+
+# Add tests for:
+#  __doc__,
+#  __package__,
+# compiled loaded if it exists,
+# autoload
+# should load_modules check for presence in sys.modules (try a double import)
+# importing  a submodule
