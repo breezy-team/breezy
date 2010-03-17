@@ -224,19 +224,12 @@ Example::
 `locks_acquired` will now receive a LockResult instance for all locks acquired
 since the time the hook is installed.
 
-Note that the representation of LockResult can be confusing. As can be seen in
-the sample below::
+The last part of the `lock_url` allows you to identify the type of object that is locked.
 
-    LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch/lockh8c6t28rcjdkgxtndbje)
-
-The last 20 characters, in this case `h8c6t28rcjdkgxtndbje`, are used internally
-in the locking mechanism. The locking URL is everything before that.
-
-The last part of the URL allows you to identify the type of object that is locked.
-
-Working tree: `/checkout/lock`
-Branch: `/branch/lock`
-Repository: `/repository/lock`
+- BzrDir: `/branch-lock`
+- Working tree: `/checkout/lock`
+- Branch: `/branch/lock`
+- Repository: `/repository/lock`
 
 To test if a lock is a write lock on a working tree, one can do the following::
 
@@ -244,14 +237,6 @@ To test if a lock is a write lock on a working tree, one can do the following::
 
 See bzrlib/tests/commands/test_revert.py for an example of how to use this for
 testing locks.
-
-Note: There is one special case of a lock that is created during the creation of
-the '.bzr' directory, for example when a new branch is initialized.
-If this is the case, the LockResult will look like this::
-
-    LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch-lockc4au55ppz8wdym11z1aq)
-
-or `/branch-lock`
 
 
 Skipping tests
