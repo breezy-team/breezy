@@ -48,9 +48,9 @@ add()
 		exit
 	fi
 	git config git-darcs.$name.location $location
-	git config git-darcs.$name.darcs-fast-export-options "$*"
 	echo "Darcs repo $name added. You can fetch it with 'git darcs fetch $name'"
 	if ! [ -z "$*" ]; then
+		git config git-darcs.$name.darcs-fast-export-options "$*"
 		echo "darcs-fast-export will get options: $*"
 	fi
 }
