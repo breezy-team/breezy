@@ -140,13 +140,14 @@ When adding a new feature or working on a bug in a plugin,
 developers often need to use a specific version of a given
 plugin. Since python requires that the directory containing the
 code is named like the plugin itself this make it impossible to
-use arbitrary directory names. ``BZR_PLUGINS_AT`` allows such
-directories even if they don't appear in ``BZR_PLUGIN_PATH`` .
+use arbitrary directory names (using a two-level directory scheme
+is inconvenient). ``BZR_PLUGINS_AT`` allows such directories even
+if they don't appear in ``BZR_PLUGIN_PATH`` .
 
 Plugins specified in this environment variable takes precedence
 over the ones in ``BZR_PLUGIN_PATH``.
 
-The variable specified a list of ``<plugin_name>@<plugin path>``,
+The variable specified a list of ``plugin_name@plugin path``,
 ``plugin_name`` being the name of the plugin as it appears in
 python module paths, ``plugin_path`` being the path to the
 directory containing the plugin code itself

@@ -244,9 +244,10 @@ def load_from_path(dirs):
 
     The python module path for bzrlib.plugins will be modified to be 'dirs'.
     """
+    # Explicitly load the plugins with a specific path
     for fullname, path in PluginImporter.specific_paths.iteritems():
         name = fullname[len('bzrlib.plugins.'):]
-        _load_plugin_module(name, path) # XXX: path *contains* test_foo
+        _load_plugin_module(name, path)
 
     # We need to strip the trailing separators here as well as in the
     # set_plugins_path function because calling code can pass anything in to
@@ -270,6 +271,7 @@ load_from_dirs = load_from_path
 def _find_plugin_module(dir, name):
     """Check if there is a valid python module that can be loaded as a plugin.
 
+    :param dir: The directory where the search is performed.
     :param path: An existing file path, either a python file or a package
         directory.
 
@@ -301,6 +303,11 @@ def _find_plugin_module(dir, name):
 
 
 def _load_plugin_module(name, dir):
+    """Load plugine name from dir.
+
+    :param name: The plugin name in the bzrlib.plugins namespace.
+    :param dir: The directory the plugin is loaded from for error messages.
+    """
     if ('bzrlib.plugins.%s' % name) in PluginImporter.blacklist:
         return
     try:
@@ -519,6 +526,12 @@ class PlugIn(object):
 
 
 class _PluginImporter(object):
+    """An importer tailored to bzr specific needs.
+
+    This is a singleton that takes care of:
+    - disabled plugins specified in 'blacklist',
+    - plugins that needs to be loaded from specific directories.
+    """
 
     def __init__(self):
         self.reset()
@@ -528,6 +541,14 @@ class _PluginImporter(object):
         self.specific_paths = {}
 
     def find_module(self, fullname, parent_path=None):
+        """Search a plugin module.
+
+        Disabled plugins raise an import error, plugins with specific paths
+        returns a specific loader.
+
+        :return: None if the plugin doesn't need special handling, self
+            otherwise.
+        """
         if not fullname.startswith('bzrlib.plugins.'):
             return None
         if fullname in self.blacklist:
@@ -537,6 +558,7 @@ class _PluginImporter(object):
         return None
 
     def load_module(self, fullname):
+        """Load a plugin from a specific directory."""
         # We are called only for specific paths
         plugin_dir = self.specific_paths[fullname]
         candidate = None
@@ -572,5 +594,6 @@ class _PluginImporter(object):
             f.close()
 
 
+# Install a dedicated importer for plugins requiring special handling
 PluginImporter = _PluginImporter()
 sys.meta_path.append(PluginImporter)
