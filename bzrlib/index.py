@@ -1227,34 +1227,34 @@ class CombinedGraphIndex(object):
     static data.
 
     Queries against the combined index will be made against the first index,
-    and then the second and so on. The order of index's can thus influence
+    and then the second and so on. The order of indices can thus influence
     performance significantly. For example, if one index is on local disk and a
     second on a remote server, the local disk index should be before the other
     in the index list.
+    
+    Also, queries tend to need results from the same indices as previous
+    queries.  So the indices will be reordered after every query to put the
+    indices that had the result(s) of that query first (while otherwise
+    preserving the relative ordering).
     """
 
-    def __init__(self, indices, reload_func=None, auto_reorder=False):
+    def __init__(self, indices, reload_func=None):
         """Create a CombinedGraphIndex backed by indices.
 
         :param indices: An ordered list of indices to query for data.
         :param reload_func: A function to call if we find we are missing an
             index. Should have the form reload_func() => True/False to indicate
             if reloading actually changed anything.
-        :param auto_reorder: Reorder the list of indices after every lookup to
-            put the indices that had the result(s) of the lookup first, to
-            speed future lookups (which are likely to need the same indices as
-            previous ones).
         """
         self._indices = indices
         self._reload_func = reload_func
-        self._auto_reorder = auto_reorder
         # Sibling indices are other CombinedGraphIndex that we should call
         # _move_to_front_by_name on when we auto-reorder ourself.
         self._sibling_indices = []
         # A list of names that corresponds to the instances in self._indices,
         # so _index_names[0] is always the name for _indices[0], etc.  Sibling
         # indices must all use the same set of names as each other.
-        self._index_names = []
+        self._index_names = [None] * len(self._indices)
 
     def __repr__(self):
         return "%s(%s)" % (
@@ -1289,9 +1289,8 @@ class CombinedGraphIndex(object):
         :param pos: The position to insert the index.
         :param index: The index to insert.
         :param name: a name for this index, e.g. a pack name.  These names can
-            be used to reflect index reorderings (see auto_reorder param of
-            constructor) to related CombinedGraphIndex instances that use the
-            same names.
+            be used to reflect index reorderings to related CombinedGraphIndex
+            instances that use the same names.
         """
         self._indices.insert(pos, index)
         self._index_names.insert(pos, name)
@@ -1401,8 +1400,6 @@ class CombinedGraphIndex(object):
         _move_to_front propagates to all objects in self._sibling_indices by
         calling _move_to_front_by_name.
         """
-        if not self._auto_reorder:
-            return
         hit_names = self._move_to_front_by_index(hit_indices)
         for sibling_idx in self._sibling_indices:
             sibling_idx._move_to_front_by_name(hit_names)
@@ -1413,6 +1410,9 @@ class CombinedGraphIndex(object):
         Returns a list of names corresponding to the hit_indices param.
         """
         indices_info = zip(self._index_names, self._indices)
+        if 'index' in debug.debug_flags:
+            mutter('CombinedGraphIndex reordering: currently %r, promoting %r',
+                   indices_info, hit_indices)
         hit_indices_info = []
         hit_names = []
         unhit_indices_info = []
@@ -1426,6 +1426,8 @@ class CombinedGraphIndex(object):
         final_info = hit_indices_info + unhit_indices_info
         self._indices = [idx for (name, idx) in final_info]
         self._index_names = [name for (name, idx) in final_info]
+        if 'index' in debug.debug_flags:
+            mutter('CombinedGraphIndex reordered: %r', self._indices)
         return hit_names
 
     def _move_to_front_by_name(self, hit_names):
@@ -1434,8 +1436,6 @@ class CombinedGraphIndex(object):
         """
         # Translate names to index instances, and then call
         # _move_to_front_by_index.
-        if not self._auto_reorder:
-            return
         indices_info = zip(self._index_names, self._indices)
         hit_indices = []
         for name, idx in indices_info:
