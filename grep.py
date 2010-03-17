@@ -16,10 +16,11 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import os
-import re
+import codecs
 import cStringIO
 from fnmatch import fnmatch
+import os
+import re
 
 from bzrlib import log as logcmd
 from bzrlib import bzrdir
@@ -34,6 +35,9 @@ from bzrlib import (
     )
 """)
 
+_terminal_encoding = osutils.get_terminal_encoding()
+_user_encoding = osutils.get_user_encoding()
+
 def compile_pattern(pattern, flags=0):
     patternc = None
     try:
@@ -45,9 +49,9 @@ def compile_pattern(pattern, flags=0):
     return patternc
 
 
-def versioned_grep(revision, compiled_pattern, path_list, recursive,
+def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
         line_number, from_root, eol_marker, print_revno, levels,
-        include, exclude, verbose, outf):
+        include, exclude, verbose, fixed_string, ignore_case, outf):
 
     wt, relpath = WorkingTree.open_containing('.')
 
@@ -87,17 +91,20 @@ def versioned_grep(revision, compiled_pattern, path_list, recursive,
                 if osutils.isdir(path):
                     path_prefix = path
                     dir_grep(tree, path, relpath, recursive, line_number,
-                        compiled_pattern, from_root, eol_marker, revno, print_revno,
-                        include, exclude, verbose, outf, path_prefix)
+                        pattern, compiled_pattern, from_root, eol_marker,
+                        revno, print_revno, include, exclude, verbose,
+                        fixed_string, ignore_case, outf, path_prefix)
                 else:
                     versioned_file_grep(tree, id, '.', path,
-                        compiled_pattern, eol_marker, line_number, revno,
-                        print_revno, include, exclude, verbose, outf)
+                        pattern, compiled_pattern, eol_marker, line_number,
+                        revno, print_revno, include, exclude, verbose,
+                        fixed_string, ignore_case, outf)
         finally:
             wt.unlock()
 
-def workingtree_grep(compiled_pattern, path_list, recursive,
-        line_number, from_root, eol_marker, include, exclude, verbose, outf):
+def workingtree_grep(pattern, compiled_pattern, path_list, recursive,
+        line_number, from_root, eol_marker, include, exclude, verbose,
+        fixed_string, ignore_case, outf):
     revno = print_revno = None # for working tree set revno to None
 
     tree, branch, relpath = \
@@ -108,12 +115,14 @@ def workingtree_grep(compiled_pattern, path_list, recursive,
             if osutils.isdir(path):
                 path_prefix = path
                 dir_grep(tree, path, relpath, recursive, line_number,
-                    compiled_pattern, from_root, eol_marker, revno, print_revno,
-                    include, exclude, verbose, outf, path_prefix)
+                    pattern, compiled_pattern, from_root, eol_marker, revno,
+                    print_revno, include, exclude, verbose, fixed_string,
+                    ignore_case, outf, path_prefix)
             else:
-                _file_grep(open(path).read(), '.', path, compiled_pattern,
-                    eol_marker, line_number, revno, print_revno, include,
-                    exclude, verbose, outf)
+                _file_grep(open(path).read(), '.', path, pattern,
+                    compiled_pattern, eol_marker, line_number, revno,
+                    print_revno, include, exclude, verbose,
+                    fixed_string, ignore_case, outf)
     finally:
         tree.unlock()
 
@@ -125,9 +134,9 @@ def _skip_file(include, exclude, path):
     return False
 
 
-def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
-        from_root, eol_marker, revno, print_revno, include, exclude, verbose,
-        outf, path_prefix):
+def dir_grep(tree, path, relpath, recursive, line_number, pattern,
+        compiled_pattern, from_root, eol_marker, revno, print_revno,
+        include, exclude, verbose, fixed_string, ignore_case, outf, path_prefix):
     # setup relpath to open files relative to cwd
     rpath = relpath
     if relpath:
@@ -148,18 +157,22 @@ def dir_grep(tree, path, relpath, recursive, line_number, compiled_pattern,
         if fc == 'V' and fkind == 'file':
             if revno != None:
                 versioned_file_grep(tree, fid, rpath, fp,
-                    compiled_pattern, eol_marker, line_number,
+                    pattern, compiled_pattern, eol_marker, line_number,
                     revno, print_revno, include, exclude, verbose,
-                    outf, path_prefix)
+                    fixed_string, ignore_case, outf, path_prefix)
             else:
                 # we are grepping working tree.
                 if from_dir == None:
                     from_dir = '.'
 
                 path_for_file = osutils.pathjoin(tree.basedir, from_dir, fp)
-                _file_grep(open(path_for_file).read(), rpath, fp,
-                    compiled_pattern, eol_marker, line_number, revno,
-                    print_revno, include, exclude, verbose, outf, path_prefix)
+                file_text = codecs.open(path_for_file, 'r').read()
+                #file_text = codecs.open(path_for_file, 'r',
+                #    encoding=_terminal_encoding, errors='replace').read()
+                _file_grep(file_text, rpath, fp,
+                    pattern, compiled_pattern, eol_marker, line_number, revno,
+                    print_revno, include, exclude, verbose, fixed_string,
+                    ignore_case, outf, path_prefix)
 
 
 def _make_display_path(relpath, path):
@@ -177,17 +190,17 @@ def _make_display_path(relpath, path):
     return path
 
 
-def versioned_file_grep(tree, id, relpath, path, patternc, eol_marker,
-        line_number, revno, print_revno, include, exclude, verbose, outf,
-        path_prefix = None):
+def versioned_file_grep(tree, id, relpath, path, pattern, patternc,
+        eol_marker, line_number, revno, print_revno, include, exclude,
+        verbose, fixed_string, ignore_case, outf, path_prefix = None):
     """Create a file object for the specified id and pass it on to _file_grep.
     """
 
     path = _make_display_path(relpath, path)
     file_text = tree.get_file_text(id)
-    _file_grep(file_text, relpath, path, patternc, eol_marker,
+    _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         line_number, revno, print_revno, include, exclude, verbose,
-        outf, path_prefix)
+        fixed_string, ignore_case, outf, path_prefix)
 
 def _path_in_glob_list(path, glob_list):
     present = False
@@ -198,10 +211,14 @@ def _path_in_glob_list(path, glob_list):
     return present
 
 
-_terminal_encoding = osutils.get_terminal_encoding()
+def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
+        line_number, revno, print_revno, include, exclude, verbose,
+        fixed_string, ignore_case, outf, path_prefix=None):
 
-def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
-        revno, print_revno, include, exclude, verbose, outf, path_prefix=None):
+    pattern = pattern.encode(_user_encoding, 'replace')
+    if fixed_string and ignore_case:
+        pattern = pattern.lower()
+
     # test and skip binary files
     if '\x00' in file_text[:1024]:
         if verbose:
@@ -221,33 +238,64 @@ def _file_grep(file_text, relpath, path, patternc, eol_marker, line_number,
     if print_revno and line_number:
 
         pfmt = "~%s:%d:%s".encode(_terminal_encoding)
-        for index, line in enumerate(file_text.splitlines()):
-            if patternc.search(line):
-                line = line.decode(_terminal_encoding, 'replace')
-                outf.write(path + (pfmt % (revno, index+1, line)) + eol_marker)
+        if fixed_string:
+            for index, line in enumerate(file_text.splitlines()):
+                if ignore_case:
+                    line = line.lower()
+                if pattern in line:
+                    line = line.decode(_terminal_encoding, 'replace')
+                    outf.write(path + (pfmt % (revno, index+1, line)) + eol_marker)
+        else:
+            for index, line in enumerate(file_text.splitlines()):
+                if patternc.search(line):
+                    line = line.decode(_terminal_encoding, 'replace')
+                    outf.write(path + (pfmt % (revno, index+1, line)) + eol_marker)
 
     elif print_revno and not line_number:
 
         pfmt = "~%s:%s".encode(_terminal_encoding, 'replace')
-        for line in file_text.splitlines():
-            if patternc.search(line):
-                line = line.decode(_terminal_encoding, 'replace')
-                outf.write(path + (pfmt % (revno, line)) + eol_marker)
+        if fixed_string:
+            for line in file_text.splitlines():
+                if ignore_case:
+                    line = line.lower()
+                if pattern in line:
+                    line = line.decode(_terminal_encoding, 'replace')
+                    outf.write(path + (pfmt % (revno, line)) + eol_marker)
+        else:
+            for line in file_text.splitlines():
+                if patternc.search(line):
+                    line = line.decode(_terminal_encoding, 'replace')
+                    outf.write(path + (pfmt % (revno, line)) + eol_marker)
 
     elif not print_revno and line_number:
 
         pfmt = ":%d:%s".encode(_terminal_encoding)
-        for index, line in enumerate(file_text.splitlines()):
-            if patternc.search(line):
-                line = line.decode(_terminal_encoding, 'replace')
-                outf.write(path + (pfmt % (index+1, line)) + eol_marker)
+        if fixed_string:
+            for index, line in enumerate(file_text.splitlines()):
+                if ignore_case:
+                    line = line.lower()
+                if pattern in line:
+                    line = line.decode(_terminal_encoding, 'replace')
+                    outf.write(path + (pfmt % (index+1, line)) + eol_marker)
+        else:
+            for index, line in enumerate(file_text.splitlines()):
+                if patternc.search(line):
+                    line = line.decode(_terminal_encoding, 'replace')
+                    outf.write(path + (pfmt % (index+1, line)) + eol_marker)
 
     else:
 
         pfmt = ":%s".encode(_terminal_encoding)
-        for line in file_text.splitlines():
-            if patternc.search(line):
-                line = line.decode(_terminal_encoding, 'replace')
-                outf.write(path + (pfmt % (line,)) + eol_marker)
-
+        if fixed_string:
+            for line in file_text.splitlines():
+                if ignore_case:
+                    line = line.lower()
+                if pattern in line:
+                    line = line.decode(_terminal_encoding, 'replace')
+                    outf.write(path + (pfmt % (line,)) + eol_marker)
+        else:
+            for line in file_text.splitlines():
+                if patternc.search(line):
+                    line = line.decode(_terminal_encoding, 'replace')
+                    outf.write(path + (pfmt % (line,)) + eol_marker)
 

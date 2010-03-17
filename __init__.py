@@ -85,6 +85,8 @@ class cmd_grep(Command):
     takes_options = [
         'verbose',
         'revision',
+        Option('fixed-string', short_name='F',
+               help='Interpret PATTERN is a single fixed string (not regex).'),
         Option('line-number', short_name='n',
                help='show 1-based line number.'),
         Option('ignore-case', short_name='i',
@@ -112,7 +114,7 @@ class cmd_grep(Command):
     def run(self, verbose=False, ignore_case=False, no_recursive=False,
             from_root=False, null=False, levels=None, line_number=False,
             path_list=None, revision=None, pattern=None, include=None,
-            exclude=None):
+            exclude=None, fixed_string=False):
 
         recursive = not no_recursive
 
@@ -134,20 +136,26 @@ class cmd_grep(Command):
         if null:
             eol_marker = '\0'
 
-        re_flags = 0
-        if ignore_case:
-            re_flags = re.IGNORECASE
-        patternc = grep.compile_pattern(pattern, re_flags)
+        # if the pattern isalnum, implicitly switch to fixed_string for faster grep
+        if pattern.isalnum():
+            fixed_string = True
+
+        patternc = None
+        if not fixed_string:
+            re_flags = 0
+            if ignore_case:
+                re_flags = re.IGNORECASE
+            patternc = grep.compile_pattern(pattern, re_flags)
 
         if revision == None:
-            grep.workingtree_grep(patternc, path_list, recursive,
+            grep.workingtree_grep(pattern, patternc, path_list, recursive,
                 line_number, from_root, eol_marker, include, exclude,
-                verbose, self.outf)
+                verbose, fixed_string, ignore_case, self.outf)
         else:
-            grep.versioned_grep(revision, patternc, path_list,
+            grep.versioned_grep(revision, pattern, patternc, path_list,
                 recursive, line_number, from_root, eol_marker,
                 print_revno, levels, include, exclude, verbose,
-                self.outf)
+                fixed_string, ignore_case, self.outf)
 
 
 register_command(cmd_grep)
