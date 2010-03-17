@@ -2,7 +2,7 @@
 #
 #   git-darcs - bidirectional operation between a darcs repo and git
 #
-#   Copyright (c) 2008 by Miklos Vajna <vmiklos@frugalware.org>
+#   Copyright (c) 2008, 2010 by Miklos Vajna <vmiklos@frugalware.org>
 #
 #   Based on git-bzr, which is
 #
@@ -78,6 +78,10 @@ fetch()
 	darcs_map=$git_dir/darcs-git/$remote-darcs-map
 	common_opts="--working $git_dir/darcs-git/repo --logfile $git_dir/darcs-git/fetch.log --git-branch=darcs/$remote"
         dfe_opts=$(git config git-darcs.$remote.darcs-fast-export-options)
+	pre_fetch="$(git config git-darcs.$remote.pre-fetch)"
+	if [ -n "$pre_fetch" ]; then
+		$pre_fetch
+	fi
 	if [ ! -f $git_map -a ! -f $darcs_map ]; then
 		echo "There doesn't seem to be an existing refmap."
 		echo "Doing an initial import"
@@ -100,6 +104,10 @@ fetch()
 	else
 		echo "One of the mapfiles is missing! Something went wrong!"
 		exit
+	fi
+	post_fetch="$(git config git-darcs.$remote.post-fetch)"
+	if [ -n "$post_fetch" ]; then
+		$post_fetch
 	fi
 }
 
@@ -144,6 +152,10 @@ push()
 		echo "We do not have refmapping yet. Then how can I push?"
 		exit
 	fi
+	pre_push="$(git config git-darcs.$remote.pre-push)"
+	if [ -n "$pre_push" ]; then
+		$pre_push
+	fi
 	echo "Pushing the following updates:"
 	git shortlog darcs/$remote..
 	git fast-export --import-marks=$git_map --export-marks=$git_map HEAD | \
@@ -151,6 +163,10 @@ push()
 		--logfile $git_dir/darcs-git/push.log)
 	if [ $? == 0 ]; then
 		git update-ref darcs/$remote HEAD
+		post_push="$(git config git-darcs.$remote.post-push)"
+		if [ -n "$post_push" ]; then
+			$post_push
+		fi
 	fi
 }
 

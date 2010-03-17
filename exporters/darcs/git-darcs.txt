@@ -20,7 +20,7 @@ A typical workflow is:
 $ mkdir git-repo
 $ cd git-repo
 $ git init
-$ git darcs add upstream ../darcs-repo
+$ git darcs add upstream /path/to/darcs-repo
 $ git darcs pull upstream
 
 ... hack, hack, hack ...
@@ -70,3 +70,20 @@ find-darcs::
 find-git::
 	Searches for git commits matching a darcs patch prefix.
 	The syntax is `find-git <patch-prefix>`.
+
+== HOOKS
+
+It's possible to automatically run before and after the fetch and the
+push subcommand. For example if you want to automatically run `darcs
+pull -a` before a `git darcs fetch upstream`:
+
+----
+git config git-darcs.upstream.pre-fetch "darcs pull -a --repodir=/path/to/darcs-repo"
+----
+
+Or in case you want to automatically `darcs send` all patches after a
+`git darcs push upstream`:
+
+----
+git config git-darcs.upstream.post-push "darcs send -a --repodir=/path/to/darcs-repo"
+----
