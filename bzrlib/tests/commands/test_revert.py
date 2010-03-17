@@ -21,22 +21,18 @@ from bzrlib import (
     errors,
     lock,
     )
-from bzrlib.tests import transport_util
+from bzrlib.tests import (
+    transport_util,
+    TestCaseInTempDir,
+    )
 
 
-class TestRevert(
-    transport_util.TestCaseWithConnectionHookedTransport):
+class TestRevert(TestCaseInTempDir):
 
     def setUp(self):
         super(TestRevert, self).setUp()
-        self.local_wt = self.make_branch_and_tree('local')
 
     def test_revert_tree_write_lock_and_branch_read_lock(self):
-
-        self.start_logging_connections()
-
-        # make sure that the cwd is the branch
-        os.chdir('local')
 
         # install lock hooks to find out about cmd_revert's locking actions
         locks_acquired = []
@@ -52,8 +48,8 @@ class TestRevert(
         revert.run()
 
         # make sure that only one lock is acquired and released.
-        self.assertEqual(1, len(locks_acquired))
-        self.assertEqual(1, len(locks_released))
+        self.assertLength(1, locks_acquired)
+        self.assertLength(1, locks_released)
 
         # make sure that the nonces are the same, since otherwise
         # this would not be the same lock.
