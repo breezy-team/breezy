@@ -95,6 +95,10 @@ Bug Fixes
   the kept file on content conflicts where one side deleted the file.
   (Vincent Ladeuil, #529968)
 
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
+
 * ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
   of ``backup.bzr``. This directory is ignored by bzr commands such as
   ``add``.
