@@ -456,7 +456,12 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            refs_as_tuples = static_tuple.as_tuples(node[3])
+            try:
+                refs = node[3]
+            except IndexError:
+                refs_as_tuples = None
+            else:
+                refs_as_tuples = static_tuple.as_tuples(refs)
             as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
 

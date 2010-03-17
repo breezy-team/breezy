@@ -82,6 +82,10 @@ Bug Fixes
 * ``bzr add`` will not add conflict related files unless explicitly required.
   (Vincent Ladeuil, #322767, #414589)
 
+* ``bzr dump-btree`` now works on ``*.cix`` and ``*.six`` files.  Those
+  indices do not have reference lists, so ``dump-btree`` will simply show
+  ``None`` instead.  (Andrew Bennetts, #488607)
+
 * ``bzr help`` will no longer trigger the get_missing_command hook when
   doing a topic lookup. This avoids prompting (like 'no command plugins/loom,
   did you mean log?') when getting help. In future we may trigger the hook 
