@@ -64,7 +64,10 @@ class TestPluginMixin(object):
 dir_source = '%s'
 ''' % (name, dir)
         os.makedirs(dir)
-        self.addCleanup(osutils.rmtree, dir)
+        def cleanup():
+            # Workaround lazy import random? madness
+            osutils.rmtree(dir)
+        self.addCleanup(cleanup)
         self.create_plugin(name, source, dir,
                            file_name='__init__.py')
 
@@ -821,7 +824,7 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
 
     def test_import(self):
         osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
-        plugin.set_plugins_path(['.'])
+        plugin.set_plugins_path(['b'])
         try:
             import bzrlib.plugins.test_foo
         except ImportError:
@@ -830,10 +833,32 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
 
     def test_loading(self):
         osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
-        plugin.load_plugins(['.'])
+        plugin.load_plugins(['b'])
         self.assertTestFooLoadedFrom('non-standard-dir')
 
-# Add tests for:
-# compiled loaded if it exists,
-# should load_modules check for presence in sys.modules (try a double import)
-# importing  a submodule
+    def test_compiled_loaded(self):
+        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        plugin.load_plugins(['b'])
+        self.assertTestFooLoadedFrom('non-standard-dir')
+        self.assertEqual('non-standard-dir/__init__.py',
+                         bzrlib.plugins.test_foo.__file__)
+
+        # Try importing again now that the source has been compiled
+        self._unregister_plugin('test_foo')
+        plugin._loaded = False
+        plugin.load_plugins(['b'])
+        self.assertTestFooLoadedFrom('non-standard-dir')
+        self.assertEqual('non-standard-dir/__init__.pyc',
+                         bzrlib.plugins.test_foo.__file__)
+
+    def test_submodule_loading(self):
+        # We create an additional directory under the one for test_foo
+        self.create_plugin_package('test_bar', dir='non-standard-dir/test_bar')
+        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        plugin.set_plugins_path(['b'])
+        import bzrlib.plugins.test_foo
+        self.assertEqual('bzrlib.plugins.test_foo',
+                         bzrlib.plugins.test_foo.__package__)
+        import bzrlib.plugins.test_foo.test_bar
+        self.assertEqual('non-standard-dir/test_bar/__init__.py',
+                         bzrlib.plugins.test_foo.test_bar.__file__)
