@@ -98,11 +98,6 @@ Note that the special values 'user', 'core' and 'site' should be
 used literally, they will be substituted by the corresponding,
 platform specific, values.
 
-You can disable a given plugin ``myplugin`` by adding
-``-myplugin`` in BZR_PLUGIN_PATH. The plugin will not be loaded
-by ``bzr`` anymore and trying to import it with ``import
-bzrlib.plugins.myplugin`` will raise an import error.
-
 Examples:
 ^^^^^^^^^
 
