@@ -1410,7 +1410,8 @@ class RepositoryPackCollection(object):
         # share hints about which pack names to search first.
         all_combined = [agg_idx.combined_index for agg_idx in all_indices]
         for combined_idx in all_combined:
-            combined_idx._sibling_indices = set(all_combined).difference([combined_idx])
+            combined_idx.set_sibling_indices(
+                set(all_combined).difference([combined_idx]))
         # resumed packs
         self._resumed_packs = []
 

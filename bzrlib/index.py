@@ -1290,7 +1290,7 @@ class CombinedGraphIndex(object):
         :param index: The index to insert.
         :param name: a name for this index, e.g. a pack name.  These names can
             be used to reflect index reorderings to related CombinedGraphIndex
-            instances that use the same names.
+            instances that use the same names.  (see set_sibling_indices)
         """
         self._indices.insert(pos, index)
         self._index_names.insert(pos, name)
@@ -1539,6 +1539,11 @@ class CombinedGraphIndex(object):
             trace.mutter('_reload_func indicated nothing has changed.'
                          ' Raising original exception.')
             raise exc_type, exc_value, exc_traceback
+
+    def set_sibling_indices(self, sibling_combined_graph_indices):
+        """Set the CombinedGraphIndex objects to reorder after reordering self.
+        """
+        self._sibling_indices = sibling_combined_graph_indices
 
     def validate(self):
         """Validate that everything in the index can be accessed."""
