@@ -148,6 +148,7 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
         from_dir=None
         recursive=True
 
+    to_grep = []
     for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
         from_dir=from_dir, recursive=recursive):
 
@@ -156,10 +157,7 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
 
         if fc == 'V' and fkind == 'file':
             if revno != None:
-                versioned_file_grep(tree, fid, rpath, fp,
-                    pattern, compiled_pattern, eol_marker, line_number,
-                    revno, print_revno, include, exclude, verbose,
-                    fixed_string, ignore_case, outf, path_prefix)
+                to_grep.append((fid, fp))
             else:
                 # we are grepping working tree.
                 if from_dir == None:
@@ -167,13 +165,18 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
 
                 path_for_file = osutils.pathjoin(tree.basedir, from_dir, fp)
                 file_text = codecs.open(path_for_file, 'r').read()
-                #file_text = codecs.open(path_for_file, 'r',
-                #    encoding=_terminal_encoding, errors='replace').read()
                 _file_grep(file_text, rpath, fp,
                     pattern, compiled_pattern, eol_marker, line_number, revno,
                     print_revno, include, exclude, verbose, fixed_string,
                     ignore_case, outf, path_prefix)
 
+    if revno != None: # grep versioned files
+        for path, chunks in tree.iter_files_bytes(to_grep):
+            path = _make_display_path(relpath, path)
+            _file_grep(chunks[0], rpath, path, pattern, compiled_pattern,
+                eol_marker, line_number, revno, print_revno, include,
+                exclude, verbose, fixed_string, ignore_case, outf,
+                path_prefix)
 
 def _make_display_path(relpath, path):
     """Return path string relative to user cwd.
