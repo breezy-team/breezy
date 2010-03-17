@@ -47,30 +47,6 @@ class Handler:
 		self.export_marks = []
 		self.import_marks = []
 
-	def __get_zone(self):
-		now = time.localtime()
-		if time.daylight and now[-1]:
-			offset = time.altzone
-		else:
-			offset = time.timezone
-		hours, minutes = divmod(abs(offset), 3600)
-		if offset > 0:
-			sign = "-"
-		else:
-			sign = "+"
-		return sign, hours, minutes
-
-	def get_zone_str(self):
-		sign, hours, minutes = self.__get_zone()
-		return "%s%02d%02d" % (sign, hours, minutes // 60)
-
-	def get_zone_int(self):
-		sign, hours, minutes = self.__get_zone()
-		ret = hours*3600+minutes*60
-		if sign == "-":
-			ret *= -1
-		return ret
-
 	def get_patchname(self, patch):
 		ret = []
 		s = ""
@@ -106,12 +82,22 @@ class Handler:
 			author = author[author.index('>')+2:] + ' ' + author[:author.index('>')+1]
 		return author.encode('utf-8')
 
-	def get_date(self, patch):
-		try:
-			date = time.strptime(patch, "%Y%m%d%H%M%S")
-		except ValueError:
-			date = time.strptime(patch[:19] + patch[-5:], '%a %b %d %H:%M:%S %Y')
-		return int(time.mktime(date)) + self.get_zone_int()
+	def get_time_info(self, patch):
+		date = time.strptime(patch, "%a %b %d %H:%M:%S %Z %Y")
+		timestamp = int(time.mktime(date))
+		# calculate the timezone offset
+		fields=re.split('[ ]+', patch)
+		fields[4]="UTC"
+		patch_utc=" ".join(fields)
+		date_utc=time.strptime(patch_utc, "%a %b %d %H:%M:%S %Z %Y")
+		offset=int(time.timezone + time.mktime(date) - time.mktime(date_utc))
+		hours, minutes = divmod(abs(offset), 3600)
+		if offset > 0:
+			sign = "-"
+		else:
+			sign = "+"
+		zone = "%s%02d%02d" % (sign, hours, minutes // 60)
+		return timestamp, zone
 
 	def progress(self, s):
 		print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
@@ -343,8 +329,8 @@ class Handler:
 			print "mark :%s" % markcount
 			if self.options.export_marks:
 				self.export_marks.append(":%s %s" % (markcount, hash))
-			date = self.get_date(i.attributes['date'].value)
-			print "committer %s %s %s" % (self.get_author(i), date, self.get_zone_str())
+			date, zone = self.get_time_info(i.attributes['local_date'].value)
+			print "committer %s %s %s" % (self.get_author(i), date, zone)
 			print "data %d\n%s" % (len(message), message)
 			if markcount > 1:
 				print "from :%s" % (markcount-1)
@@ -368,7 +354,7 @@ class Handler:
 				tag = re.sub('[^\xe9-\xf8\w.\-]+', '_', message[4:].strip().split('\n')[0]).strip('_')
 				print "tag %s" % tag
 				print "from :%s" % markcount
-				print "tagger %s %s %s" % (self.get_author(i), date, self.get_zone_str())
+				print "tagger %s %s %s" % (self.get_author(i), date, zone)
 				print "data %d\n%s" % (len(message), message)
 			if count % self.prognum == 0:
 				self.progress("%d/%d patches" % (count, patchnum))
