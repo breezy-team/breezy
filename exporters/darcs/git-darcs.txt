@@ -87,3 +87,6 @@ Or in case you want to automatically `darcs send` all patches after a
 ----
 git config git-darcs.upstream.post-push "darcs send -a --repodir=/path/to/darcs-repo"
 ----
+
+== SEE-ALSO
+*git*(1), *darcs*(1)
