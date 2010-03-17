@@ -153,7 +153,7 @@ finished
         """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
         self.requireFeature(features.PosixPermissionsFeature)
         old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
-        backup_dir = 'backup.bzr'
+        backup_dir = 'backup.bzr.~1~'
         self.run_bzr('init --format=1.6')
         os.chmod('.bzr', old_perms)
         self.run_bzr('upgrade')
