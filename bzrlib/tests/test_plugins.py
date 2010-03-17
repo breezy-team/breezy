@@ -802,7 +802,8 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertPluginKnown('test_foo')
 
     def test_import(self):
-        plugin.set_plugins_path(['test_foo@a'])
+        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@a')
+        plugin.set_plugins_path(['.'])
         try:
             import bzrlib.plugins.test_foo
         except ImportError:
