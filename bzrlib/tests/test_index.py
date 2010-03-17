@@ -1349,6 +1349,26 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
         self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
                                                  [('1',)])
 
+    def test_reorder_after_iter_entries(self):
+        # Four indices: [key1] in index1, [key2,key3] in index2, [] in index3,
+        # [key4] in index4.
+        index = CombinedGraphIndex([])
+        index1 = self.make_index('name1', 0, nodes=[(('key1', ), '', ())])
+        index2 = self.make_index('name2', 0,
+            nodes=[(('key2', ), '', ()), (('key3', ), '', ())])
+        index3 = self.make_index('name3', 0, nodes=[])
+        index4 = self.make_index('name4', 0, nodes=[(('key4', ), '', ())])
+        index.insert_index(0, index1, '1')
+        index.insert_index(1, index2, '2')
+        index.insert_index(2, index3, '3')
+        index.insert_index(3, index4, '4')
+        # Query a key from index4 and index2.
+        self.assertLength(2, list(index.iter_entries([('key4',), ('key2',)])))
+        # Now index2 and index4 should be moved to the front (and index1 should
+        # still be before index3).
+        self.assertEqual([index2, index4, index1, index3], index._indices)
+        self.assertEqual(['2', '4', '1', '3'], index._index_names)
+
     def test_validate_reloads(self):
         index, reload_counter = self.make_combined_index_with_missing()
         index.validate()
