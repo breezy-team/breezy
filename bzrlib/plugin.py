@@ -95,15 +95,18 @@ def set_plugins_path(path=None):
     clean = []
     PluginImporter.reset()
     for p in path:
-        if p.startswith('-'):
-            PluginImporter.blacklist.add('bzrlib.plugins.%s' % p[1:])
-        elif '@' in p:
+        if '@' in p:
             plugin_name, plugin_path = p.split('@')
             PluginImporter.specific_paths[
                 'bzrlib.plugins.%s' % plugin_name] = plugin_path
         else:
              clean.append(p)
     _mod_plugins.__path__ = clean
+    # Set up a blacklist for disabled plugins if any
+    disabled_plugins = os.environ.get('BZR_DISABLE_PLUGINS', None)
+    if disabled_plugins is not None:
+        for name in disabled_plugins.split(os.pathsep):
+            PluginImporter.blacklist.add('bzrlib.plugins.' + name)
     return path
 
 

@@ -121,8 +121,22 @@ Disabling all plugins (better achieved with --no-plugins):
 Overriding the default site plugin directory:
 ``BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user``
 
-Disabling a given ``myplugin`` plugin while retaining the others:
-``BZR_PLUGIN_PATH='-myplugin:+user'``
+BZR_DISABLE_PLUGINS
+~~~~~~~~~~~~~~~~~~~
+
+Under special circumstances, it's better to disable a plugin (or
+several) rather than uninstalling them completely. Such plugins
+can be specified in the ``BZR_DISABLE_PLUGINS`` environment
+variable.
+
+In that case, ``bzr`` will stop loading the specified plugins and
+will raise an import error if you try to import them explicitly.
+
+Example:
+~~~~~~~~
+
+Disabling ``myplugin`` and ``yourplugin``:
+``BZR_DISABLE_PLUGINS='myplugin:yourplugin'``
 
 
 BZRPATH

@@ -51,7 +51,8 @@ New Features
   treats backslash as an escape character on Windows.   (Gordon Tyler,
   #392248)
 
-* Plugins can be disabled by adding ``-<plugin_name>`` in ``BZR_PLUGIN_PATH``.
+* Plugins can be disabled by defining ``BZR_DISABLE_PLUGINS`` as
+  a list of plugin names separated by ':' (';' on windows).
   (Vincent Ladeuil, #411413)
 
 * Tree-shape conflicts can be resolved by providing ``--take-this`` and
