@@ -133,7 +133,6 @@ Example:
 Disabling ``myplugin`` and ``yourplugin``:
 ``BZR_DISABLE_PLUGINS='myplugin:yourplugin'``
 
-
 BZR_PLUGINS_AT
 ~~~~~~~~~~~~~~
 

@@ -244,6 +244,10 @@ def load_from_path(dirs):
 
     The python module path for bzrlib.plugins will be modified to be 'dirs'.
     """
+    for fullname, path in PluginImporter.specific_paths.iteritems():
+        name = fullname[len('bzrlib.plugins.'):]
+        _load_plugin_module(name, path) # XXX: path *contains* test_foo
+
     # We need to strip the trailing separators here as well as in the
     # set_plugins_path function because calling code can pass anything in to
     # this function, and since it sets plugins.__path__, it should set it to
@@ -296,6 +300,34 @@ def _find_plugin_module(dir, name):
     return None, None, (None, None, None)
 
 
+def _load_plugin_module(name, dir):
+    if ('bzrlib.plugins.%s' % name) in PluginImporter.blacklist:
+        return
+    try:
+        exec "import bzrlib.plugins.%s" % name in {}
+    except KeyboardInterrupt:
+        raise
+    except errors.IncompatibleAPI, e:
+        trace.warning("Unable to load plugin %r. It requested API version "
+            "%s of module %s but the minimum exported version is %s, and "
+            "the maximum is %s" %
+            (name, e.wanted, e.api, e.minimum, e.current))
+    except Exception, e:
+        trace.warning("%s" % e)
+        if re.search('\.|-| ', name):
+            sanitised_name = re.sub('[-. ]', '_', name)
+            if sanitised_name.startswith('bzr_'):
+                sanitised_name = sanitised_name[len('bzr_'):]
+            trace.warning("Unable to load %r in %r as a plugin because the "
+                    "file path isn't a valid module name; try renaming "
+                    "it to %r." % (name, dir, sanitised_name))
+        else:
+            trace.warning('Unable to load plugin %r from %r' % (name, dir))
+        trace.log_exception_quietly()
+        if 'error' in debug.debug_flags:
+            trace.print_exception(sys.exc_info(), sys.stderr)
+
+
 def load_from_dir(d):
     """Load the plugins in directory d.
 
@@ -321,31 +353,7 @@ def load_from_dir(d):
                 plugin_names.add(name)
 
     for name in plugin_names:
-        if ('bzrlib.plugins.%s' % name) in PluginImporter.blacklist:
-            continue
-        try:
-            exec "import bzrlib.plugins.%s" % name in {}
-        except KeyboardInterrupt:
-            raise
-        except errors.IncompatibleAPI, e:
-            trace.warning("Unable to load plugin %r. It requested API version "
-                "%s of module %s but the minimum exported version is %s, and "
-                "the maximum is %s" %
-                (name, e.wanted, e.api, e.minimum, e.current))
-        except Exception, e:
-            trace.warning("%s" % e)
-            if re.search('\.|-| ', name):
-                sanitised_name = re.sub('[-. ]', '_', name)
-                if sanitised_name.startswith('bzr_'):
-                    sanitised_name = sanitised_name[len('bzr_'):]
-                trace.warning("Unable to load %r in %r as a plugin because the "
-                        "file path isn't a valid module name; try renaming "
-                        "it to %r." % (name, d, sanitised_name))
-            else:
-                trace.warning('Unable to load plugin %r from %r' % (name, d))
-            trace.log_exception_quietly()
-            if 'error' in debug.debug_flags:
-                trace.print_exception(sys.exc_info(), sys.stderr)
+        _load_plugin_module(name, d)
 
 
 def plugins():

@@ -39,7 +39,11 @@ from bzrlib import (
 
 class TestPluginMixin(object):
 
-    def create_plugin(self, name, source='', dir='.', file_name=None):
+    def create_plugin(self, name, source=None, dir='.', file_name=None):
+        if source is None:
+            source = '''\
+"""This is the doc for %s"""
+''' % (name)
         if file_name is None:
             file_name = name + '.py'
         # 'source' must not fail to load
@@ -51,11 +55,17 @@ class TestPluginMixin(object):
         finally:
             f.close()
 
-    def create_plugin_package(self, name, source='', dir='.'):
-        plugin_dir = osutils.pathjoin(dir, name)
-        os.makedirs(plugin_dir)
-        self.addCleanup(osutils.rmtree, plugin_dir)
-        self.create_plugin(name, source, dir=plugin_dir,
+    def create_plugin_package(self, name, dir=None, source=None):
+        if dir is None:
+            dir = name
+        if source is None:
+            source = '''\
+"""This is the doc for %s"""
+dir_source = '%s'
+''' % (name, dir)
+        os.makedirs(dir)
+        self.addCleanup(osutils.rmtree, dir)
+        self.create_plugin(name, source, dir,
                            file_name='__init__.py')
 
     def _unregister_plugin(self, name):
@@ -767,6 +777,8 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         self.overrideAttr(plugin, '_loaded', False)
         plugin.load_plugins(['.'])
         self.assertPluginKnown('test_foo')
+        self.assertEqual("This is the doc for test_foo",
+                         bzrlib.plugins.test_foo.__doc__)
 
     def test_not_loaded(self):
         self.warnings = []
@@ -794,26 +806,34 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         # Reset the flag that protect against double loading
         self.overrideAttr(plugin, '_loaded', False)
         # Create the same plugin in two directories
-        self.create_plugin_package('test_foo', dir='a')
-        self.create_plugin_package('test_foo', dir='b')
+        self.create_plugin_package('test_foo', dir='non-standard-dir')
+        self.create_plugin_package('test_foo', dir='b/test_foo')
+
+    def assertTestFooLoadedFrom(self, dir):
+        self.assertPluginKnown('test_foo')
+        self.assertEqual('This is the doc for test_foo',
+                         bzrlib.plugins.test_foo.__doc__)
+        self.assertEqual(dir, bzrlib.plugins.test_foo.dir_source)
 
     def test_regular_load(self):
-        plugin.load_plugins(['a'])
-        self.assertPluginKnown('test_foo')
+        plugin.load_plugins(['b'])
+        self.assertTestFooLoadedFrom('b/test_foo')
 
     def test_import(self):
-        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@a')
+        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.set_plugins_path(['.'])
         try:
             import bzrlib.plugins.test_foo
         except ImportError:
             pass
-        self.assertPluginKnown('test_foo')
+        self.assertTestFooLoadedFrom('non-standard-dir')
+
+    def test_loading(self):
+        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        plugin.load_plugins(['.'])
+        self.assertTestFooLoadedFrom('non-standard-dir')
 
 # Add tests for:
-#  __doc__,
-#  __package__,
 # compiled loaded if it exists,
-# autoload
 # should load_modules check for presence in sys.modules (try a double import)
 # importing  a submodule
