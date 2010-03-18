@@ -1893,13 +1893,57 @@ def get_host_name():
         return socket.gethostname().decode(get_user_encoding())
 
 
-@deprecated_function(deprecated_in((2, 2, 0)))
-def recv_all(socket, bytes):
-    """See bzrlib.tests.test_smart_transport._recv_all"""
-    return test_smart_transport._recv_all(socket, bytes)
+# We must not read/write any more than 64k at a time from/to a socket so we
+# don't risk "no buffer space available" errors on some platforms.  Windows in
+# particular is likely to throw WSAECONNABORTED or WSAENOBUFS if given too much
+# data at once.
+MAX_SOCKET_CHUNK = 64 * 1024
+
+def read_bytes_from_socket(sock, report_activity,
+        max_read_size=MAX_SOCKET_CHUNK):
+    """Read up to max_read_size of bytes from sock and notify of progress.
+
+    Translates "Connection reset by peer" into file-like EOF (return an
+    empty string rather than raise an error), and repeats the recv if
+    interrupted by a signal.
+    """
+    while 1:
+        try:
+            bytes = sock.recv(max_read_size)
+        except socket.error, e:
+            eno = e.args[0]
+            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
+                # The connection was closed by the other side.  Callers expect
+                # an empty string to signal end-of-stream.
+                return ""
+            elif eno == errno.EINTR:
+                # Retry the interrupted recv.
+                continue
+            raise
+        else:
+            report_activity(len(bytes), 'read')
+            return bytes
 
 
-_MAX_SOCKET_CHUNK = 64 * 1024
+def recv_all(socket, count):
+    """Receive an exact number of bytes.
+
+    Regular Socket.recv() may return less than the requested number of bytes,
+    depending on what's in the OS buffer.  MSG_WAITALL is not available
+    on all platforms, but this should work everywhere.  This will return
+    less than the requested amount if the remote end closes.
+
+    This isn't optimized and is intended mostly for use in testing.
+    """
+    b = ''
+    reporter = lambda n, rw: None
+    while len(b) < count:
+        new = read_bytes_from_socket(socket, reporter, count - len(b))
+        if new == '':
+            break # eof
+        b += new
+    return b
+
 
 def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
@@ -1908,8 +1952,8 @@ def send_all(sock, bytes, report_activity=None):
     some platforms, and catches EINTR which may be thrown if the send is
     interrupted by a signal.
 
-    This is preferred to socket.sendall(), because it avoids bugs and provides
-    reasonable activity reporting.
+    This is preferred to socket.sendall(), because it avoids portability bugs
+    and provides activity reporting.
  
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
@@ -1918,7 +1962,7 @@ def send_all(sock, bytes, report_activity=None):
     byte_count = len(bytes)
     while sent_total < byte_count:
         try:
-            sent = sock.send(buffer(bytes, sent_total, _MAX_SOCKET_CHUNK))
+            sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
         except socket.error, e:
             if e.args[0] != errno.EINTR:
                 raise

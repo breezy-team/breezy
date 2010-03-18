@@ -24,15 +24,14 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
-import errno
 import os
-import socket
 import sys
 import urllib
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import atexit
+import socket
 import thread
 import weakref
 
@@ -47,16 +46,13 @@ from bzrlib import (
 from bzrlib.smart import client, protocol, request, vfs
 from bzrlib.transport import ssh
 """)
-#usually already imported, and getting IllegalScoperReplacer on it here.
 from bzrlib import osutils
 
-# We must not read any more than 64k at a time so we don't risk "no buffer
-# space available" errors on some platforms.  Windows in particular is likely
-# to throw WSAECONNABORTED or WSAENOBUFS if given too much data at once.
 # Throughout this module buffer size parameters are either limited to be at
-# most 64k, or are ignored and 64k is used instead.
-_MAX_READ_SIZE = 64 * 1024
-
+# most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.
+# For this module's purposes, MAX_SOCKET_CHUNK is a reasonable size for reads
+# from non-sockets as well.
+_MAX_READ_SIZE = osutils.MAX_SOCKET_CHUNK
 
 def _get_protocol_factory_for_bytes(bytes):
     """Determine the right protocol factory for 'bytes'.
@@ -278,9 +274,9 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
             # We can safely try to read large chunks.  If there is less data
-            # than _MAX_READ_SIZE ready, the socket wil just return a short
-            # read immediately rather than block.
-            bytes = self.read_bytes(_MAX_READ_SIZE)
+            # than MAX_SOCKET_CHUNK ready, the socket will just return a
+            # short read immediately rather than block.
+            bytes = self.read_bytes(osutils.MAX_SOCKET_CHUNK)
             if bytes == '':
                 self.finished = True
                 return
@@ -289,7 +285,8 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self._push_back(protocol.unused_data)
 
     def _read_bytes(self, desired_count):
-        return _read_bytes_from_socket(self.socket, self._report_activity)
+        return osutils.read_bytes_from_socket(
+            self.socket, self._report_activity)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
@@ -714,7 +711,8 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     This client does not manage the pipes: it assumes they will always be open.
 
     Note that if readable_pipe.read might raise IOError or OSError with errno
-    of EINTR, it must be safe to retry the read.
+    of EINTR, it must be safe to retry the read.  Plain CPython fileobjects
+    (such as used for sys.stdin) are safe.
     """
 
     def __init__(self, readable_pipe, writeable_pipe, base):
@@ -902,7 +900,8 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        return _read_bytes_from_socket(self._socket, self._report_activity)
+        return osutils.read_bytes_from_socket(
+            self._socket, self._report_activity)
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
@@ -943,31 +942,5 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         This invokes self._medium._flush to ensure all bytes are transmitted.
         """
         self._medium._flush()
-
-
-def _read_bytes_from_socket(sock, report_activity,
-        max_read_size=_MAX_READ_SIZE):
-    """Read up to max_read_size of bytes from sock and notify of progress.
-
-    Translates "Connection reset by peer" into file-like EOF (return an
-    empty string rather than raise an error), and repeats the recv if
-    interrupted by a signal.
-    """
-    while 1:
-        try:
-            bytes = sock.recv(_MAX_READ_SIZE)
-        except socket.error, e:
-            eno = e.args[0]
-            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
-                # The connection was closed by the other side.  Callers expect
-                # an empty string to signal end-of-stream.
-                return ""
-            elif eno == errno.EINTR:
-                # Retry the interrupted recv.
-                continue
-            raise
-        else:
-            report_activity(len(bytes), 'read')
-            return bytes
 
 

@@ -775,10 +775,10 @@ class TestRecordingServer(tests.TestCase):
         self.start_server(server)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((server.host, server.port))
-        sockfile = sock.makefile(bufsize=0)
-        sockfile.write('abc')
+        sock.sendall('abc')
+        self.assertEqual('HTTP/1.1 200 OK\r\n',
+                         osutils.recv_all(sock, 4096))
         self.assertEqual('abc', server.received_bytes)
-        self.assertEqual('HTTP/1.1 200 OK\r\n', sockfile.read())
 
 
 class TestRangeRequestServer(TestSpecificRequestHandler):

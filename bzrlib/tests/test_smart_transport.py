@@ -49,27 +49,6 @@ from bzrlib.transport import (
         )
 
 
-def _recv_all(socket, bytes):
-    """Receive an exact number of bytes.
-
-    Regular Socket.recv() may return less than the requested number of bytes,
-    depending on what's in the OS buffer.  MSG_WAITALL is not available
-    on all platforms, but this should work everywhere.  This will return
-    less than the requested amount if the remote end closes.
-
-    This isn't optimized and is intended mostly for use in testing. Should be
-    replaced with a more appropriate interface.
-    """
-    b = ''
-    reporter = lambda n, rw: None
-    while len(b) < bytes:
-        new = medium._read_bytes_from_socket(socket, reporter, bytes - len(b))
-        if new == '':
-            break # eof
-        b += new
-    return b
-
-
 class StringIOSSHVendor(object):
     """A SSH vendor that uses StringIO to buffer writes and answer reads."""
 
@@ -148,7 +127,7 @@ class SmartClientMediumTests(tests.TestCase):
         """
         def _receive_bytes_on_server():
             connection, address = sock.accept()
-            bytes.append(_recv_all(connection, 3))
+            bytes.append(osutils.recv_all(connection, 3))
             connection.close()
         t = threading.Thread(target=_receive_bytes_on_server)
         t.start()
@@ -755,7 +734,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
         client_sock.sendall(rest_of_request_bytes)
         server._serve_one_request(server_protocol)
         server_sock.close()
-        self.assertEqual(expected_response, _recv_all(client_sock, 50),
+        self.assertEqual(expected_response, osutils.recv_all(client_sock, 50),
                          "Not a version 2 response to 'hello' request.")
         self.assertEqual('', client_sock.recv(1))
 
