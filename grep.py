@@ -48,6 +48,10 @@ def compile_pattern(pattern, flags=0):
         raise errors.BzrError("Invalid pattern: '%s'" % pattern)
     return patternc
 
+def is_fixed_string(s):
+    if re.match("^([A-Za-z0-9]|\s)*$", s):
+        return True
+    return False
 
 def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
         line_number, from_root, eol_marker, print_revno, levels,

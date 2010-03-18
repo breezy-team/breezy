@@ -137,7 +137,7 @@ class cmd_grep(Command):
             eol_marker = '\0'
 
         # if the pattern isalnum, implicitly switch to fixed_string for faster grep
-        if pattern.isalnum():
+        if grep.is_fixed_string(pattern):
             fixed_string = True
 
         patternc = None
