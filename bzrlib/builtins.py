@@ -2435,7 +2435,7 @@ def _get_revision_range(revisionspec_list, branch, command_name):
                 " branches." % command_name)
         if start_spec.spec is None:
             # Avoid loading all the history.
-            rev1 = None
+            rev1 = RevisionInfo(branch, None, None)
         else:
             rev1 = start_spec.in_history(branch)
         # Avoid loading all of history when we know a missing
