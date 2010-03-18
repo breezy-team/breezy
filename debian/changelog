@@ -1,3 +1,10 @@
+bzr-builddeb (2.5) UNRELEASED; urgency=low
+
+  [ Colin Watson ]
+  * Consider a .dsc without a Format: to be Format: 1.0.
+
+ -- James Westby <james.westby@ubuntu.com>  Thu, 18 Mar 2010 14:19:53 -0400
+
 bzr-builddeb (2.4) unstable; urgency=low
 
   [ Jelmer Vernooij ]
