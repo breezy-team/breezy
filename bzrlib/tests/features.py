@@ -26,6 +26,7 @@ paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 subunit = tests.ModuleAvailableFeature('subunit')
 
+
 class _PosixPermissionsFeature(tests.Feature):
 
     def _probe(self):
@@ -48,4 +49,15 @@ class _PosixPermissionsFeature(tests.Feature):
     def feature_name(self):
         return 'POSIX permissions support'
 
-PosixPermissionsFeature = _PosixPermissionsFeature()
+
+posix_permissions_feature = _PosixPermissionsFeature()
+
+
+class _ChownFeature(tests.Feature):
+    """os.chown is supported"""
+
+    def _probe(self):
+        return os.name == 'posix' and hasattr(os, 'chown')
+
+chown_feature = _ChownFeature()
+

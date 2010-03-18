@@ -599,6 +599,10 @@ include:
  - UnicodeFilenameFeature
  - FTPServerFeature
  - CaseInsensitiveFilesystemFeature.
+ - chown_feature: The test can rely on OS being POSIX and python
+   supporting os.chown.
+ - posix_permissions_feature: The test can use POSIX-style
+   user/group/other permission bits.
 
 
 Defining a new feature that tests can require
