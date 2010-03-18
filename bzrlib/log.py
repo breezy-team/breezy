@@ -556,8 +556,14 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
                     # revno), we may as well accept to show the log... 
                     # -- vila 100201
                     graph = branch.repository.get_graph()
-                    if not graph.is_ancestor(start_rev_id, end_rev_id):
-                        raise _StartNotLinearAncestor()
+                    candidate = start_rev_id
+                    if candidate is None:
+                        # All revisions have _mod_revision.NULL_REVISION as an
+                        # ancestor
+                        pass
+                    else:
+                        if not graph.is_ancestor(start_rev_id, end_rev_id):
+                            raise _StartNotLinearAncestor()
                     end_rev_id = rev_id
                     break
                 else:
@@ -1424,7 +1430,8 @@ class LogFormatter(object):
         """
         # Revision comes directly from a foreign repository
         if isinstance(rev, foreign.ForeignRevision):
-            return self._format_properties(rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
+            return self._format_properties(
+                rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
         if not ":" in rev.revision_id:
@@ -2006,7 +2013,7 @@ def _bugs_properties_handler(revision):
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if
                           len(row) > 1 and row[1] == 'fixed']
-        
+
         if fixed_bug_urls:
             return {'fixes bug(s)': ' '.join(fixed_bug_urls)}
     return {}

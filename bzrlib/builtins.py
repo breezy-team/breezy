@@ -2433,7 +2433,11 @@ def _get_revision_range(revisionspec_list, branch, command_name):
             raise errors.BzrCommandError(
                 "bzr %s doesn't accept two revisions in different"
                 " branches." % command_name)
-        rev1 = start_spec.in_history(branch)
+        if start_spec.spec is None:
+            # Avoid loading all the history.
+            rev1 = None
+        else:
+            rev1 = start_spec.in_history(branch)
         # Avoid loading all of history when we know a missing
         # end of range means the last revision ...
         if end_spec.spec is None:
