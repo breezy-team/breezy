@@ -105,10 +105,22 @@ class UIFactory(object):
 
     This tells the library how to display things to the user.  Through this
     layer different applications can choose the style of UI.
+
+    :ivar suppressed_warnings: Identifiers for user warnings that should 
+        no be emitted.
     """
+
+    _user_warning_templates = dict(
+        cross_format_fetch=("Doing on-the-fly conversion from "
+            "%(from_format)s to %(to_format)s.\n"
+            "This may take some time. Upgrade the repositories to the "
+            "same format for better performance."
+            )
+        )
 
     def __init__(self):
         self._task_stack = []
+        self.suppressed_warnings = set()
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -170,6 +182,21 @@ class UIFactory(object):
         """
         pass
 
+    def format_user_warning(self, warning_id, message_args):
+        try:
+            template = self._user_warning_templates[warning_id]
+        except KeyError:
+            fail = "failed to format warning %r, %r" % (warning_id, message_args)
+            warnings.warn(fail)   # so tests will fail etc
+            return fail
+        try:
+            return template % message_args
+        except ValueError, e:
+            fail = "failed to format warning %r, %r: %s" % (
+                warning_id, message_args, e)
+            warnings.warn(fail)   # so tests will fail etc
+            return fail
+
     def get_boolean(self, prompt):
         """Get a boolean question answered from the user.
 
@@ -190,8 +217,11 @@ class UIFactory(object):
     def recommend_upgrade(self,
         current_format_name,
         basedir):
-        # this should perhaps be in the TextUIFactory and the default can do
+        # XXX: this should perhaps be in the TextUIFactory and the default can do
         # nothing
+        #
+        # XXX: Change to show_user_warning - that will accomplish the previous
+        # xxx. -- mbp 2010-02-25
         trace.warning("%s is deprecated "
             "and a better format is available.\n"
             "It is recommended that you upgrade by "
@@ -208,13 +238,32 @@ class UIFactory(object):
         """
         pass
 
+    def show_user_warning(self, warning_id, **message_args):
+        """Show a warning to the user.
+
+        This is specifically for things that are under the user's control (eg
+        outdated formats), not for internal program warnings like deprecated
+        APIs.
+
+        This can be overridden by UIFactory subclasses to show it in some 
+        appropriate way; the default UIFactory is noninteractive and does
+        nothing.  format_user_warning maps it to a string, though other
+        presentations can be used for particular UIs.
+
+        :param warning_id: An identifier like 'cross_format_fetch' used to 
+            check if the message is suppressed and to look up the string.
+        :param message_args: Arguments to be interpolated into the message.
+        """
+        pass
+
     def warn_cross_format_fetch(self, from_format, to_format):
-        """Warn about a potentially slow cross-format transfer"""
-        # See <https://launchpad.net/bugs/456077> asking for a warning here
-        trace.warning("Doing on-the-fly conversion from %s to %s.\n"
-            "This may take some time. Upgrade the repositories to the "
-            "same format for better performance.\n" %
-            (from_format, to_format))
+        """Warn about a potentially slow cross-format transfer.
+        
+        This is deprecated in favor of show_user_warning, but retained for api
+        compatibility in 2.0 and 2.1.
+        """
+        self.show_user_warning('cross_format_fetch', from_format=from_format,
+            to_format=to_format)
 
 
 class CLIUIFactory(UIFactory):
