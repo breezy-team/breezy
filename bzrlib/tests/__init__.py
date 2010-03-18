@@ -4129,5 +4129,4 @@ class _PosixPermissionsFeature(Feature):
     def feature_name(self):
         return 'POSIX permissions support'
 
-PosixPermissionsFeature = _PosixPermissionsFeature()
-
+posix_permissions_feature = _PosixPermissionsFeature()

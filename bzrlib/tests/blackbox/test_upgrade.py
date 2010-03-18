@@ -27,7 +27,7 @@ from bzrlib.tests import (
     TestCaseInTempDir,
     TestCaseWithTransport,
     TestUIFactory,
-    PosixPermissionsFeature,
+    posix_permissions_feature,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.transport import get_transport
@@ -157,7 +157,7 @@ finished
 
     def test_upgrade_permission_check(self):
         """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
-        self.requireFeature(PosixPermissionsFeature)
+        self.requireFeature(posix_permissions_feature)
         import os, stat
         old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
         backup_dir = 'backup.bzr'
