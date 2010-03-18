@@ -37,7 +37,9 @@ from bzrlib import (
         bugtracker,
         errors,
         urlutils,
+        version_info as bzr_version_info,
         )
+from bzrlib.export import export as bzr_export
 from bzrlib.trace import warning
 from bzrlib.transport import (
     do_catching_redirections,
@@ -518,3 +520,17 @@ def debuild_config(tree, working_tree, no_user_config):
     config = DebBuildConfig(config_files, tree=tree)
     config.set_user_config(user_config)
     return config
+
+
+def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
+    """Simple wrapper around bzrlib.export.export that prefers 
+    per_file_timestamps if it is supported.
+
+    """
+    # per_file_timestamps is available as of bzr 2.2.0
+    if bzr_version_info > (2, 2, 0):
+        return bzr_export(tree, dest, format=format, root=root, subdir=subdir,
+            filtered=filtered, per_file_timestamps=True)
+    else:
+        return bzr_export(tree, dest, format=format, root=root, subdir=subdir,
+            filtered=filtered)
