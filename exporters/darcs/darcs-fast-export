@@ -29,6 +29,7 @@ import os
 import sys
 import gzip
 import time
+import calendar
 import shutil
 import subprocess
 import optparse
@@ -82,22 +83,12 @@ class Handler:
 			author = author[author.index('>')+2:] + ' ' + author[:author.index('>')+1]
 		return author.encode('utf-8')
 
-	def get_time_info(self, patch):
-		date = time.strptime(patch, "%a %b %d %H:%M:%S %Z %Y")
-		timestamp = int(time.mktime(date))
-		# calculate the timezone offset
-		fields=re.split('[ ]+', patch)
-		fields[4]="UTC"
-		patch_utc=" ".join(fields)
-		date_utc=time.strptime(patch_utc, "%a %b %d %H:%M:%S %Z %Y")
-		offset=int(time.timezone + time.mktime(date) - time.mktime(date_utc))
-		hours, minutes = divmod(abs(offset), 3600)
-		if offset > 0:
-			sign = "-"
-		else:
-			sign = "+"
-		zone = "%s%02d%02d" % (sign, hours, minutes // 60)
-		return timestamp, zone
+	def get_date(self, patch):
+		try:
+			date = time.strptime(patch, "%Y%m%d%H%M%S")
+		except ValueError:
+			date = time.strptime(patch[:19] + patch[-5:], '%a %b %d %H:%M:%S %Y')
+		return calendar.timegm(date)
 
 	def progress(self, s):
 		print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s)
@@ -329,8 +320,8 @@ class Handler:
 			print "mark :%s" % markcount
 			if self.options.export_marks:
 				self.export_marks.append(":%s %s" % (markcount, hash))
-			date, zone = self.get_time_info(i.attributes['local_date'].value)
-			print "committer %s %s %s" % (self.get_author(i), date, zone)
+			date = self.get_date(i.attributes['date'].value)
+			print "committer %s %s +0000" % (self.get_author(i), date)
 			print "data %d\n%s" % (len(message), message)
 			if markcount > 1:
 				print "from :%s" % (markcount-1)
@@ -354,7 +345,7 @@ class Handler:
 				tag = re.sub('[^\xe9-\xf8\w.\-]+', '_', message[4:].strip().split('\n')[0]).strip('_')
 				print "tag %s" % tag
 				print "from :%s" % markcount
-				print "tagger %s %s %s" % (self.get_author(i), date, zone)
+				print "tagger %s %s +0000" % (self.get_author(i), date)
 				print "data %d\n%s" % (len(message), message)
 			if count % self.prognum == 0:
 				self.progress("%d/%d patches" % (count, patchnum))
