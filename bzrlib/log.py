@@ -558,6 +558,8 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
                     graph = branch.repository.get_graph()
                     if not graph.is_ancestor(start_rev_id, end_rev_id):
                         raise _StartNotLinearAncestor()
+                    # Since we collected the revisions so far, we need to
+                    # adjust end_rev_id.
                     end_rev_id = rev_id
                     break
                 else:
@@ -576,6 +578,9 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
             raise errors.BzrCommandError('Start revision not found in'
                 ' history of end revision.')
 
+    # We exit the loop above because we encounter a revision with merges, from
+    # this revision, we need to switch to _graph_view_revisions.
+
     # A log including nested merges is required. If the direction is reverse,
     # we rebase the initial merge depths so that the development line is
     # shown naturally, i.e. just like it is for linear logging. We can easily
@@ -583,7 +588,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
     # indented at the end seems slightly nicer in that case.
     view_revisions = chain(iter(initial_revisions),
         _graph_view_revisions(branch, start_rev_id, end_rev_id,
-        rebase_initial_depths=direction == 'reverse'))
+                              rebase_initial_depths=(direction == 'reverse')))
     if direction == 'reverse':
         return view_revisions
     elif direction == 'forward':
@@ -655,7 +660,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
 
 
 def _graph_view_revisions(branch, start_rev_id, end_rev_id,
-    rebase_initial_depths=True):
+                          rebase_initial_depths=True):
     """Calculate revisions to view including merges, newest to oldest.
 
     :param branch: the branch
