@@ -21,176 +21,135 @@ from bzrlib import (
     revision,
     )
 
-from bzrlib.tests.per_branch import TestCaseWithBranch
+from bzrlib.tests import per_branch
 
 
-class TestIterMergeSortedRevisions(TestCaseWithBranch):
+class TestIterMergeSortedRevisions(per_branch.TestCaseWithBranch):
+
+    def setUp(self):
+        super(TestIterMergeSortedRevisions, self).setUp()
+        tree = self.create_tree_with_merge()
+        self.branch = tree.bzrdir.open_branch()
+
+    def assertRevisions(self, expected, *args, **kwargs):
+        self.assertEqual(expected,
+                         list(self.branch.iter_merge_sorted_revisions(
+                    *args, **kwargs)))
 
     def test_merge_sorted(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-3', 0, (3,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-2', 0, (2,), False),
-            ('rev-1', 0, (1,), True),
-            ], list(the_branch.iter_merge_sorted_revisions()))
+        self.assertRevisions([('rev-3', 0, (3,), False),
+                              ('rev-1.1.1', 1, (1,1,1), True),
+                              ('rev-2', 0, (2,), False),
+                              ('rev-1', 0, (1,), True),])
 
     def test_merge_sorted_range(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-2', 0, (2,), False),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                start_revision_id='rev-1.1.1', stop_revision_id='rev-1')))
+        self.assertRevisions(
+            [('rev-1.1.1', 1, (1,1,1), True),
+             ('rev-2', 0, (2,), False),],
+            start_revision_id='rev-1.1.1', stop_revision_id='rev-1')
 
     def test_merge_sorted_range_start_only(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-2', 0, (2,), False),
-            ('rev-1', 0, (1,), True),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                start_revision_id='rev-1.1.1')))
+        self.assertRevisions(
+            [('rev-1.1.1', 1, (1,1,1), True),
+             ('rev-2', 0, (2,), False),
+             ('rev-1', 0, (1,), True),],
+            start_revision_id='rev-1.1.1')
 
     def test_merge_sorted_range_stop_exclude(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-3', 0, (3,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-2', 0, (2,), False),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                stop_revision_id='rev-1')))
+        self.assertRevisions(
+            [('rev-3', 0, (3,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),
+             ('rev-2', 0, (2,), False),],
+            stop_revision_id='rev-1')
 
     def test_merge_sorted_range_stop_include(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-3', 0, (3,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-2', 0, (2,), False),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                stop_revision_id='rev-2', stop_rule='include')))
+        self.assertRevisions(
+            [('rev-3', 0, (3,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),
+             ('rev-2', 0, (2,), False),],
+            stop_revision_id='rev-2', stop_rule='include')
 
     def test_merge_sorted_range_stop_with_merges(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-3', 0, (3,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                stop_revision_id='rev-3', stop_rule='with-merges')))
+        self.assertRevisions(
+            [('rev-3', 0, (3,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),],
+            stop_revision_id='rev-3', stop_rule='with-merges')
 
     def test_merge_sorted_range_stop_with_merges_can_show_non_parents(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
         # rev-1.1.1 gets logged before the end revision is reached.
         # so it is returned even though rev-1.1.1 is not a parent of rev-2.
-        self.assertEqual([
-            ('rev-3', 0, (3,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-2', 0, (2,), False),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                stop_revision_id='rev-2', stop_rule='with-merges')))
+        self.assertRevisions(
+            [('rev-3', 0, (3,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),
+             ('rev-2', 0, (2,), False),],
+            stop_revision_id='rev-2', stop_rule='with-merges')
 
     def test_merge_sorted_range_stop_with_merges_ignore_non_parents(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
         # rev-2 is not a parent of rev-1.1.1 so it must not be returned
-        self.assertEqual([
-            ('rev-3', 0, (3,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                stop_revision_id='rev-1.1.1', stop_rule='with-merges')))
+        self.assertRevisions(
+            [('rev-3', 0, (3,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),],
+            stop_revision_id='rev-1.1.1', stop_rule='with-merges')
 
     def test_merge_sorted_single_stop_exclude(self):
         # from X..X exclusive is an empty result
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([], list(the_branch.iter_merge_sorted_revisions(
-                start_revision_id='rev-3', stop_revision_id='rev-3')))
+        self.assertRevisions(
+            [],
+            start_revision_id='rev-3', stop_revision_id='rev-3')
 
     def test_merge_sorted_single_stop_include(self):
         # from X..X inclusive is [X]
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-3', 0, (3,), False),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                start_revision_id='rev-3', stop_revision_id='rev-3',
-                stop_rule='include')))
+        self.assertRevisions(
+            [('rev-3', 0, (3,), False),],
+            start_revision_id='rev-3', stop_revision_id='rev-3',
+            stop_rule='include')
 
     def test_merge_sorted_single_stop_with_merges(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-3', 0, (3,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                start_revision_id='rev-3', stop_revision_id='rev-3',
-                stop_rule='with-merges')))
+        self.assertRevisions(
+            [('rev-3', 0, (3,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),],
+            start_revision_id='rev-3', stop_revision_id='rev-3',
+            stop_rule='with-merges')
 
     def test_merge_sorted_forward(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-1', 0, (1,), True),
-            ('rev-2', 0, (2,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-3', 0, (3,), False),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                direction='forward')))
+        self.assertRevisions(
+            [('rev-1', 0, (1,), True),
+             ('rev-2', 0, (2,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),
+             ('rev-3', 0, (3,), False),],
+            direction='forward')
 
     def test_merge_sorted_range_forward(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-2', 0, (2,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                start_revision_id='rev-1.1.1', stop_revision_id='rev-1',
-                direction='forward')))
+        self.assertRevisions(
+            [('rev-2', 0, (2,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),],
+            start_revision_id='rev-1.1.1', stop_revision_id='rev-1',
+            direction='forward')
 
     def test_merge_sorted_range_start_only_forward(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-1', 0, (1,), True),
-            ('rev-2', 0, (2,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                start_revision_id='rev-1.1.1', direction='forward')))
+        self.assertRevisions(
+            [('rev-1', 0, (1,), True),
+             ('rev-2', 0, (2,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),],
+            start_revision_id='rev-1.1.1', direction='forward')
 
     def test_merge_sorted_range_stop_exclude_forward(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-2', 0, (2,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-3', 0, (3,), False),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                stop_revision_id='rev-1', direction='forward')))
+        self.assertRevisions(
+            [('rev-2', 0, (2,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),
+             ('rev-3', 0, (3,), False),],
+            stop_revision_id='rev-1', direction='forward')
 
     def test_merge_sorted_range_stop_include_forward(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-2', 0, (2,), False),
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-3', 0, (3,), False),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                stop_revision_id='rev-2', stop_rule='include',
-                direction='forward')))
+        self.assertRevisions(
+            [('rev-2', 0, (2,), False),
+             ('rev-1.1.1', 1, (1,1,1), True),
+             ('rev-3', 0, (3,), False),],
+            stop_revision_id='rev-2', stop_rule='include', direction='forward')
 
     def test_merge_sorted_range_stop_with_merges_forward(self):
-        tree = self.create_tree_with_merge()
-        the_branch = tree.bzrdir.open_branch()
-        self.assertEqual([
-            ('rev-1.1.1', 1, (1,1,1), True),
-            ('rev-3', 0, (3,), False),
-            ], list(the_branch.iter_merge_sorted_revisions(
-                stop_revision_id='rev-3', stop_rule='with-merges',
-                direction='forward')))
+        self.assertRevisions(
+            [('rev-1.1.1', 1, (1,1,1), True),
+             ('rev-3', 0, (3,), False),],
+            stop_revision_id='rev-3', stop_rule='with-merges',
+            direction='forward')
