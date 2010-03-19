@@ -19,6 +19,7 @@
 from bzrlib import (
     errors,
     revision,
+    tests,
     )
 
 from bzrlib.tests import per_branch
@@ -28,128 +29,100 @@ class TestIterMergeSortedRevisions(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         super(TestIterMergeSortedRevisions, self).setUp()
-        tree = self.create_tree_with_merge()
-        self.branch = tree.bzrdir.open_branch()
+        self.branch = self.make_branch_with_merges('.')
 
-    def assertRevisions(self, expected, *args, **kwargs):
-        self.assertEqual(expected,
-                         list(self.branch.iter_merge_sorted_revisions(
-                    *args, **kwargs)))
+    def make_branch_with_merges(self, relpath):
+        try:
+            builder = self.make_branch_builder(relpath)
+        except (errors.TransportNotPossible, errors.UninitializableFormat):
+            raise tests.TestNotApplicable('format not directly constructable')
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot('3', ['2', '1.1.1'], [])
+        builder.finish_series()
+        return builder.get_branch()
+
+
+    def assertIterRevids(self, expected, *args, **kwargs):
+        # We don't care about depths and revnos here, only about returning the
+        # right revids.
+        revids = [ revid for (revid, depth, revno, eom) in
+                   self.branch.iter_merge_sorted_revisions(*args, **kwargs)]
+        self.assertEqual(expected, revids)
 
     def test_merge_sorted(self):
-        self.assertRevisions([('rev-3', 0, (3,), False),
-                              ('rev-1.1.1', 1, (1,1,1), True),
-                              ('rev-2', 0, (2,), False),
-                              ('rev-1', 0, (1,), True),])
+        self.assertIterRevids(['3', '1.1.1', '2', '1'])
 
     def test_merge_sorted_range(self):
-        self.assertRevisions(
-            [('rev-1.1.1', 1, (1,1,1), True),
-             ('rev-2', 0, (2,), False),],
-            start_revision_id='rev-1.1.1', stop_revision_id='rev-1')
+        self.assertIterRevids(['1.1.1', '2'],
+                              start_revision_id='1.1.1', stop_revision_id='1')
 
     def test_merge_sorted_range_start_only(self):
-        self.assertRevisions(
-            [('rev-1.1.1', 1, (1,1,1), True),
-             ('rev-2', 0, (2,), False),
-             ('rev-1', 0, (1,), True),],
-            start_revision_id='rev-1.1.1')
+        self.assertIterRevids(['1.1.1', '2', '1'],
+                              start_revision_id='1.1.1')
 
     def test_merge_sorted_range_stop_exclude(self):
-        self.assertRevisions(
-            [('rev-3', 0, (3,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),
-             ('rev-2', 0, (2,), False),],
-            stop_revision_id='rev-1')
+        self.assertIterRevids(['3', '1.1.1', '2'], stop_revision_id='1')
 
     def test_merge_sorted_range_stop_include(self):
-        self.assertRevisions(
-            [('rev-3', 0, (3,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),
-             ('rev-2', 0, (2,), False),],
-            stop_revision_id='rev-2', stop_rule='include')
+        self.assertIterRevids(['3', '1.1.1', '2'],
+                              stop_revision_id='2', stop_rule='include')
 
     def test_merge_sorted_range_stop_with_merges(self):
-        self.assertRevisions(
-            [('rev-3', 0, (3,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),],
-            stop_revision_id='rev-3', stop_rule='with-merges')
+        self.assertIterRevids(['3', '1.1.1'],
+                              stop_revision_id='3', stop_rule='with-merges')
 
     def test_merge_sorted_range_stop_with_merges_can_show_non_parents(self):
-        # rev-1.1.1 gets logged before the end revision is reached.
-        # so it is returned even though rev-1.1.1 is not a parent of rev-2.
-        self.assertRevisions(
-            [('rev-3', 0, (3,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),
-             ('rev-2', 0, (2,), False),],
-            stop_revision_id='rev-2', stop_rule='with-merges')
+        # 1.1.1 gets logged before the end revision is reached.
+        # so it is returned even though 1.1.1 is not a parent of 2.
+        self.assertIterRevids(['3', '1.1.1', '2'],
+                              stop_revision_id='2', stop_rule='with-merges')
 
     def test_merge_sorted_range_stop_with_merges_ignore_non_parents(self):
-        # rev-2 is not a parent of rev-1.1.1 so it must not be returned
-        self.assertRevisions(
-            [('rev-3', 0, (3,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),],
-            stop_revision_id='rev-1.1.1', stop_rule='with-merges')
+        # 2 is not a parent of 1.1.1 so it must not be returned
+        self.assertIterRevids(['3', '1.1.1'],
+                              stop_revision_id='1.1.1', stop_rule='with-merges')
 
     def test_merge_sorted_single_stop_exclude(self):
         # from X..X exclusive is an empty result
-        self.assertRevisions(
-            [],
-            start_revision_id='rev-3', stop_revision_id='rev-3')
+        self.assertIterRevids([], start_revision_id='3', stop_revision_id='3')
 
     def test_merge_sorted_single_stop_include(self):
         # from X..X inclusive is [X]
-        self.assertRevisions(
-            [('rev-3', 0, (3,), False),],
-            start_revision_id='rev-3', stop_revision_id='rev-3',
-            stop_rule='include')
+        self.assertIterRevids(['3'],
+                              start_revision_id='3', stop_revision_id='3',
+                              stop_rule='include')
 
     def test_merge_sorted_single_stop_with_merges(self):
-        self.assertRevisions(
-            [('rev-3', 0, (3,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),],
-            start_revision_id='rev-3', stop_revision_id='rev-3',
-            stop_rule='with-merges')
+        self.assertIterRevids(['3', '1.1.1'],
+                              start_revision_id='3', stop_revision_id='3',
+                              stop_rule='with-merges')
 
     def test_merge_sorted_forward(self):
-        self.assertRevisions(
-            [('rev-1', 0, (1,), True),
-             ('rev-2', 0, (2,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),
-             ('rev-3', 0, (3,), False),],
-            direction='forward')
+        self.assertIterRevids(['1', '2', '1.1.1', '3'], direction='forward')
 
     def test_merge_sorted_range_forward(self):
-        self.assertRevisions(
-            [('rev-2', 0, (2,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),],
-            start_revision_id='rev-1.1.1', stop_revision_id='rev-1',
-            direction='forward')
+        self.assertIterRevids(['2', '1.1.1'],
+                              start_revision_id='1.1.1', stop_revision_id='1',
+                              direction='forward')
 
     def test_merge_sorted_range_start_only_forward(self):
-        self.assertRevisions(
-            [('rev-1', 0, (1,), True),
-             ('rev-2', 0, (2,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),],
-            start_revision_id='rev-1.1.1', direction='forward')
+        self.assertIterRevids(['1', '2', '1.1.1'],
+                              start_revision_id='1.1.1', direction='forward')
 
     def test_merge_sorted_range_stop_exclude_forward(self):
-        self.assertRevisions(
-            [('rev-2', 0, (2,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),
-             ('rev-3', 0, (3,), False),],
-            stop_revision_id='rev-1', direction='forward')
+        self.assertIterRevids(['2', '1.1.1', '3'],
+                              stop_revision_id='1', direction='forward')
 
     def test_merge_sorted_range_stop_include_forward(self):
-        self.assertRevisions(
-            [('rev-2', 0, (2,), False),
-             ('rev-1.1.1', 1, (1,1,1), True),
-             ('rev-3', 0, (3,), False),],
-            stop_revision_id='rev-2', stop_rule='include', direction='forward')
+        self.assertIterRevids(['2', '1.1.1', '3'],
+                              stop_revision_id='2', stop_rule='include',
+                              direction='forward')
 
     def test_merge_sorted_range_stop_with_merges_forward(self):
-        self.assertRevisions(
-            [('rev-1.1.1', 1, (1,1,1), True),
-             ('rev-3', 0, (3,), False),],
-            stop_revision_id='rev-3', stop_rule='with-merges',
-            direction='forward')
+        self.assertIterRevids(['1.1.1', '3'],
+                              stop_revision_id='3', stop_rule='with-merges',
+                              direction='forward')
