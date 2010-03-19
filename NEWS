@@ -92,6 +92,10 @@ Bug Fixes
   deliberately when no help topics match from any help index.
   (Robert Collins, #396261)
 
+* ``bzr log -n0 -r..A.B.C`` should not crash but just consider the None
+  revspec as representing the first revision of the branch.
+  (Vincent Ladeuil, #519862)
+
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
 
