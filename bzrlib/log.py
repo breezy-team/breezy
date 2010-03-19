@@ -553,17 +553,14 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
                     # may not raise _StartNotLinearAncestor for a revision that
                     # is an ancestor but not a *linear* one. But since we have
                     # loaded the graph to do the check (or calculate a dotted
-                    # revno), we may as well accept to show the log... 
-                    # -- vila 100201
+                    # revno), we may as well accept to show the log...  We need
+                    # the check only if start_rev_id is not None as all
+                    # revisions have _mod_revision.NULL_REVISION as an ancestor
+                    # -- vila 20100319
                     graph = branch.repository.get_graph()
-                    candidate = start_rev_id
-                    if candidate is None:
-                        # All revisions have _mod_revision.NULL_REVISION as an
-                        # ancestor
-                        pass
-                    else:
-                        if not graph.is_ancestor(start_rev_id, end_rev_id):
-                            raise _StartNotLinearAncestor()
+                    if (start_rev_id is not None
+                        and not graph.is_ancestor(start_rev_id, end_rev_id)):
+                        raise _StartNotLinearAncestor()
                     end_rev_id = rev_id
                     break
                 else:
