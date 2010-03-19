@@ -21,10 +21,10 @@ from bzrlib import (
     revision,
     )
 
-from bzrlib.tests.per_branch import TestCaseWithBranch
+from bzrlib.tests import per_branch
 
 
-class TestIterMergeSortedRevisions(TestCaseWithBranch):
+class TestIterMergeSortedRevisions(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         super(TestIterMergeSortedRevisions, self).setUp()
