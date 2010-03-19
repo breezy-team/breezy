@@ -455,6 +455,9 @@ class Branch(object):
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,
             stop_revision_id, stop_rule)
+        # Make sure we don't return revisions that are not part of the
+        # start_revision_id ancestry.
+        filtered = self._filter_non_ancestors(filtered)
         if direction == 'reverse':
             return filtered
         if direction == 'forward':
@@ -524,6 +527,42 @@ class Branch(object):
                             revision_id_whitelist.extend(rev.parent_ids)
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
+
+    def _filter_non_ancestors(self, rev_iter):
+        # If we started from a dotted revno, we want to consider it as a tip
+        # and don't want to yield revisions that are not part of its
+        # ancestry. Given the order guaranteed by the merge sort, we will see
+        # uninteresting descendants of the first parent of our tip before the
+        # tip itself.
+        first = rev_iter.next()
+        (rev_id, merge_depth, revno, end_of_merge) = first
+        yield first
+        if not merge_depth:
+            # We start at a mainline revision so by definition, all others
+            # revisions in rev_iter are ancestors
+            for node in rev_iter:
+                yield node
+
+        rev = self.repository.get_revision(rev_id)
+        if rev.parent_ids:
+            next_interesting_rev = rev.parent_ids[0]
+        else:
+            # This may occur if we start at the first revision of a joined
+            # branch
+            import pdb; pdb.set_trace() # Need test
+            next_interesting_rev = None
+        current_merge_depth = merge_depth
+        for (rev_id, merge_depth, revno, end_of_merge) in rev_iter:
+            if rev_id == next_interesting_rev:
+                rev = self.repository.get_revision(rev_id)
+                if rev.parent_ids:
+                    next_interesting_rev = rev.parent_ids[0]
+                else:
+                    next_interesting_rev = None
+                current_merge_depth = merge_depth
+            elif merge_depth < current_merge_depth:
+                continue
+            yield (rev_id, merge_depth, revno, end_of_merge)
 
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this
