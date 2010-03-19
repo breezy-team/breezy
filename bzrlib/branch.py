@@ -543,6 +543,7 @@ class Branch(object):
             for node in rev_iter:
                 yield node
 
+        clean = False
         whitelist = set()
         rev = self.repository.get_revision(rev_id)
         if rev.parent_ids:
@@ -552,14 +553,19 @@ class Branch(object):
             # branch
             import pdb; pdb.set_trace() # Need test
         for (rev_id, merge_depth, revno, end_of_merge) in rev_iter:
-            if rev_id in whitelist:
-                rev = self.repository.get_revision(rev_id)
-                whitelist.remove(rev_id)
-                whitelist.update(rev.parent_ids)
-                # FIXME: Once we reach a rev with a *lower* merge_depth we can
-                # stop
-            else:
-                continue
+            if not clean:
+                if rev_id in whitelist:
+                    rev = self.repository.get_revision(rev_id)
+                    whitelist.remove(rev_id)
+                    whitelist.update(rev.parent_ids)
+                    if merge_depth == 0:
+                        # We've reached the mainline, there is nothing left to
+                        # filter
+                        clean = True
+                else:
+                    # A revision that is not part of the ancestry of our
+                    # starting revision.
+                    continue
             yield (rev_id, merge_depth, revno, end_of_merge)
 
     def leave_lock_in_place(self):

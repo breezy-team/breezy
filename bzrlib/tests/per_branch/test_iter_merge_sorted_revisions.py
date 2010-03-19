@@ -127,6 +127,7 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
                               stop_revision_id='3', stop_rule='with-merges',
                               direction='forward')
 
+
 class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
 
     def setUp(self):
