@@ -67,7 +67,7 @@ def show_tree_status(wt, show_unchanged=None,
                      short=False,
                      verbose=False,
                      versioned=False,
-                     show_long_callback=_mod_delta.report_long):
+                     show_long_callback=_mod_delta.report_delta):
     """Display summary of changes.
 
     By default this compares the working tree to a previous revision.

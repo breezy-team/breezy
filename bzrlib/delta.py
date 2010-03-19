@@ -339,8 +339,16 @@ def report_changes(change_iterator, reporter):
         reporter.report(file_id, path, versioned_change, renamed, modified,
                         exe_change, kind)
 
+def report_delta(to_file, delta, short_status=False, show_ids=False, 
+         show_unchanged=False, indent='', filter=None):
+    if short_status:
+        __report_delta_short(to_file, delta, show_ids, show_unchanged, 
+                             indent, filter)        
+    else:
+        __report_delta_long(to_file, delta, show_ids, show_unchanged, 
+                             indent, filter)
 
-def report_short(to_file, delta, show_ids=False, show_unchanged=False,
+def __report_delta_short(to_file, delta, show_ids=False, show_unchanged=False,
          indent='', filter=None):
     """Output given delta in status-like form to to_file, using a short format.
 
@@ -432,7 +440,7 @@ def report_short(to_file, delta, show_ids=False, show_unchanged=False,
 
 
 
-def report_long(to_file, delta, show_ids=False, show_unchanged=False,
+def __report_delta_long(to_file, delta, show_ids=False, show_unchanged=False,
          indent='', filter=None):
     """Output given delta in status-like form to to_file.
 
