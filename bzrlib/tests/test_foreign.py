@@ -171,11 +171,11 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
         super(DummyForeignVcsBranchFormat, self).__init__()
         self._matchingbzrdir = DummyForeignVcsDirFormat()
 
-    def open(self, a_bzrdir, _found=False):
+    def open(self, a_bzrdir, name=None, _found=False):
         if not _found:
             raise NotImplementedError
         try:
-            transport = a_bzrdir.get_branch_transport(None)
+            transport = a_bzrdir.get_branch_transport(None, name=name)
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
             return DummyForeignVcsBranch(_format=self,

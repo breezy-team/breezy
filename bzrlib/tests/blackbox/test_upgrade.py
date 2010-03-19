@@ -15,12 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black box tests for the upgrade ui."""
+import os
+import stat
 
 from bzrlib import (
     bzrdir,
     repository,
     )
 from bzrlib.tests import (
+    features,
     TestCaseInTempDir,
     TestCaseWithTransport,
     )
@@ -145,6 +148,17 @@ finished
     def test_upgrade_repo(self):
         self.run_bzr('init-repository --format=metaweave repo')
         self.run_bzr('upgrade --format=knit repo')
+
+    def test_upgrade_permission_check(self):
+        """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
+        self.requireFeature(features.PosixPermissionsFeature)
+        old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+        backup_dir = 'backup.bzr.~1~'
+        self.run_bzr('init --format=1.6')
+        os.chmod('.bzr', old_perms)
+        self.run_bzr('upgrade')
+        new_perms = os.stat(backup_dir).st_mode & 0777
+        self.assertTrue(new_perms == old_perms)
 
 
     def test_upgrade_with_existing_backup_dir(self):

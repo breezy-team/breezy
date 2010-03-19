@@ -456,7 +456,12 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            refs_as_tuples = static_tuple.as_tuples(node[3])
+            try:
+                refs = node[3]
+            except IndexError:
+                refs_as_tuples = None
+            else:
+                refs_as_tuples = static_tuple.as_tuples(refs)
             as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
 
@@ -2806,9 +2811,12 @@ class cmd_export(Command):
         Option('root',
                type=str,
                help="Name of the root directory inside the exported file."),
+        Option('per-file-timestamps',
+               help='Set modification time of files to that of the last '
+                    'revision in which it was changed.'),
         ]
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
-        root=None, filters=False):
+        root=None, filters=False, per_file_timestamps=False):
         from bzrlib.export import export
 
         if branch_or_subdir is None:
@@ -2821,7 +2829,8 @@ class cmd_export(Command):
 
         rev_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
         try:
-            export(rev_tree, dest, format, root, subdir, filtered=filters)
+            export(rev_tree, dest, format, root, subdir, filtered=filters,
+                   per_file_timestamps=per_file_timestamps)
         except errors.NoSuchExportFormat, e:
             raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
 
@@ -5139,7 +5148,7 @@ class cmd_send(Command):
                short_name='f',
                type=unicode),
         Option('output', short_name='o',
-               help='Write merge directive to this file; '
+               help='Write merge directive to this file or directory; '
                     'use - for stdout.',
                type=unicode),
         Option('strict',

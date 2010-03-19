@@ -93,8 +93,11 @@ if sys.platform == 'win32':
 # be opened in binary mode, rather than text mode.
 # On other platforms, O_BINARY doesn't exist, because
 # they always open in binary mode, so it is okay to
-# OR with 0 on those platforms
+# OR with 0 on those platforms.
+# O_NOINHERIT and O_TEXT exists only on win32 too.
 O_BINARY = getattr(os, 'O_BINARY', 0)
+O_TEXT = getattr(os, 'O_TEXT', 0)
+O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 
 
 def get_unicode_argv():
@@ -671,7 +674,7 @@ def size_sha_file(f):
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha()
-    f = os.open(fname, os.O_RDONLY | O_BINARY)
+    f = os.open(fname, os.O_RDONLY | O_BINARY | O_NOINHERIT)
     try:
         while True:
             b = os.read(f, 1<<16)
@@ -1354,6 +1357,27 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
+def set_signal_handler(signum, handler, restart_syscall=True):
+    """A wrapper for signal.signal that also calls siginterrupt(signum, False)
+    on platforms that support that.
+
+    :param restart_syscall: if set, allow syscalls interrupted by a signal to
+        automatically restart (by calling `signal.siginterrupt(signum,
+        False)`).  May be ignored if the feature is not available on this
+        platform or Python version.
+    """
+    old_handler = signal.signal(signum, handler)
+    if restart_syscall:
+        try:
+            siginterrupt = signal.siginterrupt
+        except AttributeError: # siginterrupt doesn't exist on this platform, or for this version of
+            # Python.
+            pass
+        else:
+            siginterrupt(signum, False)
+    return old_handler
+
+
 default_terminal_width = 80
 """The default terminal width for ttys.
 
@@ -1461,7 +1485,7 @@ def watch_sigwinch():
             # the current design -- vila 20091216
             pass
         else:
-            signal.signal(signal.SIGWINCH, _terminal_size_changed)
+            set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
         _registered_sigwinch = True
 
 
@@ -2179,3 +2203,46 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
+
+if sys.platform == 'win32':
+    def open_file(filename, mode='r', bufsize=-1):
+        """This function is used to override the ``open`` builtin.
+        
+        But it uses O_NOINHERIT flag so the file handle is not inherited by
+        child processes.  Deleting or renaming a closed file opened with this
+        function is not blocking child processes.
+        """
+        writing = 'w' in mode
+        appending = 'a' in mode
+        updating = '+' in mode
+        binary = 'b' in mode
+
+        flags = O_NOINHERIT
+        # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
+        # for flags for each modes.
+        if binary:
+            flags |= O_BINARY
+        else:
+            flags |= O_TEXT
+
+        if writing:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_TRUNC
+        elif appending:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_APPEND
+        else: #reading
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_RDONLY
+
+        return os.fdopen(os.open(filename, flags), mode, bufsize)
+else:
+    open_file = open
