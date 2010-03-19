@@ -31,12 +31,32 @@ from bzrlib import (
     plugin,
     plugins,
     tests,
+    trace,
     )
 
 
 # TODO: Write a test for plugin decoration of commands.
 
 class TestPluginMixin(object):
+
+    def create_plugin(self, name, source='', dir='.', file_name=None):
+        if file_name is None:
+            file_name = name + '.py'
+        # 'source' must not fail to load
+        path = osutils.pathjoin(dir, file_name)
+        f = open(path, 'w')
+        self.addCleanup(os.unlink, path)
+        try:
+            f.write(source + '\n')
+        finally:
+            f.close()
+
+    def create_plugin_package(self, name, source='', dir='.'):
+        plugin_dir = osutils.pathjoin(dir, name)
+        os.mkdir(plugin_dir)
+        self.addCleanup(osutils.rmtree, plugin_dir)
+        self.create_plugin(name, source, dir=plugin_dir,
+                           file_name='__init__.py')
 
     def _unregister_plugin(self, name):
         """Remove the plugin from sys.modules and the bzrlib namespace."""
@@ -47,11 +67,11 @@ class TestPluginMixin(object):
             delattr(bzrlib.plugins, name)
 
     def assertPluginUnknown(self, name):
-        self.failIf(getattr(bzrlib.plugins, 'plugin', None) is not None)
+        self.failIf(getattr(bzrlib.plugins, name, None) is not None)
         self.failIf('bzrlib.plugins.%s' % name in sys.modules)
 
     def assertPluginKnown(self, name):
-        self.failUnless(getattr(bzrlib.plugins, 'plugin', None) is not None)
+        self.failUnless(getattr(bzrlib.plugins, name, None) is not None)
         self.failUnless('bzrlib.plugins.%s' % name in sys.modules)
 
 
@@ -723,3 +743,40 @@ class TestEnvPluginPath(tests.TestCase):
         self.check_path(['+foo', '-bar', self.core, self.site],
                         ['+foo', '-bar'])
 
+
+class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
+
+    def setUp(self):
+        super(TestDisablePlugin, self).setUp()
+        self.create_plugin_package('test_foo')
+        # Make sure we don't pollute the plugins namespace
+        self.overrideAttr(plugins, '__path__')
+        # Be paranoid in case a test fail
+        self.addCleanup(self._unregister_plugin, 'test_foo')
+
+    def test_cannot_import(self):
+        osutils.set_or_unset_env('BZR_DISABLE_PLUGINS', 'test_foo')
+        plugin.set_plugins_path(['.'])
+        try:
+            import bzrlib.plugins.test_foo
+        except ImportError:
+            pass
+        self.assertPluginUnknown('test_foo')
+
+    def test_regular_load(self):
+        self.overrideAttr(plugin, '_loaded', False)
+        plugin.load_plugins(['.'])
+        self.assertPluginKnown('test_foo')
+
+    def test_not_loaded(self):
+        self.warnings = []
+        def captured_warning(*args, **kwargs):
+            self.warnings.append((args, kwargs))
+        self.overrideAttr(trace, 'warning', captured_warning)
+        self.overrideAttr(plugin, '_loaded', False)
+        osutils.set_or_unset_env('BZR_DISABLE_PLUGINS', 'test_foo')
+        plugin.load_plugins(plugin.set_plugins_path(['.']))
+        self.assertPluginUnknown('test_foo')
+        # Make sure we don't warn about the plugin ImportError since this has
+        # been *requested* by the user.
+        self.assertLength(0, self.warnings)
