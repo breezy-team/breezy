@@ -553,10 +553,13 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
                     # may not raise _StartNotLinearAncestor for a revision that
                     # is an ancestor but not a *linear* one. But since we have
                     # loaded the graph to do the check (or calculate a dotted
-                    # revno), we may as well accept to show the log... 
-                    # -- vila 100201
+                    # revno), we may as well accept to show the log...  We need
+                    # the check only if start_rev_id is not None as all
+                    # revisions have _mod_revision.NULL_REVISION as an ancestor
+                    # -- vila 20100319
                     graph = branch.repository.get_graph()
-                    if not graph.is_ancestor(start_rev_id, end_rev_id):
+                    if (start_rev_id is not None
+                        and not graph.is_ancestor(start_rev_id, end_rev_id)):
                         raise _StartNotLinearAncestor()
                     end_rev_id = rev_id
                     break
@@ -1424,7 +1427,8 @@ class LogFormatter(object):
         """
         # Revision comes directly from a foreign repository
         if isinstance(rev, foreign.ForeignRevision):
-            return self._format_properties(rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
+            return self._format_properties(
+                rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
         if not ":" in rev.revision_id:
@@ -2006,7 +2010,7 @@ def _bugs_properties_handler(revision):
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if
                           len(row) > 1 and row[1] == 'fixed']
-        
+
         if fixed_bug_urls:
             return {'fixes bug(s)': ' '.join(fixed_bug_urls)}
     return {}

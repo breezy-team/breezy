@@ -205,6 +205,14 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
 
 class Test_GenerateAllRevisions(TestLogWithLogCatcher):
 
+    def setUp(self):
+        super(Test_GenerateAllRevisions, self).setUp()
+        builder = self.make_branch_with_many_merges()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        self.branch = b
+
     def make_branch_with_many_merges(self, path='.', format=None):
         builder = branchbuilder.BranchBuilder(self.get_transport())
         builder.start_series()
@@ -226,24 +234,21 @@ class Test_GenerateAllRevisions(TestLogWithLogCatcher):
         return builder
 
     def test_not_an_ancestor(self):
-        builder = self.make_branch_with_many_merges()
-        b = builder.get_branch()
-        b.lock_read()
-        self.addCleanup(b.unlock)
         self.assertRaises(errors.BzrCommandError,
                           log._generate_all_revisions,
-                          b, '1.1.1', '2.1.3', 'reverse',
+                          self.branch, '1.1.1', '2.1.3', 'reverse',
                           delayed_graph_generation=True)
 
     def test_wrong_order(self):
-        builder = self.make_branch_with_many_merges()
-        b = builder.get_branch()
-        b.lock_read()
-        self.addCleanup(b.unlock)
         self.assertRaises(errors.BzrCommandError,
                           log._generate_all_revisions,
-                          b, '5', '2.1.3', 'reverse',
+                          self.branch, '5', '2.1.3', 'reverse',
                           delayed_graph_generation=True)
+
+    def test_no_start_rev_id_with_end_rev_id_being_a_merge(self):
+        revs = log._generate_all_revisions(
+            self.branch, None, '2.1.3',
+            'reverse', delayed_graph_generation=True)
 
 
 class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
