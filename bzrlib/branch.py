@@ -545,9 +545,10 @@ class Branch(object):
 
         clean = False
         whitelist = set()
-        rev = self.repository.get_revision(rev_id)
-        if rev.parent_ids:
-            whitelist.update(rev.parent_ids)
+        pmap = self.repository.get_parent_map([rev_id])
+        parents = pmap.get(rev_id, [])
+        if parents:
+            whitelist.update(parents)
         else:
             # This may occur if we start at the first revision of a joined
             # branch
@@ -555,9 +556,10 @@ class Branch(object):
         for (rev_id, merge_depth, revno, end_of_merge) in rev_iter:
             if not clean:
                 if rev_id in whitelist:
-                    rev = self.repository.get_revision(rev_id)
+                    pmap = self.repository.get_parent_map([rev_id])
+                    parents = pmap.get(rev_id, [])
                     whitelist.remove(rev_id)
-                    whitelist.update(rev.parent_ids)
+                    whitelist.update(parents)
                     if merge_depth == 0:
                         # We've reached the mainline, there is nothing left to
                         # filter

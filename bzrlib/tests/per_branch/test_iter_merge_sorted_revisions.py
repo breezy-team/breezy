@@ -134,6 +134,8 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         super(TestIterMergeSortedRevisionsBushyGraph, self).setUp()
         builder = self.make_builder_with_merges('.')
         self.branch = builder.get_branch()
+        self.branch.lock_read()
+        self.addCleanup(self.branch.unlock)
 
     def make_builder_with_merges(self, relpath):
         try:
