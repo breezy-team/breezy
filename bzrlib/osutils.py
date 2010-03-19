@@ -1899,7 +1899,7 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
-def read_bytes_from_socket(sock, report_activity,
+def read_bytes_from_socket(sock, report_activity=None,
         max_read_size=MAX_SOCKET_CHUNK):
     """Read up to max_read_size of bytes from sock and notify of progress.
 
@@ -1921,7 +1921,8 @@ def read_bytes_from_socket(sock, report_activity,
                 continue
             raise
         else:
-            report_activity(len(bytes), 'read')
+            if report_activity is not None:
+                report_activity(len(bytes), 'read')
             return bytes
 
 
@@ -1936,9 +1937,8 @@ def recv_all(socket, count):
     This isn't optimized and is intended mostly for use in testing.
     """
     b = ''
-    reporter = lambda n, rw: None
     while len(b) < count:
-        new = read_bytes_from_socket(socket, reporter, count - len(b))
+        new = read_bytes_from_socket(socket, None, count - len(b))
         if new == '':
             break # eof
         b += new
