@@ -25,13 +25,14 @@ from bzrlib import (
 from bzrlib.tests import per_branch
 
 
-class TestIterMergeSortedRevisions(per_branch.TestCaseWithBranch):
+class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(TestIterMergeSortedRevisions, self).setUp()
-        self.branch = self.make_branch_with_merges('.')
+        super(TestIterMergeSortedRevisionsSimpleGraph, self).setUp()
+        builder = self.make_builder_with_merges('.')
+        self.branch = builder.get_branch()
 
-    def make_branch_with_merges(self, relpath):
+    def make_builder_with_merges(self, relpath):
         try:
             builder = self.make_branch_builder(relpath)
         except (errors.TransportNotPossible, errors.UninitializableFormat):
@@ -43,8 +44,7 @@ class TestIterMergeSortedRevisions(per_branch.TestCaseWithBranch):
         builder.build_snapshot('2', ['1'], [])
         builder.build_snapshot('3', ['2', '1.1.1'], [])
         builder.finish_series()
-        return builder.get_branch()
-
+        return builder
 
     def assertIterRevids(self, expected, *args, **kwargs):
         # We don't care about depths and revnos here, only about returning the
@@ -126,3 +126,62 @@ class TestIterMergeSortedRevisions(per_branch.TestCaseWithBranch):
         self.assertIterRevids(['1.1.1', '3'],
                               stop_revision_id='3', stop_rule='with-merges',
                               direction='forward')
+
+class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
+
+    def setUp(self):
+        super(TestIterMergeSortedRevisionsBushyGraph, self).setUp()
+        builder = self.make_builder_with_merges('.')
+        self.branch = builder.get_branch()
+
+    def make_builder_with_merges(self, relpath):
+        try:
+            builder = self.make_branch_builder(relpath)
+        except (errors.TransportNotPossible, errors.UninitializableFormat):
+            raise tests.TestNotApplicable('format not directly constructable')
+        # 1
+        # |\
+        # | 1.1.1
+        # | /
+        # 2
+        # | \
+        # 3 |
+        # | |
+        # | 2.1.1
+        # | |    \
+        # | 2.1.2 |
+        # | |     |
+        # | |   2.2.1
+        # | |  /
+        # | 2.1.3
+        # |/
+        # 4
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2', ['1', '1.1.1'], [])
+        builder.build_snapshot('2.1.1', ['2'], [])
+        builder.build_snapshot('2.1.2', ['2.1.1'], [])
+        builder.build_snapshot('2.2.1', ['2.1.1'], [])
+        builder.build_snapshot('2.1.3', ['2.1.2', '2.2.1'], [])
+        builder.build_snapshot('3', ['2'], [])
+        builder.build_snapshot('4', ['3', '2.1.3'], [])
+        builder.finish_series()
+        return builder
+
+    def assertIterRevids(self, expected, *args, **kwargs):
+        # We don't care about depths and revnos here, only about returning the
+        # right revids.
+        revids = [ revid for (revid, depth, revno, eom) in
+                   self.branch.iter_merge_sorted_revisions(*args, **kwargs)]
+        self.assertEqual(expected, revids)
+
+    def test_merge_sorted(self):
+        self.assertIterRevids(['4', '2.1.3', '2.2.1', '2.1.2', '2.1.1',
+                               '3', '2', '1.1.1', '1'])
+    def test_merge_sorted_start_at_lower_merge(self):
+        # 3 and 2.1.2 are not part of 2.2.1 ancestry and should not appear
+        self.assertIterRevids(['2.2.1', '2.1.1', '2', '1.1.1', '1'],
+                              start_revision_id='2.2.1',
+                              stop_rule='with-merges')
