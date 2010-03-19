@@ -1591,7 +1591,8 @@ class ShortLogFormatter(LogFormatter):
         if revision.delta is not None:
             # Use the standard status output to display changes
             from bzrlib.delta import report_delta
-            report_delta(to_file, revision.delta, short_status=True, 
+            report_delta(to_file, revision.delta, 
+                         short_status=self.delta_format==1, 
                          show_ids=self.show_ids, indent=indent + offset)
         if revision.diff is not None:
             self.show_diff(self.to_exact_file, revision.diff, '      ')

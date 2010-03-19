@@ -34,10 +34,10 @@ from bzrlib.trace import mutter, warning
 # if known, but only if really going to the terminal (not into a file)
 
 
-def __report_changes(to_file, old, new, specific_files, 
-                     show_short_reporter, show_long_callback, 
-                     short=False, want_unchanged=False, 
-                     want_unversioned=False, show_ids=False):
+def report_changes(to_file, old, new, specific_files, 
+                   show_short_reporter, show_long_callback, 
+                   short=False, want_unchanged=False, 
+                   want_unversioned=False, show_ids=False):
     #TODO document sig
 
     if short:
@@ -137,7 +137,7 @@ def show_tree_status(wt, show_unchanged=None,
             # Reporter used for short outputs
             reporter = _mod_delta._ChangeReporter(output_file=to_file,
                 unversioned_filter=new.is_ignored)
-            __report_changes(to_file, old, new, specific_files, 
+            report_changes(to_file, old, new, specific_files, 
                            reporter, show_long_callback, 
                            short=short, want_unchanged=show_unchanged, 
                            want_unversioned=want_unversioned, show_ids=show_ids)
