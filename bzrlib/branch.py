@@ -543,24 +543,22 @@ class Branch(object):
             for node in rev_iter:
                 yield node
 
+        whitelist = set()
         rev = self.repository.get_revision(rev_id)
         if rev.parent_ids:
-            next_interesting_rev = rev.parent_ids[0]
+            whitelist.update(rev.parent_ids)
         else:
             # This may occur if we start at the first revision of a joined
             # branch
             import pdb; pdb.set_trace() # Need test
-            next_interesting_rev = None
-        current_merge_depth = merge_depth
         for (rev_id, merge_depth, revno, end_of_merge) in rev_iter:
-            if rev_id == next_interesting_rev:
+            if rev_id in whitelist:
                 rev = self.repository.get_revision(rev_id)
-                if rev.parent_ids:
-                    next_interesting_rev = rev.parent_ids[0]
-                else:
-                    next_interesting_rev = None
-                current_merge_depth = merge_depth
-            elif merge_depth < current_merge_depth:
+                whitelist.remove(rev_id)
+                whitelist.update(rev.parent_ids)
+                # FIXME: Once we reach a rev with a *lower* merge_depth we can
+                # stop
+            else:
                 continue
             yield (rev_id, merge_depth, revno, end_of_merge)
 
