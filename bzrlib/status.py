@@ -38,7 +38,31 @@ def report_changes(to_file, old, new, specific_files,
                    show_short_reporter, show_long_callback, 
                    short=False, want_unchanged=False, 
                    want_unversioned=False, show_ids=False):
-    #TODO document sig
+    """Display summary of changes.
+
+    This compares two trees with regards to a list of files, and delegates 
+    the display to underlying elements.
+
+    For short output, it creates an iterator on all changes, and lets a given
+    reporter display these changes.
+
+    For stantard output, it creates a delta of the changes, and forwards it
+    to a callback
+
+    :param to_file: If set, write to this file (default stdout.)
+    :param old: Start tree for the comparison
+    :param end: End tree for the comparison
+    :param specific_files: If set, a list of filenames whose status should be
+        shown.  It is an error to give a filename that is not in the working
+        tree, or in the working inventory or in the basis inventory.
+    :param show_short_reporter: Reporter in charge of display for short output
+    :param show_long_callback: Callback in charge of display for normal output
+    :param short: If True, gives short SVN-style status lines.
+    :param want_unchanged: Deprecated parameter. If set, includes unchanged
+        files.
+    :param show_ids: If set, includes each file's id.
+    :param want_unversioned: If False, only shows versioned files.
+    """
 
     if short:
         changes = new.iter_changes(old, want_unchanged, specific_files,
