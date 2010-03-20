@@ -127,6 +127,7 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
                               stop_revision_id='3', stop_rule='with-merges',
                               direction='forward')
 
+
 class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
 
     def make_branch_builder(self, relpath):
@@ -168,7 +169,10 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         builder.build_snapshot('3', ['2'], [])
         builder.build_snapshot('4', ['3', '2.1.3'], [])
         builder.finish_series()
-        return builder.get_branch()
+        br = builder.get_branch()
+        br.lock_read()
+        self.addCleanup(br.unlock)
+        return br
 
     def make_branch_with_different_depths_merges(self, relpath='.'):
         builder = self.make_branch_builder(relpath)
@@ -211,7 +215,10 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         builder.build_snapshot('4', ['3', '2.1.3'],
                                [])
         builder.finish_series()
-        return builder.get_branch()
+        br = builder.get_branch()
+        br.lock_read()
+        self.addCleanup(br.unlock)
+        return br
 
     def assertIterRevids(self, expected, branch, *args, **kwargs):
         # We don't care about depths and revnos here, only about returning the
@@ -240,6 +247,6 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
                               branch)
         # 3 (and its descendants) and 2.1.2 are not part of 2.2.1 ancestry and
         # should not appear
-        self.assertIterRevids(['2.2.1', '2.1.1', '2', '1.1.1', '1'],
+        self.assertIterRevids(['2.2.1', '2.1.1', '2', '1'],
                               branch, start_revision_id='2.2.1',
                               stop_rule='with-merges')

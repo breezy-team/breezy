@@ -543,25 +543,31 @@ class Branch(object):
             for node in rev_iter:
                 yield node
 
-        rev = self.repository.get_revision(rev_id)
-        if rev.parent_ids:
-            next_interesting_rev = rev.parent_ids[0]
+        clean = False
+        whitelist = set()
+        pmap = self.repository.get_parent_map([rev_id])
+        parents = pmap.get(rev_id, [])
+        if parents:
+            whitelist.update(parents)
         else:
             # This may occur if we start at the first revision of a joined
             # branch
             import pdb; pdb.set_trace() # Need test
-            next_interesting_rev = None
-        current_merge_depth = merge_depth
         for (rev_id, merge_depth, revno, end_of_merge) in rev_iter:
-            if rev_id == next_interesting_rev:
-                rev = self.repository.get_revision(rev_id)
-                if rev.parent_ids:
-                    next_interesting_rev = rev.parent_ids[0]
+            if not clean:
+                if rev_id in whitelist:
+                    pmap = self.repository.get_parent_map([rev_id])
+                    parents = pmap.get(rev_id, [])
+                    whitelist.remove(rev_id)
+                    whitelist.update(parents)
+                    if merge_depth == 0:
+                        # We've reached the mainline, there is nothing left to
+                        # filter
+                        clean = True
                 else:
-                    next_interesting_rev = None
-                current_merge_depth = merge_depth
-            elif merge_depth < current_merge_depth:
-                continue
+                    # A revision that is not part of the ancestry of our
+                    # starting revision.
+                    continue
             yield (rev_id, merge_depth, revno, end_of_merge)
 
     def leave_lock_in_place(self):
