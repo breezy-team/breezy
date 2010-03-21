@@ -1010,7 +1010,16 @@ class Branch(object):
         if parent.startswith('/'):
             parent = urlutils.local_path_to_url(parent.decode('utf8'))
         try:
-            return urlutils.join(self.base[:-1], parent)
+            # Check if the parent location uses the same type of transport
+            # as the branch's base location. If so, we can try joining the
+            # URLs in case the parent is relative, otherwise just return the
+            # parent as is.
+            base_transport = transport.get_transport(self.base)
+            parent_transport = transport.get_transport(parent)
+            if type(base_transport) == type(parent_transport):
+                return urlutils.join(self.base[:-1], parent)
+            else:
+                return parent
         except errors.InvalidURLJoin, e:
             raise errors.InaccessibleParent(parent, self.base)
 
