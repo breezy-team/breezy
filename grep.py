@@ -60,6 +60,12 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
     wt, relpath = WorkingTree.open_containing('.')
     wt.lock_read()
     try:
+        # res_cache is used to cache results for dir grep based on fid.
+        # If the fid is does not change between results, it means that
+        # the result will be the same apart from revno. In such a case
+        # we avoid getting file chunks from repo and grepping. The result
+        # is just printed by replacing old revno with new one.
+        res_cache = {}
 
         # We do an optimization below. For grepping a specific revison
         # We don't need to call _graph_view_revisions which is slow.
@@ -94,10 +100,11 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
 
                 if osutils.isdir(path):
                     path_prefix = path
-                    dir_grep(tree, path, relpath, recursive, line_number,
-                        pattern, compiled_pattern, from_root, eol_marker,
-                        revno, print_revno, include, exclude, verbose,
-                        fixed_string, ignore_case, outf, path_prefix)
+                    res_cache = dir_grep(tree, path, relpath, recursive,
+                        line_number, pattern, compiled_pattern,
+                        from_root, eol_marker, revno, print_revno,
+                        include, exclude, verbose, fixed_string,
+                        ignore_case, outf, path_prefix, res_cache)
                 else:
                     versioned_file_grep(tree, id, '.', path,
                         pattern, compiled_pattern, eol_marker, line_number,
@@ -140,7 +147,11 @@ def _skip_file(include, exclude, path):
 
 def dir_grep(tree, path, relpath, recursive, line_number, pattern,
         compiled_pattern, from_root, eol_marker, revno, print_revno,
-        include, exclude, verbose, fixed_string, ignore_case, outf, path_prefix):
+        include, exclude, verbose, fixed_string, ignore_case, outf,
+        path_prefix, res_cache={}):
+    _revno_pattern = re.compile("\~[0-9.]+:")
+    dir_res = {}
+
     # setup relpath to open files relative to cwd
     rpath = relpath
     if relpath:
@@ -161,7 +172,19 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
 
         if fc == 'V' and fkind == 'file':
             if revno != None:
-                to_grep.append((fid, fp))
+                # If old result is valid, print results immediately.
+                # Otherwise, add file info to to_grep so that the
+                # loop later will get chunks and grep them
+                old_res = res_cache.get(fid)
+                if old_res != None:
+                    res = []
+                    for line in old_res:
+                        s = _revno_pattern.sub('~' + revno + ':', line)
+                        res.append(s)
+                        outf.write(s)
+                    dir_res[fid] = res
+                else:
+                    to_grep.append((fid, (fp, fid)))
             else:
                 # we are grepping working tree.
                 if from_dir == None:
@@ -175,12 +198,14 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                     ignore_case, outf, path_prefix)
 
     if revno != None: # grep versioned files
-        for path, chunks in tree.iter_files_bytes(to_grep):
+        for (path, fid), chunks in tree.iter_files_bytes(to_grep):
             path = _make_display_path(relpath, path)
-            _file_grep(chunks[0], rpath, path, pattern, compiled_pattern,
-                eol_marker, line_number, revno, print_revno, include,
-                exclude, verbose, fixed_string, ignore_case, outf,
-                path_prefix)
+            res = _file_grep(chunks[0], rpath, path, pattern,
+                compiled_pattern, eol_marker, line_number, revno,
+                print_revno, include, exclude, verbose, fixed_string,
+                ignore_case, outf, path_prefix)
+            dir_res[fid] = res
+    return dir_res
 
 def _make_display_path(relpath, path):
     """Return path string relative to user cwd.
@@ -221,6 +246,7 @@ def _path_in_glob_list(path, glob_list):
 def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         line_number, revno, print_revno, include, exclude, verbose,
         fixed_string, ignore_case, outf, path_prefix=None):
+    res = []
 
     pattern = pattern.encode(_user_encoding, 'replace')
     if fixed_string and ignore_case:
@@ -230,7 +256,7 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
     if '\x00' in file_text[:1024]:
         if verbose:
             trace.warning("Binary file '%s' skipped." % path)
-        return
+        return res
 
     if path_prefix and path_prefix != '.':
         # user has passed a dir arg, show that as result prefix
@@ -251,12 +277,16 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
                     line = line.lower()
                 if pattern in line:
                     line = line.decode(_terminal_encoding, 'replace')
-                    outf.write(path + (pfmt % (revno, index+1, line)) + eol_marker)
+                    s = path + (pfmt % (revno, index+1, line)) + eol_marker
+                    res.append(s)
+                    outf.write(s)
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
                     line = line.decode(_terminal_encoding, 'replace')
-                    outf.write(path + (pfmt % (revno, index+1, line)) + eol_marker)
+                    s = path + (pfmt % (revno, index+1, line)) + eol_marker
+                    res.append(s)
+                    outf.write(s)
 
     elif print_revno and not line_number:
 
@@ -267,12 +297,16 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
                     line = line.lower()
                 if pattern in line:
                     line = line.decode(_terminal_encoding, 'replace')
-                    outf.write(path + (pfmt % (revno, line)) + eol_marker)
+                    s = path + (pfmt % (revno, line)) + eol_marker
+                    res.append(s)
+                    outf.write(s)
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
                     line = line.decode(_terminal_encoding, 'replace')
-                    outf.write(path + (pfmt % (revno, line)) + eol_marker)
+                    s = path + (pfmt % (revno, line)) + eol_marker
+                    res.append(s)
+                    outf.write(s)
 
     elif not print_revno and line_number:
 
@@ -283,12 +317,16 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
                     line = line.lower()
                 if pattern in line:
                     line = line.decode(_terminal_encoding, 'replace')
-                    outf.write(path + (pfmt % (index+1, line)) + eol_marker)
+                    s = path + (pfmt % (index+1, line)) + eol_marker
+                    res.append(s)
+                    outf.write(s)
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
                     line = line.decode(_terminal_encoding, 'replace')
-                    outf.write(path + (pfmt % (index+1, line)) + eol_marker)
+                    s = path + (pfmt % (index+1, line)) + eol_marker
+                    res.append(s)
+                    outf.write(s)
 
     else:
 
@@ -299,10 +337,16 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
                     line = line.lower()
                 if pattern in line:
                     line = line.decode(_terminal_encoding, 'replace')
-                    outf.write(path + (pfmt % (line,)) + eol_marker)
+                    s = path + (pfmt % (line,)) + eol_marker
+                    res.append(s)
+                    outf.write(s)
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
                     line = line.decode(_terminal_encoding, 'replace')
-                    outf.write(path + (pfmt % (line,)) + eol_marker)
+                    s = path + (pfmt % (line,)) + eol_marker
+                    res.append(s)
+                    outf.write(s)
+
+    return res
 
