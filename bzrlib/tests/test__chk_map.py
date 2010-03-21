@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,36 +25,9 @@ stuple = StaticTuple
 
 
 def load_tests(standard_tests, module, loader):
-    # parameterize all tests in this module
-    suite = loader.suiteClass()
-    import bzrlib._chk_map_py as py_module
-    scenarios = [('python', {'module': py_module})]
-    if CompiledChkMapFeature.available():
-        import bzrlib._chk_map_pyx as c_module
-        scenarios.append(('C', {'module': c_module}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(CompiledChkMapFeature)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    tests.multiply_tests(standard_tests, scenarios, suite)
+    suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
+        'bzrlib._chk_map_py', 'bzrlib._chk_map_pyx')
     return suite
-
-
-class _CompiledChkMapFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._chk_map_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._chk_map_pyx'
-
-CompiledChkMapFeature = _CompiledChkMapFeature()
 
 
 class TestSearchKeys(tests.TestCase):

@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -82,7 +82,7 @@ cdef object _unknown
 _unknown = None
 
 # We shouldn't just copy this from _dirstate_helpers_pyx
-cdef void* _my_memrchr(void *s, int c, size_t n):
+cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
     cdef char *pos
     cdef char *start

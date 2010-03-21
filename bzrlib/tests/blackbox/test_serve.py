@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,6 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import client, medium
 from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
 from bzrlib.tests import (
-    ParamikoFeature,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
@@ -233,7 +232,7 @@ class TestBzrServe(TestBzrServeBase):
         f = open(log_fname, 'rb')
         content = f.read()
         f.close()
-        self.assertContainsRe(content, 'hpss request: \[')
+        self.assertContainsRe(content, r'hpss request: \[[0-9-]+\]')
 
 
 class TestCmdServeChrooting(TestBzrServeBase):
@@ -288,7 +287,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         return path
 
     def make_test_server(self, base_path='/'):
-        """Make and setUp a BzrServerFactory, backed by a memory transport, and
+        """Make and start a BzrServerFactory, backed by a memory transport, and
         creat '/home/user' in that transport.
         """
         bzr_server = BzrServerFactory(

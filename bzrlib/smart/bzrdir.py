@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -88,8 +88,8 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         try:
             self._bzrdir = BzrDir.open_from_transport(
                 self.transport_from_client_path(path))
-        except errors.NotBranchError:
-            return FailedSmartServerResponse(('nobranch', ))
+        except errors.NotBranchError, e:
+            return FailedSmartServerResponse(('nobranch',))
         return self.do_bzrdir_request(*args)
 
     def _boolean_to_yes_no(self, a_boolean):
@@ -465,8 +465,8 @@ class SmartServerRequestOpenBranch(SmartServerRequestBzrDir):
                 return SuccessfulSmartServerResponse(('ok', ''))
             else:
                 return SuccessfulSmartServerResponse(('ok', reference_url))
-        except errors.NotBranchError:
-            return FailedSmartServerResponse(('nobranch', ))
+        except errors.NotBranchError, e:
+            return FailedSmartServerResponse(('nobranch',))
 
 
 class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
@@ -481,5 +481,39 @@ class SmartServerRequestOpenBranchV2(SmartServerRequestBzrDir):
                 return SuccessfulSmartServerResponse(('branch', format))
             else:
                 return SuccessfulSmartServerResponse(('ref', reference_url))
-        except errors.NotBranchError:
-            return FailedSmartServerResponse(('nobranch', ))
+        except errors.NotBranchError, e:
+            return FailedSmartServerResponse(('nobranch',))
+
+
+class SmartServerRequestOpenBranchV3(SmartServerRequestBzrDir):
+
+    def do_bzrdir_request(self):
+        """Open a branch at path and return the reference or format.
+        
+        This version introduced in 2.1.
+
+        Differences to SmartServerRequestOpenBranchV2:
+          * can return 2-element ('nobranch', extra), where 'extra' is a string
+            with an explanation like 'location is a repository'.  Previously
+            a 'nobranch' response would never have more than one element.
+        """
+        try:
+            reference_url = self._bzrdir.get_branch_reference()
+            if reference_url is None:
+                br = self._bzrdir.open_branch(ignore_fallbacks=True)
+                format = br._format.network_name()
+                return SuccessfulSmartServerResponse(('branch', format))
+            else:
+                return SuccessfulSmartServerResponse(('ref', reference_url))
+        except errors.NotBranchError, e:
+            # Stringify the exception so that its .detail attribute will be
+            # filled out.
+            str(e)
+            resp = ('nobranch',)
+            detail = e.detail
+            if detail:
+                if detail.startswith(': '):
+                    detail = detail[2:]
+                resp += (detail,)
+            return FailedSmartServerResponse(resp)
+

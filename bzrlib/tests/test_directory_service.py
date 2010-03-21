@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ class TestDirectoryLookup(TestCase):
 
     def test_get_transport(self):
         directories.register('foo:', FooService, 'Map foo URLs to http urls')
-        self.addCleanup(lambda: directories.remove('foo:'))
+        self.addCleanup(directories.remove, 'foo:')
         self.assertEqual(FooService.base + 'bar/',
                          get_transport('foo:bar').base)
 

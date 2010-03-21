@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -66,10 +66,10 @@ class UnavailableFTPTestServer(object):
     never called).
     """
 
-    def setUp(self, vfs_server=None):
+    def start_server(self, vfs_server=None):
         pass
 
-    def tearDown(self):
+    def stop_server(self):
         pass
 
     def get_url(self):

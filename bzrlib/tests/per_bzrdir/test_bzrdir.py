@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@ import errno
 from itertools import izip
 import os
 from stat import S_ISDIR
-import sys
 
 import bzrlib.branch
 from bzrlib import (
@@ -248,10 +247,21 @@ class TestBzrDir(TestCaseWithBzrDir):
         try:
             bzrdir.destroy_branch()
         except (errors.UnsupportedOperation, errors.TransportNotPossible):
-            raise TestNotApplicable('Format does not support destroying tree')
+            raise TestNotApplicable('Format does not support destroying branch')
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         bzrdir.create_branch()
         bzrdir.open_branch()
+
+    def test_destroy_colocated_branch(self):
+        branch = self.make_branch('branch')
+        bzrdir = branch.bzrdir
+        try:
+            colo_branch = bzrdir.create_branch('colo')
+        except errors.NoColocatedBranchSupport:
+            raise TestNotApplicable('BzrDir does not do colocated branches')
+        bzrdir.destroy_branch("colo")
+        self.assertRaises(errors.NotBranchError, bzrdir.open_branch, 
+                          "colo")
 
     def test_destroy_repository(self):
         repo = self.make_repository('repository')
@@ -524,7 +534,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -627,7 +637,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -692,7 +702,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -967,7 +977,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -987,7 +997,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_tree.branch)
+                target_branch=referenced_tree.branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1013,7 +1023,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_tree.branch)
+                target_branch=referenced_tree.branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1078,7 +1088,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1104,7 +1114,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1176,6 +1186,13 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
+        # for remote formats, there must be no prior assumption about the
+        # network name to use - it's possible that this may somehow have got
+        # in through an unisolated test though - see
+        # <https://bugs.edge.launchpad.net/bzr/+bug/504102>
+        self.assertEquals(getattr(self.bzrdir_format,
+            '_network_name', None),
+            None)
         # supported formats must be able to init and open
         t = get_transport(self.get_url())
         readonly_t = get_transport(self.get_readonly_url())
@@ -1404,6 +1421,23 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
         self.assertEqual(made_control, made_branch.bzrdir)
 
+    def test_create_colo_branch(self):
+        # a bzrdir can construct a branch and repository for itself.
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            raise TestNotApplicable('Control dir format not supported')
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        try:
+            made_branch = made_control.create_branch("colo")
+        except errors.NoColocatedBranchSupport:
+            raise TestNotApplicable('Colocated branches not supported')
+        self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
+        self.assertEqual(made_control, made_branch.bzrdir)
+
     def test_open_branch(self):
         if not self.bzrdir_format.is_supported():
             # unsupported formats are not loopback testable
@@ -1418,6 +1452,26 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual(made_control, opened_branch.bzrdir)
         self.failUnless(isinstance(opened_branch, made_branch.__class__))
         self.failUnless(isinstance(opened_branch._format, made_branch._format.__class__))
+
+    def test_list_branches(self):
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        made_branch = made_control.create_branch()
+        branches = made_control.list_branches()
+        self.assertEquals(1, len(branches))
+        self.assertEquals(made_branch.base, branches[0].base)
+        try:
+            made_control.destroy_branch()
+        except errors.UnsupportedOperation:
+            pass # Not all bzrdirs support destroying directories
+        else:
+            self.assertEquals([], made_control.list_branches())
 
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
@@ -1790,17 +1844,6 @@ class TestBzrDir(TestCaseWithBzrDir):
 
 class TestBreakLock(TestCaseWithBzrDir):
 
-    def setUp(self):
-        super(TestBreakLock, self).setUp()
-        # we want a UI factory that accepts canned input for the tests:
-        # while SilentUIFactory still accepts stdin, we need to customise
-        # ours
-        self.old_factory = bzrlib.ui.ui_factory
-        self.addCleanup(self.restoreFactory)
-
-    def restoreFactory(self):
-        bzrlib.ui.ui_factory = self.old_factory
-
     def test_break_lock_empty(self):
         # break lock on an empty bzrdir should work silently.
         dir = self.make_bzrdir('.')
@@ -1843,7 +1886,7 @@ class TestBreakLock(TestCaseWithBzrDir):
         thisdir = self.make_bzrdir('this')
         try:
             bzrlib.branch.BranchReferenceFormat().initialize(
-                thisdir, master)
+                thisdir, target_branch=master)
         except errors.IncompatibleFormat:
             return
         unused_repo = thisdir.create_repository()

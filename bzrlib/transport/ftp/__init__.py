@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
 """Implementation of Transport over ftp.
 
 Written by Daniel Silverstone <dsilvers@digital-scurf.org> with serious
@@ -163,9 +164,9 @@ class FtpTransport(ConnectedTransport):
         connection, credentials = self._create_connection(credentials)
         self._set_connection(connection, credentials)
 
-    def _translate_perm_error(self, err, path, extra=None,
+    def _translate_ftp_error(self, err, path, extra=None,
                               unknown_exc=FtpPathError):
-        """Try to translate an ftplib.error_perm exception.
+        """Try to translate an ftplib exception to a bzrlib exception.
 
         :param err: The error to translate into a bzr error
         :param path: The path which had problems
@@ -173,6 +174,9 @@ class FtpTransport(ConnectedTransport):
         :param unknown_exc: If None, we will just raise the original exception
                     otherwise we raise unknown_exc(path, extra=extra)
         """
+        # ftp error numbers are very generic, like "451: Requested action aborted,
+        # local error in processing" so unfortunately we have to match by
+        # strings.
         s = str(err).lower()
         if not extra:
             extra = str(err)
@@ -189,10 +193,12 @@ class FtpTransport(ConnectedTransport):
             or (s.startswith('550 ') and 'unable to rename to' in extra)
             ):
             raise errors.NoSuchFile(path, extra=extra)
-        if ('file exists' in s):
+        elif ('file exists' in s):
             raise errors.FileExists(path, extra=extra)
-        if ('not a directory' in s):
+        elif ('not a directory' in s):
             raise errors.PathError(path, extra=extra)
+        elif 'directory not empty' in s:
+            raise errors.DirectoryNotEmpty(path, extra=extra)
 
         mutter('unable to understand error for path: %s: %s', path, err)
 
@@ -204,17 +210,6 @@ class FtpTransport(ConnectedTransport):
         #       to handle. Consider doing something like that here.
         #raise TransportError(msg='Error for path: %s' % (path,), orig_error=e)
         raise
-
-    def _remote_path(self, relpath):
-        # XXX: It seems that ftplib does not handle Unicode paths
-        # at the same time, medusa won't handle utf8 paths So if
-        # we .encode(utf8) here (see ConnectedTransport
-        # implementation), then we get a Server failure.  while
-        # if we use str(), we get a UnicodeError, and the test
-        # suite just skips testing UnicodePaths.
-        relative = str(urlutils.unescape(relpath))
-        remote_path = self._combine_paths(self._path, relative)
-        return remote_path
 
     def has(self, relpath):
         """Does the target location exist?"""
@@ -329,7 +324,7 @@ class FtpTransport(ConnectedTransport):
                     raise e
                 raise
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, extra='could not store',
+            self._translate_ftp_error(e, abspath, extra='could not store',
                                        unknown_exc=errors.NoSuchFile)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
@@ -358,7 +353,7 @@ class FtpTransport(ConnectedTransport):
             f.mkd(abspath)
             self._setmode(relpath, mode)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath,
+            self._translate_ftp_error(e, abspath,
                 unknown_exc=errors.FileExists)
 
     def open_write_stream(self, relpath, mode=None):
@@ -384,7 +379,7 @@ class FtpTransport(ConnectedTransport):
             f = self._get_FTP()
             f.rmd(abspath)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, unknown_exc=errors.PathError)
+            self._translate_ftp_error(e, abspath, unknown_exc=errors.PathError)
 
     def append_file(self, relpath, f, mode=None):
         """Append the text in the file-like object into the final
@@ -430,7 +425,7 @@ class FtpTransport(ConnectedTransport):
                 self._has_append = False
                 self._fallback_append(relpath, text, mode)
             else:
-                self._translate_perm_error(e, abspath, extra='error appending',
+                self._translate_ftp_error(e, abspath, extra='error appending',
                     unknown_exc=errors.NoSuchFile)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
@@ -483,8 +478,8 @@ class FtpTransport(ConnectedTransport):
     def _rename(self, abs_from, abs_to, f):
         try:
             f.rename(abs_from, abs_to)
-        except ftplib.error_perm, e:
-            self._translate_perm_error(e, abs_from,
+        except (ftplib.error_temp, ftplib.error_perm), e:
+            self._translate_ftp_error(e, abs_from,
                 ': unable to rename to %r' % (abs_to))
 
     def move(self, rel_from, rel_to):
@@ -496,7 +491,7 @@ class FtpTransport(ConnectedTransport):
             f = self._get_FTP()
             self._rename_and_overwrite(abs_from, abs_to, f)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abs_from,
+            self._translate_ftp_error(e, abs_from,
                 extra='unable to rename to %r' % (rel_to,),
                 unknown_exc=errors.PathError)
 
@@ -520,7 +515,7 @@ class FtpTransport(ConnectedTransport):
             mutter("FTP rm: %s", abspath)
             f.delete(abspath)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, 'error deleting',
+            self._translate_ftp_error(e, abspath, 'error deleting',
                 unknown_exc=errors.NoSuchFile)
 
     def external_url(self):
@@ -541,7 +536,7 @@ class FtpTransport(ConnectedTransport):
             try:
                 paths = f.nlst(basepath)
             except ftplib.error_perm, e:
-                self._translate_perm_error(e, relpath,
+                self._translate_ftp_error(e, relpath,
                                            extra='error with list_dir')
             except ftplib.error_temp, e:
                 # xs4all's ftp server raises a 450 temp error when listing an
@@ -590,7 +585,7 @@ class FtpTransport(ConnectedTransport):
             f = self._get_FTP()
             return FtpStatResult(f, abspath)
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, extra='error w/ stat')
+            self._translate_ftp_error(e, abspath, extra='error w/ stat')
 
     def lock_read(self, relpath):
         """Lock the given file for shared (read) access.

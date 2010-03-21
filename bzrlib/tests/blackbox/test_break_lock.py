@@ -60,7 +60,7 @@ class TestBreakLock(ExternalBase):
         local_branch.bind(self.master_branch)
         checkoutdir = bzrlib.bzrdir.BzrDir.create('checkout')
         bzrlib.branch.BranchReferenceFormat().initialize(
-            checkoutdir, local_branch)
+            checkoutdir, target_branch=local_branch)
         self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):

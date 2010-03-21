@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ class _UTF8DirReaderFeature(tests.Feature):
 
 UTF8DirReaderFeature = _UTF8DirReaderFeature()
 
-TermIOSFeature = tests.ModuleAvailableFeature('termios')
+term_ios_feature = tests.ModuleAvailableFeature('termios')
 
 
 def _already_unicode(s):
@@ -82,7 +82,7 @@ def dir_reader_scenarios():
                           dict(_dir_reader_class=_readdir_pyx.UTF8DirReader,
                                _native_to_unicode=_utf8_to_unicode)))
 
-    if test__walkdirs_win32.Win32ReadDirFeature.available():
+    if test__walkdirs_win32.win32_readdir_feature.available():
         try:
             from bzrlib import _walkdirs_win32
             scenarios.append(
@@ -309,7 +309,9 @@ class TestKind(tests.TestCaseInTempDir):
         self.assertEqual("/", osutils.kind_marker(osutils._directory_kind))
         self.assertEqual("@", osutils.kind_marker("symlink"))
         self.assertEqual("+", osutils.kind_marker("tree-reference"))
-        self.assertRaises(errors.BzrError, osutils.kind_marker, "unknown")
+        self.assertEqual("", osutils.kind_marker("fifo"))
+        self.assertEqual("", osutils.kind_marker("socket"))
+        self.assertEqual("", osutils.kind_marker("unknown"))
 
 
 class TestUmask(tests.TestCaseInTempDir):
@@ -989,7 +991,7 @@ class TestChunksToLines(tests.TestCase):
 
     def test_osutils_binding(self):
         from bzrlib.tests import test__chunks_to_lines
-        if test__chunks_to_lines.CompiledChunksToLinesFeature.available():
+        if test__chunks_to_lines.compiled_chunkstolines_feature.available():
             from bzrlib._chunks_to_lines_pyx import chunks_to_lines
         else:
             from bzrlib._chunks_to_lines_py import chunks_to_lines
@@ -1135,14 +1137,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             dirblock[:] = new_dirblock
 
     def _save_platform_info(self):
-        cur_winver = win32utils.winver
-        cur_fs_enc = osutils._fs_enc
-        cur_dir_reader = osutils._selected_dir_reader
-        def restore():
-            win32utils.winver = cur_winver
-            osutils._fs_enc = cur_fs_enc
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
+        self.overrideAttr(win32utils, 'winver')
+        self.overrideAttr(osutils, '_fs_enc')
+        self.overrideAttr(osutils, '_selected_dir_reader')
 
     def assertDirReaderIs(self, expected):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
@@ -1181,14 +1178,14 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test_force_walkdirs_utf8_nt(self):
         # Disabled because the thunk of the whole walkdirs api is disabled.
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         win32utils.winver = 'Windows NT'
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self.assertDirReaderIs(Win32ReadDir)
 
     def test_force_walkdirs_utf8_98(self):
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self._save_platform_info()
         win32utils.winver = 'Windows 98'
         self.assertDirReaderIs(osutils.UnicodeDirReader)
@@ -1345,7 +1342,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEqual(expected_dirblocks, result)
 
     def test__walkdirs_utf8_win32readdir(self):
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         self._save_platform_info()
@@ -1402,7 +1399,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_file(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0file-\xb6'
@@ -1426,7 +1423,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
     def test__walkdirs_utf_win32_find_file_stat_directory(self):
         """make sure our Stat values are valid"""
-        self.requireFeature(test__walkdirs_win32.Win32ReadDirFeature)
+        self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
         self.requireFeature(tests.UnicodeFilenameFeature)
         from bzrlib._walkdirs_win32 import Win32ReadDir
         name0u = u'0dir-\u062c\u0648'
@@ -1581,7 +1578,6 @@ class TestSetUnsetEnv(tests.TestCase):
         def cleanup():
             if 'BZR_TEST_ENV_VAR' in os.environ:
                 del os.environ['BZR_TEST_ENV_VAR']
-
         self.addCleanup(cleanup)
 
     def test_set(self):
@@ -1698,15 +1694,8 @@ class TestDirReader(tests.TestCaseInTempDir):
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)
-
-        # Save platform specific info and reset it
-        cur_dir_reader = osutils._selected_dir_reader
-
-        def restore():
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
-
-        osutils._selected_dir_reader = self._dir_reader_class()
+        self.overrideAttr(osutils,
+                          '_selected_dir_reader', self._dir_reader_class())
 
     def _get_ascii_tree(self):
         tree = [
@@ -1859,10 +1848,7 @@ class TestConcurrency(tests.TestCase):
 
     def setUp(self):
         super(TestConcurrency, self).setUp()
-        orig = osutils._cached_local_concurrency
-        def restore():
-            osutils._cached_local_concurrency = orig
-        self.addCleanup(restore)
+        self.overrideAttr(osutils, '_cached_local_concurrency')
 
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
@@ -1895,12 +1881,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def setUp(self):
         super(TestFailedToLoadExtension, self).setUp()
-        self.saved_failures = osutils._extension_load_failures[:]
-        del osutils._extension_load_failures[:]
-        self.addCleanup(self.restore_failures)
-
-    def restore_failures(self):
-        osutils._extension_load_failures = self.saved_failures
+        self.overrideAttr(osutils, '_extension_load_failures', [])
 
     def test_failure_to_load(self):
         self._try_loading()
@@ -1929,18 +1910,10 @@ class TestFailedToLoadExtension(tests.TestCase):
 class TestTerminalWidth(tests.TestCase):
 
     def replace_stdout(self, new):
-        orig_stdout = sys.stdout
-        def restore():
-            sys.stdout = orig_stdout
-        self.addCleanup(restore)
-        sys.stdout = new
+        self.overrideAttr(sys, 'stdout', new)
 
     def replace__terminal_size(self, new):
-        orig__terminal_size = osutils._terminal_size
-        def restore():
-            osutils._terminal_size = orig__terminal_size
-        self.addCleanup(restore)
-        osutils._terminal_size = new
+        self.overrideAttr(osutils, '_terminal_size', new)
 
     def set_fake_tty(self):
 
@@ -1987,8 +1960,8 @@ class TestTerminalWidth(tests.TestCase):
         self.assertEqual(None, osutils.terminal_width())
 
     def test_no_TIOCGWINSZ(self):
-        self.requireFeature(TermIOSFeature)
-        termios = TermIOSFeature.module
+        self.requireFeature(term_ios_feature)
+        termios = term_ios_feature.module
         # bug 63539 is about a termios without TIOCGWINSZ attribute
         try:
             orig = termios.TIOCGWINSZ
@@ -1996,9 +1969,7 @@ class TestTerminalWidth(tests.TestCase):
             # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
             pass
         else:
-            def restore():
-                termios.TIOCGWINSZ = orig
-            self.addCleanup(restore)
+            self.overrideAttr(termios, 'TIOCGWINSZ')
             del termios.TIOCGWINSZ
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -114,6 +114,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
                 return
 
         self._probe_bzrdir()
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._client)
 
     def _probe_bzrdir(self):
         medium = self._client._medium
@@ -240,12 +243,14 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._ensure_real()
         self._real_bzrdir.destroy_repository()
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
-        real_branch = self._format.get_branch_format().initialize(self)
+        real_branch = self._format.get_branch_format().initialize(self,
+            name=name)
         if not isinstance(real_branch, RemoteBranch):
-            result = RemoteBranch(self, self.find_repository(), real_branch)
+            result = RemoteBranch(self, self.find_repository(), real_branch,
+                                  name=name)
         else:
             result = real_branch
         # BzrDir.clone_on_transport() uses the result of create_branch but does
@@ -257,10 +262,10 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._next_open_branch_result = result
         return result
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch"""
         self._ensure_real()
-        self._real_bzrdir.destroy_branch()
+        self._real_bzrdir.destroy_branch(name=name)
         self._next_open_branch_result = None
 
     def create_workingtree(self, revision_id=None, from_branch=None):
@@ -285,28 +290,40 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
     def _get_branch_reference(self):
         path = self._path_for_remote_call(self._client)
         medium = self._client._medium
-        if not medium._is_remote_before((1, 13)):
+        candidate_calls = [
+            ('BzrDir.open_branchV3', (2, 1)),
+            ('BzrDir.open_branchV2', (1, 13)),
+            ('BzrDir.open_branch', None),
+            ]
+        for verb, required_version in candidate_calls:
+            if required_version and medium._is_remote_before(required_version):
+                continue
             try:
-                response = self._call('BzrDir.open_branchV2', path)
-                if response[0] not in ('ref', 'branch'):
-                    raise errors.UnexpectedSmartServerResponse(response)
-                return response
+                response = self._call(verb, path)
             except errors.UnknownSmartMethod:
-                medium._remember_remote_is_before((1, 13))
-        response = self._call('BzrDir.open_branch', path)
-        if response[0] != 'ok':
+                if required_version is None:
+                    raise
+                medium._remember_remote_is_before(required_version)
+            else:
+                break
+        if verb == 'BzrDir.open_branch':
+            if response[0] != 'ok':
+                raise errors.UnexpectedSmartServerResponse(response)
+            if response[1] != '':
+                return ('ref', response[1])
+            else:
+                return ('branch', '')
+        if response[0] not in ('ref', 'branch'):
             raise errors.UnexpectedSmartServerResponse(response)
-        if response[1] != '':
-            return ('ref', response[1])
-        else:
-            return ('branch', '')
+        return response
 
     def _get_tree_branch(self):
         """See BzrDir._get_tree_branch()."""
         return None, self.open_branch()
 
-    def open_branch(self, _unsupported=False, ignore_fallbacks=False):
-        if _unsupported:
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
+        if unsupported:
             raise NotImplementedError('unsupported flag support not implemented yet.')
         if self._next_open_branch_result is not None:
             # See create_branch for details.
@@ -317,14 +334,14 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if response[0] == 'ref':
             # a branch reference, use the existing BranchReference logic.
             format = BranchReferenceFormat()
-            return format.open(self, _found=True, location=response[1],
-                ignore_fallbacks=ignore_fallbacks)
+            return format.open(self, name=name, _found=True,
+                location=response[1], ignore_fallbacks=ignore_fallbacks)
         branch_format_name = response[1]
         if not branch_format_name:
             branch_format_name = None
         format = RemoteBranchFormat(network_name=branch_format_name)
         return RemoteBranch(self, self.find_repository(), format=format,
-            setup_stacking=not ignore_fallbacks)
+            setup_stacking=not ignore_fallbacks, name=name)
 
     def _open_repo_v1(self, path):
         verb = 'BzrDir.find_repository'
@@ -407,9 +424,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         """Return the path to be used for this bzrdir in a remote call."""
         return client.remote_path_from_transport(self.root_transport)
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         self._ensure_real()
-        return self._real_bzrdir.get_branch_transport(branch_format)
+        return self._real_bzrdir.get_branch_transport(branch_format, name=name)
 
     def get_repository_transport(self, repository_format):
         self._ensure_real()
@@ -1225,10 +1242,11 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         return self._real_repository.add_inventory(revid, inv, parents)
 
     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
-                               parents):
+            parents, basis_inv=None, propagate_caches=False):
         self._ensure_real()
         return self._real_repository.add_inventory_by_delta(basis_revision_id,
-            delta, new_revision_id, parents)
+            delta, new_revision_id, parents, basis_inv=basis_inv,
+            propagate_caches=propagate_caches)
 
     def add_revision(self, rev_id, rev, inv=None, config=None):
         self._ensure_real()
@@ -1493,13 +1511,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         return self._real_repository.get_signature_text(revision_id)
 
     @needs_read_lock
-    def get_inventory_xml(self, revision_id):
+    def _get_inventory_xml(self, revision_id):
         self._ensure_real()
-        return self._real_repository.get_inventory_xml(revision_id)
-
-    def deserialise_inventory(self, revision_id, xml):
-        self._ensure_real()
-        return self._real_repository.deserialise_inventory(revision_id, xml)
+        return self._real_repository._get_inventory_xml(revision_id)
 
     def reconcile(self, other=None, thorough=False):
         self._ensure_real()
@@ -2021,26 +2035,29 @@ class RemoteBranchFormat(branch.BranchFormat):
     def network_name(self):
         return self._network_name
 
-    def open(self, a_bzrdir, ignore_fallbacks=False):
-        return a_bzrdir.open_branch(ignore_fallbacks=ignore_fallbacks)
+    def open(self, a_bzrdir, name=None, ignore_fallbacks=False):
+        return a_bzrdir.open_branch(name=name, 
+            ignore_fallbacks=ignore_fallbacks)
 
-    def _vfs_initialize(self, a_bzrdir):
+    def _vfs_initialize(self, a_bzrdir, name):
         # Initialisation when using a local bzrdir object, or a non-vfs init
         # method is not available on the server.
         # self._custom_format is always set - the start of initialize ensures
         # that.
         if isinstance(a_bzrdir, RemoteBzrDir):
             a_bzrdir._ensure_real()
-            result = self._custom_format.initialize(a_bzrdir._real_bzrdir)
+            result = self._custom_format.initialize(a_bzrdir._real_bzrdir,
+                name)
         else:
             # We assume the bzrdir is parameterised; it may not be.
-            result = self._custom_format.initialize(a_bzrdir)
+            result = self._custom_format.initialize(a_bzrdir, name)
         if (isinstance(a_bzrdir, RemoteBzrDir) and
             not isinstance(result, RemoteBranch)):
-            result = RemoteBranch(a_bzrdir, a_bzrdir.find_repository(), result)
+            result = RemoteBranch(a_bzrdir, a_bzrdir.find_repository(), result,
+                                  name=name)
         return result
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, name=None):
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
@@ -2052,20 +2069,23 @@ class RemoteBranchFormat(branch.BranchFormat):
             network_name = reference_format.network_name()
         # Being asked to create on a non RemoteBzrDir:
         if not isinstance(a_bzrdir, RemoteBzrDir):
-            return self._vfs_initialize(a_bzrdir)
+            return self._vfs_initialize(a_bzrdir, name=name)
         medium = a_bzrdir._client._medium
         if medium._is_remote_before((1, 13)):
-            return self._vfs_initialize(a_bzrdir)
+            return self._vfs_initialize(a_bzrdir, name=name)
         # Creating on a remote bzr dir.
         # 2) try direct creation via RPC
         path = a_bzrdir._path_for_remote_call(a_bzrdir._client)
+        if name is not None:
+            # XXX JRV20100304: Support creating colocated branches
+            raise errors.NoColocatedBranchSupport(self)
         verb = 'BzrDir.create_branch'
         try:
             response = a_bzrdir._call(verb, path, network_name)
         except errors.UnknownSmartMethod:
             # Fallback - use vfs methods
             medium._remember_remote_is_before((1, 13))
-            return self._vfs_initialize(a_bzrdir)
+            return self._vfs_initialize(a_bzrdir, name=name)
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         # Turn the response into a RemoteRepository object.
@@ -2079,7 +2099,7 @@ class RemoteBranchFormat(branch.BranchFormat):
                 a_bzrdir._client)
         remote_repo = RemoteRepository(repo_bzrdir, repo_format)
         remote_branch = RemoteBranch(a_bzrdir, remote_repo,
-            format=format, setup_stacking=False)
+            format=format, setup_stacking=False, name=name)
         # XXX: We know this is a new branch, so it must have revno 0, revid
         # NULL_REVISION. Creating the branch locked would make this be unable
         # to be wrong; here its simply very unlikely to be wrong. RBC 20090225
@@ -2112,7 +2132,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     """
 
     def __init__(self, remote_bzrdir, remote_repository, real_branch=None,
-        _client=None, format=None, setup_stacking=True):
+        _client=None, format=None, setup_stacking=True, name=None):
         """Create a RemoteBranch instance.
 
         :param real_branch: An optional local implementation of the branch
@@ -2124,6 +2144,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         :param setup_stacking: If True make an RPC call to determine the
             stacked (or not) status of the branch. If False assume the branch
             is not stacked.
+        :param name: Colocated branch name
         """
         # We intentionally don't call the parent class's __init__, because it
         # will try to assign to self.tags, which is a property in this subclass.
@@ -2149,6 +2170,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # Fill out expected attributes of branch for bzrlib API users.
         self._clear_cached_state()
         self.base = self.bzrdir.root_transport.base
+        self._name = name
         self._control_files = None
         self._lock_mode = None
         self._lock_token = None
@@ -2219,7 +2241,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                     'to use vfs implementation')
             self.bzrdir._ensure_real()
             self._real_branch = self.bzrdir._real_bzrdir.open_branch(
-                ignore_fallbacks=self._real_ignore_fallbacks)
+                ignore_fallbacks=self._real_ignore_fallbacks, name=self._name)
             if self.repository._real_repository is None:
                 # Give the remote repository the matching real repo.
                 real_repo = self._real_branch.repository
@@ -2833,8 +2855,13 @@ def _translate_error(err, **context):
         raise NoSuchRevision(find('branch'), err.error_args[0])
     elif err.error_verb == 'nosuchrevision':
         raise NoSuchRevision(find('repository'), err.error_args[0])
-    elif err.error_tuple == ('nobranch',):
-        raise errors.NotBranchError(path=find('bzrdir').root_transport.base)
+    elif err.error_verb == 'nobranch':
+        if len(err.error_args) >= 1:
+            extra = err.error_args[0]
+        else:
+            extra = None
+        raise errors.NotBranchError(path=find('bzrdir').root_transport.base,
+            detail=extra)
     elif err.error_verb == 'norepository':
         raise errors.NoRepositoryPresent(find('bzrdir'))
     elif err.error_verb == 'LockContention':

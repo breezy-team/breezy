@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -103,7 +103,10 @@ class RevisionTree(tree.Tree):
 
     def get_file_mtime(self, file_id, path=None):
         ie = self._inventory[file_id]
-        revision = self._repository.get_revision(ie.revision)
+        try:
+            revision = self._repository.get_revision(ie.revision)
+        except errors.NoSuchRevision:
+            raise errors.FileTimestampUnavailable(self.id2path(file_id))
         return revision.timestamp
 
     def is_executable(self, file_id, path=None):

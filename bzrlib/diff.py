@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd.
+# Copyright (C) 2005-2010 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +31,7 @@ import time
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
-    commands,
+    cmdline,
     errors,
     osutils,
     patiencediff,
@@ -453,7 +453,10 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
 
 def _patch_header_date(tree, file_id, path):
     """Returns a timestamp suitable for use in a patch header."""
-    mtime = tree.get_file_mtime(file_id, path)
+    try:
+        mtime = tree.get_file_mtime(file_id, path)
+    except errors.FileTimestampUnavailable:
+        mtime = 0
     return timestamp.format_patch_date(mtime)
 
 
@@ -680,7 +683,7 @@ class DiffFromTool(DiffPath):
     @classmethod
     def from_string(klass, command_string, old_tree, new_tree, to_file,
                     path_encoding='utf-8'):
-        command_template = commands.shlex_split_unicode(command_string)
+        command_template = cmdline.split(command_string)
         if '@' not in command_string:
             command_template.extend(['@old_path', '@new_path'])
         return klass(command_template, old_tree, new_tree, to_file,
@@ -747,7 +750,10 @@ class DiffFromTool(DiffPath):
             source.close()
         if not allow_write:
             osutils.make_readonly(full_path)
-        mtime = tree.get_file_mtime(file_id)
+        try:
+            mtime = tree.get_file_mtime(file_id)
+        except errors.FileTimestampUnavailable:
+            mtime = 0
         os.utime(full_path, (mtime, mtime))
         return full_path
 

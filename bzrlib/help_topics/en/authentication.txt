@@ -58,10 +58,10 @@ our own less secure method.
 against a host. But, by using ``.htaccess`` files, for example, it is possible
 to define several (``user, realm, password``) for a given ``host``. So what is
 really needed is (``user``, ``password``, ``host``, ``path``). The ``realm`` is
-not taken into account in the defitions, but will displayed if bzr prompts you
-for a password.
+not taken into account in the definitions, but will displayed if bzr prompts
+you for a password.
 
-``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitely
+``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitly
 specifying the appropriate port.
 
 To take all schemes into account, the password will be deduced from a set of
@@ -110,10 +110,8 @@ Multiple definitions can be provided and, for a given URL, bzr will select a
 File format
 -----------
 
-The general rules for `configuration files`_ apply except for the variable
-policies.
-
-.. _configuration files: #configuration-settings
+The general rules for :doc:`configuration files <configuration-help>`
+apply except for the variable policies.
 
 Each section describes an authentication definition.
 
@@ -167,7 +165,7 @@ some exceptions::
 Source hosting provider
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-In the shp.net (fictious) domain, each project has its own site::
+In the shp.net (fictitious) domain, each project has its own site::
 
         [shpnet domain]
         # we use sftp, but ssh is the scheme used for authentication

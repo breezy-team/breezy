@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import collections
 from cStringIO import StringIO
 import struct
 import sys
+import thread
 import threading
 import time
 
@@ -1147,12 +1148,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
         self._headers = {'Software version': bzrlib.__version__}
         if 'hpss' in debug.debug_flags:
-            # python 2.6 introduced 'ident' as a nice small integer to
-            # represent a thread. But it doesn't exist in 2.4/2.5
-            cur_thread = threading.currentThread()
-            self._thread_id = getattr(cur_thread, 'ident', None)
-            if self._thread_id is None:
-                self._thread_id = cur_thread.getName()
+            self._thread_id = thread.get_ident()
             self._response_start_time = None
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):

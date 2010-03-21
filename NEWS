@@ -5,80 +5,780 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.1.0rc1 (not released yet)
-###############################
+bzr 2.2.0b1
+###########
 
-:Codename: mysterioso
-:2.1.0rc1: 2009-01-06 (expected)
+:2.2.0b1: Not released yet
 
 Compatibility Breaks
 ********************
 
+* Deleted very old hidden commands ``versionedfile-list``,
+  ``weave-plan-merge``, ``weave-merge-text``.
+  (Martin Pool)
+
+* ``Repository.get_inventory_sha1()`` and ``Repository.get_revision_xml()`` 
+  have been removed. (Jelmer Vernooij)
+
+* ``Repository.get_revision_inventory()`` has been removed in favor of
+  ``Repository.get_inventory()``. (Jelmer Vernooij)
+
+* All test servers have been moved out of the bzrlib.transport hierarchy to
+  bzrlib.tests.test_server *except* for MemoryServer, ChrootServer and
+  PathFilteringServer. ``bzrlib`` users may encounter test failures that can
+  be fixed by updating the related imports from ``bzrlib.transport.xxx`` to
+  ``bzrlib.tests.test_server``.
+  (Vincent Ladeuil)
+
+* ``BranchReferenceFormat.initialize()`` now takes an optional name argument
+  as its second parameter, for consistency with the initialize() method of
+  other formats. (Jelmer Vernooij)
+
 New Features
 ************
 
-* The ``suppress_warnings`` configuration option has been introduced and
-  accept the ``format_deprecation`` value to disable the corresponding
-  warning for repositories. It can be set to in either ``bazaar.conf``,
-  ``locations.conf`` or ``branch.conf``.
+* ``bzr export`` now takes an optional argument ``--per-file-timestamps``
+  to set file mtimes to the last timestamp of the last revision in which
+  they were changed rather than the current time. (Jelmer Vernooij)
+
+* If the Apport crash-reporting tool is available, bzr crashes are now
+  stored into the ``/var/crash`` apport spool directory, and the user is
+  invited to report them to the developers from there, either
+  automatically or by running ``apport-bug``.  No information is sent
+  without specific permission from the user.  (Martin Pool, #515052)
+
+* Parsing of command lines, for example in ``diff --using``, no longer
+  treats backslash as an escape character on Windows.   (Gordon Tyler,
+  #392248)
+
+* Plugins can be disabled by defining ``BZR_DISABLE_PLUGINS`` as
+  a list of plugin names separated by ':' (';' on windows).
+  (Vincent Ladeuil, #411413)
+
+* Tree-shape conflicts can be resolved by providing ``--take-this`` and
+  ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
+  as resolved is still accessible via the ``--done`` default action.
+  (Vincent Ladeuil)
+
+* Merges can be proposed on Launchpad with the new lp-propose-merge command.
+  (Aaron Bentley, Jonathan Lange)
+
+Bug Fixes
+*********
+
+* Added docstring for ``Tree.iter_changes``
+  (John Arbash Meinel, #304182)
+
+* Allow exporting a single file using ``bzr export``.
+  (Michal Junák, #511987)
+
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
+* Avoid infinite recursion when probing for apport.
+  (Vincent Ladeuil, #516934)
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* ``bzr add`` will not add conflict related files unless explicitly required.
+  (Vincent Ladeuil, #322767, #414589)
+
+* ``bzr dump-btree`` now works on ``*.cix`` and ``*.six`` files.  Those
+  indices do not have reference lists, so ``dump-btree`` will simply show
+  ``None`` instead.  (Andrew Bennetts, #488607)
+
+* ``bzr help`` will no longer trigger the get_missing_command hook when
+  doing a topic lookup. This avoids prompting (like 'no command plugins/loom,
+  did you mean log?') when getting help. In future we may trigger the hook 
+  deliberately when no help topics match from any help index.
+  (Robert Collins, #396261)
+
+* ``bzr log -n0 -r..A.B.C`` should not crash but just consider the None
+  revspec as representing the first revision of the branch.
+  (Vincent Ladeuil, #519862)
+
+* ``bzr remove-tree`` can now remove multiple working trees.
+  (Jared Hance, Andrew Bennetts, #253137)
+
+* ``bzr resolve --take-this`` and ``--take-other`` now correctly renames
+  the kept file on content conflicts where one side deleted the file.
+  (Vincent Ladeuil, #529968)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
+
+* ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
+  of ``backup.bzr``. This directory is ignored by bzr commands such as
+  ``add``.
+  (Parth Malwankar, #335033, #300001)
+
+* Correctly interpret "451 Rename/move failure: Directory not empty" from
+  ftp servers while trying to take a lock.
+  (Martin Pool, #528722)
+
+* DirStateRevisionTree.kind() was returning wrong result when 'kind'
+  changes occured between the workingtree and one of its parents.
+  (Vincent Ladeuil, #533437)
+
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
+* Network transfer amounts and rates are now displayed in SI units according
+  to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
+  (Gordon Tyler, #514399)
+
+* Support kind markers for socket and fifo filesystem objects. This
+  prevents ``bzr status --short`` from crashing when those files are
+  present.  (John Arbash Meinel, #303275)
+
+* ``bzr mkdir DIR`` will not create DIR unless DIR's parent is a versioned
+   directory. (Parth Malwankar, #138600)
+
+* SSH child processes will now ignore SIGQUIT on nix systems so breaking into
+  the debugger won't kill the session.
+  (Martin <gzlist@googlemail.com>, #162502)
+
+* Allow additional arguments to
+  ``RemoteRepository.add_inventory_by_delta()``. (Jelmer Vernooij, #532631)
+
+* Tolerate patches with leading noise in ``bzr-handle-patch``.
+  (Toshio Kuratomi, Martin Pool, #502076)
+
+API Changes
+***********
+
+* ``bzrlib.merge_directive._BaseMergeDirective`` has been renamed to 
+  ``bzrlib.merge_directive.BaseMergeDirective`` and is now public.
+  (Jelmer Vernooij)
+
+* ``BranchFormat.initialize`` now takes an optional ``name`` of the colocated 
+  branch to create. (Jelmer Vernooij)
+
+* ``BzrDir.get_branch_transport`` now takes an optional ``name`` of the 
+  colocated branch to open. (Jelmer Vernooij)
+
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
+
+* New ``bzrlib.initialize`` is recommended for programs using bzrlib to 
+  run when starting up; it sets up several things that previously needed
+  to be done separately.
+  (Martin Pool, #507710)
+
+* Exporters now support a ``per_file_timestamps`` argument to write out the 
+  timestamp of the commit in which a file revision was introduced.
+  (Jelmer Vernooij)
+
+* New method ``BzrDir.list_branches()`` that returns a sequence of branches 
+  present in a control directory. (Jelmer Vernooij)
+
+* New method ``Repository.get_known_graph_ancestry()``. 
+  (Jelmer Vernooij, #495502)
+
+* New transport methods ``readlink``, ``symlink`` and ``hardlink``.
+  (Neil Santos)
+
+* Remove unused ``CommandFailed`` exception.
+  (Martin Pool)
+
+Internals
+*********
+
+* ``bzrlib.branchbuilder.BranchBuilder.build_snapshot`` now accepts a
+  ``message_callback`` in the same way that commit does. (Robert Collins)
+
+* ``bzrlib.builtins.Commit.run`` raises ``bzrlib.errors.BoundBranchOutOfDate``
+  rather than ``bzrlib.errors.BzrCommandError`` when the bound branch is out
+  of date. (Gary van der Merwe)
+
+* ``bzrlib.commands.run_bzr`` is more extensible: callers can supply the
+  functions to load or disable plugins if they wish to use a different
+  plugin mechanism; the --help, --version and no-command name code paths
+  now use the generic pluggable command lookup infrastructure.
+  (Robert Collins)
+
+* ``bzrlib.errors.BoundBranchOutOfDate`` has a new field ``extra_help``
+  which can be set to add extra help to the error. (Gary van der Merwe)
+
+* The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
+  ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
+  (Jelmer Vernooij)
+
+Testing
+*******
+
+* bzr now has a ``.testr.conf`` file in its source tree configured
+  appropriately for running tests with Testrepository
+  (``https://launchpad.net/testrepository``). (Robert Collins)
+
+* Documentation about testing with ``subunit`` has been tweaked.
+  (Robert Collins)
+
+* New ``bzrlib.tests.test_import_tariff`` can make assertions about what
+  Python modules are loaded, to guard against startup time or library
+  dependency regressions.
+  (Martin Pool)
+
+* Stop sending apport crash files to ``.cache`` in the directory from
+  which ``bzr selftest`` was run.  (Martin Pool, #422350)
+
+* Tests no longer fail if "close() called during concurrent
+  operation on the same file object" occurs when closing the log file
+  (which can happen if a thread tries to write to the log file at the
+  wrong moment).  An warning will be written to ``stderr`` when this
+  happens, and another warning will be written if the log file could not
+  be closed after retrying 100 times.  (Andrew Bennetts, #531746)
+
+bzr 2.1.1
+#########
+
+:2.1.1: not released yet
+
+Bug Fixes
+*********
+
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
+
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
+
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+
+* Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
+  problems importing bzrlib from a non-main thread.
+  (Elliot Murphy, #521989)
+
+* Standardize the error handling when creating a new ``StaticTuple``
+  (problems will raise TypeError). (Matt Nordhoff, #457979)
+
+* Warn if pyrex is too old to compile the new ``SimpleSet`` and
+  ``StaticTuple`` extensions, rather than having the build fail randomly.
+  (John Arbash Meinel, #449776)
+
+
+Documentation
+*************
+
+* Added a link to the Desktop Guide. (Ian Clatworthy)
+
+* Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
+* Drop Google Analytics from the core docs as they caused problems
+  in the CHM files. (Ian Clatworthy, #502010)
+
+API Changes
+***********
+
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
+
+
+bzr 2.1.0
+#########
+
+:Codename: Strasbourg
+:2.1.0: 2010-02-11
+
+This release marks our second long-term-stable series. The Bazaar team
+has decided that we will continue to make bugfix-only 2.0.x and 2.1.x
+releases, along with 2.2 development releases. 
+
+This is a fairly incremental update, focusing on polish and bugfixing.
+There are no changes for supported disk formats. Key updates include
+reduced memory consumption for many operations, a new per-file merge
+hook, ignore patterns can now include '!' to exclude files, globbing
+support for all commands on Windows, and support for addressing home
+directories via ``bzr+ssh://host/~/`` syntax.
+
+Users are encouraged to upgrade from the 2.0 stable series.
+
+Bug Fixes
+*********
+
+* Don't require testtools to use sftp.
+  (Vincent Ladeuil, #516183)
+
+* Fix "AttributeError in Inter1and2Helper" during fetch.
+  (Martin Pool, #513432)
+
+* ``bzr update`` performs the two merges in a more logical order and will stop
+  when it encounters conflicts.  
+  (Gerard Krol, #113809)
+
+* Fix ``log`` to better check ancestors even if merged revisions are involved.
+  (Vincent Ladeuil, #476293)
+
+* Give a better error message when doing ``bzr bind`` in an already bound
+  branch.  (Neil Martinsen-Burrell, #513063)
+
+* Ignore ``KeyError`` from ``remove_index`` during ``_abort_write_group``
+  in a pack repository, which can happen harmlessly if the abort occurs during
+  finishing the write group.  Also use ``bzrlib.cleanup`` so that any
+  other errors that occur while aborting the individual packs won't be
+  hidden by secondary failures when removing the corresponding indices.
+  (Andrew Bennetts, #423015)
+
+* Set the mtime of files exported to a directory by ``bzr export`` all to
+  the same value to avoid confusing ``make`` and other date-based build
+  systems. (Robert Collins, #515631)
+
+Improvements
+************
+
+* Fetching into experimental formats will now print a warning. (Jelmer
+  Vernooij)
+
+API Changes
+***********
+
+* ``Repository.deserialise_inventory`` has been renamed to 
+  ``Repository._deserialise_inventory`` to indicate it is private.
+  (Jelmer Vernooij)
+
+* ``Repository.get_inventory_xml`` has been renamed to 
+  ``Repository._get_inventory_xml`` to indicate it is private. 
+  (Jelmer Vernooij)
+
+* ``Repository.serialise_inventory`` has been renamed to 
+  ``Repository._serialise_inventory`` to indicate it is private.
+
+* Using the ``bzrlib.chk_map`` module from within multiple threads at the
+  same time was broken due to race conditions with a module level page
+  cache. This shows up as a KeyError in the ``bzrlib.lru_cache`` code with
+  ``bzrlib.chk_map`` in the backtrace, and can be triggered without using
+  the same high level objects such as ``bzrlib.repository.Repository``
+  from different threads. chk_map now uses a thread local cache which may
+  increase memory pressure on processes using threads.
+  (Robert Collins, John Arbash Meinel, #514090)
+
+* The new ``merge_file_content`` should now be ok with tests to avoid
+  regressions.
+  (Vincent Ladeuil, #515597)
+
+Internals
+*********
+
+* Use ``bzrlib.cleanup`` rather than less robust ``try``/``finally``
+  blocks in several places in ``bzrlib.merge``.  This avoids masking prior
+  errors when errors like ``ImmortalPendingDeletion`` occur during cleanup
+  in ``do_merge``.
+  (Andrew Bennetts, #517275)
+
+API Changes
+***********
+
+* The ``remove_index`` method of
+  ``bzrlib.repofmt.pack_repo.AggregateIndex`` no longer takes a ``pack``
+  argument.  This argument was always ignored.
+  (Andrew Bennetts, #423015)
+
+bzr 2.1.0rc2
+############
+
+:Codename: after the bubbles
+:2.1.0rc2: 2010-01-29
+
+This is a quick-turn-around to update a small issue with our new per-file
+merge hook. We expect no major changes from this to the final 2.1.0.
+
+API Changes
+***********
+
+* The new ``merge_file_content`` hook point has been altered to provide a
+  better API where state for extensions can be stored rather than the
+  too-simple function based approach. This fixes a performance regression
+  where branch configuration would be parsed per-file during merge. As
+  part of this the included news_merger has been refactored into a base
+  helper class ``bzrlib.merge.ConfigurableFileMerger``.
+  (Robert Collins, John Arbash Meinel, #513822)
+
+
+bzr 2.1.0rc1
+############
+
+:Codename: the 'new' stable
+:2.1.0rc1: 2009-01-21
+
+This is the first stable release candidate for Bazaar's 2.1 series. From
+this point onwards, the 2.1 series will be considered stable (as the 2.0
+series) and only bugfixes are expected to be incorporated. The dozen or so
+bugfixes in the 2.0.4 release are also included in this release (along
+with more than 15 more bugfixes). Some of the interesting features are
+support for per-file merge hooks, ``bzr unshelve --preview``, support
+for using ! in ignore files to exclude files from being ignored, a small
+memory leak was squashed, and many ``ObjectNotLocked`` errors were fixed.
+This looks to be a very good start for a new stable series.
+
+
+New Features
+************
+
+* Add bug information to log output when available.
+  (Neil Martinsen-Burrell, Guillermo Gonzalez, #251729)
+
+* Added ``merge_file_content`` hook point to ``Merger``, allowing plugins
+  to register custom merge logic, e.g. to provide smarter merging for
+  particular files.
+
+* Bazaar now includes the ``news_merge`` plugin.  It is disabled by
+  default, to enable it add a ``news_merge_files`` option to your
+  configuration.  Consult ``bzr help news_merge`` for more information.
+  (Andrew Bennetts)
+  
+* ``bzr branch`` now takes a ``--bind`` option. This lets you
+  branch and bind all in one command. (Ian Clatworthy)
+
+* ``bzr switch`` now takes a ``--revision`` option, to allow switching to
+  a specific revision of a branch. (Daniel Watkins, #183559)
+
+* ``bzr unshelve --preview`` can now be used to show how a patch on the
+  shelf would be applied to the working tree.
+  (Guilherme Salgado, #308122)
+
+* ``bzr update`` now takes a ``--revision`` argument. This lets you
+  change the revision of the working tree to any revision in the
+  ancestry of the current or master branch. (Matthieu Moy, Mark Hammond,
+  Martin Pool, #45719)
+
+* ``-Dbytes`` can now be used to display the total number of bytes
+  transferred for the current command. This information is always logged
+  to ``.bzr.log`` for later inspection. (John Arbash Meinel)
+
+* New ignore patterns.  Patterns prefixed with '!' are exceptions to 
+  ignore patterns and take precedence over regular ignores.  Such 
+  exceptions are used to specify files that should be versioned which 
+  would otherwise be ignored.  Patterns prefixed with '!!' act as regular 
+  ignore patterns, but have highest precedence, even over the '!' 
+  exception patterns. (John Whitley, #428031)
+
+* The ``supress_warnings`` configuration option has been introduced to disable
+  various warnings (it currently only supports the ``format_deprecation``
+  warning). The new option can be set in any of the following locations:
+  ``bazaar.conf``, ``locations.conf`` and/or ``branch.conf``.
   (Ted Gould, Matthew Fuller, Vincent Ladeuil)
 
 Bug Fixes
 *********
 
+* Always show a message if an OS error occurs while trying to run a
+  user-specified commit message editor.
+  (Martin Pool, #504842)
+
+* ``bzr diff`` will now use the epoch when it is unable to determine 
+  the timestamp of a file, if the revision it was introduced in is a
+  ghost. (Jelmer Vernooij, #295611)
+
+* ``bzr switch -b`` can now create branches that are located using directory
+  services such as ``lp:``, even when the branch name doesn't contain a
+  '/'.  (Neil Martinsen-Burrell, #495263)
+
 * ``bzr unshelve`` has improved messages about what it is doing.
   (Neil Martinsen-Burrell, #496917)
+
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Fix "Too many concurrent requests" in reconcile when network connection
+  fails.  (Andrew Bennetts, #503878)
+
+* Fixed a side effect mutation of ``RemoteBzrDirFormat._network_name``
+  that caused some tests to fail when run in a non-default order.
+  Probably no user impact.  (Martin Pool, #504102)
+
+* Fixed ``ObjectNotLocked`` error in ``bzr cat -rbranch:../foo FILE``.
+  (Andrew Bennetts, #506274)
+
+* FTP transports support Unicode paths by encoding/decoding them as utf8.
+  (Vincent Ladeuil, #472161)
 
 * Listen to the SIGWINCH signal to update the terminal width.
   (Vincent Ladeuil, #316357)
 
+* Progress bars are now hidden when ``--quiet`` is given.
+  (Martin Pool, #320035)
+
+* ``SilentUIFactory`` now supports ``make_output_stream`` and discards
+  whatever is written to it.  This un-breaks some plugin tests that
+  depended on this behaviour.
+  (Martin Pool, #499757)
+
+* When operations update the working tree, all affected files should end
+  up with the same mtime. (eg. when versioning a generated file, if you
+  update the source and the generated file together, the generated file
+  should appear up-to-date.)
+  (John Arbash Meinel, Martin <gzlist>, #488724)
+
 Improvements
 ************
+
+* Added ``add_cleanup`` and ``cleanup_now`` to ``bzrlib.command.Command``.
+  All the builtin commands now use ``add_cleanup`` rather than
+  ``try``/``finally`` blocks where applicable as it is simpler and more
+  robust.  (Andrew Bennetts)
+
+* All except a small number of storage formats are now hidden, making
+  the help for numerous commands far more digestible. (Ian Clatworthy)
+
+* Attempts to open a shared repository as a branch (e.g. ``bzr branch
+  path/to/repo``) will now include "location is a repository" as a hint in
+  the error message.  (Brian de Alwis, Andrew Bennetts, #440952)
+
+* Push will now inform the user when they are trying to push to a foreign 
+  VCS for which roundtripping is not supported, and will suggest them to 
+  use dpush. (Jelmer Vernooij)
+
+* The version of bzr being run is now written to the log file.
+  (__monty__, #257170)
+
+* Transport network activity indicator is shown more of the time when
+  Bazaar is doing network IO.
+  (Martin Pool)
 
 Documentation
 *************
 
+* Add documentation on creating merges with more than one parent.
+  (Neil Martinsen-Burrell, #481526)
+
+* Better explain the --uncommitted option of merge.
+  (Neil Martinsen-Burrell, #505088)
+
+* Improve discussion of pending merges in the documentation for
+  ``revert``.  (Neil Martinsen-Burrell, #505093)
+
+* Improved help for ``bzr send``. 
+  (Martin Pool, Bojan Nikolic)
+
+* There is a System Administrator's Guide in ``doc/en/admin-guide``,
+  including discussions of installation, relevant plugins, security and 
+  backup. (Neil Martinsen-Burrell)
+
+* The ``conflicts`` help topic has been renamed to ``conflict-types``.
+  (Ian Clatworthy)
+
+* The User Reference is now presented as a series of topics.
+  Many of the included topics have link and format tweaks applied.
+  (Ian Clatworthy)
+
 API Changes
 ***********
+
+* Added ``cachedproperty`` decorator to ``bzrlib.decorators``.
+  (Andrew Bennetts)
+
+* Many test features were renamed from ``FooFeature`` to ``foo_feature``
+  to be consistent with instances being lower case and classes being
+  CamelCase. For the features that were more likely to be used, we added a
+  deprecation thunk, but not all. (John Arbash Meinel)
+
+* Merger classes (such as ``Merge3Merger``) now expect a ``this_branch``
+  parameter in their constructors, and provide ``this_branch`` as an
+  attribute. (Andrew Bennetts)
+  
+* The Branch hooks pre_change_branch_tip no longer masks exceptions raised
+  by plugins - the original exceptions are now preserved. (Robert Collins)
+
+* The Transport ``Server.tearDown`` method is now renamed to
+  ``stop_server`` and ``setUp`` to ``start_server`` for consistency with
+  our normal naming pattern, and to avoid confusion with Python's
+  ``TestCase.tearDown``.  (Martin Pool)
+
+* ``WorkingTree.update`` implementations must now accept a ``revision``
+  parameter.
 
 Internals
 *********
 
- * New method ``Repository.get_known_graph_ancestry()``. 
-   (Jelmer Vernooij, #495502)
+* Added ``BzrDir.open_branchV3`` smart server request, which can receive
+  a string of details (such as "location is a repository") as part of a
+  ``nobranch`` response.  (Andrew Bennetts, #440952)
+  
+* New helper osutils.UnicodeOrBytesToBytesWriter which encodes unicode
+  objects but passes str objects straight through. This is used for
+  selftest but may be useful for diff and other operations that generate
+  mixed output. (Robert Collins)
+
+* New exception ``NoRoundtrippingSupport``, for use by foreign branch 
+  plugins. (Jelmer Vernooij)
 
 Testing
 *******
 
-bzr 2.0.4 (not released yet)
-############################
+* ``bzrlib.tests.permute_for_extension`` is a helper that simplifies
+  running all tests in the current module, once against a pure python
+  implementation, and once against an extension (pyrex/C) implementation.
+  It can be used to dramatically simplify the implementation of
+  ``load_tests``.  (John Arbash Meinel)
 
-:Codename: template
-:2.0.4: ???
+* ``bzrlib.tests.TestCase`` now subclasses ``testtools.testcase.TestCase``.
+  This permits features in testtools such as getUniqueInteger and
+  getUniqueString to be used. Because of this, testtools version 0.9.2 or
+  newer is now a dependency to run bzr selftest. Running with versions of
+  testtools less than 0.9.2 will cause bzr to error while loading the test
+  suite. (Robert Collins)
 
-Compatibility Breaks
-********************
+* Shell-like tests now support the command "mv" for moving files.  The
+  syntax for ``mv file1 file2``, ``mv dir1 dir2`` and ``mv file dir`` is
+  supported.  (Neil Martinsen-Burrell)
 
-New Features
-************
+* The test progress bar no longer distinguishes tests that 'errored' from
+  tests that 'failed' - they're all just failures.
+  (Martin Pool)
+
+
+bzr 2.0.5
+#########
+
+:Codename:
+:2.0.5: NOT RELEASED YET
 
 Bug Fixes
 *********
 
-Improvements
-************
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Cope with the lockdir ``held/info`` file being empty, which seems to
+  happen fairly often if the process is suddenly interrupted while taking
+  a lock.
+  (Martin Pool, #185103)
+
+* Handle renames correctly when there are files or directories that 
+  differ only in case.  (Chris Jones, Martin Pool, #368931)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
+
+* If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
+  error, report that error rather than failing with an unhelpful
+  ``UnboundLocalError``.
+  (Andrew Bennetts, #423563)
+
+* Running ``bzr`` command without any arguments now shows bzr
+  version number along with rest of the help text.
+  (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
 
 Documentation
 *************
 
-API Changes
-***********
+* Added ``location-alias`` help topic.
+  (Andrew Bennetts, #337834)
 
-Internals
+bzr 2.0.4
+#########
+
+:Codename: smooth sailing
+:2.0.4: 2010-01-21
+
+The fourth bugfix-only release in the 2.0 series contains more than a
+dozen bugfixes relative to 2.0.3. The primary focus is on handling
+interruptions and concurrent operations more cleanly, there is also a fair
+improvement to ``bzr export`` when exporting a remote branch.
+
+
+Bug Fixes
 *********
+
+* ``bzr annotate`` on another branch with ``-r branch:...`` no longer
+  fails with an ``ObjectNotLocked`` error.  (Andrew Bennetts, #496590)
+
+* ``bzr export dir`` now requests all file content as a record stream,
+  rather than requsting the file content one file-at-a-time. This can make
+  exporting over the network significantly faster (54min => 9min in one
+  case). (John Arbash Meinel, #343218)
+
+* ``bzr serve`` no longer slowly leaks memory. The compiled
+  ``bzrlib.bencode.Encoder()`` class was using ``__del__`` to cleanup and
+  free resources, and it should have been using ``__dealloc__``.
+  This will likely have an impact on any other process that is serving for
+  an extended period of time.  (John Arbash Meinel, #494406)
+
+* Check for SIGINT (Ctrl-C) and other signals immediately if ``readdir``
+  returns ``EINTR`` by calling ``PyErr_CheckSignals``.  This affected the
+  optional ``_readdir_pyx`` extension.  (Andrew Bennetts, #495023)
+
+* Concurrent autopacks will no longer lose a newly created pack file.
+  There was a race condition, where if the reload happened at the right
+  time, the second packer would forget the name of the newly added pack
+  file. (John Arbash Meinel, Gareth White, #507566)
+
+* Give a clearer message if the lockdir disappears after being apparently
+  successfully taken.  (Martin Pool, #498378)
+
+* Give a warning when fetching between repositories (local or remote) with
+  sufficiently different formats that the content will need to be
+  serialized (ie ``InterDifferingSerializer`` or ``inventory-deltas``), so
+  the user has a clue that upgrading could make it faster.
+  (Martin Pool, #456077)
+
+* If we fail to open ``~/.bzr.log`` write a clear message to stderr rather
+  than using ``warning()``. The log file is opened before logging is set
+  up, and it leads to very confusing: 'no handlers for "bzr"' messages for
+  users, rather than something nicer.
+  (John Arbash Meinel, Barry Warsaw, #503886)
+
+* Refuse to build with any Pyrex 0.9.4 release, as they have known bugs.
+  (Martin Pool, John Arbash Meinel, #449372)
+
+* ``setup.py bdist_rpm`` now properly finds extra files needed for the
+  build. (there is still the distutils bug
+  http://bugs.python.org/issue644744) (Joe Julian, #175839)
+
+* The 2a format wasn't properly restarting autopacks when something
+  changed underneath it (like another autopack). Now concurrent
+  autopackers will properly succeed. (John Arbash Meinel, #495000)
+
+* ``TreeTransform`` can now handle when a delta says that the file id for
+  the tree root changes. Rather than trying to rename your working
+  directory, or failing early saying that you can't have multiple
+  tree roots. This also fixes revert, update, and pull when the root id
+  changes.  (John Arbash Meinel, #494269, #504390)
+
+* ``_update_current_block`` no longer suppresses exceptions, so ^C at just
+  the right time will get propagated, rather than silently failing to move
+  the block pointer. (John Arbash Meinel, Gareth White, #495023)
 
 Testing
 *******
+
+* We have a new ``test_source`` that ensures all pyrex ``cdef`` functions
+  handle exceptions somehow. (Possibly by setting ``# cannot_raise``
+  rather than an ``except ?:`` clause.) This should help prevent bugs like
+  bug #495023. (John Arbash Meinel)
 
 
 bzr 2.1.0b4
@@ -140,7 +840,7 @@ Bug Fixes
   and issues a warning.
   (Gioele Barabucci, #73073)
 
-* ``bzr ignore /`` no longer causes an IndexError. (Gorder Tyler, #456036)
+* ``bzr ignore /`` no longer causes an IndexError. (Gorden Tyler, #456036)
 
 * ``bzr log -n0 -rN`` should not return revisions beyond its merged revisions.
   (#325618, #484109, Marius Kruger)
@@ -322,6 +1022,8 @@ Bug Fixes
 
 * Fix for shell completion and short options.  (Benoît PIERRE)
 
+* Fix ``bzr --profile-imports`` with Python 2.6.  (Martin Pool)
+
 * Hooks daughter classes should always call the base constructor.
   (Alexander Belchenko, Vincent Ladeuil, #389648) 
 
@@ -388,6 +1090,9 @@ Testing
 
 * ``--parallel=fork`` is now compatible with --subunit.
   (Robert Collins, Vincent Ladeuil, #419776)
+
+* Reporting of failures shows test ids not descriptions and thus shows
+  parameterised tests correctly. (Robert Collins)
 
 * TestNotApplicable is now handled within the TestCase.run method rather
   than being looked for within ``ExtendedTestResult.addError``. This
@@ -11473,37 +12178,5 @@ Enhancements
   diff, status, etc.
 
 
-bzr ?.?.? (not released yet)
-############################
-
-:Codename: template
-:2.0.2: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
-
-
 ..
-   vim: tw=74 ft=rst ff=unix
+   vim: tw=74 ft=rst ff=unix encoding=utf-8

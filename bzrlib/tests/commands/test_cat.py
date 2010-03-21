@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,15 +25,9 @@ class TestCat(TestCaseWithConnectionHookedTransport):
 
     def setUp(self):
         super(TestCat, self).setUp()
-
-        def restore_stdout():
-            sys.stdout = self._stdout_orig
-
         # Redirect sys.stdout as this is what cat uses
         self.outf = StringIOWrapper()
-        self._stdout_orig = sys.stdout
-        sys.stdout = self.outf
-        self.addCleanup(restore_stdout)
+        self.overrideAttr(sys, 'stdout', self.outf)
 
     def test_cat(self):
         # FIXME: sftp raises ReadError instead of NoSuchFile when probing for
@@ -50,7 +44,7 @@ class TestCat(TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_cat()
-        cmd.run(self.get_url('branch/foo'))
+        cmd.run_direct(self.get_url('branch/foo'))
         self.assertEquals(1, len(self.connections))
         self.assertEquals('foo', self.outf.getvalue())
 

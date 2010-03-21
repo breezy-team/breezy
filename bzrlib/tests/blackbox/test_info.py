@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,22 +25,21 @@ from bzrlib import (
     errors,
     info,
     osutils,
+    tests,
     upgrade,
     urlutils,
     )
-from bzrlib.osutils import format_date
-from bzrlib.tests import TestSkipped, MemoryServer
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.transport import memory
 
 
-class TestInfo(ExternalBase):
+class TestInfo(tests.TestCaseWithTransport):
 
     def setUp(self):
-        ExternalBase.setUp(self)
-        self._repo_strings = "2a or development-subtree"
+        super(TestInfo, self).setUp()
+        self._repo_strings = "2a"
 
     def test_info_non_existing(self):
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         location = self.get_url()
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
@@ -127,7 +126,7 @@ Repository:
         self.assertEqual('', err)
         tree1.commit('commit one')
         rev = branch1.repository.get_revision(branch1.revision_history()[0])
-        datestring_first = format_date(rev.timestamp, rev.timezone)
+        datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Branch standalone with push location
         branch2 = branch1.bzrdir.sprout('branch').open_branch()
@@ -213,8 +212,8 @@ In the working tree:
          0 added
          0 removed
          0 renamed
-         1 unknown
-         0 ignored
+         0 unknown
+         1 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -315,7 +314,7 @@ Repository:
         tree1.add('b')
         tree1.commit('commit two')
         rev = branch1.repository.get_revision(branch1.revision_history()[-1])
-        datestring_last = format_date(rev.timestamp, rev.timezone)
+        datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
 
         # Out of date branched standalone branch will not be detected
         out, err = self.run_bzr('info -v branch')
@@ -381,8 +380,8 @@ In the working tree:
          0 added
          0 removed
          0 renamed
-         1 unknown
-         0 ignored
+         0 unknown
+         1 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -569,7 +568,7 @@ Repository:
         tree2.add('a')
         tree2.commit('commit one')
         rev = repo.get_revision(branch2.revision_history()[0])
-        datestring_first = format_date(rev.timestamp, rev.timezone)
+        datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: %s)
@@ -688,7 +687,7 @@ Repository:
 
         # Out of date lightweight checkout
         rev = repo.get_revision(branch1.revision_history()[-1])
-        datestring_last = format_date(rev.timestamp, rev.timezone)
+        datestring_last = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
 """Lightweight checkout (format: %s)
@@ -844,7 +843,7 @@ Repository:
         tree1.add('a')
         tree1.commit('commit one')
         rev = repo.get_revision(branch1.revision_history()[0])
-        datestring_first = format_date(rev.timestamp, rev.timezone)
+        datestring_first = osutils.format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info -v repo/branch1')
         self.assertEqualDiff(
 """Repository tree (format: knit)
@@ -1229,7 +1228,8 @@ Repository:
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
         lco_dir = bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
-        branch.BranchReferenceFormat().initialize(lco_dir, co_branch)
+        branch.BranchReferenceFormat().initialize(lco_dir,
+            target_branch=co_branch)
         lco_dir.create_workingtree()
         lco_tree = lco_dir.open_workingtree()
 

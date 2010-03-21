@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -167,13 +167,13 @@ class Branch(object):
         """
         control = bzrdir.BzrDir.open(base, _unsupported,
                                      possible_transports=possible_transports)
-        return control.open_branch(_unsupported)
+        return control.open_branch(unsupported=_unsupported)
 
     @staticmethod
-    def open_from_transport(transport, _unsupported=False):
+    def open_from_transport(transport, name=None, _unsupported=False):
         """Open the branch rooted at transport"""
         control = bzrdir.BzrDir.open_from_transport(transport, _unsupported)
-        return control.open_branch(_unsupported)
+        return control.open_branch(name=name, unsupported=_unsupported)
 
     @staticmethod
     def open_containing(url, possible_transports=None):
@@ -217,9 +217,9 @@ class Branch(object):
     def _get_fallback_repository(self, url):
         """Get the repository we fallback to at url."""
         url = urlutils.join(self.base, url)
-        a_bzrdir = bzrdir.BzrDir.open(url,
+        a_branch = Branch.open(url,
             possible_transports=[self.bzrdir.root_transport])
-        return a_bzrdir.open_branch().repository
+        return a_branch.repository
 
     def _get_tags_bytes(self):
         """Get the bytes of a serialised tags dict.
@@ -1102,15 +1102,7 @@ class Branch(object):
         params = ChangeBranchTipParams(
             self, old_revno, new_revno, old_revid, new_revid)
         for hook in hooks:
-            try:
-                hook(params)
-            except errors.TipChangeRejected:
-                raise
-            except Exception:
-                exc_info = sys.exc_info()
-                hook_name = Branch.hooks.get_hook_name(hook)
-                raise errors.HookFailed(
-                    'pre_change_branch_tip', hook_name, exc_info)
+            hook(params)
 
     @needs_write_lock
     def update(self):
@@ -1324,7 +1316,8 @@ class Branch(object):
         if lightweight:
             format = self._get_checkout_format()
             checkout = format.initialize_on_transport(t)
-            from_branch = BranchReferenceFormat().initialize(checkout, self)
+            from_branch = BranchReferenceFormat().initialize(checkout, 
+                target_branch=self)
         else:
             format = self._get_checkout_format()
             checkout_branch = bzrdir.BzrDir.create_branch_convenience(
@@ -1441,14 +1434,14 @@ class BranchFormat(object):
         return not (self == other)
 
     @classmethod
-    def find_format(klass, a_bzrdir):
+    def find_format(klass, a_bzrdir, name=None):
         """Return the format for the branch object in a_bzrdir."""
         try:
-            transport = a_bzrdir.get_branch_transport(None)
+            transport = a_bzrdir.get_branch_transport(None, name=name)
             format_string = transport.get_bytes("format")
             return klass._formats[format_string]
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='branch')
 
@@ -1490,20 +1483,21 @@ class BranchFormat(object):
         """Return the short format description for this format."""
         raise NotImplementedError(self.get_format_description)
 
-    def _initialize_helper(self, a_bzrdir, utf8_files, lock_type='metadir',
-                           set_format=True):
+    def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
+                           lock_type='metadir', set_format=True):
         """Initialize a branch in a bzrdir, with specified files
 
         :param a_bzrdir: The bzrdir to initialize the branch in
         :param utf8_files: The files to create as a list of
             (filename, content) tuples
+        :param name: Name of colocated branch to create, if any
         :param set_format: If True, set the format with
             self.get_format_string.  (BzrBranch4 has its format set
             elsewhere)
         :return: a branch in this format
         """
         mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
-        branch_transport = a_bzrdir.get_branch_transport(self)
+        branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         lock_map = {
             'metadir': ('lock', lockdir.LockDir),
             'branch4': ('branch-lock', lockable_files.TransportLock),
@@ -1530,10 +1524,13 @@ class BranchFormat(object):
         finally:
             if lock_taken:
                 control_files.unlock()
-        return self.open(a_bzrdir, _found=True)
+        return self.open(a_bzrdir, name, _found=True)
 
-    def initialize(self, a_bzrdir):
-        """Create a branch of this format in a_bzrdir."""
+    def initialize(self, a_bzrdir, name=None):
+        """Create a branch of this format in a_bzrdir.
+        
+        :param name: Name of the colocated branch to create.
+        """
         raise NotImplementedError(self.initialize)
 
     def is_supported(self):
@@ -1569,10 +1566,11 @@ class BranchFormat(object):
         """
         raise NotImplementedError(self.network_name)
 
-    def open(self, a_bzrdir, _found=False, ignore_fallbacks=False):
+    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False):
         """Return the branch object for a_bzrdir
 
         :param a_bzrdir: A BzrDir that contains a branch.
+        :param name: Name of colocated branch to open
         :param _found: a private parameter, do not use it. It is used to
             indicate if format probing has already be done.
         :param ignore_fallbacks: when set, no fallback branches will be opened
@@ -1742,12 +1740,12 @@ class BzrBranchFormat4(BranchFormat):
         """See BranchFormat.get_format_description()."""
         return "Branch format 4"
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, name=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files,
+        return self._initialize_helper(a_bzrdir, utf8_files, name=name,
                                        lock_type='branch4', set_format=False)
 
     def __init__(self):
@@ -1758,7 +1756,7 @@ class BzrBranchFormat4(BranchFormat):
         """The network name for this format is the control dirs disk label."""
         return self._matchingbzrdir.get_format_string()
 
-    def open(self, a_bzrdir, _found=False, ignore_fallbacks=False):
+    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False):
         """See BranchFormat.open()."""
         if not _found:
             # we are being called directly and must probe.
@@ -1766,6 +1764,7 @@ class BzrBranchFormat4(BranchFormat):
         return BzrBranch(_format=self,
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
+                         name=name,
                          _repository=a_bzrdir.open_repository())
 
     def __str__(self):
@@ -1786,24 +1785,25 @@ class BranchFormatMetadir(BranchFormat):
         """
         return self.get_format_string()
 
-    def open(self, a_bzrdir, _found=False, ignore_fallbacks=False):
+    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False):
         """See BranchFormat.open()."""
         if not _found:
-            format = BranchFormat.find_format(a_bzrdir)
+            format = BranchFormat.find_format(a_bzrdir, name=name)
             if format.__class__ != self.__class__:
                 raise AssertionError("wrong format %r found for %r" %
                     (format, self))
         try:
-            transport = a_bzrdir.get_branch_transport(None)
+            transport = a_bzrdir.get_branch_transport(None, name=name)
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
             return self._branch_class()(_format=self,
                               _control_files=control_files,
+                              name=name,
                               a_bzrdir=a_bzrdir,
                               _repository=a_bzrdir.find_repository(),
                               ignore_fallbacks=ignore_fallbacks)
         except errors.NoSuchFile:
-            raise errors.NotBranchError(path=transport.base)
+            raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
 
     def __init__(self):
         super(BranchFormatMetadir, self).__init__()
@@ -1838,12 +1838,12 @@ class BzrBranchFormat5(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 5"
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, name=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files)
+        return self._initialize_helper(a_bzrdir, utf8_files, name)
 
     def supports_tags(self):
         return False
@@ -1871,13 +1871,13 @@ class BzrBranchFormat6(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 6"
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, name=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
                       ('branch.conf', ''),
                       ('tags', ''),
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files)
+        return self._initialize_helper(a_bzrdir, utf8_files, name)
 
     def make_tags(self, branch):
         """See bzrlib.branch.BranchFormat.make_tags()."""
@@ -1901,14 +1901,14 @@ class BzrBranchFormat8(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 8"
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, name=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
                       ('branch.conf', ''),
                       ('tags', ''),
                       ('references', '')
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files)
+        return self._initialize_helper(a_bzrdir, utf8_files, name)
 
     def __init__(self):
         super(BzrBranchFormat8, self).__init__()
@@ -1937,13 +1937,13 @@ class BzrBranchFormat7(BzrBranchFormat8):
     This format was introduced in bzr 1.6.
     """
 
-    def initialize(self, a_bzrdir):
+    def initialize(self, a_bzrdir, name=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
                       ('branch.conf', ''),
                       ('tags', ''),
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files)
+        return self._initialize_helper(a_bzrdir, utf8_files, name)
 
     def _branch_class(self):
         return BzrBranch7
@@ -1991,19 +1991,19 @@ class BranchReferenceFormat(BranchFormat):
         transport = a_bzrdir.get_branch_transport(None)
         location = transport.put_bytes('location', to_branch.base)
 
-    def initialize(self, a_bzrdir, target_branch=None):
+    def initialize(self, a_bzrdir, name=None, target_branch=None):
         """Create a branch of this format in a_bzrdir."""
         if target_branch is None:
             # this format does not implement branch itself, thus the implicit
             # creation contract must see it as uninitializable
             raise errors.UninitializableFormat(self)
         mutter('creating branch reference in %s', a_bzrdir.transport.base)
-        branch_transport = a_bzrdir.get_branch_transport(self)
+        branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
             target_branch.bzrdir.root_transport.base)
         branch_transport.put_bytes('format', self.get_format_string())
         return self.open(
-            a_bzrdir, _found=True,
+            a_bzrdir, name, _found=True,
             possible_transports=[target_branch.bzrdir.root_transport])
 
     def __init__(self):
@@ -2016,17 +2016,18 @@ class BranchReferenceFormat(BranchFormat):
         def clone(to_bzrdir, revision_id=None,
             repository_policy=None):
             """See Branch.clone()."""
-            return format.initialize(to_bzrdir, a_branch)
+            return format.initialize(to_bzrdir, target_branch=a_branch)
             # cannot obey revision_id limits when cloning a reference ...
             # FIXME RBC 20060210 either nuke revision_id for clone, or
             # emit some sort of warning/error to the caller ?!
         return clone
 
-    def open(self, a_bzrdir, _found=False, location=None,
+    def open(self, a_bzrdir, name=None, _found=False, location=None,
              possible_transports=None, ignore_fallbacks=False):
         """Return the branch that the branch reference in a_bzrdir points at.
 
         :param a_bzrdir: A BzrDir that contains a branch.
+        :param name: Name of colocated branch to open, if any
         :param _found: a private parameter, do not use it. It is used to
             indicate if format probing has already be done.
         :param ignore_fallbacks: when set, no fallback branches will be opened
@@ -2037,7 +2038,7 @@ class BranchReferenceFormat(BranchFormat):
         :param possible_transports: An optional reusable transports list.
         """
         if not _found:
-            format = BranchFormat.find_format(a_bzrdir)
+            format = BranchFormat.find_format(a_bzrdir, name=name)
             if format.__class__ != self.__class__:
                 raise AssertionError("wrong format %r found for %r" %
                     (format, self))
@@ -2045,7 +2046,8 @@ class BranchReferenceFormat(BranchFormat):
             location = self.get_reference(a_bzrdir)
         real_bzrdir = bzrdir.BzrDir.open(
             location, possible_transports=possible_transports)
-        result = real_bzrdir.open_branch(ignore_fallbacks=ignore_fallbacks)
+        result = real_bzrdir.open_branch(name=name, 
+            ignore_fallbacks=ignore_fallbacks)
         # this changes the behaviour of result.clone to create a new reference
         # rather than a copy of the content of the branch.
         # I did not use a proxy object because that needs much more extensive
@@ -2097,17 +2099,20 @@ class BzrBranch(Branch, _RelockDebugMixin):
     :ivar repository: Repository for this branch.
     :ivar base: The url of the base directory for this branch; the one
         containing the .bzr directory.
+    :ivar name: Optional colocated branch name as it exists in the control
+        directory.
     """
 
     def __init__(self, _format=None,
-                 _control_files=None, a_bzrdir=None, _repository=None,
-                 ignore_fallbacks=False):
+                 _control_files=None, a_bzrdir=None, name=None,
+                 _repository=None, ignore_fallbacks=False):
         """Create new branch object at a particular location."""
         if a_bzrdir is None:
             raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
         self._base = self.bzrdir.transport.clone('..').base
+        self.name = name
         # XXX: We should be able to just do
         #   self.base = self.bzrdir.root_transport.base
         # but this does not quite work yet -- mbp 20080522
@@ -2120,7 +2125,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
         Branch.__init__(self)
 
     def __str__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.base)
+        if self.name is None:
+            return '%s(%r)' % (self.__class__.__name__, self.base)
+        else:
+            return '%s(%r,%r)' % (self.__class__.__name__, self.base, self.name)
 
     __repr__ = __str__
 

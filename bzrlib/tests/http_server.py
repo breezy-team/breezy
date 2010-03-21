@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ import urllib
 import urlparse
 
 from bzrlib import transport
+from bzrlib.tests import test_server
 from bzrlib.transport import local
 
 
@@ -318,7 +319,7 @@ class TestingHTTPServerMixin:
         self.test_case_server = test_case_server
         self._home_dir = test_case_server._home_dir
 
-    def tearDown(self):
+    def stop_server(self):
          """Called to clean-up the server.
 
          Since the server may be (surely is, even) in a blocking listen, we
@@ -347,7 +348,7 @@ class TestingHTTPServerMixin:
              # 'Socket is not connected' can also occur on OSX, with a
              # "regular" ENOTCONN (when something went wrong during test case
              # setup leading to self.setUp() *not* being called but
-             # self.tearDown() still being called -- vila20081106
+             # self.stop_server() still being called -- vila20081106
              if not len(e.args) or e.args[0] not in (errno.ENOTCONN, 10057):
                  raise
          # Let the server properly close the socket
@@ -521,8 +522,8 @@ class HttpServer(transport.Server):
         """Capture Server log output."""
         self.logs.append(format % args)
 
-    def setUp(self, backing_transport_server=None):
-        """See bzrlib.transport.Server.setUp.
+    def start_server(self, backing_transport_server=None):
+        """See bzrlib.transport.Server.start_server.
 
         :param backing_transport_server: The transport that requests over this
             protocol should be forwarded to. Note that this is currently not
@@ -530,8 +531,9 @@ class HttpServer(transport.Server):
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        if not (backing_transport_server is None or \
-                isinstance(backing_transport_server, local.LocalURLServer)):
+        if not (backing_transport_server is None
+                or isinstance(backing_transport_server,
+                              test_server.LocalURLServer)):
             raise AssertionError(
                 "HTTPServer currently assumes local transport, got %s" % \
                 backing_transport_server)
@@ -557,9 +559,8 @@ class HttpServer(transport.Server):
         self._http_starting.release()
         self.logs = []
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        self._httpd.tearDown()
+    def stop_server(self):
+        self._httpd.stop_server()
         self._http_running = False
         # We don't need to 'self._http_thread.join()' here since the thread is
         # a daemonic one and will be garbage collected anyway. Joining just

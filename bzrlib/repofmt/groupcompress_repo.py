@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,6 @@ from bzrlib import (
     knit,
     osutils,
     pack,
-    remote,
     revision as _mod_revision,
     trace,
     ui,
@@ -353,7 +352,8 @@ class GCCHKPacker(Packer):
         """Build a VersionedFiles instance on top of this group of packs."""
         index_name = index_name + '_index'
         index_to_pack = {}
-        access = knit._DirectPackAccess(index_to_pack)
+        access = knit._DirectPackAccess(index_to_pack,
+                                        reload_func=self._reload_func)
         if for_write:
             # Use new_pack
             if self.new_pack is None:
@@ -704,10 +704,11 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
         # packs
-        result = self._save_pack_names(clear_obsolete_packs=True)
-        # Move the old packs out of the way now they are no longer referenced.
-        for revision_count, packs in pack_operations:
-            self._obsolete_packs(packs)
+        to_be_obsoleted = []
+        for _, packs in pack_operations:
+            to_be_obsoleted.extend(packs)
+        result = self._save_pack_names(clear_obsolete_packs=True,
+                                       obsolete_packs=to_be_obsoleted)
         return result
 
 
@@ -880,7 +881,7 @@ class CHKInventoryRepository(KnitPackRepository):
             if basis_tree is not None:
                 basis_tree.unlock()
 
-    def deserialise_inventory(self, revision_id, bytes):
+    def _deserialise_inventory(self, revision_id, bytes):
         return inventory.CHKInventory.deserialise(self.chk_bytes, bytes,
             (revision_id,))
 
@@ -902,7 +903,7 @@ class CHKInventoryRepository(KnitPackRepository):
     def _iter_inventory_xmls(self, revision_ids, ordering):
         # Without a native 'xml' inventory, this method doesn't make sense.
         # However older working trees, and older bundles want it - so we supply
-        # it allowing get_inventory_xml to work. Bundles currently use the
+        # it allowing _get_inventory_xml to work. Bundles currently use the
         # serializer directly; this also isn't ideal, but there isn't an xml
         # iteration interface offered at all for repositories. We could make
         # _iter_inventory_xmls be part of the contract, even if kept private.

@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -279,7 +279,8 @@ def apply_delta(source_bytes, delta_bytes):
 
 
 cdef unsigned char *_decode_copy_instruction(unsigned char *bytes,
-    unsigned char cmd, unsigned int *offset, unsigned int *length) nogil:
+    unsigned char cmd, unsigned int *offset,
+    unsigned int *length) nogil: # cannot_raise
     """Decode a copy instruction from the next few bytes.
 
     A copy instruction is a variable number of bytes, so we will parse the

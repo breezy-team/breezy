@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,25 +24,12 @@ from bzrlib import (
     )
 
 
-class _Win32ReadDirFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._walkdirs_win32
-        except ImportError:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return 'bzrlib._Win32ReadDir'
-
-Win32ReadDirFeature = _Win32ReadDirFeature()
+win32_readdir_feature = tests.ModuleAvailableFeature('bzrlib._walkdirs_win32')
 
 
 class TestWin32Finder(tests.TestCaseInTempDir):
 
-    _test_needs_features = [Win32ReadDirFeature]
+    _test_needs_features = [win32_readdir_feature]
 
     def setUp(self):
         super(TestWin32Finder, self).setUp()

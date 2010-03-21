@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,6 +42,7 @@ from bzrlib import (
     revision as _mod_revision,
     static_tuple,
     symbol_versioning,
+    trace,
     tsort,
     ui,
     versionedfile,
@@ -1027,7 +1028,7 @@ class Repository(_RelockDebugMixin):
 
         :seealso: add_inventory, for the contract.
         """
-        inv_lines = self._serialise_inventory_to_lines(inv)
+        inv_lines = self._serializer.write_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
@@ -1240,7 +1241,7 @@ class Repository(_RelockDebugMixin):
         """Check a single text from this repository."""
         if kind == 'inventories':
             rev_id = record.key[0]
-            inv = self.deserialise_inventory(rev_id,
+            inv = self._deserialise_inventory(rev_id,
                 record.get_bytes_as('fulltext'))
             if last_object is not None:
                 delta = inv._make_delta(last_object)
@@ -1484,10 +1485,7 @@ class Repository(_RelockDebugMixin):
         :param using: If True, list only branches using this repository.
         """
         if using and not self.is_shared():
-            try:
-                return [self.bzrdir.open_branch()]
-            except errors.NotBranchError:
-                return []
+            return self.bzrdir.list_branches()
         class Evaluator(object):
 
             def __init__(self):
@@ -1502,22 +1500,19 @@ class Repository(_RelockDebugMixin):
                     except errors.NoRepositoryPresent:
                         pass
                     else:
-                        return False, (None, repository)
+                        return False, ([], repository)
                 self.first_call = False
-                try:
-                    value = (bzrdir.open_branch(), None)
-                except errors.NotBranchError:
-                    value = (None, None)
+                value = (bzrdir.list_branches(), None)
                 return True, value
 
-        branches = []
-        for branch, repository in bzrdir.BzrDir.find_bzrdirs(
+        ret = []
+        for branches, repository in bzrdir.BzrDir.find_bzrdirs(
                 self.bzrdir.root_transport, evaluate=Evaluator()):
-            if branch is not None:
-                branches.append(branch)
+            if branches is not None:
+                ret.extend(branches)
             if not using and repository is not None:
-                branches.extend(repository.find_branches())
-        return branches
+                ret.extend(repository.find_branches())
+        return ret
 
     @needs_read_lock
     def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
@@ -1901,23 +1896,6 @@ class Repository(_RelockDebugMixin):
                 rev = self._serializer.read_revision_from_string(text)
                 yield (revid, rev)
 
-    @needs_read_lock
-    def get_revision_xml(self, revision_id):
-        # TODO: jam 20070210 This shouldn't be necessary since get_revision
-        #       would have already do it.
-        # TODO: jam 20070210 Just use _serializer.write_revision_to_string()
-        # TODO: this can't just be replaced by:
-        # return self._serializer.write_revision_to_string(
-        #     self.get_revision(revision_id))
-        # as cStringIO preservers the encoding unlike write_revision_to_string
-        # or some other call down the path.
-        rev = self.get_revision(revision_id)
-        rev_tmp = cStringIO.StringIO()
-        # the current serializer..
-        self._serializer.write_revision(rev, rev_tmp)
-        rev_tmp.seek(0)
-        return rev_tmp.getvalue()
-
     def get_deltas_for_revisions(self, revisions, specific_fileids=None):
         """Produce a generator of revision deltas.
 
@@ -2165,14 +2143,10 @@ class Repository(_RelockDebugMixin):
         """
         selected_keys = set((revid,) for revid in revision_ids)
         w = _inv_weave or self.inventories
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            return self._find_file_ids_from_xml_inventory_lines(
-                w.iter_lines_added_or_present_in_keys(
-                    selected_keys, pb=pb),
-                selected_keys)
-        finally:
-            pb.finished()
+        return self._find_file_ids_from_xml_inventory_lines(
+            w.iter_lines_added_or_present_in_keys(
+                selected_keys, pb=None),
+            selected_keys)
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file versions.
@@ -2388,7 +2362,7 @@ class Repository(_RelockDebugMixin):
         """single-document based inventory iteration."""
         inv_xmls = self._iter_inventory_xmls(revision_ids, ordering)
         for text, revision_id in inv_xmls:
-            yield self.deserialise_inventory(revision_id, text)
+            yield self._deserialise_inventory(revision_id, text)
 
     def _iter_inventory_xmls(self, revision_ids, ordering):
         if ordering is None:
@@ -2426,7 +2400,7 @@ class Repository(_RelockDebugMixin):
                         next_key = None
                         break
 
-    def deserialise_inventory(self, revision_id, xml):
+    def _deserialise_inventory(self, revision_id, xml):
         """Transform the xml into an inventory object.
 
         :param revision_id: The expected revision id of the inventory.
@@ -2440,30 +2414,18 @@ class Repository(_RelockDebugMixin):
                 result.revision_id, revision_id))
         return result
 
-    def serialise_inventory(self, inv):
-        return self._serializer.write_inventory_to_string(inv)
-
-    def _serialise_inventory_to_lines(self, inv):
-        return self._serializer.write_inventory_to_lines(inv)
-
     def get_serializer_format(self):
         return self._serializer.format_num
 
     @needs_read_lock
-    def get_inventory_xml(self, revision_id):
-        """Get inventory XML as a file object."""
+    def _get_inventory_xml(self, revision_id):
+        """Get serialized inventory as a string."""
         texts = self._iter_inventory_xmls([revision_id], 'unordered')
         try:
             text, revision_id = texts.next()
         except StopIteration:
             raise errors.HistoryMissing(self, 'inventory', revision_id)
         return text
-
-    @needs_read_lock
-    def get_inventory_sha1(self, revision_id):
-        """Return the sha1 hash of the inventory entry
-        """
-        return self.get_revision(revision_id).inventory_sha1
 
     def get_rev_id_for_revno(self, revno, known_pair):
         """Return the revision id of a revno, given a later (revno, revid)
@@ -2521,22 +2483,6 @@ class Repository(_RelockDebugMixin):
             else:
                 next_id = parents[0]
 
-    @needs_read_lock
-    def get_revision_inventory(self, revision_id):
-        """Return inventory of a past revision."""
-        # TODO: Unify this with get_inventory()
-        # bzr 0.0.6 and later imposes the constraint that the inventory_id
-        # must be the same as its revision, so this is trivial.
-        if revision_id is None:
-            # This does not make sense: if there is no revision,
-            # then it is the current tree inventory surely ?!
-            # and thus get_root_id() is something that looks at the last
-            # commit on the branch, and the get_root_id is an inventory check.
-            raise NotImplementedError
-            # return Inventory(self.get_root_id())
-        else:
-            return self.get_inventory(revision_id)
-
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
@@ -2576,7 +2522,7 @@ class Repository(_RelockDebugMixin):
             return RevisionTree(self, Inventory(root_id=None),
                                 _mod_revision.NULL_REVISION)
         else:
-            inv = self.get_revision_inventory(revision_id)
+            inv = self.get_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):
@@ -3094,6 +3040,8 @@ class RepositoryFormat(object):
     pack_compresses = False
     # Does the repository inventory storage understand references to trees?
     supports_tree_reference = None
+    # Is the format experimental ?
+    experimental = False
 
     def __str__(self):
         return "<%s>" % self.__class__.__name__
@@ -3430,15 +3378,15 @@ class InterRepository(InterObject):
 
         :param revision_id: if None all content is copied, if NULL_REVISION no
                             content is copied.
-        :param pb: optional progress bar to use for progress reports. If not
-                   provided a default one will be created.
+        :param pb: ignored.
         :return: None.
         """
+        ui.ui_factory.warn_experimental_format_fetch(self)
         f = _mod_fetch.RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                fetch_spec=fetch_spec,
-                               pb=pb, find_ghosts=find_ghosts)
+                               find_ghosts=find_ghosts)
 
     def _walk_to_common_revisions(self, revision_ids):
         """Walk out from revision_ids in source to revisions target has.
@@ -4018,6 +3966,13 @@ class InterDifferingSerializer(InterRepository):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             raise AssertionError("Not implemented yet...")
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        #
+        # nb this is only active for local-local fetches; other things using
+        # streaming.
+        ui.ui_factory.warn_cross_format_fetch(self.source._format,
+            self.target._format)
+        ui.ui_factory.warn_experimental_format_fetch(self)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
             self._converting_to_rich_root = True
@@ -4098,37 +4053,33 @@ class CopyConverter(object):
         :param to_convert: The disk object to convert.
         :param pb: a progress bar to use for progress information.
         """
-        self.pb = pb
+        pb = ui.ui_factory.nested_progress_bar()
         self.count = 0
         self.total = 4
         # this is only useful with metadir layouts - separated repo content.
         # trigger an assertion if not such
         repo._format.get_format_string()
         self.repo_dir = repo.bzrdir
-        self.step('Moving repository to repository.backup')
+        pb.update('Moving repository to repository.backup')
         self.repo_dir.transport.move('repository', 'repository.backup')
         backup_transport =  self.repo_dir.transport.clone('repository.backup')
         repo._format.check_conversion_target(self.target_format)
         self.source_repo = repo._format.open(self.repo_dir,
             _found=True,
             _override_transport=backup_transport)
-        self.step('Creating new repository')
+        pb.update('Creating new repository')
         converted = self.target_format.initialize(self.repo_dir,
                                                   self.source_repo.is_shared())
         converted.lock_write()
         try:
-            self.step('Copying content')
+            pb.update('Copying content')
             self.source_repo.copy_content_into(converted)
         finally:
             converted.unlock()
-        self.step('Deleting old repository content')
+        pb.update('Deleting old repository content')
         self.repo_dir.transport.delete_tree('repository.backup')
         ui.ui_factory.note('repository converted')
-
-    def step(self, message):
-        """Update the pb by a step."""
-        self.count +=1
-        self.pb.update(message, self.count, self.total)
+        pb.finished()
 
 
 _unescape_map = {
@@ -4316,6 +4267,8 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
+                ui.ui_factory.warn_cross_format_fetch(src_format,
+                    self.target_repo._format)
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':
@@ -4626,8 +4579,10 @@ class StreamSource(object):
 
     def _get_convertable_inventory_stream(self, revision_ids,
                                           delta_versus_null=False):
-        # The source is using CHKs, but the target either doesn't or it has a
-        # different serializer.  The StreamSink code expects to be able to
+        # The two formats are sufficiently different that there is no fast
+        # path, so we need to send just inventorydeltas, which any
+        # sufficiently modern client can insert into any repository.
+        # The StreamSink code expects to be able to
         # convert on the target, so we need to put bytes-on-the-wire that can
         # be converted.  That means inventory deltas (if the remote is <1.19,
         # RemoteStreamSink will fallback to VFS to insert the deltas).

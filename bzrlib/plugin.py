@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,14 +60,11 @@ from bzrlib.symbol_versioning import (
 
 DEFAULT_PLUGIN_PATH = None
 _loaded = False
+_plugins_disabled = False
 
-@deprecated_function(deprecated_in((2, 0, 0)))
-def get_default_plugin_path():
-    """Get the DEFAULT_PLUGIN_PATH"""
-    global DEFAULT_PLUGIN_PATH
-    if DEFAULT_PLUGIN_PATH is None:
-        DEFAULT_PLUGIN_PATH = osutils.pathjoin(config.config_dir(), 'plugins')
-    return DEFAULT_PLUGIN_PATH
+
+def are_plugins_disabled():
+    return _plugins_disabled
 
 
 def disable_plugins():
@@ -75,6 +72,8 @@ def disable_plugins():
 
     Future calls to load_plugins() will be ignored.
     """
+    global _plugins_disabled
+    _plugins_disabled = True
     load_plugins([])
 
 
@@ -92,6 +91,12 @@ def set_plugins_path(path=None):
     if path is None:
         path = get_standard_plugins_path()
     _mod_plugins.__path__ = path
+    # Set up a blacklist for disabled plugins if any
+    PluginBlackListImporter.blacklist = {}
+    disabled_plugins = os.environ.get('BZR_DISABLE_PLUGINS', None)
+    if disabled_plugins is not None:
+        for name in disabled_plugins.split(os.pathsep):
+            PluginBlackListImporter.blacklist['bzrlib.plugins.' + name] = True
     return path
 
 
@@ -180,12 +185,12 @@ def get_standard_plugins_path():
     paths = []
     for p in env_paths + defaults:
         if p.startswith('+'):
-            # Resolve reference if they are known
+            # Resolve references if they are known
             try:
                 p = refs[p[1:]]
             except KeyError:
-                # Leave them untouched otherwise, user may have paths starting
-                # with '+'...
+                # Leave them untouched so user can still use paths starting
+                # with '+'
                 pass
         _append_new_path(paths, p)
 
@@ -203,7 +208,7 @@ def load_plugins(path=None):
     files (and whatever other extensions are used in the platform,
     such as *.pyd).
 
-    load_from_dirs() provides the underlying mechanism and is called with
+    load_from_path() provides the underlying mechanism and is called with
     the default directory list to provide the normal behaviour.
 
     :param path: The list of paths to search for plugins.  By default,
@@ -291,6 +296,8 @@ def load_from_dir(d):
             plugin_names.add(f)
 
     for name in plugin_names:
+        if ('bzrlib.plugins.%s' % name) in PluginBlackListImporter.blacklist:
+            continue
         try:
             exec "import bzrlib.plugins.%s" % name in {}
         except KeyboardInterrupt:
@@ -477,3 +484,19 @@ class PlugIn(object):
         return version_string
 
     __version__ = property(_get__version__)
+
+
+class _PluginBlackListImporter(object):
+
+    def __init__(self):
+        self.blacklist = {}
+
+    def find_module(self, fullname, parent_path=None):
+        if fullname in self.blacklist:
+            raise ImportError('%s is disabled' % fullname)
+        return None
+
+PluginBlackListImporter = _PluginBlackListImporter()
+sys.meta_path.append(PluginBlackListImporter)
+
+

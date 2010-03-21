@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,8 +39,7 @@ class CleanupsTestCase(TestCase):
         self.call_log.append('no_op_cleanup')
 
     def assertLogContains(self, regex):
-        log = self._get_log(keep_log_file=True)
-        self.assertContainsRe(log, regex, re.DOTALL)
+        self.assertContainsRe(self.get_log(), regex, re.DOTALL)
 
     def failing_cleanup(self):
         self.call_log.append('failing_cleanup')
@@ -184,8 +183,7 @@ class TestDoWithCleanups(CleanupsTestCase):
         self.assertRaises(ErrorA, _do_with_cleanups, cleanups,
             self.trivial_func)
         self.assertLogContains('Cleanup failed:.*ErrorB')
-        log = self._get_log(keep_log_file=True)
-        self.assertFalse('ErrorA' in log)
+        self.assertFalse('ErrorA' in self.get_log())
 
     def make_two_failing_cleanup_funcs(self):
         def raise_a():

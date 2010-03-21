@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,22 +14,38 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import os
+import stat
 
-from bzrlib.tests import Feature
+from bzrlib import tests
+from bzrlib.symbol_versioning import deprecated_in
 
 
-class _ApportFeature(Feature):
-    
+apport = tests.ModuleAvailableFeature('apport')
+paramiko = tests.ModuleAvailableFeature('paramiko')
+pycurl = tests.ModuleAvailableFeature('pycurl')
+subunit = tests.ModuleAvailableFeature('subunit')
+
+class _PosixPermissionsFeature(tests.Feature):
+
     def _probe(self):
-        try:
-            import apport
-        except ImportError, e:
-            return False
-        else:
-            return True
+        def has_perms():
+            # create temporary file and check if specified perms are maintained.
+            import tempfile
+
+            write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
+            fd, name = f
+            os.close(fd)
+            os.chmod(name, write_perms)
+
+            read_perms = os.stat(name).st_mode & 0777
+            os.unlink(name)
+            return (write_perms == read_perms)
+
+        return (os.name == 'posix') and has_perms()
 
     def feature_name(self):
-        return 'apport'
+        return 'POSIX permissions support'
 
-
-ApportFeature = _ApportFeature()
+PosixPermissionsFeature = _PosixPermissionsFeature()

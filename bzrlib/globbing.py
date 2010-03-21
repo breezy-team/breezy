@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -215,6 +215,40 @@ class Globster(object):
                 return patterns[match.lastindex -1]
         return None
 
+class ExceptionGlobster(object):
+    """A Globster that supports exception patterns.
+    
+    Exceptions are ignore patterns prefixed with '!'.  Exception
+    patterns take precedence over regular patterns and cause a 
+    matching filename to return None from the match() function.  
+    Patterns using a '!!' prefix are highest precedence, and act 
+    as regular ignores. '!!' patterns are useful to establish ignores
+    that apply under paths specified by '!' exception patterns.
+    """
+    
+    def __init__(self,patterns):
+        ignores = [[], [], []]
+        for p in patterns:
+            if p.startswith(u'!!'):
+                ignores[2].append(p[2:])
+            elif p.startswith(u'!'):
+                ignores[1].append(p[1:])
+            else:
+                ignores[0].append(p)
+        self._ignores = [Globster(i) for i in ignores]
+        
+    def match(self, filename):
+        """Searches for a pattern that matches the given filename.
+
+        :return A matching pattern or None if there is no matching pattern.
+        """
+        double_neg = self._ignores[2].match(filename)
+        if double_neg:
+            return "!!%s" % double_neg
+        elif self._ignores[1].match(filename):
+            return None
+        else:
+            return self._ignores[0].match(filename)
 
 class _OrderedGlobster(Globster):
     """A Globster that keeps pattern order."""
@@ -244,8 +278,7 @@ def normalize_pattern(pattern):
 
     Doesn't normalize regular expressions - they may contain escapes.
     """
-
-    if not pattern.startswith('RE:'):
+    if not (pattern.startswith('RE:') or pattern.startswith('!RE:')):
         pattern = _slashes.sub('/', pattern)
     if len(pattern) > 1:
         pattern = pattern.rstrip('/')

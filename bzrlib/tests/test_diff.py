@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,6 +45,8 @@ from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revisionspec import RevisionSpec
 
+from bzrlib.tests.test_win32utils import BackslashDirSeparatorFeature
+
 
 class _AttribFeature(Feature):
 
@@ -63,19 +65,8 @@ class _AttribFeature(Feature):
 AttribFeature = _AttribFeature()
 
 
-class _CompiledPatienceDiffFeature(Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._patiencediff_c
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._patiencediff_c'
-
-CompiledPatienceDiffFeature = _CompiledPatienceDiffFeature()
+compiled_patiencediff_feature = tests.ModuleAvailableFeature(
+                                    'bzrlib._patiencediff_c')
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -1156,7 +1147,7 @@ pynff pzq_zxqve(Pbzznaq):
 
 class TestPatienceDiffLib_c(TestPatienceDiffLib):
 
-    _test_needs_features = [CompiledPatienceDiffFeature]
+    _test_needs_features = [compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLib_c, self).setUp()
@@ -1252,7 +1243,7 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
 
 class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 
-    _test_needs_features = [CompiledPatienceDiffFeature]
+    _test_needs_features = [compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLibFiles_c, self).setUp()
@@ -1264,7 +1255,7 @@ class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 class TestUsingCompiledIfAvailable(TestCase):
 
     def test_PatienceSequenceMatcher(self):
-        if CompiledPatienceDiffFeature.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import PatienceSequenceMatcher_c
             self.assertIs(PatienceSequenceMatcher_c,
                           bzrlib.patiencediff.PatienceSequenceMatcher)
@@ -1274,7 +1265,7 @@ class TestUsingCompiledIfAvailable(TestCase):
                           bzrlib.patiencediff.PatienceSequenceMatcher)
 
     def test_unique_lcs(self):
-        if CompiledPatienceDiffFeature.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import unique_lcs_c
             self.assertIs(unique_lcs_c,
                           bzrlib.patiencediff.unique_lcs)
@@ -1284,7 +1275,7 @@ class TestUsingCompiledIfAvailable(TestCase):
                           bzrlib.patiencediff.unique_lcs)
 
     def test_recurse_matches(self):
-        if CompiledPatienceDiffFeature.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import recurse_matches_c
             self.assertIs(recurse_matches_c,
                           bzrlib.patiencediff.recurse_matches)
@@ -1303,11 +1294,21 @@ class TestDiffFromTool(TestCaseWithTransport):
             diff_obj.command_template)
 
     def test_from_string_u5(self):
-        diff_obj = DiffFromTool.from_string('diff -u\\ 5', None, None, None)
+        diff_obj = DiffFromTool.from_string('diff "-u 5"', None, None, None)
         self.addCleanup(diff_obj.finish)
         self.assertEqual(['diff', '-u 5', '@old_path', '@new_path'],
                          diff_obj.command_template)
         self.assertEqual(['diff', '-u 5', 'old-path', 'new-path'],
+                         diff_obj._get_command('old-path', 'new-path'))
+        
+    def test_from_string_path_with_backslashes(self):
+        self.requireFeature(BackslashDirSeparatorFeature)
+        tool = 'C:\\Tools\\Diff.exe'
+        diff_obj = DiffFromTool.from_string(tool, None, None, None)
+        self.addCleanup(diff_obj.finish)
+        self.assertEqual(['C:\\Tools\\Diff.exe', '@old_path', '@new_path'],
+                         diff_obj.command_template)
+        self.assertEqual(['C:\\Tools\\Diff.exe', 'old-path', 'new-path'],
                          diff_obj._get_command('old-path', 'new-path'))
 
     def test_execute(self):

@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -103,6 +103,9 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
     def is_compatible(source, target):
         return isinstance(target, DummyForeignVcsBranch)
 
+    def push(self, overwrite=False, stop_revision=None):
+        raise errors.NoRoundtrippingSupport(self.source, self.target)
+
     def lossy_push(self, stop_revision=None):
         result = branch.BranchPushResult()
         result.source_branch = self.source
@@ -168,11 +171,11 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
         super(DummyForeignVcsBranchFormat, self).__init__()
         self._matchingbzrdir = DummyForeignVcsDirFormat()
 
-    def open(self, a_bzrdir, _found=False):
+    def open(self, a_bzrdir, name=None, _found=False):
         if not _found:
             raise NotImplementedError
         try:
-            transport = a_bzrdir.get_branch_transport(None)
+            transport = a_bzrdir.get_branch_transport(None, name=name)
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
             return DummyForeignVcsBranch(_format=self,
@@ -240,7 +243,9 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         self._control_files = lockable_files.LockableFiles(self.transport,
             "lock", lockable_files.TransportLock)
 
-    def open_branch(self, ignore_fallbacks=True):
+    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True):
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)
 
     def cloning_metadir(self, stacked=False):
@@ -350,6 +355,13 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         newdir = dir.sprout("e")
         self.assertNotEquals("A Dummy VCS Dir",
                              newdir._format.get_format_string())
+
+    def test_push_not_supported(self):
+        source_tree = self.make_branch_and_tree("source")
+        target_tree = self.make_branch_and_tree("target", 
+            format=DummyForeignVcsDirFormat())
+        self.assertRaises(errors.NoRoundtrippingSupport, 
+            source_tree.branch.push, target_tree.branch)
 
     def test_lossy_push_empty(self):
         source_tree = self.make_branch_and_tree("source")

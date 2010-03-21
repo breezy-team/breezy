@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Messages and logging for bazaar-ng.
+"""Messages and logging.
 
 Messages are supplied by callers as a string-formatting template, plus values
 to be inserted into it.  The actual %-formatting is deferred to the log
@@ -33,8 +33,7 @@ so that we can always rely on writing any message.
 
 Output to stderr depends on the mode chosen by the user.  By default, messages
 of info and above are sent out, which results in progress messages such as the
-list of files processed by add and commit.  In quiet mode, only warnings and
-above are shown.  In debug mode, stderr gets debug messages too.
+list of files processed by add and commit.  In debug mode, stderr gets debug messages too.
 
 Errors that terminate an operation are generally passed back as exceptions;
 others may be just emitted as messages.
@@ -83,6 +82,7 @@ from bzrlib import (
     osutils,
     plugin,
     symbol_versioning,
+    ui,
     )
 """)
 
@@ -145,7 +145,7 @@ def error(*args, **kwargs):
     _bzr_logger.error(*args, **kwargs)
 
 
-def show_error(msg):
+def show_error(*args, **kwargs):
     """Show an error message to the user.
 
     Don't use this for exceptions, use report_exception instead.
@@ -250,7 +250,12 @@ def _open_bzr_log():
             bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
         return bzr_log_file
     except IOError, e:
-        warning("failed to open trace file: %s" % (e))
+        # If we are failing to open the log, then most likely logging has not
+        # been set up yet. So we just write to stderr rather than using
+        # 'warning()'. If we using warning(), users get the unhelpful 'no
+        # handlers registered for "bzr"' when something goes wrong on the
+        # server. (bug #503886)
+        sys.stderr.write("failed to open trace file: %s\n" % (e,))
     # TODO: What should happen if we fail to open the trace file?  Maybe the
     # objects should be pointed at /dev/null or the equivalent?  Currently
     # returns None which will cause failures later.
@@ -360,6 +365,7 @@ def set_verbosity_level(level):
     global _verbosity_level
     _verbosity_level = level
     _update_logging_level(level < 0)
+    ui.ui_factory.be_quiet(level < 0)
 
 
 def get_verbosity_level():
@@ -371,7 +377,6 @@ def get_verbosity_level():
 
 
 def be_quiet(quiet=True):
-    # Perhaps this could be deprecated now ...
     if quiet:
         set_verbosity_level(-1)
     else:
@@ -496,3 +501,23 @@ def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
     from bzrlib.crash import report_bug
     report_bug(exc_info, err_file)
+
+
+def _flush_stdout_stderr():
+    # installed into an atexit hook by bzrlib.initialize()
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except IOError, e:
+        import errno
+        if e.errno in [errno.EINVAL, errno.EPIPE]:
+            pass
+        else:
+            raise
+
+
+def _flush_trace():
+    # run from atexit hook
+    global _trace_file
+    if _trace_file:
+        _trace_file.flush()

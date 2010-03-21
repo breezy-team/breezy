@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -407,3 +407,43 @@ $ mkdir dir
 $ rm -r dir
 """)
         self.failIfExists('dir')
+
+
+class TestMv(script.TestCaseWithTransportAndScript):
+
+    def test_usage(self):
+        self.assertRaises(SyntaxError, self.run_script, '$ mv')
+        self.assertRaises(SyntaxError, self.run_script, '$ mv f')
+        self.assertRaises(SyntaxError, self.run_script, '$ mv f1 f2 f3')
+
+    def test_move_file(self):
+        self.run_script('$ echo content >file')
+        self.failUnlessExists('file')
+        self.run_script('$ mv file new_name')
+        self.failIfExists('file')
+        self.failUnlessExists('new_name')
+
+    def test_move_unknown_file(self):
+        self.assertRaises(AssertionError,
+                          self.run_script, '$ mv unknown does-not-exist')
+
+    def test_move_dir(self):
+        self.run_script("""
+$ mkdir dir
+$ echo content >dir/file
+""")
+        self.run_script('$ mv dir new_name')
+        self.failIfExists('dir')
+        self.failUnlessExists('new_name')
+        self.failUnlessExists('new_name/file')
+
+    def test_move_file_into_dir(self):
+        self.run_script("""
+$ mkdir dir
+$ echo content > file
+""")
+        self.run_script('$ mv file dir')
+        self.failUnlessExists('dir')
+        self.failIfExists('file')
+        self.failUnlessExists('dir/file')
+

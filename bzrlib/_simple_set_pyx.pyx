@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -540,7 +540,8 @@ cdef api Py_ssize_t SimpleSet_Size(object self) except -1:
     return _check_self(self)._used
 
 
-cdef api int SimpleSet_Next(object self, Py_ssize_t *pos, PyObject **key):
+cdef api int SimpleSet_Next(object self, Py_ssize_t *pos,
+                            PyObject **key) except -1:
     """Walk over items in a SimpleSet.
 
     :param pos: should be initialized to 0 by the caller, and will be updated
@@ -567,7 +568,8 @@ cdef api int SimpleSet_Next(object self, Py_ssize_t *pos, PyObject **key):
     return 1
 
 
-cdef int SimpleSet_traverse(SimpleSet self, visitproc visit, void *arg):
+cdef int SimpleSet_traverse(SimpleSet self, visitproc visit,
+                            void *arg) except -1:
     """This is an implementation of 'tp_traverse' that hits the whole table.
 
     Cython/Pyrex don't seem to let you define a tp_traverse, and they only

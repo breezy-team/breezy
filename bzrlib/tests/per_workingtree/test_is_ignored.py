@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -31,11 +31,15 @@ class TestIsIgnored(TestCaseWithWorkingTree):
             ('.bzrignore', './rootdir\n'
                            'randomfile*\n'
                            '*bar\n'
+                           '!bazbar\n'
                            '?foo\n'
                            '*.~*\n'
                            'dir1/*f1\n'
                            'dir1/?f2\n'
+                           'RE:dir2/.*\.wombat\n'
                            'path/from/ro?t\n'
+                           '**/piffle.py\n'
+                           '!b/piffle.py\n'
                            'unicode\xc2\xb5\n' # u'\xb5'.encode('utf8')
                            'dos\r\n'
                            '\n' # empty line
@@ -58,6 +62,12 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual("path/from/ro?t", tree.is_ignored('path/from/root'))
         self.assertEqual("path/from/ro?t", tree.is_ignored('path/from/roat'))
         self.assertEqual(None, tree.is_ignored('roat'))
+        
+        self.assertEqual('**/piffle.py', tree.is_ignored('piffle.py'))
+        self.assertEqual('**/piffle.py', tree.is_ignored('a/piffle.py'))
+        self.assertEqual(None, tree.is_ignored('b/piffle.py')) # exclusion
+        self.assertEqual('**/piffle.py', tree.is_ignored('foo/bar/piffle.py'))
+        self.assertEqual(None, tree.is_ignored('p/iffle.py'))
 
         self.assertEqual(u'unicode\xb5', tree.is_ignored(u'unicode\xb5'))
         self.assertEqual(u'unicode\xb5', tree.is_ignored(u'subdir/unicode\xb5'))
@@ -72,6 +82,8 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('*bar', tree.is_ignored(r'foo\nbar'))
         self.assertEqual('*bar', tree.is_ignored('bar'))
         self.assertEqual('*bar', tree.is_ignored('.bar'))
+        
+        self.assertEqual(None, tree.is_ignored('bazbar')) # exclusion
 
         self.assertEqual('?foo', tree.is_ignored('afoo'))
         self.assertEqual('?foo', tree.is_ignored('.foo'))
@@ -84,6 +96,9 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/ff2'))
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/.f2'))
+        
+        self.assertEqual('RE:dir2/.*\.wombat', tree.is_ignored('dir2/foo.wombat'))
+        self.assertEqual(None, tree.is_ignored('dir2/foo'))
 
         # Blank lines and comments should be ignored
         self.assertEqual(None, tree.is_ignored(''))

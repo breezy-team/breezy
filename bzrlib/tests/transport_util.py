@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,11 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bzrlib.hooks
+from bzrlib.tests import features
 
 # SFTPTransport offers better performances but relies on paramiko, if paramiko
 # is not available, we fallback to FtpTransport
-from bzrlib.tests import test_sftp_transport
-if test_sftp_transport.paramiko_loaded:
+if features.paramiko.available():
+    from bzrlib.tests import test_sftp_transport
     from bzrlib.transport import sftp
     _backing_scheme = 'sftp'
     _backing_transport_class = sftp.SFTPTransport
@@ -99,12 +100,9 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
     def setUp(self):
         register_urlparse_netloc_protocol(_hooked_scheme)
         register_transport(_hooked_scheme, ConnectionHookedTransport)
-
-        def unregister():
-            unregister_transport(_hooked_scheme, ConnectionHookedTransport)
-            _unregister_urlparse_netloc_protocol(_hooked_scheme)
-
-        self.addCleanup(unregister)
+        self.addCleanup(unregister_transport, _hooked_scheme,
+                        ConnectionHookedTransport)
+        self.addCleanup(_unregister_urlparse_netloc_protocol, _hooked_scheme)
         super(TestCaseWithConnectionHookedTransport, self).setUp()
         self.reset_connections()
         # Add the 'hooked' url to the permitted url list.
@@ -127,13 +125,10 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         return url
 
     def start_logging_connections(self):
+        self.overrideAttr(InstrumentedTransport, 'hooks', TransportHooks())
+        # We preserved the hooks class attribute. Now we install our hook.
         ConnectionHookedTransport.hooks.install_named_hook(
             '_set_connection', self._collect_connection, None)
-        # uninstall our hooks when we are finished
-        self.addCleanup(self.reset_hooks)
-
-    def reset_hooks(self):
-        InstrumentedTransport.hooks = TransportHooks()
 
     def reset_connections(self):
         self.connections = []

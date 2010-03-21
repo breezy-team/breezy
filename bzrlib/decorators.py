@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -253,3 +253,80 @@ def use_pretty_decorators():
     global needs_read_lock, needs_write_lock
     needs_read_lock = _pretty_needs_read_lock
     needs_write_lock = _pretty_needs_write_lock
+
+
+# This implementation of cachedproperty is copied from Launchpad's
+# canonical.launchpad.cachedproperty module (with permission from flacoste)
+# -- spiv & vila 100120
+def cachedproperty(attrname_or_fn):
+    """A decorator for methods that makes them properties with their return
+    value cached.
+
+    The value is cached on the instance, using the attribute name provided.
+
+    If you don't provide a name, the mangled name of the property is used.
+
+    >>> class CachedPropertyTest(object):
+    ...
+    ...     @cachedproperty('_foo_cache')
+    ...     def foo(self):
+    ...         print 'foo computed'
+    ...         return 23
+    ...
+    ...     @cachedproperty
+    ...     def bar(self):
+    ...         print 'bar computed'
+    ...         return 69
+
+    >>> cpt = CachedPropertyTest()
+    >>> getattr(cpt, '_foo_cache', None) is None
+    True
+    >>> cpt.foo
+    foo computed
+    23
+    >>> cpt.foo
+    23
+    >>> cpt._foo_cache
+    23
+    >>> cpt.bar
+    bar computed
+    69
+    >>> cpt._bar_cached_value
+    69
+
+    """
+    if isinstance(attrname_or_fn, basestring):
+        attrname = attrname_or_fn
+        return _CachedPropertyForAttr(attrname)
+    else:
+        fn = attrname_or_fn
+        attrname = '_%s_cached_value' % fn.__name__
+        return _CachedProperty(attrname, fn)
+
+
+class _CachedPropertyForAttr(object):
+
+    def __init__(self, attrname):
+        self.attrname = attrname
+
+    def __call__(self, fn):
+        return _CachedProperty(self.attrname, fn)
+
+
+class _CachedProperty(object):
+
+    def __init__(self, attrname, fn):
+        self.fn = fn
+        self.attrname = attrname
+        self.marker = object()
+
+    def __get__(self, inst, cls=None):
+        if inst is None:
+            return self
+        cachedresult = getattr(inst, self.attrname, self.marker)
+        if cachedresult is self.marker:
+            result = self.fn(inst)
+            setattr(inst, self.attrname, result)
+            return result
+        else:
+            return cachedresult
