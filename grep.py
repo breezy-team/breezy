@@ -84,8 +84,8 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
                 continue
 
             rev = RevisionSpec_revid.from_string("revid:"+revid)
+            tree = rev.as_tree(wt.branch)
             for path in path_list:
-                tree = rev.as_tree(wt.branch)
                 path_for_id = osutils.pathjoin(relpath, path)
                 id = tree.path2id(path_for_id)
                 if not id:
