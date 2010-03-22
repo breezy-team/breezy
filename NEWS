@@ -37,6 +37,9 @@ Compatibility Breaks
 New Features
 ************
 
+* Added ``bzr remove-branch`` command that can remove a local or remote 
+  branch. (Jelmer Vernooij, #276295)
+
 * ``bzr export`` now takes an optional argument ``--per-file-timestamps``
   to set file mtimes to the last timestamp of the last revision in which
   they were changed rather than the current time. (Jelmer Vernooij)

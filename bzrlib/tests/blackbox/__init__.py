@@ -95,6 +95,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_history',
                      'bzrlib.tests.blackbox.test_revision_info',
+                     'bzrlib.tests.blackbox.test_rmbranch',
                      'bzrlib.tests.blackbox.test_selftest',
                      'bzrlib.tests.blackbox.test_send',
                      'bzrlib.tests.blackbox.test_serve',

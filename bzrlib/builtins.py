@@ -5749,6 +5749,31 @@ class cmd_hooks(Command):
                     self.outf.write("    <no hooks installed>\n")
 
 
+class cmd_remove_branch(Command):
+    """Remove a branch.
+
+    This will remove the branch from the specified location but 
+    will keep any working tree or repository in place.
+
+    :Examples:
+
+      Remove the branch at repo/trunk::
+
+        bzr remove-branch repo/trunk
+
+    """
+
+    takes_args = ["location?"]
+
+    aliases = ["rmbranch"]
+
+    def run(self, location=None):
+        if location is None:
+            location = "."
+        branch = Branch.open_containing(location)[0]
+        branch.bzrdir.destroy_branch()
+        
+
 class cmd_shelve(Command):
     """Temporarily set aside some changes from the current tree.
 
