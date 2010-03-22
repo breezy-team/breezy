@@ -27,6 +27,8 @@ import os
 
 import bzrlib
 from bzrlib import (
+    branch as _mod_branch,
+    errors,
     merge,
     msgeditor,
     )
@@ -127,6 +129,36 @@ msgeditor.hooks.install_named_hook("commit_message_template",
         debian_changelog_commit_message,
         "Use changes documented in debian/changelog to suggest "
         "the commit message")
+
+
+def debian_tag_name(branch, revid):
+    from bzrlib.plugins.builddeb.errors import MissingChangelogError
+    from bzrlib.plugins.builddeb.import_dsc import (DistributionBranch,
+        DistributionBranchSet)
+    from bzrlib.plugins.builddeb.util import (debuild_config, find_changelog)
+    t = branch.repository.revision_tree(revid)
+    config = debuild_config(t, False, False)
+    try:
+        (changelog, larstiq) = find_changelog(t, config.merge)
+    except MissingChangelogError:
+        # Not a debian package
+        return None
+    if changelog.distributions == 'UNRELEASED':
+        # The changelog still targets 'UNRELEASED', so apparently hasn't been 
+        # uploaded. XXX: Give a warning of some sort here?
+        return None
+    db = DistributionBranch(branch, None)
+    dbs = DistributionBranchSet()
+    dbs.add_branch(db)
+    return db.tag_name(changelog.version)
+
+
+try:
+    _mod_branch.Branch.hooks.install_named_hook("automatic_tag_name",
+         debian_tag_name,
+         "Automatically determine tag names from Debian version")
+except errors.UnknownHook:
+    pass # bzr < 2.2 doesn't have this hook.
 
 
 try:
