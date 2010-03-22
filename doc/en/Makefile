@@ -30,6 +30,8 @@ clean:
 	-rm -rf _build/*
 
 html:
+	# Create output directories (only needed for sphinx 0.4)
+	mkdir -p _build/html
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) _build/html
 	@echo
 	@echo "Build finished. The HTML pages are in _build/html."
