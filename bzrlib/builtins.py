@@ -5259,6 +5259,11 @@ class cmd_tag(Command):
 
     To rename a tag (change the name but keep it on the same revsion), run ``bzr
     tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``.
+
+    If no tag name is specified it will be determined through the 
+    'automatic_tag_name' hook. This can e.g. be used to automatically tag
+    upstream releases by reading configure.ac. See ``bzr help hooks`` for
+    details.
     """
 
     _see_also = ['commit', 'tags']

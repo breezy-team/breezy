@@ -1701,7 +1701,8 @@ class BranchHooks(Hooks):
             "Called to determine an automatic tag name for a revision."
             "automatic_tag_name is called with (branch, revision_id) and "
             "should return a tag name or None if no tag name could be "
-            "determined.", (2, 2), None))
+            "determined. The first non-None tag name returned will be used.",
+            (2, 2), None))
 
 
 
