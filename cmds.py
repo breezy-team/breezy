@@ -471,29 +471,13 @@ class cmd_merge_upstream(Command):
             distribution_opt, directory_opt, last_version_opt,
             force_opt, v3_opt, 'revision', 'merge-type']
 
-    def _update_changelog(self, tree, version, distribution_name, changelog,
-            package):
-        from bzrlib.plugins.builddeb.merge_upstream import package_version
-        if "~bzr" in str(version) or "+bzr" in str(version):
-            entry_description = "New upstream snapshot."
-        else:
-            entry_description = "New upstream release."
-        proc = subprocess.Popen(["dch", "-v",
-                str(package_version(version, distribution_name)),
-                "-D", "UNRELEASED", "--release-heuristic", "changelog",
-                entry_description], cwd=tree.basedir)
-        proc.wait()
-        if proc.returncode != 0:
-            raise BzrCommandError('Adding a new changelog stanza after the '
-                    'merge had completed failed. Add the new changelog entry '
-                    'yourself, review the merge, and then commit.')
-
     def run(self, location=None, upstream_branch=None, version=None, distribution=None,
             package=None, no_user_config=None, directory=".", revision=None,
             merge_type=None, last_version=None, force=None, v3=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-        from bzrlib.plugins.builddeb.merge_upstream import upstream_branch_version
+        from bzrlib.plugins.builddeb.merge_upstream import (changelog_add_new_version,
+            upstream_branch_version)
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -619,8 +603,11 @@ class cmd_merge_upstream(Command):
                     upstream_revision=upstream_revision,
                     merge_type=merge_type, force=force)
 
-            self._update_changelog(tree, version, distribution_name, changelog,
-                    package)
+            if not changelog_add_new_version(tree, version, distribution_name,
+                    changelog, package):
+                raise BzrCommandError('Adding a new changelog stanza after the '
+                        'merge had completed failed. Add the new changelog '
+                        'entry yourself, review the merge, and then commit.')
         finally:
             tree.unlock()
         note("The new upstream version has been imported.")
