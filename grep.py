@@ -164,6 +164,8 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
         recursive=True
 
     to_grep = []
+    to_grep_append = to_grep.append
+    outf_write = outf.write
     for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
         from_dir=from_dir, recursive=recursive):
 
@@ -178,13 +180,15 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                 old_res = res_cache.get(fid)
                 if old_res != None:
                     res = []
+                    res_append = res.append
+                    new_rev = ('~%s:' % (revno,))
                     for line in old_res:
-                        s = _revno_pattern.sub('~' + revno + ':', line)
-                        res.append(s)
-                        outf.write(s)
+                        s = _revno_pattern.sub(new_rev, line)
+                        res_append(s)
+                        outf_write(s)
                     dir_res[fid] = res
                 else:
-                    to_grep.append((fid, (fp, fid)))
+                    to_grep_append((fid, (fp, fid)))
             else:
                 # we are grepping working tree.
                 if from_dir == None:
