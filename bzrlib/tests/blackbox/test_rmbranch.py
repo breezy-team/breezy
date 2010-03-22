@@ -42,6 +42,8 @@ class TestRemoveBranch(ExternalBase):
         self.run_bzr('rmbranch a')
         dir = bzrdir.BzrDir.open('a')
         self.assertFalse(dir.has_branch())
+        self.failUnlessExists('a/hello')
+        self.failUnlessExists('a/goodbye')
 
     def test_no_branch(self):
         # No branch in the current directory. 
