@@ -32,8 +32,8 @@ clean:
 html:
 	# Create output directories (only needed for sphinx 0.4)
 	mkdir -p _build/html
-	for fn in _static/*; do
-	    [ -d "$fn" ] && mkdir -p "_build/html/_static/${fn#_static/}"
+	for fn in _static/*; do \
+	    [ -d "$$fn" ] && mkdir -p "_build/html/_static/$${fn#_static/}"; \
 	done
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) _build/html
 	@echo
