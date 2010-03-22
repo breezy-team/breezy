@@ -457,16 +457,10 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version)
         return self.upstream_branch.tags.lookup_tag(tag_name)
 
-    def possible_upstream_tag_names(self, version, package=None):
+    def possible_upstream_tag_names(self, version):
         tags = [self.upstream_tag_name(version),
                 self.upstream_tag_name(version, distro="debian"),
                 self.upstream_tag_name(version, distro="ubuntu")]
-        if package is not None:
-            tags.extend(["%s-%s" % (package, version),
-                         "%s-%s" % (package, version)])
-        tags.extend(["v%s" % version,
-                     "release-%s" % version, 
-                     version])
         return tags
 
     def tag_version(self, version):
