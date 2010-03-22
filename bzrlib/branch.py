@@ -1370,7 +1370,7 @@ class Branch(object):
         """Try to automatically find the tag name for a revision.
 
         :param revision_id: Revision id of the revision.
-        :return: A tag name or None if no tag name could be automaticd.
+        :return: A tag name or None if no tag name could be determined.
         """
         for hook in Branch.hooks['automatic_tag_name']:
             ret = hook(self, revision_id)

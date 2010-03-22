@@ -14,12 +14,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for bzrlib.tag."""
+
 
 from bzrlib import (
-    branch as _mod_branch,
     bzrdir,
     errors,
-    tag,
     )
 from bzrlib.tag import (
     BasicTags,
