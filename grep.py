@@ -248,7 +248,10 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         fixed_string, ignore_case, outf, path_prefix=None):
     res = []
 
-    pattern = pattern.encode(_user_encoding, 'replace')
+    _te = _terminal_encoding
+    _ue = _user_encoding
+
+    pattern = pattern.encode(_ue, 'replace')
     if fixed_string and ignore_case:
         pattern = pattern.lower()
 
@@ -262,7 +265,7 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         # user has passed a dir arg, show that as result prefix
         path = osutils.pathjoin(path_prefix, path)
 
-    path = path.encode(_terminal_encoding, 'replace')
+    path = path.encode(_te, 'replace')
 
     # for better performance we moved formatting conditionals out
     # of the core loop. hence, the core loop is somewhat duplicated
@@ -270,80 +273,80 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
 
     if print_revno and line_number:
 
-        pfmt = "~%s:%d:%s".encode(_terminal_encoding)
+        pfmt = "~%s:%d:%s".encode(_te)
         if fixed_string:
             for index, line in enumerate(file_text.splitlines()):
                 if ignore_case:
                     line = line.lower()
                 if pattern in line:
-                    line = line.decode(_terminal_encoding, 'replace')
+                    line = line.decode(_te, 'replace')
                     s = path + (pfmt % (revno, index+1, line)) + eol_marker
                     res.append(s)
                     outf.write(s)
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
-                    line = line.decode(_terminal_encoding, 'replace')
+                    line = line.decode(_te, 'replace')
                     s = path + (pfmt % (revno, index+1, line)) + eol_marker
                     res.append(s)
                     outf.write(s)
 
     elif print_revno and not line_number:
 
-        pfmt = "~%s:%s".encode(_terminal_encoding, 'replace')
+        pfmt = "~%s:%s".encode(_te, 'replace')
         if fixed_string:
             for line in file_text.splitlines():
                 if ignore_case:
                     line = line.lower()
                 if pattern in line:
-                    line = line.decode(_terminal_encoding, 'replace')
+                    line = line.decode(_te, 'replace')
                     s = path + (pfmt % (revno, line)) + eol_marker
                     res.append(s)
                     outf.write(s)
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
-                    line = line.decode(_terminal_encoding, 'replace')
+                    line = line.decode(_te, 'replace')
                     s = path + (pfmt % (revno, line)) + eol_marker
                     res.append(s)
                     outf.write(s)
 
     elif not print_revno and line_number:
 
-        pfmt = ":%d:%s".encode(_terminal_encoding)
+        pfmt = ":%d:%s".encode(_te)
         if fixed_string:
             for index, line in enumerate(file_text.splitlines()):
                 if ignore_case:
                     line = line.lower()
                 if pattern in line:
-                    line = line.decode(_terminal_encoding, 'replace')
+                    line = line.decode(_te, 'replace')
                     s = path + (pfmt % (index+1, line)) + eol_marker
                     res.append(s)
                     outf.write(s)
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
-                    line = line.decode(_terminal_encoding, 'replace')
+                    line = line.decode(_te, 'replace')
                     s = path + (pfmt % (index+1, line)) + eol_marker
                     res.append(s)
                     outf.write(s)
 
     else:
 
-        pfmt = ":%s".encode(_terminal_encoding)
+        pfmt = ":%s".encode(_te)
         if fixed_string:
             for line in file_text.splitlines():
                 if ignore_case:
                     line = line.lower()
                 if pattern in line:
-                    line = line.decode(_terminal_encoding, 'replace')
+                    line = line.decode(_te, 'replace')
                     s = path + (pfmt % (line,)) + eol_marker
                     res.append(s)
                     outf.write(s)
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
-                    line = line.decode(_terminal_encoding, 'replace')
+                    line = line.decode(_te, 'replace')
                     s = path + (pfmt % (line,)) + eol_marker
                     res.append(s)
                     outf.write(s)
