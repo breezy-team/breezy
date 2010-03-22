@@ -1,5 +1,9 @@
 bzr-grep 0.2.0-dev
 ==================
+* Faster grep for revision range. bzr-grep now caches results for
+  files that have not changed between revisions.
+  (Parth Malwankar, #542375)
+
 * Added support for -F/--fixed-string for faster search.
   Simple alphanumeric patterns are now implicitly -F and searched faster.
   (Parth Malwankar, #539263)
