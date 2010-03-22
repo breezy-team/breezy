@@ -1778,14 +1778,13 @@ class BzrBranchFormat4(BranchFormat):
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False):
         """See BranchFormat.open()."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(a_bzrdir)
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
         return BzrBranch(_format=self,
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
+                         name=name,
                          _repository=a_bzrdir.open_repository())
 
     def __str__(self):
@@ -1819,6 +1818,7 @@ class BranchFormatMetadir(BranchFormat):
                                                          lockdir.LockDir)
             return self._branch_class()(_format=self,
                               _control_files=control_files,
+                              name=name,
                               a_bzrdir=a_bzrdir,
                               _repository=a_bzrdir.find_repository(),
                               ignore_fallbacks=ignore_fallbacks)
@@ -2119,17 +2119,20 @@ class BzrBranch(Branch, _RelockDebugMixin):
     :ivar repository: Repository for this branch.
     :ivar base: The url of the base directory for this branch; the one
         containing the .bzr directory.
+    :ivar name: Optional colocated branch name as it exists in the control
+        directory.
     """
 
     def __init__(self, _format=None,
-                 _control_files=None, a_bzrdir=None, _repository=None,
-                 ignore_fallbacks=False):
+                 _control_files=None, a_bzrdir=None, name=None,
+                 _repository=None, ignore_fallbacks=False):
         """Create new branch object at a particular location."""
         if a_bzrdir is None:
             raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
         self._base = self.bzrdir.transport.clone('..').base
+        self.name = name
         # XXX: We should be able to just do
         #   self.base = self.bzrdir.root_transport.base
         # but this does not quite work yet -- mbp 20080522
@@ -2142,7 +2145,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
         Branch.__init__(self)
 
     def __str__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.base)
+        if self.name is None:
+            return '%s(%r)' % (self.__class__.__name__, self.base)
+        else:
+            return '%s(%r,%r)' % (self.__class__.__name__, self.base, self.name)
 
     __repr__ = __str__
 

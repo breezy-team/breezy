@@ -37,6 +37,9 @@ Compatibility Breaks
 New Features
 ************
 
+* Added ``bzr remove-branch`` command that can remove a local or remote 
+  branch. (Jelmer Vernooij, #276295)
+
 * ``bzr export`` now takes an optional argument ``--per-file-timestamps``
   to set file mtimes to the last timestamp of the last revision in which
   they were changed rather than the current time. (Jelmer Vernooij)
@@ -50,6 +53,10 @@ New Features
 * Parsing of command lines, for example in ``diff --using``, no longer
   treats backslash as an escape character on Windows.   (Gordon Tyler,
   #392248)
+
+* Plugins can be disabled by defining ``BZR_DISABLE_PLUGINS`` as
+  a list of plugin names separated by ':' (';' on windows).
+  (Vincent Ladeuil, #411413)
 
 * Tag names can now be determined automatically by ``automatic_tag_name`` 
   hooks on ``Branch`` if they are not specified on the command line.
@@ -86,11 +93,19 @@ Bug Fixes
 * ``bzr add`` will not add conflict related files unless explicitly required.
   (Vincent Ladeuil, #322767, #414589)
 
+* ``bzr dump-btree`` now works on ``*.cix`` and ``*.six`` files.  Those
+  indices do not have reference lists, so ``dump-btree`` will simply show
+  ``None`` instead.  (Andrew Bennetts, #488607)
+
 * ``bzr help`` will no longer trigger the get_missing_command hook when
   doing a topic lookup. This avoids prompting (like 'no command plugins/loom,
   did you mean log?') when getting help. In future we may trigger the hook 
   deliberately when no help topics match from any help index.
   (Robert Collins, #396261)
+
+* ``bzr log -n0 -r..A.B.C`` should not crash but just consider the None
+  revspec as representing the first revision of the branch.
+  (Vincent Ladeuil, #519862)
 
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
@@ -98,6 +113,10 @@ Bug Fixes
 * ``bzr resolve --take-this`` and ``--take-other`` now correctly renames
   the kept file on content conflicts where one side deleted the file.
   (Vincent Ladeuil, #529968)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
 
 * ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
   of ``backup.bzr``. This directory is ignored by bzr commands such as
@@ -138,6 +157,10 @@ Bug Fixes
 
 API Changes
 ***********
+
+* ``bzrlib.merge_directive._BaseMergeDirective`` has been renamed to 
+  ``bzrlib.merge_directive.BaseMergeDirective`` and is now public.
+  (Jelmer Vernooij)
 
 * ``BranchFormat.initialize`` now takes an optional ``name`` of the colocated 
   branch to create. (Jelmer Vernooij)

@@ -456,7 +456,12 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            refs_as_tuples = static_tuple.as_tuples(node[3])
+            try:
+                refs = node[3]
+            except IndexError:
+                refs_as_tuples = None
+            else:
+                refs_as_tuples = static_tuple.as_tuples(refs)
             as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
 
@@ -2433,7 +2438,11 @@ def _get_revision_range(revisionspec_list, branch, command_name):
             raise errors.BzrCommandError(
                 "bzr %s doesn't accept two revisions in different"
                 " branches." % command_name)
-        rev1 = start_spec.in_history(branch)
+        if start_spec.spec is None:
+            # Avoid loading all the history.
+            rev1 = RevisionInfo(branch, None, None)
+        else:
+            rev1 = start_spec.in_history(branch)
         # Avoid loading all of history when we know a missing
         # end of range means the last revision ...
         if end_spec.spec is None:
@@ -5143,7 +5152,7 @@ class cmd_send(Command):
                short_name='f',
                type=unicode),
         Option('output', short_name='o',
-               help='Write merge directive to this file; '
+               help='Write merge directive to this file or directory; '
                     'use - for stdout.',
                type=unicode),
         Option('strict',
@@ -5751,6 +5760,31 @@ class cmd_hooks(Command):
                 else:
                     self.outf.write("    <no hooks installed>\n")
 
+
+class cmd_remove_branch(Command):
+    """Remove a branch.
+
+    This will remove the branch from the specified location but 
+    will keep any working tree or repository in place.
+
+    :Examples:
+
+      Remove the branch at repo/trunk::
+
+        bzr remove-branch repo/trunk
+
+    """
+
+    takes_args = ["location?"]
+
+    aliases = ["rmbranch"]
+
+    def run(self, location=None):
+        if location is None:
+            location = "."
+        branch = Branch.open_containing(location)[0]
+        branch.bzrdir.destroy_branch()
+        
 
 class cmd_shelve(Command):
     """Temporarily set aside some changes from the current tree.
