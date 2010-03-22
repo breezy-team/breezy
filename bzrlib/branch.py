@@ -550,9 +550,12 @@ class Branch(object):
         if parents:
             whitelist.update(parents)
         else:
-            # This may occur if we start at the first revision of a joined
-            # branch
-            import pdb; pdb.set_trace() # Need test
+            # If there is no parents, there is nothing of interest left
+
+            # FIXME: It's hard to test this scenario here as this code is never
+            # called in that case. -- vila 20100322
+            return
+
         for (rev_id, merge_depth, revno, end_of_merge) in rev_iter:
             if not clean:
                 if rev_id in whitelist:
