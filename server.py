@@ -164,7 +164,7 @@ def serve_git(transport, host=None, port=None, inet=False):
     backend = BzrBackend(transport)
 
     if host is None:
-        host = ''
+        host = 'localhost'
     if port:
         server = TCPGitServer(backend, host, port)
     else:
