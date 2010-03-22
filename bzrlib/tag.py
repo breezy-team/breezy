@@ -26,8 +26,6 @@ when the branch is opened.  Clients should typically do
 # called tags* are ctags files... mbp 20070220.
 
 
-from warnings import warn
-
 from bzrlib import (
     bencode,
     errors,
@@ -253,3 +251,4 @@ class BasicTags(_Tags):
 
 def _merge_tags_if_possible(from_branch, to_branch):
     from_branch.tags.merge_to(to_branch.tags)
+

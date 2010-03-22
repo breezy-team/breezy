@@ -1366,6 +1366,18 @@ class Branch(object):
     def supports_tags(self):
         return self._format.supports_tags()
 
+    def automatic_tag_name(self, revision_id):
+        """Try to automatically find the tag name for a revision.
+
+        :param revision_id: Revision id of the revision.
+        :return: A tag name or None if no tag name could be determined.
+        """
+        for hook in Branch.hooks['automatic_tag_name']:
+            ret = hook(self, revision_id)
+            if ret is not None:
+                return ret
+        return None
+
     def _check_if_descendant_or_diverged(self, revision_a, revision_b, graph,
                                          other_branch):
         """Ensure that revision_b is a descendant of revision_a.
@@ -1685,6 +1697,13 @@ class BranchHooks(Hooks):
             "multiple hooks installed for transform_fallback_location, "
             "all are called with the url returned from the previous hook."
             "The order is however undefined.", (1, 9), None))
+        self.create_hook(HookPoint('automatic_tag_name',
+            "Called to determine an automatic tag name for a revision."
+            "automatic_tag_name is called with (branch, revision_id) and "
+            "should return a tag name or None if no tag name could be "
+            "determined. The first non-None tag name returned will be used.",
+            (2, 2), None))
+
 
 
 # install the default hooks into the Branch class.

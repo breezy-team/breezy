@@ -5268,10 +5268,15 @@ class cmd_tag(Command):
 
     To rename a tag (change the name but keep it on the same revsion), run ``bzr
     tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``.
+
+    If no tag name is specified it will be determined through the 
+    'automatic_tag_name' hook. This can e.g. be used to automatically tag
+    upstream releases by reading configure.ac. See ``bzr help hooks`` for
+    details.
     """
 
     _see_also = ['commit', 'tags']
-    takes_args = ['tag_name']
+    takes_args = ['tag_name?']
     takes_options = [
         Option('delete',
             help='Delete this tag rather than placing it.',
@@ -5287,7 +5292,7 @@ class cmd_tag(Command):
         'revision',
         ]
 
-    def run(self, tag_name,
+    def run(self, tag_name=None,
             delete=None,
             directory='.',
             force=None,
@@ -5297,6 +5302,8 @@ class cmd_tag(Command):
         branch.lock_write()
         self.add_cleanup(branch.unlock)
         if delete:
+            if tag_name is None:
+                raise errors.BzrCommandError("No tag specified to delete.")
             branch.tags.delete_tag(tag_name)
             self.outf.write('Deleted tag %s.\n' % tag_name)
         else:
@@ -5308,6 +5315,11 @@ class cmd_tag(Command):
                 revision_id = revision[0].as_revision_id(branch)
             else:
                 revision_id = branch.last_revision()
+            if tag_name is None:
+                tag_name = branch.automatic_tag_name(revision_id)
+                if tag_name is None:
+                    raise errors.BzrCommandError(
+                        "Please specify a tag name.")
             if (not force) and branch.tags.has_tag(tag_name):
                 raise errors.TagAlreadyExists(tag_name)
             branch.tags.set_tag(tag_name, revision_id)
