@@ -187,5 +187,7 @@ def changelog_add_new_version(tree, version, distribution_name, changelog,
             "-D", "UNRELEASED", "--release-heuristic", "changelog",
             entry_description], cwd=tree.basedir)
     proc.wait()
+    # FIXME: Raise insightful exception here rather than just checking
+    # return code.
     return proc.returncode == 0
 
