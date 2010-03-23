@@ -185,35 +185,6 @@ def generate_upgrade_map(revs, vcs, determine_upgraded_revid):
     return rename_map
 
 
-def generate_rebase_map_from_mappings(repository, graph, revision_id,
-                                      foreign_repository, new_mapping):
-    if revision_id is None:
-        potential = repository.all_revision_ids()
-    else:
-        potential = itertools.imap(lambda (rev, parents): rev,
-                graph.iter_ancestry([revision_id]))
-
-    def determine_upgraded_revid(foreign_revid):
-        # FIXME: Try all mappings until new_mapping rather than just
-        # new_mapping
-        new_revid = foreign_repository.upgrade_foreign_revision_id(
-            foreign_revid, new_mapping)
-        if new_revid is None:
-            return None
-        # Make sure the revision is there
-        if not repository.has_revision(new_revid):
-            try:
-                repository.fetch(foreign_repository, new_revid)
-            except NoSuchRevision:
-                return None
-            if not repository.has_revision(new_revid):
-                return None
-        return new_revid
-
-    return generate_upgrade_map(potential, foreign_repository.vcs,
-                                       determine_upgraded_revid)
-
-
 def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
                         revision_id=None, allow_changes=False):
     """Generate a rebase plan for upgrading revisions.
