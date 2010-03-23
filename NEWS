@@ -2,12 +2,16 @@
 
   BUG FIXES
 
-   * Treat a stop revision as inclusive, not exclusive.
+   * Treat a stop revision as inclusive, not exclusive. 
+     (Max Bowsher, Jelmer Vernooij)
+
+   * Fix rebase to not discard revisions off the leftmost path.
+     (Robert Collins, Max Bowsher, #266897)
 
   CHANGES
 
    * svn-upgrade/foreign-mapping-upgrade was removed. Use rebase-foreign
-     instead.
+     instead. (Jelmer Vernooij)
 
 0.5.5	2009-12-15
 

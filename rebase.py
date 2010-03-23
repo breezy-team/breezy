@@ -147,9 +147,10 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     """Create a simple rebase plan that replays history based
     on one revision being replayed on top of another.
 
-    :param todo_set: A set of revisions to rebase. Only the revisions from
-        stop_revid back through the left hand ancestry are rebased; other
-        revisions are ignored (and references to them are preserved).
+    :param todo_set: A set of revisions to rebase. Only the revisions
+        topologically between stop_revid and start_revid (inclusive) are
+        rebased; other revisions are ignored (and references to them are
+        preserved).
     :param start_revid: Id of revision at which to start replaying
     :param stop_revid: Id of revision until which to stop replaying
     :param onto_revid: Id of revision on top of which to replay
@@ -166,48 +167,52 @@ def generate_simple_plan(todo_set, start_revid, stop_revid, onto_revid, graph,
     replace_map = {}
     parent_map = graph.get_parent_map(todo_set)
     order = topo_sort(parent_map)
-    left_most_path = []
     if stop_revid is None:
         stop_revid = order[-1]
-    rev = stop_revid
-    while rev in parent_map:
-        left_most_path.append(rev)
-        if rev == start_revid:
-            # manual specified early-stop
-            break
-        rev = parent_map[rev][0]
-    left_most_path.reverse()
     if start_revid is None:
         # We need a common base.
         lca = graph.find_lca(stop_revid, onto_revid)
         if lca == set([NULL_REVISION]):
             raise UnrelatedBranches()
-    new_parent = onto_revid
-    todo = left_most_path
+        start_revid = order[0]
+    todo = order[order.index(start_revid):order.index(stop_revid)+1]
     heads_cache = FrozenHeadsCache(graph)
     # XXX: The output replacemap'd parents should get looked up in some manner
     # by the heads cache? RBC 20080719
     for oldrevid in todo:
         oldparents = parent_map[oldrevid]
         assert isinstance(oldparents, tuple), "not tuple: %r" % oldparents
+        parents = []
+        # Left parent:
+        if heads_cache.heads((oldparents[0], onto_revid)) == set((onto_revid,)):
+            parents.append(onto_revid)
+        elif oldparents[0] in replace_map:
+            parents.append(replace_map[oldparents[0]][0])
+        else:
+            parents.append(onto_revid)
+            parents.append(oldparents[0])
+        # Other parents:
         if len(oldparents) > 1:
             additional_parents = heads_cache.heads(oldparents[1:])
-            parents = [new_parent]
-            for parent in parents:
-                if parent in additional_parents and parent not in parents:
-                    # Use as a parent
-                    parent = replace_map.get(parent, (parent,))[0]
-                    parents.append(parent)
-            parents = tuple(parents)
+            for oldparent in oldparents[1:]:
+                if oldparent in additional_parents:
+                    if heads_cache.heads((oldparent, onto_revid)) == set((onto_revid,)):
+                        pass
+                    elif oldparent in replace_map:
+                        newparent = replace_map[oldparent][0]
+                        if parents[0] == onto_revid:
+                            parents[0] = newparent
+                        else:
+                            parents.append(newparent)
+                    else:
+                        parents.append(oldparent)
             if len(parents) == 1 and skip_full_merged:
                 continue
-        else:
-            parents = (new_parent,)
+        parents = tuple(parents)
         newrevid = generate_revid(oldrevid, parents)
         assert newrevid != oldrevid, "old and newrevid equal (%r)" % newrevid
         assert isinstance(parents, tuple), "parents not tuple: %r" % parents
         replace_map[oldrevid] = (newrevid, parents)
-        new_parent = newrevid
     return replace_map
 
 
