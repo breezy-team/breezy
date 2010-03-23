@@ -18,8 +18,6 @@
 """Upgrading revisions made with older versions of the mapping."""
 
 
-import itertools
-
 from bzrlib import (
     osutils,
     trace,
@@ -28,7 +26,6 @@ from bzrlib import (
 from bzrlib.errors import (
     BzrError,
     InvalidRevisionId,
-    NoSuchRevision,
     )
 from bzrlib.foreign import (
     update_workingtree_fileids,
@@ -48,20 +45,6 @@ class UpgradeChangesContent(BzrError):
 
     def __init__(self, revid):
         self.revid = revid
-
-
-def create_upgraded_revid(revid, mapping_suffix, upgrade_suffix="-upgrade"):
-    """Create a new revision id for an upgraded version of a revision.
-
-    Prevents suffix to be appended needlessly.
-
-    :param revid: Original revision id.
-    :return: New revision id
-    """
-    if revid.endswith(upgrade_suffix):
-        return revid[0:revid.rfind("-svn")] + mapping_suffix + upgrade_suffix
-    else:
-        return revid + mapping_suffix + upgrade_suffix
 
 
 def create_deterministic_revid(revid, new_parents):

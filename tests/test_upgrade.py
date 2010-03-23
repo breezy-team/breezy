@@ -22,7 +22,6 @@ from bzrlib.tests import (
 
 from bzrlib.plugins.rewrite.upgrade import (
     UpgradeChangesContent,
-    create_upgraded_revid,
     )
 
 
@@ -31,14 +30,3 @@ class TestUpgradeChangesContent(TestCase):
     def test_init(self):
         x = UpgradeChangesContent("revisionx")
         self.assertEqual("revisionx", x.revid)
-
-
-class ParserTests(TestCase):
-
-    def test_create_upgraded_revid_new(self):
-        self.assertEqual("bla-svn3-upgrade",
-                         create_upgraded_revid("bla", "-svn3"))
-
-    def test_create_upgraded_revid_upgrade(self):
-        self.assertEqual("bla-svn3-upgrade",
-                         create_upgraded_revid("bla-svn1-upgrade", "-svn3"))
