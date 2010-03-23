@@ -47,9 +47,6 @@ for cmd in bzr_commands:
     plugin_cmds.register_lazy("cmd_%s" % cmd, [],
         "bzrlib.plugins.rewrite.commands")
 
-plugin_cmds.register_lazy('cmd_foreign_mapping_upgrade', [],
-                          'bzrlib.plugins.rewrite.commands')
-
 
 def test_suite():
     """Returns the testsuite for bzr-rewrite."""
