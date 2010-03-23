@@ -90,6 +90,7 @@ class TestImportTariffs(TestCaseWithTransport):
         # 'st' in a working tree shouldn't need many modules
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
+            'bzrlib.bundle.commands',
             'bzrlib.remote',
             'bzrlib.smart',
             'smtplib',
