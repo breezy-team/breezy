@@ -183,7 +183,8 @@ def pseudonyms_as_dict(l):
 def generate_rebase_map_from_pseudonyms(pseudonym_dict, existing, desired):
     """Create a rebase map from pseudonyms and existing/desired ancestry.
 
-    :param pseudonym_dict: Dictionary with pseudonym as returned by pseudonyms_as_dict()
+    :param pseudonym_dict: Dictionary with pseudonym as returned by
+        pseudonyms_as_dict()
     :param existing: Existing ancestry, might need to be rebased
     :param desired: Desired ancestry
     :return: rebase map, as dictionary
