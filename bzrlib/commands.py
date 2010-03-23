@@ -72,12 +72,22 @@ class CommandInfo(object):
 
 
 class CommandRegistry(registry.Registry):
-
-    overridden_registry = None
-    """Look in this registry for commands being overridden by this registry.
-
-    This can be used to tell plugin commands about the builtin they're decorating.
+    """Special registry mapping command names to command classes.
+    
+    :ivar overridden_registry: Look in this registry for commands being
+        overridden by this registry.  This can be used to tell plugin commands
+        about the builtin they're decorating.
     """
+
+    def __init__(self):
+        registry.Registry.__init__(self)
+        self.overridden_registry = None
+        # map from aliases to the real command that implements the name
+        self._alias_dict = {}
+
+    def get(self, command_name):
+        real_name = self._alias_dict.get(command_name, command_name)
+        return registry.Registry.get(self, real_name)
 
     @staticmethod
     def _get_name(command_name):
@@ -115,6 +125,8 @@ class CommandRegistry(registry.Registry):
                 sys.modules[cmd.__module__])
             trace.warning('Previously this command was registered from %r' %
                 sys.modules[previous.__module__])
+        for a in cmd.aliases:
+            self._alias_dict[a] = k_unsquished
         return previous
 
     def register_lazy(self, command_name, aliases, module_name):
@@ -127,6 +139,8 @@ class CommandRegistry(registry.Registry):
         key = self._get_name(command_name)
         registry.Registry.register_lazy(self, key, module_name, command_name,
                                         info=CommandInfo(aliases))
+        for a in aliases:
+            self._alias_dict[a] = key
 
 
 plugin_cmds = CommandRegistry()
@@ -168,6 +182,10 @@ def _register_builtin_commands():
     import bzrlib.builtins
     for cmd_class in _scan_module_for_commands(bzrlib.builtins).values():
         builtin_command_registry.register(cmd_class)
+    # lazy builtins
+    builtin_command_registry.register_lazy('cmd_bundle_info',
+        [],
+        'bzrlib.bundle.commands')
 
 
 def _scan_module_for_commands(module):
@@ -297,11 +315,6 @@ def _get_bzr_command(cmd_or_None, cmd_name):
         pass
     else:
         return cmd_class()
-    # look for any command which claims this as an alias; this is a bit
-    # inefficient because it will load everything
-    for real_cmd_name, cmd_class in builtin_command_registry.iteritems():
-        if cmd_name in cmd_class.aliases:
-            return cmd_class()
     return cmd_or_None
 
 
