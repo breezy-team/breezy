@@ -48,47 +48,69 @@ REBASE_CURRENT_REVID_FILENAME = 'rebase-current'
 REBASE_PLAN_VERSION = 1
 REVPROP_REBASE_OF = 'rebase-of'
 
-def rebase_plan_exists(wt):
-    """Check whether there is a rebase plan present.
+class RebaseState(object):
 
-    :param wt: Working tree for which to check.
-    :return: boolean
-    """
-    try:
-        return wt._transport.get_bytes(REBASE_PLAN_FILENAME) != ''
-    except NoSuchFile:
-        return False
+    def __init__(self, wt):
+        self.wt = wt
+        self.transport = wt._transport
 
+    def has_plan(self):
+        """Check whether there is a rebase plan present.
 
-def read_rebase_plan(wt):
-    """Read a rebase plan file.
+        :return: boolean
+        """
+        try:
+            return self.transport.get_bytes(REBASE_PLAN_FILENAME) != ''
+        except NoSuchFile:
+            return False
 
-    :param wt: Working Tree for which to write the plan.
-    :return: Tuple with last revision info and replace map.
-    """
-    text = wt._transport.get_bytes(REBASE_PLAN_FILENAME)
-    if text == '':
-        raise NoSuchFile(REBASE_PLAN_FILENAME)
-    return unmarshall_rebase_plan(text)
+    def read_plan(self):
+        """Read a rebase plan file.
 
+        :return: Tuple with last revision info and replace map.
+        """
+        text = self.transport.get_bytes(REBASE_PLAN_FILENAME)
+        if text == '':
+            raise NoSuchFile(REBASE_PLAN_FILENAME)
+        return unmarshall_rebase_plan(text)
 
-def write_rebase_plan(wt, replace_map):
-    """Write a rebase plan file.
+    def write_plan(self, replace_map):
+        """Write a rebase plan file.
 
-    :param wt: Working Tree for which to write the plan.
-    :param replace_map: Replace map (old revid -> (new revid, new parents))
-    """
-    content = marshall_rebase_plan(wt.branch.last_revision_info(), replace_map)
-    assert type(content) == str
-    wt._transport.put_bytes(REBASE_PLAN_FILENAME, content)
+        :param replace_map: Replace map (old revid -> (new revid, new parents))
+        """
+        content = marshall_rebase_plan(self.wt.branch.last_revision_info(),
+            replace_map)
+        assert type(content) == str
+        self.transport.put_bytes(REBASE_PLAN_FILENAME, content)
 
+    def remove_plan(self):
+        """Remove a rebase plan file.
+        """
+        self.transport.put_bytes(REBASE_PLAN_FILENAME, '')
 
-def remove_rebase_plan(wt):
-    """Remove a rebase plan file.
+    def write_active_revid(self, revid):
+        """Write the id of the revision that is currently being rebased.
 
-    :param wt: Working Tree for which to remove the plan.
-    """
-    wt._transport.put_bytes(REBASE_PLAN_FILENAME, '')
+        :param revid: Revision id to write
+        """
+        if revid is None:
+            revid = NULL_REVISION
+        assert type(revid) == str
+        self.transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, revid)
+
+    def read_active_revid(self):
+        """Read the id of the revision that is currently being rebased.
+
+        :return: Id of the revision that is being rebased.
+        """
+        try:
+            text = self.transport.get_bytes(REBASE_CURRENT_REVID_FILENAME).rstrip("\n")
+            if text == NULL_REVISION:
+                return None
+            return text
+        except NoSuchFile:
+            return None
 
 
 def marshall_rebase_plan(last_rev_info, replace_map):
@@ -431,7 +453,8 @@ def commit_rebase(wt, oldrev, newrevid):
     wt.commit(message=oldrev.message, timestamp=oldrev.timestamp,
               timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
               committer=committer, authors=authors)
-    write_active_rebase_revid(wt, None)
+    state = RebaseState(wt)
+    state.write_active_revid(None)
 
 
 def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
@@ -487,7 +510,8 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
     assert not wt.changes_from(wt.basis_tree()).has_changed(), "Changes in rev"
 
     oldtree = repository.revision_tree(oldrevid)
-    write_active_rebase_revid(wt, oldrevid)
+    state = RebaseState(wt)
+    state.write_active_revid(oldrevid)
     merger = Merger(wt.branch, this_tree=wt)
     merger.set_other_revision(oldrevid, wt.branch)
     base_revid = replay_determine_base(repository.get_graph(),
@@ -514,33 +538,6 @@ def workingtree_replay(wt, map_ids=False, merge_type=None):
         return replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
                                         merge_type=merge_type)
     return replay
-
-
-def write_active_rebase_revid(wt, revid):
-    """Write the id of the revision that is currently being rebased.
-
-    :param wt: Working Tree that is being used for the rebase.
-    :param revid: Revision id to write
-    """
-    if revid is None:
-        revid = NULL_REVISION
-    assert type(revid) == str
-    wt._transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, revid)
-
-
-def read_active_rebase_revid(wt):
-    """Read the id of the revision that is currently being rebased.
-
-    :param wt: Working Tree that is being used for the rebase.
-    :return: Id of the revision that is being rebased.
-    """
-    try:
-        text = wt._transport.get_bytes(REBASE_CURRENT_REVID_FILENAME).rstrip("\n")
-        if text == NULL_REVISION:
-            return None
-        return text
-    except NoSuchFile:
-        return None
 
 
 def complete_revert(wt, newparents):

@@ -35,15 +35,10 @@ from bzrlib.plugins.rewrite.rebase import (
     replay_snapshot,
     generate_simple_plan,
     generate_transpose_plan,
-    rebase_plan_exists,
     rebase_todo,
     REBASE_PLAN_FILENAME,
     REBASE_CURRENT_REVID_FILENAME,
-    read_rebase_plan,
-    remove_rebase_plan,
-    read_active_rebase_revid,
-    write_active_rebase_revid,
-    write_rebase_plan,
+    RebaseState,
     ReplaySnapshotError,
     ReplayParentsInconsistent,
     replay_delta_workingtree,
@@ -258,90 +253,79 @@ class PlanCreatorTests(TestCaseWithTransport):
                     graph, lambda y, _: y+"'", True))
 
 
-class PlanFileTests(TestCaseWithTransport):
+class RebaseStateTests(TestCaseWithTransport):
 
-   def test_rebase_plan_exists_false(self):
-        wt = self.make_branch_and_tree('.')
-        self.assertFalse(rebase_plan_exists(wt))
+    def setUp(self):
+        super(RebaseStateTests, self).setUp()
+        self.wt = self.make_branch_and_tree('.')
+        self.state = RebaseState(self.wt)
 
-   def test_rebase_plan_exists_empty(self):
-        wt = self.make_branch_and_tree('.')
-        wt._transport.put_bytes(REBASE_PLAN_FILENAME, "")
-        self.assertFalse(rebase_plan_exists(wt))
+    def test_rebase_plan_exists_false(self):
+        self.assertFalse(self.state.has_plan())
 
-   def test_rebase_plan_exists(self):
-        wt = self.make_branch_and_tree('.')
-        wt._transport.put_bytes(REBASE_PLAN_FILENAME, "foo")
-        self.assertTrue(rebase_plan_exists(wt))
+    def test_rebase_plan_exists_empty(self):
+        self.wt._transport.put_bytes(REBASE_PLAN_FILENAME, "")
+        self.assertFalse(self.state.has_plan())
 
-   def test_remove_rebase_plan(self):
-        wt = self.make_branch_and_tree('.')
-        wt._transport.put_bytes(REBASE_PLAN_FILENAME, "foo")
-        remove_rebase_plan(wt)
-        self.assertFalse(rebase_plan_exists(wt))
+    def test_rebase_plan_exists(self):
+        self.wt._transport.put_bytes(REBASE_PLAN_FILENAME, "foo")
+        self.assertTrue(self.state.has_plan())
 
-   def test_remove_rebase_plan_twice(self):
-        wt = self.make_branch_and_tree('.')
-        remove_rebase_plan(wt)
-        self.assertFalse(rebase_plan_exists(wt))
+    def test_remove_rebase_plan(self):
+        self.wt._transport.put_bytes(REBASE_PLAN_FILENAME, "foo")
+        self.state.remove_plan()
+        self.assertFalse(self.state.has_plan())
 
-   def test_write_rebase_plan(self):
-        wt = self.make_branch_and_tree('.')
+    def test_remove_rebase_plan_twice(self):
+        self.state.remove_plan()
+        self.assertFalse(self.state.has_plan())
+
+    def test_write_rebase_plan(self):
         file('hello', 'w').write('hello world')
-        wt.add('hello')
-        wt.commit(message='add hello', rev_id="bla")
-        write_rebase_plan(wt,
+        self.wt.add('hello')
+        self.wt.commit(message='add hello', rev_id="bla")
+        self.state.write_plan(
                 {"oldrev": ("newrev", ["newparent1", "newparent2"])})
         self.assertEqualDiff("""# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
-""", wt._transport.get_bytes(REBASE_PLAN_FILENAME))
+""", self.wt._transport.get_bytes(REBASE_PLAN_FILENAME))
 
-   def test_read_rebase_plan_nonexistant(self):
-        wt = self.make_branch_and_tree('.')
-        self.assertRaises(NoSuchFile, read_rebase_plan, wt)
+    def test_read_rebase_plan_nonexistant(self):
+        self.assertRaises(NoSuchFile, self.state.read_plan)
 
-   def test_read_rebase_plan_empty(self):
-        wt = self.make_branch_and_tree('.')
-        wt._transport.put_bytes(REBASE_PLAN_FILENAME, "")
-        self.assertRaises(NoSuchFile, read_rebase_plan, wt)
+    def test_read_rebase_plan_empty(self):
+        self.wt._transport.put_bytes(REBASE_PLAN_FILENAME, "")
+        self.assertRaises(NoSuchFile, self.state.read_plan)
 
-   def test_read_rebase_plan(self):
-        wt = self.make_branch_and_tree('.')
-        wt._transport.put_bytes(REBASE_PLAN_FILENAME, """# Bazaar rebase plan 1
+    def test_read_rebase_plan(self):
+        self.wt._transport.put_bytes(REBASE_PLAN_FILENAME,
+            """# Bazaar rebase plan 1
 1 bla
 oldrev newrev newparent1 newparent2
 """)
         self.assertEquals(((1, "bla"),
             {"oldrev": ("newrev", ("newparent1", "newparent2"))}),
-            read_rebase_plan(wt))
-
-
-class CurrentRevidFileTests(TestCaseWithTransport):
+            self.state.read_plan())
 
     def test_read_nonexistant(self):
-        wt = self.make_branch_and_tree('.')
-        self.assertIs(None, read_active_rebase_revid(wt))
+        self.assertIs(None, self.state.read_active_revid())
 
     def test_read_null(self):
-        wt = self.make_branch_and_tree('.')
-        wt._transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, NULL_REVISION)
-        self.assertIs(None, read_active_rebase_revid(wt))
+        self.wt._transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, NULL_REVISION)
+        self.assertIs(None, self.state.read_active_revid())
 
     def test_read(self):
-        wt = self.make_branch_and_tree('.')
-        wt._transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, "bla")
-        self.assertEquals("bla", read_active_rebase_revid(wt))
+        self.wt._transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, "bla")
+        self.assertEquals("bla", self.state.read_active_revid())
 
     def test_write(self):
-        wt = self.make_branch_and_tree('.')
-        write_active_rebase_revid(wt, "bloe")
-        self.assertEquals("bloe", read_active_rebase_revid(wt))
+        self.state.write_active_revid("bloe")
+        self.assertEquals("bloe", self.state.read_active_revid())
 
     def test_write_null(self):
-        wt = self.make_branch_and_tree('.')
-        write_active_rebase_revid(wt, None)
-        self.assertIs(None, read_active_rebase_revid(wt))
+        self.state.write_active_revid(None)
+        self.assertIs(None, self.state.read_active_revid())
 
 
 class RebaseTodoTests(TestCase):
