@@ -1,6 +1,16 @@
-0.5.0	UNRELEASED
+0.5.1	UNRELEASED
 
  BUG FIXES
+
+  * Use host specified rather than localhost in `bzr serve`.
+    (David Coles, #543998)
+
+0.5.0	2010-03-18
+
+ BUG FIXES
+
+  * Fix compatibility with newer versions of Python2.6, which change the 
+    behaviour of urlparse.urlsplit.
  
   * Avoid storing texts of symlinks, which causes checksum errors in 
     `bzr check`. (#512323, INADA Naoki, Jelmer Vernooij)
@@ -38,6 +48,8 @@
  FEATURES
 
   * Support (dumb) HTTP repositories. (#373688, Jelmer Vernooij)
+
+  * Implement API for colocated branches. (#380871, Jelmer Vernooij)
 
 0.4.3	2010-01-19
 

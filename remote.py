@@ -68,6 +68,7 @@ import os
 import tempfile
 import urllib
 import urlparse
+urlparse.uses_netloc.extend(['git', 'git+ssh'])
 
 from dulwich.pack import load_pack_index
 
@@ -84,12 +85,11 @@ def split_git_url(url):
     :param url: Git URL
     :return: Tuple with host, port, username, path.
     """
-    (scheme, _, loc, _, _) = urlparse.urlsplit(url)
-    hostport, escaped_path = urllib.splithost(loc)
-    path = urllib.unquote(escaped_path)
+    (scheme, netloc, loc, _, _) = urlparse.urlsplit(url)
+    path = urllib.unquote(loc)
     if path.startswith("/~"):
         path = path[1:]
-    (username, hostport) = urllib.splituser(hostport)
+    (username, hostport) = urllib.splituser(netloc)
     (host, port) = urllib.splitnport(hostport, None)
     return (host, port, username, path)
 

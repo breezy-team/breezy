@@ -163,5 +163,10 @@ class BzrBackend(Backend):
 def serve_git(transport, host=None, port=None, inet=False):
     backend = BzrBackend(transport)
 
-    server = TCPGitServer(backend, 'localhost')
+    if host is None:
+        host = 'localhost'
+    if port:
+        server = TCPGitServer(backend, host, port)
+    else:
+        server = TCPGitServer(backend, host)
     server.serve_forever()
