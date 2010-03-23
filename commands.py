@@ -88,7 +88,7 @@ class cmd_rebase(Command):
         from bzrlib.plugins.rewrite.rebase import (
             generate_simple_plan,
             rebase,
-            RebaseState,
+            RebaseState1,
             workingtree_replay,
             regenerate_default_revid,
             rebase_todo,
@@ -99,7 +99,7 @@ class cmd_rebase(Command):
 
         wt = WorkingTree.open_containing(".")[0]
         wt.lock_write()
-        state = RebaseState(wt)
+        state = RebaseState1(wt)
         if upstream_location is None:
             if pending_merges:
                 upstream_location = "."
@@ -195,7 +195,7 @@ class cmd_rebase(Command):
                 # Start executing plan
                 try:
                     rebase(wt.branch.repository, replace_map,
-                           workingtree_replay(wt, merge_type=merge_type))
+                           workingtree_replay(wt, state, merge_type=merge_type))
                 except ConflictsInTree:
                     raise BzrCommandError("A conflict occurred replaying a "
                         "commit. Resolve the conflict and run "
@@ -212,13 +212,13 @@ class cmd_rebase_abort(Command):
     @display_command
     def run(self):
         from bzrlib.plugins.rewrite.rebase import (
-            RebaseState,
+            RebaseState1,
             complete_revert,
             )
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing('.')[0]
         wt.lock_write()
-        state = RebaseState(wt)
+        state = RebaseState1(wt)
         try:
             # Read plan file and set last revision
             try:
@@ -238,7 +238,7 @@ class cmd_rebase_continue(Command):
     @display_command
     def run(self, merge_type=None):
         from bzrlib.plugins.rewrite.rebase import (
-            RebaseState,
+            RebaseState1,
             commit_rebase,
             rebase,
             workingtree_replay,
@@ -247,7 +247,7 @@ class cmd_rebase_continue(Command):
         wt = WorkingTree.open_containing('.')[0]
         wt.lock_write()
         try:
-            state = RebaseState(wt)
+            state = RebaseState1(wt)
             # Abort if there are any conflicts
             if len(wt.conflicts()) != 0:
                 raise BzrCommandError("There are still conflicts present. "
@@ -265,7 +265,7 @@ class cmd_rebase_continue(Command):
             try:
                 # Start executing plan from current Branch.last_revision()
                 rebase(wt.branch.repository, replace_map,
-                        workingtree_replay(wt, merge_type=merge_type))
+                        workingtree_replay(wt, state, merge_type=merge_type))
             except ConflictsInTree:
                 raise BzrCommandError("A conflict occurred replaying a commit."
                     " Resolve the conflict and run 'bzr rebase-continue' or "
@@ -284,14 +284,14 @@ class cmd_rebase_todo(Command):
 
     def run(self):
         from bzrlib.plugins.rewrite.rebase import (
-            RebaseState,
+            RebaseState1,
             rebase_todo,
             )
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing('.')[0]
         wt.lock_read()
         try:
-            state = RebaseState(wt)
+            state = RebaseState1(wt)
             try:
                 replace_map = state.read_plan()[1]
             except NoSuchFile:
@@ -319,6 +319,7 @@ class cmd_replay(Command):
         from bzrlib.workingtree import WorkingTree
         from bzrlib import ui
         from bzrlib.plugins.rewrite.rebase import (
+            RebaseState1,
             regenerate_default_revid,
             replay_delta_workingtree,
             )
@@ -345,6 +346,7 @@ class cmd_replay(Command):
 
         wt = WorkingTree.open(".")
         wt.lock_write()
+        state = RebaseState1(wt)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:
@@ -352,7 +354,7 @@ class cmd_replay(Command):
                 wt.branch.repository.fetch(from_branch.repository, revid)
                 newrevid = regenerate_default_revid(wt.branch.repository, revid)
                 replay_delta_workingtree(wt, revid, newrevid,
-                                         [wt.last_revision()],
+                                         [wt.last_revision()], state,
                                          merge_type=merge_type)
         finally:
             pb.finished()

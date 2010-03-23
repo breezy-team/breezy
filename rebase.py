@@ -50,60 +50,87 @@ REVPROP_REBASE_OF = 'rebase-of'
 
 class RebaseState(object):
 
-    def __init__(self, wt):
-        self.wt = wt
-        self.transport = wt._transport
-
     def has_plan(self):
         """Check whether there is a rebase plan present.
 
         :return: boolean
         """
-        try:
-            return self.transport.get_bytes(REBASE_PLAN_FILENAME) != ''
-        except NoSuchFile:
-            return False
+        raise NotImplementedError(self.has_plan)
 
     def read_plan(self):
         """Read a rebase plan file.
 
         :return: Tuple with last revision info and replace map.
         """
-        text = self.transport.get_bytes(REBASE_PLAN_FILENAME)
-        if text == '':
-            raise NoSuchFile(REBASE_PLAN_FILENAME)
-        return unmarshall_rebase_plan(text)
+        raise NotImplementedError(self.read_plan)
 
     def write_plan(self, replace_map):
         """Write a rebase plan file.
 
         :param replace_map: Replace map (old revid -> (new revid, new parents))
         """
-        content = marshall_rebase_plan(self.wt.branch.last_revision_info(),
-            replace_map)
-        assert type(content) == str
-        self.transport.put_bytes(REBASE_PLAN_FILENAME, content)
+        raise NotImplementedError(self.write_plan)
 
     def remove_plan(self):
         """Remove a rebase plan file.
         """
-        self.transport.put_bytes(REBASE_PLAN_FILENAME, '')
+        raise NotImplementedError(self.remove_plan)
 
     def write_active_revid(self, revid):
         """Write the id of the revision that is currently being rebased.
 
         :param revid: Revision id to write
         """
-        if revid is None:
-            revid = NULL_REVISION
-        assert type(revid) == str
-        self.transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, revid)
+        raise NotImplementedError(self.write_active_revid)
 
     def read_active_revid(self):
         """Read the id of the revision that is currently being rebased.
 
         :return: Id of the revision that is being rebased.
         """
+        raise NotImplementedError(self.read_active_revid)
+
+
+class RebaseState1(RebaseState):
+
+    def __init__(self, wt):
+        self.wt = wt
+        self.transport = wt._transport
+
+    def has_plan(self):
+        """See `RebaseState`."""
+        try:
+            return self.transport.get_bytes(REBASE_PLAN_FILENAME) != ''
+        except NoSuchFile:
+            return False
+
+    def read_plan(self):
+        """See `RebaseState`."""
+        text = self.transport.get_bytes(REBASE_PLAN_FILENAME)
+        if text == '':
+            raise NoSuchFile(REBASE_PLAN_FILENAME)
+        return unmarshall_rebase_plan(text)
+
+    def write_plan(self, replace_map):
+        """See `RebaseState`."""
+        content = marshall_rebase_plan(self.wt.branch.last_revision_info(),
+            replace_map)
+        assert type(content) == str
+        self.transport.put_bytes(REBASE_PLAN_FILENAME, content)
+
+    def remove_plan(self):
+        """See `RebaseState`."""
+        self.transport.put_bytes(REBASE_PLAN_FILENAME, '')
+
+    def write_active_revid(self, revid):
+        """See `RebaseState`."""
+        if revid is None:
+            revid = NULL_REVISION
+        assert type(revid) == str
+        self.transport.put_bytes(REBASE_CURRENT_REVID_FILENAME, revid)
+
+    def read_active_revid(self):
+        """See `RebaseState`."""
         try:
             text = self.transport.get_bytes(REBASE_CURRENT_REVID_FILENAME).rstrip("\n")
             if text == NULL_REVISION:
@@ -453,8 +480,6 @@ def commit_rebase(wt, oldrev, newrevid):
     wt.commit(message=oldrev.message, timestamp=oldrev.timestamp,
               timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
               committer=committer, authors=authors)
-    state = RebaseState(wt)
-    state.write_active_revid(None)
 
 
 def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
@@ -490,7 +515,7 @@ def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
         return oldparents[0]
 
 
-def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
+def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, state,
                              merge_type=None):
     """Replay a commit in a working tree, with a different base.
 
@@ -510,7 +535,6 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
     assert not wt.changes_from(wt.basis_tree()).has_changed(), "Changes in rev"
 
     oldtree = repository.revision_tree(oldrevid)
-    state = RebaseState(wt)
     state.write_active_revid(oldrevid)
     merger = Merger(wt.branch, this_tree=wt)
     merger.set_other_revision(oldrevid, wt.branch)
@@ -525,9 +549,10 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
     for newparent in newparents[1:]:
         wt.add_pending_merge(newparent)
     commit_rebase(wt, oldrev, newrevid)
+    state.write_active_revid(None)
 
 
-def workingtree_replay(wt, map_ids=False, merge_type=None):
+def workingtree_replay(wt, state, map_ids=False, merge_type=None):
     """Returns a function that can replay revisions in wt.
 
     :param wt: Working tree in which to do the replays.
@@ -536,7 +561,7 @@ def workingtree_replay(wt, map_ids=False, merge_type=None):
     def replay(repository, oldrevid, newrevid, newparents):
         assert wt.branch.repository == repository, "Different repository"
         return replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
-                                        merge_type=merge_type)
+                                        state, merge_type=merge_type)
     return replay
 
 
