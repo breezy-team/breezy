@@ -41,7 +41,7 @@ IGNORE_FILENAME = ".bzrignore"
 user_encoding = get_user_encoding()
 
 
-__copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
+__copyright__ = "Copyright 2005-2010 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
