@@ -487,6 +487,12 @@ class IndexGitShaMap(GitShaMap):
         self._builder = None
         self._name = None
 
+    def _add_node(self, key, value):
+        try:
+            self._builder.add_node(key, value)
+        except bzrlib.errors.BadIndexDuplicateKey:
+            pass # Multiple bzr objects can have the same contents
+
     def _get_entry(self, key):
         entries = self._index.iter_entries([key])
         try:
@@ -516,24 +522,18 @@ class IndexGitShaMap(GitShaMap):
         assert type in ("commit", "tree", "blob")
         if hexsha is not None:
             self._name.update(hexsha)
-            try:
-                self._builder.add_node(("git", hexsha, "X"),
-                    " ".join((type, type_data[0], type_data[1])))
-            except bzrlib.errors.BadIndexDuplicateKey:
-                pass # Multiple bzr objects can have the same contents
+            self._add_node(("git", hexsha, "X"),
+                " ".join((type, type_data[0], type_data[1])))
         else:
             # This object is not represented in Git - perhaps an empty
             # directory?
             hexsha = ""
             self._name.update(type + " ".join(type_data))
         if type == "commit":
-            self._builder.add_node(("commit", type_data[0], "X"),
+            self._add_node(("commit", type_data[0], "X"),
                 " ".join((hexsha, type_data[1])))
         else:
-            try:
-                self._builder.add_node((type, type_data[0], type_data[1]), hexsha)
-            except bzrlib.errors.BadIndexDuplicateKey:
-                pass # A particular Git object can be created from multiple bzr objects..
+            self._add_node((type, type_data[0], type_data[1]), hexsha)
 
     def lookup_tree(self, fileid, revid):
         sha = self._get_entry(("tree", fileid, revid))
