@@ -348,13 +348,14 @@ def import_git_commit(repo, mapping, head, lookup_object,
                 raise AssertionError("%r != %r in %s" % (oldsha1, newsha1, path))
 
 
-def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
-        heads, pb=None, limit=None):
+def import_git_objects(repo, mapping, object_iter,
+    target_git_object_retriever, heads, pb=None, limit=None):
     """Import a set of git objects into a bzr repository.
 
     :param repo: Target Bazaar repository
     :param mapping: Mapping to use
     :param object_iter: Iterator over Git objects.
+    :return: Tuple with pack hints and last imported revision id
     """
     def lookup_object(sha):
         try:
@@ -375,7 +376,7 @@ def import_git_objects(repo, mapping, object_iter, target_git_object_retriever,
         head = heads.pop()
         assert isinstance(head, str)
         try:
-            o = object_iter[head]
+            o = lookup_object(head)
         except KeyError:
             continue
         if isinstance(o, Commit):
@@ -435,10 +436,10 @@ class InterGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False, mapping=None,
-            fetch_spec=None):
-        self.fetch_refs(revision_id=revision_id, pb=pb, find_ghosts=find_ghosts,
-                mapping=mapping, fetch_spec=fetch_spec)
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+        mapping=None, fetch_spec=None):
+        self.fetch_refs(revision_id=revision_id, pb=pb,
+            find_ghosts=find_ghosts, mapping=mapping, fetch_spec=fetch_spec)
 
 
 class InterGitNonGitRepository(InterGitRepository):
@@ -463,7 +464,7 @@ class InterGitNonGitRepository(InterGitRepository):
             else:
                 ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
             return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
-        pack_hint = self.fetch_objects(determine_wants, mapping, pb)[0]
+        (pack_hint, _) = self.fetch_objects(determine_wants, mapping, pb)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
         if interesting_heads is not None:
@@ -542,6 +543,8 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     repository."""
 
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
+        """Fetch objects.
+        """
         wants = determine_wants(self.source._git.get_refs())
         create_pb = None
         if pb is None:
@@ -551,8 +554,8 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
             self.target.lock_write()
             try:
                 return import_git_objects(self.target, mapping,
-                    self.source._git.object_store, target_git_object_retriever,
-                    wants, pb, limit)
+                    self.source._git.object_store,
+                    target_git_object_retriever, wants, pb, limit)
             finally:
                 self.target.unlock()
         finally:

@@ -171,7 +171,11 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def _reset_data(self):
         self._inventory_is_modified = False
-        basis_inv = self.repository.get_inventory(self.mapping.revision_id_foreign_to_bzr(self.repository._git.head()))
+        try:
+            head = self.repository._git.head()
+        except KeyError, name:
+            raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
+        basis_inv = self.repository.get_inventory(self.mapping.revision_id_foreign_to_bzr(head))
         result = GitIndexInventory(basis_inv, self.mapping, self.index,
             self.repository._git.object_store)
         self._set_inventory(result, dirty=False)

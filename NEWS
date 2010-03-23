@@ -5,6 +5,9 @@
   * Use host specified rather than localhost in `bzr serve`.
     (David Coles, #543998)
 
+  * Handle working trees without valid HEAD branch.
+    (Jelmer Vernooij, #501385)
+
 0.5.0	2010-03-18
 
  BUG FIXES
