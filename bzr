@@ -23,7 +23,7 @@ import sys
 import warnings
 
 # update this on each release
-_script_version = (2, 0, 4)
+_script_version = (2, 0, 5)
 
 if __doc__ is None:
     print "bzr does not support python -OO."

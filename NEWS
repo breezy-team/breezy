@@ -8,8 +8,11 @@ Bazaar Release Notes
 bzr 2.0.5
 #########
 
-:Codename:
-:2.0.5: NOT RELEASED YET
+:2.0.5: 2010-03-23
+
+This fifth release in our 2.0 series addresses several user-inconvenience
+bugs.  None are critical, but upgrading is recommended for all users on
+earlier 2.0 releases.
 
 Bug Fixes
 *********
@@ -38,9 +41,6 @@ Bug Fixes
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
 
-* Fixed CHM generation by moving the NEWS section template into
-  a separate file. (Ian Clatworthy, #524184)
-
 * If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
   error, report that error rather than failing with an unhelpful
   ``UnboundLocalError``.
@@ -59,6 +59,10 @@ Documentation
 
 * Added ``location-alias`` help topic.
   (Andrew Bennetts, #337834)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
+
 
 bzr 2.0.4
 #########
