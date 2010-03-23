@@ -84,11 +84,15 @@ class BazaarObjectStore(BaseObjectStore):
             missing_revids.update(heads)
         if NULL_REVISION in missing_revids:
             missing_revids.remove(NULL_REVISION)
+        missing_revids = self.repository.has_revisions(missing_revids)
+        if not missing_revids:
+            return
         self.start_write_group()
         try:
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
+                    trace.mutter('processing %r', revid)
                     pb.update("updating git map", i, len(missing_revids))
                     self._update_sha_map_revision(revid)
             finally:
