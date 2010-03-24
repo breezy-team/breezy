@@ -1520,6 +1520,7 @@ class TestCase(testtools.TestCase):
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
             'BZR_DISABLE_PLUGINS': None,
+            'BZR_PLUGINS_AT': None,
             'BZR_CONCURRENCY': None,
             # Make sure that any text ui tests are consistent regardless of
             # the environment the test case is run in; you may want tests that
