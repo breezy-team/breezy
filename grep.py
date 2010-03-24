@@ -25,7 +25,7 @@ import re
 from bzrlib import log as logcmd
 from bzrlib import bzrdir
 from bzrlib.workingtree import WorkingTree
-from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid
+from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
 from bzrlib import (
     errors,
     lazy_regex,
@@ -37,6 +37,33 @@ from bzrlib import (
 
 _terminal_encoding = osutils.get_terminal_encoding()
 _user_encoding = osutils.get_user_encoding()
+
+class _RevisionNotLinear(Exception):
+    """Raised when a revision is not on left-hand history."""
+
+def _rev_on_mainline(rev_tuple):
+    """returns True is rev tuple is on mainline"""
+    if len(rev_tuple) == 1:
+        return True
+    return rev_tuple[1] == 0 and rev_tuple[2] == 0
+
+def _linear_view_revisions(branch, start_rev_id, end_rev_id):
+    s_tuple = branch.revision_id_to_dotted_revno(start_rev_id)
+    e_tuple = branch.revision_id_to_dotted_revno(end_rev_id)
+
+    # ensure that we go in reverse order
+    if s_tuple > e_tuple:
+        s_tuple, e_tuple = e_tuple, s_tuple
+        start_rev_id, end_rev_id == end_rev_id, start_rev_id
+
+    repo = branch.repository
+    for revision_id in repo.iter_reverse_revision_history(end_rev_id):
+        revno = branch.revision_id_to_dotted_revno(revision_id)
+        revno_str = '.'.join(str(n) for n in revno)
+        if revision_id == start_rev_id:
+            yield revision_id, revno_str, 0
+            break
+        yield revision_id, revno_str, 0
 
 def compile_pattern(pattern, flags=0):
     patternc = None
@@ -69,17 +96,34 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
 
         start_rev = revision[0]
         start_revid = start_rev.as_revision_id(wt.branch)
+        if start_revid == None:
+            start_rev = RevisionSpec_revno.from_string("revno:1")
+            start_revid = start_rev.as_revision_id(wt.branch)
+        srevno_tuple = wt.branch.revision_id_to_dotted_revno(start_revid)
 
         if len(revision) == 2:
             end_rev = revision[1]
-            end_revid   = end_rev.as_revision_id(wt.branch)
-            given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
+            end_revid = end_rev.as_revision_id(wt.branch)
+            if end_revid == None:
+                end_revno, end_revid = wt.branch.last_revision_info()
+            erevno_tuple = wt.branch.revision_id_to_dotted_revno(end_revid)
+
+            # Optimization: Traversing the mainline in reverse order is much
+            # faster when we don't want to look at merged revs. We try this
+            # with _linear_view_revisions. If all revs are to be grepped we
+            # use the slower _graph_view_revisions
+            if (    levels == 1 and
+                    _rev_on_mainline(srevno_tuple) and
+                    _rev_on_mainline(erevno_tuple)):
+                given_revs = _linear_view_revisions(wt.branch, start_revid, end_revid)
+            else:
+                given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
+                print given_revs
         else:
             # We do an optimization below. For grepping a specific revison
             # We don't need to call _graph_view_revisions which is slow.
             # We create the start_rev_tuple for only that specific revision.
             # _graph_view_revisions is used only for revision range.
-            srevno_tuple = wt.branch.revision_id_to_dotted_revno(start_revid)
             start_revno = '.'.join(map(str, srevno_tuple))
             start_rev_tuple = (start_revid, start_revno, 0)
             given_revs = [start_rev_tuple]
