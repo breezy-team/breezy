@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.tests import TestCase
 from bzrlib.errors import SSHVendorNotFound, UnknownSSH
@@ -76,7 +76,11 @@ class SSHVendorManagerTests(TestCase):
         manager = TestSSHVendorManager()
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
         manager.set_ssh_version_string("plink")
-        self.assertIsInstance(manager.get_vendor({}), PLinkSubprocessVendor)
+        # Auto-detect of plink vendor disabled, on Windows recommended
+        # default ssh-client is paramiko
+        # see https://bugs.launchpad.net/bugs/414743
+        #~self.assertIsInstance(manager.get_vendor({}), PLinkSubprocessVendor)
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
 
     def test_cached_vendor(self):
         manager = TestSSHVendorManager()
@@ -127,6 +131,25 @@ class SSHVendorManagerTests(TestCase):
 
         # Last cached value always checked first
         self.assertIs(manager.get_vendor({}), vendor)
+
+    def test_get_vendor_from_path_win32_plink(self):
+        manager = TestSSHVendorManager()
+        manager.set_ssh_version_string("plink: Release 0.60")
+        plink_path = "C:/Program Files/PuTTY/plink.exe"
+        vendor = manager.get_vendor({"BZR_SSH": plink_path})
+        self.assertIsInstance(vendor, PLinkSubprocessVendor)
+        args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
+        self.assertEqual(args[0], plink_path)
+
+    def test_get_vendor_from_path_nix_openssh(self):
+        manager = TestSSHVendorManager()
+        manager.set_ssh_version_string(
+            "OpenSSH_5.1p1 Debian-5, OpenSSL, 0.9.8g 19 Oct 2007")
+        openssh_path = "/usr/bin/ssh"
+        vendor = manager.get_vendor({"BZR_SSH": openssh_path})
+        self.assertIsInstance(vendor, OpenSSHSubprocessVendor)
+        args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
+        self.assertEqual(args[0], openssh_path)
 
 
 class SubprocessVendorsTests(TestCase):

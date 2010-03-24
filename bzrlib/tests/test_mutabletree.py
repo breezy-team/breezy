@@ -12,29 +12,52 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for MutableTree.
 
 Most functionality of MutableTree is tested as part of WorkingTree.
 """
 
-from bzrlib.tests import TestCase
-from bzrlib.mutabletree import MutableTree, MutableTreeHooks
+from bzrlib import (
+    mutabletree,
+    tests,
+    )
 
-class TestHooks(TestCase):
+
+class TestHooks(tests.TestCase):
 
     def test_constructor(self):
         """Check that creating a MutableTreeHooks instance has the right
         defaults."""
-        hooks = MutableTreeHooks()
+        hooks = mutabletree.MutableTreeHooks()
         self.assertTrue("start_commit" in hooks,
                         "start_commit not in %s" % hooks)
+        self.assertTrue("post_commit" in hooks,
+                        "post_commit not in %s" % hooks)
 
     def test_installed_hooks_are_MutableTreeHooks(self):
         """The installed hooks object should be a MutableTreeHooks."""
         # the installed hooks are saved in self._preserved_hooks.
-        self.assertIsInstance(self._preserved_hooks[MutableTree],
-                              MutableTreeHooks)
+        self.assertIsInstance(self._preserved_hooks[mutabletree.MutableTree][1],
+                              mutabletree.MutableTreeHooks)
 
 
+class TestHasChanges(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestHasChanges, self).setUp()
+        self.tree = self.make_branch_and_tree('tree')
+
+    def test_with_uncommitted_changes(self):
+        self.build_tree(['tree/file'])
+        self.tree.add('file')
+        self.assertTrue(self.tree.has_changes())
+
+    def test_with_pending_merges(self):
+        other_tree = self.tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree(['other/file'])
+        other_tree.add('file')
+        other_tree.commit('added file')
+        self.tree.merge_from_branch(other_tree.branch)
+        self.assertTrue(self.tree.has_changes())

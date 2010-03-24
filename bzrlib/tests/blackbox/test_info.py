@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for the info command of bzr."""
@@ -29,17 +29,19 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.osutils import format_date
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import TestSkipped, MemoryServer
 from bzrlib.tests.blackbox import ExternalBase
 
 
 class TestInfo(ExternalBase):
 
+    def setUp(self):
+        ExternalBase.setUp(self)
+        self._repo_strings = "2a"
+
     def test_info_non_existing(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist/"
-        else:
-            location = "/i/do/not/exist/"
+        self.vfs_transport_factory = MemoryServer
+        location = self.get_url()
         out, err = self.run_bzr('info '+location, retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
@@ -276,17 +278,14 @@ Repository:
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root \
-or 1.9 or 1.9-rich-root \
-or dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: Branch format 4
     repository: Weave repository format 6
 
@@ -308,7 +307,7 @@ Branch history:
 
 Repository:
          1 revision
-""" % (datestring_first, datestring_first,), out)
+""" % (self._repo_strings, datestring_first, datestring_first,), out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
@@ -441,17 +440,14 @@ Repository:
         # Out of date lightweight checkout
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
-1.9 or 1.9-rich-root or \
-dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: Branch format 4
     repository: Weave repository format 6
 
@@ -475,7 +471,7 @@ Branch history:
 
 Repository:
          2 revisions
-""" % (datestring_first, datestring_last,), out)
+""" % (self._repo_strings, datestring_first, datestring_last,), out)
         self.assertEqual('', err)
 
     def test_info_standalone_no_tree(self):
@@ -576,10 +572,7 @@ Repository:
         datestring_first = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
-1.9 or 1.9-rich-root or \
-dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -587,7 +580,7 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -609,7 +602,7 @@ Branch history:
 
 Repository:
          1 revision
-""" % (format.get_branch_format().get_format_description(),
+""" % (self._repo_strings, format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_first,
        ), out)
@@ -618,14 +611,14 @@ Repository:
         # Out of date checkout
         out, err = self.run_bzr('info -v tree/checkout')
         self.assertEqualDiff(
-"""Checkout (format: dirstate)
+"""Checkout (format: unnamed)
 Location:
        checkout root: tree/checkout
   checkout of branch: repo/branch
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -657,14 +650,14 @@ Repository:
         tree3.add('b')
         out, err = self.run_bzr('info tree/checkout --verbose')
         self.assertEqualDiff(
-"""Checkout (format: dirstate)
+"""Checkout (format: unnamed)
 Location:
        checkout root: tree/checkout
   checkout of branch: repo/branch
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -698,10 +691,7 @@ Repository:
         datestring_last = format_date(rev.timestamp, rev.timezone)
         out, err = self.run_bzr('info tree/lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: 1.6 or 1.6.1-rich-root or \
-1.9 or 1.9-rich-root or \
-dirstate or dirstate-tags or \
-pack-0.92 or rich-root or rich-root-pack)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: tree/lightcheckout
    checkout of branch: repo/branch
@@ -709,7 +699,7 @@ Location:
 
 Format:
        control: Meta directory format 1
-  working tree: Working tree format 4
+  working tree: Working tree format 6
         branch: %s
     repository: %s
 
@@ -733,7 +723,7 @@ Branch history:
 
 Repository:
          2 revisions
-""" % (format.get_branch_format().get_format_description(),
+""" % (self._repo_strings, format.get_branch_format().get_format_description(),
        format.repository_format.get_format_description(),
        datestring_first, datestring_last,
        ), out)
@@ -1054,6 +1044,32 @@ Repository:
        ), out)
         self.assertEqual('', err)
 
+    def test_info_repository_hook(self):
+        format = bzrdir.format_registry.make_bzrdir('knit')
+        def repo_info(repo, stats, outf):
+            outf.write("more info\n")
+        info.hooks.install_named_hook('repository', repo_info, None)
+        # Create shared repository with working trees
+        repo = self.make_repository('repo', shared=True, format=format)
+        out, err = self.run_bzr('info -v repo')
+        self.assertEqualDiff(
+"""Shared repository with trees (format: dirstate or dirstate-tags or knit)
+Location:
+  shared repository: repo
+
+Format:
+       control: Meta directory format 1
+    repository: %s
+
+Create working tree for new branches inside the repository.
+
+Repository:
+         0 revisions
+more info
+""" % (format.repository_format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+
     def assertCheckoutStatusOutput(self,
         command_string, lco_tree, shared_repo=None,
         repo_branch=None,
@@ -1108,11 +1124,8 @@ Repository:
             (False, True): 'Lightweight checkout',
             (False, False): 'Checkout',
             }[(shared_repo is not None, light_checkout)]
-        format = {True: '1.6 or 1.6.1-rich-root'
-                        ' or 1.9 or 1.9-rich-root'
-                        ' or dirstate or dirstate-tags or pack-0.92'
-                        ' or rich-root or rich-root-pack',
-                  False: 'dirstate'}[light_checkout]
+        format = {True: self._repo_strings,
+                  False: 'unnamed'}[light_checkout]
         if repo_locked:
             repo_locked = lco_tree.branch.repository.get_physical_lock_status()
         if repo_locked or branch_locked or tree_locked:
@@ -1313,6 +1326,11 @@ Repository:
     def test_info_locking_oslocks(self):
         if sys.platform == "win32":
             raise TestSkipped("don't use oslocks on win32 in unix manner")
+        # This test tests old (all-in-one, OS lock using) behaviour which
+        # simply cannot work on windows (and is indeed why we changed our
+        # design. As such, don't try to remove the thisFailsStrictLockCheck
+        # call here.
+        self.thisFailsStrictLockCheck()
 
         tree = self.make_branch_and_tree('branch',
                                          format=bzrdir.BzrDirFormat6())

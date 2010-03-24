@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 """Implementation of Transport over ftp.
 
 Written by Daniel Silverstone <dsilvers@digital-scurf.org> with serious
@@ -25,17 +25,13 @@ active, in which case aftp:// will be your friend.
 """
 
 from cStringIO import StringIO
-import errno
 import ftplib
 import getpass
 import os
-import os.path
-import urlparse
+import random
 import socket
 import stat
 import time
-import random
-from warnings import warn
 
 from bzrlib import (
     config,
@@ -51,8 +47,6 @@ from bzrlib.transport import (
     register_urlparse_netloc_protocol,
     Server,
     )
-from bzrlib.transport.local import LocalURLServer
-import bzrlib.ui
 
 
 register_urlparse_netloc_protocol('aftp')
@@ -100,6 +94,10 @@ class FtpTransport(ConnectedTransport):
         else:
             self.is_active = False
 
+        # Most modern FTP servers support the APPE command. If ours doesn't, we
+        # (re)set this flag accordingly later.
+        self._has_append = True
+
     def _get_FTP(self):
         """Return the ftplib.FTP instance for this object."""
         # Ensures that a connection is established
@@ -109,6 +107,8 @@ class FtpTransport(ConnectedTransport):
             connection, credentials = self._create_connection()
             self._set_connection(connection, credentials)
         return connection
+
+    connection_class = ftplib.FTP
 
     def _create_connection(self, credentials=None):
         """Create a new connection with the provided credentials.
@@ -129,22 +129,15 @@ class FtpTransport(ConnectedTransport):
 
         auth = config.AuthenticationConfig()
         if user is None:
-            user = auth.get_user('ftp', self._host, port=self._port)
-            if user is None:
-                # Default to local user
-                user = getpass.getuser()
-
+            user = auth.get_user('ftp', self._host, port=self._port,
+                                 default=getpass.getuser())
         mutter("Constructing FTP instance against %r" %
                ((self._host, self._port, user, '********',
                 self.is_active),))
         try:
-            connection = ftplib.FTP()
+            connection = self.connection_class()
             connection.connect(host=self._host, port=self._port)
-            if user and user != 'anonymous' and \
-                    password is None: # '' is a valid password
-                password = auth.get_password('ftp', self._host, user,
-                                             port=self._port)
-            connection.login(user=user, passwd=password)
+            self._login(connection, auth, user, password)
             connection.set_pasv(not self.is_active)
             # binary mode is the default
             connection.voidcmd('TYPE I')
@@ -156,6 +149,13 @@ class FtpTransport(ConnectedTransport):
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
         return connection, (user, password)
+
+    def _login(self, connection, auth, user, password):
+        # '' is a valid password
+        if user and user != 'anonymous' and password is None:
+            password = auth.get_password('ftp', self._host,
+                                         user, port=self._port)
+        connection.login(user=user, passwd=password)
 
     def _reconnect(self):
         """Create a new connection with the previously used credentials"""
@@ -204,17 +204,6 @@ class FtpTransport(ConnectedTransport):
         #       to handle. Consider doing something like that here.
         #raise TransportError(msg='Error for path: %s' % (path,), orig_error=e)
         raise
-
-    def _remote_path(self, relpath):
-        # XXX: It seems that ftplib does not handle Unicode paths
-        # at the same time, medusa won't handle utf8 paths So if
-        # we .encode(utf8) here (see ConnectedTransport
-        # implementation), then we get a Server failure.  while
-        # if we use str(), we get a UnicodeError, and the test
-        # suite just skips testing UnicodePaths.
-        relative = str(urlutils.unescape(relpath))
-        remote_path = self._combine_paths(self._path, relative)
-        return remote_path
 
     def has(self, relpath):
         """Does the target location exist?"""
@@ -390,6 +379,7 @@ class FtpTransport(ConnectedTransport):
         """Append the text in the file-like object into the final
         location.
         """
+        text = f.read()
         abspath = self._remote_path(relpath)
         if self.has(relpath):
             ftp = self._get_FTP()
@@ -397,8 +387,11 @@ class FtpTransport(ConnectedTransport):
         else:
             result = 0
 
-        mutter("FTP appe to %s", abspath)
-        self._try_append(relpath, f.read(), mode)
+        if self._has_append:
+            mutter("FTP appe to %s", abspath)
+            self._try_append(relpath, text, mode)
+        else:
+            self._fallback_append(relpath, text, mode)
 
         return result
 
@@ -419,16 +412,31 @@ class FtpTransport(ConnectedTransport):
             self._setmode(relpath, mode)
             ftp.getresp()
         except ftplib.error_perm, e:
-            self._translate_perm_error(e, abspath, extra='error appending',
-                unknown_exc=errors.NoSuchFile)
+            # Check whether the command is not supported (reply code 502)
+            if str(e).startswith('502 '):
+                warning("FTP server does not support file appending natively. "
+                        "Performance may be severely degraded! (%s)", e)
+                self._has_append = False
+                self._fallback_append(relpath, text, mode)
+            else:
+                self._translate_perm_error(e, abspath, extra='error appending',
+                    unknown_exc=errors.NoSuchFile)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
-                raise errors.TransportError("FTP temporary error during APPEND %s." \
-                        "Aborting." % abspath, orig_error=e)
+                raise errors.TransportError(
+                    "FTP temporary error during APPEND %s. Aborting."
+                    % abspath, orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._reconnect()
                 self._try_append(relpath, text, mode, retries+1)
+
+    def _fallback_append(self, relpath, text, mode = None):
+        remote = self.get(relpath)
+        remote.seek(0, os.SEEK_END)
+        remote.write(text)
+        remote.seek(0)
+        return self.put_file(relpath, remote, mode)
 
     def _setmode(self, relpath, mode):
         """Set permissions on a path.
@@ -439,7 +447,7 @@ class FtpTransport(ConnectedTransport):
         if mode:
             try:
                 mutter("FTP site chmod: setting permissions to %s on %s",
-                    str(mode), self._remote_path(relpath))
+                       oct(mode), self._remote_path(relpath))
                 ftp = self._get_FTP()
                 cmd = "SITE CHMOD %s %s" % (oct(mode),
                                             self._remote_path(relpath))
@@ -447,7 +455,7 @@ class FtpTransport(ConnectedTransport):
             except ftplib.error_perm, e:
                 # Command probably not available on this server
                 warning("FTP Could not set permissions to %s on %s. %s",
-                        str(mode), self._remote_path(relpath), str(e))
+                        oct(mode), self._remote_path(relpath), str(e))
 
     # TODO: jam 20060516 I believe ftp allows you to tell an ftp server
     #       to copy something to another machine. And you may be able
@@ -597,27 +605,5 @@ class FtpTransport(ConnectedTransport):
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    if tests.FTPServerFeature.available():
-        from bzrlib.tests import ftp_server
-        return [(FtpTransport, ftp_server.FTPServer)]
-    else:
-        # Dummy server to have the test suite report the number of tests
-        # needing that feature. We raise UnavailableFeature from methods before
-        # the test server is being used. Doing so in the setUp method has bad
-        # side-effects (tearDown is never called).
-        class UnavailableFTPServer(object):
-
-            def setUp(self, vfs_server=None):
-                pass
-
-            def tearDown(self):
-                pass
-
-            def get_url(self):
-                raise tests.UnavailableFeature(tests.FTPServerFeature)
-
-            def get_bogus_url(self):
-                raise tests.UnavailableFeature(tests.FTPServerFeature)
-
-        return [(FtpTransport, UnavailableFTPServer)]
+    from bzrlib.tests import ftp_server
+    return [(FtpTransport, ftp_server.FTPTestServer)]

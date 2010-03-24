@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Progress indicators.
@@ -25,33 +25,36 @@ will manage a conceptual stack of nested activities.
 import sys
 import time
 import os
-import warnings
 
 
 from bzrlib import (
     errors,
-    osutils,
-    trace,
-    ui,
     )
 from bzrlib.trace import mutter
 from bzrlib.symbol_versioning import (
+    deprecated_function,
     deprecated_in,
     deprecated_method,
     )
 
 
 def _supports_progress(f):
-    """Detect if we can use pretty progress bars on the output stream f.
+    """Detect if we can use pretty progress bars on file F.
 
     If this returns true we expect that a human may be looking at that
     output, and that we can repaint a line to update it.
+
+    This doesn't check the policy for whether we *should* use them.
     """
     isatty = getattr(f, 'isatty', None)
     if isatty is None:
         return False
     if not isatty():
         return False
+    # The following case also handles Win32 - on that platform $TERM is
+    # typically never set, so the case None is treated as a smart terminal,
+    # not dumb.  <https://bugs.launchpad.net/bugs/334808>  win32 files do have
+    # isatty methods that return true.
     if os.environ.get('TERM') == 'dumb':
         # e.g. emacs compile window
         return False
@@ -67,20 +70,45 @@ class ProgressTask(object):
     Code updating the task may also set fields as hints about how to display
     it: show_pct, show_spinner, show_eta, show_count, show_bar.  UIs
     will not necessarily respect all these fields.
+    
+    :ivar update_latency: The interval (in seconds) at which the PB should be
+        updated.  Setting this to zero suggests every update should be shown
+        synchronously.
+
+    :ivar show_transport_activity: If true (default), transport activity
+        will be shown when this task is drawn.  Disable it if you're sure 
+        that only irrelevant or uninteresting transport activity can occur
+        during this task.
     """
 
-    def __init__(self, parent_task=None, ui_factory=None):
+    def __init__(self, parent_task=None, ui_factory=None, progress_view=None):
+        """Construct a new progress task.
+
+        :param parent_task: Enclosing ProgressTask or None.
+
+        :param progress_view: ProgressView to display this ProgressTask.
+
+        :param ui_factory: The UI factory that will display updates; 
+            deprecated in favor of passing progress_view directly.
+
+        Normally you should not call this directly but rather through
+        `ui_factory.nested_progress_bar`.
+        """
         self._parent_task = parent_task
         self._last_update = 0
         self.total_cnt = None
         self.current_cnt = None
         self.msg = ''
+        # TODO: deprecate passing ui_factory
         self.ui_factory = ui_factory
+        self.progress_view = progress_view
         self.show_pct = False
         self.show_spinner = True
         self.show_eta = False,
         self.show_count = True
         self.show_bar = True
+        self.update_latency = 0.1
+        self.show_transport_activity = True
 
     def __repr__(self):
         return '%s(%r/%r, msg=%r)' % (
@@ -94,16 +122,23 @@ class ProgressTask(object):
         self.current_cnt = current_cnt
         if total_cnt:
             self.total_cnt = total_cnt
-        self.ui_factory._progress_updated(self)
+        if self.progress_view:
+            self.progress_view.show_progress(self)
+        else:
+            self.ui_factory._progress_updated(self)
 
     def tick(self):
         self.update(self.msg)
 
     def finished(self):
-        self.ui_factory._progress_finished(self)
+        if self.progress_view:
+            self.progress_view.task_finished(self)
+        else:
+            self.ui_factory._progress_finished(self)
 
     def make_sub_task(self):
-        return ProgressTask(self, self.ui_factory)
+        return ProgressTask(self, ui_factory=self.ui_factory,
+            progress_view=self.progress_view)
 
     def _overall_completion_fraction(self, child_fraction=0.0):
         """Return fractional completion of this task and its parents
@@ -112,7 +147,9 @@ class ProgressTask(object):
         if self.current_cnt is not None and self.total_cnt:
             own_fraction = (float(self.current_cnt) + child_fraction) / self.total_cnt
         else:
-            own_fraction = None
+            # if this task has no estimation, it just passes on directly
+            # whatever the child has measured...
+            own_fraction = child_fraction
         if self._parent_task is None:
             return own_fraction
         else:
@@ -120,21 +157,39 @@ class ProgressTask(object):
                 own_fraction = 0.0
             return self._parent_task._overall_completion_fraction(own_fraction)
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def note(self, fmt_string, *args):
-        """Record a note without disrupting the progress bar."""
-        # XXX: shouldn't be here; put it in mutter or the ui instead
+        """Record a note without disrupting the progress bar.
+        
+        Deprecated: use ui_factory.note() instead or bzrlib.trace.  Note that
+        ui_factory.note takes just one string as the argument, not a format
+        string and arguments.
+        """
         if args:
             self.ui_factory.note(fmt_string % args)
         else:
             self.ui_factory.note(fmt_string)
 
     def clear(self):
-        # XXX: shouldn't be here; put it in mutter or the ui instead
-        self.ui_factory.clear_term()
+        # TODO: deprecate this method; the model object shouldn't be concerned
+        # with whether it's shown or not.  Most callers use this because they
+        # want to write some different non-progress output to the screen, but
+        # they should probably instead use a stream that's synchronized with
+        # the progress output.  It may be there is a model-level use for
+        # saying "this task's not active at the moment" but I don't see it. --
+        # mbp 20090623
+        if self.progress_view:
+            self.progress_view.clear()
+        else:
+            self.ui_factory.clear_term()
 
 
+@deprecated_function(deprecated_in((1, 16, 0)))
 def ProgressBar(to_file=None, **kwargs):
-    """Abstract factory"""
+    """Construct a progress bar.
+
+    Deprecated; ask the ui_factory for a progress task instead.
+    """
     if to_file is None:
         to_file = sys.stderr
     requested_bar_type = os.environ.get('BZR_PROGRESS_BAR')
@@ -156,75 +211,7 @@ def ProgressBar(to_file=None, **kwargs):
         return _progress_bar_types[requested_bar_type](to_file=to_file, **kwargs)
 
 
-class ProgressBarStack(object):
-    """A stack of progress bars.
-
-    This class is deprecated: instead, ask the ui factory for a new progress
-    task and finish it when it's done.
-    """
-
-    @deprecated_method(deprecated_in((1, 12, 0)))
-    def __init__(self,
-                 to_file=None,
-                 show_pct=False,
-                 show_spinner=True,
-                 show_eta=False,
-                 show_bar=True,
-                 show_count=True,
-                 to_messages_file=None,
-                 klass=None):
-        """Setup the stack with the parameters the progress bars should have."""
-        if to_file is None:
-            to_file = sys.stderr
-        if to_messages_file is None:
-            to_messages_file = sys.stdout
-        self._to_file = to_file
-        self._show_pct = show_pct
-        self._show_spinner = show_spinner
-        self._show_eta = show_eta
-        self._show_bar = show_bar
-        self._show_count = show_count
-        self._to_messages_file = to_messages_file
-        self._stack = []
-        self._klass = klass or ProgressBar
-
-    def top(self):
-        if len(self._stack) != 0:
-            return self._stack[-1]
-        else:
-            return None
-
-    def bottom(self):
-        if len(self._stack) != 0:
-            return self._stack[0]
-        else:
-            return None
-
-    def get_nested(self):
-        """Return a nested progress bar."""
-        if len(self._stack) == 0:
-            func = self._klass
-        else:
-            func = self.top().child_progress
-        new_bar = func(to_file=self._to_file,
-                       show_pct=self._show_pct,
-                       show_spinner=self._show_spinner,
-                       show_eta=self._show_eta,
-                       show_bar=self._show_bar,
-                       show_count=self._show_count,
-                       to_messages_file=self._to_messages_file,
-                       _stack=self)
-        self._stack.append(new_bar)
-        return new_bar
-
-    def return_pb(self, bar):
-        """Return bar after its been used."""
-        if bar is not self._stack[-1]:
-            warnings.warn("%r is not currently active" % (bar,))
-        else:
-            self._stack.pop()
-
-
+# NOTE: This is also deprecated; you should provide a ProgressView instead.
 class _BaseProgressBar(object):
 
     def __init__(self,
@@ -271,6 +258,7 @@ class _BaseProgressBar(object):
         self.to_messages_file.write(fmt_string % args)
         self.to_messages_file.write('\n')
 
+    @deprecated_function(deprecated_in((1, 16, 0)))
     def child_progress(self, **kwargs):
         return ChildProgress(**kwargs)
 
@@ -302,6 +290,7 @@ class DummyProgress(_BaseProgressBar):
 
 class DotsProgressBar(_BaseProgressBar):
 
+    @deprecated_function(deprecated_in((1, 16, 0)))
     def __init__(self, **kwargs):
         _BaseProgressBar.__init__(self, **kwargs)
         self.last_msg = None
@@ -328,8 +317,6 @@ class DotsProgressBar(_BaseProgressBar):
         self.tick()
 
 
-
-
 class TTYProgressBar(_BaseProgressBar):
     """Progress bar display object.
 
@@ -352,7 +339,7 @@ class TTYProgressBar(_BaseProgressBar):
     """
     SPIN_CHARS = r'/-\|'
 
-
+    @deprecated_function(deprecated_in((1, 16, 0)))
     def __init__(self, **kwargs):
         from bzrlib.osutils import terminal_width
         _BaseProgressBar.__init__(self, **kwargs)
@@ -513,10 +500,11 @@ class TTYProgressBar(_BaseProgressBar):
 
 
 
-
+# DEPRECATED
 class ChildProgress(_BaseProgressBar):
     """A progress indicator that pushes its data to the parent"""
 
+    @deprecated_function(deprecated_in((1, 16, 0)))
     def __init__(self, _stack, **kwargs):
         _BaseProgressBar.__init__(self, _stack=_stack, **kwargs)
         self.parent = _stack.top()
@@ -556,23 +544,6 @@ class ChildProgress(_BaseProgressBar):
 
     def note(self, *args, **kwargs):
         self.parent.note(*args, **kwargs)
-
-
-class InstrumentedProgress(TTYProgressBar):
-    """TTYProgress variant that tracks outcomes"""
-
-    def __init__(self, *args, **kwargs):
-        self.always_throttled = True
-        self.never_throttle = False
-        TTYProgressBar.__init__(self, *args, **kwargs)
-
-    def throttle(self, old_message):
-        if self.never_throttle:
-            result =  False
-        else:
-            result = TTYProgressBar.throttle(self, old_message)
-        if result is False:
-            self.always_throttled = False
 
 
 def str_tdelta(delt):

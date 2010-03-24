@@ -12,25 +12,23 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from getpass import getpass
 import os
+import socket
 from urlparse import urlsplit, urlunsplit
 import urllib
 import xmlrpclib
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
-from bzrlib import urlutils
-""")
-
 from bzrlib import (
     config,
     errors,
+    urlutils,
     __version__ as _bzrlib_version,
     )
+from bzrlib.transport.http import _urllib2_wrappers
+
 
 # for testing, do
 '''
@@ -51,6 +49,33 @@ class NotLaunchpadBranch(errors.BzrError):
 
     def __init__(self, url):
         errors.BzrError.__init__(self, url=url)
+
+
+class XMLRPCTransport(xmlrpclib.Transport):
+
+    def __init__(self, scheme):
+        # In python2.4 xmlrpclib.Transport is a old-style class, and does not
+        # define __init__, so we check first
+        init = getattr(xmlrpclib.Transport, '__init__', None)
+        if init is not None:
+            init(self)
+        self._scheme = scheme
+        self._opener = _urllib2_wrappers.Opener()
+        self.verbose = 0
+
+    def request(self, host, handler, request_body, verbose=0):
+        self.verbose = verbose
+        url = self._scheme + "://" + host + handler
+        request = _urllib2_wrappers.Request("POST", url, request_body)
+        # FIXME: _urllib2_wrappers will override user-agent with its own
+        # request.add_header("User-Agent", self.user_agent)
+        request.add_header("Content-Type", "text/xml")
+
+        response = self._opener.open(request)
+        if response.code != 200:
+            raise xmlrpclib.ProtocolError(host + handler, response.code,
+                                          response.msg, response.info())
+        return self.parse_response(response)
 
 
 class LaunchpadService(object):
@@ -90,14 +115,10 @@ class LaunchpadService(object):
         self._lp_instance = lp_instance
         if transport is None:
             uri_type = urllib.splittype(self.service_url)[0]
-            if uri_type == 'https':
-                transport = xmlrpclib.SafeTransport()
-            else:
-                transport = xmlrpclib.Transport()
+            transport = XMLRPCTransport(uri_type)
             transport.user_agent = 'bzr/%s (xmlrpclib/%s)' \
                     % (_bzrlib_version, xmlrpclib.__version__)
         self.transport = transport
-
 
     @property
     def service_url(self):
@@ -115,6 +136,17 @@ class LaunchpadService(object):
                 raise InvalidLaunchpadInstance(self._lp_instance)
         else:
             return self.DEFAULT_SERVICE_URL
+
+    @classmethod
+    def for_url(cls, url, **kwargs):
+        """Return the Launchpad service corresponding to the given URL."""
+        result = urlsplit(url)
+        lp_instance = result[1]
+        if lp_instance == '':
+            lp_instance = None
+        elif lp_instance not in cls.LAUNCHPAD_INSTANCE:
+            raise errors.InvalidURL(path=url)
+        return cls(lp_instance=lp_instance, **kwargs)
 
     def get_proxy(self, authenticated):
         """Return the proxy for XMLRPC requests."""
@@ -177,6 +209,10 @@ class LaunchpadService(object):
                 # TODO: print more headers to help in tracking down failures
                 raise errors.BzrError("xmlrpc protocol error connecting to %s: %s %s"
                         % (self.service_url, e.errcode, e.errmsg))
+        except socket.gaierror, e:
+            raise errors.ConnectionError(
+                "Could not resolve '%s'" % self.domain,
+                orig_error=e)
         return result
 
     @property
@@ -187,13 +223,7 @@ class LaunchpadService(object):
             instance = self._lp_instance
         return self.LAUNCHPAD_DOMAINS[instance]
 
-    def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
-        """Get the Launchpad web URL for the given branch URL.
-
-        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
-            Launchpad branch URL.
-        :return: The URL of the branch on Launchpad.
-        """
+    def _guess_branch_path(self, branch_url, _request_factory=None):
         scheme, hostinfo, path = urlsplit(branch_url)[:3]
         if _request_factory is None:
             _request_factory = ResolveLaunchpadPathRequest
@@ -211,6 +241,16 @@ class LaunchpadService(object):
                 for domain in self.LAUNCHPAD_DOMAINS.itervalues())
             if hostinfo not in domains:
                 raise NotLaunchpadBranch(branch_url)
+        return path.lstrip('/')
+
+    def get_web_url_from_branch_url(self, branch_url, _request_factory=None):
+        """Get the Launchpad web URL for the given branch URL.
+
+        :raise errors.InvalidURL: if 'branch_url' cannot be identified as a
+            Launchpad branch URL.
+        :return: The URL of the branch on Launchpad.
+        """
+        path = self._guess_branch_path(branch_url, _request_factory)
         return urlutils.join('https://code.%s' % self.domain, path)
 
 
@@ -314,7 +354,7 @@ class ResolveLaunchpadPathRequest(BaseRequest):
     def __init__(self, path):
         if not path:
             raise errors.InvalidURL(path=path,
-                                    extra="You must specify a product.")
+                                    extra="You must specify a project.")
         self.path = path
 
     def _request_params(self):

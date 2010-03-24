@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Base implementation of Transport over http.
 
@@ -154,7 +154,7 @@ class HttpTransportBase(ConnectedTransport):
                                  None, None, self._host, self._port, path)
 
     def _create_auth(self):
-        """Returns a dict returning the credentials provided at build time."""
+        """Returns a dict containing the credentials provided at build time."""
         auth = dict(host=self._host, port=self._port,
                     user=self._user, password=self._password,
                     protocol=self._unqualified_scheme,
@@ -170,7 +170,6 @@ class HttpTransportBase(ConnectedTransport):
             # shared between transports having different bases.
             self._medium = SmartClientHTTPMedium(self)
         return self._medium
-
 
     def _degrade_range_hint(self, relpath, ranges, exc_info):
         if self._range_hint == 'multi':
@@ -618,9 +617,17 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
                 raise InvalidHttpResponse(
                     t._remote_path('.bzr/smart'),
                     'Expected 200 response code, got %r' % (code,))
-        except errors.InvalidHttpResponse, e:
+        except (errors.InvalidHttpResponse, errors.ConnectionReset), e:
             raise errors.SmartProtocolError(str(e))
         return body_filelike
+
+    def _report_activity(self, bytes, direction):
+        """See SmartMedium._report_activity.
+
+        Does nothing; the underlying plain HTTP transport will report the
+        activity that this medium would report.
+        """
+        pass
 
 
 # TODO: May be better located in smart/medium.py with the other

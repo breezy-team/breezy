@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import sys
 from urllib import quote
@@ -143,45 +143,45 @@ class TestInfo(tests.TestCaseWithTransport):
                 # We don't require that experimental formats support checkouts
                 # or describe correctly in the UI.
                 continue
+            if bzrdir.format_registry.get_info(key).hidden:
+                continue
             expected = None
-            if key in ('dirstate', 'dirstate-tags', 'dirstate-with-subtree',
-                'pack-0.92', 'pack-0.92-subtree', 'rich-root',
-                'rich-root-pack', '1.6', '1.6.1-rich-root',
-                '1.9', '1.9-rich-root'):
-                expected = '1.6 or 1.6.1-rich-root or ' \
-                    '1.9 or 1.9-rich-root or ' \
-                    'dirstate or dirstate-tags or pack-0.92 or'\
-                    ' rich-root or rich-root-pack'
+            if key in ('pack-0.92',):
+                expected = 'pack-0.92'
             elif key in ('knit', 'metaweave'):
                 expected = 'knit or metaweave'
-            elif key in ('development-wt5', 'development-wt5-rich-root'):
-                expected = 'development-wt5 or development-wt5-rich-root'
+            elif key in ('1.14', '1.14-rich-root'):
+                expected = '1.14 or 1.14-rich-root'
             self.assertCheckoutDescription(key, expected)
 
     def test_describe_branch_format(self):
         for key in bzrdir.format_registry.keys():
             if key in bzrdir.format_registry.aliases():
                 continue
+            if bzrdir.format_registry.get_info(key).hidden:
+                continue
             expected = None
             if key in ('dirstate', 'knit'):
                 expected = 'dirstate or knit'
-            elif key in ('1.9', 'development-wt5'):
-                expected = '1.9 or development-wt5'
-            elif key in ('1.9-rich-root', 'development-wt5-rich-root'):
-                expected = '1.9-rich-root or development-wt5-rich-root'
+            elif key in ('1.14',):
+                expected = '1.14'
+            elif key in ('1.14-rich-root',):
+                expected = '1.14-rich-root'
             self.assertBranchDescription(key, expected)
 
     def test_describe_repo_format(self):
         for key in bzrdir.format_registry.keys():
             if key in bzrdir.format_registry.aliases():
                 continue
+            if bzrdir.format_registry.get_info(key).hidden:
+                continue
             expected = None
             if key in ('dirstate', 'knit', 'dirstate-tags'):
                 expected = 'dirstate or dirstate-tags or knit'
-            elif key in ('1.9', 'development-wt5'):
-                expected = '1.9 or development-wt5'
-            elif key in ('1.9-rich-root', 'development-wt5-rich-root'):
-                expected = '1.9-rich-root or development-wt5-rich-root'
+            elif key in ('1.14',):
+                expected = '1.14'
+            elif key in ('1.14-rich-root',):
+                expected = '1.14-rich-root'
             self.assertRepoDescription(key, expected)
 
         format = bzrdir.format_registry.make_bzrdir('metaweave')

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that uses memory for its storage.
 
@@ -27,6 +27,9 @@ from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
 import warnings
 
+from bzrlib import (
+    urlutils,
+    )
 from bzrlib.errors import (
     FileExists,
     LockError,
@@ -42,8 +45,8 @@ from bzrlib.transport import (
     register_transport,
     Server,
     Transport,
+    unregister_transport,
     )
-import bzrlib.urlutils as urlutils
 
 
 
@@ -85,7 +88,7 @@ class MemoryTransport(Transport):
         if len(path) == 0 or path[-1] != '/':
             path += '/'
         url = self._scheme + path
-        result = MemoryTransport(url)
+        result = self.__class__(url)
         result._dirs = self._dirs
         result._files = self._files
         result._locks = self._locks
@@ -303,8 +306,7 @@ class _MemoryLock(object):
 class MemoryServer(Server):
     """Server for the MemoryTransport for testing with."""
 
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
+    def start_server(self):
         self._dirs = {'/':None}
         self._files = {}
         self._locks = {}
@@ -315,11 +317,12 @@ class MemoryServer(Server):
             result._files = self._files
             result._locks = self._locks
             return result
-        register_transport(self._scheme, memory_factory)
+        self._memory_factory = memory_factory
+        register_transport(self._scheme, self._memory_factory)
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         # unregister this server
+        unregister_transport(self._scheme, self._memory_factory)
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""

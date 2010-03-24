@@ -12,35 +12,29 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import stat
 import sys
 
 import bzrlib
 from bzrlib import (
+    errors,
     generate_ids,
     merge_directive,
     osutils,
     )
 from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
-from bzrlib import errors
-from bzrlib.errors import (NotBranchError, NotVersionedError,
-                           WorkingTreeNotRevision, BzrCommandError, NoDiff3)
-from bzrlib import  inventory
 from bzrlib.merge import (
     Merge3Merger,
     Diff3Merger,
     WeaveMerger,
     Merger,
     )
-from bzrlib.osutils import (file_kind, getcwd, pathjoin, rename,
-                            sha_file,
-                            )
+from bzrlib.osutils import getcwd, pathjoin
 from bzrlib import progress
 from bzrlib.transform import TreeTransform
-from bzrlib.tests import TestCaseWithTransport, TestCase, TestSkipped
+from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.workingtree import WorkingTree
 
 
@@ -277,7 +271,7 @@ class MergeTest(TestCaseWithTransport):
                               " and therefore always fails on win32")
         try:
             self.do_contents_test(Diff3Merger)
-        except NoDiff3:
+        except errors.NoDiff3:
             raise TestSkipped("diff3 not available")
 
     def test_contents_merge3(self):
@@ -434,6 +428,7 @@ y
         self.assertEqual('text2', builder.this.get_file('1').read())
         builder.cleanup()
 
+
 class FunctionalMergeTest(TestCaseWithTransport):
 
     def test_trivial_star_merge(self):
@@ -467,30 +462,61 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertEqual("Mary\n", open("original/file2", "rt").read())
 
     def test_conflicts(self):
-        os.mkdir('a')
         wta = self.make_branch_and_tree('a')
-        a = wta.branch
-        file('a/file', 'wb').write('contents\n')
+        self.build_tree_contents([('a/file', 'contents\n')])
         wta.add('file')
         wta.commit('base revision', allow_pointless=False)
-        d_b = a.bzrdir.clone('b')
-        b = d_b.open_branch()
-        file('a/file', 'wb').write('other contents\n')
+        d_b = wta.branch.bzrdir.clone('b')
+        self.build_tree_contents([('a/file', 'other contents\n')])
         wta.commit('other revision', allow_pointless=False)
-        file('b/file', 'wb').write('this contents contents\n')
+        self.build_tree_contents([('b/file', 'this contents contents\n')])
         wtb = d_b.open_workingtree()
         wtb.commit('this revision', allow_pointless=False)
         self.assertEqual(1, wtb.merge_from_branch(wta.branch))
-        self.assert_(os.path.lexists('b/file.THIS'))
-        self.assert_(os.path.lexists('b/file.BASE'))
-        self.assert_(os.path.lexists('b/file.OTHER'))
+        self.failUnlessExists('b/file.THIS')
+        self.failUnlessExists('b/file.BASE')
+        self.failUnlessExists('b/file.OTHER')
         wtb.revert()
         self.assertEqual(1, wtb.merge_from_branch(wta.branch,
                                                   merge_type=WeaveMerger))
-        self.assert_(os.path.lexists('b/file'))
-        self.assert_(os.path.lexists('b/file.THIS'))
-        self.assert_(not os.path.lexists('b/file.BASE'))
-        self.assert_(os.path.lexists('b/file.OTHER'))
+        self.failUnlessExists('b/file')
+        self.failUnlessExists('b/file.THIS')
+        self.failUnlessExists('b/file.BASE')
+        self.failUnlessExists('b/file.OTHER')
+
+    def test_weave_conflicts_not_in_base(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        # See bug #494197
+        #  A        base revision (before criss-cross)
+        #  |\
+        #  B C      B does nothing, C adds 'foo'
+        #  |X|
+        #  D E      D and E modify foo in incompatible ways
+        #
+        # Merging will conflict, with C as a clean base text. However, the
+        # current code uses A as the global base and 'foo' doesn't exist there.
+        # It isn't trivial to create foo.BASE because it tries to look up
+        # attributes like 'executable' in A.
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', None))])
+        builder.build_snapshot('B-id', ['A-id'], [])
+        builder.build_snapshot('C-id', ['A-id'], [
+            ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\n'))])
+        builder.build_snapshot('D-id', ['B-id', 'C-id'], [
+            ('add', ('foo', 'foo-id', 'file', 'orig\ncontents\nand D\n'))])
+        builder.build_snapshot('E-id', ['C-id', 'B-id'], [
+            ('modify', ('foo-id', 'orig\ncontents\nand E\n'))])
+        builder.finish_series()
+        tree = builder.get_branch().create_checkout('tree', lightweight=True)
+        self.assertEqual(1, tree.merge_from_branch(tree.branch,
+                                                   to_revision='D-id',
+                                                   merge_type=WeaveMerger))
+        self.failUnlessExists('tree/foo.THIS')
+        self.failUnlessExists('tree/foo.OTHER')
+        self.expectFailure('fail to create .BASE in some criss-cross merges',
+            self.failUnlessExists, 'tree/foo.BASE')
+        self.failUnlessExists('tree/foo.BASE')
 
     def test_merge_unrelated(self):
         """Sucessfully merges unrelated branches with no common names"""

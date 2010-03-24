@@ -12,12 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the urlutils wrapper."""
 
 import os
-import re
 import sys
 
 from bzrlib import osutils, urlutils, win32utils
@@ -300,8 +299,13 @@ class TestUrlToPath(TestCase):
             from_url('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
+        self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
+            from_url('file://localhost/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
+        self.assertRaises(
+            InvalidURL, from_url,
+            'file://remotehost/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s')
 
     def test_win32_local_path_to_url(self):
         to_url = urlutils._win32_local_path_to_url
@@ -497,6 +501,9 @@ class TestUrlToPath(TestCase):
         self.assertEqual('%C3%A5', urlutils.escape(u'\xe5'))
         self.assertFalse(isinstance(urlutils.escape(u'\xe5'), unicode))
 
+    def test_escape_tildes(self):
+        self.assertEqual('~foo', urlutils.escape('~foo'))
+
     def test_unescape(self):
         self.assertEqual('%', urlutils.unescape('%25'))
         self.assertEqual(u'\xe5', urlutils.unescape('%C3%A5'))
@@ -669,3 +676,14 @@ class TestRebaseURL(TestCase):
                          '/bar', '/bar/baz'))
         self.assertEqual('.', urlutils.determine_relative_path(
                          '/bar', '/bar'))
+
+
+class TestParseURL(TestCase):
+
+    def test_parse_url(self):
+        self.assertEqual(urlutils.parse_url('http://example.com:80/one'),
+            ('http', None, None, 'example.com', 80, '/one'))
+        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]/one'),
+                ('http', None, None, '1:2:3::40', None, '/one'))
+        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]:80/one'),
+                ('http', None, None, '1:2:3::40', 80, '/one'))

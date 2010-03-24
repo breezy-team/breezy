@@ -12,16 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 
 from bzrlib import (
     errors,
+    fifo_cache,
     inventory,
+    xml6,
     xml7,
     xml8,
-    xml_serializer,
+    serializer,
     )
 from bzrlib.tests import TestCase
 from bzrlib.inventory import Inventory, InventoryEntry
@@ -136,6 +138,14 @@ _expected_inv_v5_root = """<inventory file_id="f&lt;" format="5" revision_id="mo
 <directory file_id="foo-20050801201819-4139aa4a272f4250" name="subdir" parent_id="f&lt;" revision="mbp@foo-00" />
 <file executable="yes" file_id="bar-20050824000535-6bc48cfad47ed134" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" text_sha1="B" text_size="0" />
 <symlink file_id="link-1" name="link" parent_id="foo-20050801201819-4139aa4a272f4250" revision="mbp@foo-00" symlink_target="a" />
+</inventory>
+"""
+
+_expected_inv_v6 = """<inventory format="6" revision_id="rev_outer">
+<directory file_id="tree-root-321" name="" revision="rev_outer" />
+<directory file_id="dir-id" name="dir" parent_id="tree-root-321" revision="rev_outer" />
+<file file_id="file-id" name="file" parent_id="tree-root-321" revision="rev_outer" text_sha1="A" text_size="1" />
+<symlink file_id="link-id" name="link" parent_id="tree-root-321" revision="rev_outer" symlink_target="a" />
 </inventory>
 """
 
@@ -281,6 +291,38 @@ class TestSerializer(TestCase):
                 _inventory_v5a, revision_id='test-rev-id')
         self.assertEqual('test-rev-id', inv.root.revision)
 
+    def test_unpack_inventory_5a_cache_and_copy(self):
+        # Passing an entry_cache should get populated with the objects
+        # But the returned objects should be copies if return_from_cache is
+        # False
+        entry_cache = fifo_cache.FIFOCache()
+        inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(
+            _inventory_v5a, revision_id='test-rev-id',
+            entry_cache=entry_cache, return_from_cache=False)
+        for entry in inv.iter_just_entries():
+            key = (entry.file_id, entry.revision)
+            if entry.file_id is inv.root.file_id:
+                # The root id is inferred for xml v5
+                self.assertFalse(key in entry_cache)
+            else:
+                self.assertIsNot(entry, entry_cache[key])
+
+    def test_unpack_inventory_5a_cache_no_copy(self):
+        # Passing an entry_cache should get populated with the objects
+        # The returned objects should be exact if return_from_cache is
+        # True
+        entry_cache = fifo_cache.FIFOCache()
+        inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(
+            _inventory_v5a, revision_id='test-rev-id',
+            entry_cache=entry_cache, return_from_cache=True)
+        for entry in inv.iter_just_entries():
+            key = (entry.file_id, entry.revision)
+            if entry.file_id is inv.root.file_id:
+                # The root id is inferred for xml v5
+                self.assertFalse(key in entry_cache)
+            else:
+                self.assertIs(entry, entry_cache[key])
+
     def test_unpack_inventory_5b(self):
         inv = bzrlib.xml5.serializer_v5.read_inventory_from_string(
                 _inventory_v5b, revision_id='test-rev-id')
@@ -374,6 +416,17 @@ class TestSerializer(TestCase):
         self.assertEqualDiff(_expected_inv_v7, txt)
         inv2 = xml7.serializer_v7.read_inventory_from_string(txt)
         self.assertEqual(5, len(inv2))
+        for path, ie in inv.iter_entries():
+            self.assertEqual(ie, inv2[ie.file_id])
+
+    def test_roundtrip_inventory_v6(self):
+        inv = self.get_sample_inventory()
+        txt = xml6.serializer_v6.write_inventory_to_string(inv)
+        lines = xml6.serializer_v6.write_inventory_to_lines(inv)
+        self.assertEqual(bzrlib.osutils.split_lines(txt), lines)
+        self.assertEqualDiff(_expected_inv_v6, txt)
+        inv2 = xml6.serializer_v6.read_inventory_from_string(txt)
+        self.assertEqual(4, len(inv2))
         for path, ie in inv.iter_entries():
             self.assertEqual(ie, inv2[ie.file_id])
 
@@ -492,23 +545,12 @@ class TestSerializer(TestCase):
 
         self.assertEqual(len(expected), len(actual))
 
-    def test_registry(self):
-        self.assertIs(serializer_v4,
-                      xml_serializer.format_registry.get('4'))
-        self.assertIs(bzrlib.xml5.serializer_v5,
-                      xml_serializer.format_registry.get('5'))
-        self.assertIs(bzrlib.xml6.serializer_v6,
-                      xml_serializer.format_registry.get('6'))
-        self.assertIs(bzrlib.xml7.serializer_v7,
-                      xml_serializer.format_registry.get('7'))
-        self.assertIs(bzrlib.xml8.serializer_v8,
-                      xml_serializer.format_registry.get('8'))
-
 
 class TestEncodeAndEscape(TestCase):
     """Whitebox testing of the _encode_and_escape function."""
 
     def setUp(self):
+        TestCase.setUp(self)
         # Keep the cache clear before and after the test
         bzrlib.xml8._ensure_utf8_re()
         bzrlib.xml8._clear_cache()

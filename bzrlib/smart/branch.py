@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server-side branch related request implmentations."""
 
@@ -45,7 +45,7 @@ class SmartServerBranchRequest(SmartServerRequest):
         bzrdir = BzrDir.open_from_transport(transport)
         if bzrdir.get_branch_reference() is not None:
             raise errors.NotBranchError(transport.base)
-        branch = bzrdir.open_branch()
+        branch = bzrdir.open_branch(ignore_fallbacks=True)
         return self.do_with_branch(branch, *args)
 
 
@@ -80,16 +80,63 @@ class SmartServerBranchGetConfigFile(SmartServerBranchRequest):
 
         The body is not utf8 decoded - its the literal bytestream from disk.
         """
-        # This was at one time called by RemoteBranchLockableFiles
-        # intercepting access to this file; as of 1.5 it is not called by the
-        # client but retained for compatibility.  It may be called again to
-        # allow the client to get the configuration without needing vfs
-        # access.
         try:
             content = branch._transport.get_bytes('branch.conf')
         except errors.NoSuchFile:
             content = ''
         return SuccessfulSmartServerResponse( ('ok', ), content)
+
+
+class SmartServerBranchGetParent(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Return the parent of branch."""
+        parent = branch._get_parent_location() or ''
+        return SuccessfulSmartServerResponse((parent,))
+
+
+class SmartServerBranchGetTagsBytes(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Return the _get_tags_bytes for a branch."""
+        bytes = branch._get_tags_bytes()
+        return SuccessfulSmartServerResponse((bytes,))
+
+
+class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
+
+    def __init__(self, backing_transport, root_client_path='/', jail_root=None):
+        SmartServerLockedBranchRequest.__init__(
+            self, backing_transport, root_client_path, jail_root)
+        self.locked = False
+        
+    def do_with_locked_branch(self, branch):
+        """Call _set_tags_bytes for a branch.
+
+        New in 1.18.
+        """
+        # We need to keep this branch locked until we get a body with the tags
+        # bytes.
+        self.branch = branch
+        self.branch.lock_write()
+        self.locked = True
+
+    def do_body(self, bytes):
+        self.branch._set_tags_bytes(bytes)
+        return SuccessfulSmartServerResponse(())
+
+    def do_end(self):
+        # TODO: this request shouldn't have to do this housekeeping manually.
+        # Some of this logic probably belongs in a base class.
+        if not self.locked:
+            # We never acquired the branch successfully in the first place, so
+            # there's nothing more to do.
+            return
+        try:
+            return SmartServerLockedBranchRequest.do_end(self)
+        finally:
+            # Only try unlocking if we locked successfully in the first place
+            self.branch.unlock()
 
 
 class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
@@ -135,6 +182,16 @@ class SmartServerSetTipRequest(SmartServerLockedBranchRequest):
             if isinstance(msg, unicode):
                 msg = msg.encode('utf-8')
             return FailedSmartServerResponse(('TipChangeRejected', msg))
+
+
+class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
+    """Set an option in the branch configuration."""
+
+    def do_with_locked_branch(self, branch, value, name, section):
+        if not section:
+            section = None
+        branch._get_config().set_option(value.decode('utf8'), name, section)
+        return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
@@ -214,6 +271,17 @@ class SmartServerBranchRequestSetLastRevisionInfo(SmartServerSetTipRequest):
             return FailedSmartServerResponse(
                 ('NoSuchRevision', new_last_revision_id))
         return SuccessfulSmartServerResponse(('ok',))
+
+
+class SmartServerBranchRequestSetParentLocation(SmartServerLockedBranchRequest):
+    """Set the parent location for a branch.
+    
+    Takes a location to set, which must be utf8 encoded.
+    """
+
+    def do_with_locked_branch(self, branch, location):
+        branch._set_parent_location(location)
+        return SuccessfulSmartServerResponse(())
 
 
 class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):

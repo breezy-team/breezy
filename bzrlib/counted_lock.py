@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Counted lock class"""
 
@@ -27,6 +27,9 @@ class CountedLock(object):
 
     This can be used with any object that provides a basic Lock interface,
     including LockDirs and OS file locks.
+
+    :ivar _token: While a write lock is held, this is the token 
+        for it.
     """
 
     def __init__(self, real_lock):
@@ -42,6 +45,18 @@ class CountedLock(object):
         self._real_lock.break_lock()
         self._lock_mode = None
         self._lock_count = 0
+
+    def get_physical_lock_status(self):
+        """Return physical lock status.
+
+        Returns true if a lock is held on the transport. If no lock is held, or
+        the underlying locking mechanism does not support querying lock
+        status, false is returned.
+        """
+        try:
+            return self._real_lock.peek() is not None
+        except NotImplementedError:
+            return False
 
     def is_locked(self):
         return self._lock_mode is not None
@@ -65,19 +80,23 @@ class CountedLock(object):
 
         If the lock was originally acquired in read mode this will fail.
 
-        :param token: If non-None, reacquire the lock using this token.
+        :param token: If given and the lock is already held, 
+            then validate that we already hold the real
+            lock with this token.
+
+        :returns: The token from the underlying lock.
         """
         if self._lock_count == 0:
-            return_token = self._real_lock.lock_write(token)
+            self._token = self._real_lock.lock_write(token=token)
             self._lock_mode = 'w'
             self._lock_count += 1
-            return return_token
+            return self._token
         elif self._lock_mode != 'w':
             raise errors.ReadOnlyError(self)
         else:
             self._real_lock.validate_token(token)
             self._lock_count += 1
-            return token
+            return self._token
 
     def unlock(self):
         if self._lock_count == 0:

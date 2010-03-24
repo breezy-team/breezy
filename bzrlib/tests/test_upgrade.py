@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for upgrade of old trees.
 
@@ -172,6 +172,11 @@ class TestUpgrade(TestCaseWithTransport):
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
+    def test_upgrade_rich_root(self):
+        tree = self.make_branch_and_tree('tree', format='rich-root')
+        rev_id = tree.commit('first post')
+        upgrade('tree')
+
     def test_convert_branch5_branch6(self):
         branch = self.make_branch('branch', format='knit')
         branch.set_revision_history(['AB', 'CD'])
@@ -195,6 +200,16 @@ class TestUpgrade(TestCaseWithTransport):
         converter.convert(branch2.bzrdir, progress.DummyProgress())
         branch2 = _mod_branch.Branch.open(self.get_url('branch'))
         self.assertIs(branch2.__class__, _mod_branch.BzrBranch6)
+
+    def test_convert_branch7_branch8(self):
+        branch = self.make_branch('branch', format='1.9')
+        target = bzrdir.format_registry.make_bzrdir('1.9')
+        target.set_branch_format(_mod_branch.BzrBranchFormat8())
+        converter = branch.bzrdir._format.get_converter(target)
+        converter.convert(branch.bzrdir, progress.DummyProgress())
+        branch = _mod_branch.Branch.open(self.get_url('branch'))
+        self.assertIs(branch.__class__, _mod_branch.BzrBranch8)
+        self.assertEqual({}, branch._get_all_reference_info())
 
     def test_convert_knit_dirstate_empty(self):
         # test that asking for an upgrade from knit to dirstate works.

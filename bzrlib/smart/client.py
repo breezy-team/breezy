@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import bzrlib
 from bzrlib.smart import message, protocol
@@ -35,6 +35,9 @@ class _SmartClient(object):
             self._headers = {'Software version': bzrlib.__version__}
         else:
             self._headers = dict(headers)
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._medium)
 
     def _send_request(self, protocol_version, method, args, body=None,
                       readv_body=None, body_stream=None):
@@ -192,7 +195,11 @@ class SmartClientHooks(hooks.Hooks):
 
     def __init__(self):
         hooks.Hooks.__init__(self)
-        self['call'] = []
+        self.create_hook(hooks.HookPoint('call',
+            "Called when the smart client is submitting a request to the "
+            "smart server. Called with a bzrlib.smart.client.CallHookParams "
+            "object. Streaming request bodies, and responses, are not "
+            "accessible.", None, None))
 
 
 _SmartClient.hooks = SmartClientHooks()

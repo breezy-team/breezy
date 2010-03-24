@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for bzr revert."""
 
@@ -96,7 +96,9 @@ class TestRevert(ExternalBase):
         self.failUnlessExists('a/b')
         self.failUnlessExists('a/d')
         self.failIfExists('a/g')
-        self.failUnlessExists('j')
+        self.expectFailure(
+            "j is in the delta revert applies because j was renamed too",
+            self.failUnlessExists, 'j')
         self.failUnlessExists('h')
         self.run_bzr('revert f')
         self.failIfExists('j')

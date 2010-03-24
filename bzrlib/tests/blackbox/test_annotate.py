@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr.
@@ -29,6 +29,7 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.config import extract_email_address
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.urlutils import joinpath
 
 
 class TestAnnotate(TestCaseWithTransport):
@@ -153,14 +154,27 @@ class TestAnnotate(TestCaseWithTransport):
 class TestSimpleAnnotate(TestCaseWithTransport):
     """Annotate tests with no complex setup."""
 
-    def _setup_edited_file(self):
+    def _setup_edited_file(self, relpath='.'):
         """Create a tree with a locally edited file."""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('file', 'foo\ngam\n')])
+        tree = self.make_branch_and_tree(relpath)
+        file_relpath = joinpath(relpath, 'file')
+        self.build_tree_contents([(file_relpath, 'foo\ngam\n')])
         tree.add('file')
         tree.commit('add file', committer="test@host", rev_id="rev1")
-        self.build_tree_contents([('file', 'foo\nbar\ngam\n')])
+        self.build_tree_contents([(file_relpath, 'foo\nbar\ngam\n')])
         tree.branch.get_config().set_user_option('email', 'current@host2')
+        return tree
+
+    def test_annotate_cmd_revspec_branch(self):
+        tree = self._setup_edited_file('trunk')
+        tree.branch.create_checkout(self.get_url('work'), lightweight=True)
+        os.chdir('work')
+        out, err = self.run_bzr('annotate file -r branch:../trunk')
+        self.assertEqual('', err)
+        self.assertEqual(
+            '1   test@ho | foo\n'
+            '            | gam\n',
+            out)
 
     def test_annotate_edited_file(self):
         tree = self._setup_edited_file()

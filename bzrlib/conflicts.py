@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Move this into builtins
 
@@ -53,13 +53,12 @@ class cmd_conflicts(commands.Command):
     instead.  (This is useful for editing all files with text conflicts.)
 
     Use bzr resolve when you have fixed a problem.
-
-    See also bzr resolve.
     """
     takes_options = [
             Option('text',
                    help='List paths of files with text conflicts.'),
         ]
+    _see_also = ['resolve', 'conflict-types']
 
     def run(self, text=False):
         from bzrlib.workingtree import WorkingTree
@@ -82,16 +81,15 @@ class cmd_resolve(commands.Command):
     before you should commit.
 
     Once you have fixed a problem, use "bzr resolve" to automatically mark
-    text conflicts as fixed, resolve FILE to mark a specific conflict as
+    text conflicts as fixed, "bzr resolve FILE" to mark a specific conflict as
     resolved, or "bzr resolve --all" to mark all conflicts as resolved.
-
-    See also bzr conflicts.
     """
     aliases = ['resolved']
     takes_args = ['file*']
     takes_options = [
             Option('all', help='Resolve all conflicts in this tree.'),
             ]
+    _see_also = ['conflicts']
     def run(self, file_list=None, all=False):
         from bzrlib.workingtree import WorkingTree
         if all:
@@ -150,9 +148,9 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False):
 
 
 def restore(filename):
-    """\
-    Restore a conflicted file to the state it was in before merging.
-    Only text restoration supported at present.
+    """Restore a conflicted file to the state it was in before merging.
+
+    Only text restoration is supported at present.
     """
     conflicted = False
     try:
@@ -480,7 +478,7 @@ class ParentLoop(HandledPathConflict):
 
 
 class UnversionedParent(HandledConflict):
-    """An attempt to version an file whose parent directory is not versioned.
+    """An attempt to version a file whose parent directory is not versioned.
     Typically, the result of a merge where one tree unversioned the directory
     and the other added a versioned file to it.
     """

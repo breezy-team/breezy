@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Whitebox tests for annotate functionality."""
 
@@ -176,38 +176,23 @@ class TestAnnotate(tests.TestCaseWithTransport):
          |
         rev-3
         """
-
-        tree1 = self.make_branch_and_tree('tree1')
-        self.build_tree_contents([('tree1/a', 'first\n')])
-        tree1.add(['a'], ['a-id'])
-        tree1.commit('a', rev_id='rev-1',
-                     committer="joe@foo.com",
-                     timestamp=1166046000.00, timezone=0)
-
-        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
-
-        self.build_tree_contents([('tree1/a', 'first\nsecond\n')])
-        tree1.commit('b', rev_id='rev-2',
-                     committer='joe@foo.com',
-                     timestamp=1166046001.00, timezone=0)
-
-        self.build_tree_contents([('tree2/a', 'first\nthird\n')])
-        tree2.commit('c', rev_id='rev-1_1_1',
-                     committer="barry@foo.com",
-                     timestamp=1166046002.00, timezone=0)
-
-        num_conflicts = tree1.merge_from_branch(tree2.branch)
-        self.assertEqual(1, num_conflicts)
-
-        self.build_tree_contents([('tree1/a',
-                                 'first\nsecond\nthird\n')])
-        tree1.set_conflicts(conflicts.ConflictList())
-        tree1.commit('merge 2', rev_id='rev-3',
-                     committer='sal@foo.com',
-                     timestamp=1166046003.00, timezone=0)
-        tree1.lock_read()
-        self.addCleanup(tree1.unlock)
-        return tree1, tree2
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('a', 'a-id', 'file', 'first\n')),
+            ], timestamp=1166046000.00, timezone=0, committer="joe@foo.com")
+        builder.build_snapshot('rev-2', ['rev-1'], [
+            ('modify', ('a-id', 'first\nsecond\n')),
+            ], timestamp=1166046001.00, timezone=0, committer="joe@foo.com")
+        builder.build_snapshot('rev-1_1_1', ['rev-1'], [
+            ('modify', ('a-id', 'first\nthird\n')),
+            ], timestamp=1166046002.00, timezone=0, committer="barry@foo.com")
+        builder.build_snapshot('rev-3', ['rev-2', 'rev-1_1_1'], [
+            ('modify', ('a-id', 'first\nsecond\nthird\n')),
+            ], timestamp=1166046003.00, timezone=0, committer="sal@foo.com")
+        return builder
 
     def create_deeply_merged_trees(self):
         """Create some trees with a more complex merge history.
@@ -232,69 +217,51 @@ class TestAnnotate(tests.TestCaseWithTransport):
          |
         rev-6
         """
-        tree1, tree2 = self.create_merged_trees()
-        tree1.unlock()
-
-        tree3 = tree2.bzrdir.sprout('tree3').open_workingtree()
-
-        tree2.commit('noop', rev_id='rev-1_1_2')
-        self.assertEqual(0, tree1.merge_from_branch(tree2.branch))
-        tree1.commit('noop merge', rev_id='rev-4')
-
-        self.build_tree_contents([('tree3/a', 'first\nthird\nfourth\n')])
-        tree3.commit('four', rev_id='rev-1_2_1',
-                     committer='jerry@foo.com',
-                     timestamp=1166046003.00, timezone=0)
-
-        tree4 = tree3.bzrdir.sprout('tree4').open_workingtree()
-
-        tree3.commit('noop', rev_id='rev-1_2_2',
-                     committer='jerry@foo.com',
-                     timestamp=1166046004.00, timezone=0)
-        self.assertEqual(0, tree1.merge_from_branch(tree3.branch))
-        tree1.commit('merge four', rev_id='rev-5')
-
-        self.build_tree_contents([('tree4/a',
-                                   'first\nthird\nfourth\nfifth\nsixth\n')])
-        tree4.commit('five and six', rev_id='rev-1_3_1',
-                     committer='george@foo.com',
-                     timestamp=1166046005.00, timezone=0)
-        self.assertEqual(0, tree1.merge_from_branch(tree4.branch))
-        tree1.commit('merge five and six', rev_id='rev-6')
-        tree1.lock_read()
-        return tree1
+        builder = self.create_merged_trees()
+        builder.build_snapshot('rev-1_1_2', ['rev-1_1_1'], [])
+        builder.build_snapshot('rev-4', ['rev-3', 'rev-1_1_2'], [])
+        builder.build_snapshot('rev-1_2_1', ['rev-1_1_1'], [
+            ('modify', ('a-id', 'first\nthird\nfourth\n')),
+            ], timestamp=1166046003.00, timezone=0, committer="jerry@foo.com")
+        builder.build_snapshot('rev-1_2_2', ['rev-1_2_1'], [],
+            timestamp=1166046004.00, timezone=0, committer="jerry@foo.com")
+        builder.build_snapshot('rev-5', ['rev-4', 'rev-1_2_2'], [
+            ('modify', ('a-id', 'first\nsecond\nthird\nfourth\n')),
+            ], timestamp=1166046004.00, timezone=0, committer="jerry@foo.com")
+        builder.build_snapshot('rev-1_3_1', ['rev-1_2_1'], [
+            ('modify', ('a-id', 'first\nthird\nfourth\nfifth\nsixth\n')),
+            ], timestamp=1166046005.00, timezone=0, committer="george@foo.com")
+        builder.build_snapshot('rev-6', ['rev-5', 'rev-1_3_1'], [
+            ('modify', ('a-id',
+                        'first\nsecond\nthird\nfourth\nfifth\nsixth\n')),
+            ])
+        return builder
 
     def create_duplicate_lines_tree(self):
-        tree1 = self.make_branch_and_tree('tree1')
+        builder = self.make_branch_builder('branch')
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
         base_text = ''.join(l for r, l in duplicate_base)
         a_text = ''.join(l for r, l in duplicate_A)
         b_text = ''.join(l for r, l in duplicate_B)
         c_text = ''.join(l for r, l in duplicate_C)
         d_text = ''.join(l for r, l in duplicate_D)
         e_text = ''.join(l for r, l in duplicate_E)
-        self.build_tree_contents([('tree1/file', base_text)])
-        tree1.add(['file'], ['file-id'])
-        tree1.commit('base', rev_id='rev-base')
-        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
-
-        self.build_tree_contents([('tree1/file', a_text),
-                                  ('tree2/file', b_text)])
-        tree1.commit('A', rev_id='rev-A')
-        tree2.commit('B', rev_id='rev-B')
-
-        tree2.merge_from_branch(tree1.branch)
-        conflicts.resolve(tree2, None) # Resolve the conflicts
-        self.build_tree_contents([('tree2/file', d_text)])
-        tree2.commit('D', rev_id='rev-D')
-
-        self.build_tree_contents([('tree1/file', c_text)])
-        tree1.commit('C', rev_id='rev-C')
-
-        tree1.merge_from_branch(tree2.branch)
-        conflicts.resolve(tree1, None) # Resolve the conflicts
-        self.build_tree_contents([('tree1/file', e_text)])
-        tree1.commit('E', rev_id='rev-E')
-        return tree1
+        builder.build_snapshot('rev-base', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', base_text)),
+            ])
+        builder.build_snapshot('rev-A', ['rev-base'], [
+            ('modify', ('file-id', a_text))])
+        builder.build_snapshot('rev-B', ['rev-base'], [
+            ('modify', ('file-id', b_text))])
+        builder.build_snapshot('rev-C', ['rev-A'], [
+            ('modify', ('file-id', c_text))])
+        builder.build_snapshot('rev-D', ['rev-B', 'rev-A'], [
+            ('modify', ('file-id', d_text))])
+        builder.build_snapshot('rev-E', ['rev-C', 'rev-D'], [
+            ('modify', ('file-id', e_text))])
+        return builder
 
     def assertRepoAnnotate(self, expected, repo, file_id, revision_id):
         """Assert that the revision is properly annotated."""
@@ -307,8 +274,8 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_duplicate_lines(self):
         # XXX: Should this be a per_repository test?
-        tree1 = self.create_duplicate_lines_tree()
-        repo = tree1.branch.repository
+        builder = self.create_duplicate_lines_tree()
+        repo = builder.get_branch().repository
         repo.lock_read()
         self.addCleanup(repo.unlock)
         self.assertRepoAnnotate(duplicate_base, repo, 'file-id', 'rev-base')
@@ -319,10 +286,10 @@ class TestAnnotate(tests.TestCaseWithTransport):
         self.assertRepoAnnotate(duplicate_E, repo, 'file-id', 'rev-E')
 
     def test_annotate_shows_dotted_revnos(self):
-        tree1, tree2 = self.create_merged_trees()
+        builder = self.create_merged_trees()
 
         sio = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-3', 'a-id',
+        annotate.annotate_file(builder.get_branch(), 'rev-3', 'a-id',
                                to_file=sio)
         self.assertEqualDiff('1     joe@foo | first\n'
                              '2     joe@foo | second\n'
@@ -331,10 +298,10 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
     def test_annotate_limits_dotted_revnos(self):
         """Annotate should limit dotted revnos to a depth of 12"""
-        tree1 = self.create_deeply_merged_trees()
+        builder = self.create_deeply_merged_trees()
 
         sio = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-6', 'a-id',
+        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
                                to_file=sio, verbose=False, full=False)
         self.assertEqualDiff('1     joe@foo | first\n'
                              '2     joe@foo | second\n'
@@ -345,7 +312,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                              sio.getvalue())
 
         sio = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-6', 'a-id',
+        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
                                to_file=sio, verbose=False, full=True)
         self.assertEqualDiff('1     joe@foo | first\n'
                              '2     joe@foo | second\n'
@@ -357,7 +324,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
         # verbose=True shows everything, the full revno, user id, and date
         sio = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-6', 'a-id',
+        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
                                to_file=sio, verbose=True, full=False)
         self.assertEqualDiff('1     joe@foo.com    20061213 | first\n'
                              '2     joe@foo.com    20061213 | second\n'
@@ -368,7 +335,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                              sio.getvalue())
 
         sio = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-6', 'a-id',
+        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
                                to_file=sio, verbose=True, full=True)
         self.assertEqualDiff('1     joe@foo.com    20061213 | first\n'
                              '2     joe@foo.com    20061213 | second\n'
@@ -384,10 +351,10 @@ class TestAnnotate(tests.TestCaseWithTransport):
         When annotating a non-mainline revision, the annotation should still
         use dotted revnos from the mainline.
         """
-        tree1 = self.create_deeply_merged_trees()
+        builder = self.create_deeply_merged_trees()
 
         sio = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-1_3_1', 'a-id',
+        annotate.annotate_file(builder.get_branch(), 'rev-1_3_1', 'a-id',
                                to_file=sio, verbose=False, full=False)
         self.assertEqualDiff('1     joe@foo | first\n'
                              '1.1.1 barry@f | third\n'
@@ -397,10 +364,10 @@ class TestAnnotate(tests.TestCaseWithTransport):
                              sio.getvalue())
 
     def test_annotate_show_ids(self):
-        tree1 = self.create_deeply_merged_trees()
+        builder = self.create_deeply_merged_trees()
 
         sio = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-6', 'a-id',
+        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
                                to_file=sio, show_ids=True, full=False)
 
         # It looks better with real revision ids :)
@@ -413,7 +380,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
                              sio.getvalue())
 
         sio = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-6', 'a-id',
+        annotate.annotate_file(builder.get_branch(), 'rev-6', 'a-id',
                                to_file=sio, show_ids=True, full=True)
 
         self.assertEqualDiff('    rev-1 | first\n'

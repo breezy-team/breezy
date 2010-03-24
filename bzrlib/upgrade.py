@@ -12,12 +12,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """bzr upgrade logic."""
 
 
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.bzrdir import BzrDir, BzrDirFormat, format_registry
 import bzrlib.errors as errors
 from bzrlib.remote import RemoteBzrDir
 from bzrlib.transport import get_transport
@@ -26,9 +26,7 @@ import bzrlib.ui as ui
 
 class Convert(object):
 
-    def __init__(self, url, format):
-        if format is None:
-            format = BzrDirFormat.get_default_format()
+    def __init__(self, url, format=None):
         self.format = format
         self.bzrdir = BzrDir.open_unsupported(url)
         if isinstance(self.bzrdir, RemoteBzrDir):
@@ -48,26 +46,39 @@ class Convert(object):
             branch = self.bzrdir.open_branch()
             if branch.bzrdir.root_transport.base != \
                 self.bzrdir.root_transport.base:
-                self.pb.note("This is a checkout. The branch (%s) needs to be "
-                             "upgraded separately.",
+                ui.ui_factory.note("This is a checkout. The branch (%s) needs to be "
+                             "upgraded separately." %
                              branch.bzrdir.root_transport.base)
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
             # might not be a format we can open without upgrading; see e.g.
             # https://bugs.launchpad.net/bzr/+bug/253891
             pass
-        if not self.bzrdir.needs_format_conversion(self.format):
+        if self.format is None:
+            try:
+                rich_root = self.bzrdir.find_repository()._format.rich_root_data
+            except errors.NoRepositoryPresent:
+                rich_root = False # assume no rich roots
+            if rich_root:
+                format_name = "default-rich-root"
+            else:
+                format_name = "default"
+            format = format_registry.make_bzrdir(format_name)
+        else:
+            format = self.format
+        if not self.bzrdir.needs_format_conversion(format):
             raise errors.UpToDateFormat(self.bzrdir._format)
         if not self.bzrdir.can_convert_format():
             raise errors.BzrError("cannot upgrade from bzrdir format %s" %
                            self.bzrdir._format)
-        self.bzrdir.check_conversion_target(self.format)
-        self.pb.note('starting upgrade of %s', self.transport.base)
+        self.bzrdir.check_conversion_target(format)
+        ui.ui_factory.note('starting upgrade of %s' % self.transport.base)
+
         self.bzrdir.backup_bzrdir()
-        while self.bzrdir.needs_format_conversion(self.format):
-            converter = self.bzrdir._format.get_converter(self.format)
+        while self.bzrdir.needs_format_conversion(format):
+            converter = self.bzrdir._format.get_converter(format)
             self.bzrdir = converter.convert(self.bzrdir, self.pb)
-        self.pb.note("finished")
+        ui.ui_factory.note("finished")
 
 
 def upgrade(url, format=None):

@@ -1,11 +1,7 @@
-=======================
-Guide to Testing Bazaar
-=======================
+====================
+Bazaar Testing Guide
+====================
 
-.. contents::
-
-Testing Bazaar
-##############
 
 The Importance of Testing
 =========================
@@ -34,10 +30,10 @@ by community members. Equally importantly, we can be surer that changes
 down the track do not break new features or bug fixes that you are
 contributing today.
 
-As of May 2008, Bazaar ships with a test suite containing over 12000 tests
-and growing. We are proud of it and want to remain so. As community
-members, we all benefit from it. Would you trust version control on
-your project to a product *without* a test suite like Bazaar has?
+As of September 2009, Bazaar ships with a test suite containing over
+23,000 tests and growing. We are proud of it and want to remain so. As
+community members, we all benefit from it. Would you trust version control
+on your project to a product *without* a test suite like Bazaar has?
 
 
 Running the Test Suite
@@ -158,7 +154,7 @@ When writing blackbox tests please honour the following conventions:
     cmd_object.run() method directly. This is a lot faster than
     subprocesses and generates the same logging output as running it in a
     subprocess (which invoking the method directly does not).
- 
+
  3. Only test the one command in a single test script. Use the bzrlib
     library when setting up tests and when evaluating the side-effects of
     the command. We do this so that the library api has continual pressure
@@ -177,14 +173,20 @@ Per-implementation tests
 
 Per-implementation tests are tests that are defined once and then run
 against multiple implementations of an interface.  For example,
-``test_transport_implementations.py`` defines tests that all Transport
-implementations (local filesystem, HTTP, and so on) must pass.
-
-They are found in ``bzrlib/tests/*_implementations/test_*.py``,
-``bzrlib/tests/per_*/*.py``, and
-``bzrlib/tests/test_*_implementations.py``.
+``per_transport.py`` defines tests that all Transport implementations
+(local filesystem, HTTP, and so on) must pass. They are found in
+``bzrlib/tests/per_*/*.py``, and ``bzrlib/tests/per_*.py``.
 
 These are really a sub-category of unit tests, but an important one.
+
+Along the same lines are tests for extension modules. We generally have
+both a pure-python and a compiled implementation for each module. As such,
+we want to run the same tests against both implementations. These can
+generally be found in ``bzrlib/tests/*__*.py`` since extension modules are
+usually prefixed with an underscore. Since there are only two
+implementations, we have a helper function
+``bzrlib.tests.permute_for_extension``, which can simplify the
+``load_tests`` implementation.
 
 
 Doctests
@@ -199,6 +201,116 @@ make our documentation testable, rather than as a way to make tests.
 Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 
   __ http://docs.python.org/lib/module-doctest.html
+
+
+Shell-like tests
+----------------
+
+``bzrlib/tests/script.py`` allows users to write tests in a syntax very close to a shell session,
+using a restricted and limited set of commands that should be enough to mimic
+most of the behaviours.
+
+A script is a set of commands, each command is composed of:
+
+ * one mandatory command line,
+ * one optional set of input lines to feed the command,
+ * one optional set of output expected lines,
+ * one optional set of error expected lines.
+
+Input, output and error lines can be specified in any order.
+
+Except for the expected output, all lines start with a special
+string (based on their origin when used under a Unix shell):
+
+ * '$ ' for the command,
+ * '<' for input,
+ * nothing for output,
+ * '2>' for errors,
+
+Comments can be added anywhere, they start with '#' and end with
+the line.
+
+The execution stops as soon as an expected output or an expected error is not
+matched.
+
+When no output is specified, any ouput from the command is accepted
+and execution continue.
+
+If an error occurs and no expected error is specified, the execution stops.
+
+An error is defined by a returned status different from zero, not by the
+presence of text on the error stream.
+
+The matching is done on a full string comparison basis unless '...' is used, in
+which case expected output/errors can be less precise.
+
+Examples:
+
+The following will succeeds only if 'bzr add' outputs 'adding file'::
+
+  $ bzr add file
+  >adding file
+
+If you want the command to succeed for any output, just use::
+
+  $ bzr add file
+
+The following will stop with an error::
+
+  $ bzr not-a-command
+
+If you want it to succeed, use::
+
+  $ bzr not-a-command
+  2> bzr: ERROR: unknown command "not-a-command"
+
+You can use ellipsis (...) to replace any piece of text you don't want to be
+matched exactly::
+
+  $ bzr branch not-a-branch
+  2>bzr: ERROR: Not a branch...not-a-branch/".
+
+This can be used to ignore entire lines too::
+
+  $ cat
+  <first line
+  <second line
+  <third line
+  # And here we explain that surprising fourth line
+  <fourth line
+  <last line
+  >first line
+  >...
+  >last line
+
+You can check the content of a file with cat::
+
+  $ cat <file
+  >expected content
+
+You can also check the existence of a file with cat, the following will fail if
+the file doesn't exist::
+
+  $ cat file
+
+The actual use of ScriptRunner within a TestCase looks something like
+this::
+
+        def test_unshelve_keep(self):
+                # some setup here
+                sr = ScriptRunner()
+                sr.run_script(self, '''
+        $ bzr add file
+        $ bzr shelve --all -m Foo
+        $ bzr shelve --list
+        1: Foo
+        $ bzr unshelve --keep
+        $ bzr shelve --list
+        1: Foo
+        $ cat file
+        contents of file
+        ''')
+
 
 
 .. Effort tests
@@ -255,7 +367,7 @@ KnownFailure
         The test exists but is known to fail, for example this might be
         appropriate to raise if you've committed a test for a bug but not
         the fix for it, or if something works on Unix but not on Windows.
-        
+
         Raising this allows you to distinguish these failures from the
         ones that are not expected to fail.  If the test would fail
         because of something we don't expect or intend to fix,
@@ -264,6 +376,21 @@ KnownFailure
 
         KnownFailure should be used with care as we don't want a
         proliferation of quietly broken tests.
+
+ModuleAvailableFeature
+        A helper for handling running tests based on whether a python
+        module is available. This can handle 3rd-party dependencies (is
+        ``paramiko`` available?) as well as stdlib (``termios``) or
+        extension modules (``bzrlib._groupcompress_pyx``). You create a
+        new feature instance with::
+
+            MyModuleFeature = ModuleAvailableFeature('bzrlib.something')
+
+            ...
+            def test_something(self):
+                self.requireFeature(MyModuleFeature)
+                something = MyModuleFeature.module
+
 
 We plan to support three modes for running the test suite to control the
 interpretation of these results.  Strict mode is for use in situations
@@ -281,7 +408,7 @@ TestNotApplicable       pass    pass    pass
 UnavailableFeature      fail    pass    pass
 KnownFailure            fail    pass    pass
 ======================= ======= ======= ========
-     
+
 
 Test feature dependencies
 -------------------------
@@ -328,13 +455,13 @@ are defined by subclassing ``bzrlib.tests.Feature`` and overriding the
 ``_probe`` and ``feature_name`` methods.  For example::
 
     class _SymlinkFeature(Feature):
-    
+
         def _probe(self):
             return osutils.has_symlinks()
-    
+
         def feature_name(self):
             return 'symlinks'
-    
+
     SymlinkFeature = _SymlinkFeature()
 
 

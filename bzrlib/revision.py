@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
@@ -21,6 +21,7 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import deprecated_graph
+from bzrlib import bugtracker
 """)
 from bzrlib import (
     errors,
@@ -53,8 +54,12 @@ class Revision(object):
 
     def __init__(self, revision_id, properties=None, **args):
         self.revision_id = revision_id
-        self.properties = properties or {}
-        self._check_properties()
+        if properties is None:
+            self.properties = {}
+        else:
+            self.properties = properties
+            self._check_properties()
+        self.committer = None
         self.parent_ids = []
         self.parent_sha1s = []
         """Not used anymore - legacy from for 4."""
@@ -66,7 +71,6 @@ class Revision(object):
     def __eq__(self, other):
         if not isinstance(other, Revision):
             return False
-        # FIXME: rbc 20050930 parent_ids are not being compared
         return (
                 self.inventory_sha1 == other.inventory_sha1
                 and self.revision_id == other.revision_id
@@ -74,7 +78,8 @@ class Revision(object):
                 and self.message == other.message
                 and self.timezone == other.timezone
                 and self.committer == other.committer
-                and self.properties == other.properties)
+                and self.properties == other.properties
+                and self.parent_ids == other.parent_ids)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -86,7 +91,7 @@ class Revision(object):
                 raise ValueError("invalid property name %r" % name)
             if not isinstance(value, basestring):
                 raise ValueError("invalid property value %r for %r" %
-                                 (name, value))
+                                 (value, name))
 
     def get_history(self, repository):
         """Return the canonical line-of-history for this revision.
@@ -109,8 +114,13 @@ class Revision(object):
 
     def get_summary(self):
         """Get the first line of the log message for this revision.
+
+        Return an empty string if message is None.
         """
-        return self.message.lstrip().split('\n', 1)[0]
+        if self.message:
+            return self.message.lstrip().split('\n', 1)[0]
+        else:
+            return ''
 
     @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((1, 13, 0)))
     def get_apparent_author(self):
@@ -121,7 +131,11 @@ class Revision(object):
         If the revision properties contain any author names,
         return the first. Otherwise return the committer name.
         """
-        return self.get_apparent_authors()[0]
+        authors = self.get_apparent_authors()
+        if authors:
+            return authors[0]
+        else:
+            return None
 
     def get_apparent_authors(self):
         """Return the apparent authors of this revision.
@@ -133,12 +147,26 @@ class Revision(object):
         """
         authors = self.properties.get('authors', None)
         if authors is None:
-            author = self.properties.get('author', None)
+            author = self.properties.get('author', self.committer)
             if author is None:
-                return [self.committer]
+                return []
             return [author]
         else:
             return authors.split("\n")
+
+    def iter_bugs(self):
+        """Iterate over the bugs associated with this revision."""
+        bug_property = self.properties.get('bugs', None)
+        if bug_property is None:
+            return
+        for line in bug_property.splitlines():
+            try:
+                url, status = line.split(None, 2)
+            except ValueError:
+                raise errors.InvalidLineInBugsProperty(line)
+            if status not in bugtracker.ALLOWED_BUG_STATUSES:
+                raise errors.InvalidBugStatus(status)
+            yield url, status
 
 
 def iter_ancestors(revision_id, revision_source, only_present=False):
@@ -191,7 +219,7 @@ def __get_closest(intersection):
 def is_reserved_id(revision_id):
     """Determine whether a revision id is reserved
 
-    :return: True if the revision is is reserved, False otherwise
+    :return: True if the revision is reserved, False otherwise
     """
     return isinstance(revision_id, basestring) and revision_id.endswith(':')
 

@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import socket
@@ -21,18 +21,13 @@ import sys
 import threading
 import time
 
-try:
-    import paramiko
-    paramiko_loaded = True
-except ImportError:
-    paramiko_loaded = False
-
 from bzrlib import (
     bzrdir,
     config,
     errors,
     tests,
     transport as _mod_transport,
+    ui,
     )
 from bzrlib.osutils import (
     pathjoin,
@@ -40,6 +35,7 @@ from bzrlib.osutils import (
     set_or_unset_env,
     )
 from bzrlib.tests import (
+    features,
     TestCaseWithTransport,
     TestCase,
     TestSkipped,
@@ -48,7 +44,7 @@ from bzrlib.tests.http_server import HttpServer
 from bzrlib.transport import get_transport
 import bzrlib.transport.http
 
-if paramiko_loaded:
+if features.paramiko.available():
     from bzrlib.transport import sftp as _mod_sftp
     from bzrlib.transport.sftp import (
         SFTPAbsoluteServer,
@@ -75,8 +71,7 @@ class TestCaseWithSFTPServer(TestCaseWithTransport):
 
     def setUp(self):
         super(TestCaseWithSFTPServer, self).setUp()
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(features.paramiko)
         set_test_transport_to_sftp(self)
 
 
@@ -164,8 +159,7 @@ class SFTPTransportTestRelativeRoot(TestCaseWithSFTPServer):
 class SFTPNonServerTest(TestCase):
     def setUp(self):
         TestCase.setUp(self)
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(features.paramiko)
 
     def test_parse_url_with_home_dir(self):
         s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/~/relative')
@@ -198,14 +192,14 @@ class SFTPNonServerTest(TestCase):
     def test_abspath_root_sibling_server(self):
         from bzrlib.transport.sftp import SFTPSiblingAbsoluteServer
         server = SFTPSiblingAbsoluteServer()
-        server.setUp()
+        server.start_server()
         try:
             transport = get_transport(server.get_url())
             self.assertFalse(transport.abspath('/').endswith('/~/'))
             self.assertTrue(transport.abspath('/').endswith('/'))
             del transport
         finally:
-            server.tearDown()
+            server.stop_server()
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
@@ -306,8 +300,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
     """
 
     def setUp(self):
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(features.paramiko)
         super(SSHVendorBadConnection, self).setUp()
         import bzrlib.transport.ssh
 
@@ -419,8 +412,7 @@ class TestSocketDelay(TestCase):
 
     def setUp(self):
         TestCase.setUp(self)
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(features.paramiko)
 
     def test_delay(self):
         from bzrlib.transport.sftp import SocketDelay
@@ -481,8 +473,7 @@ def _null_report_activity(*a, **k):
 class Test_SFTPReadvHelper(tests.TestCase):
 
     def checkGetRequests(self, expected_requests, offsets):
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(features.paramiko)
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
             _null_report_activity)
         self.assertEqual(expected_requests, helper._get_requests())
@@ -502,8 +493,7 @@ class Test_SFTPReadvHelper(tests.TestCase):
                                (42000, 24000)])
 
     def checkRequestAndYield(self, expected, data, offsets):
-        if not paramiko_loaded:
-            raise TestSkipped('you must have paramiko to run this test')
+        self.requireFeature(features.paramiko)
         helper = _mod_sftp._SFTPReadvHelper(offsets, 'artificial_test',
             _null_report_activity)
         data_f = ReadvFile(data)
@@ -546,3 +536,12 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
     def test_sftp_is_none_if_no_config(self):
         t = self.get_transport_for_connection(set_config=False)
         self.assertIs(None, t._get_credentials()[0])
+
+    def test_sftp_doesnt_prompt_username(self):
+        stdout = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n', stdout=stdout)
+        t = self.get_transport_for_connection(set_config=False)
+        self.assertIs(None, t._get_credentials()[0])
+        # No prompts should've been printed, stdin shouldn't have been read
+        self.assertEquals("", stdout.getvalue())
+        self.assertEquals(0, ui.ui_factory.stdin.tell())

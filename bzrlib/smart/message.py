@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import collections
 from cStringIO import StringIO
@@ -134,7 +134,7 @@ class ConventionalRequestHandler(MessageHandler):
 
     def _args_received(self, args):
         self.expecting = 'body'
-        self.request_handler.dispatch_command(args[0], args[1:])
+        self.request_handler.args_received(args)
         if self.request_handler.finished_reading:
             self._response_sent = True
             self.responder.send_response(self.request_handler.response)
@@ -283,8 +283,9 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                     self._protocol_decoder._get_in_buffer()[:10],
                     self._protocol_decoder.state_accept.__name__)
             raise errors.ConnectionReset(
-                "please check connectivity and permissions",
-                "(and try -Dhpss if further diagnosis is required)")
+                "Unexpected end of message. "
+                "Please check connectivity and permissions, and report a bug "
+                "if problems persist.")
         self._protocol_decoder.accept_bytes(bytes)
 
     def protocol_error(self, exception):
@@ -329,7 +330,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
         while not self.finished_reading:
             while self._bytes_parts:
                 bytes_part = self._bytes_parts.popleft()
-                if 'hpss' in debug.debug_flags:
+                if 'hpssdetail' in debug.debug_flags:
                     mutter('              %d byte part read', len(bytes_part))
                 yield bytes_part
             self._read_more()
@@ -352,5 +353,9 @@ def _translate_error(error_tuple):
         raise errors.LockContention('(remote lock)')
     elif error_name == 'LockFailed':
         raise errors.LockFailed(*error_args[:2])
+    elif error_name == 'FileExists':
+        raise errors.FileExists(error_args[0])
+    elif error_name == 'NoSuchFile':
+        raise errors.NoSuchFile(error_args[0])
     else:
         raise errors.ErrorFromSmartServer(error_tuple)

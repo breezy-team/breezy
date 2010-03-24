@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for add_revision on a repository with external references."""
 
@@ -30,6 +30,8 @@ class TestAddRevision(TestCaseWithExternalReferenceRepository):
         tree = self.make_branch_and_tree('sample')
         revid = tree.commit('one')
         inv = tree.branch.repository.get_inventory(revid)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         rev = tree.branch.repository.get_revision(revid)
         base = self.make_repository('base')
         repo = self.make_referring('referring', 'base')
@@ -38,6 +40,7 @@ class TestAddRevision(TestCaseWithExternalReferenceRepository):
             repo.start_write_group()
             try:
                 rev = tree.branch.repository.get_revision(revid)
+                repo.texts.add_lines((inv.root.file_id, revid), [], [])
                 repo.add_revision(revid, rev, inv=inv)
             except:
                 repo.abort_write_group()

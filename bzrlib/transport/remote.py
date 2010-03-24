@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """RemoteTransport client for the smart-server.
 
@@ -34,7 +34,9 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.smart import client, medium
-from bzrlib.symbol_versioning import (deprecated_method, one_four)
+from bzrlib.symbol_versioning import (
+    deprecated_method,
+    )
 
 
 class _SmartStat(object):
@@ -136,6 +138,14 @@ class RemoteTransport(transport.ConnectedTransport):
         # No credentials
         return None, None
 
+    def _report_activity(self, bytes, direction):
+        """See Transport._report_activity.
+
+        Does nothing; the smart medium will report activity triggered by a
+        RemoteTransport.
+        """
+        pass
+
     def is_readonly(self):
         """Smart server transport can do read/write file operations."""
         try:
@@ -157,10 +167,6 @@ class RemoteTransport(transport.ConnectedTransport):
 
     def get_smart_medium(self):
         return self._get_connection()
-
-    @deprecated_method(one_four)
-    def get_shared_medium(self):
-        return self._get_shared_connection()
 
     def _remote_path(self, relpath):
         """Returns the Unicode version of the absolute path for relpath."""

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for handling of ignore files"""
 
@@ -34,6 +34,8 @@ class TestParseIgnoreFile(TestCase):
                 '\n' # empty line
                 '#comment\n'
                 ' xx \n' # whitespace
+                '!RE:^\.z.*\n'
+                '!!./.zcompdump\n'
                 ))
         self.assertEqual(set(['./rootdir',
                           'randomfile*',
@@ -41,6 +43,8 @@ class TestParseIgnoreFile(TestCase):
                           u'unicode\xb5',
                           'dos',
                           ' xx ',
+                          '!RE:^\.z.*',
+                          '!!./.zcompdump',
                          ]), ignored)
 
     def test_parse_empty(self):

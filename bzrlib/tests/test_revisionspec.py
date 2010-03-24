@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import datetime
 import os
@@ -146,24 +146,49 @@ class TestOddRevisionSpec(TestRevisionSpec):
     def test_object(self):
         self.assertRaises(TypeError, RevisionSpec.from_string, object())
 
-    def test_unregistered_spec(self):
-        self.assertRaises(errors.NoSuchRevisionSpec,
-                          RevisionSpec.from_string, 'foo')
-        self.assertRaises(errors.NoSuchRevisionSpec,
-                          RevisionSpec.from_string, '123a')
 
+class TestRevisionSpec_dwim(TestRevisionSpec):
 
+    # Don't need to test revno's explicitly since TRS_revno already
+    # covers that well for us
+    def test_dwim_spec_revno(self):
+        self.assertInHistoryIs(2, 'r2', '2')
+        self.assertAsRevisionId('alt_r2', '1.1.1')
 
-class TestRevnoFromString(TestCase):
+    def test_dwim_spec_revid(self):
+        self.assertInHistoryIs(2, 'r2', 'r2')
 
-    def test_from_string_dotted_decimal(self):
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '-1.1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '.1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1..1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1.2..1')
-        self.assertRaises(errors.NoSuchRevisionSpec, RevisionSpec.from_string, '1.')
-        self.assertIsInstance(RevisionSpec.from_string('1.1'), RevisionSpec_revno)
-        self.assertIsInstance(RevisionSpec.from_string('1.1.3'), RevisionSpec_revno)
+    def test_dwim_spec_tag(self):
+        self.tree.branch.tags.set_tag('footag', 'r1')
+        self.assertAsRevisionId('r1', 'footag')
+        self.tree.branch.tags.delete_tag('footag')
+        self.assertRaises(errors.InvalidRevisionSpec,
+                          self.get_in_history, 'footag')
+
+    def test_dwim_spec_tag_that_looks_like_revno(self):
+        # Test that we slip past revno with things that look like revnos,
+        # but aren't.  Tags are convenient for testing this since we can
+        # make them look however we want.
+        self.tree.branch.tags.set_tag('3', 'r2')
+        self.assertAsRevisionId('r2', '3')
+        self.build_tree(['tree/b'])
+        self.tree.add(['b'])
+        self.tree.commit('b', rev_id='r3')
+        self.assertAsRevisionId('r3', '3')
+
+    def test_dwim_spec_date(self):
+        self.assertAsRevisionId('r1', 'today')
+
+    def test_dwim_spec_branch(self):
+        self.assertInHistoryIs(None, 'alt_r2', 'tree2')
+
+    def test_dwim_spec_nonexistent(self):
+        self.assertInvalid('somethingrandom', invalid_as_revision_id=False)
+        self.assertInvalid('-1.1', invalid_as_revision_id=False)
+        self.assertInvalid('.1', invalid_as_revision_id=False)
+        self.assertInvalid('1..1', invalid_as_revision_id=False)
+        self.assertInvalid('1.2..1', invalid_as_revision_id=False)
+        self.assertInvalid('1.', invalid_as_revision_id=False)
 
 
 class TestRevisionSpec_revno(TestRevisionSpec):

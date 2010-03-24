@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for bzr setting permissions.
@@ -140,10 +140,10 @@ class TestPermissions(TestCaseWithTransport):
     def test_new_files_group_sticky_bit(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
-        elif sys.platform == 'darwin':
-            # OS X creates temp dirs with the 'wheel' group, which users are
-            # not likely to be in, and this prevents us from setting the sgid
-            # bit
+        elif sys.platform == 'darwin' or sys.platform.startswith('freebsd'):
+            # OS X (and FreeBSD) create temp dirs with the 'wheel' group, which
+            # users are not likely to be in, and this prevents us from setting
+            # the sgid bit
             os.chown(self.test_dir, os.getuid(), os.getgid())
 
         t = self.make_branch_and_tree('.')

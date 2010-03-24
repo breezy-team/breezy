@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 
@@ -22,7 +22,9 @@ import codecs
 import warnings
 
 from bzrlib import (
+    counted_lock,
     errors,
+    lock,
     osutils,
     transactions,
     urlutils,
@@ -30,8 +32,7 @@ from bzrlib import (
 """)
 
 from bzrlib.decorators import (
-    needs_read_lock,
-    needs_write_lock,
+    only_raises,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -43,14 +44,27 @@ from bzrlib.symbol_versioning import (
 # somewhat redundant with what's done in LockDir; the main difference is that
 # LockableFiles permits reentrancy.
 
+class _LockWarner(object):
+    """Hold a counter for a lock and warn if GCed while the count is >= 1.
+
+    This is separate from LockableFiles because putting a __del__ on
+    LockableFiles can result in uncollectable cycles.
+    """
+
+    def __init__(self, repr):
+        self.lock_count = 0
+        self.repr = repr
+
+    def __del__(self):
+        if self.lock_count >= 1:
+            # There should have been a try/finally to unlock this.
+            warnings.warn("%r was gc'd while locked" % self.repr)
+
+
 class LockableFiles(object):
     """Object representing a set of related files locked within the same scope.
 
-    These files are used by a WorkingTree, Repository or Branch, and should
-    generally only be touched by that object.
-
-    LockableFiles also provides some policy on top of Transport for encoding
-    control files as utf-8.
+    This coordinates access to the lock along with providing a transaction.
 
     LockableFiles manage a lock count and can be locked repeatedly by
     a single caller.  (The underlying lock implementation generally does not
@@ -58,16 +72,13 @@ class LockableFiles(object):
 
     Instances of this class are often called control_files.
 
-    This object builds on top of a Transport, which is used to actually write
-    the files to disk, and an OSLock or LockDir, which controls how access to
-    the files is controlled.  The particular type of locking used is set when
-    the object is constructed.  In older formats OSLocks are used everywhere.
-    in newer formats a LockDir is used for Repositories and Branches, and
-    OSLocks for the local filesystem.
-
     This class is now deprecated; code should move to using the Transport
     directly for file operations and using the lock or CountedLock for
     locking.
+    
+    :ivar _lock: The real underlying lock (e.g. a LockDir)
+    :ivar _counted_lock: A lock decorated with a semaphore, so that it 
+        can be re-entered.
     """
 
     # _lock_mode: None, or 'r' or 'w'
@@ -88,12 +99,13 @@ class LockableFiles(object):
         self.lock_name = lock_name
         self._transaction = None
         self._lock_mode = None
-        self._lock_count = 0
+        self._lock_warner = _LockWarner(repr(self))
         self._find_modes()
         esc_name = self._escape(lock_name)
         self._lock = lock_class(transport, esc_name,
                                 file_modebits=self._file_mode,
                                 dir_modebits=self._dir_mode)
+        self._counted_lock = counted_lock.CountedLock(self._lock)
 
     def create_lock(self):
         """Create the lock.
@@ -108,12 +120,6 @@ class LockableFiles(object):
                            self._transport)
     def __str__(self):
         return 'LockableFiles(%s, %s)' % (self.lock_name, self._transport.base)
-
-    def __del__(self):
-        if self.is_locked():
-            # do not automatically unlock; there should have been a
-            # try/finally to unlock this.
-            warnings.warn("%r was gc'd while locked" % self)
 
     def break_lock(self):
         """Break the lock of this lockable files group if it is held.
@@ -133,8 +139,11 @@ class LockableFiles(object):
     def _find_modes(self):
         """Determine the appropriate modes for files and directories.
 
-        :deprecated: Replaced by BzrDir._find_modes.
+        :deprecated: Replaced by BzrDir._find_creation_modes.
         """
+        # XXX: The properties created by this can be removed or deprecated
+        # once all the _get_text_store methods etc no longer use them.
+        # -- mbp 20080512
         try:
             st = self._transport.stat('.')
         except errors.TransportNotPossible:
@@ -148,81 +157,6 @@ class LockableFiles(object):
             self._dir_mode = (st.st_mode & 07777) | 00700
             # Remove the sticky and execute bits for files
             self._file_mode = self._dir_mode & ~07111
-
-    @deprecated_method(deprecated_in((1, 6, 0)))
-    def controlfilename(self, file_or_path):
-        """Return location relative to branch.
-
-        :deprecated: Use Transport methods instead.
-        """
-        return self._transport.abspath(self._escape(file_or_path))
-
-    @needs_read_lock
-    @deprecated_method(deprecated_in((1, 5, 0)))
-    def get(self, relpath):
-        """Get a file as a bytestream.
-
-        :deprecated: Use a Transport instead of LockableFiles.
-        """
-        relpath = self._escape(relpath)
-        return self._transport.get(relpath)
-
-    @needs_read_lock
-    @deprecated_method(deprecated_in((1, 5, 0)))
-    def get_utf8(self, relpath):
-        """Get a file as a unicode stream.
-
-        :deprecated: Use a Transport instead of LockableFiles.
-        """
-        relpath = self._escape(relpath)
-        # DO NOT introduce an errors=replace here.
-        return codecs.getreader('utf-8')(self._transport.get(relpath))
-
-    @needs_write_lock
-    @deprecated_method(deprecated_in((1, 6, 0)))
-    def put(self, path, file):
-        """Write a file.
-
-        :param path: The path to put the file, relative to the .bzr control
-                     directory
-        :param file: A file-like or string object whose contents should be copied.
-
-        :deprecated: Use Transport methods instead.
-        """
-        self._transport.put_file(self._escape(path), file, mode=self._file_mode)
-
-    @needs_write_lock
-    @deprecated_method(deprecated_in((1, 6, 0)))
-    def put_bytes(self, path, a_string):
-        """Write a string of bytes.
-
-        :param path: The path to put the bytes, relative to the transport root.
-        :param a_string: A string object, whose exact bytes are to be copied.
-
-        :deprecated: Use Transport methods instead.
-        """
-        self._transport.put_bytes(self._escape(path), a_string,
-                                  mode=self._file_mode)
-
-    @needs_write_lock
-    @deprecated_method(deprecated_in((1, 6, 0)))
-    def put_utf8(self, path, a_string):
-        """Write a string, encoding as utf-8.
-
-        :param path: The path to put the string, relative to the transport root.
-        :param string: A string or unicode object whose contents should be copied.
-
-        :deprecated: Use Transport methods instead.
-        """
-        # IterableFile would not be needed if Transport.put took iterables
-        # instead of files.  ADHB 2005-12-25
-        # RBC 20060103 surely its not needed anyway, with codecs transcode
-        # file support ?
-        # JAM 20060103 We definitely don't want encode(..., 'replace')
-        # these are valuable files which should have exact contents.
-        if not isinstance(a_string, basestring):
-            raise errors.BzrBadParameterNotString(a_string)
-        self.put_bytes(path, a_string.encode('utf-8'))
 
     def leave_in_place(self):
         """Set this LockableFiles to not clear the physical lock on unlock."""
@@ -253,14 +187,14 @@ class LockableFiles(object):
             if self._lock_mode != 'w' or not self.get_transaction().writeable():
                 raise errors.ReadOnlyError(self)
             self._lock.validate_token(token)
-            self._lock_count += 1
+            self._lock_warner.lock_count += 1
             return self._token_from_lock
         else:
             token_from_lock = self._lock.lock_write(token=token)
             #traceback.print_stack()
             self._lock_mode = 'w'
-            self._lock_count = 1
-            self._set_transaction(transactions.WriteTransaction())
+            self._lock_warner.lock_count = 1
+            self._set_write_transaction()
             self._token_from_lock = token_from_lock
             return token_from_lock
 
@@ -268,32 +202,45 @@ class LockableFiles(object):
         if self._lock_mode:
             if self._lock_mode not in ('r', 'w'):
                 raise ValueError("invalid lock mode %r" % (self._lock_mode,))
-            self._lock_count += 1
+            self._lock_warner.lock_count += 1
         else:
             self._lock.lock_read()
             #traceback.print_stack()
             self._lock_mode = 'r'
-            self._lock_count = 1
-            self._set_transaction(transactions.ReadOnlyTransaction())
-            # 5K may be excessive, but hey, its a knob.
-            self.get_transaction().set_cache_size(5000)
+            self._lock_warner.lock_count = 1
+            self._set_read_transaction()
 
+    def _set_read_transaction(self):
+        """Setup a read transaction."""
+        self._set_transaction(transactions.ReadOnlyTransaction())
+        # 5K may be excessive, but hey, its a knob.
+        self.get_transaction().set_cache_size(5000)
+
+    def _set_write_transaction(self):
+        """Setup a write transaction."""
+        self._set_transaction(transactions.WriteTransaction())
+
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if not self._lock_mode:
-            raise errors.LockNotHeld(self)
-        if self._lock_count > 1:
-            self._lock_count -= 1
+            return lock.cant_unlock_not_held(self)
+        if self._lock_warner.lock_count > 1:
+            self._lock_warner.lock_count -= 1
         else:
             #traceback.print_stack()
             self._finish_transaction()
             try:
                 self._lock.unlock()
             finally:
-                self._lock_mode = self._lock_count = None
+                self._lock_mode = self._lock_warner.lock_count = None
+
+    @property
+    def _lock_count(self):
+        return self._lock_warner.lock_count
 
     def is_locked(self):
         """Return true if this LockableFiles group is locked"""
-        return self._lock_count >= 1
+        return self._lock_warner.lock_count >= 1
 
     def get_physical_lock_status(self):
         """Return physical lock status.

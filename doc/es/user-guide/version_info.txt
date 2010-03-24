@@ -1,0 +1,53 @@
+===========================
+Usando ``bzr version-info``
+===========================
+
+Repaso General
+==============
+
+Este documento describe las formas de usar ``bzr version-info`` como
+parte del proceso de embeber la informacion de vesion a un proyecto.
+
+
+Projecto Python
+===============
+
+TODO: Figure out how to attach into ``setup.py``
+
+Si usa un archivo Makefile para construir su proyecto, puede generar un
+archivo on la informacion de version tan simple como::
+
+  library/_version.py:
+        bzr version-info --format=python > library/_version.py
+
+Eso genera un archivo que contiene 3 diccionarios:
+
+  * `version_info`: Un diccionario conteniendo informacion basica sobre el
+    estado actual
+
+  * `revisions`: Un diccionario listando todas las revisiones en
+    el historial del tree, junto con los tiempos y los mensajes de
+    los commits. Esto por defecto esta en blanco salvi que use ``--all``
+    o `--include-history`` es provisto. Esto es util si quiere seguir
+    que bugs arregla el lanzamiento de esa version. Para muchos proyectos
+    es mas informacion de la que se va a necesitar.
+
+  * `file_revisions`: Un diccionario listando la revision que modifico
+    por ultima vez todos los archivos del proyecto. Esto puede ser usado
+    similarmente a como se usan las palabras claves ``$Id$`` en los
+    archivos controlados en CVS. La ultima fecha de modificacion puede
+    ser determinada mirando en el mapa de ``revisions``. Esto tambien
+    esta vacio por defecto, y habilitado solo por ``--all`` o
+    ``--include-file-revisions``.
+
+
+Check Clean
+===========
+
+La mayoria de la informacion sobre el contenido del proyecto puede
+ser determinada a muy bajo costo con solo leer las entradas de revisiones.
+Sin embargo, puede ser util si el working tree fue actualizado completamente
+cuando fue empaquetado, o si hubo alguna modificacion local. Al proveer
+``--all`` o ``--check-clean``, ``bzr`` va a inspeccionar el working tree,
+y definir el ``clean`` flag en ``version_info``, al igual que definir
+entradas en ``file_revisions`` como ``modified`` donde es apropiado.

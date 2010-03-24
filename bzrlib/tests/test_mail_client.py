@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import urllib
 
@@ -28,11 +28,13 @@ class TestMutt(tests.TestCase):
 
     def test_commandline(self):
         mutt = mail_client.Mutt(None)
-        commandline = mutt._get_compose_commandline(None, None, 'file%')
-        self.assertEqual(['-a', 'file%'], commandline)
+        commandline = mutt._get_compose_commandline(
+            None, None, 'file%', body="hello")
+        # The temporary filename is randomly generated, so it is not matched.
+        self.assertEqual(['-a', 'file%', '-i'], commandline[:-1])
         commandline = mutt._get_compose_commandline('jrandom@example.org',
                                                      'Hi there!', None)
-        self.assertEqual(['-s', 'Hi there!', 'jrandom@example.org'],
+        self.assertEqual(['-s', 'Hi there!', '--', 'jrandom@example.org'],
                          commandline)
 
     def test_commandline_is_8bit(self):
@@ -40,7 +42,7 @@ class TestMutt(tests.TestCase):
         cmdline = mutt._get_compose_commandline(u'jrandom@example.org',
             u'Hi there!', u'file%')
         self.assertEqual(
-            ['-s', 'Hi there!', '-a', 'file%', 'jrandom@example.org'],
+            ['-s', 'Hi there!', '-a', 'file%', '--', 'jrandom@example.org'],
             cmdline)
         for item in cmdline:
             self.assertFalse(isinstance(item, unicode),
@@ -56,9 +58,12 @@ class TestThunderbird(tests.TestCase):
         self.assertEqual(['-compose', "attachment='%s'" %
                           urlutils.local_path_to_url('file%')], commandline)
         commandline = tbird._get_compose_commandline('jrandom@example.org',
-                                                     'Hi there!', None)
-        self.assertEqual(['-compose', "subject='Hi there!',"
-                                      "to='jrandom@example.org'"], commandline)
+                                                     'Hi there!', None,
+                                                     "bo'dy")
+        self.assertEqual(['-compose', "body=bo%27dy,"
+                                      "subject='Hi there!',"
+                                      "to='jrandom@example.org'"],
+                                      commandline)
 
     def test_commandline_is_8bit(self):
         # test for bug #139318
@@ -92,6 +97,8 @@ class TestEmacsMail(tests.TestCase):
         # We won't be able to know the temporary file name at this stage
         # so we can't raise an assertion with assertEqual
         cmdline = eclient._get_compose_commandline(None, None, 'file%')
+        if eclient.elisp_tmp_file is not None:
+            self.addCleanup(osutils.delete_any, eclient.elisp_tmp_file)
         commandline = ' '.join(cmdline)
         self.assertContainsRe(commandline, '--eval')
         self.assertContainsRe(commandline, '(compose-mail nil nil)')
@@ -102,6 +109,8 @@ class TestEmacsMail(tests.TestCase):
         eclient = mail_client.EmacsMail(None)
         commandline = eclient._get_compose_commandline(u'jrandom@example.org',
             u'Hi there!', u'file%')
+        if eclient.elisp_tmp_file is not None:
+            self.addCleanup(osutils.delete_any, eclient.elisp_tmp_file)
         for item in commandline:
             self.assertFalse(isinstance(item, unicode),
                 'Command-line item %r is unicode!' % item)
@@ -119,9 +128,9 @@ class TestXDGEmail(tests.TestCase):
         self.assertEqual(['jrandom@example.org', '--attach', 'file%'],
                          commandline)
         commandline = xdg_email._get_compose_commandline(
-            'jrandom@example.org', 'Hi there!', None)
-        self.assertEqual(['jrandom@example.org', '--subject', 'Hi there!'],
-                         commandline)
+            'jrandom@example.org', 'Hi there!', None, "bo'dy")
+        self.assertEqual(['jrandom@example.org', '--subject', 'Hi there!',
+                          '--body', "bo'dy"], commandline)
 
     def test_commandline_is_8bit(self):
         xdg_email = mail_client.XDGEmail(None)
@@ -143,9 +152,9 @@ class TestEvolution(tests.TestCase):
         commandline = evo._get_compose_commandline(None, None, 'file%')
         self.assertEqual(['mailto:?attach=file%25'], commandline)
         commandline = evo._get_compose_commandline('jrandom@example.org',
-                                                   'Hi there!', None)
-        self.assertEqual(['mailto:jrandom@example.org?subject=Hi%20there%21'],
-                         commandline)
+                                                   'Hi there!', None, 'bo&dy')
+        self.assertEqual(['mailto:jrandom@example.org?body=bo%26dy&'
+                          'subject=Hi%20there%21'], commandline)
 
     def test_commandline_is_8bit(self):
         evo = mail_client.Evolution(None)
@@ -188,9 +197,10 @@ class TestClaws(tests.TestCase):
     def test_commandline(self):
         claws = mail_client.Claws(None)
         commandline = claws._get_compose_commandline(
-            None, None, 'file%')
+            'jrandom@example.org', None, 'file%')
         self.assertEqual(
-            ['--compose', 'mailto:?', '--attach', 'file%'], commandline)
+            ['--compose', 'mailto:jrandom@example.org?', '--attach', 'file%'],
+            commandline)
         commandline = claws._get_compose_commandline(
             'jrandom@example.org', 'Hi there!', None)
         self.assertEqual(
@@ -213,6 +223,30 @@ class TestClaws(tests.TestCase):
         for item in cmdline:
             self.assertFalse(isinstance(item, unicode),
                 'Command-line item %r is unicode!' % item)
+
+    def test_with_from(self):
+        claws = mail_client.Claws(None)
+        cmdline = claws._get_compose_commandline(
+            u'jrandom@example.org', None, None, None, u'qrandom@example.com')
+        self.assertEqual(
+            ['--compose',
+             'mailto:jrandom@example.org?from=qrandom%40example.com'],
+            cmdline)
+
+    def test_to_required(self):
+        claws = mail_client.Claws(None)
+        self.assertRaises(errors.NoMailAddressSpecified,
+                          claws._get_compose_commandline,
+                          None, None, 'file%')
+
+    def test_with_body(self):
+        claws = mail_client.Claws(None)
+        cmdline = claws._get_compose_commandline(
+            u'jrandom@example.org', None, None, 'This is some body text')
+        self.assertEqual(
+            ['--compose',
+             'mailto:jrandom@example.org?body=This%20is%20some%20body%20text'],
+            cmdline)
 
 
 class TestEditor(tests.TestCase):
@@ -257,4 +291,5 @@ class TestDefaultMail(tests.TestCase):
                                      basename=basename)
         dummy_client = client.client
         self.assertEqual(dummy_client.args, (to, subject, directive))
-        self.assertEqual(dummy_client.kwargs, {"basename":basename})
+        self.assertEqual(dummy_client.kwargs,
+                         {"basename": basename, 'body': None})

@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Repository implementation tests for external reference repositories.
@@ -26,13 +26,10 @@ from bzrlib import (
     repository,
     remote,
     )
+from bzrlib.branch import BzrBranchFormat7
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import (
-                          adapt_modules,
-                          adapt_tests,
-                          TestScenarioApplier,
-                          TestSuite,
-                          )
+from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack6
+from bzrlib.tests import multiply_tests
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
     TestCaseWithRepository,
@@ -74,19 +71,24 @@ def external_reference_test_scenarios():
     """
     result = []
     for test_name, scenario_info in all_repository_format_scenarios():
-        # For remote repositories, we need at least one external reference
-        # capable format to test it: defer this until landing such a format.
-        # if isinstance(format, remote.RemoteRepositoryFormat):
-        #     scenario[1]['bzrdir_format'].repository_format =
-        if scenario_info['repository_format'].supports_external_lookups:
+        format = scenario_info['repository_format']
+        if isinstance(format, remote.RemoteRepositoryFormat):
+            # This is a RemoteRepositoryFormat scenario.  Force the scenario to
+            # use real branch and repository formats that support references.
+            scenario_info = dict(scenario_info)
+            format = remote.RemoteRepositoryFormat()
+            format._custom_format = RepositoryFormatKnitPack6()
+            scenario_info['repository_format'] = format
+            bzrdir_format = remote.RemoteBzrDirFormat()
+            bzrdir_format.repository_format = format
+            bzrdir_format.set_branch_format(BzrBranchFormat7())
+            scenario_info['bzrdir_format'] = bzrdir_format
+        if format.supports_external_lookups:
             result.append((test_name, scenario_info))
     return result
 
 
 def load_tests(standard_tests, module, loader):
-    adapter = TestScenarioApplier()
-    adapter.scenarios = external_reference_test_scenarios()
-
     module_list = [
         'bzrlib.tests.per_repository_reference.test_add_inventory',
         'bzrlib.tests.per_repository_reference.test_add_revision',
@@ -94,9 +96,14 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_repository_reference.test_all_revision_ids',
         'bzrlib.tests.per_repository_reference.test_break_lock',
         'bzrlib.tests.per_repository_reference.test_check',
+        'bzrlib.tests.per_repository_reference.test_default_stacking',
+        'bzrlib.tests.per_repository_reference.test_fetch',
+        'bzrlib.tests.per_repository_reference.test_get_record_stream',
+        'bzrlib.tests.per_repository_reference.test_get_rev_id_for_revno',
+        'bzrlib.tests.per_repository_reference.test_initialize',
+        'bzrlib.tests.per_repository_reference.test_unlock',
         ]
     # Parameterize per_repository_reference test modules by format.
-    result = TestSuite()
-    adapt_tests(standard_tests, adapter, result)
-    adapt_modules(module_list, adapter, loader, result)
-    return result
+    standard_tests.addTests(loader.loadTestsFromModuleNames(module_list))
+    return multiply_tests(standard_tests, external_reference_test_scenarios(),
+        loader.suiteClass())

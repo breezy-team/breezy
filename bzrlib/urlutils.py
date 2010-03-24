@@ -1,6 +1,4 @@
-# Bazaar -- distributed version control
-#
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A collection of function for handling URL operations."""
 
@@ -68,7 +66,7 @@ def escape(relpath):
         relpath = relpath.encode('utf-8')
     # After quoting and encoding, the path should be perfectly
     # safe as a plain ASCII string, str() just enforces this
-    return str(urllib.quote(relpath))
+    return str(urllib.quote(relpath, safe='/~'))
 
 
 def file_relpath(base, path):
@@ -77,9 +75,9 @@ def file_relpath(base, path):
     This assumes that both paths are already fully specified file:// URLs.
     """
     if len(base) < MIN_ABS_FILEURL_LENGTH:
-        raise ValueError('Length of base must be equal or'
+        raise ValueError('Length of base (%r) must equal or'
             ' exceed the platform minimum url length (which is %d)' %
-            MIN_ABS_FILEURL_LENGTH)
+            (base, MIN_ABS_FILEURL_LENGTH))
     base = local_path_from_url(base)
     path = local_path_from_url(path)
     return escape(osutils.relpath(base, path))
@@ -219,10 +217,16 @@ def joinpath(base, *args):
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
-    if not url.startswith('file:///'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///')
+    file_localhost_prefix = 'file://localhost/'
+    if url.startswith(file_localhost_prefix):
+        path = url[len(file_localhost_prefix) - 1:]
+    elif not url.startswith('file:///'):
+        raise errors.InvalidURL(
+            url, 'local urls must start with file:/// or file://localhost/')
+    else:
+        path = url[len('file://'):]
     # We only strip off 2 slashes
-    return unescape(url[len('file://'):])
+    return unescape(path)
 
 
 def _posix_local_path_to_url(path):
@@ -687,3 +691,46 @@ def determine_relative_path(from_path, to_path):
     if len(segments) == 0:
         return '.'
     return osutils.pathjoin(*segments)
+
+
+
+def parse_url(url):
+    """Extract the server address, the credentials and the path from the url.
+
+    user, password, host and path should be quoted if they contain reserved
+    chars.
+
+    :param url: an quoted url
+
+    :return: (scheme, user, password, host, port, path) tuple, all fields
+        are unquoted.
+    """
+    if isinstance(url, unicode):
+        raise errors.InvalidURL('should be ascii:\n%r' % url)
+    url = url.encode('utf-8')
+    (scheme, netloc, path, params,
+     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+    user = password = host = port = None
+    if '@' in netloc:
+        user, host = netloc.rsplit('@', 1)
+        if ':' in user:
+            user, password = user.split(':', 1)
+            password = urllib.unquote(password)
+        user = urllib.unquote(user)
+    else:
+        host = netloc
+
+    if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
+        host, port = host.rsplit(':',1)
+        try:
+            port = int(port)
+        except ValueError:
+            raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                    (port, url))
+    if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
+        host = host[1:-1]
+
+    host = urllib.unquote(host)
+    path = urllib.unquote(path)
+
+    return (scheme, user, password, host, port, path)

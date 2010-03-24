@@ -1,7 +1,7 @@
-Choosing a shared repository layout
-===================================
+Advanced shared repository layouts
+==================================
 
-Bazaar is designed to give you flexibility in how you layout branches inside a shared repository. 
+Bazaar is designed to give you flexibility in how you layout branches inside a shared repository.
 This flexibility allows users to tailor Bazaar to their workflow,
 but it also leads to questions about what is a "good" layout.
 We present some alternatives and give some discussion about the benefits of each.
@@ -15,7 +15,7 @@ and in most of the layouts this naming convention is preserved. Some would call 
 "SVN-Style" (``trunk/``, ``branches/``)
 ---------------------------------------
 
-Most people coming from SVN will be familiar with their "standard" project layout. 
+Most people coming from SVN will be familiar with their "standard" project layout.
 Which is to layout the repository as::
 
   repository/       # Overall repository
@@ -27,11 +27,11 @@ Which is to layout the repository as::
        +- release-X # A branch specific to mark a given release version
           ...
 
-With Bazaar, that is a perfectly reasonable layout. 
-It has the benefit of being familiar to people coming from SVN, 
+With Bazaar, that is a perfectly reasonable layout.
+It has the benefit of being familiar to people coming from SVN,
 and making it clear where the development focus is.
 
-When you have multiple projects in the same repository, 
+When you have multiple projects in the same repository,
 the SVN layout is a little unclear what to do.
 
 
@@ -52,8 +52,8 @@ The preferred method for SVN seems to be to give each project a top level direct
        +- branches/      # Container for project2 branches
 
 
-This also works with Bazaar. 
-However, with Bazaar repositories are cheap to create 
+This also works with Bazaar.
+However, with Bazaar repositories are cheap to create
 (a simple ``bzr init-repo`` away), and their primary benefit is when the
 branches share a common ancestry.
 
@@ -64,7 +64,7 @@ So the preferred way for Bazaar would be::
      +- branches/      # A container directory
          +- foo/       # Branch for developing feature foo of project1
            ...
-    
+
     project2/          # A repository for project2
      +- trunk/         # Mainline for project2
      +- branches/      # Container for project2 branches
@@ -100,17 +100,17 @@ A slight variant is::
         +- project1-foo/  # Branch 'foo' of project1
         +- project2-bar/  # Branch 'bar' of project2
 
-I believe the reason for this in SVN, is so that someone 
+I believe the reason for this in SVN, is so that someone
 can checkout all of "``trunk/``" and get the all the mainlines for all projects.
 
 This layout can be used for Bazaar, but it is not generally recommended.
 
- 1) ``bzr branch/checkout/get`` is a single branch at a time. 
+ 1) ``bzr branch/checkout/get`` is a single branch at a time.
     So you don't get the benefit of getting all mainlines with a single command. [1]_
 
- 2) It is less obvious of whether ``repository/trunk/foo`` is the ``trunk`` of project 
+ 2) It is less obvious of whether ``repository/trunk/foo`` is the ``trunk`` of project
     ``foo`` or it is just the ``foo`` directory in the ``trunk`` branch.
-    Some of this confusion is due to SVN, because it uses the same "namespace" 
+    Some of this confusion is due to SVN, because it uses the same "namespace"
     for files in a project that it uses for branches of a project.
     In Bazaar, there is a clear distinction of what files make up a project, versus
     the location of the Branch. (After all, there is only one ``.bzr/`` directory per branch,
@@ -148,7 +148,7 @@ One possibility is::
       +- 1.0/
           +- 1.1.1/
 
-The idea with this layout is that you are creating a hierarchical layout for branches. 
+The idea with this layout is that you are creating a hierarchical layout for branches.
 Where changes generally flow upwards in the namespace. It also gives people a little
 corner of the namespace to work on their stuff.
 One nice feature of this layout, is it makes branching "cheaper" because it gives you
@@ -162,7 +162,7 @@ For example compare::
   bzr branch http://host/repository/project/branches/joe-feature-foo-bugfix-10/
 
 Versus::
-  
+
   bzr branch http://host/project/joe/foo/bugfix-10
 
 
@@ -175,7 +175,7 @@ Also, if you list the ``repository/project/branches/`` directory you might see s
   joe-bugfix-13/
   joe-frizban/
 
-Versus having these broken out by developer. 
+Versus having these broken out by developer.
 If the number of branches are small, ``branches/`` has the nice advantage
 of being able to see all branches in a single view.
 If the number of branches is large, ``branches/`` has the distinct disadvantage
@@ -183,7 +183,7 @@ of seeing all the branches in a single view (it becomes difficult to find the
 branch you are interested in, when there are 100 branches to look through).
 
 Nested branching seems to scale better to larger number of branches.
-However, each individual branch is less discoverable. 
+However, each individual branch is less discoverable.
 (eg. "Is Joe working on bugfix 10 in his feature foo branch, or his feature bar branch?")
 
 One other small advantage is that you can do something like::
@@ -192,7 +192,7 @@ One other small advantage is that you can do something like::
   or
    bzr branch http://host/project/release/1/1/2
 
-To indicate release 1.1.1 and 1.1.2. This again depends on how many releases you have 
+To indicate release 1.1.1 and 1.1.2. This again depends on how many releases you have
 and whether the gain of splitting things up outweighs the ability to see more at a glance.
 
 
@@ -217,7 +217,7 @@ This has a couple benefits and drawbacks.
 It lets you see what branches are actively being developed on, which is usually
 only a small number, versus the total number of branches ever created.
 Old branches are not lost (versus deleting them), but they are "filed away",
-such that the more likely you are to want a branch the easier it is to find. 
+such that the more likely you are to want a branch the easier it is to find.
 (Conversely, older branches are likely to be harder to find).
 
 The biggest disadvantage with this layout, is that branches move around.
@@ -237,7 +237,7 @@ difficult to create these through the ``bzr`` command line, but if people find t
 that could be changed.
 This is actually how `Launchpad`_ allows you to ``bzr checkout https://launchpad.net/bzr``.
 Effectively a ``BranchReference`` is a symlink, but it allows you to reference any other URL.
-If it is extended to support relative references, it would even work over http, sftp, 
+If it is extended to support relative references, it would even work over http, sftp,
 and local paths.
 
 .. _Launchpad: https://launchpad.net
@@ -247,7 +247,7 @@ Sorted by date/release/etc (``2006-06/``, ``2006-07/``, ``0.8/``, ``0.9``)
 --------------------------------------------------------------------------
 
 Another method of allowing some scalability while also allowing the
-browsing of "current" branches. Basically, this works on the assumption 
+browsing of "current" branches. Basically, this works on the assumption
 that actively developed branches will be "new" branches, and older branches
 are either merged or abandoned.
 
@@ -292,8 +292,8 @@ as the official release 0.8 branch.
 The general idea is that by targeting a release, you can look at what branches are
 waiting to be merged. It doesn't necessarily give you a good idea of what the
 state of the branch (is it in development or finished awaiting review).
-It also has a history-hiding effect, and otherwise has the same benefits 
-and deficits as a date-based sorting. 
+It also has a history-hiding effect, and otherwise has the same benefits
+and deficits as a date-based sorting.
 
 
 Simple developer naming (``project/joe/foo``, ``project/barry/bar``)

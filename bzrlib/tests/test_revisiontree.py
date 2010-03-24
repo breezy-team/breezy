@@ -13,14 +13,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the RevisionTree class."""
 
 from bzrlib import (
+    errors,
     revision,
     )
 import bzrlib
+from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -59,3 +61,9 @@ class TestTreeWithCommits(TestCaseWithTransport):
         null_tree = self.t.branch.repository.revision_tree(
             revision.NULL_REVISION)
         self.assertIs(None, null_tree.inventory.root)
+
+    def test_get_file_mtime_ghost(self):
+        file_id = iter(self.rev_tree).next()
+        self.rev_tree.inventory[file_id].revision = 'ghostrev'
+        self.assertRaises(errors.FileTimestampUnavailable, 
+            self.rev_tree.get_file_mtime, file_id)

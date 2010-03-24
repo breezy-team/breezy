@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """http/https transport using pycurl"""
 
@@ -92,6 +92,7 @@ CURLE_COULDNT_RESOLVE_PROXY = _get_pycurl_errcode('E_COULDNT_RESOLVE_PROXY', 5)
 CURLE_GOT_NOTHING = _get_pycurl_errcode('E_GOT_NOTHING', 52)
 CURLE_PARTIAL_FILE = _get_pycurl_errcode('E_PARTIAL_FILE', 18)
 CURLE_SEND_ERROR = _get_pycurl_errcode('E_SEND_ERROR', 55)
+CURLE_RECV_ERROR = _get_pycurl_errcode('E_RECV_ERROR', 56)
 CURLE_SSL_CACERT = _get_pycurl_errcode('E_SSL_CACERT', 60)
 CURLE_SSL_CACERT_BADFILE = _get_pycurl_errcode('E_SSL_CACERT_BADFILE', 77)
 
@@ -366,6 +367,9 @@ class PyCurlTransport(HttpTransportBase):
                         CURLE_SSL_CACERT_BADFILE,
                         ):
                 raise errors.ConnectionError(
+                    'curl connection error (%s)\non %s' % (e[1], url))
+            elif e[0] == CURLE_RECV_ERROR:
+                raise errors.ConnectionReset(
                     'curl connection error (%s)\non %s' % (e[1], url))
             elif e[0] == CURLE_PARTIAL_FILE:
                 # Pycurl itself has detected a short read.  We do not have all

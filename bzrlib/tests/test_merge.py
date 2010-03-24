@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 from StringIO import StringIO
@@ -29,13 +29,11 @@ from bzrlib import (
     transform,
     versionedfile,
     )
-from bzrlib.branch import Branch
 from bzrlib.conflicts import ConflictList, TextConflict
-from bzrlib.errors import UnrelatedBranches, NoCommits, BzrCommandError
+from bzrlib.errors import UnrelatedBranches, NoCommits
 from bzrlib.merge import transform_tree, merge_inner, _PlanMerge
 from bzrlib.osutils import pathjoin, file_kind
 from bzrlib.tests import TestCaseWithTransport, TestCaseWithMemoryTransport
-from bzrlib.trace import (enable_test_log, disable_test_log)
 from bzrlib.workingtree import WorkingTree
 
 
@@ -152,13 +150,12 @@ class TestMerge(TestCaseWithTransport):
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
-        log = self._get_log(keep_log_file=True)
-        self.failUnless('All changes applied successfully.\n' not in log)
+        self.failUnless('All changes applied successfully.\n' not in
+            self.get_log())
         tree_b.revert()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=False)
-        log = self._get_log(keep_log_file=True)
-        self.failUnless('All changes applied successfully.\n' in log)
+        self.failUnless('All changes applied successfully.\n' in self.get_log())
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
@@ -219,13 +216,15 @@ class TestMerge(TestCaseWithTransport):
         tree_a.add('file')
         tree_a.commit('commit base')
         # basis_tree() is only guaranteed to be valid as long as it is actually
-        # the basis tree. This mutates the tree after grabbing basis, so go to
-        # the repository.
+        # the basis tree. This test commits to the tree after grabbing basis,
+        # so we go to the repository.
         base_tree = tree_a.branch.repository.revision_tree(tree_a.last_revision())
         tree_b = tree_a.bzrdir.sprout('tree_b').open_workingtree()
         self.build_tree_contents([('tree_a/file', 'content_2')])
         tree_a.commit('commit other')
         other_tree = tree_a.basis_tree()
+        # 'file' is now missing but isn't altered in any commit in b so no
+        # change should be applied.
         os.unlink('tree_b/file')
         merge_inner(tree_b.branch, other_tree, base_tree, this_tree=tree_b)
 
@@ -312,6 +311,11 @@ class TestMerge(TestCaseWithTransport):
         merger.merge_type = _mod_merge.WeaveMerger
         merger.do_merge()
         self.assertEqual(tree_a.get_parent_ids(), [tree_b.last_revision()])
+
+    def test_Merger_defaults_to_DummyProgress(self):
+        branch = self.make_branch('branch')
+        merger = _mod_merge.Merger(branch, pb=None)
+        self.assertIsInstance(merger._pb, progress.DummyProgress)
 
     def prepare_cherrypick(self):
         """Prepare a pair of trees for cherrypicking tests.
@@ -517,6 +521,12 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
         self.add_uncommitted_version(('root', 'B:'), [('root', 'A')], 'acehg')
         self.add_uncommitted_version(('root', 'C:'), [('root', 'A')], 'fabg')
         return _PlanMerge('B:', 'C:', self.plan_merge_vf, ('root',))
+
+    def test_base_from_plan(self):
+        self.setup_plan_merge()
+        plan = self.plan_merge_vf.plan_merge('B', 'C')
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqual(['a\n', 'b\n', 'c\n'], pwm.base_from_plan())
 
     def test_unique_lines(self):
         plan = self.setup_plan_merge()
@@ -821,6 +831,111 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                           ('unchanged', 'f\n'),
                           ('unchanged', 'g\n')],
                          list(plan))
+        plan = self.plan_merge_vf.plan_lca_merge('F', 'G')
+        # This is one of the main differences between plan_merge and
+        # plan_lca_merge. plan_lca_merge generates a conflict for 'x => z',
+        # because 'x' was not present in one of the bases. However, in this
+        # case it is spurious because 'x' does not exist in the global base A.
+        self.assertEqual([
+                          ('unchanged', 'h\n'),
+                          ('unchanged', 'a\n'),
+                          ('conflicted-a', 'x\n'),
+                          ('new-b', 'z\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('unchanged', 'y\n'),
+                          ('unchanged', 'f\n'),
+                          ('unchanged', 'g\n')],
+                         list(plan))
+
+    def test_criss_cross_flip_flop(self):
+        # This is specificly trying to trigger problems when using limited
+        # ancestry and weaves. The ancestry graph looks like:
+        #       XX      unused ancestor, should not show up in the weave
+        #       |
+        #       A       Unique LCA
+        #      / \  
+        #     B   C     B & C both introduce a new line
+        #     |\ /|  
+        #     | X |  
+        #     |/ \| 
+        #     D   E     B & C are both merged, so both are common ancestors
+        #               In the process of merging, both sides order the new
+        #               lines differently
+        #
+        self.add_rev('root', 'XX', [], 'qrs')
+        self.add_rev('root', 'A', ['XX'], 'abcdef')
+        self.add_rev('root', 'B', ['A'], 'abcdgef')
+        self.add_rev('root', 'C', ['A'], 'abcdhef')
+        self.add_rev('root', 'D', ['B', 'C'], 'abcdghef')
+        self.add_rev('root', 'E', ['C', 'B'], 'abcdhgef')
+        plan = list(self.plan_merge_vf.plan_merge('D', 'E'))
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('new-b', 'h\n'),
+                          ('unchanged', 'g\n'),
+                          ('killed-b', 'h\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n'),
+                         ], plan)
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqualDiff('\n'.join('abcdghef') + '\n',
+                             ''.join(pwm.base_from_plan()))
+        # Reversing the order reverses the merge plan, and final order of 'hg'
+        # => 'gh'
+        plan = list(self.plan_merge_vf.plan_merge('E', 'D'))
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('new-b', 'g\n'),
+                          ('unchanged', 'h\n'),
+                          ('killed-b', 'g\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n'),
+                         ], plan)
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqualDiff('\n'.join('abcdhgef') + '\n',
+                             ''.join(pwm.base_from_plan()))
+        # This is where lca differs, in that it (fairly correctly) determines
+        # that there is a conflict because both sides resolved the merge
+        # differently
+        plan = list(self.plan_merge_vf.plan_lca_merge('D', 'E'))
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('conflicted-b', 'h\n'),
+                          ('unchanged', 'g\n'),
+                          ('conflicted-a', 'h\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n'),
+                         ], plan)
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqualDiff('\n'.join('abcdgef') + '\n',
+                             ''.join(pwm.base_from_plan()))
+        # Reversing it changes what line is doubled, but still gives a
+        # double-conflict
+        plan = list(self.plan_merge_vf.plan_lca_merge('E', 'D'))
+        self.assertEqual([
+                          ('unchanged', 'a\n'),
+                          ('unchanged', 'b\n'),
+                          ('unchanged', 'c\n'),
+                          ('unchanged', 'd\n'),
+                          ('conflicted-b', 'g\n'),
+                          ('unchanged', 'h\n'),
+                          ('conflicted-a', 'g\n'),
+                          ('unchanged', 'e\n'),
+                          ('unchanged', 'f\n'),
+                         ], plan)
+        pwm = versionedfile.PlanWeaveMerge(plan)
+        self.assertEqualDiff('\n'.join('abcdhef') + '\n',
+                             ''.join(pwm.base_from_plan()))
 
     def assertRemoveExternalReferences(self, filtered_parent_map,
                                        child_map, tails, parent_map):
@@ -1026,91 +1141,6 @@ class TestPlanMerge(TestCaseWithMemoryTransport):
                          ], list(plan))
 
 
-class TestMergeImplementation(object):
-
-    def do_merge(self, target_tree, source_tree, **kwargs):
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
-            target_tree, source_tree.last_revision(),
-            other_branch=source_tree.branch)
-        merger.merge_type=self.merge_type
-        for name, value in kwargs.items():
-            setattr(merger, name, value)
-        merger.do_merge()
-
-    def test_merge_specific_file(self):
-        this_tree = self.make_branch_and_tree('this')
-        this_tree.lock_write()
-        self.addCleanup(this_tree.unlock)
-        self.build_tree_contents([
-            ('this/file1', 'a\nb\n'),
-            ('this/file2', 'a\nb\n')
-        ])
-        this_tree.add(['file1', 'file2'])
-        this_tree.commit('Added files')
-        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
-        self.build_tree_contents([
-            ('other/file1', 'a\nb\nc\n'),
-            ('other/file2', 'a\nb\nc\n')
-        ])
-        other_tree.commit('modified both')
-        self.build_tree_contents([
-            ('this/file1', 'd\na\nb\n'),
-            ('this/file2', 'd\na\nb\n')
-        ])
-        this_tree.commit('modified both')
-        self.do_merge(this_tree, other_tree, interesting_files=['file1'])
-        self.assertFileEqual('d\na\nb\nc\n', 'this/file1')
-        self.assertFileEqual('d\na\nb\n', 'this/file2')
-
-    def test_merge_move_and_change(self):
-        this_tree = self.make_branch_and_tree('this')
-        this_tree.lock_write()
-        self.addCleanup(this_tree.unlock)
-        self.build_tree_contents([
-            ('this/file1', 'line 1\nline 2\nline 3\nline 4\n'),
-        ])
-        this_tree.add('file1',)
-        this_tree.commit('Added file')
-        other_tree = this_tree.bzrdir.sprout('other').open_workingtree()
-        self.build_tree_contents([
-            ('other/file1', 'line 1\nline 2 to 2.1\nline 3\nline 4\n'),
-        ])
-        other_tree.commit('Changed 2 to 2.1')
-        self.build_tree_contents([
-            ('this/file1', 'line 1\nline 3\nline 2\nline 4\n'),
-        ])
-        this_tree.commit('Swapped 2 & 3')
-        self.do_merge(this_tree, other_tree)
-        self.assertFileEqual('line 1\n'
-            '<<<<<<< TREE\n'
-            'line 3\n'
-            'line 2\n'
-            '=======\n'
-            'line 2 to 2.1\n'
-            'line 3\n'
-            '>>>>>>> MERGE-SOURCE\n'
-            'line 4\n', 'this/file1')
-
-
-class TestMerge3Merge(TestCaseWithTransport, TestMergeImplementation):
-
-    merge_type = _mod_merge.Merge3Merger
-
-
-class TestWeaveMerge(TestCaseWithTransport, TestMergeImplementation):
-
-    merge_type = _mod_merge.WeaveMerger
-
-
-class TestLCAMerge(TestCaseWithTransport, TestMergeImplementation):
-
-    merge_type = _mod_merge.LCAMerger
-
-    def test_merge_move_and_change(self):
-        self.expectFailure("lca merge doesn't conflict for move and change",
-            super(TestLCAMerge, self).test_merge_move_and_change)
-
-
 class LoggingMerger(object):
     # These seem to be the required attributes
     requires_base = False
@@ -1181,6 +1211,27 @@ class TestMergerBase(TestCaseWithMemoryTransport):
 
 
 class TestMergerInMemory(TestMergerBase):
+
+    def test_cache_trees_with_revision_ids_None(self):
+        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        original_cache = dict(merger._cached_trees)
+        merger.cache_trees_with_revision_ids([None])
+        self.assertEqual(original_cache, merger._cached_trees)
+
+    def test_cache_trees_with_revision_ids_no_revision_id(self):
+        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        original_cache = dict(merger._cached_trees)
+        tree = self.make_branch_and_memory_tree('tree')
+        merger.cache_trees_with_revision_ids([tree])
+        self.assertEqual(original_cache, merger._cached_trees)
+
+    def test_cache_trees_with_revision_ids_having_revision_id(self):
+        merger = self.make_Merger(self.setup_simple_graph(), 'C-id')
+        original_cache = dict(merger._cached_trees)
+        tree = merger.this_branch.repository.revision_tree('B-id')
+        original_cache['B-id'] = tree
+        merger.cache_trees_with_revision_ids([tree])
+        self.assertEqual(original_cache, merger._cached_trees)
 
     def test_find_base(self):
         merger = self.make_Merger(self.setup_simple_graph(), 'C-id')

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """Tests variations of case-insensitive and case-preserving file-systems."""
@@ -52,13 +52,14 @@ class TestCICPBase(ExternalBase):
 
 
 class TestAdd(TestCICPBase):
+
     def test_add_simple(self):
         """Test add always uses the case of the filename reported by the os."""
         wt = self.make_branch_and_tree('.')
         # create a file on disk with the mixed-case name
         self.build_tree(['CamelCase'])
 
-        self.check_output('added CamelCase\n', 'add camelcase')
+        self.check_output('adding CamelCase\n', 'add camelcase')
 
     def test_add_subdir(self):
         """test_add_simple but with subdirectories tested too."""
@@ -66,7 +67,8 @@ class TestAdd(TestCICPBase):
         # create a file on disk with the mixed-case parent and base name
         self.build_tree(['CamelCaseParent/', 'CamelCaseParent/CamelCase'])
 
-        self.check_output('added CamelCaseParent\nadded CamelCaseParent/CamelCase\n',
+        self.check_output('adding CamelCaseParent\n'
+                          'adding CamelCaseParent/CamelCase\n',
                           'add camelcaseparent/camelcase')
 
     def test_add_implied(self):
@@ -75,7 +77,8 @@ class TestAdd(TestCICPBase):
         # create a file on disk with the mixed-case parent and base name
         self.build_tree(['CamelCaseParent/', 'CamelCaseParent/CamelCase'])
 
-        self.check_output('added CamelCaseParent\nadded CamelCaseParent/CamelCase\n',
+        self.check_output('adding CamelCaseParent\n'
+                          'adding CamelCaseParent/CamelCase\n',
                           'add')
 
     def test_re_add(self):
@@ -84,7 +87,7 @@ class TestAdd(TestCICPBase):
         wt = self.make_branch_and_tree('.')
         # create a file on disk with the mixed-case name
         self.build_tree(['MixedCase'])
-        self.check_output('added MixedCase\n', 'add MixedCase')
+        self.check_output('adding MixedCase\n', 'add MixedCase')
         # 'accidently' rename the file on disk
         os.rename('MixedCase', 'mixedcase')
         self.check_empty_output('add mixedcase')
@@ -96,7 +99,8 @@ class TestAdd(TestCICPBase):
         wt = self.make_branch_and_tree('.')
         # create a file on disk with the mixed-case name
         self.build_tree(['MixedCaseParent/', 'MixedCaseParent/MixedCase'])
-        self.check_output('added MixedCaseParent\nadded MixedCaseParent/MixedCase\n',
+        self.check_output('adding MixedCaseParent\n'
+                          'adding MixedCaseParent/MixedCase\n',
                           'add MixedCaseParent')
         # 'accidently' rename the directory on disk
         os.rename('MixedCaseParent', 'mixedcaseparent')
@@ -118,8 +122,9 @@ class TestMove(TestCICPBase):
         self.run_bzr('add')
         self.run_bzr('ci -m message')
 
-        self.check_output('CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase\n',
-                          'mv camelcaseparent/camelcase camelcaseparent/NewCamelCase')
+        self.check_output(
+            'CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase\n',
+            'mv camelcaseparent/camelcase camelcaseparent/NewCamelCase')
 
     def test_mv_newname_after(self):
         wt = self._make_mixed_case_tree()
@@ -129,8 +134,9 @@ class TestMove(TestCICPBase):
 
         # In this case we can specify the incorrect case for the destination,
         # as we use --after, so the file-system is sniffed.
-        self.check_output('CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase\n',
-                          'mv --after camelcaseparent/camelcase camelcaseparent/newcamelcase')
+        self.check_output(
+            'CamelCaseParent/CamelCase => CamelCaseParent/NewCamelCase\n',
+            'mv --after camelcaseparent/camelcase camelcaseparent/newcamelcase')
 
     def test_mv_newname_exists(self):
         # test a mv, but when the target already exists with a name that
@@ -210,12 +216,19 @@ class TestMove(TestCICPBase):
 
 
 class TestMisc(TestCICPBase):
+
     def test_status(self):
         wt = self._make_mixed_case_tree()
         self.run_bzr('add')
 
-        self.check_output('added:\n  CamelCaseParent/CamelCase\n  lowercaseparent/lowercase\n',
-                          'status camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE')
+        self.check_output(
+            """added:
+  CamelCaseParent/
+  CamelCaseParent/CamelCase
+  lowercaseparent/
+  lowercaseparent/lowercase
+""",
+            'status camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE')
 
     def test_ci(self):
         wt = self._make_mixed_case_tree()

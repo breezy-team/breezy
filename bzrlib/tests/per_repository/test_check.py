@@ -12,14 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Test operations that check the repository for corruption"""
 
+import os
 
 from bzrlib import (
+    check,
+    config as _mod_config,
     errors,
+    inventory,
     revision as _mod_revision,
     )
 from bzrlib.tests import TestNotApplicable
@@ -36,18 +40,13 @@ class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
         tree.smart_add(['.'])
-        tree.commit('1')
+        revid1 = tree.commit('1')
         self.build_tree(['bar'])
         tree.smart_add(['.'])
-        tree.commit('2')
-        # XXX: check requires a non-empty revision IDs list, but it ignores the
-        # contents of it!
-        check_object = tree.branch.repository.check(['ignored'])
-        check_object.report_results(verbose=False)
-        log = self._get_log(keep_log_file=True)
-        self.assertContainsRe(
-            log,
-            "0 unreferenced text versions")
+        revid2 = tree.commit('2')
+        check_object = tree.branch.repository.check([revid1, revid2])
+        check_object.report_results(verbose=True)
+        self.assertContainsRe(self.get_log(), "0 unreferenced text versions")
 
 
 class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
@@ -90,13 +89,60 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         # contents of it!
         check_object = repo.check(['ignored'])
         check_object.report_results(verbose=False)
-        log = self._get_log(keep_log_file=True)
-        self.assertContainsRe(
-            log, '1 revisions have incorrect parents in the revision index')
+        self.assertContainsRe(self.get_log(),
+            '1 revisions have incorrect parents in the revision index')
         check_object.report_results(verbose=True)
-        log = self._get_log(keep_log_file=True)
         self.assertContainsRe(
-            log,
+            self.get_log(),
             "revision-id has wrong parents in index: "
             r"\('incorrect-parent',\) should be \(\)")
 
+
+class TestCallbacks(TestCaseWithRepository):
+
+    def test_callback_tree_and_branch(self):
+        # use a real tree to get actual refs that will work
+        tree = self.make_branch_and_tree('foo')
+        revid = tree.commit('foo')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        needed_refs = {}
+        for ref in tree._get_check_refs():
+            needed_refs.setdefault(ref, []).append(tree)
+        for ref in tree.branch._get_check_refs():
+            needed_refs.setdefault(ref, []).append(tree.branch)
+        self.tree_check = tree._check
+        self.branch_check = tree.branch.check
+        tree._check = self.tree_callback
+        tree.branch.check = self.branch_callback
+        self.callbacks = []
+        tree.branch.repository.check([revid], callback_refs=needed_refs)
+        self.assertNotEqual([], self.callbacks)
+
+    def tree_callback(self, refs):
+        self.callbacks.append(('tree', refs))
+        return self.tree_check(refs)
+
+    def branch_callback(self, refs):
+        self.callbacks.append(('branch', refs))
+        return self.branch_check(refs)
+
+
+class TestCleanRepository(TestCaseWithRepository):
+
+    def test_new_repo(self):
+        repo = self.make_repository('foo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        config = _mod_config.Config()
+        os.environ['BZR_EMAIL'] = 'foo@sample.com'
+        builder = repo.get_commit_builder(None, [], config)
+        list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
+            ('TREE_ROOT', (None, ''), True, (False, True), (None, None),
+            (None, ''), (None, 'directory'), (None, False))]))
+        builder.finish_inventory()
+        rev_id = builder.commit('first post')
+        result = repo.check(None, check_repo=True)
+        result.report_results(True)
+        log = self.get_log()
+        self.assertFalse('Missing' in log, "Something was missing in %r" % log)

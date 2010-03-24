@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Some kind of command-line display of revision properties:
 # perhaps show them in log -v and allow them as options to the commit command.
@@ -22,8 +22,8 @@
 import codecs
 
 
-_utf8_encode = codecs.getencoder("utf-8")
-_utf8_decode = codecs.getdecoder("utf-8")
+_utf8_encode = codecs.utf_8_encode
+_utf8_decode = codecs.utf_8_decode
 def _utf8_decode_with_None(bytestring, _utf8_decode=_utf8_decode):
     """wrap _utf8_decode to support None->None for optional strings.
 

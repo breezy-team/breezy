@@ -12,13 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for repositories with shared branches"""
 
 import os
 
-from bzrlib.bzrdir import BzrDir
+from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 import bzrlib.errors as errors
 from bzrlib.tests import TestCaseInTempDir
 
@@ -27,7 +27,7 @@ class TestSharedRepo(TestCaseInTempDir):
     def test_make_repository(self):
         out, err = self.run_bzr("init-repository a")
         self.assertEqual(out,
-"""Shared repository with trees (format: pack-0.92)
+"""Shared repository with trees (format: 2a)
 Location:
   shared repository: a
 """)
@@ -114,10 +114,27 @@ Location:
         # be fixed.
         self.setup_smart_server_with_call_log()
         self.run_bzr(['init-repo', self.get_url('repo')])
-        rpc_count = len(self.hpss_calls)
         # This figure represent the amount of work to perform this use case. It
         # is entirely ok to reduce this number if a test fails due to rpc_count
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertEqual(16, rpc_count)
+        self.assertLength(15, self.hpss_calls)
+
+    def test_notification_on_branch_from_repository(self):
+        out, err = self.run_bzr("init-repository -q a")
+        self.assertEqual(out, "")
+        self.assertEqual(err, "")
+        dir = BzrDir.open('a')
+        dir.open_repository() # there is a repository there
+        e = self.assertRaises(errors.NotBranchError, dir.open_branch)
+        self.assertContainsRe(str(e), "location is a repository")
+
+    def test_notification_on_branch_from_nonrepository(self):
+        fmt = BzrDirMetaFormat1()
+        t = self.get_transport()
+        t.mkdir('a')
+        dir = fmt.initialize_on_transport(t.clone('a'))
+        self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
+        e = self.assertRaises(errors.NotBranchError, dir.open_branch)
+        self.assertNotContainsRe(str(e), "location is a repository")

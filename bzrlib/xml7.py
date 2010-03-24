@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     inventory,
@@ -28,7 +28,7 @@ class Serializer_v7(xml6.Serializer_v6):
     supported_kinds = set(['file', 'directory', 'symlink', 'tree-reference'])
     format_num = '7'
 
-    def _unpack_entry(self, elt, entry_cache=None):
+    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         kind = elt.tag
         if not kind in self.supported_kinds:
             raise AssertionError('unsupported entry kind %s' % kind)
@@ -41,6 +41,7 @@ class Serializer_v7(xml6.Serializer_v6):
             return inventory.TreeReference(file_id, name, parent_id, revision,
                                            reference_revision)
         else:
-            return xml6.Serializer_v6._unpack_entry(self, elt)
+            return xml6.Serializer_v6._unpack_entry(self, elt,
+                entry_cache=entry_cache, return_from_cache=return_from_cache)
 
 serializer_v7 = Serializer_v7()

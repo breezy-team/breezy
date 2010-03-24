@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import re
@@ -113,8 +113,6 @@ class RevisionInfo(object):
         return RevisionInfo(branch, revno, revision_id)
 
 
-# classes in this list should have a "prefix" attribute, against which
-# string specs are matched
 _revno_regex = None
 
 
@@ -123,10 +121,10 @@ class RevisionSpec(object):
 
     help_txt = """A parsed revision specification.
 
-    A revision specification can be an integer, in which case it is
-    assumed to be a revno (though this will translate negative values
-    into positive ones); or it can be a string, in which case it is
-    parsed for something like 'date:' or 'revid:' etc.
+    A revision specification is a string, which may be unambiguous about
+    what it represents by giving a prefix like 'date:' or 'revid:' etc,
+    or it may have no prefix, in which case it's tried against several
+    specifier types in sequence to determine what the user meant.
 
     Revision specs are an UI element, and they have been moved out
     of the branch class to leave "back-end" classes unaware of such
@@ -139,6 +137,14 @@ class RevisionSpec(object):
 
     prefix = None
     wants_revision_history = True
+    dwim_catchable_exceptions = (errors.InvalidRevisionSpec,)
+    """Exceptions that RevisionSpec_dwim._match_on will catch.
+
+    If the revspec is part of ``dwim_revspecs``, it may be tried with an
+    invalid revspec and raises some exception. The exceptions mentioned here
+    will not be reported to the user but simply ignored without stopping the
+    dwim processing.
+    """
 
     @staticmethod
     def from_string(spec):
@@ -161,21 +167,13 @@ class RevisionSpec(object):
             return spectype(spec, _internal=True)
         else:
             for spectype in SPEC_TYPES:
-                trace.mutter('Returning RevisionSpec %s for %s',
-                             spectype.__name__, spec)
                 if spec.startswith(spectype.prefix):
+                    trace.mutter('Returning RevisionSpec %s for %s',
+                                 spectype.__name__, spec)
                     return spectype(spec, _internal=True)
-            # RevisionSpec_revno is special cased, because it is the only
-            # one that directly handles plain integers
-            # TODO: This should not be special cased rather it should be
-            # a method invocation on spectype.canparse()
-            global _revno_regex
-            if _revno_regex is None:
-                _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
-            if _revno_regex.match(spec) is not None:
-                return RevisionSpec_revno(spec, _internal=True)
-
-            raise errors.NoSuchRevisionSpec(spec)
+            # Otherwise treat it as a DWIM, build the RevisionSpec object and
+            # wait for _match_on to be called.
+            return RevisionSpec_dwim(spec, _internal=True)
 
     def __init__(self, spec, _internal=False):
         """Create a RevisionSpec referring to the Null revision.
@@ -185,7 +183,6 @@ class RevisionSpec(object):
             called directly. Only from RevisionSpec.from_string()
         """
         if not _internal:
-            # XXX: Update this after 0.10 is released
             symbol_versioning.warn('Creating a RevisionSpec directly has'
                                    ' been deprecated in version 0.11. Use'
                                    ' RevisionSpec.from_string()'
@@ -291,16 +288,62 @@ class RevisionSpec(object):
 
 # private API
 
+class RevisionSpec_dwim(RevisionSpec):
+    """Provides a DWIMish revision specifier lookup.
+
+    Note that this does not go in the revspec_registry because by definition
+    there is no prefix to identify it.  It's solely called from
+    RevisionSpec.from_string() because the DWIMification happen when _match_on
+    is called so the string describing the revision is kept here until needed.
+    """
+
+    help_txt = None
+    # We don't need to build the revision history ourself, that's delegated to
+    # each revspec we try.
+    wants_revision_history = False
+
+    def _try_spectype(self, rstype, branch):
+        rs = rstype(self.spec, _internal=True)
+        # Hit in_history to find out if it exists, or we need to try the
+        # next type.
+        return rs.in_history(branch)
+
+    def _match_on(self, branch, revs):
+        """Run the lookup and see what we can get."""
+
+        # First, see if it's a revno
+        global _revno_regex
+        if _revno_regex is None:
+            _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
+        if _revno_regex.match(self.spec) is not None:
+            try:
+                return self._try_spectype(RevisionSpec_revno, branch)
+            except RevisionSpec_revno.dwim_catchable_exceptions:
+                pass
+
+        # Next see what has been registered
+        for rs_class in dwim_revspecs:
+            try:
+                return self._try_spectype(rs_class, branch)
+            except rs_class.dwim_catchable_exceptions:
+                pass
+
+        # Well, I dunno what it is. Note that we don't try to keep track of the
+        # first of last exception raised during the DWIM tries as none seems
+        # really relevant.
+        raise errors.InvalidRevisionSpec(self.spec, branch)
+
+
 class RevisionSpec_revno(RevisionSpec):
     """Selects a revision using a number."""
 
     help_txt = """Selects a revision using a number.
 
     Use an integer to specify a revision in the history of the branch.
-    Optionally a branch can be specified. The 'revno:' prefix is optional.
-    A negative number will count from the end of the branch (-1 is the
-    last revision, -2 the previous one). If the negative number is larger
-    than the branch's history, the first revision is returned.
+    Optionally a branch can be specified.  A negative number will count
+    from the end of the branch (-1 is the last revision, -2 the previous
+    one). If the negative number is larger than the branch's history, the
+    first revision is returned.
     Examples::
 
       revno:1                   -> return the first revision of this branch
@@ -562,6 +605,7 @@ class RevisionSpec_tag(RevisionSpec):
     """
 
     prefix = 'tag:'
+    dwim_catchable_exceptions = (errors.NoSuchTag, errors.TagsNotSupported)
 
     def _match_on(self, branch, revs):
         # Can raise tags not supported, NoSuchTag, etc
@@ -761,6 +805,7 @@ class RevisionSpec_branch(RevisionSpec):
       branch:/path/to/branch
     """
     prefix = 'branch:'
+    dwim_catchable_exceptions = (errors.NotBranchError,)
 
     def _match_on(self, branch, revs):
         from bzrlib.branch import Branch
@@ -839,6 +884,17 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
             self._get_submit_location(context_branch))
 
 
+# The order in which we want to DWIM a revision spec without any prefix.
+# revno is always tried first and isn't listed here, this is used by
+# RevisionSpec_dwim._match_on
+dwim_revspecs = [
+    RevisionSpec_tag, # Let's try for a tag
+    RevisionSpec_revid, # Maybe it's a revid?
+    RevisionSpec_date, # Perhaps a date?
+    RevisionSpec_branch, # OK, last try, maybe it's a branch
+    ]
+
+
 revspec_registry = registry.Registry()
 def _register_revspec(revspec):
     revspec_registry.register(revspec.prefix, revspec)
@@ -853,5 +909,7 @@ _register_revspec(RevisionSpec_ancestor)
 _register_revspec(RevisionSpec_branch)
 _register_revspec(RevisionSpec_submit)
 
+# classes in this list should have a "prefix" attribute, against which
+# string specs are matched
 SPEC_TYPES = symbol_versioning.deprecated_list(
     symbol_versioning.deprecated_in((1, 12, 0)), "SPEC_TYPES", [])

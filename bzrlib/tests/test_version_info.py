@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for version_info"""
 
@@ -53,6 +53,16 @@ class TestVersionInfo(TestCaseWithTransport):
 
         return wt
 
+    def test_rio_null(self):
+        wt = self.make_branch_and_tree('branch')
+
+        sio = StringIO()
+        builder = RioVersionInfoBuilder(wt.branch, working_tree=wt)
+        builder.generate(sio)
+        val = sio.getvalue()
+        self.assertContainsRe(val, 'build-date:')
+        self.assertContainsRe(val, 'revno: 0')
+
     def test_rio_version_text(self):
         wt = self.create_branch()
 
@@ -86,6 +96,26 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertContainsRe(val, 'id: r3')
         self.assertContainsRe(val, 'message: \xc3\xa52') # utf8 encoding '\xe5'
 
+    def test_rio_version_hook(self):
+        def update_stanza(rev, stanza):
+            stanza.add('bla', 'bloe')
+        RioVersionInfoBuilder.hooks.install_named_hook(
+            'revision', update_stanza, None)
+        wt = self.create_branch()
+
+        def regen(**kwargs):
+            sio = StringIO()
+            builder = RioVersionInfoBuilder(wt.branch, working_tree=wt,
+                                            **kwargs)
+            builder.generate(sio)
+            sio.seek(0)
+            stanzas = list(read_stanzas(sio))
+            self.assertEqual(1, len(stanzas))
+            return stanzas[0]
+
+        stanza = regen()
+        self.assertEqual(['bloe'], stanza.get_all('bla'))
+
     def test_rio_version(self):
         wt = self.create_branch()
 
@@ -118,12 +148,11 @@ class TestVersionInfo(TestCaseWithTransport):
         stanza = regen(check_for_clean=True, include_file_revisions=True)
         self.assertEqual(['False'], stanza.get_all('clean'))
 
-        # XXX: This assumes it's being run against a repository that updates
-        # the root revision on every commit.  Newer ones that use
-        # RootCommitBuilder won't update it on each commit.
+        # This assumes it's being run against a tree that does not update the
+        # root revision on every commit.
         file_rev_stanza = get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'b', 'c'], file_rev_stanza.get_all('path'))
-        self.assertEqual(['r3', 'r3', 'r2', 'unversioned'],
+        self.assertEqual(['r1', 'r3', 'r2', 'unversioned'],
             file_rev_stanza.get_all('revision'))
         os.remove('branch/c')
 
@@ -141,7 +170,7 @@ class TestVersionInfo(TestCaseWithTransport):
         file_rev_stanza = get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'b', 'c', 'd'],
                           file_rev_stanza.get_all('path'))
-        self.assertEqual(['r3', 'modified', 'renamed to d', 'new',
+        self.assertEqual(['r1', 'modified', 'renamed to d', 'new',
                           'renamed from b'],
                          file_rev_stanza.get_all('revision'))
 
@@ -151,8 +180,18 @@ class TestVersionInfo(TestCaseWithTransport):
         stanza = regen(check_for_clean=True, include_file_revisions=True)
         file_rev_stanza = get_one_stanza(stanza, 'file-revisions')
         self.assertEqual(['', 'a', 'c', 'd'], file_rev_stanza.get_all('path'))
-        self.assertEqual(['r4', 'r4', 'unversioned', 'removed'],
+        self.assertEqual(['r1', 'r4', 'unversioned', 'removed'],
                          file_rev_stanza.get_all('revision'))
+
+    def test_python_null(self):
+        wt = self.make_branch_and_tree('branch')
+
+        sio = StringIO()
+        builder = PythonVersionInfoBuilder(wt.branch, working_tree=wt)
+        builder.generate(sio)
+        val = sio.getvalue()
+        self.assertContainsRe(val, "'revision_id': None")
+        self.assertContainsRe(val, "'revno': 0")
 
     def test_python_version(self):
         wt = self.create_branch()
@@ -228,6 +267,20 @@ class TestVersionInfo(TestCaseWithTransport):
         self.assertEqual('r4', tvi.file_revisions['a'])
         self.assertEqual('unversioned', tvi.file_revisions['c'])
         self.assertEqual('removed', tvi.file_revisions['d'])
+
+    def test_custom_null(self):
+        sio = StringIO()
+        wt = self.make_branch_and_tree('branch')
+        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt,
+            template='revno: {revno}')
+        builder.generate(sio)
+        self.assertEquals("revno: 0", sio.getvalue())
+
+        builder = CustomVersionInfoBuilder(wt.branch, working_tree=wt, 
+            template='{revno} revid: {revision_id}')
+        # revision_id is not available yet
+        self.assertRaises(errors.MissingTemplateVariable, 
+            builder.generate, sio)
 
     def test_custom_version_text(self):
         wt = self.create_branch()

@@ -18,7 +18,7 @@ additional benefits:
   than leaving them in a shared repository).
 
 * Security is improved over shared repositories, because the stacked-on
-  repository can be physically readonly to developers committing to stacked 
+  repository can be physically readonly to developers committing to stacked
   branches.
 
 These benefits make stacked branches ideal for various scenarios
@@ -83,3 +83,15 @@ The important thing to remember about a stacked branch is that the
 stacked-on branch needs to be available for almost all operations. This is
 not an issue when both branches are local or both branches are on the
 same server.
+
+
+Changing branch stacking
+------------------------
+
+Stacking of existing branches can be changed using the ``bzr reconfigure``
+command to either stack on an existing branch, or to turn off stacking.
+Be aware that when ``bzr reconfigure --unstacked`` is used, bzr will
+copy all the referenced data from the stacked-on repository into the
+previously stacked repository.  For large repositories this may take
+considerable time and may substantially increase the size of the
+repository.

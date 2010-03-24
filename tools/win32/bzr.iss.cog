@@ -16,10 +16,10 @@ AppName=Bazaar
 ; #/Python 2.5 compatibility code
 ;
 ; import bzrlib
-; try: 
+; try:
 ;     VERSION = bzrlib.__version__
 ;     AppVerName = 'Bazaar %s' % VERSION
-;     OutputBaseFilename = 'bzr-setup-%s' % VERSION
+;     OutputBaseFilename = 'bzr-%s-setup' % VERSION
 ; except:
 ;     VERSION = ''
 ;     AppVerName = 'Bazaar'
@@ -137,6 +137,18 @@ Source: "doc\*.*"; DestDir: "{app}\doc"; Flags: createallsubdirs ignoreversion r
 ; ]]]
 ; [[[end]]]
 
+; imageformats plugins for PyQt4
+; [[[cog
+; plug_dir = os.path.join(os.path.dirname(cog.inFile), # $(bzr_src_root)/tools/win32
+;                         '..', '..', 'win32_bzr.exe', 'imageformats')
+; if os.path.isdir(plug_dir):
+;     cog.outl('Source: "imageformats\\*.*"; DestDir: "{app}\\imageformats"; '
+;              'Flags: createallsubdirs ignoreversion recursesubdirs restartreplace uninsrestartdelete;')
+; else:
+;     cog.msg('imageformats plugins for PyQt4 not found')
+; ]]]
+; [[[end]]]
+
 [Types]
 Name: "typical"; Description: "A typical installation"
 Name: "full"; Description: "Full Installation (typical installation plus test utilities)"
@@ -211,7 +223,7 @@ Filename: "{app}\bzr_postinstall.exe"; Parameters: "--add-path"; Tasks: Path; Fl
 
 
 [UninstallRun]
-Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden; 
+Filename: "{app}\bzr_postinstall.exe"; Parameters: "--delete-path --delete-shell-menu --silent"; Flags: skipifdoesntexist runhidden;
 ; [[[cog
 ; if "TBZR" in os.environ:
 ;     cog.outl('Filename: "regsvr32.exe"; Parameters: "/u /s /i: tbzrshellext_x86.dll"; WorkingDir: "{app}"; Components: tortoise; StatusMsg: "Unregistering Tortoise"; Flags: skipifdoesntexist')
@@ -316,7 +328,7 @@ begin
 end;
 
 
-function InitializeUninstall(): Boolean; 
+function InitializeUninstall(): Boolean;
 begin
     ShutdownTBZR;
     result := True;

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          and others
 #
@@ -14,14 +14,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Repository implementation tests for bzr.
 
 These test the conformance of all the repository variations to the expected API.
 Specific tests for individual formats are in the tests/test_repository.py file
-rather than in tests/branch_implementations/*.py.
+rather than in tests/per_branch/*.py.
 """
 
 from bzrlib import (
@@ -39,14 +39,11 @@ from bzrlib.smart.server import (
     SmartTCPServer_for_testing_v2_only,
     )
 from bzrlib.tests import (
-                          adapt_modules,
                           default_transport,
-                          iter_suite_tests,
                           multiply_scenarios,
-                          multiply_tests_from_modules,
-                          TestScenarioApplier,
+                          multiply_tests,
                           )
-from bzrlib.tests.bzrdir_implementations.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.memory import MemoryServer
 
 
@@ -852,10 +849,7 @@ all_broken_scenario_classes = [
     ]
 
 
-def load_tests(basic_tests, module, loader):
-    result = loader.suiteClass()
-    # add the tests for this module
-    result.addTests(basic_tests)
+def load_tests(standard_tests, module, loader):
     prefix = 'bzrlib.tests.per_repository.'
     test_repository_modules = [
         'test_add_fallback_repository',
@@ -873,23 +867,20 @@ def load_tests(basic_tests, module, loader):
         'test_has_revisions',
         'test_is_write_locked',
         'test_iter_reverse_revision_history',
+        'test_merge_directive',
         'test_pack',
         'test_reconcile',
+        'test_refresh_data',
         'test_repository',
         'test_revision',
         'test_statistics',
         'test_write_group',
         ]
-    module_name_list = [prefix + module_name
-                        for module_name in test_repository_modules]
-
-    # add the tests for the sub modules
-
     # Parameterize per_repository test modules by format.
+    submod_tests = loader.loadTestsFromModuleNames(
+        [prefix + module_name for module_name in test_repository_modules])
     format_scenarios = all_repository_format_scenarios()
-    result.addTests(multiply_tests_from_modules(module_name_list,
-                                                format_scenarios,
-                                                loader))
+    multiply_tests(submod_tests, format_scenarios, standard_tests)
 
     # test_check_reconcile needs to be parameterized by format *and* by broken
     # repository scenario.
@@ -897,10 +888,6 @@ def load_tests(basic_tests, module, loader):
                         for s in all_broken_scenario_classes]
     broken_scenarios_for_all_formats = multiply_scenarios(
         format_scenarios, broken_scenarios)
-    broken_scenario_applier = TestScenarioApplier()
-    broken_scenario_applier.scenarios = broken_scenarios_for_all_formats
-    adapt_modules(
-        [prefix + 'test_check_reconcile'],
-        broken_scenario_applier, loader, result)
-
-    return result
+    return multiply_tests(
+        loader.loadTestsFromModuleNames([prefix + 'test_check_reconcile']),
+        broken_scenarios_for_all_formats, standard_tests)

@@ -20,7 +20,7 @@ tracker code (instead of ``lp``) and used instead. For details on how
 to configure this for Bugzilla, Trac, Roundup and other bug/issue trackers,
 refer to `Bug Tracker Settings`_ in the Bazaar User Reference.
 
-.. _Bug Tracker Settings: ../user-reference/bzr_man.html#bug-tracker-settings
+.. _Bug Tracker Settings: ../user-reference/index.html#bug-tracker-settings
 
 Metadata recording vs bug tracker updating
 ------------------------------------------

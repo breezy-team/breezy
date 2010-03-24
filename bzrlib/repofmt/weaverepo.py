@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Deprecated weave-based repository formats.
 
@@ -28,6 +28,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     xml5,
+    graph as _mod_graph,
     )
 """)
 from bzrlib import (
@@ -266,8 +267,10 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     supports_tree_reference = False
     supports_ghosts = False
     supports_external_lookups = False
+    supports_chks = False
     _fetch_order = 'topological'
     _fetch_reconcile = True
+    fast_deltas = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -295,7 +298,8 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         try:
             transport.mkdir_multi(['revision-store', 'weaves'],
                 mode=a_bzrdir._get_dir_mode())
-            transport.put_bytes_non_atomic('inventory.weave', empty_weave)
+            transport.put_bytes_non_atomic('inventory.weave', empty_weave,
+                mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
         return self.open(a_bzrdir, _found=True)
@@ -313,10 +317,8 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         result.signatures = self._get_signatures(repo_transport, result)
         result.inventories = self._get_inventories(repo_transport, result)
         result.texts = self._get_texts(repo_transport, result)
+        result.chk_bytes = None
         return result
-
-    def check_conversion_target(self, target_format):
-        pass
 
 
 class RepositoryFormat4(PreSplitOutRepositoryFormat):
@@ -473,8 +475,11 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
+    supports_chks = False
+
     _fetch_order = 'topological'
     _fetch_reconcile = True
+    fast_deltas = False
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -486,9 +491,6 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Weave repository format 7"
-
-    def check_conversion_target(self, target_format):
-        pass
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -552,6 +554,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         result.signatures = self._get_signatures(repo_transport, result)
         result.inventories = self._get_inventories(repo_transport, result)
         result.texts = self._get_texts(repo_transport, result)
+        result.chk_bytes = None
         result._transport = repo_transport
         return result
 
@@ -661,6 +664,13 @@ class RevisionTextStore(TextVersionedFiles):
             result[key] = parents
         return result
 
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        keys = self.keys()
+        parent_map = self.get_parent_map(keys)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
+
     def get_record_stream(self, keys, sort_order, include_delta_closure):
         for key in keys:
             text, parents = self._load_text_parents(key)
@@ -678,7 +688,7 @@ class RevisionTextStore(TextVersionedFiles):
             path, ext = os.path.splitext(relpath)
             if ext == '.gz':
                 relpath = path
-            if '.sig' not in relpath:
+            if not relpath.endswith('.sig'):
                 relpaths.add(relpath)
         paths = list(relpaths)
         return set([self._mapper.unmap(path) for path in paths])

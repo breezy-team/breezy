@@ -1,5 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
+# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for finding and reading the bzr config file[s]."""
 # import system imports here
@@ -26,6 +25,7 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    diff,
     errors,
     osutils,
     mail_client,
@@ -43,6 +43,7 @@ sample_config_text = u"""
 [DEFAULT]
 email=Erik B\u00e5gfors <erik@bagfors.nu>
 editor=vim
+change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
@@ -150,6 +151,9 @@ class FakeBranch(object):
         self._transport = self.control_files = \
             FakeControlFilesAndTransport(user_id=user_id)
 
+    def _get_config(self):
+        return config.TransportConfig(self._transport, 'branch.conf')
+
     def lock_write(self):
         pass
 
@@ -205,6 +209,10 @@ class InstrumentedConfig(config.Config):
     def _get_signature_checking(self):
         self._calls.append('_get_signature_checking')
         return self._signatures
+
+    def _get_change_editor(self):
+        self._calls.append('_get_change_editor')
+        return 'vimdiff -fo @new_path @old_path'
 
 
 bool_config = """[DEFAULT]
@@ -312,12 +320,21 @@ class TestConfig(tests.TestCase):
         my_config = config.Config()
         self.assertEqual('long', my_config.log_format())
 
+    def test_get_change_editor(self):
+        my_config = InstrumentedConfig()
+        change_editor = my_config.get_change_editor('old_tree', 'new_tree')
+        self.assertEqual(['_get_change_editor'], my_config._calls)
+        self.assertIs(diff.DiffFromTool, change_editor.__class__)
+        self.assertEqual(['vimdiff', '-fo', '@new_path', '@old_path'],
+                         change_editor.command_template)
+
 
 class TestConfigPath(tests.TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
         os.environ['HOME'] = '/home/bogus'
+        os.environ['XDG_CACHE_DIR'] = ''
         if sys.platform == 'win32':
             os.environ['BZR_HOME'] = \
                 r'C:\Documents and Settings\bogus\Application Data'
@@ -345,8 +362,20 @@ class TestConfigPath(tests.TestCase):
         self.assertEqual(config.authentication_config_filename(),
                          self.bzr_home + '/authentication.conf')
 
+    def test_xdg_cache_dir(self):
+        self.assertEqual(config.xdg_cache_dir(),
+            '/home/bogus/.cache')
+
 
 class TestIniConfig(tests.TestCase):
+
+    def make_config_parser(self, s):
+        conf = config.IniBasedConfig(None)
+        parser = conf._get_parser(file=StringIO(s.encode('utf-8')))
+        return conf, parser
+
+
+class TestIniConfigBuilding(TestIniConfig):
 
     def test_contructs(self):
         my_config = config.IniBasedConfig("nothing")
@@ -363,6 +392,53 @@ class TestIniConfig(tests.TestCase):
         my_config = config.IniBasedConfig(None)
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
+
+
+class TestGetUserOptionAs(TestIniConfig):
+
+    def test_get_user_option_as_bool(self):
+        conf, parser = self.make_config_parser("""
+a_true_bool = true
+a_false_bool = 0
+an_invalid_bool = maybe
+a_list = hmm, who knows ? # This is interpreted as a list !
+""")
+        get_bool = conf.get_user_option_as_bool
+        self.assertEqual(True, get_bool('a_true_bool'))
+        self.assertEqual(False, get_bool('a_false_bool'))
+        self.assertIs(None, get_bool('an_invalid_bool'))
+        self.assertIs(None, get_bool('not_defined_in_this_config'))
+
+
+    def test_get_user_option_as_list(self):
+        conf, parser = self.make_config_parser("""
+a_list = a,b,c
+length_1 = 1,
+one_item = x
+""")
+        get_list = conf.get_user_option_as_list
+        self.assertEqual(['a', 'b', 'c'], get_list('a_list'))
+        self.assertEqual(['1'], get_list('length_1'))
+        self.assertEqual('x', conf.get_user_option('one_item'))
+        # automatically cast to list
+        self.assertEqual(['x'], get_list('one_item'))
+
+
+class TestSupressWarning(TestIniConfig):
+
+    def make_warnings_config(self, s):
+        conf, parser = self.make_config_parser(s)
+        return conf.suppress_warning
+
+    def test_suppress_warning_unknown(self):
+        suppress_warning = self.make_warnings_config('')
+        self.assertEqual(False, suppress_warning('unknown_warning'))
+
+    def test_suppress_warning_known(self):
+        suppress_warning = self.make_warnings_config('suppress_warnings=a,b')
+        self.assertEqual(False, suppress_warning('c'))
+        self.assertEqual(True, suppress_warning('a'))
+        self.assertEqual(True, suppress_warning('b'))
 
 
 class TestGetConfig(tests.TestCase):
@@ -603,6 +679,18 @@ class TestGlobalConfigItems(tests.TestCase):
     def test_get_long_alias(self):
         my_config = self._get_sample_config()
         self.assertEqual(sample_long_alias, my_config.get_alias('ll'))
+
+    def test_get_change_editor(self):
+        my_config = self._get_sample_config()
+        change_editor = my_config.get_change_editor('old', 'new')
+        self.assertIs(diff.DiffFromTool, change_editor.__class__)
+        self.assertEqual('vimdiff -of @new_path @old_path',
+                         ' '.join(change_editor.command_template))
+
+    def test_get_no_change_editor(self):
+        my_config = self._get_empty_config()
+        change_editor = my_config.get_change_editor('old', 'new')
+        self.assertIs(None, change_editor)
 
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
@@ -1207,7 +1295,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
 
     def test_set_unset_default_stack_on(self):
         my_dir = self.make_bzrdir('.')
-        bzrdir_config = config.BzrDirConfig(my_dir.transport)
+        bzrdir_config = config.BzrDirConfig(my_dir)
         self.assertIs(None, bzrdir_config.get_default_stack_on())
         bzrdir_config.set_default_stack_on('Foo')
         self.assertEqual('Foo', bzrdir_config._config.get_option(
@@ -1427,14 +1515,17 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
     def test_set_credentials(self):
         conf = config.AuthenticationConfig()
         conf.set_credentials('name', 'host', 'user', 'scheme', 'password',
-        99, path='/foo', verify_certificates=False)
+        99, path='/foo', verify_certificates=False, realm='realm')
         credentials = conf.get_credentials(host='host', scheme='scheme',
-                                           port=99, path='/foo')
+                                           port=99, path='/foo',
+                                           realm='realm')
         CREDENTIALS = {'name': 'name', 'user': 'user', 'password': 'password',
-                       'verify_certificates': False,}
+                       'verify_certificates': False, 'scheme': 'scheme', 
+                       'host': 'host', 'port': 99, 'path': '/foo', 
+                       'realm': 'realm'}
         self.assertEqual(CREDENTIALS, credentials)
         credentials_from_disk = config.AuthenticationConfig().get_credentials(
-            host='host', scheme='scheme', port=99, path='/foo')
+            host='host', scheme='scheme', port=99, path='/foo', realm='realm')
         self.assertEqual(CREDENTIALS, credentials_from_disk)
 
     def test_reset_credentials_different_name(self):
@@ -1444,15 +1535,18 @@ class TestAuthenticationStorage(tests.TestCaseInTempDir):
         self.assertIs(None, conf._get_config().get('name'))
         credentials = conf.get_credentials(host='host', scheme='scheme')
         CREDENTIALS = {'name': 'name2', 'user': 'user2', 'password':
-                       'password', 'verify_certificates': True}
+                       'password', 'verify_certificates': True, 
+                       'scheme': 'scheme', 'host': 'host', 'port': None, 
+                       'path': None, 'realm': None}
         self.assertEqual(CREDENTIALS, credentials)
 
 
 class TestAuthenticationConfig(tests.TestCase):
     """Test AuthenticationConfig behaviour"""
 
-    def _check_default_prompt(self, expected_prompt_format, scheme,
-                              host=None, port=None, realm=None, path=None):
+    def _check_default_password_prompt(self, expected_prompt_format, scheme,
+                                       host=None, port=None, realm=None,
+                                       path=None):
         if host is None:
             host = 'bar.org'
         user, password = 'jim', 'precious'
@@ -1461,32 +1555,69 @@ class TestAuthenticationConfig(tests.TestCase):
             'user': user, 'realm': realm}
 
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout, stderr=stderr)
         # We use an empty conf so that the user is always prompted
         conf = config.AuthenticationConfig()
         self.assertEquals(password,
                           conf.get_password(scheme, host, user, port=port,
                                             realm=realm, path=path))
-        self.assertEquals(stdout.getvalue(), expected_prompt)
+        self.assertEquals(expected_prompt, stderr.getvalue())
+        self.assertEquals('', stdout.getvalue())
 
-    def test_default_prompts(self):
+    def _check_default_username_prompt(self, expected_prompt_format, scheme,
+                                       host=None, port=None, realm=None,
+                                       path=None):
+        if host is None:
+            host = 'bar.org'
+        username = 'jim'
+        expected_prompt = expected_prompt_format % {
+            'scheme': scheme, 'host': host, 'port': port,
+            'realm': realm}
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin=username+ '\n',
+                                            stdout=stdout, stderr=stderr)
+        # We use an empty conf so that the user is always prompted
+        conf = config.AuthenticationConfig()
+        self.assertEquals(username, conf.get_user(scheme, host, port=port,
+                          realm=realm, path=path, ask=True))
+        self.assertEquals(expected_prompt, stderr.getvalue())
+        self.assertEquals('', stdout.getvalue())
+
+    def test_username_defaults_prompts(self):
         # HTTP prompts can't be tested here, see test_http.py
-        self._check_default_prompt('FTP %(user)s@%(host)s password: ', 'ftp')
-        self._check_default_prompt('FTP %(user)s@%(host)s:%(port)d password: ',
-                                   'ftp', port=10020)
+        self._check_default_username_prompt('FTP %(host)s username: ', 'ftp')
+        self._check_default_username_prompt(
+            'FTP %(host)s:%(port)d username: ', 'ftp', port=10020)
+        self._check_default_username_prompt(
+            'SSH %(host)s:%(port)d username: ', 'ssh', port=12345)
 
-        self._check_default_prompt('SSH %(user)s@%(host)s:%(port)d password: ',
-                                   'ssh', port=12345)
+    def test_username_default_no_prompt(self):
+        conf = config.AuthenticationConfig()
+        self.assertEquals(None,
+            conf.get_user('ftp', 'example.com'))
+        self.assertEquals("explicitdefault",
+            conf.get_user('ftp', 'example.com', default="explicitdefault"))
+
+    def test_password_default_prompts(self):
+        # HTTP prompts can't be tested here, see test_http.py
+        self._check_default_password_prompt(
+            'FTP %(user)s@%(host)s password: ', 'ftp')
+        self._check_default_password_prompt(
+            'FTP %(user)s@%(host)s:%(port)d password: ', 'ftp', port=10020)
+        self._check_default_password_prompt(
+            'SSH %(user)s@%(host)s:%(port)d password: ', 'ssh', port=12345)
         # SMTP port handling is a bit special (it's handled if embedded in the
         # host too)
         # FIXME: should we: forbid that, extend it to other schemes, leave
         # things as they are that's fine thank you ?
-        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
-                                   'smtp')
-        self._check_default_prompt('SMTP %(user)s@%(host)s password: ',
-                                   'smtp', host='bar.org:10025')
-        self._check_default_prompt(
+        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
+                                            'smtp')
+        self._check_default_password_prompt('SMTP %(user)s@%(host)s password: ',
+                                            'smtp', host='bar.org:10025')
+        self._check_default_password_prompt(
             'SMTP %(user)s@%(host)s:%(port)d password: ',
             'smtp', port=10025)
 
@@ -1501,15 +1632,16 @@ password=jimpass
 """))
         entered_password = 'typed-by-hand'
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout, stderr=stderr)
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
         self.assertEquals(entered_password,
                           conf.get_password('ssh', 'bar.org', user='jim'))
         self.assertContainsRe(
-            self._get_log(keep_log_file=True),
+            self.get_log(),
             'password ignored in section \[ssh with password\]')
 
     def test_ssh_without_password_doesnt_emit_warning(self):
@@ -1522,8 +1654,10 @@ user=jim
 """))
         entered_password = 'typed-by-hand'
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin=entered_password + '\n',
-                                            stdout=stdout)
+                                            stdout=stdout,
+                                            stderr=stderr)
 
         # Since the password defined in the authentication config is ignored,
         # the user is prompted
@@ -1532,8 +1666,52 @@ user=jim
         # No warning shoud be emitted since there is no password. We are only
         # providing "user".
         self.assertNotContainsRe(
-            self._get_log(keep_log_file=True),
+            self.get_log(),
             'password ignored in section \[ssh with password\]')
+
+    def test_uses_fallback_stores(self):
+        self._old_cs_registry = config.credential_store_registry
+        def restore():
+            config.credential_store_registry = self._old_cs_registry
+        self.addCleanup(restore)
+        config.credential_store_registry = config.CredentialStoreRegistry()
+        store = StubCredentialStore()
+        store.add_credentials("http", "example.com", "joe", "secret")
+        config.credential_store_registry.register("stub", store, fallback=True)
+        conf = config.AuthenticationConfig(_file=StringIO())
+        creds = conf.get_credentials("http", "example.com")
+        self.assertEquals("joe", creds["user"])
+        self.assertEquals("secret", creds["password"])
+
+
+class StubCredentialStore(config.CredentialStore):
+
+    def __init__(self):
+        self._username = {}
+        self._password = {}
+
+    def add_credentials(self, scheme, host, user, password=None):
+        self._username[(scheme, host)] = user
+        self._password[(scheme, host)] = password
+
+    def get_credentials(self, scheme, host, port=None, user=None,
+        path=None, realm=None):
+        key = (scheme, host)
+        if not key in self._username:
+            return None
+        return { "scheme": scheme, "host": host, "port": port,
+                "user": self._username[key], "password": self._password[key]}
+
+
+class CountingCredentialStore(config.CredentialStore):
+
+    def __init__(self):
+        self._calls = 0
+
+    def get_credentials(self, scheme, host, port=None, user=None,
+        path=None, realm=None):
+        self._calls += 1
+        return None
 
 
 class TestCredentialStoreRegistry(tests.TestCase):
@@ -1551,6 +1729,64 @@ class TestCredentialStoreRegistry(tests.TestCase):
         # It's hard to imagine someone creating a credential store named
         # 'unknown' so we use that as an never registered key.
         self.assertRaises(KeyError, r.get_credential_store, 'unknown')
+
+    def test_fallback_none_registered(self):
+        r = config.CredentialStoreRegistry()
+        self.assertEquals(None,
+                          r.get_fallback_credentials("http", "example.com"))
+
+    def test_register(self):
+        r = config.CredentialStoreRegistry()
+        r.register("stub", StubCredentialStore(), fallback=False)
+        r.register("another", StubCredentialStore(), fallback=True)
+        self.assertEquals(["another", "stub"], r.keys())
+
+    def test_register_lazy(self):
+        r = config.CredentialStoreRegistry()
+        r.register_lazy("stub", "bzrlib.tests.test_config",
+                        "StubCredentialStore", fallback=False)
+        self.assertEquals(["stub"], r.keys())
+        self.assertIsInstance(r.get_credential_store("stub"),
+                              StubCredentialStore)
+
+    def test_is_fallback(self):
+        r = config.CredentialStoreRegistry()
+        r.register("stub1", None, fallback=False)
+        r.register("stub2", None, fallback=True)
+        self.assertEquals(False, r.is_fallback("stub1"))
+        self.assertEquals(True, r.is_fallback("stub2"))
+
+    def test_no_fallback(self):
+        r = config.CredentialStoreRegistry()
+        store = CountingCredentialStore()
+        r.register("count", store, fallback=False)
+        self.assertEquals(None,
+                          r.get_fallback_credentials("http", "example.com"))
+        self.assertEquals(0, store._calls)
+
+    def test_fallback_credentials(self):
+        r = config.CredentialStoreRegistry()
+        store = StubCredentialStore()
+        store.add_credentials("http", "example.com",
+                              "somebody", "geheim")
+        r.register("stub", store, fallback=True)
+        creds = r.get_fallback_credentials("http", "example.com")
+        self.assertEquals("somebody", creds["user"])
+        self.assertEquals("geheim", creds["password"])
+
+    def test_fallback_first_wins(self):
+        r = config.CredentialStoreRegistry()
+        stub1 = StubCredentialStore()
+        stub1.add_credentials("http", "example.com",
+                              "somebody", "stub1")
+        r.register("stub1", stub1, fallback=True)
+        stub2 = StubCredentialStore()
+        stub2.add_credentials("http", "example.com",
+                              "somebody", "stub2")
+        r.register("stub2", stub1, fallback=True)
+        creds = r.get_fallback_credentials("http", "example.com")
+        self.assertEquals("somebody", creds["user"])
+        self.assertEquals("stub1", creds["password"])
 
 
 class TestPlainTextCredentialStore(tests.TestCase):

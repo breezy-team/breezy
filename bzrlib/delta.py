@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     errors,
@@ -47,7 +47,7 @@ class TreeDelta(object):
 
     Files that are both modified and renamed are listed only in
     renamed, with the text_modified flag true. The text_modified
-    applies either to the the content of the file or the target of the
+    applies either to the content of the file or the target of the
     symbolic link, depending of the kind of file.
 
     Files are only considered renamed if their name has changed or

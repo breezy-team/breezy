@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the compiled dirstate helpers."""
 
@@ -23,26 +23,65 @@ import time
 from bzrlib import (
     dirstate,
     errors,
+    osutils,
     tests,
     )
 from bzrlib.tests import (
-        SymlinkFeature,
-        )
-from bzrlib.tests import test_dirstate
+    test_dirstate,
+    test_osutils,
+    )
+
+try:
+    from bzrlib import _dirstate_helpers_pyx
+    has_dirstate_helpers_pyx = True
+except ImportError:
+    has_dirstate_helpers_pyx = False
 
 
-class _CompiledDirstateHelpersFeature(tests.Feature):
-    def _probe(self):
-        try:
-            import bzrlib._dirstate_helpers_c
-        except ImportError:
-            return False
-        return True
+compiled_dirstate_helpers_feature = tests.ModuleAvailableFeature(
+                                'bzrlib._dirstate_helpers_pyx')
 
-    def feature_name(self):
-        return 'bzrlib._dirstate_helpers_c'
 
-CompiledDirstateHelpersFeature = _CompiledDirstateHelpersFeature()
+def load_tests(basic_tests, module, loader):
+    # FIXME: we should also parametrize against SHA1Provider !
+    suite = loader.suiteClass()
+    remaining_tests = basic_tests
+
+    dir_reader_scenarios = test_osutils.dir_reader_scenarios()
+
+    ue_scenarios = [('dirstate_Python',
+                     {'update_entry': dirstate.py_update_entry})]
+    if compiled_dirstate_helpers_feature.available():
+        update_entry = compiled_dirstate_helpers_feature.module.update_entry
+        pyrex_scenario = ('dirstate_Pyrex', {'update_entry': update_entry})
+        ue_scenarios.append(pyrex_scenario)
+    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance(TestUpdateEntry))
+    tests.multiply_tests(process_entry_tests,
+                         tests.multiply_scenarios(dir_reader_scenarios,
+                                                  ue_scenarios),
+                         suite)
+
+    pe_scenarios = [('dirstate_Python',
+                     {'_process_entry': dirstate.ProcessEntryPython})]
+    if compiled_dirstate_helpers_feature.available():
+        process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
+        pyrex_scenario = ('dirstate_Pyrex', {'_process_entry': process_entry})
+        pe_scenarios.append(pyrex_scenario)
+    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance(TestProcessEntry))
+    tests.multiply_tests(process_entry_tests,
+                         tests.multiply_scenarios(dir_reader_scenarios,
+                                                  pe_scenarios),
+                         suite)
+
+    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance(
+            test_dirstate.TestCaseWithDirState))
+    tests.multiply_tests(dir_reader_tests, dir_reader_scenarios, suite)
+    suite.addTest(remaining_tests)
+
+    return suite
 
 
 class TestBisectPathMixin(object):
@@ -201,45 +240,45 @@ class TestBisectPathMixin(object):
 
 
 class TestBisectPathLeft(tests.TestCase, TestBisectPathMixin):
-    """Run all Bisect Path tests against _bisect_path_left_py."""
+    """Run all Bisect Path tests against _bisect_path_left."""
 
     def get_bisect_path(self):
-        from bzrlib._dirstate_helpers_py import _bisect_path_left_py
-        return _bisect_path_left_py
+        from bzrlib._dirstate_helpers_py import _bisect_path_left
+        return _bisect_path_left
 
     def get_bisect(self):
         return bisect.bisect_left, 0
 
 
 class TestCompiledBisectPathLeft(TestBisectPathLeft):
-    """Run all Bisect Path tests against _bisect_path_right_c"""
+    """Run all Bisect Path tests against _bisect_path_lect"""
 
-    _test_needs_features = [CompiledDirstateHelpersFeature]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_bisect_path(self):
-        from bzrlib._dirstate_helpers_c import _bisect_path_left_c
-        return _bisect_path_left_c
+        from bzrlib._dirstate_helpers_pyx import _bisect_path_left
+        return _bisect_path_left
 
 
 class TestBisectPathRight(tests.TestCase, TestBisectPathMixin):
-    """Run all Bisect Path tests against _bisect_path_right_py"""
+    """Run all Bisect Path tests against _bisect_path_right"""
 
     def get_bisect_path(self):
-        from bzrlib._dirstate_helpers_py import _bisect_path_right_py
-        return _bisect_path_right_py
+        from bzrlib._dirstate_helpers_py import _bisect_path_right
+        return _bisect_path_right
 
     def get_bisect(self):
         return bisect.bisect_right, -1
 
 
 class TestCompiledBisectPathRight(TestBisectPathRight):
-    """Run all Bisect Path tests against _bisect_path_right_c"""
+    """Run all Bisect Path tests against _bisect_path_right"""
 
-    _test_needs_features = [CompiledDirstateHelpersFeature]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_bisect_path(self):
-        from bzrlib._dirstate_helpers_c import _bisect_path_right_c
-        return _bisect_path_right_c
+        from bzrlib._dirstate_helpers_pyx import _bisect_path_right
+        return _bisect_path_right
 
 
 class TestBisectDirblock(tests.TestCase):
@@ -256,8 +295,8 @@ class TestBisectDirblock(tests.TestCase):
 
     def get_bisect_dirblock(self):
         """Return an implementation of bisect_dirblock"""
-        from bzrlib._dirstate_helpers_py import bisect_dirblock_py
-        return bisect_dirblock_py
+        from bzrlib._dirstate_helpers_py import bisect_dirblock
+        return bisect_dirblock
 
     def assertBisect(self, dirblocks, split_dirblocks, path, *args, **kwargs):
         """Assert that bisect_split works like bisect_left on the split paths.
@@ -347,11 +386,11 @@ class TestCompiledBisectDirblock(TestBisectDirblock):
     compiled version.
     """
 
-    _test_needs_features = [CompiledDirstateHelpersFeature]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_bisect_dirblock(self):
-        from bzrlib._dirstate_helpers_c import bisect_dirblock_c
-        return bisect_dirblock_c
+        from bzrlib._dirstate_helpers_pyx import bisect_dirblock
+        return bisect_dirblock
 
 
 class TestCmpByDirs(tests.TestCase):
@@ -366,8 +405,8 @@ class TestCmpByDirs(tests.TestCase):
 
     def get_cmp_by_dirs(self):
         """Get a specific implementation of cmp_by_dirs."""
-        from bzrlib._dirstate_helpers_py import cmp_by_dirs_py
-        return cmp_by_dirs_py
+        from bzrlib._dirstate_helpers_py import cmp_by_dirs
+        return cmp_by_dirs
 
     def assertCmpByDirs(self, expected, str1, str2):
         """Compare the two strings, in both directions.
@@ -469,11 +508,11 @@ class TestCmpByDirs(tests.TestCase):
 class TestCompiledCmpByDirs(TestCmpByDirs):
     """Test the pyrex implementation of cmp_by_dirs"""
 
-    _test_needs_features = [CompiledDirstateHelpersFeature]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_cmp_by_dirs(self):
-        from bzrlib._dirstate_helpers_c import cmp_by_dirs_c
-        return cmp_by_dirs_c
+        from bzrlib._dirstate_helpers_pyx import cmp_by_dirs
+        return cmp_by_dirs
 
 
 class TestCmpPathByDirblock(tests.TestCase):
@@ -488,8 +527,8 @@ class TestCmpPathByDirblock(tests.TestCase):
 
     def get_cmp_path_by_dirblock(self):
         """Get a specific implementation of _cmp_path_by_dirblock."""
-        from bzrlib._dirstate_helpers_py import _cmp_path_by_dirblock_py
-        return _cmp_path_by_dirblock_py
+        from bzrlib._dirstate_helpers_py import _cmp_path_by_dirblock
+        return _cmp_path_by_dirblock
 
     def assertCmpPathByDirblock(self, paths):
         """Compare all paths and make sure they evaluate to the correct order.
@@ -620,20 +659,20 @@ class TestCmpPathByDirblock(tests.TestCase):
 class TestCompiledCmpPathByDirblock(TestCmpPathByDirblock):
     """Test the pyrex implementation of _cmp_path_by_dirblock"""
 
-    _test_needs_features = [CompiledDirstateHelpersFeature]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_cmp_by_dirs(self):
-        from bzrlib._dirstate_helpers_c import _cmp_path_by_dirblock_c
-        return _cmp_path_by_dirblock_c
+        from bzrlib._dirstate_helpers_pyx import _cmp_path_by_dirblock
+        return _cmp_path_by_dirblock
 
 
 class TestMemRChr(tests.TestCase):
     """Test memrchr functionality"""
 
-    _test_needs_features = [CompiledDirstateHelpersFeature]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def assertMemRChr(self, expected, s, c):
-        from bzrlib._dirstate_helpers_c import _py_memrchr
+        from bzrlib._dirstate_helpers_pyx import _py_memrchr
         self.assertEqual(expected, _py_memrchr(s, c))
 
     def test_missing(self):
@@ -681,8 +720,8 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
     """
 
     def get_read_dirblocks(self):
-        from bzrlib._dirstate_helpers_py import _read_dirblocks_py
-        return _read_dirblocks_py
+        from bzrlib._dirstate_helpers_py import _read_dirblocks
+        return _read_dirblocks
 
     def test_smoketest(self):
         """Make sure that we can create and read back a simple file."""
@@ -698,13 +737,17 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 
     def test_trailing_garbage(self):
         tree, state, expected = self.create_basic_dirstate()
-        # We can modify the file as long as it hasn't been read yet.
+        # On Linux, we can write extra data as long as we haven't read yet, but
+        # on Win32, if you've opened the file with FILE_SHARE_READ, trying to
+        # open it in append mode will fail.
+        state.unlock()
         f = open('dirstate', 'ab')
         try:
             # Add bogus trailing garbage
             f.write('bogus\n')
         finally:
             f.close()
+            state.lock_read()
         e = self.assertRaises(errors.DirstateCorrupt,
                               state._read_dirblocks_if_needed)
         # Make sure we mention the bogus characters in the error
@@ -714,72 +757,66 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 class TestCompiledReadDirblocks(TestReadDirblocks):
     """Test the pyrex implementation of _read_dirblocks"""
 
-    _test_needs_features = [CompiledDirstateHelpersFeature]
+    _test_needs_features = [compiled_dirstate_helpers_feature]
 
     def get_read_dirblocks(self):
-        from bzrlib._dirstate_helpers_c import _read_dirblocks_c
-        return _read_dirblocks_c
+        from bzrlib._dirstate_helpers_pyx import _read_dirblocks
+        return _read_dirblocks
 
 
 class TestUsingCompiledIfAvailable(tests.TestCase):
     """Check that any compiled functions that are available are the default.
 
     It is possible to have typos, etc in the import line, such that
-    _dirstate_helpers_c is actually available, but the compiled functions are
+    _dirstate_helpers_pyx is actually available, but the compiled functions are
     not being used.
     """
 
     def test_bisect_dirblock(self):
-        if CompiledDirstateHelpersFeature.available():
-            from bzrlib._dirstate_helpers_c import bisect_dirblock_c
-            self.assertIs(bisect_dirblock_c, dirstate.bisect_dirblock)
+        if compiled_dirstate_helpers_feature.available():
+            from bzrlib._dirstate_helpers_pyx import bisect_dirblock
         else:
-            from bzrlib._dirstate_helpers_py import bisect_dirblock_py
-            self.assertIs(bisect_dirblock_py, dirstate.bisect_dirblock)
+            from bzrlib._dirstate_helpers_py import bisect_dirblock
+        self.assertIs(bisect_dirblock, dirstate.bisect_dirblock)
 
     def test__bisect_path_left(self):
-        if CompiledDirstateHelpersFeature.available():
-            from bzrlib._dirstate_helpers_c import _bisect_path_left_c
-            self.assertIs(_bisect_path_left_c, dirstate._bisect_path_left)
+        if compiled_dirstate_helpers_feature.available():
+            from bzrlib._dirstate_helpers_pyx import _bisect_path_left
         else:
-            from bzrlib._dirstate_helpers_py import _bisect_path_left_py
-            self.assertIs(_bisect_path_left_py, dirstate._bisect_path_left)
+            from bzrlib._dirstate_helpers_py import _bisect_path_left
+        self.assertIs(_bisect_path_left, dirstate._bisect_path_left)
 
     def test__bisect_path_right(self):
-        if CompiledDirstateHelpersFeature.available():
-            from bzrlib._dirstate_helpers_c import _bisect_path_right_c
-            self.assertIs(_bisect_path_right_c, dirstate._bisect_path_right)
+        if compiled_dirstate_helpers_feature.available():
+            from bzrlib._dirstate_helpers_pyx import _bisect_path_right
         else:
-            from bzrlib._dirstate_helpers_py import _bisect_path_right_py
-            self.assertIs(_bisect_path_right_py, dirstate._bisect_path_right)
+            from bzrlib._dirstate_helpers_py import _bisect_path_right
+        self.assertIs(_bisect_path_right, dirstate._bisect_path_right)
 
     def test_cmp_by_dirs(self):
-        if CompiledDirstateHelpersFeature.available():
-            from bzrlib._dirstate_helpers_c import cmp_by_dirs_c
-            self.assertIs(cmp_by_dirs_c, dirstate.cmp_by_dirs)
+        if compiled_dirstate_helpers_feature.available():
+            from bzrlib._dirstate_helpers_pyx import cmp_by_dirs
         else:
-            from bzrlib._dirstate_helpers_py import cmp_by_dirs_py
-            self.assertIs(cmp_by_dirs_py, dirstate.cmp_by_dirs)
+            from bzrlib._dirstate_helpers_py import cmp_by_dirs
+        self.assertIs(cmp_by_dirs, dirstate.cmp_by_dirs)
 
     def test__read_dirblocks(self):
-        if CompiledDirstateHelpersFeature.available():
-            from bzrlib._dirstate_helpers_c import _read_dirblocks_c
-            self.assertIs(_read_dirblocks_c, dirstate._read_dirblocks)
+        if compiled_dirstate_helpers_feature.available():
+            from bzrlib._dirstate_helpers_pyx import _read_dirblocks
         else:
-            from bzrlib._dirstate_helpers_py import _read_dirblocks_py
-            self.assertIs(_read_dirblocks_py, dirstate._read_dirblocks)
+            from bzrlib._dirstate_helpers_py import _read_dirblocks
+        self.assertIs(_read_dirblocks, dirstate._read_dirblocks)
 
     def test_update_entry(self):
-        if CompiledDirstateHelpersFeature.available():
-            from bzrlib._dirstate_helpers_c import update_entry
-            self.assertIs(update_entry, dirstate.update_entry)
+        if compiled_dirstate_helpers_feature.available():
+            from bzrlib._dirstate_helpers_pyx import update_entry
         else:
-            from bzrlib.dirstate import py_update_entry
-            self.assertIs(py_update_entry, dirstate.py_update_entry)
+            from bzrlib.dirstate import update_entry
+        self.assertIs(update_entry, dirstate.update_entry)
 
     def test_process_entry(self):
-        if CompiledDirstateHelpersFeature.available():
-            from bzrlib._dirstate_helpers_c import ProcessEntryC
+        if compiled_dirstate_helpers_feature.available():
+            from bzrlib._dirstate_helpers_pyx import ProcessEntryC
             self.assertIs(ProcessEntryC, dirstate._process_entry)
         else:
             from bzrlib.dirstate import ProcessEntryPython
@@ -789,17 +826,24 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
 class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     """Test the DirState.update_entry functions"""
 
+    # Set by load_tests
+    update_entry = None
+
+    def setUp(self):
+        super(TestUpdateEntry, self).setUp()
+        orig = dirstate.update_entry
+        def cleanup():
+            dirstate.update_entry = orig
+        self.addCleanup(cleanup)
+        dirstate.update_entry = self.update_entry
+
     def get_state_with_a(self):
         """Create a DirState tracking a single object named 'a'"""
         state = test_dirstate.InstrumentedDirState.initialize('dirstate')
         self.addCleanup(state.unlock)
         state.add('a', 'a-id', 'file', None, '')
         entry = state._get_entry(0, path_utf8='a')
-        self.set_update_entry()
         return state, entry
-
-    def set_update_entry(self):
-        self.update_entry = dirstate.py_update_entry
 
     def test_observed_sha1_cachable(self):
         state, entry = self.get_state_with_a()
@@ -920,7 +964,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_entry_symlink(self):
         """Update entry should read symlinks."""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
@@ -1020,6 +1064,16 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
 
+    def test_update_entry_tree_reference(self):
+        state = test_dirstate.InstrumentedDirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+        state.add('r', 'r-id', 'tree-reference', None, '')
+        self.build_tree(['r/'])
+        entry = state._get_entry(0, path_utf8='r')
+        self.do_update_entry(state, entry, 'r')
+        entry = state._get_entry(0, path_utf8='r')
+        self.assertEqual('t', entry[1][0][0])
+
     def create_and_test_file(self, state, entry):
         """Create a file at 'a' and verify the state finds it during update.
 
@@ -1052,6 +1106,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
         return packed_stat
 
+    # FIXME: Add unicode version
     def create_and_test_symlink(self, state, entry):
         """Create a symlink at 'a' and verify the state finds it.
 
@@ -1086,7 +1141,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_file_to_symlink(self):
         """File becomes a symlink"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The file sha1 won't be cached unless the file is old
         state.adjust_time(+10)
@@ -1105,7 +1160,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_dir_to_symlink(self):
         """Directory becomes a symlink"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
         state.adjust_time(+10)
@@ -1115,7 +1170,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_symlink_to_file(self):
         """Symlink becomes a file"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The symlink and file info won't be cached unless old
         state.adjust_time(+10)
@@ -1125,7 +1180,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_update_symlink_to_dir(self):
         """Symlink becomes a directory"""
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         state, entry = self.get_state_with_a()
         # The symlink target won't be cached if it isn't old
         state.adjust_time(+10)
@@ -1154,20 +1209,125 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual([('f', '', 14, True, dirstate.DirState.NULLSTAT)],
                          entry[1])
 
-        # Make the disk object look old enough to cache (but it won't cache the sha
-        # as it is a new file).
+        # Make the disk object look old enough to cache (but it won't cache the
+        # sha as it is a new file).
         state.adjust_time(+20)
         digest = 'b50e5406bb5e153ebbeb20268fcf37c87e1ecfb6'
         self.update_entry(state, entry, abspath='a', stat_value=stat_value)
         self.assertEqual([('f', '', 14, True, dirstate.DirState.NULLSTAT)],
             entry[1])
 
+    def _prepare_tree(self):
+        # Create a tree
+        text = 'Hello World\n'
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/a file', text)])
+        tree.add('a file', 'a-file-id')
+        # Note: dirstate does not sha prior to the first commit
+        # so commit now in order for the test to work
+        tree.commit('first')
+        return tree, text
 
-class TestCompiledUpdateEntry(TestUpdateEntry):
-    """Test the pyrex implementation of _read_dirblocks"""
+    def test_sha1provider_sha1_used(self):
+        tree, text = self._prepare_tree()
+        state = dirstate.DirState.from_tree(tree, 'dirstate',
+            UppercaseSHA1Provider())
+        self.addCleanup(state.unlock)
+        expected_sha = osutils.sha_string(text.upper() + "foo")
+        entry = state._get_entry(0, path_utf8='a file')
+        state._sha_cutoff_time()
+        state._cutoff_time += 10
+        sha1 = self.update_entry(state, entry, 'tree/a file',
+                                 os.lstat('tree/a file'))
+        self.assertEqual(expected_sha, sha1)
 
-    _test_needs_features = [CompiledDirstateHelpersFeature]
+    def test_sha1provider_stat_and_sha1_used(self):
+        tree, text = self._prepare_tree()
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        state = tree._current_dirstate()
+        state._sha1_provider = UppercaseSHA1Provider()
+        # If we used the standard provider, it would look like nothing has
+        # changed
+        file_ids_changed = [change[0] for change
+                            in tree.iter_changes(tree.basis_tree())]
+        self.assertEqual(['a-file-id'], file_ids_changed)
 
-    def set_update_entry(self):
-        from bzrlib._dirstate_helpers_c import update_entry
-        self.update_entry = update_entry
+
+class UppercaseSHA1Provider(dirstate.SHA1Provider):
+    """A custom SHA1Provider."""
+
+    def sha1(self, abspath):
+        return self.stat_and_sha1(abspath)[1]
+
+    def stat_and_sha1(self, abspath):
+        file_obj = file(abspath, 'rb')
+        try:
+            statvalue = os.fstat(file_obj.fileno())
+            text = ''.join(file_obj.readlines())
+            sha1 = osutils.sha_string(text.upper() + "foo")
+        finally:
+            file_obj.close()
+        return statvalue, sha1
+
+
+class TestProcessEntry(test_dirstate.TestCaseWithDirState):
+
+    # Set by load_tests
+    _process_entry = None
+
+    def setUp(self):
+        super(TestProcessEntry, self).setUp()
+        orig = dirstate._process_entry
+        def cleanup():
+            dirstate._process_entry = orig
+        self.addCleanup(cleanup)
+        dirstate._process_entry = self._process_entry
+
+    def assertChangedFileIds(self, expected, tree):
+        tree.lock_read()
+        try:
+            file_ids = [info[0] for info
+                        in tree.iter_changes(tree.basis_tree())]
+        finally:
+            tree.unlock()
+        self.assertEqual(sorted(expected), sorted(file_ids))
+
+    def test_exceptions_raised(self):
+        # This is a direct test of bug #495023, it relies on osutils.is_inside
+        # getting called in an inner function. Which makes it a bit brittle,
+        # but at least it does reproduce the bug.
+        def is_inside_raises(*args, **kwargs):
+            raise RuntimeError('stop this')
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file', 'tree/dir/', 'tree/dir/sub',
+                         'tree/dir2/', 'tree/dir2/sub2'])
+        tree.add(['file', 'dir', 'dir/sub', 'dir2', 'dir2/sub2'])
+        tree.commit('first commit')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        basis_tree = tree.basis_tree()
+        orig = osutils.is_inside
+        self.addCleanup(setattr, osutils, 'is_inside', orig)
+        osutils.is_inside = is_inside_raises
+        self.assertListRaises(RuntimeError, tree.iter_changes, basis_tree)
+
+    def test_simple_changes(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        tree.add(['file'], ['file-id'])
+        self.assertChangedFileIds([tree.get_root_id(), 'file-id'], tree)
+        tree.commit('one')
+        self.assertChangedFileIds([], tree)
+
+    def test_sha1provider_stat_and_sha1_used(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file'])
+        tree.add(['file'], ['file-id'])
+        tree.commit('one')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        state = tree._current_dirstate()
+        state._sha1_provider = UppercaseSHA1Provider()
+        self.assertChangedFileIds(['file-id'], tree)
+

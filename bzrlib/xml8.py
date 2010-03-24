@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import cStringIO
 import re
@@ -24,7 +24,12 @@ from bzrlib import (
     revision as _mod_revision,
     trace,
     )
-from bzrlib.xml_serializer import SubElement, Element, Serializer
+from bzrlib.xml_serializer import (
+    Element,
+    SubElement,
+    XMLSerializer,
+    escape_invalid_chars,
+    )
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
@@ -92,7 +97,7 @@ def _encode_and_escape(unicode_or_utf8_str, _map=_to_escaped_map):
     # to check if None, rather than try/KeyError
     text = _map.get(unicode_or_utf8_str)
     if text is None:
-        if unicode_or_utf8_str.__class__ == unicode:
+        if unicode_or_utf8_str.__class__ is unicode:
             # The alternative policy is to do a regular UTF8 encoding
             # and then escape only XML meta characters.
             # Performance is equivalent once you use cache_utf8. *However*
@@ -128,10 +133,10 @@ def _get_utf8_or_ascii(a_str,
     # This is fairly optimized because we know what cElementTree does, this is
     # not meant as a generic function for all cases. Because it is possible for
     # an 8-bit string to not be ascii or valid utf8.
-    if a_str.__class__ == unicode:
+    if a_str.__class__ is unicode:
         return _encode_utf8(a_str)
     else:
-        return _get_cached_ascii(a_str)
+        return intern(a_str)
 
 
 def _clear_cache():
@@ -139,7 +144,7 @@ def _clear_cache():
     _to_escaped_map.clear()
 
 
-class Serializer_v8(Serializer):
+class Serializer_v8(XMLSerializer):
     """This serialiser adds rich roots.
 
     Its revision format number matches its inventory number.
@@ -160,12 +165,12 @@ class Serializer_v8(Serializer):
         """Extension point for subclasses to check during serialisation.
 
         :param inv: An inventory about to be serialised, to be checked.
-        :raises: AssertionError if an error has occured.
+        :raises: AssertionError if an error has occurred.
         """
         if inv.revision_id is None:
-            raise AssertionError()
+            raise AssertionError("inv.revision_id is None")
         if inv.root.revision is None:
-            raise AssertionError()
+            raise AssertionError("inv.root.revision is None")
 
     def _check_cache_size(self, inv_size, entry_cache):
         """Check that the entry_cache is large enough.
@@ -341,7 +346,7 @@ class Serializer_v8(Serializer):
             root.set('timezone', str(rev.timezone))
         root.text = '\n'
         msg = SubElement(root, 'message')
-        msg.text = rev.message
+        msg.text = escape_invalid_chars(rev.message)[0]
         msg.tail = '\n'
         if rev.parent_ids:
             pelts = SubElement(root, 'parents')
@@ -366,7 +371,8 @@ class Serializer_v8(Serializer):
             prop_elt.tail = '\n'
         top_elt.tail = '\n'
 
-    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None):
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
+                          return_from_cache=False):
         """Construct from XML Element"""
         if elt.tag != 'inventory':
             raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
@@ -379,12 +385,13 @@ class Serializer_v8(Serializer):
             revision_id = cache_utf8.encode(revision_id)
         inv = inventory.Inventory(root_id=None, revision_id=revision_id)
         for e in elt:
-            ie = self._unpack_entry(e, entry_cache=entry_cache)
+            ie = self._unpack_entry(e, entry_cache=entry_cache,
+                                    return_from_cache=return_from_cache)
             inv.add(ie)
         self._check_cache_size(len(inv), entry_cache)
         return inv
 
-    def _unpack_entry(self, elt, entry_cache=None):
+    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         elt_get = elt.get
         file_id = elt_get('file_id')
         revision = elt_get('revision')
@@ -422,15 +429,16 @@ class Serializer_v8(Serializer):
         if entry_cache is not None and revision is not None:
             key = (file_id, revision)
             try:
-                # We copy it, because some operatations may mutate it
+                # We copy it, because some operations may mutate it
                 cached_ie = entry_cache[key]
             except KeyError:
                 pass
             else:
                 # Only copying directory entries drops us 2.85s => 2.35s
-                # if cached_ie.kind == 'directory':
-                #     return cached_ie.copy()
-                # return cached_ie
+                if return_from_cache:
+                    if cached_ie.kind == 'directory':
+                        return cached_ie.copy()
+                    return cached_ie
                 return cached_ie.copy()
 
         kind = elt.tag

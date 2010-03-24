@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     errors,
@@ -22,6 +22,7 @@ from bzrlib import (
     )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.symbol_versioning import deprecated_in
 
 
 # Ancestry 1:
@@ -525,6 +526,19 @@ class TestGraph(TestCaseWithMemoryTransport):
         graph = self.make_graph(history_shortcut)
         self.assertEqual(set(['rev2b']), graph.find_lca('rev3a', 'rev3b'))
 
+    def test_lefthand_distance_smoke(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        graph = self.make_graph(history_shortcut)
+        distance_graph = graph.find_lefthand_distances(['rev3b', 'rev2a'])
+        self.assertEqual({'rev2a': 2, 'rev3b': 3}, distance_graph)
+
+    def test_lefthand_distance_ghosts(self):
+        """A simple does it work test for graph.lefthand_distance(keys)."""
+        nodes = {'nonghost':[NULL_REVISION], 'toghost':['ghost']}
+        graph = self.make_graph(nodes)
+        distance_graph = graph.find_lefthand_distances(['nonghost', 'toghost'])
+        self.assertEqual({'nonghost': 1, 'toghost': -1}, distance_graph)
+
     def test_recursive_unique_lca(self):
         """Test finding a unique least common ancestor.
 
@@ -661,10 +675,36 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual((set(['e']), set(['f', 'g'])),
                          graph.find_difference('e', 'f'))
 
+
     def test_stacked_parents_provider(self):
         parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
         parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = _mod_graph._StackedParentsProvider([parents1, parents2])
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
+                         stacked.get_parent_map(['rev1', 'rev2']))
+        self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
+                         stacked.get_parent_map(['rev2', 'rev1']))
+        self.assertEqual({'rev2':['rev3']},
+                         stacked.get_parent_map(['rev2', 'rev2']))
+        self.assertEqual({'rev1':['rev4']},
+                         stacked.get_parent_map(['rev1', 'rev1']))
+    
+    def test_stacked_parents_provider_overlapping(self):
+        # rev2 is availible in both providers.
+        # 1
+        # |
+        # 2
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        parents2 = _mod_graph.DictParentsProvider({'rev2': ['rev1']})
+        stacked = _mod_graph.StackedParentsProvider([parents1, parents2])
+        self.assertEqual({'rev2': ['rev1']},
+                         stacked.get_parent_map(['rev2']))
+
+    def test__stacked_parents_provider_deprecated(self):
+        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
+        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
+        stacked = self.applyDeprecated(deprecated_in((1, 16, 0)),
+                    _mod_graph._StackedParentsProvider, [parents1, parents2])
         self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
                          stacked.get_parent_map(['rev1', 'rev2']))
         self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
@@ -992,6 +1032,9 @@ class TestGraph(TestCaseWithMemoryTransport):
         :param next: A callable to advance the search.
         """
         for seen, recipe, included_keys, starts, stops in instructions:
+            # Adjust for recipe contract changes that don't vary for all the
+            # current tests.
+            recipe = ('search',) + recipe
             next()
             if starts is not None:
                 search.start_searching(starts)
@@ -1011,7 +1054,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         search = graph._make_breadth_first_searcher(['head'])
         # At the start, nothing has been seen, to its all excluded:
         result = search.get_result()
-        self.assertEqual((set(['head']), set(['head']), 0),
+        self.assertEqual(('search', set(['head']), set(['head']), 0),
             result.get_recipe())
         self.assertEqual(set(), result.get_keys())
         self.assertEqual(set(), search.seen)
@@ -1043,7 +1086,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         search.start_searching(['head'])
         # head has been seen:
         result = search.get_result()
-        self.assertEqual((set(['head']), set(['child']), 1),
+        self.assertEqual(('search', set(['head']), set(['child']), 1),
             result.get_recipe())
         self.assertEqual(set(['head']), result.get_keys())
         self.assertEqual(set(['head']), search.seen)
@@ -1203,7 +1246,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next)
         self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
         result = search.get_result()
-        self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
+        self.assertEqual(('search', set(['ghost', 'head']), set(['ghost']), 2),
             result.get_recipe())
         self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
         # using next_with_ghosts:
@@ -1212,7 +1255,7 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertRaises(StopIteration, search.next)
         self.assertEqual(set(['head', 'ghost', NULL_REVISION]), search.seen)
         result = search.get_result()
-        self.assertEqual((set(['ghost', 'head']), set(['ghost']), 2),
+        self.assertEqual(('search', set(['ghost', 'head']), set(['ghost']), 2),
             result.get_recipe())
         self.assertEqual(set(['head', NULL_REVISION]), result.get_keys())
 
@@ -1382,6 +1425,12 @@ class TestFindMergeOrder(TestGraphBase):
 
 
 class TestCachingParentsProvider(tests.TestCase):
+    """These tests run with:
+
+    self.inst_pp, a recording parents provider with a graph of a->b, and b is a
+    ghost.
+    self.caching_pp, a CachingParentsProvider layered on inst_pp.
+    """
 
     def setUp(self):
         super(TestCachingParentsProvider, self).setUp()
@@ -1406,7 +1455,6 @@ class TestCachingParentsProvider(tests.TestCase):
         self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
         # No new calls
         self.assertEqual(['b'], self.inst_pp.calls)
-        self.assertEqual({'b':None}, self.caching_pp._cache)
 
     def test_get_parent_map_mixed(self):
         """Anything that can be returned from cache, should be"""
@@ -1423,6 +1471,13 @@ class TestCachingParentsProvider(tests.TestCase):
         # Use sorted because we don't care about the order, just that each is
         # only present 1 time.
         self.assertEqual(['a', 'b'], sorted(self.inst_pp.calls))
+
+    def test_note_missing_key(self):
+        """After noting that a key is missing it is cached."""
+        self.caching_pp.note_missing_key('b')
+        self.assertEqual({}, self.caching_pp.get_parent_map(['b']))
+        self.assertEqual([], self.inst_pp.calls)
+        self.assertEqual(set(['b']), self.caching_pp.missing_keys)
 
 
 class TestCachingParentsProviderExtras(tests.TestCaseWithTransport):
@@ -1525,3 +1580,111 @@ class TestCollapseLinearRegions(tests.TestCase):
         # 2 and 3 cannot be removed because 1 has 2 parents
         d = {1:[2, 3], 2:[4], 4:[6], 3:[5], 5:[6], 6:[7], 7:[]}
         self.assertCollapsed(d, d)
+
+
+class TestGraphThunkIdsToKeys(tests.TestCase):
+
+    def test_heads(self):
+        # A
+        # |\
+        # B C
+        # |/
+        # D
+        d = {('D',): [('B',), ('C',)], ('C',):[('A',)],
+             ('B',): [('A',)], ('A',): []}
+        g = _mod_graph.Graph(_mod_graph.DictParentsProvider(d))
+        graph_thunk = _mod_graph.GraphThunkIdsToKeys(g)
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'A'])))
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'B'])))
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'C'])))
+        self.assertEqual(['B', 'C'], sorted(graph_thunk.heads(['B', 'C'])))
+
+
+class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):
+    """Tests for bzrlib.graph.PendingAncestryResult."""
+
+    def test_get_keys(self):
+        builder = self.make_branch_builder('b')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev-2', ['rev-1'], [])
+        builder.finish_series()
+        repo = builder.get_branch().repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        result = _mod_graph.PendingAncestryResult(['rev-2'], repo)
+        self.assertEqual(set(['rev-1', 'rev-2']), set(result.get_keys()))
+
+    def test_get_keys_excludes_ghosts(self):
+        builder = self.make_branch_builder('b')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('rev-2', ['rev-1', 'ghost'], [])
+        builder.finish_series()
+        repo = builder.get_branch().repository
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        result = _mod_graph.PendingAncestryResult(['rev-2'], repo)
+        self.assertEqual(sorted(['rev-1', 'rev-2']), sorted(result.get_keys()))
+
+    def test_get_keys_excludes_null(self):
+        # Make a 'graph' with an iter_ancestry that returns NULL_REVISION
+        # somewhere other than the last element, which can happen in real
+        # ancestries.
+        class StubGraph(object):
+            def iter_ancestry(self, keys):
+                return [(NULL_REVISION, ()), ('foo', (NULL_REVISION,))]
+        result = _mod_graph.PendingAncestryResult(['rev-3'], None)
+        result_keys = result._get_keys(StubGraph())
+        # Only the non-null keys from the ancestry appear.
+        self.assertEqual(set(['foo']), set(result_keys))
+
+
+class TestPendingAncestryResultRefine(TestGraphBase):
+
+    def test_refine(self):
+        # Used when pulling from a stacked repository, so test some revisions
+        # being satisfied from the stacking branch.
+        g = self.make_graph(
+            {"tip":["mid"], "mid":["base"], "tag":["base"],
+             "base":[NULL_REVISION], NULL_REVISION:[]})
+        result = _mod_graph.PendingAncestryResult(['tip', 'tag'], None)
+        result = result.refine(set(['tip']), set(['mid']))
+        self.assertEqual(set(['mid', 'tag']), result.heads)
+        result = result.refine(set(['mid', 'tag', 'base']),
+            set([NULL_REVISION]))
+        self.assertEqual(set([NULL_REVISION]), result.heads)
+        self.assertTrue(result.is_empty())
+
+
+class TestSearchResultRefine(TestGraphBase):
+
+    def test_refine(self):
+        # Used when pulling from a stacked repository, so test some revisions
+        # being satisfied from the stacking branch.
+        g = self.make_graph(
+            {"tip":["mid"], "mid":["base"], "tag":["base"],
+             "base":[NULL_REVISION], NULL_REVISION:[]})
+        result = _mod_graph.SearchResult(set(['tip', 'tag']),
+            set([NULL_REVISION]), 4, set(['tip', 'mid', 'tag', 'base']))
+        result = result.refine(set(['tip']), set(['mid']))
+        recipe = result.get_recipe()
+        # We should be starting from tag (original head) and mid (seen ref)
+        self.assertEqual(set(['mid', 'tag']), recipe[1])
+        # We should be stopping at NULL (original stop) and tip (seen head)
+        self.assertEqual(set([NULL_REVISION, 'tip']), recipe[2])
+        self.assertEqual(3, recipe[3])
+        result = result.refine(set(['mid', 'tag', 'base']),
+            set([NULL_REVISION]))
+        recipe = result.get_recipe()
+        # We should be starting from nothing (NULL was known as a cut point)
+        self.assertEqual(set([]), recipe[1])
+        # We should be stopping at NULL (original stop) and tip (seen head) and
+        # tag (seen head) and mid(seen mid-point head). We could come back and
+        # define this as not including mid, for minimal results, but it is
+        # still 'correct' to include mid, and simpler/easier.
+        self.assertEqual(set([NULL_REVISION, 'tip', 'tag', 'mid']), recipe[2])
+        self.assertEqual(0, recipe[3])
+        self.assertTrue(result.is_empty())

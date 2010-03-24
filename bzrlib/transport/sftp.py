@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport over SFTP, using paramiko."""
 
@@ -406,6 +406,8 @@ class SFTPTransport(ConnectedTransport):
         """
         try:
             self._get_sftp().stat(self._remote_path(relpath))
+            # stat result is about 20 bytes, let's say
+            self._report_activity(20, 'read')
             return True
         except IOError:
             return False
@@ -416,6 +418,11 @@ class SFTPTransport(ConnectedTransport):
         :param relpath: The relative path to the file
         """
         try:
+            # FIXME: by returning the file directly, we don't pass this
+            # through to report_activity.  We could try wrapping the object
+            # before it's returned.  For readv and get_bytes it's handled in
+            # the higher-level function.
+            # -- mbp 20090126
             path = self._remote_path(relpath)
             f = self._get_sftp().file(path, mode='rb')
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):
@@ -612,6 +619,7 @@ class SFTPTransport(ConnectedTransport):
 
     def iter_files_recursive(self):
         """Walk the relative paths of all files in this transport."""
+        # progress is handled by list_dir
         queue = list(self.list_dir('.'))
         while queue:
             relpath = queue.pop(0)
@@ -628,7 +636,9 @@ class SFTPTransport(ConnectedTransport):
         else:
             local_mode = mode
         try:
+            self._report_activity(len(abspath), 'write')
             self._get_sftp().mkdir(abspath, local_mode)
+            self._report_activity(1, 'read')
             if mode is not None:
                 # chmod a dir through sftp will erase any sgid bit set
                 # on the server side.  So, if the bit mode are already
@@ -701,6 +711,12 @@ class SFTPTransport(ConnectedTransport):
             # strange but true, for the paramiko server.
             if (e.args == ('Failure',)):
                 raise failure_exc(path, str(e) + more_info)
+            # Can be something like args = ('Directory not empty:
+            # '/srv/bazaar.launchpad.net/blah...: '
+            # [Errno 39] Directory not empty',)
+            if (e.args[0].startswith('Directory not empty: ')
+                or getattr(e, 'errno', None) == errno.ENOTEMPTY):
+                raise errors.DirectoryNotEmpty(path, str(e))
             mutter('Raising exception with args %s', e.args)
         if getattr(e, 'errno', None) is not None:
             mutter('Raising exception with errno %s', e.errno)
@@ -779,6 +795,7 @@ class SFTPTransport(ConnectedTransport):
         path = self._remote_path(relpath)
         try:
             entries = self._get_sftp().listdir(path)
+            self._report_activity(sum(map(len, entries)), 'read')
         except (IOError, paramiko.SSHException), e:
             self._translate_io_exception(e, path, ': failed to list_dir')
         return [urlutils.escape(entry) for entry in entries]
@@ -900,7 +917,7 @@ class SocketListener(threading.Thread):
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.bind(('localhost', 0))
         self._socket.listen(1)
-        self.port = self._socket.getsockname()[1]
+        self.host, self.port = self._socket.getsockname()[:2]
         self._stop_event = threading.Event()
 
     def stop(self):
@@ -1028,7 +1045,8 @@ class SFTPServer(Server):
 
     def _get_sftp_url(self, path):
         """Calculate an sftp url to this server for path."""
-        return 'sftp://foo:bar@localhost:%d/%s' % (self._listener.port, path)
+        return 'sftp://foo:bar@%s:%d/%s' % (self._listener.host,
+                                            self._listener.port, path)
 
     def log(self, message):
         """StubServer uses this to log when a new server is created."""
@@ -1060,7 +1078,7 @@ class SFTPServer(Server):
         ssh_server.start_server(event, server)
         event.wait(5.0)
 
-    def setUp(self, backing_server=None):
+    def start_server(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
         # disk.
         if not (backing_server is None or
@@ -1085,8 +1103,7 @@ class SFTPServer(Server):
         self._listener.setDaemon(True)
         self._listener.start()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         self._listener.stop()
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._original_vendor
 
@@ -1185,9 +1202,9 @@ class SFTPSiblingAbsoluteServer(SFTPAbsoluteServer):
     It does this by serving from a deeply-nested directory that doesn't exist.
     """
 
-    def setUp(self, backing_server=None):
+    def start_server(self, backing_server=None):
         self._server_homedir = '/dev/noone/runs/tests/here'
-        super(SFTPSiblingAbsoluteServer, self).setUp(backing_server)
+        super(SFTPSiblingAbsoluteServer, self).start_server(backing_server)
 
 
 def get_test_permutations():

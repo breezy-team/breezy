@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that decorates another transport.
 
@@ -184,8 +184,8 @@ class DecoratorServer(Server):
     get_decorator_class method.
     """
 
-    def setUp(self, server=None):
-        """See bzrlib.transport.Server.setUp.
+    def start_server(self, server=None):
+        """See bzrlib.transport.Server.start_server.
 
         :server: decorate the urls given by server. If not provided a
         LocalServer is created.
@@ -197,12 +197,11 @@ class DecoratorServer(Server):
             from bzrlib.transport.local import LocalURLServer
             self._made_server = True
             self._server = LocalURLServer()
-            self._server.setUp()
+            self._server.start_server()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         if self._made_server:
-            self._server.tearDown()
+            self._server.stop_server()
 
     def get_decorator_class(self):
         """Return the class of the decorators we should be constructing."""

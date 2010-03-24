@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """WSGI application for bzr HTTP smart server.
 
@@ -106,7 +106,7 @@ class SmartWSGIApp(object):
         # e.g. consider a smart server request for "get /etc/passwd" or
         # something.
         self.chroot_server = chroot.ChrootServer(backing_transport)
-        self.chroot_server.setUp()
+        self.chroot_server.start_server()
         self.backing_transport = get_transport(self.chroot_server.get_url())
         self.root_client_path = root_client_path
         # While the chroot server can technically be torn down at this point,
@@ -114,7 +114,7 @@ class SmartWSGIApp(object):
         # protocol dictionary, we don't *just in case* there are parts of
         # bzrlib that will invoke 'get_transport' on urls rather than cloning
         # around the existing transport.
-        #self.chroot_server.tearDown()
+        #self.chroot_server.stop_server()
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""
@@ -176,6 +176,7 @@ class SmartWSGIApp(object):
     def make_request(self, transport, write_func, request_bytes, rcp):
         protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
             request_bytes)
-        server_protocol = protocol_factory(transport, write_func, rcp)
+        server_protocol = protocol_factory(
+            transport, write_func, rcp, self.backing_transport)
         server_protocol.accept_bytes(unused_bytes)
         return server_protocol

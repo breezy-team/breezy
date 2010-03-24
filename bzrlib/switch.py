@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # Original author: David Allouche
 
@@ -22,12 +22,13 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.trace import note
 
 
-def switch(control_dir, to_branch, force=False):
+def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
     """Switch the branch associated with a checkout.
 
     :param control_dir: BzrDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
     :param force: skip the check for local commits in a heavy checkout
+    :param revision_id: revision ID to switch to.
     """
     _check_pending_merges(control_dir, force)
     try:
@@ -36,7 +37,7 @@ def switch(control_dir, to_branch, force=False):
         source_repository = to_branch.repository
     _set_branch_location(control_dir, to_branch, force)
     tree = control_dir.open_workingtree()
-    _update(tree, source_repository)
+    _update(tree, source_repository, quiet, revision_id)
 
 
 def _check_pending_merges(control, force=False):
@@ -79,11 +80,17 @@ def _set_branch_location(control, to_branch, force=False):
             # synchronise the local branch with the new remote branch
             # and bind to it
             possible_transports = []
-            if not force and _any_local_commits(b, possible_transports):
+            try:
+                if not force and _any_local_commits(b, possible_transports):
+                    raise errors.BzrCommandError(
+                        'Cannot switch as local commits found in the checkout. '
+                        'Commit these to the bound branch or use --force to '
+                        'throw them away.')
+            except errors.BoundBranchConnectionFailure, e:
                 raise errors.BzrCommandError(
-                    'Cannot switch as local commits found in the checkout. '
-                    'Commit these to the bound branch or use --force to '
-                    'throw them away.')
+                        'Unable to connect to current master branch %(target)s: '
+                        '%(error)s To switch anyway, use --force.' %
+                        e.__dict__)
             b.set_bound_location(None)
             b.pull(to_branch, overwrite=True,
                 possible_transports=possible_transports)
@@ -112,7 +119,7 @@ def _any_local_commits(this_branch, possible_transports):
     return False
 
 
-def _update(tree, source_repository):
+def _update(tree, source_repository, quiet=False, revision_id=None):
     """Update a working tree to the latest revision of its branch.
 
     :param tree: the working tree
@@ -121,12 +128,16 @@ def _update(tree, source_repository):
     tree.lock_tree_write()
     try:
         to_branch = tree.branch
-        if tree.last_revision() == to_branch.last_revision():
-            note("Tree is up to date at revision %d.", to_branch.revno())
+        if revision_id is None:
+            revision_id = to_branch.last_revision()
+        if tree.last_revision() == revision_id:
+            if not quiet:
+                note("Tree is up to date at revision %d.", to_branch.revno())
             return
         base_tree = source_repository.revision_tree(tree.last_revision())
-        merge.Merge3Merger(tree, tree, base_tree, to_branch.basis_tree())
+        merge.Merge3Merger(tree, tree, base_tree, to_branch.repository.revision_tree(revision_id))
         tree.set_last_revision(to_branch.last_revision())
-        note('Updated to revision %d.' % to_branch.revno())
+        if not quiet:
+            note('Updated to revision %d.' % to_branch.revno())
     finally:
         tree.unlock()

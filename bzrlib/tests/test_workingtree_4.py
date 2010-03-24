@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WorkingTreeFormat4"""
 
@@ -64,7 +64,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             - when the WorkingTree is locked, LockDir can see that
         """
         # this test could be factored into a subclass of tests common to both
-        # format 3 and 4, but for now its not much of an issue as there is only one in common.
+        # format 3 and 4, but for now its not much of an issue as there is only
+        # one in common.
         t = self.get_transport()
         tree = self.make_workingtree()
         self.assertIsDirectory('.bzr', t)
@@ -489,7 +490,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         subtree = self.make_branch_and_tree('dir')
         # the most primitive operation: kind
         self.assertEqual('directory', tree.kind('dir-id'))
-        # a diff against the basis should give us a directory
+        # a diff against the basis should give us a directory and the root (as
+        # the root is new too).
         tree.lock_read()
         expected = [('dir-id',
             (None, u'dir'),
@@ -498,7 +500,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             (None, 'root'),
             (None, u'dir'),
             (None, 'directory'),
-            (None, False))]
+            (None, False)),
+            ('root', (None, u''), True, (False, True), (None, None),
+            (None, u''), (None, 'directory'), (None, 0))]
         self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree(),
             specific_files=['dir'])))
         tree.unlock()
@@ -578,6 +582,23 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual([], changes)
         self.assertEqual(['', 'versioned', 'versioned2'], returned)
 
+    def test_iter_changes_unversioned_error(self):
+        """ Check if a PathsNotVersionedError is correctly raised and the
+            paths list contains all unversioned entries only.
+        """
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/bar', '')])
+        tree.add(['bar'], ['bar-id'])
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        tree_iter_changes = lambda files: [
+            c for c in tree.iter_changes(tree.basis_tree(), specific_files=files,
+                                         require_versioned=True)
+        ]
+        e = self.assertRaises(errors.PathsNotVersionedError,
+                              tree_iter_changes, ['bar', 'foo'])
+        self.assertEqual(e.paths, ['foo'])
+
     def get_tree_with_cachable_file_foo(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['foo'])
@@ -592,6 +613,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         revid = tree.commit('a commit')
         # tree's dirstate should now have a valid stat entry for foo.
         tree.lock_read()
+        self.addCleanup(tree.unlock)
         entry = tree._get_entry(path='foo')
         expected_sha1 = osutils.sha_file_by_name('foo')
         self.assertEqual(expected_sha1, entry[1][0][1])
@@ -659,7 +681,8 @@ class TestCorruptDirstate(TestCaseWithTransport):
         # Create a corrupted dirstate
         tree.lock_write()
         try:
-            tree.commit('init') # We need a parent, or we always compare with NULL
+            # We need a parent, or we always compare with NULL
+            tree.commit('init')
             state = tree.current_dirstate()
             state._read_dirblocks_if_needed()
             # Now add in an invalid entry, a rename with a dangling pointer

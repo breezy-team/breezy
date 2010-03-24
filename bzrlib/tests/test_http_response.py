@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests from HTTP response parsing.
 
@@ -96,8 +96,7 @@ garbage""")
         # Override the thresold to force the warning emission
         conn._range_warning_thresold = 6 # There are 7 bytes pending
         conn.cleanup_pipe()
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              'Got a 200 response when asking')
+        self.assertContainsRe(self.get_log(), 'Got a 200 response when asking')
 
 
 class TestRangeFileMixin(object):
@@ -801,6 +800,7 @@ class TestRangeFileSizeReadLimited(tests.TestCase):
     """
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         # create a test datablock larger than _max_read_size.
         chunk_size = response.RangeFile._max_read_size
         test_pattern = '0123456789ABCDEF'
