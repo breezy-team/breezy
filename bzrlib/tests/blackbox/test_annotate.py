@@ -140,7 +140,7 @@ class TestAnnotate(TestCaseWithTransport):
         out, err = self.run_bzr('annotate hello.txt -r 10',
                                 retcode=3)
         self.assertEqual('', out)
-        self.assertContainsRe(err, 'Requested revision: \'10\' does not exist')
+        self.assertContainsRe(err, 'Requested revision: [\'"]10[\'"] does not exist')
 
     def test_annotate_cmd_two_revisions(self):
         out, err = self.run_bzr('annotate hello.txt -r1..2',
