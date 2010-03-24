@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -134,18 +134,18 @@ class TestDiff(DiffBase):
 
     def test_diff_nonexistent_revision(self):
         out, err = self.run_bzr('diff -r 123', retcode=3,
-            error_regexes=("Requested revision: ['\"]123['\"] does not "
+            error_regexes=("Requested revision: '123' does not "
                 "exist in branch:",))
 
     def test_diff_nonexistent_dotted_revision(self):
         out, err = self.run_bzr('diff -r 1.1', retcode=3)
         self.assertContainsRe(err,
-            "Requested revision: ['\"]1.1['\"] does not exist in branch:")
+            "Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_nonexistent_dotted_revision_change(self):
         out, err = self.run_bzr('diff -c 1.1', retcode=3)
         self.assertContainsRe(err,
-            "Requested revision: ['\"]1.1['\"] does not exist in branch:")
+            "Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.

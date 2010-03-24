@@ -292,25 +292,25 @@ class TestLogErrors(TestLog):
 
     def test_log_nonexistent_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error(["bzr: ERROR: Requested revision: ['\"]1234['\"] "
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '1234' "
                             "does not exist in branch:"],
                            ['log', '-r1234'])
 
     def test_log_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error(["bzr: ERROR: Requested revision: ['\"]123.123['\"] "
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '123.123' "
                             "does not exist in branch:"],
                            ['log',  '-r123.123'])
 
     def test_log_change_nonexistent_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error(["bzr: ERROR: Requested revision: ['\"]1234['\"] "
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '1234' "
                             "does not exist in branch:"],
                            ['log',  '-c1234'])
 
     def test_log_change_nonexistent_dotted_revno(self):
         self.make_minimal_branch()
-        self.run_bzr_error(["bzr: ERROR: Requested revision: ['\"]123.123['\"] "
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '123.123' "
                             "does not exist in branch:"],
                            ['log', '-c123.123'])
 

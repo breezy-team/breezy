@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -182,13 +182,13 @@ class TestTagging(TestCaseWithTransport):
         self._check_tag_filter('-r 2..3', (2, 3))
         self._check_tag_filter('-r 3..2', ())
         self.run_bzr_error(args="tags -r 123",
-            error_regexes=["bzr: ERROR: Requested revision: ['\"]123['\"] "
+            error_regexes=["bzr: ERROR: Requested revision: '123' "
                 "does not exist in branch:"])
         self.run_bzr_error(args="tags -r ..123",
-            error_regexes=["bzr: ERROR: Requested revision: ['\"]123['\"] "
+            error_regexes=["bzr: ERROR: Requested revision: '123' "
                 "does not exist in branch:"])
         self.run_bzr_error(args="tags -r 123.123",
-            error_regexes=["bzr: ERROR: Requested revision: ['\"]123.123['\"] "
+            error_regexes=["bzr: ERROR: Requested revision: '123.123' "
                 "does not exist in branch:"])
 
     def _check_tag_filter(self, argstr, expected_revnos):
