@@ -54,6 +54,10 @@ Bug Fixes
   errors.
   (Inada Naoki, #524560)
 
+* ``bzr revert`` now only takes write lock on working tree, instead of on 
+  both working tree and branch.
+  (Danny van Heumen, #498409)
+
 Documentation
 *************
 
