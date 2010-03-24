@@ -67,21 +67,21 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
         # is just printed by replacing old revno with new one.
         res_cache = {}
 
-        # We do an optimization below. For grepping a specific revison
-        # We don't need to call _graph_view_revisions which is slow.
-        # We create the start_rev_tuple for only that specific revision.
-        # _graph_view_revisions is used only for revision range.
         start_rev = revision[0]
         start_revid = start_rev.as_revision_id(wt.branch)
-        srevno_tuple = wt.branch.revision_id_to_dotted_revno(start_revid)
-        start_revno = '.'.join(map(str, srevno_tuple))
-        start_rev_tuple = (start_revid, start_revno, 0)
 
         if len(revision) == 2:
             end_rev = revision[1]
             end_revid   = end_rev.as_revision_id(wt.branch)
             given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
         else:
+            # We do an optimization below. For grepping a specific revison
+            # We don't need to call _graph_view_revisions which is slow.
+            # We create the start_rev_tuple for only that specific revision.
+            # _graph_view_revisions is used only for revision range.
+            srevno_tuple = wt.branch.revision_id_to_dotted_revno(start_revid)
+            start_revno = '.'.join(map(str, srevno_tuple))
+            start_rev_tuple = (start_revid, start_revno, 0)
             given_revs = [start_rev_tuple]
 
         for revid, revno, merge_depth in given_revs:
