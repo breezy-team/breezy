@@ -566,8 +566,8 @@ class _PluginImporter(object):
         for p in os.listdir(plugin_dir):
             if os.path.isdir(osutils.pathjoin(plugin_dir, p)):
                 # We're searching for files only and don't want submodules to
-                # be recognized.
-                maybe_package = True
+                # be recognized as plugins (they are submodules inside the
+                # plugin).
                 continue
             name, path, (
                 suffix, mode, kind) = _find_plugin_module(plugin_dir, p)
@@ -584,11 +584,9 @@ class _PluginImporter(object):
         f = open(path, mode)
         try:
             mod = imp.load_module(fullname, f, path, (suffix, mode, kind))
-            if maybe_package:
-                # If the plugin contains submodules, nudge python to recognize
-                # them
-                mod.__path__ = [plugin_dir]
-                mod.__package__ = fullname
+            # The plugin can contain modules, so be ready
+            mod.__path__ = [plugin_dir]
+            mod.__package__ = fullname
             return mod
         finally:
             f.close()
