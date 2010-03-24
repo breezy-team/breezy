@@ -2072,6 +2072,15 @@ def _parse_levels(s):
         msg = "The levels argument must be an integer."
         raise errors.BzrCommandError(msg)
 
+def _parse_authors(s):
+    valid_authors = ['first', 'all', 'committer']
+    if s in valid_authors:
+        return s
+    else:
+        msg = ("The authors argument must be one of [%s]."
+               % ','.join(valid_authors))
+        raise errors.BzrCommandError(msg)
+
 
 class cmd_log(Command):
     """Show historical log for a branch or subset of a branch.
@@ -2244,6 +2253,9 @@ class cmd_log(Command):
                    help='Show just the specified revision.'
                    ' See also "help revisionspec".'),
             'log-format',
+            Option('authors',
+                   help='What names to list as authors - first, all or committer',
+                   type=_parse_authors),
             Option('levels',
                    short_name='n',
                    help='Number of levels to display - 0 for all, 1 for flat.',
@@ -2279,7 +2291,8 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False,
-            include_merges=False):
+            include_merges=False,
+            authors=None):
         from bzrlib.log import (
             Logger,
             make_log_request_dict,
@@ -2359,7 +2372,8 @@ class cmd_log(Command):
                         show_timezone=timezone,
                         delta_format=get_verbosity_level(),
                         levels=levels,
-                        show_advice=levels is None)
+                        show_advice=levels is None,
+                        authors=authors)
 
         # Choose the algorithm for doing the logging. It's annoying
         # having multiple code paths like this but necessary until

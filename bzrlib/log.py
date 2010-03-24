@@ -1299,7 +1299,7 @@ class LogFormatter(object):
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
                  delta_format=None, levels=None, show_advice=False,
-                 to_exact_file=None):
+                 to_exact_file=None, authors=None):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
@@ -1333,6 +1333,7 @@ class LogFormatter(object):
         self.levels = levels
         self._show_advice = show_advice
         self._merge_count = 0
+        self._authors = authors
 
     def get_levels(self):
         """Get the number of levels to display or 0 for all."""
@@ -1370,10 +1371,32 @@ class LogFormatter(object):
         return address
 
     def short_author(self, rev):
-        name, address = config.parse_username(rev.get_apparent_authors()[0])
-        if name:
-            return name
-        return address
+        return self.authors(rev, 'first', True, ', ')
+
+    def authors(self, rev, who, short=False, sep=None):
+        if self._authors is not None:
+            who = self._authors
+        if who == 'committer':
+            names = [rev.committer]
+        elif who == 'all':
+            names = rev.get_apparent_authors()
+        elif who == 'first':
+            try:
+                names = [rev.get_apparent_authors()[0]]
+            except IndexError:
+                names = []
+        else:
+            raise ValueError('Invalid author selection %r' % who)
+        if short:
+            for i in range(len(names)):
+                name, address = config.parse_username(names[i])
+                if name:
+                    names[i] = name
+                else:
+                    names[i] = address
+        if sep is not None:
+            names = sep.join(names)
+        return names
 
     def merge_marker(self, revision):
         """Get the merge marker to include in the output or '' if none."""
@@ -1480,7 +1503,7 @@ class LongLogFormatter(LogFormatter):
         lines.extend(self.custom_properties(revision.rev))
 
         committer = revision.rev.committer
-        authors = revision.rev.get_apparent_authors()
+        authors = self.authors(revision.rev, 'all')
         if authors != [committer]:
             lines.append('author: %s' % (", ".join(authors),))
         lines.append('committer: %s' % (committer,))
@@ -1656,7 +1679,8 @@ class GnuChangelogLogFormatter(LogFormatter):
                                self.show_timezone,
                                date_fmt='%Y-%m-%d',
                                show_offset=False)
-        committer_str = revision.rev.get_apparent_authors()[0].replace (' <', '  <')
+        committer_str = self.authors(revision.rev, 'first', sep=', ')
+        committer_str = committer_str.replace (' <', '  <')
         to_file.write('%s  %s\n\n' % (date_str,committer_str))
 
         if revision.delta is not None and revision.delta.has_changed():
