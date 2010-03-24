@@ -1379,7 +1379,7 @@ class LogFormatter(object):
         if who == 'committer':
             names = [rev.committer]
         elif who == 'all':
-            names = rev.get_apparent_authors()
+            names = rev.get_apparent_authors()[:]
         elif who == 'first':
             try:
                 names = [rev.get_apparent_authors()[0]]
