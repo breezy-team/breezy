@@ -3158,6 +3158,15 @@ class RepositoryFormat(object):
         """
         raise NotImplementedError(self.open)
 
+    def _run_post_repo_init_hooks(self, repository, a_bzrdir, shared):
+        from bzrlib.bzrdir import BzrDir, RepoInitHookParams
+        hooks = BzrDir.hooks['post_repo_init']
+        if not hooks:
+            return
+        params = RepoInitHookParams(repository, self, a_bzrdir, shared)
+        for hook in hooks:
+            hook(params)
+
 
 class MetaDirRepositoryFormat(RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""

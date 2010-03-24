@@ -1496,6 +1496,14 @@ class BranchFormat(object):
         """Return the short format description for this format."""
         raise NotImplementedError(self.get_format_description)
 
+    def _run_post_branch_hooks(self, a_bzrdir, name, branch):
+        hooks = Branch.hooks['post_branch']
+        if not hooks:
+            return
+        params = BranchHookParams(self, a_bzrdir, name, branch)
+        for hook in hooks:
+            hook(params)
+
     def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
                            lock_type='metadir', set_format=True):
         """Initialize a branch in a bzrdir, with specified files
@@ -1537,7 +1545,10 @@ class BranchFormat(object):
         finally:
             if lock_taken:
                 control_files.unlock()
-        return self.open(a_bzrdir, name, _found=True)
+        branch = self.open(a_bzrdir, name, _found=True)
+        if Branch.hooks['post_branch']:
+            self._run_post_branch_hooks(a_bzrdir, name, branch)
+        return branch
 
     def initialize(self, a_bzrdir, name=None):
         """Create a branch of this format in a_bzrdir.
@@ -1703,6 +1714,15 @@ class BranchHooks(Hooks):
             "should return a tag name or None if no tag name could be "
             "determined. The first non-None tag name returned will be used.",
             (2, 2), None))
+        self.create_hook(HookPoint('post_branch',
+            "Called after new branch initialization completes. "
+            "post_branch is called with a bzrlib.branch.BranchHookParams. "
+            "Note that init, branch and checkout will trigger this hook.",
+            (2, 2), None))
+        self.create_hook(HookPoint('post_switch',
+            "Called after a checkout switches branch. "
+            "post_switch is called with a "
+            "bzrlib.branch.SwitchHookParams.", (2, 2), None))
 
 
 
@@ -1747,6 +1767,72 @@ class ChangeBranchTipParams(object):
             self.__class__.__name__, self.branch,
             self.old_revno, self.old_revid, self.new_revno, self.new_revid)
 
+class BranchHookParams(object):
+    """Object holding parameters passed to *_branch hooks.
+
+    There are 4 fields that hooks may wish to access:
+
+    :ivar format: the branch format
+    :ivar bzrdir: the bzrdir where the branch will be/has been initialized
+    :ivar name: name of colocated branch, if any (or None)
+    :ivar branch: the branch
+    """
+
+    def __init__(self, format, a_bzrdir, name, branch):
+        """Create a group of BranchHook parameters.
+
+        :param format: the branch format
+        :param a_bzrdir: the bzrdir where the branch will be/has been initialized
+        :param name: name of colocated branch, if any (or None)
+        :param branch: the branch
+        """
+        self.format = format
+        self.bzrdir = a_bzrdir
+        self.name   = name
+        self.branch = branch
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        if self.branch:
+            return "<%s of %s>" % (self.__class__.__name__, self.branch)
+        else:
+            return "<%s of format:%s bzrdir:%s>" % (
+                self.__class__.__name__, self.branch,
+                self.format, self.bzrdir)
+
+class SwitchHookParams(object):
+    """Object holding parameters passed to *_switch hooks.
+
+    There are 4 fields that hooks may wish to access:
+
+    :ivar control_dir: BzrDir of the checkout to change
+    :ivar to_branch: branch that the checkout is to reference
+    :ivar force: skip the check for local commits in a heavy checkout
+    :ivar revision_id: revision ID to switch to (or None)
+    """
+
+    def __init__(self, control_dir, to_branch, force, revision_id):
+        """Create a group of SwitchHook parameters.
+
+        :param control_dir: BzrDir of the checkout to change
+        :param to_branch: branch that the checkout is to reference
+        :param force: skip the check for local commits in a heavy checkout
+        :param revision_id: revision ID to switch to (or None)
+        """
+        self.control_dir = control_dir
+        self.to_branch   = to_branch
+        self.force       = force
+        self.revision_id = revision_id
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        return "<%s for %s to (%s, %s)>" % (self.__class__.__name__,
+            self.control_dir, self.to_branch,
+            self.revision_id)
 
 class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.
@@ -2022,9 +2108,12 @@ class BranchReferenceFormat(BranchFormat):
         branch_transport.put_bytes('location',
             target_branch.bzrdir.root_transport.base)
         branch_transport.put_bytes('format', self.get_format_string())
-        return self.open(
+        branch = self.open(
             a_bzrdir, name, _found=True,
             possible_transports=[target_branch.bzrdir.root_transport])
+        if Branch.hooks['post_branch']:
+            self._run_post_branch_hooks(a_bzrdir, name, branch)
+        return branch
 
     def __init__(self):
         super(BranchReferenceFormat, self).__init__()

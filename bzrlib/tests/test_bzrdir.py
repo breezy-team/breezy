@@ -1339,3 +1339,14 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         url = transport.base
         err = self.assertRaises(errors.BzrError, bzrdir.BzrDir.open, url)
         self.assertEqual('fail', err._preformatted_string)
+
+    def test_post_repo_init(self):
+        from bzrlib.bzrdir import RepoInitHookParams
+        calls = []
+        bzrdir.BzrDir.hooks.install_named_hook('post_repo_init', lambda params, c=calls: c.append(params), None)
+        self.make_repository('foo')
+        self.assertLength(1, calls)
+        params = calls[0]
+        self.assertIsInstance(params, RepoInitHookParams)
+        self.assertTrue(hasattr(params, 'bzrdir'))
+        self.assertTrue(hasattr(params, 'repository'))
