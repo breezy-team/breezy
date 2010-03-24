@@ -30,8 +30,12 @@ clean:
 	-rm -rf _build/*
 
 html:
-	# Create output directories (only needed for sphinx 0.4)
+	# Create output directory (only needed for sphinx < 0.5)
 	mkdir -p _build/html
+	# Workaround for a bug in sphinx < 0.5 where it tries to delete
+	# nonexistent static dirs and does not catch the exception.  This was
+	# fixed in svn+ssh://pythondev@svn.python.org/doctools/branches/0.4.x
+	# at r65551 and merged as 280b62246342 in hg branch released as 0.5.
 	for fn in _static/*; do \
 	    [ -d "$$fn" ] && mkdir -p "_build/html/_static/$${fn#_static/}" || true; \
 	done
