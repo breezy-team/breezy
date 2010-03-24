@@ -9,7 +9,10 @@ Bazaar Release Notes
 bzr 2.1.1
 #########
 
-:2.1.1: not released yet
+:2.1.1: 2010-03-24
+
+This is a small bugfix release.  Upgrading is recommended for anyone
+running 2.1.0 or earlier.
 
 Bug Fixes
 *********
@@ -42,7 +45,6 @@ Bug Fixes
 * Warn if pyrex is too old to compile the new ``SimpleSet`` and
   ``StaticTuple`` extensions, rather than having the build fail randomly.
   (John Arbash Meinel, #449776)
-
 
 Documentation
 *************
