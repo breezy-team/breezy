@@ -1,8 +1,9 @@
-bzr (2.1.0-2) UNRELEASED; urgency=low
+bzr (2.1.1-1) unstable; urgency=low
 
   * Remove bob2 from uploaders. Closes: #573427
+  * New upstream release.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 12 Mar 2010 02:18:24 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 24 Mar 2010 22:27:38 +0100
 
 bzr (2.1.0-1) unstable; urgency=low
 

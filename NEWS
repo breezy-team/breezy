@@ -5,6 +5,66 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+
+bzr 2.1.1
+#########
+
+:2.1.1: 2010-03-24
+
+This is a small bugfix release.  Upgrading is recommended for anyone
+running 2.1.0 or earlier.
+
+Bug Fixes
+*********
+
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
+
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
+
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+
+* Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
+  problems importing bzrlib from a non-main thread.
+  (Elliot Murphy, #521989)
+
+* Standardize the error handling when creating a new ``StaticTuple``
+  (problems will raise TypeError). (Matt Nordhoff, #457979)
+
+* Warn if pyrex is too old to compile the new ``SimpleSet`` and
+  ``StaticTuple`` extensions, rather than having the build fail randomly.
+  (John Arbash Meinel, #449776)
+
+Documentation
+*************
+
+* Added a link to the Desktop Guide. (Ian Clatworthy)
+
+* Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
+* Drop Google Analytics from the core docs as they caused problems
+  in the CHM files. (Ian Clatworthy, #502010)
+
+API Changes
+***********
+
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
+
+
 bzr 2.1.0
 #########
 
@@ -328,22 +388,54 @@ Testing
   (Martin Pool)
 
 
-bzr 2.0.5 (not released yet)
-############################
+bzr 2.0.5
+#########
 
 :Codename:
-:2.0.5:
+:2.0.5: NOT RELEASED YET
 
 Bug Fixes
 *********
 
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Cope with the lockdir ``held/info`` file being empty, which seems to
+  happen fairly often if the process is suddenly interrupted while taking
+  a lock.
+  (Martin Pool, #185103)
+
+* Give the warning about potentially slow cross-format fetches much
+  earlier on in the fetch operation.  Don't show this message during
+  upgrades, and show the correct format indication for remote
+  repositories.
+  (Martin Pool, #456077, #515356, #513157)
+
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
 
 * If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
   error, report that error rather than failing with an unhelpful
   ``UnboundLocalError``.
   (Andrew Bennetts, #423563)
+
+* Running ``bzr`` command without any arguments now shows bzr
+  version number along with rest of the help text.
+  (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
 
 Documentation
 *************
@@ -11827,38 +11919,6 @@ Enhancements
 
 * Storage of local versions: init, add, remove, rm, info, log,
   diff, status, etc.
-
-
-bzr ?.?.? (not released yet)
-############################
-
-:Codename: template
-:2.0.2: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
 
 
 ..

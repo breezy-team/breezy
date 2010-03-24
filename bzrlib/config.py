@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #

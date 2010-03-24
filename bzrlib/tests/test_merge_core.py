@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,6 +73,16 @@ class MergeBuilder(object):
                 new_file(tt)
 
     def merge(self, merge_type=Merge3Merger, interesting_ids=None, **kwargs):
+        merger = self.make_merger(merge_type, interesting_ids, **kwargs)
+        merger.do_merge()
+        return merger.cooked_conflicts
+
+    def make_preview_transform(self):
+        merger = self.make_merger(Merge3Merger, None, this_revision_tree=True)
+        return merger.make_preview_transform()
+
+    def make_merger(self, merge_type, interesting_ids,
+            this_revision_tree=False, **kwargs):
         self.base_tt.apply()
         self.base.commit('base commit')
         for tt, wt in ((self.this_tt, self.this), (self.other_tt, self.other)):
@@ -89,9 +99,15 @@ class MergeBuilder(object):
                 raise AssertionError()
         self.this.branch.fetch(self.other.branch)
         other_basis = self.other.branch.basis_tree()
-        merger = merge_type(self.this, self.this, self.base, other_basis,
-                            interesting_ids=interesting_ids, **kwargs)
-        return merger.cooked_conflicts
+        if this_revision_tree:
+            self.this.commit('message')
+            this_tree = self.this.basis_tree()
+        else:
+            this_tree = self.this
+        merger = merge_type(this_tree, self.this, self.base, other_basis,
+                            interesting_ids=interesting_ids, do_merge=False,
+                            this_branch=self.this.branch, **kwargs)
+        return merger
 
     def list_transforms(self):
         return [self.this_tt, self.base_tt, self.other_tt]
