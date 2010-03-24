@@ -41,9 +41,9 @@ from bzrlib.plugins.rewrite.rebase import (
     RebaseState1,
     ReplaySnapshotError,
     ReplayParentsInconsistent,
-    replay_delta_workingtree,
     replay_determine_base,
     commit_rebase,
+    workingtree_replay,
     )
 
 
@@ -522,9 +522,10 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
         wt.lock_write()
+        replayer = workingtree_replay(wt, RebaseState1(wt))
         self.assertRaises(ConflictsInTree,
-            replay_delta_workingtree, wt, "oldcommit", "newcommit", 
-            ["newparent"], RebaseState1(wt))
+            replayer, "oldcommit", "newcommit", 
+            ["newparent"], )
         wt.unlock()
 
     def test_simple(self):
@@ -539,8 +540,8 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         self.build_tree(['new/bfile'])
         wt.add(["bfile"], ids=["newid"])
         wt.commit("bla", rev_id="newparent")
-        replay_delta_workingtree(wt, 
-            "oldcommit", "newcommit", ["newparent"], RebaseState1(wt))
+        replayer = workingtree_replay(wt, RebaseState1(wt))
+        replayer("oldcommit", "newcommit", ["newparent"])
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
         self.assertEquals(["newparent"], newrev.parent_ids)
@@ -578,8 +579,8 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         wt.commit("bla", rev_id="newparent")
         # And do it!
         wt.lock_write()
-        replay_delta_workingtree(wt, "oldcommit", "newcommit",
-            ("newparent", "ghost"), RebaseState1(wt))
+        replayer = workingtree_replay(wt, RebaseState1(wt))
+        replayer("oldcommit", "newcommit", ("newparent", "ghost"))
         wt.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
@@ -632,15 +633,15 @@ class TestReplayWorkingtree(TestCaseWithTransport):
         newwt.commit("bla", rev_id="E")
         newwt.branch.repository.fetch(oldwt.branch.repository)
         newwt.lock_write()
-        replay_delta_workingtree(newwt, "D", "D'", ["C"], RebaseState1(newwt))
+        replayer = workingtree_replay(newwt, RebaseState1(newwt))
+        replayer("D", "D'", ["C"])
         newwt.unlock()
         oldrev = newwt.branch.repository.get_revision("D")
         newrev = newwt.branch.repository.get_revision("D'")
         self.assertEquals(["C"], newrev.parent_ids)
         newwt.lock_write()
-        self.assertRaises(ConflictsInTree,
-            lambda: replay_delta_workingtree(newwt, 
-                "E", "E'", ["D'"], RebaseState1(newwt)))
+        replayer = workingtree_replay(newwt, RebaseState1(newwt))
+        self.assertRaises(ConflictsInTree, replayer, "E", "E'", ["D'"])
         newwt.unlock()
         self.assertEquals("E\n" + "A\n" * 10 + "C\n",
                 open("new/afile", 'r').read())

@@ -321,7 +321,7 @@ class cmd_replay(Command):
         from bzrlib.plugins.rewrite.rebase import (
             RebaseState1,
             regenerate_default_revid,
-            replay_delta_workingtree,
+            workingtree_replay,
             )
 
         from_branch = Branch.open_containing(location)[0]
@@ -347,15 +347,14 @@ class cmd_replay(Command):
         wt = WorkingTree.open(".")
         wt.lock_write()
         state = RebaseState1(wt)
+        replayer = workingtree_replay(wt, state, merge_type=merge_type)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:
                 pb.update("replaying commits", todo.index(revid), len(todo))
                 wt.branch.repository.fetch(from_branch.repository, revid)
                 newrevid = regenerate_default_revid(wt.branch.repository, revid)
-                replay_delta_workingtree(wt, revid, newrevid,
-                                         [wt.last_revision()], state,
-                                         merge_type=merge_type)
+                replayer(revid, newrevid, [wt.last_revision()])
         finally:
             pb.finished()
             wt.unlock()

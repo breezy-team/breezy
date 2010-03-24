@@ -520,55 +520,49 @@ def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
         return oldparents[0]
 
 
-def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, state,
-                             merge_type=None):
-    """Replay a commit in a working tree, with a different base.
-
-    :param wt: Working tree in which to do the replays.
-    :param oldrevid: Old revision id
-    :param newrevid: New revision id
-    :param newparents: New parent revision ids
-    """
-    repository = wt.branch.repository
-    if merge_type is None:
-        from bzrlib.merge import Merge3Merger
-        merge_type = Merge3Merger
-    oldrev = wt.branch.repository.get_revision(oldrevid)
-    # Make sure there are no conflicts or pending merges/changes
-    # in the working tree
-    complete_revert(wt, [newparents[0]])
-    assert not wt.changes_from(wt.basis_tree()).has_changed(), "Changes in rev"
-
-    oldtree = repository.revision_tree(oldrevid)
-    state.write_active_revid(oldrevid)
-    merger = Merger(wt.branch, this_tree=wt)
-    merger.set_other_revision(oldrevid, wt.branch)
-    base_revid = replay_determine_base(repository.get_graph(),
-                                       oldrevid, oldrev.parent_ids,
-                                       newrevid, newparents)
-    mutter('replaying %r as %r with base %r and new parents %r' %
-           (oldrevid, newrevid, base_revid, newparents))
-    merger.set_base_revision(base_revid, wt.branch)
-    merger.merge_type = merge_type
-    merger.do_merge()
-    for newparent in newparents[1:]:
-        wt.add_pending_merge(newparent)
-    commit_rebase(wt, oldrev, newrevid)
-    state.write_active_revid(None)
-
-
 class workingtree_replay(object):
     
     def __init__(self, wt, state, merge_type=None):
+        """
+        :param wt: Working tree in which to do the replays.
+        """
         self.wt = wt
         self.state = state
         self.merge_type = merge_type
 
     def __call__(self, oldrevid, newrevid, newparents):
-        """Returns a function that can replay revisions in wt.
+        """Replay a commit in a working tree, with a different base.
+
+        :param oldrevid: Old revision id
+        :param newrevid: New revision id
+        :param newparents: New parent revision ids
         """
-        return replay_delta_workingtree(self.wt, oldrevid, newrevid, newparents,
-            self.state, merge_type=self.merge_type)
+        repository = self.wt.branch.repository
+        if self.merge_type is None:
+            from bzrlib.merge import Merge3Merger
+            merge_type = Merge3Merger
+        oldrev = self.wt.branch.repository.get_revision(oldrevid)
+        # Make sure there are no conflicts or pending merges/changes
+        # in the working tree
+        complete_revert(self.wt, [newparents[0]])
+        assert not self.wt.changes_from(self.wt.basis_tree()).has_changed(), "Changes in rev"
+
+        oldtree = repository.revision_tree(oldrevid)
+        self.state.write_active_revid(oldrevid)
+        merger = Merger(self.wt.branch, this_tree=self.wt)
+        merger.set_other_revision(oldrevid, self.wt.branch)
+        base_revid = replay_determine_base(repository.get_graph(),
+                                           oldrevid, oldrev.parent_ids,
+                                           newrevid, newparents)
+        mutter('replaying %r as %r with base %r and new parents %r' %
+               (oldrevid, newrevid, base_revid, newparents))
+        merger.set_base_revision(base_revid, self.wt.branch)
+        merger.merge_type = merge_type
+        merger.do_merge()
+        for newparent in newparents[1:]:
+            self.wt.add_pending_merge(newparent)
+        commit_rebase(self.wt, oldrev, newrevid)
+        self.state.write_active_revid(None)
 
 
 def complete_revert(wt, newparents):
