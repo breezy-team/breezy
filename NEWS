@@ -155,6 +155,11 @@ Bug Fixes
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
 
+* ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
+  group ownership from the containing directory. This allow bzr to work
+  better with sudo.
+  (Parth Malwankar, #376388)
+
 API Changes
 ***********
 

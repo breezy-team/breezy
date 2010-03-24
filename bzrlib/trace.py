@@ -241,14 +241,17 @@ def _open_bzr_log():
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        bzr_log_file = open(_bzr_log_filename, 'at', buffering=0) # unbuffered
+        buffering = 0 # unbuffered
+        bzr_log_file = osutils.open_with_ownership(_bzr_log_filename, 'at', buffering)
         # bzr_log_file.tell() on windows always return 0 until some writing done
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
             bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
             bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
+
         return bzr_log_file
+
     except IOError, e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
