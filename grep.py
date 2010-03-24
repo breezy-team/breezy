@@ -119,7 +119,7 @@ def compile_pattern(pattern, flags=0):
     return patternc
 
 def is_fixed_string(s):
-    if re.match("^([A-Za-z0-9]|\s)*$", s):
+    if re.match("^([A-Za-z0-9_]|\s)*$", s):
         return True
     return False
 
