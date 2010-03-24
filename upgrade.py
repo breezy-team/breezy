@@ -25,12 +25,7 @@ from bzrlib import (
     )
 from bzrlib.errors import (
     BzrError,
-    InvalidRevisionId,
     )
-from bzrlib.foreign import (
-    update_workingtree_fileids,
-    )
-
 from bzrlib.plugins.rewrite.rebase import (
     generate_transpose_plan,
     replay_snapshot,
@@ -58,28 +53,6 @@ def create_deterministic_revid(revid, new_parents):
     if "-rebase-" in revid:
         revid = revid[0:revid.rfind("-rebase-")]
     return revid + "-rebase-" + osutils.sha_string(":".join(new_parents))[:8]
-
-
-def upgrade_workingtree(wt, generate_rebase_map, determine_new_revid,
-                        allow_changes=False, verbose=False):
-    """Upgrade a working tree.
-
-    :param foreign_repository: Foreign repository object
-    """
-    wt.lock_write()
-    try:
-        old_revid = wt.last_revision()
-        revid_renames = upgrade_branch(wt.branch, generate_rebase_map,
-            determine_new_revid, allow_changes=allow_changes, verbose=verbose)
-        last_revid = wt.branch.last_revision()
-        if old_revid == last_revid:
-            return revid_renames
-        new_tree = wt.branch.repository.revision_tree(last_revid)
-        update_workingtree_fileids(wt, new_tree)
-    finally:
-        wt.unlock()
-
-    return revid_renames
 
 
 def upgrade_tags(tags, repository, generate_rebase_map, determine_new_revid,

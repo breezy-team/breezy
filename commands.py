@@ -409,8 +409,11 @@ class cmd_rebase_foreign(Command):
         from bzrlib.plugins.rewrite.upgrade import (
             create_deterministic_revid,
             upgrade_branch,
-            upgrade_workingtree,
             )
+        from bzrlib.foreign import (
+            update_workingtree_fileids,
+            )
+
         try:
             wt_to = WorkingTree.open(".")
             branch_to = wt_to.branch
@@ -446,14 +449,11 @@ class cmd_rebase_foreign(Command):
         branch_to.lock_write()
         try:
             graph = branch_to.repository.get_graph()
-
+            renames = upgrade_branch(branch_to, generate_rebase_map,
+                    determine_new_revid, allow_changes=True,
+                    verbose=verbose)
             if wt_to is not None:
-                renames = upgrade_workingtree(wt_to, generate_rebase_map,
-                    determine_new_revid, allow_changes=True, verbose=verbose)
-            else:
-                renames = upgrade_branch(branch_to, generate_rebase_map,
-                        determine_new_revid, allow_changes=True,
-                        verbose=verbose)
+                update_workingtree_fileids(wt_to, wt_to.basis_tree())
         finally:
             branch_to.unlock()
 
