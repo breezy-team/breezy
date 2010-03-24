@@ -552,17 +552,19 @@ def replay_delta_workingtree(wt, oldrevid, newrevid, newparents, state,
     state.write_active_revid(None)
 
 
-def workingtree_replay(wt, state, map_ids=False, merge_type=None):
-    """Returns a function that can replay revisions in wt.
+class workingtree_replay(object):
+    
+    def __init__(self, wt, state, merge_type=None):
+        self.wt = wt
+        self.state = state
+        self.merge_type = merge_type
 
-    :param wt: Working tree in which to do the replays.
-    :param map_ids: Whether to try to map between file ids (False for path-based merge)
-    """
-    def replay(repository, oldrevid, newrevid, newparents):
-        assert wt.branch.repository == repository, "Different repository"
-        return replay_delta_workingtree(wt, oldrevid, newrevid, newparents,
-                                        state, merge_type=merge_type)
-    return replay
+    def __call__(self, repository, oldrevid, newrevid, newparents):
+        """Returns a function that can replay revisions in wt.
+        """
+        assert self.wt.branch.repository == repository, "Different repository"
+        return replay_delta_workingtree(self.wt, oldrevid, newrevid, newparents,
+                                        self.state, merge_type=self.merge_type)
 
 
 def complete_revert(wt, newparents):
