@@ -459,39 +459,6 @@ class replay_snapshot(object):
             raise
 
 
-def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
-    """Determine the base for replaying a revision using merge.
-
-    :param graph: Revision graph.
-    :param oldrevid: Revid of old revision.
-    :param oldparents: List of old parents revids.
-    :param newrevid: Revid of new revision.
-    :param newparents: List of new parents revids.
-    :return: Revision id of the new new revision.
-    """
-    # If this was the first commit, no base is needed
-    if len(oldparents) == 0:
-        return NULL_REVISION
-
-    # In the case of a "simple" revision with just one parent,
-    # that parent should be the base
-    if len(oldparents) == 1:
-        return oldparents[0]
-
-    # In case the rhs parent(s) of the origin revision has already been merged
-    # in the new branch, use diff between rhs parent and diff from
-    # original revision
-    if len(newparents) == 1:
-        # FIXME: Find oldparents entry that matches newparents[0]
-        # and return it
-        return oldparents[1]
-
-    try:
-        return graph.find_unique_lca(*[oldparents[0],newparents[1]])
-    except NoCommonAncestor:
-        return oldparents[0]
-
-
 class workingtree_replay(object):
     
     def __init__(self, wt, state, merge_type=None):
@@ -499,6 +466,7 @@ class workingtree_replay(object):
         :param wt: Working tree in which to do the replays.
         """
         self.wt = wt
+        self.graph = self.wt.branch.repository.get_graph()
         self.state = state
         self.merge_type = merge_type
 
@@ -523,8 +491,7 @@ class workingtree_replay(object):
         self.state.write_active_revid(oldrevid)
         merger = Merger(self.wt.branch, this_tree=self.wt)
         merger.set_other_revision(oldrevid, self.wt.branch)
-        base_revid = replay_determine_base(repository.get_graph(),
-                                           oldrevid, oldrev.parent_ids,
+        base_revid = self.determine_base(oldrevid, oldrev.parent_ids,
                                            newrevid, newparents)
         mutter('replaying %r as %r with base %r and new parents %r' %
                (oldrevid, newrevid, base_revid, newparents))
@@ -535,6 +502,37 @@ class workingtree_replay(object):
             self.wt.add_pending_merge(newparent)
         self.commit_rebase(oldrev, newrevid)
         self.state.write_active_revid(None)
+
+    def determine_base(self, oldrevid, oldparents, newrevid, newparents):
+        """Determine the base for replaying a revision using merge.
+
+        :param oldrevid: Revid of old revision.
+        :param oldparents: List of old parents revids.
+        :param newrevid: Revid of new revision.
+        :param newparents: List of new parents revids.
+        :return: Revision id of the new new revision.
+        """
+        # If this was the first commit, no base is needed
+        if len(oldparents) == 0:
+            return NULL_REVISION
+
+        # In the case of a "simple" revision with just one parent,
+        # that parent should be the base
+        if len(oldparents) == 1:
+            return oldparents[0]
+
+        # In case the rhs parent(s) of the origin revision has already been merged
+        # in the new branch, use diff between rhs parent and diff from
+        # original revision
+        if len(newparents) == 1:
+            # FIXME: Find oldparents entry that matches newparents[0]
+            # and return it
+            return oldparents[1]
+
+        try:
+            return self.graph.find_unique_lca(*[oldparents[0],newparents[1]])
+        except NoCommonAncestor:
+            return oldparents[0]
 
     def commit_rebase(self, oldrev, newrevid):
         """Commit a rebase.

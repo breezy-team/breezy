@@ -41,7 +41,6 @@ from bzrlib.plugins.rewrite.rebase import (
     RebaseState1,
     ReplaySnapshotError,
     ReplayParentsInconsistent,
-    replay_determine_base,
     workingtree_replay,
     )
 
@@ -661,28 +660,3 @@ class TestReplaySnapshotError(TestCase):
 class TestReplayParentsInconsistent(TestCase):
     def test_create(self):
         ReplayParentsInconsistent("afileid", "arevid")
-
-
-class ReplayDetermineBaseTests(TestCase):
-
-    def setUp(self):
-        TestCase.setUp(self)
-        self.graph = Graph(self)
-
-    def get_parent_map(self, keys):
-        return dict((revid, self._parent_dict[revid]) for k in self._parent_dict if k in keys)
-
-    def get_parents(self, revid):
-        return self._parent_dict[revid]
-
-    def test_null(self):
-        self._parent_dict = {"myrev": []}
-        self.assertEquals(NULL_REVISION,
-          replay_determine_base(self.graph, "myrev", [], "mynewrev", ["bar"]))
-
-    def test_simple(self):
-        self._parent_dict = {"myinitrev": [], "myrev": ["myinitrev"]}
-        self.assertEquals("myinitrev",
-          replay_determine_base(self.graph, "myrev", ["myinitrev"],
-                                "mynewrev", ["mynewparents"]))
-
