@@ -1428,8 +1428,9 @@ class cmd_update(Command):
             branch_location = tree.branch.base
         self.add_cleanup(tree.unlock)
         # get rid of the final '/' and be ready for display
-        branch_location = urlutils.unescape_for_display(branch_location[:-1],
-                                                        self.outf.encoding)
+        branch_location = urlutils.unescape_for_display(
+            branch_location.rstrip('/'),
+            self.outf.encoding)
         existing_pending_merges = tree.get_parent_ids()[1:]
         if master is None:
             old_tip = None
