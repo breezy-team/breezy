@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,8 +21,12 @@ import os
 import re
 import time
 
+from StringIO import StringIO
+
 from bzrlib import (
     errors,
+    remote,
+    repository,
     tests,
     ui as _mod_ui,
     )
@@ -258,6 +262,32 @@ class TestTextUIFactory(tests.TestCase):
         ui_factory.be_quiet(True)
         self.assertIsInstance(ui_factory._progress_view,
             _mod_ui_text.NullProgressView)
+
+    def test_text_ui_show_user_warning(self):
+        from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
+        from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5
+        err = StringIO()
+        out = StringIO()
+        ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
+        remote_fmt = remote.RemoteRepositoryFormat()
+        remote_fmt._network_name = RepositoryFormatKnitPack5().network_name()
+        ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
+            to_format=remote_fmt)
+        self.assertEquals('', out.getvalue())
+        self.assertEquals("Doing on-the-fly conversion from RepositoryFormat2a() to "
+            "RemoteRepositoryFormat(_network_name='Bazaar RepositoryFormatKnitPack5 "
+            "(bzr 1.6)\\n').\nThis may take some time. Upgrade the repositories to "
+            "the same format for better performance.\n",
+            err.getvalue())
+        # and now with it suppressed please
+        err = StringIO()
+        out = StringIO()
+        ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
+        ui.suppressed_warnings.add('cross_format_fetch')
+        ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
+            to_format=remote_fmt)
+        self.assertEquals('', out.getvalue())
+        self.assertEquals('', err.getvalue())
 
 
 class TestTextUIOutputStream(tests.TestCase):

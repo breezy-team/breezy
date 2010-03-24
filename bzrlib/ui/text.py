@@ -249,6 +249,18 @@ class TextUIFactory(UIFactory):
     def _progress_all_finished(self):
         self._progress_view.clear()
 
+    def show_user_warning(self, warning_id, **message_args):
+        """Show a text message to the user.
+
+        Explicitly not for warnings about bzr apis, deprecations or internals.
+        """
+        # eventually trace.warning should migrate here, to avoid logging and
+        # be easier to test; that has a lot of test fallout so for now just
+        # new code can call this
+        if warning_id not in self.suppressed_warnings:
+            self.stderr.write(self.format_user_warning(warning_id, message_args) +
+                '\n')
+
 
 class TextProgressView(object):
     """Display of progress bar and other information on a tty.
