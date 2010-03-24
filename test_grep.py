@@ -1234,3 +1234,27 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertFalse(self._str_contains(out, "file0.bin:line1"))
         self.assertFalse(self._str_contains(err, "Binary file"))
 
+    def test_revspec(self):
+        """Ensure various revspecs work
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        self._mk_versioned_dir('dir0')                      # rev1
+        self._mk_versioned_file('dir0/file0.txt')           # rev2
+        self._update_file('dir0/file0.txt', "v3 text\n")    # rev3
+        self._update_file('dir0/file0.txt', "v4 text\n")    # rev4
+        self._update_file('dir0/file0.txt', "v5 text\n")    # rev5
+
+        out, err = self.run_bzr(['grep', '-r', 'revno:1..2', 'v3'])
+        self.assertFalse(self._str_contains(out, "file0"))
+
+        out, err = self.run_bzr(['grep', '-r', 'revno:4..', 'v4'])
+        self.assertTrue(self._str_contains(out, "^dir0/file0.txt"))
+
+        out, err = self.run_bzr(['grep', '-r', '..revno:3', 'v4'])
+        self.assertFalse(self._str_contains(out, "file0"))
+
+        out, err = self.run_bzr(['grep', '-r', '..revno:3', 'v3'])
+        self.assertTrue(self._str_contains(out, "^dir0/file0.txt"))
+
