@@ -459,34 +459,6 @@ class replay_snapshot(object):
             raise
 
 
-def commit_rebase(wt, oldrev, newrevid):
-    """Commit a rebase.
-
-    :param wt: Mutable tree with the changes.
-    :param oldrev: Revision info of new revision to commit.
-    :param newrevid: New revision id."""
-    assert oldrev.revision_id != newrevid, "Invalid revid %r" % newrevid
-    revprops = dict(oldrev.properties)
-    revprops[REVPROP_REBASE_OF] = oldrev.revision_id
-    committer = wt.branch.get_config().username()
-    authors = oldrev.get_apparent_authors()
-    if oldrev.committer == committer:
-        # No need to explicitly record the authors if the original
-        # committer is rebasing.
-        if [oldrev.committer] == authors:
-            authors = None
-    else:
-        if not oldrev.committer in authors:
-            authors.append(oldrev.committer)
-    if 'author' in revprops:
-        del revprops['author']
-    if 'authors' in revprops:
-        del revprops['authors']
-    wt.commit(message=oldrev.message, timestamp=oldrev.timestamp,
-              timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
-              committer=committer, authors=authors)
-
-
 def replay_determine_base(graph, oldrevid, oldparents, newrevid, newparents):
     """Determine the base for replaying a revision using merge.
 
@@ -561,8 +533,34 @@ class workingtree_replay(object):
         merger.do_merge()
         for newparent in newparents[1:]:
             self.wt.add_pending_merge(newparent)
-        commit_rebase(self.wt, oldrev, newrevid)
+        self.commit_rebase(oldrev, newrevid)
         self.state.write_active_revid(None)
+
+    def commit_rebase(self, oldrev, newrevid):
+        """Commit a rebase.
+
+        :param oldrev: Revision info of new revision to commit.
+        :param newrevid: New revision id."""
+        assert oldrev.revision_id != newrevid, "Invalid revid %r" % newrevid
+        revprops = dict(oldrev.properties)
+        revprops[REVPROP_REBASE_OF] = oldrev.revision_id
+        committer = self.wt.branch.get_config().username()
+        authors = oldrev.get_apparent_authors()
+        if oldrev.committer == committer:
+            # No need to explicitly record the authors if the original
+            # committer is rebasing.
+            if [oldrev.committer] == authors:
+                authors = None
+        else:
+            if not oldrev.committer in authors:
+                authors.append(oldrev.committer)
+        if 'author' in revprops:
+            del revprops['author']
+        if 'authors' in revprops:
+            del revprops['authors']
+        self.wt.commit(message=oldrev.message, timestamp=oldrev.timestamp,
+                  timezone=oldrev.timezone, revprops=revprops, rev_id=newrevid,
+                  committer=committer, authors=authors)
 
 
 def complete_revert(wt, newparents):

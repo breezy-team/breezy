@@ -239,7 +239,6 @@ class cmd_rebase_continue(Command):
     def run(self, merge_type=None):
         from bzrlib.plugins.rewrite.rebase import (
             RebaseState1,
-            commit_rebase,
             rebase,
             workingtree_replay,
             )
@@ -248,6 +247,7 @@ class cmd_rebase_continue(Command):
         wt.lock_write()
         try:
             state = RebaseState1(wt)
+            replayer = workingtree_replay(wt, state, merge_type=merge_type)
             # Abort if there are any conflicts
             if len(wt.conflicts()) != 0:
                 raise BzrCommandError("There are still conflicts present. "
@@ -261,11 +261,10 @@ class cmd_rebase_continue(Command):
             oldrevid = state.read_active_revid()
             if oldrevid is not None:
                 oldrev = wt.branch.repository.get_revision(oldrevid)
-                commit_rebase(wt, oldrev, replace_map[oldrevid][0])
+                replayer.commit_rebase(oldrev, replace_map[oldrevid][0])
             try:
                 # Start executing plan from current Branch.last_revision()
-                rebase(wt.branch.repository, replace_map,
-                        workingtree_replay(wt, state, merge_type=merge_type))
+                rebase(wt.branch.repository, replace_map, replayer)
             except ConflictsInTree:
                 raise BzrCommandError("A conflict occurred replaying a commit."
                     " Resolve the conflict and run 'bzr rebase-continue' or "

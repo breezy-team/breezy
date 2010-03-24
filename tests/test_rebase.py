@@ -42,7 +42,6 @@ from bzrlib.plugins.rewrite.rebase import (
     ReplaySnapshotError,
     ReplayParentsInconsistent,
     replay_determine_base,
-    commit_rebase,
     workingtree_replay,
     )
 
@@ -647,7 +646,7 @@ class TestReplayWorkingtree(TestCaseWithTransport):
                 open("new/afile", 'r').read())
         newwt.set_conflicts(ConflictList())
         oldrev = newwt.branch.repository.get_revision("E")
-        commit_rebase(newwt, oldrev, "E'")
+        replayer.commit_rebase(oldrev, "E'")
         newrev = newwt.branch.repository.get_revision("E'")
         self.assertEquals(["D'"], newrev.parent_ids)
         self.assertEquals(["A", "B", "C", "D'", "E'"],
