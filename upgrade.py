@@ -142,32 +142,6 @@ def check_revision_changed(oldrev, newrev):
         raise UpgradeChangesContent(oldrev.revision_id)
 
 
-def generate_upgrade_map(revs, vcs, determine_upgraded_revid):
-    """Generate an upgrade map for use by bzr-rebase.
-
-    :param new_mapping: Mapping to upgrade revisions to.
-    :param vcs: The foreign vcs
-    :param revs: Iterator over revisions to upgrade.
-    :return: Map from old revids as keys, new revids as values stored in a
-             dictionary.
-    """
-    rename_map = {}
-    # Create a list of revisions that can be renamed during the upgrade
-    for revid in revs:
-        assert isinstance(revid, str)
-        try:
-            (foreign_revid, old_mapping) = \
-                vcs.mapping_registry.parse_revision_id(revid)
-        except InvalidRevisionId:
-            # Not a foreign revision, nothing to do
-            continue
-        newrevid = determine_upgraded_revid(foreign_revid)
-        if newrevid in (revid, None):
-            continue
-        rename_map[revid] = newrevid
-    return rename_map
-
-
 def create_upgrade_plan(repository, generate_rebase_map, determine_new_revid,
                         revision_id=None, allow_changes=False):
     """Generate a rebase plan for upgrading revisions.
