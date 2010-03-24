@@ -21,6 +21,8 @@ import os
 import re
 import time
 
+from StringIO import StringIO
+
 from bzrlib import (
     errors,
     remote,
