@@ -11,6 +11,19 @@ PAPEROPT_a4     = -D latex_paper_size=a4
 PAPEROPT_letter = -D latex_paper_size=letter
 ALLSPHINXOPTS   = -d _build/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 
+# Note that this assumes name of the output dir is same as name of the rule.
+define make_output_dirs
+# Create output directory (only needed for sphinx < 0.5)
+mkdir -p _build/$@
+# Workaround for a bug in sphinx < 0.5 where it tries to delete
+# nonexistent static dirs and does not catch the exception.  This was
+# fixed in svn+ssh://pythondev@svn.python.org/doctools/branches/0.4.x
+# at r65551 and merged as 280b62246342 in hg branch released as 0.5.
+for fn in _static/*; do \
+    [ -d "$$fn" ] && mkdir -p "_build/$@/_static/$${fn#_static/}" || true; \
+done
+endef
+
 .PHONY: help clean html dirhtml pickle json htmlhelp qthelp latex changes linkcheck doctest
 
 help:
@@ -30,41 +43,38 @@ clean:
 	-rm -rf _build/*
 
 html:
-	# Create output directory (only needed for sphinx < 0.5)
-	mkdir -p _build/html
-	# Workaround for a bug in sphinx < 0.5 where it tries to delete
-	# nonexistent static dirs and does not catch the exception.  This was
-	# fixed in svn+ssh://pythondev@svn.python.org/doctools/branches/0.4.x
-	# at r65551 and merged as 280b62246342 in hg branch released as 0.5.
-	for fn in _static/*; do \
-	    [ -d "$$fn" ] && mkdir -p "_build/html/_static/$${fn#_static/}" || true; \
-	done
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) _build/html
 	@echo
 	@echo "Build finished. The HTML pages are in _build/html."
 
 dirhtml:
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b dirhtml $(ALLSPHINXOPTS) _build/dirhtml
 	@echo
 	@echo "Build finished. The HTML pages are in _build/dirhtml."
 
 pickle:
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b pickle $(ALLSPHINXOPTS) _build/pickle
 	@echo
 	@echo "Build finished; now you can process the pickle files."
 
 json:
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b json $(ALLSPHINXOPTS) _build/json
 	@echo
 	@echo "Build finished; now you can process the JSON files."
 
 htmlhelp:
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b htmlhelp $(ALLSPHINXOPTS) _build/htmlhelp
 	@echo
 	@echo "Build finished; now you can run HTML Help Workshop with the" \
 	      ".hhp project file in _build/htmlhelp."
 
 qthelp:
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b qthelp $(ALLSPHINXOPTS) _build/qthelp
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
@@ -74,6 +84,7 @@ qthelp:
 	@echo "# assistant -collectionFile _build/qthelp/Bazaar.qhc"
 
 latex:
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b latex $(ALLSPHINXOPTS) _build/latex
 	@echo
 	@echo "Build finished; the LaTeX files are in _build/latex."
@@ -81,17 +92,20 @@ latex:
 	      "run these through (pdf)latex."
 
 changes:
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b changes $(ALLSPHINXOPTS) _build/changes
 	@echo
 	@echo "The overview file is in _build/changes."
 
 linkcheck:
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b linkcheck $(ALLSPHINXOPTS) _build/linkcheck
 	@echo
 	@echo "Link check complete; look for any errors in the above output " \
 	      "or in _build/linkcheck/output.txt."
 
 doctest:
+	$(make_output_dirs)
 	$(SPHINXBUILD) -b doctest $(ALLSPHINXOPTS) _build/doctest
 	@echo "Testing of doctests in the sources finished, look at the " \
 	      "results in _build/doctest/output.txt."
