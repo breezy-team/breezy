@@ -178,7 +178,7 @@ def upgrade_repository(repository, generate_rebase_map,
         if verbose:
             for revid in rebase_todo(repository, plan):
                 trace.note("%s -> %s" % (revid, plan[revid][0]))
-        rebase(repository, plan, replay_snapshot)
+        rebase(repository, plan, replay_snapshot(repository))
         return revid_renames
     finally:
         repository.unlock()

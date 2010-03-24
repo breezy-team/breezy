@@ -353,7 +353,7 @@ def rebase_todo(repository, replace_map):
             yield revid
 
 
-def rebase(repository, replace_map, replay_fn):
+def rebase(repository, replace_map, revision_rewriter):
     """Rebase a working tree according to the specified map.
 
     :param repository: Repository that contains the revisions
@@ -372,86 +372,91 @@ def rebase(repository, replace_map, replay_fn):
             if repository.has_revision(newrevid):
                 # Was already converted, no need to worry about it again
                 continue
-            replay_fn(repository, revid, newrevid, newparents)
+            revision_rewriter(revid, newrevid, newparents)
     finally:
         pb.finished()
 
 
-def replay_snapshot(repository, oldrevid, newrevid, new_parents):
-    """Replay a commit by simply commiting the same snapshot with different
-    parents.
+class replay_snapshot(object):
 
-    :param repository: Repository in which the revision is present.
-    :param oldrevid: Revision id of the revision to copy.
-    :param newrevid: Revision id of the revision to create.
-    :param new_parents: Revision ids of the new parent revisions.
-    """
-    assert isinstance(new_parents, tuple), "replay_snapshot: Expected tuple for %r" % new_parents
-    mutter('creating copy %r of %r with new parents %r' %
-                               (newrevid, oldrevid, new_parents))
-    oldrev = repository.get_revision(oldrevid)
+    def __init__(self, repository):
+        self.repository = repository
 
-    revprops = dict(oldrev.properties)
-    revprops[REVPROP_REBASE_OF] = oldrevid
+    def __call__(self, oldrevid, newrevid, new_parents):
+        """Replay a commit by simply commiting the same snapshot with different
+        parents.
 
-    builder = repository.get_commit_builder(branch=None,
-                                            parents=new_parents,
-                                            config=Config(),
-                                            committer=oldrev.committer,
-                                            timestamp=oldrev.timestamp,
-                                            timezone=oldrev.timezone,
-                                            revprops=revprops,
-                                            revision_id=newrevid)
-    try:
-        # Check what new_ie.file_id should be
-        # use old and new parent inventories to generate new_id map
-        nonghost_oldparents = tuple([p for p in oldrev.parent_ids if repository.has_revision(p)])
-        nonghost_newparents = tuple([p for p in new_parents if repository.has_revision(p)])
-        fileid_map = map_file_ids(repository, nonghost_oldparents, nonghost_newparents)
-        oldtree = repository.revision_tree(oldrevid)
-        mappedtree = MapTree(oldtree, fileid_map)
-        pb = ui.ui_factory.nested_progress_bar()
+        :param repository: Repository in which the revision is present.
+        :param oldrevid: Revision id of the revision to copy.
+        :param newrevid: Revision id of the revision to create.
+        :param new_parents: Revision ids of the new parent revisions.
+        """
+        assert isinstance(new_parents, tuple), "replay_snapshot: Expected tuple for %r" % new_parents
+        mutter('creating copy %r of %r with new parents %r' %
+                                   (newrevid, oldrevid, new_parents))
+        oldrev = self.repository.get_revision(oldrevid)
+
+        revprops = dict(oldrev.properties)
+        revprops[REVPROP_REBASE_OF] = oldrevid
+
+        builder = self.repository.get_commit_builder(branch=None,
+                                                parents=new_parents,
+                                                config=Config(),
+                                                committer=oldrev.committer,
+                                                timestamp=oldrev.timestamp,
+                                                timezone=oldrev.timezone,
+                                                revprops=revprops,
+                                                revision_id=newrevid)
         try:
-            old_parent_invs = list(repository.iter_inventories(nonghost_oldparents))
-            new_parent_invs = list(repository.iter_inventories(nonghost_newparents))
-            for i, (path, old_ie) in enumerate(mappedtree.inventory.iter_entries()):
-                pb.update('upgrading file', i, len(mappedtree.inventory))
-                ie = old_ie.copy()
-                # Either this file was modified last in this revision,
-                # in which case it has to be rewritten
-                if old_ie.revision == oldrevid:
-                    if repository.texts.has_key((ie.file_id, newrevid)):
-                        # Use the existing text
-                        ie.revision = newrevid
+            # Check what new_ie.file_id should be
+            # use old and new parent inventories to generate new_id map
+            nonghost_oldparents = tuple([p for p in oldrev.parent_ids if self.repository.has_revision(p)])
+            nonghost_newparents = tuple([p for p in new_parents if self.repository.has_revision(p)])
+            fileid_map = map_file_ids(self.repository, nonghost_oldparents, nonghost_newparents)
+            oldtree = self.repository.revision_tree(oldrevid)
+            mappedtree = MapTree(oldtree, fileid_map)
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                old_parent_invs = list(self.repository.iter_inventories(nonghost_oldparents))
+                new_parent_invs = list(self.repository.iter_inventories(nonghost_newparents))
+                for i, (path, old_ie) in enumerate(mappedtree.inventory.iter_entries()):
+                    pb.update('upgrading file', i, len(mappedtree.inventory))
+                    ie = old_ie.copy()
+                    # Either this file was modified last in this revision,
+                    # in which case it has to be rewritten
+                    if old_ie.revision == oldrevid:
+                        if self.repository.texts.has_key((ie.file_id, newrevid)):
+                            # Use the existing text
+                            ie.revision = newrevid
+                        else:
+                            # Create a new text
+                            ie.revision = None
                     else:
-                        # Create a new text
-                        ie.revision = None
-                else:
-                    # or it was already there before the commit, in
-                    # which case the right revision should be used
-                    # one of the old parents had this revision, so find that
-                    # and then use the matching new parent
-                    old_file_id = oldtree.inventory.path2id(path)
-                    assert old_file_id is not None
-                    ie = None
-                    for (old_pinv, new_pinv) in zip(old_parent_invs, new_parent_invs):
-                        if (old_pinv.has_id(old_file_id) and
-                            old_pinv[old_file_id].revision == old_ie.revision):
-                            try:
-                                ie = new_pinv[old_ie.file_id].copy()
-                            except NoSuchId:
-                                raise ReplayParentsInconsistent(old_ie.file_id, old_ie.revision)
-                            break
-                    assert ie is not None
-                builder.record_entry_contents(ie, new_parent_invs, path, mappedtree,
-                        mappedtree.path_content_summary(path))
-        finally:
-            pb.finished()
-        builder.finish_inventory()
-        return builder.commit(oldrev.message)
-    except:
-        builder.abort()
-        raise
+                        # or it was already there before the commit, in
+                        # which case the right revision should be used
+                        # one of the old parents had this revision, so find that
+                        # and then use the matching new parent
+                        old_file_id = oldtree.inventory.path2id(path)
+                        assert old_file_id is not None
+                        ie = None
+                        for (old_pinv, new_pinv) in zip(old_parent_invs, new_parent_invs):
+                            if (old_pinv.has_id(old_file_id) and
+                                old_pinv[old_file_id].revision == old_ie.revision):
+                                try:
+                                    ie = new_pinv[old_ie.file_id].copy()
+                                except NoSuchId:
+                                    raise ReplayParentsInconsistent(old_ie.file_id, old_ie.revision)
+                                break
+                        assert ie is not None
+                    builder.record_entry_contents(ie, new_parent_invs, path, mappedtree,
+                            mappedtree.path_content_summary(path))
+            finally:
+                pb.finished()
+            builder.finish_inventory()
+            return builder.commit(oldrev.message)
+        except:
+            builder.abort()
+            raise
 
 
 def commit_rebase(wt, oldrev, newrevid):
@@ -559,12 +564,11 @@ class workingtree_replay(object):
         self.state = state
         self.merge_type = merge_type
 
-    def __call__(self, repository, oldrevid, newrevid, newparents):
+    def __call__(self, oldrevid, newrevid, newparents):
         """Returns a function that can replay revisions in wt.
         """
-        assert self.wt.branch.repository == repository, "Different repository"
         return replay_delta_workingtree(self.wt, oldrevid, newrevid, newparents,
-                                        self.state, merge_type=self.merge_type)
+            self.state, merge_type=self.merge_type)
 
 
 def complete_revert(wt, newparents):
