@@ -108,6 +108,10 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
                 end_revno, end_revid = wt.branch.last_revision_info()
             erevno_tuple = wt.branch.revision_id_to_dotted_revno(end_revid)
 
+            if (not _rev_on_mainline(srevno_tuple) or
+                not _rev_on_mainline(erevno_tuple)):
+                levels = 0
+
             # Optimization: Traversing the mainline in reverse order is much
             # faster when we don't want to look at merged revs. We try this
             # with _linear_view_revisions. If all revs are to be grepped we
@@ -118,7 +122,6 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
                 given_revs = _linear_view_revisions(wt.branch, start_revid, end_revid)
             else:
                 given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
-                print given_revs
         else:
             # We do an optimization below. For grepping a specific revison
             # We don't need to call _graph_view_revisions which is slow.
@@ -221,7 +224,8 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                 # If old result is valid, print results immediately.
                 # Otherwise, add file info to to_grep so that the
                 # loop later will get chunks and grep them
-                old_res = res_cache.get(fid)
+                file_rev = tree.inventory[fid].revision
+                old_res = res_cache.get(file_rev)
                 if old_res != None:
                     res = []
                     res_append = res.append
@@ -230,7 +234,7 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                         s = _revno_pattern.sub(new_rev, line)
                         res_append(s)
                         outf_write(s)
-                    dir_res[fid] = res
+                    dir_res[file_rev] = res
                 else:
                     to_grep_append((fid, (fp, fid)))
             else:
@@ -252,7 +256,8 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                 compiled_pattern, eol_marker, line_number, revno,
                 print_revno, include, exclude, verbose, fixed_string,
                 ignore_case, outf, path_prefix)
-            dir_res[fid] = res
+            file_rev = tree.inventory[fid].revision
+            dir_res[file_rev] = res
     return dir_res
 
 def _make_display_path(relpath, path):
