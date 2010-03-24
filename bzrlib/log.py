@@ -1386,7 +1386,7 @@ class ChangeLogLogFormatter(LogFormatter):
                                self.show_timezone,
                                date_fmt='%Y-%m-%d',
                                show_offset=False)
-        committer_str = revision.rev.committer.replace (' <', '  <')
+        committer_str = revision.rev.get_apparent_authors()[0].replace (' <', '  <')
         to_file.write('%s  %s\n\n' % (date_str,committer_str))
 
         if revision.delta is not None:
