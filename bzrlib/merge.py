@@ -1229,8 +1229,9 @@ class Merge3Merger(object):
         if name_winner == "this" and parent_id_winner == "this":
             return
         if name_winner == 'conflict' or parent_id_winner == 'conflict':
-            # Creating helpers here cause problems down the road if a
-            # ContentConflict needs to be created so we should not do that
+            # Creating helpers (.OTHER or .THIS) here cause problems down the
+            # road if a ContentConflict needs to be created so we should not do
+            # that
             trans_id = self.tt.trans_id_file_id(file_id)
             self._raw_conflicts.append(('path conflict', trans_id, file_id,
                                         this_parent, this_name,
@@ -1574,9 +1575,8 @@ class Merge3Merger(object):
                 c = _mod_conflicts.Conflict.factory(conflict_type,
                                                     path=path, file_id=file_id)
             else:
-                raise AssertionError()
+                raise AssertionError('bad conflict type: %r' % (conflict,))
             self.cooked_conflicts.append(c)
-
         self.cooked_conflicts.sort(key=_mod_conflicts.Conflict.sort_key)
 
 

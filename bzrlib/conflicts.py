@@ -490,6 +490,9 @@ class PathConflict(Conflict):
                 # iterate. Taking the last parent is the safer bet in the mean
                 # time. -- vila 20100309
                 revid = tt._tree.get_parent_ids()[-1]
+        else:
+            # Programmer error
+            raise AssertionError('bad winner: %r' % (winner,))
         if path_to_create is not None:
             tid = tt.trans_id_tree_path(path_to_create)
             transform.create_from_tree(
