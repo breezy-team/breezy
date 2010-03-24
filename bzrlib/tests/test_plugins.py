@@ -848,7 +848,11 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         plugin._loaded = False
         plugin.load_plugins(['b'])
         self.assertTestFooLoadedFrom('non-standard-dir')
-        self.assertEqual('non-standard-dir/__init__.pyc',
+        if __debug__:
+            suffix = 'pyc'
+        else:
+            suffix = 'pyo'
+        self.assertEqual('non-standard-dir/__init__.%s' % suffix,
                          bzrlib.plugins.test_foo.__file__)
 
     def test_submodule_loading(self):
