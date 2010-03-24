@@ -22,7 +22,6 @@ from fnmatch import fnmatch
 import os
 import re
 
-from bzrlib import log as logcmd
 from bzrlib import bzrdir
 from bzrlib.workingtree import WorkingTree
 from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
@@ -47,6 +46,9 @@ def _rev_on_mainline(rev_tuple):
         return True
     return rev_tuple[1] == 0 and rev_tuple[2] == 0
 
+# NOTE: _linear_view_revisions is basided on
+# bzrlib.log._linear_view_revisions.
+# This should probably be a common public API
 def _linear_view_revisions(branch, start_rev_id, end_rev_id):
     s_tuple = branch.revision_id_to_dotted_revno(start_rev_id)
     e_tuple = branch.revision_id_to_dotted_revno(end_rev_id)
@@ -64,6 +66,47 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
             yield revision_id, revno_str, 0
             break
         yield revision_id, revno_str, 0
+
+# NOTE: _graph_view_revisions is copied from
+# bzrlib.log._graph_view_revisions.
+# This should probably be a common public API
+def _graph_view_revisions(branch, start_rev_id, end_rev_id,
+                          rebase_initial_depths=True):
+    """Calculate revisions to view including merges, newest to oldest.
+
+    :param branch: the branch
+    :param start_rev_id: the lower revision-id
+    :param end_rev_id: the upper revision-id
+    :param rebase_initial_depth: should depths be rebased until a mainline
+      revision is found?
+    :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
+    """
+    view_revisions = branch.iter_merge_sorted_revisions(
+        start_revision_id=end_rev_id, stop_revision_id=start_rev_id,
+        stop_rule="with-merges")
+    if not rebase_initial_depths:
+        for (rev_id, merge_depth, revno, end_of_merge
+             ) in view_revisions:
+            yield rev_id, '.'.join(map(str, revno)), merge_depth
+    else:
+        # We're following a development line starting at a merged revision.
+        # We need to adjust depths down by the initial depth until we find
+        # a depth less than it. Then we use that depth as the adjustment.
+        # If and when we reach the mainline, depth adjustment ends.
+        depth_adjustment = None
+        for (rev_id, merge_depth, revno, end_of_merge
+             ) in view_revisions:
+            if depth_adjustment is None:
+                depth_adjustment = merge_depth
+            if depth_adjustment:
+                if merge_depth < depth_adjustment:
+                    # From now on we reduce the depth adjustement, this can be
+                    # surprising for users. The alternative requires two passes
+                    # which breaks the fast display of the first revision
+                    # though.
+                    depth_adjustment = merge_depth
+                merge_depth -= depth_adjustment
+            yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 def compile_pattern(pattern, flags=0):
     patternc = None
@@ -121,7 +164,7 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
                     _rev_on_mainline(erevno_tuple)):
                 given_revs = _linear_view_revisions(wt.branch, start_revid, end_revid)
             else:
-                given_revs = logcmd._graph_view_revisions(wt.branch, start_revid, end_revid)
+                given_revs = _graph_view_revisions(wt.branch, start_revid, end_revid)
         else:
             # We do an optimization below. For grepping a specific revison
             # We don't need to call _graph_view_revisions which is slow.
