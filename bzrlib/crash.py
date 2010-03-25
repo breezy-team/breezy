@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -117,10 +117,10 @@ def _write_apport_report_to_file(exc_info, crash_file):
     exc_type, exc_object, exc_tb = exc_info
 
     pr = Report()
-    # add_proc_info gives you the memory map of the process: this seems rarely
-    # useful for Bazaar and it does make the report harder to scan, though it
-    # does tell you what binary modules are loaded.
-    # pr.add_proc_info()
+    # add_proc_info gives you the memory map of the process, which is not so
+    # useful for Bazaar but does tell you what binary libraries are loaded.
+    # More importantly it sets the ExecutablePath, InterpreterPath, etc.
+    pr.add_proc_info()
     pr.add_user_info()
     pr['CommandLine'] = pprint.pformat(sys.argv)
     pr['BzrVersion'] = bzrlib.__version__

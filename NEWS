@@ -6,6 +6,42 @@ Bazaar Release Notes
    :depth: 1
 
 
+bzr 2.1.2
+#########
+
+:2.1.2: not released yet
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* Make sure the ``ExecutablePath`` and ``InterpreterPath`` are set in
+  Apport crash reports, to avoid "This problem report applies to a program
+  which is not installed any more" error.
+  (Martin Pool, James Westby, #528114)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+
 bzr 2.1.1
 #########
 
