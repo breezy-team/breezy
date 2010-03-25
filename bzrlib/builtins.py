@@ -5974,15 +5974,7 @@ class cmd_reference(Command):
             self.outf.write('%s %s\n' % (path, location))
 
 
-# these get imported and then picked up by the scan for cmd_*
-# TODO: Some more consistent way to split command definitions across files;
-# we do need to load at least some information about them to know of
-# aliases.  ideally we would avoid loading the implementation until the
-# details were needed.
 from bzrlib.cmd_version_info import cmd_version_info
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
-from bzrlib.bundle.commands import (
-    cmd_bundle_info,
-    )
 from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits

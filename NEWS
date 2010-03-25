@@ -58,6 +58,13 @@ New Features
   a list of plugin names separated by ':' (';' on windows).
   (Vincent Ladeuil, #411413)
 
+* Plugins can be loaded from arbitrary locations by defining
+  ``BZR_PLUGINS_AT`` as a list of name@path separated by ':' (';' on
+  windows). This takes precedence over ``BZR_PLUGIN_PATH`` for the
+  specified plugins. This is targeted at plugin developers for punctual
+  needs and *not* intended to replace ``BZR_PLUGIN_PATH``.  
+  (Vincent Ladeuil, #82693)
+
 * Tag names can now be determined automatically by ``automatic_tag_name`` 
   hooks on ``Branch`` if they are not specified on the command line.
   (Jelmer Vernooij)
