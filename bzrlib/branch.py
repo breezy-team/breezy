@@ -1496,11 +1496,11 @@ class BranchFormat(object):
         """Return the short format description for this format."""
         raise NotImplementedError(self.get_format_description)
 
-    def _run_post_branch_hooks(self, a_bzrdir, name, branch):
-        hooks = Branch.hooks['post_branch']
+    def _run_post_branch_init_hooks(self, a_bzrdir, name, branch):
+        hooks = Branch.hooks['post_branch_init']
         if not hooks:
             return
-        params = BranchHookParams(self, a_bzrdir, name, branch)
+        params = BranchInitHookParams(self, a_bzrdir, name, branch)
         for hook in hooks:
             hook(params)
 
@@ -1546,8 +1546,8 @@ class BranchFormat(object):
             if lock_taken:
                 control_files.unlock()
         branch = self.open(a_bzrdir, name, _found=True)
-        if Branch.hooks['post_branch']:
-            self._run_post_branch_hooks(a_bzrdir, name, branch)
+        if Branch.hooks['post_branch_init']:
+            self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
 
     def initialize(self, a_bzrdir, name=None):
@@ -1714,10 +1714,10 @@ class BranchHooks(Hooks):
             "should return a tag name or None if no tag name could be "
             "determined. The first non-None tag name returned will be used.",
             (2, 2), None))
-        self.create_hook(HookPoint('post_branch',
+        self.create_hook(HookPoint('post_branch_init',
             "Called after new branch initialization completes. "
-            "post_branch is called with a bzrlib.branch.BranchHookParams. "
-            "Note that init, branch and checkout will trigger this hook.",
+            "post_branch_init is called with a bzrlib.branch.BranchInitHookParams. "
+            "Note that init, branch and checkout will all trigger this hook.",
             (2, 2), None))
         self.create_hook(HookPoint('post_switch',
             "Called after a checkout switches branch. "
@@ -1767,8 +1767,8 @@ class ChangeBranchTipParams(object):
             self.__class__.__name__, self.branch,
             self.old_revno, self.old_revid, self.new_revno, self.new_revid)
 
-class BranchHookParams(object):
-    """Object holding parameters passed to *_branch hooks.
+class BranchInitHookParams(object):
+    """Object holding parameters passed to *_branch_init hooks.
 
     There are 4 fields that hooks may wish to access:
 
@@ -1779,7 +1779,7 @@ class BranchHookParams(object):
     """
 
     def __init__(self, format, a_bzrdir, name, branch):
-        """Create a group of BranchHook parameters.
+        """Create a group of BranchInitHook parameters.
 
         :param format: the branch format
         :param a_bzrdir: the bzrdir where the branch will be/has been initialized
@@ -2111,8 +2111,8 @@ class BranchReferenceFormat(BranchFormat):
         branch = self.open(
             a_bzrdir, name, _found=True,
             possible_transports=[target_branch.bzrdir.root_transport])
-        if Branch.hooks['post_branch']:
-            self._run_post_branch_hooks(a_bzrdir, name, branch)
+        if Branch.hooks['post_branch_init']:
+            self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
 
     def __init__(self):

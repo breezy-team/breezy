@@ -469,8 +469,8 @@ class TestHooks(tests.TestCaseWithTransport):
                         "post_uncommit not in %s" % hooks)
         self.assertTrue("post_change_branch_tip" in hooks,
                         "post_change_branch_tip not in %s" % hooks)
-        self.assertTrue("post_branch" in hooks,
-                        "post_branch not in %s" % hooks)
+        self.assertTrue("post_branch_init" in hooks,
+                        "post_branch_init not in %s" % hooks)
         self.assertTrue("post_switch" in hooks,
                         "post_switch not in %s" % hooks)
 
@@ -480,14 +480,14 @@ class TestHooks(tests.TestCaseWithTransport):
         self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch][1],
                               _mod_branch.BranchHooks)
 
-    def test_post_branch_hook(self):
+    def test_post_branch_init_hook(self):
         calls = []
-        _mod_branch.Branch.hooks.install_named_hook('post_branch', lambda params, c=calls: c.append(params), None)
+        _mod_branch.Branch.hooks.install_named_hook('post_branch_init', lambda params, c=calls: c.append(params), None)
         self.assertLength(0, calls)
         branch = self.make_branch('a')
         self.assertLength(1, calls)
         params = calls[0]
-        self.assertIsInstance(params, _mod_branch.BranchHookParams)
+        self.assertIsInstance(params, _mod_branch.BranchInitHookParams)
         self.assertTrue(hasattr(params, 'bzrdir'))
         self.assertTrue(hasattr(params, 'branch'))
 
