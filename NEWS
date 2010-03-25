@@ -8,6 +8,8 @@
    * Fix rebase to not discard revisions off the leftmost path.
      (Robert Collins, Max Bowsher, #266897)
 
+   * Mark as compatible with bzr 2.2. (Jelmer Vernooij)
+
   CHANGES
 
    * svn-upgrade/foreign-mapping-upgrade was removed. Use rebase-foreign
