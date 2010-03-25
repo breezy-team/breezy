@@ -482,7 +482,8 @@ class TestHooks(tests.TestCaseWithTransport):
 
     def test_post_branch_init_hook(self):
         calls = []
-        _mod_branch.Branch.hooks.install_named_hook('post_branch_init', lambda params, c=calls: c.append(params), None)
+        _mod_branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
         self.assertLength(0, calls)
         branch = self.make_branch('a')
         self.assertLength(1, calls)
@@ -494,7 +495,8 @@ class TestHooks(tests.TestCaseWithTransport):
     def test_post_switch_hook(self):
         from bzrlib import switch
         calls = []
-        _mod_branch.Branch.hooks.install_named_hook('post_switch', lambda params, c=calls: c.append(params), None)
+        _mod_branch.Branch.hooks.install_named_hook('post_switch',
+            calls.append, None)
         tree = self.make_branch_and_tree('branch-1')
         self.build_tree(['branch-1/file-1'])
         tree.add('file-1')

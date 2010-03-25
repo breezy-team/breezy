@@ -1546,8 +1546,7 @@ class BranchFormat(object):
             if lock_taken:
                 control_files.unlock()
         branch = self.open(a_bzrdir, name, _found=True)
-        if Branch.hooks['post_branch_init']:
-            self._run_post_branch_init_hooks(a_bzrdir, name, branch)
+        self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
 
     def initialize(self, a_bzrdir, name=None):
@@ -1767,6 +1766,7 @@ class ChangeBranchTipParams(object):
             self.__class__.__name__, self.branch,
             self.old_revno, self.old_revid, self.new_revno, self.new_revid)
 
+
 class BranchInitHookParams(object):
     """Object holding parameters passed to *_branch_init hooks.
 
@@ -1788,7 +1788,7 @@ class BranchInitHookParams(object):
         """
         self.format = format
         self.bzrdir = a_bzrdir
-        self.name   = name
+        self.name = name
         self.branch = branch
 
     def __eq__(self, other):
@@ -1801,6 +1801,7 @@ class BranchInitHookParams(object):
             return "<%s of format:%s bzrdir:%s>" % (
                 self.__class__.__name__, self.branch,
                 self.format, self.bzrdir)
+
 
 class SwitchHookParams(object):
     """Object holding parameters passed to *_switch hooks.
@@ -1822,8 +1823,8 @@ class SwitchHookParams(object):
         :param revision_id: revision ID to switch to (or None)
         """
         self.control_dir = control_dir
-        self.to_branch   = to_branch
-        self.force       = force
+        self.to_branch = to_branch
+        self.force = force
         self.revision_id = revision_id
 
     def __eq__(self, other):
@@ -1833,6 +1834,7 @@ class SwitchHookParams(object):
         return "<%s for %s to (%s, %s)>" % (self.__class__.__name__,
             self.control_dir, self.to_branch,
             self.revision_id)
+
 
 class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.
@@ -2111,8 +2113,7 @@ class BranchReferenceFormat(BranchFormat):
         branch = self.open(
             a_bzrdir, name, _found=True,
             possible_transports=[target_branch.bzrdir.root_transport])
-        if Branch.hooks['post_branch_init']:
-            self._run_post_branch_init_hooks(a_bzrdir, name, branch)
+        self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
 
     def __init__(self):

@@ -1359,10 +1359,10 @@ class RepoInitHookParams(object):
         :param bzrdir: The bzrdir for the repository
         :param shared: The repository is shared
         """
-        self.repository         = repository
-        self.format             = format
-        self.bzrdir             = a_bzrdir
-        self.shared             = shared
+        self.repository = repository
+        self.format = format
+        self.bzrdir = a_bzrdir
+        self.shared = shared
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
