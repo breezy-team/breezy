@@ -110,6 +110,9 @@ Bug Fixes
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
 
+* Use first apparent author not committer in GNU Changelog format.
+  (Martin von Gagern, #513322)
+
 API Changes
 ***********
 
