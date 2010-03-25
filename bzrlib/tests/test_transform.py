@@ -735,7 +735,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
                                          ' versioned, but has versioned'
                                          ' children.  Versioned directory.')
         self.assertEqual(conflicts_s[6], 'Conflict moving oz/emeraldcity into'
-                                         ' oz/emeraldcity.  Cancelled move.')
+                                         ' oz/emeraldcity. Cancelled move.')
 
     def prepare_wrong_parent_kind(self):
         tt, root = self.get_transform()
