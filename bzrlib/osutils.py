@@ -1812,8 +1812,9 @@ def copy_ownership(dst, src=None):
     If src is None, the containing directory is used as source. If chown
     fails, the error is ignored and a warning is printed.
     """
-    has_chown = getattr(os, 'chown')
-    if has_chown is None: return
+    chown = getattr(os, 'chown', None)
+    if chown is None:
+        return
 
     if src == None:
         src = os.path.dirname(dst)
@@ -1822,7 +1823,7 @@ def copy_ownership(dst, src=None):
 
     try:
         s = os.stat(src)
-        os.chown(dst, s.st_uid, s.st_gid)
+        chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
         trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
 
