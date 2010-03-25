@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,13 +12,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Foreign branch utilities."""
 
 
-from bzrlib.branch import Branch
+from bzrlib.branch import (
+    Branch,
+    InterBranch,
+    )
 from bzrlib.commands import Command, Option
 from bzrlib.repository import Repository
 from bzrlib.revision import Revision
@@ -28,11 +31,12 @@ from bzrlib import (
     errors,
     osutils,
     registry,
+    transform,
     )
 """)
 
 class VcsMapping(object):
-    """Describes the mapping between the semantics of Bazaar and a foreign vcs.
+    """Describes the mapping between the semantics of Bazaar and a foreign VCS.
 
     """
     # Whether this is an experimental mapping that is still open to changes.
@@ -41,8 +45,8 @@ class VcsMapping(object):
     # Whether this mapping supports exporting and importing all bzr semantics.
     roundtripping = False
 
-    # Prefix used when importing native foreign revisions (not roundtripped)
-    # using this mapping.
+    # Prefix used when importing revisions native to the foreign VCS (as
+    # opposed to roundtripping bzr-native revisions) using this mapping.
     revid_prefix = None
 
     def __init__(self, vcs):
@@ -115,29 +119,20 @@ class ForeignRevision(Revision):
         self.mapping = mapping
 
 
-def show_foreign_properties(rev):
-    """Custom log displayer for foreign revision identifiers.
-
-    :param rev: Revision object.
-    """
-    # Revision comes directly from a foreign repository
-    if isinstance(rev, ForeignRevision):
-        return rev.mapping.vcs.show_foreign_revid(rev.foreign_revid)
-
-    # Revision was once imported from a foreign repository
-    try:
-        foreign_revid, mapping = \
-            foreign_vcs_registry.parse_revision_id(rev.revision_id)
-    except errors.InvalidRevisionId:
-        return {}
-
-    return mapping.vcs.show_foreign_revid(foreign_revid)
-
-
 class ForeignVcs(object):
     """A foreign version control system."""
 
-    def __init__(self, mapping_registry):
+    branch_format = None
+
+    repository_format = None
+
+    def __init__(self, mapping_registry, abbreviation=None):
+        """Create a new foreign vcs instance.
+
+        :param mapping_registry: Registry with mappings for this VCS.
+        :param abbreviation: Optional abbreviation ('bzr', 'svn', 'git', etc)
+        """
+        self.abbreviation = abbreviation
         self.mapping_registry = mapping_registry
 
     def show_foreign_revid(self, foreign_revid):
@@ -147,6 +142,15 @@ class ForeignVcs(object):
         :return: Dictionary mapping string keys to string values.
         """
         return { }
+
+    def serialize_foreign_revid(self, foreign_revid):
+        """Serialize a foreign revision id for this VCS.
+
+        :param foreign_revid: Foreign revision id
+        :return: Bytestring with serialized revid, will not contain any 
+            newlines.
+        """
+        raise NotImplementedError(self.serialize_foreign_revid)
 
 
 class ForeignVcsRegistry(registry.Registry):
@@ -175,7 +179,7 @@ class ForeignVcsRegistry(registry.Registry):
         :param revid: The bzr revision id
         :return: tuple with foreign revid and vcs mapping
         """
-        if not "-" in revid:
+        if not ":" in revid or not "-" in revid:
             raise errors.InvalidRevisionId(revid, None)
         try:
             foreign_vcs = self.get(revid.split("-")[0])
@@ -221,27 +225,146 @@ class ForeignRepository(Repository):
         """Get the default mapping for this repository."""
         raise NotImplementedError(self.get_default_mapping)
 
-    def get_inventory_xml(self, revision_id):
-        """See Repository.get_inventory_xml()."""
-        return self.serialise_inventory(self.get_inventory(revision_id))
 
-    def get_inventory_sha1(self, revision_id):
-        """Get the sha1 for the XML representation of an inventory.
+class ForeignBranch(Branch):
+    """Branch that exists in a foreign version control system."""
 
-        :param revision_id: Revision id of the inventory for which to return
-         the SHA1.
-        :return: XML string
+    def __init__(self, mapping):
+        self.mapping = mapping
+        super(ForeignBranch, self).__init__()
+
+
+def update_workingtree_fileids(wt, target_tree):
+    """Update the file ids in a working tree based on another tree.
+
+    :param wt: Working tree in which to update file ids
+    :param target_tree: Tree to retrieve new file ids from, based on path
+    """
+    tt = transform.TreeTransform(wt)
+    try:
+        for f, p, c, v, d, n, k, e in target_tree.iter_changes(wt):
+            if v == (True, False):
+                trans_id = tt.trans_id_tree_path(p[0])
+                tt.unversion_file(trans_id)
+            elif v == (False, True):
+                trans_id = tt.trans_id_tree_path(p[1])
+                tt.version_file(f, trans_id)
+        tt.apply()
+    finally:
+        tt.finalize()
+    if len(wt.get_parent_ids()) == 1:
+        wt.set_parent_trees([(target_tree.get_revision_id(), target_tree)])
+    else:
+        wt.set_last_revision(target_tree.get_revision_id())
+
+
+class cmd_dpush(Command):
+    """Push into a different VCS without any custom bzr metadata.
+
+    This will afterwards rebase the local branch on the remote
+    branch unless the --no-rebase option is used, in which case 
+    the two branches will be out of sync after the push. 
+    """
+    hidden = True
+    takes_args = ['location?']
+    takes_options = [
+        'remember',
+        Option('directory',
+               help='Branch to push from, '
+               'rather than the one containing the working directory.',
+               short_name='d',
+               type=unicode,
+               ),
+        Option('no-rebase', help="Do not rebase after push."),
+        Option('strict',
+               help='Refuse to push if there are uncommitted changes in'
+               ' the working tree, --no-strict disables the check.'),
+        ]
+
+    def run(self, location=None, remember=False, directory=None,
+            no_rebase=False, strict=None):
+        from bzrlib import urlutils
+        from bzrlib.bzrdir import BzrDir
+        from bzrlib.errors import BzrCommandError, NoWorkingTree
+        from bzrlib.workingtree import WorkingTree
+
+        if directory is None:
+            directory = "."
+        try:
+            source_wt = WorkingTree.open_containing(directory)[0]
+            source_branch = source_wt.branch
+        except NoWorkingTree:
+            source_branch = Branch.open(directory)
+            source_wt = None
+        if strict is None:
+            strict = source_branch.get_config(
+                ).get_user_option_as_bool('dpush_strict')
+        if strict is None: strict = True # default value
+        if strict and source_wt is not None:
+            if (source_wt.has_changes()):
+                raise errors.UncommittedChanges(
+                    source_wt, more='Use --no-strict to force the push.')
+            if source_wt.last_revision() != source_wt.branch.last_revision():
+                # The tree has lost sync with its branch, there is little
+                # chance that the user is aware of it but he can still force
+                # the push with --no-strict
+                raise errors.OutOfDateTree(
+                    source_wt, more='Use --no-strict to force the push.')
+        stored_loc = source_branch.get_push_location()
+        if location is None:
+            if stored_loc is None:
+                raise BzrCommandError("No push location known or specified.")
+            else:
+                display_url = urlutils.unescape_for_display(stored_loc,
+                        self.outf.encoding)
+                self.outf.write("Using saved location: %s\n" % display_url)
+                location = stored_loc
+
+        bzrdir = BzrDir.open(location)
+        target_branch = bzrdir.open_branch()
+        target_branch.lock_write()
+        try:
+            try:
+                push_result = source_branch.lossy_push(target_branch)
+            except errors.LossyPushToSameVCS:
+                raise BzrCommandError("%r and %r are in the same VCS, lossy "
+                    "push not necessary. Please use regular push." %
+                    (source_branch, target_branch))
+            # We successfully created the target, remember it
+            if source_branch.get_push_location() is None or remember:
+                source_branch.set_push_location(target_branch.base)
+            if not no_rebase:
+                old_last_revid = source_branch.last_revision()
+                source_branch.pull(target_branch, overwrite=True)
+                new_last_revid = source_branch.last_revision()
+                if source_wt is not None and old_last_revid != new_last_revid:
+                    source_wt.lock_write()
+                    try:
+                        target = source_wt.branch.repository.revision_tree(
+                            new_last_revid)
+                        update_workingtree_fileids(source_wt, target)
+                    finally:
+                        source_wt.unlock()
+            push_result.report(self.outf)
+        finally:
+            target_branch.unlock()
+
+
+class InterToForeignBranch(InterBranch):
+
+    def lossy_push(self, stop_revision=None):
+        """Push deltas into another branch.
+
+        :note: This does not, like push, retain the revision ids from 
+            the source branch and will, rather than adding bzr-specific 
+            metadata, push only those semantics of the revision that can be 
+            natively represented by this branch' VCS.
+
+        :param target: Target branch
+        :param stop_revision: Revision to push, defaults to last revision.
+        :return: BranchPushResult with an extra member revidmap: 
+            A dictionary mapping revision ids from the target branch 
+            to new revision ids in the target branch, for each 
+            revision that was pushed.
         """
-
-        return osutils.sha_string(self.get_inventory_xml(revision_id))
-
-    def get_revision_xml(self, revision_id):
-        """Return the XML representation of a revision.
-
-        :param revision_id: Revision for which to return the XML.
-        :return: XML string
-        """
-        return self._serializer.write_revision_to_string(
-            self.get_revision(revision_id))
-
-
+        raise NotImplementedError(self.lossy_push)

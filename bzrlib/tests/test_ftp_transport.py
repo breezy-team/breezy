@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,26 +12,32 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
+import ftplib
+import getpass
 import sys
 
 from bzrlib import (
     config,
+    errors,
     tests,
     transport,
     ui,
     )
 
+from bzrlib.transport import ftp
+
+from bzrlib.tests import ftp_server
+
 
 class TestCaseWithFTPServer(tests.TestCaseWithTransport):
 
-    _test_needs_features = [tests.FTPServerFeature]
+    _test_needs_features = [ftp_server.FTPServerFeature]
 
     def setUp(self):
-        from bzrlib.tests import ftp_server
-        self.transport_server = ftp_server.FTPServer
+        self.transport_server = ftp_server.FTPTestServer
         super(TestCaseWithFTPServer, self).setUp()
 
 
@@ -47,7 +53,7 @@ class TestCaseAFTP(tests.TestCaseWithTransport):
         self.assertEqual('aftp://host/path', t.abspath(''))
 
 
-class TestFTPServer(TestCaseWithFTPServer):
+class TestFTPTestServer(TestCaseWithFTPServer):
 
     def test_basic_exists(self):
         url = self.get_url()
@@ -66,52 +72,79 @@ class TestFTPServer(TestCaseWithFTPServer):
         self.assertEqual('test more bytes\n', t.get_bytes('foo'))
 
 
-class TestFTPServerUI(TestCaseWithFTPServer):
+class TestFTPTestServerUI(TestCaseWithFTPServer):
 
-    def _add_authorized_user(self, user, password):
-        server = self.get_server()
-        # FIXME: There should be a better way to declare authorized users and
-        # passwords to the server
-        authorizer = server._ftp_server.authorizer
-        authorizer.secured_user = user
-        authorizer.secured_password = password
+    def setUp(self):
+        super(TestFTPTestServerUI, self).setUp()
+        self.user = 'joe'
+        self.password = 'secret'
+        self.get_server().add_user(self.user, self.password)
+
+    def get_url(self, relpath=None):
+        """Overrides get_url to inject our user."""
+        base = super(TestFTPTestServerUI, self).get_url(relpath)
+        (scheme, user, password,
+         host, port, path) = transport.ConnectedTransport._split_url(base)
+        url = transport.ConnectedTransport._unsplit_url(
+            scheme, self.user, self.password, host, port, path)
+        return url
+
+    def test_no_prompt_for_username(self):
+        """ensure getpass.getuser() is used if there's no username in the 
+        configuration.""",
+        self.get_server().add_user(getpass.getuser(), self.password)
+        t = self.get_transport()
+        ui.ui_factory = ui.CannedInputUIFactory([self.password])
+        # Issue a request to the server to connect
+        t.put_bytes('foo', 'test bytes\n')
+        self.assertEqual('test bytes\n', t.get_bytes('foo'))
+        # Only the password should've been read
+        ui.ui_factory.assert_all_input_consumed()
 
     def test_prompt_for_password(self):
         t = self.get_transport()
-        # Ensure that the test framework set the password
-        self.assertIsNot(t._password, None)
-        # Reset the password (get_url set the password to 'bar' so we
-        # reset it to None in the transport before the connection).
-        password = t._password
-        t._password = None
-        ui.ui_factory = tests.TestUIFactory(stdin=password+'\n',
-                                            stdout=tests.StringIOWrapper())
-        # Ask the server to check the password
-        self._add_authorized_user(t._user, password)
+        ui.ui_factory = ui.CannedInputUIFactory([self.password])
         # Issue a request to the server to connect
         t.has('whatever/not/existing')
         # stdin should be empty (the provided password have been consumed)
-        self.assertEqual('', ui.ui_factory.stdin.readline())
+        ui.ui_factory.assert_all_input_consumed()
 
     def test_no_prompt_for_password_when_using_auth_config(self):
         t = self.get_transport()
-        # Reset the password (get_url set the password to 'bar' so we
-        # reset it to None in the transport before the connection).
-        password = t._password
-        t._password = None
-        ui.ui_factory = tests.TestUIFactory(stdin='precious\n',
-                                            stdout=tests.StringIOWrapper())
-        # Ask the server to check the password
-        self._add_authorized_user(t._user, password)
-
+        ui.ui_factory = ui.CannedInputUIFactory([])
         # Create a config file with the right password
         conf = config.AuthenticationConfig()
         conf._get_config().update({'ftptest': {'scheme': 'ftp',
-                                               'user': t._user,
-                                               'password': password}})
+                                               'user': self.user,
+                                               'password': self.password}})
         conf._save()
         # Issue a request to the server to connect
         t.put_bytes('foo', 'test bytes\n')
         self.assertEqual('test bytes\n', t.get_bytes('foo'))
-        # stdin should have  been left untouched
-        self.assertEqual('precious\n', ui.ui_factory.stdin.readline())
+
+    def test_empty_password(self):
+        # Override the default user/password from setUp
+        self.user = 'jim'
+        self.password = ''
+        self.get_server().add_user(self.user, self.password)
+        t = self.get_transport()
+        ui.ui_factory = ui.CannedInputUIFactory([self.password])
+        # Issue a request to the server to connect
+        t.has('whatever/not/existing')
+        # stdin should be empty (the provided password have been consumed),
+        # even if the password is empty, it's followed by a newline.
+        ui.ui_factory.assert_all_input_consumed()
+
+
+class TestFTPErrorTranslation(tests.TestCase):
+
+    def test_translate_directory_not_empty(self):
+        # https://bugs.launchpad.net/bugs/528722
+        
+        t = ftp.FtpTransport("ftp://none/")
+
+        try:
+            raise ftplib.error_temp("Rename/move failure: Directory not empty")
+        except Exception, e:
+            e = self.assertRaises(errors.DirectoryNotEmpty,
+                t._translate_ftp_error, e, "/path")

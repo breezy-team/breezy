@@ -12,11 +12,12 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for topological sort."""
 
+import pprint
 
 from bzrlib.tests import TestCase
 from bzrlib.tsort import topo_sort, TopoSorter, MergeSorter, merge_sort
@@ -39,6 +40,23 @@ class TopoSortTests(TestCase):
                           list,
                           TopoSorter(graph).iter_topo_order())
 
+    def assertSortAndIterateOrder(self, graph):
+        """Check topo_sort and iter_topo_order is genuinely topological order.
+
+        For every child in the graph, check if it comes after all of it's
+        parents.
+        """
+        sort_result = topo_sort(graph)
+        iter_result = list(TopoSorter(graph).iter_topo_order())
+        for (node, parents) in graph:
+            for parent in parents:
+                if sort_result.index(node) < sort_result.index(parent):
+                    self.fail("parent %s must come before child %s:\n%s"
+                              % (parent, node, sort_result))
+                if iter_result.index(node) < iter_result.index(parent):
+                    self.fail("parent %s must come before child %s:\n%s"
+                              % (parent, node, iter_result))
+
     def test_tsort_empty(self):
         """TopoSort empty list"""
         self.assertSortAndIterate([], [])
@@ -60,6 +78,15 @@ class TopoSortTests(TestCase):
                                         1: [2],
                                         2: [0]}.items())
 
+    def test_topo_sort_cycle_with_tail(self):
+        """TopoSort traps graph with longer cycle"""
+        self.assertSortAndIterateRaise(GraphCycleError,
+                                       {0: [1],
+                                        1: [2],
+                                        2: [3, 4],
+                                        3: [0],
+                                        4: []}.items())
+
     def test_tsort_1(self):
         """TopoSort simple nontrivial graph"""
         self.assertSortAndIterate({0: [3],
@@ -72,10 +99,10 @@ class TopoSortTests(TestCase):
     def test_tsort_partial(self):
         """Topological sort with partial ordering.
 
-        If the graph does not give an order between two nodes, they are
-        returned in lexicographical order.
+        Multiple correct orderings are possible, so test for 
+        correctness, not for exact match on the resulting list.
         """
-        self.assertSortAndIterate(([(0, []),
+        self.assertSortAndIterateOrder([(0, []),
                                    (1, [0]),
                                    (2, [0]),
                                    (3, [0]),
@@ -83,8 +110,7 @@ class TopoSortTests(TestCase):
                                    (5, [1, 2]),
                                    (6, [1, 2]),
                                    (7, [2, 3]),
-                                   (8, [0, 1, 4, 5, 6])]),
-                                  [0, 1, 2, 3, 4, 5, 6, 7, 8])
+                                   (8, [0, 1, 4, 5, 6])])
 
     def test_tsort_unincluded_parent(self):
         """Sort nodes, but don't include some parents in the output"""
@@ -102,12 +128,8 @@ class MergeSortTests(TestCase):
                            mainline_revisions=mainline_revisions,
                            generate_revno=generate_revno)
         if result_list != value:
-            import pprint
             self.assertEqualDiff(pprint.pformat(result_list),
                                  pprint.pformat(value))
-        self.assertEquals(result_list,
-            merge_sort(graph, branch_tip, mainline_revisions=mainline_revisions,
-                generate_revno=generate_revno))
         self.assertEqual(result_list,
             list(MergeSorter(
                 graph,
@@ -211,7 +233,7 @@ class MergeSortTests(TestCase):
         self.assertSortAndIterate(graph, 'F',
             [(0, 'F', 0, (3,), False),
              (1, 'D', 1, (2,2,1), False),
-             (2, 'C', 1, (2,1,1), True), # XXX: Shouldn't it be merge_depth=2?
+             (2, 'C', 2, (2,1,1), True),
              (3, 'B', 0, (2,), False),
              (4, 'A', 0, (1,), True),
              ], True)

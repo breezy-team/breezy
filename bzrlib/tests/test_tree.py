@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Tree and InterTree."""
 
@@ -123,7 +123,7 @@ class TestTree(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         delta = wt.changes_from(wt.basis_tree())
         self.assertEqual(len(delta.added), 0)
-        delta = wt.changes_from(wt.basis_tree(), wt, include_root=True)
+        delta = wt.changes_from(wt.basis_tree(), include_root=True)
         self.assertEqual(len(delta.added), 1)
         self.assertEqual(delta.added[0][0], '')
 
@@ -139,7 +139,7 @@ class TestTree(TestCaseWithTransport):
 
         # we need to pass a known file with an unknown file to get this to
         # fail when expected.
-        delta = wt.changes_from(wt.basis_tree(), wt,
+        delta = wt.changes_from(wt.basis_tree(),
             specific_files=['known_file', 'unknown_file'] ,
             require_versioned=False)
         self.assertEqual(len(delta.added), 1)

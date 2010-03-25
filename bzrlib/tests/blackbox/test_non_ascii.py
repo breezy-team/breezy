@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,42 +12,41 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for bzr handling non-ascii characters."""
 
-import sys
 import os
+import sys
 
-from bzrlib import osutils, urlutils
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
-from bzrlib.trace import mutter, note
+from bzrlib import (
+    osutils,
+    tests,
+    urlutils,
+    )
+from bzrlib.tests import EncodingAdapter
 
 
-class TestNonAscii(TestCaseWithTransport):
+def load_tests(standard_tests, module, loader):
+    return tests.multiply_tests(standard_tests,
+                                EncodingAdapter.encoding_scenarios,
+                                loader.suiteClass())
+
+
+class TestNonAscii(tests.TestCaseWithTransport):
     """Test that bzr handles files/committers/etc which are non-ascii."""
 
     def setUp(self):
         super(TestNonAscii, self).setUp()
-        self._orig_email = os.environ.get('BZR_EMAIL', None)
-        self._orig_encoding = osutils._cached_user_encoding
+        self._check_can_encode_paths()
 
-        osutils._cached_user_encoding = self.encoding
+        self.overrideAttr(osutils, '_cached_user_encoding', self.encoding)
         email = self.info['committer'] + ' <joe@foo.com>'
         os.environ['BZR_EMAIL'] = email.encode(osutils.get_user_encoding())
         self.create_base()
 
-    def tearDown(self):
-        if self._orig_email is not None:
-            os.environ['BZR_EMAIL'] = self._orig_email
-        else:
-            if os.environ.get('BZR_EMAIL', None) is not None:
-                del os.environ['BZR_EMAIL']
-        osutils._cached_user_encoding = self._orig_encoding
-        super(TestNonAscii, self).tearDown()
-
     def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,
-                        working_dir=None):
+                       working_dir=None):
         """Run bzr and decode the output into a particular encoding.
 
         Returns a string containing the stdout output from bzr.
@@ -58,8 +57,9 @@ class TestNonAscii(TestCaseWithTransport):
         if encoding is None:
             encoding = osutils.get_user_encoding()
         try:
-            out = self.run_bzr(args, output_encoding=encoding, encoding=encoding,
-                retcode=retcode, working_dir=working_dir)[0]
+            out = self.run_bzr(args,
+                               output_encoding=encoding, encoding=encoding,
+                               retcode=retcode, working_dir=working_dir)[0]
             return out.decode(encoding)
         except UnicodeError, e:
             if not fail:
@@ -72,8 +72,30 @@ class TestNonAscii(TestCaseWithTransport):
             if fail:
                 self.fail("Expected UnicodeError not raised")
 
-    def create_base(self):
-        fs_enc = sys.getfilesystemencoding()
+    def _check_OSX_can_roundtrip(self, path, fs_enc=None):
+        """Stop the test if it's about to fail or errors out.
+
+        Until we get proper support on OSX for accented paths (in fact, any
+        path whose NFD decomposition is different than the NFC one), this is
+        the best way to keep test active (as opposed to disabling them
+        completely). This is a stop gap. The tests should at least be rewritten
+        so that the failing ones are clearly separated from the passing ones.
+        """
+        if fs_enc is None:
+            fs_enc = osutils._fs_enc
+        if sys.platform == 'darwin':
+            encoded = path.encode(fs_enc)
+            import unicodedata
+            normal_thing = unicodedata.normalize('NFD', path)
+            mac_encoded = normal_thing.encode(fs_enc)
+            if mac_encoded != encoded:
+                raise tests.KnownFailure(
+                    'Unable to roundtrip path %r on OSX filesystem'
+                    ' using encoding "%s"'
+                    % (path, fs_enc))
+
+    def _check_can_encode_paths(self):
+        fs_enc = osutils._fs_enc
         terminal_enc = osutils.get_terminal_encoding()
         fname = self.info['filename']
         dir_name = self.info['directory']
@@ -81,18 +103,18 @@ class TestNonAscii(TestCaseWithTransport):
             try:
                 thing.encode(fs_enc)
             except UnicodeEncodeError:
-                raise TestSkipped(('Unable to represent path %r'
-                                   ' in filesystem encoding "%s"')
-                                    % (thing, fs_enc))
+                raise tests.TestSkipped(
+                    'Unable to represent path %r in filesystem encoding "%s"'
+                    % (thing, fs_enc))
             try:
                 thing.encode(terminal_enc)
             except UnicodeEncodeError:
-                raise TestSkipped(('Unable to represent path %r'
-                                   ' in terminal encoding "%s"'
-                                   ' (even though it is valid in'
-                                   ' filesystem encoding "%s")')
-                                   % (thing, terminal_enc, fs_enc))
+                raise tests.TestSkipped(
+                    'Unable to represent path %r in terminal encoding "%s"'
+                    ' (even though it is valid in filesystem encoding "%s")'
+                    % (thing, terminal_enc, fs_enc))
 
+    def create_base(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'foo\n')])
         wt.add('a')
@@ -103,15 +125,22 @@ class TestNonAscii(TestCaseWithTransport):
         wt.add('b')
         wt.commit(self.info['message'])
 
+        fname = self.info['filename']
         self.build_tree_contents([(fname, 'unicode filename\n')])
         wt.add(fname)
         wt.commit(u'And a unicode file\n')
         self.wt = wt
+        # FIXME: We don't check that the add went well, in fact, it doesn't on
+        # OSX (when LC_ALL is set correctly) because the added path doesn't
+        # match the one used on OSX. But checking here will require more
+        # invasive changes than adding the _check_OSX_can_roundtrip(), so I
+        # punt for now -- vila 20090702
 
     def test_status(self):
         self.build_tree_contents(
             [(self.info['filename'], 'changed something\n')])
         txt = self.run_bzr_decode('status')
+        self._check_OSX_can_roundtrip(self.info['filename'])
         self.assertEqual(u'modified:\n  %s\n' % (self.info['filename'],), txt)
 
         txt = self.run_bzr_decode('status', encoding='ascii')
@@ -125,6 +154,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = self.run_bzr('cat b')[0]
         self.assertEqual('non-ascii \xFF\xFF\xFC\xFB\x00 in b\n', txt)
 
+        self._check_OSX_can_roundtrip(self.info['filename'])
         txt = self.run_bzr(['cat', self.info['filename']])[0]
         self.assertEqual('unicode filename\n', txt)
 
@@ -158,6 +188,7 @@ class TestNonAscii(TestCaseWithTransport):
 
     def test_inventory(self):
         txt = self.run_bzr_decode('inventory')
+        self._check_OSX_can_roundtrip(self.info['filename'])
         self.assertEqual(['a', 'b', self.info['filename']],
                          txt.splitlines())
 
@@ -201,6 +232,7 @@ class TestNonAscii(TestCaseWithTransport):
         os.mkdir(dirname)
         self.wt.add(dirname)
         txt = self.run_bzr_decode(['mv', fname1, fname2, dirname])
+        self._check_OSX_can_roundtrip(self.info['filename'])
         self.assertEqual([u'%s => %s/%s' % (fname1, dirname, fname1),
                           u'%s => %s/%s' % (fname2, dirname, fname2)]
                          , txt.splitlines())
@@ -251,6 +283,8 @@ class TestNonAscii(TestCaseWithTransport):
         # TODO: jam 20060427 For drastically improving performance, we probably
         #       could create a local repository, so it wouldn't have to copy
         #       the files around as much.
+        # Note that the tests don't actually fail, but if we don't set this
+        # flag, we end up getting "Lock was not Unlocked" warnings
 
         dirname = self.info['directory']
         self.run_bzr_decode(['push', dirname])
@@ -313,6 +347,7 @@ class TestNonAscii(TestCaseWithTransport):
         self.wt.add('base')
         self.wt.add('base/'+dirname)
         path = osutils.pathjoin('base', dirname, fname)
+        self._check_OSX_can_roundtrip(self.info['filename'])
         self.wt.rename_one(fname, path)
         self.wt.commit('moving things around')
 
@@ -334,6 +369,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = self.run_bzr_decode('ancestry')
 
     def test_diff(self):
+        self._check_OSX_can_roundtrip(self.info['filename'])
         # TODO: jam 20060106 diff is a difficult one to test, because it
         #       shouldn't encode the file contents, but it needs some sort
         #       of encoding for the paths, etc which are displayed.
@@ -341,6 +377,7 @@ class TestNonAscii(TestCaseWithTransport):
         txt = self.run_bzr('diff', retcode=1)[0]
 
     def test_deleted(self):
+        self._check_OSX_can_roundtrip(self.info['filename'])
         fname = self.info['filename']
         os.remove(fname)
         self.wt.remove(fname)
@@ -361,6 +398,7 @@ class TestNonAscii(TestCaseWithTransport):
         self.build_tree_contents([(fname, 'modified\n')])
 
         txt = self.run_bzr_decode('modified')
+        self._check_OSX_can_roundtrip(self.info['filename'])
         self.assertEqual('"'+fname+'"'+'\n', txt)
 
         self.run_bzr_decode('modified', encoding='ascii', fail=True)
@@ -396,6 +434,8 @@ class TestNonAscii(TestCaseWithTransport):
         self.assertNotEqual(-1, txt.find(self.info['message']))
 
         txt = self.run_bzr_decode('log --verbose')
+        # FIXME: iso-8859-2 test shouldn't be skipped here --vila 20090702
+        self._check_OSX_can_roundtrip(self.info['filename'])
         self.assertNotEqual(-1, txt.find(fname))
 
         # Make sure log doesn't fail even if we can't write out
@@ -406,6 +446,7 @@ class TestNonAscii(TestCaseWithTransport):
     def test_touching_revisions(self):
         fname = self.info['filename']
         txt = self.run_bzr_decode(['touching-revisions', fname])
+        self._check_OSX_can_roundtrip(self.info['filename'])
         self.assertEqual(u'     3 added %s\n' % (fname,), txt)
 
         fname2 = self.info['filename'] + '2'
@@ -440,6 +481,7 @@ class TestNonAscii(TestCaseWithTransport):
         #       quotes paths do we really want it to?
         #       awilkins 20080521 added and modified do it now as well
         txt = self.run_bzr_decode('unknowns')
+        self._check_OSX_can_roundtrip(self.info['filename'])
         self.assertEqual(u'"%s"\n' % (fname,), txt)
 
         self.run_bzr_decode('unknowns', encoding='ascii', fail=True)
@@ -451,6 +493,7 @@ class TestNonAscii(TestCaseWithTransport):
         def check_unknowns(expected):
             self.assertEqual(expected, list(self.wt.unknowns()))
 
+        self._check_OSX_can_roundtrip(self.info['filename'])
         check_unknowns([fname2])
 
         self.run_bzr_decode(['ignore', './' + fname2])

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,12 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test for 'bzr mv'"""
 
 import os
 
+import bzrlib.branch
 from bzrlib import (
     osutils,
     workingtree,
@@ -430,3 +431,76 @@ class TestMove(TestCaseWithTransport):
         self.assertNotInWorkingTree('c')
         self.failUnlessExists('d')
         self.assertInWorkingTree('d')
+
+    def make_abcd_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/a', 'tree/c'])
+        tree.add(['a', 'c'])
+        tree.commit('record old names')
+        osutils.rename('tree/a', 'tree/b')
+        osutils.rename('tree/c', 'tree/d')
+        return tree
+
+    def test_mv_auto(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto', working_dir='tree')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
+        tree = workingtree.WorkingTree.open('tree')
+        self.assertIsNot(None, tree.path2id('b'))
+        self.assertIsNot(None, tree.path2id('d'))
+
+    def test_mv_auto_one_path(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto tree')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
+        tree = workingtree.WorkingTree.open('tree')
+        self.assertIsNot(None, tree.path2id('b'))
+        self.assertIsNot(None, tree.path2id('d'))
+
+    def test_mv_auto_two_paths(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto tree tree2', retcode=3)
+        self.assertEqual('bzr: ERROR: Only one path may be specified to'
+                         ' --auto.\n', err)
+
+    def test_mv_auto_dry_run(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto --dry-run', working_dir='tree')
+        self.assertEqual(out, '')
+        self.assertEqual(err, 'a => b\nc => d\n')
+        tree = workingtree.WorkingTree.open('tree')
+        self.assertIsNot(None, tree.path2id('a'))
+        self.assertIsNot(None, tree.path2id('c'))
+
+    def test_mv_no_auto_dry_run(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv c d --dry-run',
+                                working_dir='tree', retcode=3)
+        self.assertEqual('bzr: ERROR: --dry-run requires --auto.\n', err)
+
+    def test_mv_auto_after(self):
+        self.make_abcd_tree()
+        out, err = self.run_bzr('mv --auto --after', working_dir='tree',
+                                retcode=3)
+        self.assertEqual('bzr: ERROR: --after cannot be specified with'
+                         ' --auto.\n', err)
+
+    def test_mv_quiet(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['aaa'])
+        tree.add(['aaa'])
+        out, err = self.run_bzr('mv --quiet aaa bbb')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
+
+    def test_mv_readonly_lightweight_checkout(self):
+        branch = self.make_branch('foo')
+        branch = bzrlib.branch.Branch.open(self.get_readonly_url('foo'))
+        tree = branch.create_checkout('tree', lightweight=True)
+        self.build_tree(['tree/path'])
+        tree.add('path')
+        # If this fails, the tree is trying to acquire a branch lock, which it
+        # shouldn't.
+        self.run_bzr(['mv', 'tree/path', 'tree/path2'])

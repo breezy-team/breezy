@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport is an abstraction layer to handle file access.
 
@@ -50,7 +50,6 @@ from bzrlib.symbol_versioning import (
         deprecated_method,
         deprecated_function,
         DEPRECATED_PARAMETER,
-        one_four,
         )
 from bzrlib.trace import (
     mutter,
@@ -91,8 +90,10 @@ def _get_transport_modules():
                 modules.add(factory._module_name)
             else:
                 modules.add(factory._obj.__module__)
-    # Add chroot directly, because there is no handler registered for it.
+    # Add chroot and pathfilter directly, because there is no handler
+    # registered for it.
     modules.add('bzrlib.transport.chroot')
+    modules.add('bzrlib.transport.pathfilter')
     result = list(modules)
     result.sort()
     return result
@@ -107,7 +108,7 @@ class TransportListRegistry(registry.Registry):
     register_transport_provider( ) ( and the "lazy" variant )
 
     This is needed because:
-    a) a single provider can support multple protcol ( like the ftp
+    a) a single provider can support multiple protocols ( like the ftp
     provider which supports both the ftp:// and the aftp:// protocols )
     b) a single protocol can have multiple providers ( like the http://
     protocol which is supported by both the urllib and pycurl provider )
@@ -329,6 +330,31 @@ class Transport(object):
         """
         raise NotImplementedError(self.clone)
 
+    def create_prefix(self):
+        """Create all the directories leading down to self.base."""
+        cur_transport = self
+        needed = [cur_transport]
+        # Recurse upwards until we can create a directory successfully
+        while True:
+            new_transport = cur_transport.clone('..')
+            if new_transport.base == cur_transport.base:
+                raise errors.BzrCommandError(
+                    "Failed to create path prefix for %s."
+                    % cur_transport.base)
+            try:
+                new_transport.mkdir('.')
+            except errors.NoSuchFile:
+                needed.append(new_transport)
+                cur_transport = new_transport
+            except errors.FileExists:
+                break
+            else:
+                break
+        # Now we only need to create child directories
+        while needed:
+            cur_transport = needed.pop()
+            cur_transport.ensure_base()
+
     def ensure_base(self):
         """Ensure that the directory this transport references exists.
 
@@ -516,7 +542,6 @@ class Transport(object):
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
 
-
     def has(self, relpath):
         """Does the file relpath exist?
 
@@ -587,30 +612,8 @@ class Transport(object):
         finally:
             f.close()
 
-    @deprecated_method(one_four)
-    def get_smart_client(self):
-        """Return a smart client for this transport if possible.
-
-        A smart client doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartServer: if no smart server client is available.
-        """
-        raise errors.NoSmartServer(self.base)
-
     def get_smart_medium(self):
         """Return a smart client medium for this transport if possible.
-
-        A smart medium doesn't imply the presence of a smart server: it implies
-        that the smart protocol can be tunnelled via this transport.
-
-        :raises NoSmartMedium: if no smart server medium is available.
-        """
-        raise errors.NoSmartMedium(self)
-
-    @deprecated_method(one_four)
-    def get_shared_medium(self):
-        """Return a smart client shared medium for this transport if possible.
 
         A smart medium doesn't imply the presence of a smart server: it implies
         that the smart protocol can be tunnelled via this transport.
@@ -845,7 +848,7 @@ class Transport(object):
         """Get a list of file-like objects, one for each entry in relpaths.
 
         :param relpaths: A list of relative paths.
-        :param pb:  An optional ProgressBar for indicating percent done.
+        :param pb:  An optional ProgressTask for indicating percent done.
         :return: A list or generator of file-like objects
         """
         # TODO: Consider having this actually buffer the requests,
@@ -1014,7 +1017,7 @@ class Transport(object):
         the supplied location.
 
         :param files: A set of (path, f) entries
-        :param pb:  An optional ProgressBar for indicating percent done.
+        :param pb:  An optional ProgressTask for indicating percent done.
         """
         return self._iterate_over(files, self.append_file, pb, 'append', expand=True)
 
@@ -1357,46 +1360,7 @@ class ConnectedTransport(Transport):
 
     @staticmethod
     def _split_url(url):
-        """
-        Extract the server address, the credentials and the path from the url.
-
-        user, password, host and path should be quoted if they contain reserved
-        chars.
-
-        :param url: an quoted url
-
-        :return: (scheme, user, password, host, port, path) tuple, all fields
-            are unquoted.
-        """
-        if isinstance(url, unicode):
-            raise errors.InvalidURL('should be ascii:\n%r' % url)
-        url = url.encode('utf-8')
-        (scheme, netloc, path, params,
-         query, fragment) = urlparse.urlparse(url, allow_fragments=False)
-        user = password = host = port = None
-        if '@' in netloc:
-            user, host = netloc.rsplit('@', 1)
-            if ':' in user:
-                user, password = user.split(':', 1)
-                password = urllib.unquote(password)
-            user = urllib.unquote(user)
-        else:
-            host = netloc
-
-        if ':' in host:
-            host, port = host.rsplit(':', 1)
-            try:
-                port = int(port)
-            except ValueError:
-                raise errors.InvalidURL('invalid port number %s in url:\n%s' %
-                                        (port, url))
-        if host == '':
-            raise errors.InvalidURL('Host empty in: %s' % url)
-
-        host = urllib.unquote(host)
-        path = urllib.unquote(path)
-
-        return (scheme, user, password, host, port, path)
+        return urlutils.parse_url(url)
 
     @staticmethod
     def _unsplit_url(scheme, user, password, host, port, path):
@@ -1428,7 +1392,7 @@ class ConnectedTransport(Transport):
             netloc = '%s@%s' % (urllib.quote(user), netloc)
         if port is not None:
             netloc = '%s:%d' % (netloc, port)
-        path = urllib.quote(path)
+        path = urlutils.escape(path)
         return urlparse.urlunparse((scheme, netloc, path, None, None, None))
 
     def relpath(self, abspath):
@@ -1699,41 +1663,14 @@ def do_catching_redirections(action, transport, redirected):
 class Server(object):
     """A Transport Server.
 
-    The Server interface provides a server for a given transport. We use
-    these servers as loopback testing tools. For any given transport the
-    Servers it provides must either allow writing, or serve the contents
-    of os.getcwdu() at the time setUp is called.
-
-    Note that these are real servers - they must implement all the things
-    that we want bzr transports to take advantage of.
+    The Server interface provides a server for a given transport type.
     """
 
-    def setUp(self):
+    def start_server(self):
         """Setup the server to service requests."""
 
-    def tearDown(self):
+    def stop_server(self):
         """Remove the server and cleanup any resources it owns."""
-
-    def get_url(self):
-        """Return a url for this server.
-
-        If the transport does not represent a disk directory (i.e. it is
-        a database like svn, or a memory only transport, it should return
-        a connection to a newly established resource for this Server.
-        Otherwise it should return a url that will provide access to the path
-        that was os.getcwdu() when setUp() was called.
-
-        Subsequent calls will return the same resource.
-        """
-        raise NotImplementedError
-
-    def get_bogus_url(self):
-        """Return a url for this protocol, that will fail to connect.
-
-        This may raise NotImplementedError to indicate that this server cannot
-        provide bogus urls.
-        """
-        raise NotImplementedError
 
 
 # None is the default transport, for things with no url scheme
@@ -1787,24 +1724,32 @@ register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
-# Default to trying GSSAPI authentication (if the kerberos module is available)
-register_transport_proto('ftp+gssapi://', register_netloc=True)
-register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_transport_proto('aftp+gssapi://', register_netloc=True)
-register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_transport_proto('ftp+nogssapi://', register_netloc=True)
-register_transport_proto('aftp+nogssapi://', register_netloc=True)
+try:
+    import kerberos
+    kerberos_available = True
+except ImportError:
+    kerberos_available = False
 
-register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
-                        'GSSAPIFtpTransport')
-register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
-                        'FtpTransport')
-register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
-                        'FtpTransport')
+if kerberos_available:
+    # Default to trying GSSAPI authentication (if the kerberos module is
+    # available)
+    register_transport_proto('ftp+gssapi://', register_netloc=True)
+    register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_transport_proto('aftp+gssapi://', register_netloc=True)
+    register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_transport_proto('ftp+nogssapi://', register_netloc=True)
+    register_transport_proto('aftp+nogssapi://', register_netloc=True)
+
+    register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
+                            'GSSAPIFtpTransport')
+    register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
+                            'FtpTransport')
+    register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
+                            'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
@@ -1883,3 +1828,9 @@ register_lazy_transport('bzr+ssh://', 'bzrlib.transport.remote',
 register_transport_proto('ssh:')
 register_lazy_transport('ssh:', 'bzrlib.transport.remote',
                         'HintingSSHTransport')
+
+
+transport_server_registry = registry.Registry()
+transport_server_registry.register_lazy('bzr', 'bzrlib.smart.server', 
+    'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
+transport_server_registry.default_key = 'bzr'

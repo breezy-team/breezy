@@ -2,8 +2,6 @@
 Using Bazaar with Launchpad
 ===========================
 
-.. contents::
-.. sectnum::
 
 Motivation
 ==========
@@ -386,7 +384,7 @@ done by a robot (like `PQM`_) when the branch reaches the right state
 Code review tracking
 --------------------
 
-A number of feature are under development in Launchpad to track the
+A number of features are under development in Launchpad to track the
 states, conversations and outcomes of code reviews. These features are
 expected to be integrated with branch merge proposals and branch
 browsing features.
@@ -425,7 +423,7 @@ localise your project into many languages.
 Summary
 =======
 
-The communities we join, whether off-line or on-line, 
+The communities we join, whether off-line or on-line,
 say a lot about the sort of people we are. The flip-side
 to this is that the tools you choose for your community - particularly
 the CDE and version control tool - can have a large impact on who

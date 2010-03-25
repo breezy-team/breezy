@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # Mr. Smoketoomuch: I'm sorry?
 # Mr. Bounder: You'd better cut down a little then.
@@ -44,11 +44,6 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import (
-    has_symlinks,
-    pathjoin,
-    terminal_width,
-    )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
@@ -87,7 +82,7 @@ class TestCommands(ExternalBase):
         os.rmdir('revertdir')
         self.run_bzr('revert')
 
-        if has_symlinks():
+        if osutils.has_symlinks():
             os.symlink('/unlikely/to/exist', 'symlink')
             self.run_bzr('add symlink')
             self.run_bzr('commit -m f')
@@ -111,19 +106,6 @@ class TestCommands(ExternalBase):
         os.chdir('revertdir')
         self.run_bzr('revert')
         os.chdir('..')
-
-    def test_main_version(self):
-        """Check output from version command and master option is reasonable"""
-        # output is intentionally passed through to stdout so that we
-        # can see the version being tested
-        output = self.run_bzr('version')[0]
-        self.log('bzr version output:')
-        self.log(output)
-        self.assert_(output.startswith('Bazaar (bzr) '))
-        self.assertNotEqual(output.index('Canonical'), -1)
-        # make sure --version is consistent
-        tmp_output = self.run_bzr('--version')[0]
-        self.assertEquals(output, tmp_output)
 
     def example_branch(test):
         test.run_bzr('init')
@@ -387,7 +369,7 @@ class OldTests(ExternalBase):
         self.run_bzr('init')
 
         self.assertIsSameRealPath(self.run_bzr('root')[0].rstrip(),
-                                  pathjoin(self.test_dir, 'branch1'))
+                                  osutils.pathjoin(self.test_dir, 'branch1'))
 
         progress("status of new file")
 
@@ -456,9 +438,10 @@ class OldTests(ExternalBase):
 
         log_out = self.run_bzr('log --line')[0]
         # determine the widest line we want
-        max_width = terminal_width() - 1
-        for line in log_out.splitlines():
-            self.assert_(len(line) <= max_width, len(line))
+        max_width = osutils.terminal_width()
+        if max_width is not None:
+            for line in log_out.splitlines():
+                self.assert_(len(line) <= max_width - 1, len(line))
         self.assert_("this is my new commit and" not in log_out)
         self.assert_("this is my new commit" in log_out)
 
@@ -475,7 +458,7 @@ class OldTests(ExternalBase):
 
         self.run_bzr('info')
 
-        if has_symlinks():
+        if osutils.has_symlinks():
             progress("symlinks")
             mkdir('symlinks')
             chdir('symlinks')

@@ -1,0 +1,114 @@
+##########################
+Guia de Usuarios de Bazaar
+##########################
+
+.. Files are currently links but will become includes once the
+.. content makes more sense as a whole.
+.. Please mark sections in linked/included files as following:
+..   level 1 ========
+..   level 2 --------
+..   level 3 ~~~~~~~~
+..   level 4 ^^^^^^^^ (it is better not to use nesting deeper than 3 levels)
+
+
+Introducción
+############
+
+.. include later - introducing_bazaar.txt
+.. include later - core_concepts.txt
+.. include later - bazaar_workflows.txt
+
+
+Empezando
+#########
+
+.. include later - installing_bazaar.txt
+.. include later -  entering_commands.txt
+.. include later - revnos.txt
+.. include later - getting_help.txt
+.. include later - configuring_bazaar.txt
+.. include later - using_aliases.txt
+.. include later - plugins.txt
+
+
+Control de Versionamiento Personal
+##################################
+
+.. include later - solo_intro.txt
+.. include later - starting_a_project.txt
+.. include later - controlling_registration.txt
+.. include later - reviewing_changes.txt
+.. include later - recording_changes.txt
+.. include later - browsing_history.txt
+.. include later - releasing_a_project.txt
+.. include later - undoing_mistakes.txt
+
+
+Compartiendo con tus pares
+##########################
+
+.. include later - partner_intro.txt
+.. include later - branching_a_project.txt
+.. include later - merging_changes.txt
+.. include later - resolving_conflicts.txt
+.. include later - annotating_changes.txt
+
+
+Colaboración en equipo, modo centralizado
+#########################################
+
+.. include later - central_intro.txt
+.. include later - publishing_a_branch.txt
+.. include later - using_checkouts.txt
+.. include later - working_offline_central.txt
+.. include later - reusing_a_checkout.txt
+
+
+Colaboracion en equipo, modo distribuido
+########################################
+
+.. include later - distributed_intro.txt
+.. include later - organizing_branches.txt
+.. include later - using_gatekeepers.txt
+.. include later - sending_changes.txt
+
+
+Un tour breve de los plugins mas populares
+##########################################
+
+.. include later - part2_intro.txt
+.. include later - bzrtools_plugin.txt
+.. include later - svn_plugin.txt
+.. include later looms_plugin.txt
+
+
+Integrando Bazaar en tu entorno
+###############################
+
+.. include later - web_browsing.txt
+.. include later - file_explorers.txt
+.. include later - desktop_integration.txt
+.. include later - editors_and_ides.txt
+.. include later - email.txt
+.. include later - bug_trackers.txt
+
+
+Temas varios
+############
+
+.. include later - adv_merging.txt
+.. include later - server.txt
+.. include later - hooks.txt
+.. include:: version_info.txt
+
+
+Apéndice
+########
+
+.. include later - specifying_revisions.txt
+.. include later - shared_repository_layouts.txt
+.. include later - setting_up_email.txt
+.. include later - http_smart_server.txt
+.. include later - writing_a_plugin.txt
+
+.. |--| unicode:: U+2014

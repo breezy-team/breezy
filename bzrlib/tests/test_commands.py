@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
 import errno
@@ -23,6 +23,8 @@ from bzrlib import (
     commands,
     config,
     errors,
+    option,
+    symbol_versioning,
     tests,
     )
 from bzrlib.commands import display_command
@@ -60,6 +62,23 @@ class TestCommands(tests.TestCase):
         self.assertRaises(errors.BzrCommandError,
                           commands.run_bzr, ['log', u'--option\xb5'])
 
+    @staticmethod
+    def get_command(options):
+        class cmd_foo(commands.Command):
+            'Bar'
+
+            takes_options = options
+
+        return cmd_foo()
+
+    def test_help_hidden(self):
+        c = self.get_command([option.Option('foo', hidden=True)])
+        self.assertNotContainsRe(c.get_help_text(), '--foo')
+
+    def test_help_not_hidden(self):
+        c = self.get_command([option.Option('foo', hidden=False)])
+        self.assertContainsRe(c.get_help_text(), '--foo')
+
 
 class TestGetAlias(tests.TestCase):
 
@@ -93,7 +112,7 @@ class TestGetAlias(tests.TestCase):
 
     def test_unicode(self):
         my_config = self._get_config("[ALIASES]\n"
-            u"iam=whoami 'Erik B\u00e5gfors <erik@bagfors.nu>'\n")
+            u'iam=whoami "Erik B\u00e5gfors <erik@bagfors.nu>"\n')
         self.assertEqual([u'whoami', u'Erik B\u00e5gfors <erik@bagfors.nu>'],
                           commands.get_alias("iam", config=my_config))
 
@@ -140,10 +159,12 @@ class TestSeeAlso(tests.TestCase):
 class TestRegisterLazy(tests.TestCase):
 
     def setUp(self):
+        tests.TestCase.setUp(self)
         import bzrlib.tests.fake_command
         del sys.modules['bzrlib.tests.fake_command']
         global lazy_command_imported
         lazy_command_imported = False
+        commands.install_bzr_command_hooks()
 
     @staticmethod
     def remove_fake():
@@ -186,6 +207,7 @@ class TestExtendCommandHook(tests.TestCase):
         # commands are registered).
         # when they are simply created.
         hook_calls = []
+        commands.install_bzr_command_hooks()
         commands.Command.hooks.install_named_hook(
             "extend_command", hook_calls.append, None)
         # create a command, should not fire
@@ -218,3 +240,107 @@ class TestExtendCommandHook(tests.TestCase):
             self.assertEqual([cmd], hook_calls)
         finally:
             commands.plugin_cmds.remove('fake')
+
+
+class TestGetCommandHook(tests.TestCase):
+
+    def test_fires_on_get_cmd_object(self):
+        # The get_command(cmd) hook fires when commands are delivered to the
+        # ui.
+        commands.install_bzr_command_hooks()
+        hook_calls = []
+        class ACommand(commands.Command):
+            """A sample command."""
+        def get_cmd(cmd_or_None, cmd_name):
+            hook_calls.append(('called', cmd_or_None, cmd_name))
+            if cmd_name in ('foo', 'info'):
+                return ACommand()
+        commands.Command.hooks.install_named_hook(
+            "get_command", get_cmd, None)
+        # create a command directly, should not fire
+        cmd = ACommand()
+        self.assertEqual([], hook_calls)
+        # ask by name, should fire and give us our command
+        cmd = commands.get_cmd_object('foo')
+        self.assertEqual([('called', None, 'foo')], hook_calls)
+        self.assertIsInstance(cmd, ACommand)
+        del hook_calls[:]
+        # ask by a name that is supplied by a builtin - the hook should still
+        # fire and we still get our object, but we should see the builtin
+        # passed to the hook.
+        cmd = commands.get_cmd_object('info')
+        self.assertIsInstance(cmd, ACommand)
+        self.assertEqual(1, len(hook_calls))
+        self.assertEqual('info', hook_calls[0][2])
+        self.assertIsInstance(hook_calls[0][1], builtins.cmd_info)
+
+
+class TestGetMissingCommandHook(tests.TestCase):
+
+    def hook_missing(self):
+        """Hook get_missing_command for testing."""
+        self.hook_calls = []
+        class ACommand(commands.Command):
+            """A sample command."""
+        def get_missing_cmd(cmd_name):
+            self.hook_calls.append(('called', cmd_name))
+            if cmd_name in ('foo', 'info'):
+                return ACommand()
+        commands.Command.hooks.install_named_hook(
+            "get_missing_command", get_missing_cmd, None)
+        self.ACommand = ACommand
+
+    def test_fires_on_get_cmd_object(self):
+        # The get_missing_command(cmd) hook fires when commands are delivered to the
+        # ui.
+        self.hook_missing()
+        # create a command directly, should not fire
+        self.cmd = self.ACommand()
+        self.assertEqual([], self.hook_calls)
+        # ask by name, should fire and give us our command
+        cmd = commands.get_cmd_object('foo')
+        self.assertEqual([('called', 'foo')], self.hook_calls)
+        self.assertIsInstance(cmd, self.ACommand)
+        del self.hook_calls[:]
+        # ask by a name that is supplied by a builtin - the hook should not
+        # fire and we still get our object.
+        commands.install_bzr_command_hooks()
+        cmd = commands.get_cmd_object('info')
+        self.assertNotEqual(None, cmd)
+        self.assertEqual(0, len(self.hook_calls))
+
+    def test_skipped_on_HelpCommandIndex_get_topics(self):
+        # The get_missing_command(cmd_name) hook is not fired when
+        # looking up help topics.
+        self.hook_missing()
+        topic = commands.HelpCommandIndex()
+        topics = topic.get_topics('foo')
+        self.assertEqual([], self.hook_calls)
+
+
+class TestListCommandHook(tests.TestCase):
+
+    def test_fires_on_all_command_names(self):
+        # The list_commands() hook fires when all_command_names() is invoked.
+        hook_calls = []
+        commands.install_bzr_command_hooks()
+        def list_my_commands(cmd_names):
+            hook_calls.append('called')
+            cmd_names.update(['foo', 'bar'])
+            return cmd_names
+        commands.Command.hooks.install_named_hook(
+            "list_commands", list_my_commands, None)
+        # Get a command, which should not trigger the hook.
+        cmd = commands.get_cmd_object('info')
+        self.assertEqual([], hook_calls)
+        # Get all command classes (for docs and shell completion).
+        cmds = list(commands.all_command_names())
+        self.assertEqual(['called'], hook_calls)
+        self.assertSubset(['foo', 'bar'], cmds)
+
+class TestDeprecations(tests.TestCase):
+
+    def test_shlex_split_unicode_deprecation(self):
+        res = self.applyDeprecated(
+                symbol_versioning.deprecated_in((2, 2, 0)),
+                commands.shlex_split_unicode, 'whatever')

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """RevisionTree - a Tree implementation backed by repository data for a revision."""
 
@@ -23,11 +23,11 @@ from bzrlib import (
     osutils,
     revision,
     symbol_versioning,
+    tree,
     )
-from bzrlib.tree import Tree
 
 
-class RevisionTree(Tree):
+class RevisionTree(tree.Tree):
     """Tree viewing a previous revision.
 
     File text can be retrieved from the text store.
@@ -45,7 +45,8 @@ class RevisionTree(Tree):
         self._rules_searcher = None
 
     def supports_tree_reference(self):
-        return True
+        return getattr(self._repository._format, "supports_tree_reference",
+            False)
 
     def get_parent_ids(self):
         """See Tree.get_parent_ids.
@@ -64,7 +65,8 @@ class RevisionTree(Tree):
         return self._revision_id
 
     def get_file_text(self, file_id, path=None):
-        return list(self.iter_files_bytes([(file_id, None)]))[0][1]
+        _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
+        return ''.join(content)
 
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
@@ -85,7 +87,8 @@ class RevisionTree(Tree):
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
         text_key = (file_id, self.inventory[file_id].revision)
-        annotations = self._repository.texts.annotate(text_key)
+        annotator = self._repository.texts.get_annotator()
+        annotations = annotator.annotate_flat(text_key)
         return [(key[-1], line) for key, line in annotations]
 
     def get_file_size(self, file_id):
@@ -100,7 +103,10 @@ class RevisionTree(Tree):
 
     def get_file_mtime(self, file_id, path=None):
         ie = self._inventory[file_id]
-        revision = self._repository.get_revision(ie.revision)
+        try:
+            revision = self._repository.get_revision(ie.revision)
+        except errors.NoSuchRevision:
+            raise errors.FileTimestampUnavailable(self.id2path(file_id))
         return revision.timestamp
 
     def is_executable(self, file_id, path=None):
@@ -112,11 +118,18 @@ class RevisionTree(Tree):
     def has_filename(self, filename):
         return bool(self.inventory.path2id(filename))
 
-    def list_files(self, include_root=False):
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
         # The only files returned by this are those from the version
-        entries = self.inventory.iter_entries()
-        # skip the root for compatability with the current apis.
-        if self.inventory.root is not None and not include_root:
+        inv = self.inventory
+        if from_dir is None:
+            from_dir_id = None
+        else:
+            from_dir_id = inv.path2id(from_dir)
+            if from_dir_id is None:
+                # Directory not versioned
+                return
+        entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
+        if inv.root is not None and not include_root and from_dir is None:
             # skip the root for compatability with the current apis.
             entries.next()
         for path, entry in entries:
@@ -124,7 +137,8 @@ class RevisionTree(Tree):
 
     def get_symlink_target(self, file_id):
         ie = self._inventory[file_id]
-        return ie.symlink_target;
+        # Inventories store symlink targets in unicode
+        return ie.symlink_target
 
     def get_reference_revision(self, file_id, path=None):
         return self.inventory[file_id].reference_revision
@@ -207,3 +221,78 @@ class RevisionTree(Tree):
             self._rules_searcher = super(RevisionTree,
                 self)._get_rules_searcher(default_searcher)
         return self._rules_searcher
+
+
+class InterCHKRevisionTree(tree.InterTree):
+    """Fast path optimiser for RevisionTrees with CHK inventories."""
+
+    @staticmethod
+    def is_compatible(source, target):
+        if (isinstance(source, RevisionTree)
+            and isinstance(target, RevisionTree)):
+            try:
+                # Only CHK inventories have id_to_entry attribute
+                source.inventory.id_to_entry
+                target.inventory.id_to_entry
+                return True
+            except AttributeError:
+                pass
+        return False
+
+    def iter_changes(self, include_unchanged=False,
+                     specific_files=None, pb=None, extra_trees=[],
+                     require_versioned=True, want_unversioned=False):
+        lookup_trees = [self.source]
+        if extra_trees:
+             lookup_trees.extend(extra_trees)
+        # The ids of items we need to examine to insure delta consistency.
+        precise_file_ids = set()
+        discarded_changes = {}
+        if specific_files == []:
+            specific_file_ids = []
+        else:
+            specific_file_ids = self.target.paths2ids(specific_files,
+                lookup_trees, require_versioned=require_versioned)
+        # FIXME: It should be possible to delegate include_unchanged handling
+        # to CHKInventory.iter_changes and do a better job there -- vila
+        # 20090304
+        changed_file_ids = set()
+        for result in self.target.inventory.iter_changes(self.source.inventory):
+            if specific_file_ids is not None:
+                file_id = result[0]
+                if file_id not in specific_file_ids:
+                    # A change from the whole tree that we don't want to show yet.
+                    # We may find that we need to show it for delta consistency, so
+                    # stash it.
+                    discarded_changes[result[0]] = result
+                    continue
+                new_parent_id = result[4][1]
+                precise_file_ids.add(new_parent_id)
+            yield result
+            changed_file_ids.add(result[0])
+        if specific_file_ids is not None:
+            for result in self._handle_precise_ids(precise_file_ids,
+                changed_file_ids, discarded_changes=discarded_changes):
+                yield result
+        if include_unchanged:
+            # CHKMap avoid being O(tree), so we go to O(tree) only if
+            # required to.
+            # Now walk the whole inventory, excluding the already yielded
+            # file ids
+            changed_file_ids = set(changed_file_ids)
+            for relpath, entry in self.target.inventory.iter_entries():
+                if (specific_file_ids is not None
+                    and not entry.file_id in specific_file_ids):
+                    continue
+                if not entry.file_id in changed_file_ids:
+                    yield (entry.file_id,
+                           (relpath, relpath), # Not renamed
+                           False, # Not modified
+                           (True, True), # Still  versioned
+                           (entry.parent_id, entry.parent_id),
+                           (entry.name, entry.name),
+                           (entry.kind, entry.kind),
+                           (entry.executable, entry.executable))
+
+
+tree.InterTree.register_optimiser(InterCHKRevisionTree)

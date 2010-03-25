@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """File annotate based on weave storage"""
 
@@ -173,7 +173,7 @@ def _annotations(repo, file_id, rev_id):
 
 
 def _expand_annotations(annotations, branch, current_rev=None):
-    """Expand a a files annotations into command line UI ready tuples.
+    """Expand a file's annotations into command line UI ready tuples.
 
     Each tuple includes detailed information, such as the author name, and date
     string for the commit, rather than just the revision id.
@@ -188,6 +188,10 @@ def _expand_annotations(annotations, branch, current_rev=None):
         # or something.
         last_revision = current_rev.revision_id
         # XXX: Partially Cloned from branch, uses the old_get_graph, eep.
+        # XXX: The main difficulty is that we need to inject a single new node
+        #      (current_rev) into the graph before it gets numbered, etc.
+        #      Once KnownGraph gets an 'add_node()' function, we can use
+        #      VF.get_known_graph_ancestry().
         graph = repository.get_graph()
         revision_graph = dict(((key, value) for key, value in
             graph.iter_ancestry(current_rev.parent_ids) if value is not None))
@@ -252,7 +256,7 @@ def reannotate(parents_lines, new_lines, new_revision_id,
         between the text and its left-hand-parent.  The format is
         the SequenceMatcher.get_matching_blocks format
         (start_left, start_right, length_of_match).
-    :param heads_provider: An object which provids a .heads() call to resolve
+    :param heads_provider: An object which provides a .heads() call to resolve
         if any revision ids are children of others.
         If None, then any ancestry disputes will be resolved with
         new_revision_id
@@ -313,6 +317,29 @@ def _get_matching_blocks(old, new):
     return matcher.get_matching_blocks()
 
 
+_break_annotation_tie = None
+
+def _old_break_annotation_tie(annotated_lines):
+    """Chose an attribution between several possible ones.
+
+    :param annotated_lines: A list of tuples ((file_id, rev_id), line) where
+        the lines are identical but the revids different while no parent
+        relation exist between them
+
+     :return : The "winning" line. This must be one with a revid that
+         guarantees that further criss-cross merges will converge. Failing to
+         do so have performance implications.
+    """
+    # sort lexicographically so that we always get a stable result.
+
+    # TODO: while 'sort' is the easiest (and nearly the only possible solution)
+    # with the current implementation, chosing the oldest revision is known to
+    # provide better results (as in matching user expectations). The most
+    # common use case being manual cherry-pick from an already existing
+    # revision.
+    return sorted(annotated_lines)[0]
+
+
 def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                                      child_lines, start_child, end_child,
                                      right_lines, start_right, end_right,
@@ -323,10 +350,11 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
     :param plain_child_lines: The unannotated new lines for the child text
     :param child_lines: Lines for the child text which have been annotated
         for the left parent
-    :param start_child: Position in plain_child_lines and child_lines to start the
-        match searching
-    :param end_child: Last position in plain_child_lines and child_lines to search
-        for a match
+
+    :param start_child: Position in plain_child_lines and child_lines to start
+        the match searching
+    :param end_child: Last position in plain_child_lines and child_lines to
+        search for a match
     :param right_lines: The annotated lines for the whole text for the right
         parent
     :param start_right: Position in right_lines to start the match
@@ -368,9 +396,15 @@ def _find_matching_unannotated_lines(output_lines, plain_child_lines,
                     if len(heads) == 1:
                         output_append((iter(heads).next(), left[1]))
                     else:
-                        # Both claim different origins, sort lexicographically
-                        # so that we always get a stable result.
-                        output_append(sorted([left, right])[0])
+                        # Both claim different origins, get a stable result.
+                        # If the result is not stable, there is a risk a
+                        # performance degradation as criss-cross merges will
+                        # flip-flop the attribution.
+                        if _break_annotation_tie is None:
+                            output_append(
+                                _old_break_annotation_tie([left, right]))
+                        else:
+                            output_append(_break_annotation_tie([left, right]))
         last_child_idx = child_idx + match_len
 
 
@@ -400,10 +434,9 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
     matching_left_and_right = _get_matching_blocks(right_parent_lines,
                                                    annotated_lines)
     for right_idx, left_idx, match_len in matching_left_and_right:
-        # annotated lines from last_left_idx to left_idx did not match the lines from
-        # last_right_idx
-        # to right_idx, the raw lines should be compared to determine what annotations
-        # need to be updated
+        # annotated lines from last_left_idx to left_idx did not match the
+        # lines from last_right_idx to right_idx, the raw lines should be
+        # compared to determine what annotations need to be updated
         if last_right_idx == right_idx or last_left_idx == left_idx:
             # One of the sides is empty, so this is a pure insertion
             lines_extend(annotated_lines[last_left_idx:left_idx])
@@ -421,3 +454,10 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
         # If left and right agree on a range, just push that into the output
         lines_extend(annotated_lines[left_idx:left_idx + match_len])
     return lines
+
+
+try:
+    from bzrlib._annotator_pyx import Annotator
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
+    from bzrlib._annotator_py import Annotator

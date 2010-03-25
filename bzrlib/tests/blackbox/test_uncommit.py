@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test the uncommit command."""
 
@@ -22,6 +22,7 @@ from bzrlib import uncommit, workingtree
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.errors import BzrError, BoundBranchOutOfDate
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.script import ScriptRunner
 
 
 class TestUncommit(TestCaseWithTransport):
@@ -103,7 +104,7 @@ class TestUncommit(TestCaseWithTransport):
         uncommit.uncommit(b)
         self.assertEqual(len(b.revision_history()), 2)
         self.assertEqual(len(t_a.branch.revision_history()), 2)
-        # update A's tree to not have the uncomitted revision referenced.
+        # update A's tree to not have the uncommitted revision referenced.
         t_a.update()
         t_a.commit('commit 3b')
         self.assertRaises(BoundBranchOutOfDate, uncommit.uncommit, b)
@@ -216,10 +217,17 @@ class TestUncommit(TestCaseWithTransport):
     def test_uncommit_shows_log_with_revision_id(self):
         wt = self.create_simple_tree()
 
-        out, err = self.run_bzr('uncommit --force', working_dir='tree')
-        self.assertContainsRe(out, r'second commit')
-        self.assertContainsRe(err, r'You can restore the old tip by running')
-        self.assertContainsRe(err, r'bzr pull . -r revid:a2')
+        script = ScriptRunner()
+        script.run_script(self, """
+$ cd tree
+$ bzr uncommit --force 
+    2 ...
+      second commit
+...
+The above revision(s) will be removed.
+You can restore the old tip by running:
+  bzr pull . -r revid:a2
+""")
 
     def test_uncommit_octopus_merge(self):
         # Check that uncommit keeps the pending merges in the same order
@@ -233,14 +241,14 @@ class TestUncommit(TestCaseWithTransport):
         tree3.commit('unchanged', rev_id='c3')
 
         wt.merge_from_branch(tree2.branch)
-        wt.merge_from_branch(tree3.branch)
+        wt.merge_from_branch(tree3.branch, force=True)
         wt.commit('merge b3, c3', rev_id='a3')
 
         tree2.commit('unchanged', rev_id='b4')
         tree3.commit('unchanged', rev_id='c4')
 
         wt.merge_from_branch(tree3.branch)
-        wt.merge_from_branch(tree2.branch)
+        wt.merge_from_branch(tree2.branch, force=True)
         wt.commit('merge b4, c4', rev_id='a4')
 
         self.assertEqual(['a4'], wt.get_parent_ids())

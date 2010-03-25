@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr export.
@@ -25,10 +25,11 @@ import sys
 import tarfile
 import zipfile
 
-from bzrlib.export import (
-    zip_exporter,
+
+from bzrlib import (
+    export,
+    tests,
     )
-from bzrlib.tests import TestSkipped
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -59,18 +60,21 @@ class TestExport(ExternalBase):
 
         if sys.version_info < (2, 5, 2) and sys.platform == 'darwin':
             raise tests.KnownFailure('python %r has a tar related bug, upgrade'
-                                     % sys.version_info)
+                                     % (sys.version_info,))
         out, err = self.run_bzr('export --format=tgz --root=test -')
         ball = tarfile.open('', fileobj=StringIO(out))
         self.assertEqual(['test/a'], sorted(ball.getnames()))
 
     def test_tar_export_unicode(self):
         tree = self.make_branch_and_tree('tar')
-        fname = u'\xe5.txt'
+        # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
+        # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
+        # export itself --vila 20090406
+        fname = u'\N{Euro Sign}.txt'
         try:
             self.build_tree(['tar/' + fname])
         except UnicodeError:
-            raise TestSkipped('Unable to represent path %r' % (fname,))
+            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
         tree.add([fname])
         tree.commit('first')
 
@@ -107,11 +111,11 @@ class TestExport(ExternalBase):
 
     def test_zip_export_unicode(self):
         tree = self.make_branch_and_tree('zip')
-        fname = u'\xe5.txt'
+        fname = u'\N{Euro Sign}.txt'
         try:
             self.build_tree(['zip/' + fname])
         except UnicodeError:
-            raise TestSkipped('Unable to represent path %r' % (fname,))
+            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
         tree.add([fname])
         tree.commit('first')
 
@@ -137,8 +141,8 @@ class TestExport(ExternalBase):
         # forward slashes
         self.assertEqual(['test/a', 'test/b/', 'test/b/c', 'test/d/'], names)
 
-        file_attr = stat.S_IFREG
-        dir_attr = stat.S_IFDIR | zip_exporter.ZIP_DIRECTORY_BIT
+        file_attr = stat.S_IFREG | export.zip_exporter.FILE_PERMISSIONS
+        dir_attr = stat.S_IFDIR | export.zip_exporter.ZIP_DIRECTORY_BIT
 
         a_info = zfile.getinfo(names[0])
         self.assertEqual(file_attr, a_info.external_attr)

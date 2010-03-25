@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -15,7 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Versioned text file storage api."""
 
@@ -30,7 +30,10 @@ lazy_import(globals(), """
 import urllib
 
 from bzrlib import (
+    annotate,
     errors,
+    graph as _mod_graph,
+    groupcompress,
     index,
     knit,
     osutils,
@@ -39,14 +42,14 @@ from bzrlib import (
     revision,
     ui,
     )
-from bzrlib.graph import DictParentsProvider, Graph, _StackedParentsProvider
+from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
 from bzrlib.transport.memory import MemoryTransport
 """)
 from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
-from bzrlib.util import bencode
+from bzrlib import bencode
 
 
 adapter_registry = Registry()
@@ -172,6 +175,12 @@ class AbsentContentFactory(ContentFactory):
         self.storage_kind = 'absent'
         self.key = key
         self.parents = None
+
+    def get_bytes_as(self, storage_kind):
+        raise ValueError('A request was made for key: %s, but that'
+                         ' content is not available, and the calling'
+                         ' code does not handle if it is missing.'
+                         % (self.key,))
 
 
 class AdapterFactory(ContentFactory):
@@ -794,7 +803,8 @@ class VersionedFiles(object):
         check_content=True):
         """Add a text to the store.
 
-        :param key: The key tuple of the text to add.
+        :param key: The key tuple of the text to add. If the last element is
+            None, a CHK string will be generated during the addition.
         :param parents: The parents key tuples of the text to add.
         :param lines: A list of lines. Each line must be a bytestring. And all
             of them except the last must be terminated with \n and contain no
@@ -826,6 +836,36 @@ class VersionedFiles(object):
                  back to future add_lines calls in the parent_texts dictionary.
         """
         raise NotImplementedError(self.add_lines)
+
+    def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
+        """Add a text to the store.
+
+        This is a private function for use by CommitBuilder.
+
+        :param key: The key tuple of the text to add. If the last element is
+            None, a CHK string will be generated during the addition.
+        :param parents: The parents key tuples of the text to add.
+        :param text: A string containing the text to be committed.
+        :param nostore_sha: Raise ExistingContent and do not add the lines to
+            the versioned file if the digest of the lines matches this.
+        :param random_id: If True a random id has been selected rather than
+            an id determined by some deterministic process such as a converter
+            from a foreign VCS. When True the backend may choose not to check
+            for uniqueness of the resulting key within the versioned file, so
+            this should only be done when the result is expected to be unique
+            anyway.
+        :param check_content: If True, the lines supplied are verified to be
+            bytestrings that are correctly formed lines.
+        :return: The text sha1, the number of bytes in the text, and an opaque
+                 representation of the inserted version which can be provided
+                 back to future _add_text calls in the parent_texts dictionary.
+        """
+        # The default implementation just thunks over to .add_lines(),
+        # inefficient, but it works.
+        return self.add_lines(key, parents, osutils.split_lines(text),
+                              nostore_sha=nostore_sha,
+                              random_id=random_id,
+                              check_content=True)
 
     def add_mpdiffs(self, records):
         """Add mpdiffs to this VersionedFile.
@@ -874,12 +914,28 @@ class VersionedFiles(object):
         raise NotImplementedError(self.annotate)
 
     def check(self, progress_bar=None):
-        """Check this object for integrity."""
+        """Check this object for integrity.
+        
+        :param progress_bar: A progress bar to output as the check progresses.
+        :param keys: Specific keys within the VersionedFiles to check. When
+            this parameter is not None, check() becomes a generator as per
+            get_record_stream. The difference to get_record_stream is that
+            more or deeper checks will be performed.
+        :return: None, or if keys was supplied a generator as per
+            get_record_stream.
+        """
         raise NotImplementedError(self.check)
 
     @staticmethod
     def check_not_reserved_id(version_id):
         revision.check_not_reserved_id(version_id)
+
+    def clear_cache(self):
+        """Clear whatever caches this VersionedFile holds.
+
+        This is generally called after an operation has been performed, when we
+        don't expect to be using this versioned file again soon.
+        """
 
     def _check_lines_not_unicode(self, lines):
         """Check that lines being added to a versioned file are not unicode."""
@@ -892,6 +948,20 @@ class VersionedFiles(object):
         for line in lines:
             if '\n' in line[:-1]:
                 raise errors.BzrBadParameterContainsNewline("lines")
+
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        # most basic implementation is a loop around get_parent_map
+        pending = set(keys)
+        parent_map = {}
+        while pending:
+            this_parent_map = self.get_parent_map(pending)
+            parent_map.update(this_parent_map)
+            pending = set()
+            map(pending.update, this_parent_map.itervalues())
+            pending = pending.difference(parent_map)
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
@@ -1090,10 +1160,18 @@ class ThunkedVersionedFiles(VersionedFiles):
             result.append((prefix + (origin,), line))
         return result
 
-    def check(self, progress_bar=None):
+    def get_annotator(self):
+        return annotate.Annotator(self)
+
+    def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
+        # XXX: This is over-enthusiastic but as we only thunk for Weaves today
+        # this is tolerable. Ideally we'd pass keys down to check() and 
+        # have the older VersiondFile interface updated too.
         for prefix, vf in self._iter_all_components():
             vf.check()
+        if keys is not None:
+            return self.get_record_stream(keys, 'unordered', True)
 
     def get_parent_map(self, keys):
         """Get a map of the parents of keys.
@@ -1331,7 +1409,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
             result[revision.NULL_REVISION] = ()
         self._providers = self._providers[:1] + self.fallback_versionedfiles
         result.update(
-            _StackedParentsProvider(self._providers).get_parent_map(keys))
+            StackedParentsProvider(self._providers).get_parent_map(keys))
         for key, parents in result.iteritems():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
@@ -1348,7 +1426,7 @@ class PlanWeaveMerge(TextMerge):
     def __init__(self, plan, a_marker=TextMerge.A_MARKER,
                  b_marker=TextMerge.B_MARKER):
         TextMerge.__init__(self, a_marker, b_marker)
-        self.plan = plan
+        self.plan = list(plan)
 
     def _merge_struct(self):
         lines_a = []
@@ -1401,12 +1479,70 @@ class PlanWeaveMerge(TextMerge):
             elif state == 'conflicted-b':
                 ch_b = ch_a = True
                 lines_b.append(line)
+            elif state == 'killed-both':
+                # This counts as a change, even though there is no associated
+                # line
+                ch_b = ch_a = True
             else:
                 if state not in ('irrelevant', 'ghost-a', 'ghost-b',
-                        'killed-base', 'killed-both'):
+                        'killed-base'):
                     raise AssertionError(state)
         for struct in outstanding_struct():
             yield struct
+
+    def base_from_plan(self):
+        """Construct a BASE file from the plan text."""
+        base_lines = []
+        for state, line in self.plan:
+            if state in ('killed-a', 'killed-b', 'killed-both', 'unchanged'):
+                # If unchanged, then this line is straight from base. If a or b
+                # or both killed the line, then it *used* to be in base.
+                base_lines.append(line)
+            else:
+                if state not in ('killed-base', 'irrelevant',
+                                 'ghost-a', 'ghost-b',
+                                 'new-a', 'new-b',
+                                 'conflicted-a', 'conflicted-b'):
+                    # killed-base, irrelevant means it doesn't apply
+                    # ghost-a/ghost-b are harder to say for sure, but they
+                    # aren't in the 'inc_c' which means they aren't in the
+                    # shared base of a & b. So we don't include them.  And
+                    # obviously if the line is newly inserted, it isn't in base
+
+                    # If 'conflicted-a' or b, then it is new vs one base, but
+                    # old versus another base. However, if we make it present
+                    # in the base, it will be deleted from the target, and it
+                    # seems better to get a line doubled in the merge result,
+                    # rather than have it deleted entirely.
+                    # Example, each node is the 'text' at that point:
+                    #           MN
+                    #          /   \
+                    #        MaN   MbN
+                    #         |  X  |
+                    #        MabN MbaN
+                    #          \   /
+                    #           ???
+                    # There was a criss-cross conflict merge. Both sides
+                    # include the other, but put themselves first.
+                    # Weave marks this as a 'clean' merge, picking OTHER over
+                    # THIS. (Though the details depend on order inserted into
+                    # weave, etc.)
+                    # LCA generates a plan:
+                    # [('unchanged', M),
+                    #  ('conflicted-b', b),
+                    #  ('unchanged', a),
+                    #  ('conflicted-a', b),
+                    #  ('unchanged', N)]
+                    # If you mark 'conflicted-*' as part of BASE, then a 3-way
+                    # merge tool will cleanly generate "MaN" (as BASE vs THIS
+                    # removes one 'b', and BASE vs OTHER removes the other)
+                    # If you include neither, 3-way creates a clean "MbabN" as
+                    # THIS adds one 'b', and OTHER does too.
+                    # It seems that having the line 2 times is better than
+                    # having it omitted. (Easier to manually delete than notice
+                    # it needs to be added.)
+                    raise AssertionError('Unknown state: %s' % (state,))
+        return base_lines
 
 
 class WeaveMerge(PlanWeaveMerge):
@@ -1484,7 +1620,7 @@ class VirtualVersionedFiles(VersionedFiles):
         """See VersionedFile.iter_lines_added_or_present_in_versions()."""
         for i, (key,) in enumerate(keys):
             if pb is not None:
-                pb.update("iterating texts", i, len(keys))
+                pb.update("Finding changed lines", i, len(keys))
             for l in self._get_lines(key):
                 yield (l, key)
 
@@ -1511,12 +1647,14 @@ class NetworkRecordStream(object):
             record.get_bytes_as(record.storage_kind) call.
         """
         self._bytes_iterator = bytes_iterator
-        self._kind_factory = {'knit-ft-gz':knit.knit_network_to_record,
-            'knit-delta-gz':knit.knit_network_to_record,
-            'knit-annotated-ft-gz':knit.knit_network_to_record,
-            'knit-annotated-delta-gz':knit.knit_network_to_record,
-            'knit-delta-closure':knit.knit_delta_closure_to_records,
-            'fulltext':fulltext_network_to_record,
+        self._kind_factory = {
+            'fulltext': fulltext_network_to_record,
+            'groupcompress-block': groupcompress.network_block_to_records,
+            'knit-ft-gz': knit.knit_network_to_record,
+            'knit-delta-gz': knit.knit_network_to_record,
+            'knit-annotated-ft-gz': knit.knit_network_to_record,
+            'knit-annotated-delta-gz': knit.knit_network_to_record,
+            'knit-delta-closure': knit.knit_delta_closure_to_records,
             }
 
     def read(self):
@@ -1555,3 +1693,31 @@ def record_to_fulltext_bytes(record):
     record_content = record.get_bytes_as('fulltext')
     return "fulltext\n%s%s%s" % (
         _length_prefix(record_meta), record_meta, record_content)
+
+
+def sort_groupcompress(parent_map):
+    """Sort and group the keys in parent_map into groupcompress order.
+
+    groupcompress is defined (currently) as reverse-topological order, grouped
+    by the key prefix.
+
+    :return: A sorted-list of keys
+    """
+    # gc-optimal ordering is approximately reverse topological,
+    # properly grouped by file-id.
+    per_prefix_map = {}
+    for item in parent_map.iteritems():
+        key = item[0]
+        if isinstance(key, str) or len(key) == 1:
+            prefix = ''
+        else:
+            prefix = key[0]
+        try:
+            per_prefix_map[prefix].append(item)
+        except KeyError:
+            per_prefix_map[prefix] = [item]
+
+    present_keys = []
+    for prefix in sorted(per_prefix_map):
+        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
+    return present_keys

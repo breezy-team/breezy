@@ -12,20 +12,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
 import shutil
 
+from bzrlib import check, osutils
+from bzrlib.branch import Branch
+from bzrlib.errors import PointlessCommit, BzrError
 from bzrlib.tests import (
     SymlinkFeature,
     TestCaseWithTransport,
     )
-from bzrlib.branch import Branch
-from bzrlib.errors import PointlessCommit, BzrError
 from bzrlib.tests.test_revision import make_branches
-from bzrlib import osutils
 
 
 class TestCommitMerge(TestCaseWithTransport):
@@ -46,7 +46,7 @@ class TestCommitMerge(TestCaseWithTransport):
         wtx.commit('commit one', rev_id='x@u-0-1', allow_pointless=True)
         wty.commit('commit two', rev_id='y@u-0-1', allow_pointless=True)
 
-        self.assertEqual((1, []), by.fetch(bx))
+        by.fetch(bx)
         # just having the history there does nothing
         self.assertRaises(PointlessCommit,
                           wty.commit,
@@ -96,10 +96,8 @@ class TestCommitMerge(TestCaseWithTransport):
         self.assertEquals(inv['ecks-id'].revision, 'x@u-0-1')
         self.assertEquals(inv['why-id'].revision, 'y@u-0-1')
 
-        bx.check()
-        by.check()
-        bx.repository.check([bx.last_revision()])
-        by.repository.check([by.last_revision()])
+        check.check_dwim(bx.base, False, True, True)
+        check.check_dwim(by.base, False, True, True)
 
     def test_merge_with_symlink(self):
         self.requireFeature(SymlinkFeature)

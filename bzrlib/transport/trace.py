@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that traces transport operations.
 
@@ -20,10 +20,10 @@ This does not change the transport behaviour at all, merely records every call
 and then delegates it.
 """
 
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
-class TransportTraceDecorator(TransportDecorator):
+class TransportTraceDecorator(decorator.TransportDecorator):
     """A tracing decorator for Transports.
 
     Calls that potentially perform IO are logged to self._activity. The
@@ -33,6 +33,9 @@ class TransportTraceDecorator(TransportDecorator):
     Not all operations are logged at this point, if you need an unlogged
     operation please add a test to the tests of this transport, for the logging
     of the operation you want logged.
+
+    See also TransportLogDecorator, that records a machine-readable log in 
+    memory for eg testing.
     """
 
     def __init__(self, url, _decorated=None, _from_transport=None):
@@ -40,7 +43,7 @@ class TransportTraceDecorator(TransportDecorator):
 
         _decorated is a private parameter for cloning.
         """
-        TransportDecorator.__init__(self, url, _decorated)
+        super(TransportTraceDecorator, self).__init__(url, _decorated)
         if _from_transport is None:
             # newly created
             self._activity = []
@@ -126,7 +129,8 @@ class TransportTraceDecorator(TransportDecorator):
 
     def readv(self, relpath, offsets, adjust_for_latency=False,
         upper_limit=None):
-        """See Transport.readv."""
+        # we override at the readv() level rather than _readv() so that any
+        # latency adjustments will be done by the underlying transport
         self._trace(('readv', relpath, offsets, adjust_for_latency,
             upper_limit))
         return self._decorated.readv(relpath, offsets, adjust_for_latency,
@@ -165,13 +169,7 @@ class TransportTraceDecorator(TransportDecorator):
         self._activity.append(operation_tuple)
 
 
-class TraceServer(DecoratorServer):
-    """Server for the TransportTraceDecorator for testing with."""
-
-    def get_decorator_class(self):
-        return TransportTraceDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(TransportTraceDecorator, TraceServer)]
+    from bzrlib.tests import test_server
+    return [(TransportTraceDecorator, test_server.TraceServer)]

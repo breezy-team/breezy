@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Utility for create branches with particular contents."""
 
@@ -56,7 +56,7 @@ class BranchBuilder(object):
         a series in progress, it should be None.
     """
 
-    def __init__(self, transport, format=None):
+    def __init__(self, transport=None, format=None, branch=None):
         """Construct a BranchBuilder on transport.
 
         :param transport: The transport the branch should be created on.
@@ -64,15 +64,26 @@ class BranchBuilder(object):
             it will be created.
         :param format: Either a BzrDirFormat, or the name of a format in the
             bzrdir format registry for the branch to be built.
+        :param branch: An already constructed branch to use.  This param is
+            mutually exclusive with the transport and format params.
         """
-        if not transport.has('.'):
-            transport.mkdir('.')
-        if format is None:
-            format = 'default'
-        if isinstance(format, str):
-            format = bzrdir.format_registry.make_bzrdir(format)
-        self._branch = bzrdir.BzrDir.create_branch_convenience(transport.base,
-            format=format, force_new_tree=False)
+        if branch is not None:
+            if format is not None:
+                raise AssertionError(
+                    "branch and format kwargs are mutually exclusive")
+            if transport is not None:
+                raise AssertionError(
+                    "branch and transport kwargs are mutually exclusive")
+            self._branch = branch
+        else:
+            if not transport.has('.'):
+                transport.mkdir('.')
+            if format is None:
+                format = 'default'
+            if isinstance(format, str):
+                format = bzrdir.format_registry.make_bzrdir(format)
+            self._branch = bzrdir.BzrDir.create_branch_convenience(
+                transport.base, format=format, force_new_tree=False)
         self._tree = None
 
     def build_commit(self, **commit_kwargs):
@@ -92,25 +103,31 @@ class BranchBuilder(object):
         finally:
             tree.unlock()
 
-    def _do_commit(self, tree, message=None, **kwargs):
+    def _do_commit(self, tree, message=None, message_callback=None, **kwargs):
         reporter = commit.NullCommitReporter()
-        if message is None:
+        if message is None and message_callback is None:
             message = u'commit %d' % (self._branch.revno() + 1,)
-        return tree.commit(message,
+        return tree.commit(message, message_callback=message_callback,
             reporter=reporter,
             **kwargs)
 
-    def _move_branch_pointer(self, new_revision_id):
+    def _move_branch_pointer(self, new_revision_id,
+        allow_leftmost_as_ghost=False):
         """Point self._branch to a different revision id."""
         self._branch.lock_write()
         try:
             # We don't seem to have a simple set_last_revision(), so we
             # implement it here.
             cur_revno, cur_revision_id = self._branch.last_revision_info()
-            g = self._branch.repository.get_graph()
-            new_revno = g.find_distance_to_null(new_revision_id,
-                                                [(cur_revision_id, cur_revno)])
-            self._branch.set_last_revision_info(new_revno, new_revision_id)
+            try:
+                g = self._branch.repository.get_graph()
+                new_revno = g.find_distance_to_null(new_revision_id,
+                    [(cur_revision_id, cur_revno)])
+                self._branch.set_last_revision_info(new_revno, new_revision_id)
+            except errors.GhostRevisionsHaveNoRevno:
+                if not allow_leftmost_as_ghost:
+                    raise
+                new_revno = 1
         finally:
             self._branch.unlock()
         if self._tree is not None:
@@ -144,7 +161,8 @@ class BranchBuilder(object):
         self._tree = None
 
     def build_snapshot(self, revision_id, parent_ids, actions,
-                       message=None, timestamp=None):
+        message=None, timestamp=None, allow_leftmost_as_ghost=False,
+        committer=None, timezone=None, message_callback=None):
         """Build a commit, shaped in a specific way.
 
         :param revision_id: The handle for the new commit, can be None
@@ -157,14 +175,21 @@ class BranchBuilder(object):
             ('rename', ('orig-path', 'new-path'))
         :param message: An optional commit message, if not supplied, a default
             commit message will be written.
+        :param message_callback: A message callback to use for the commit, as
+            per mutabletree.commit.
         :param timestamp: If non-None, set the timestamp of the commit to this
             value.
+        :param timezone: An optional timezone for timestamp.
+        :param committer: An optional username to use for commit
+        :param allow_leftmost_as_ghost: True if the leftmost parent should be
+            permitted to be a ghost.
         :return: The revision_id of the new commit
         """
         if parent_ids is not None:
             base_id = parent_ids[0]
             if base_id != self._branch.last_revision():
-                self._move_branch_pointer(base_id)
+                self._move_branch_pointer(base_id,
+                    allow_leftmost_as_ghost=allow_leftmost_as_ghost)
 
         if self._tree is not None:
             tree = self._tree
@@ -173,7 +198,8 @@ class BranchBuilder(object):
         tree.lock_write()
         try:
             if parent_ids is not None:
-                tree.set_parent_ids(parent_ids)
+                tree.set_parent_ids(parent_ids,
+                    allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             # Unfortunately, MemoryTree.add(directory) just creates an
             # inventory entry. And the only public function to create a
             # directory is MemoryTree.mkdir() which creates the directory, but
@@ -220,7 +246,8 @@ class BranchBuilder(object):
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)
             return self._do_commit(tree, message=message, rev_id=revision_id,
-                timestamp=timestamp)
+                timestamp=timestamp, timezone=timezone, committer=committer,
+                message_callback=message_callback)
         finally:
             tree.unlock()
 

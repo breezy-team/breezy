@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """MemoryTree object.
 
@@ -20,7 +20,6 @@ See MemoryTree for more details.
 """
 
 
-from copy import deepcopy
 import os
 
 from bzrlib import (
@@ -212,13 +211,12 @@ class MemoryTree(mutabletree.MutableTree):
 
     def _populate_from_branch(self):
         """Populate the in-tree state from the branch."""
-        self._basis_tree = self.branch.repository.revision_tree(
-            self._branch_revision_id)
+        self._set_basis()
         if self._branch_revision_id == _mod_revision.NULL_REVISION:
             self._parent_ids = []
         else:
             self._parent_ids = [self._branch_revision_id]
-        self._inventory = deepcopy(self._basis_tree._inventory)
+        self._inventory = self._basis_tree._inventory._get_mutable_inventory()
         self._file_transport = MemoryTransport()
         # TODO copy the revision trees content, or do it lazy, or something.
         inventory_entries = self._inventory.iter_entries()
@@ -280,13 +278,23 @@ class MemoryTree(mutabletree.MutableTree):
             _mod_revision.check_not_reserved_id(revision_id)
         if len(revision_ids) == 0:
             self._parent_ids = []
-            self._basis_tree = self.branch.repository.revision_tree(
-                                    _mod_revision.NULL_REVISION)
+            self._branch_revision_id = _mod_revision.NULL_REVISION
         else:
             self._parent_ids = revision_ids
-            self._basis_tree = self.branch.repository.revision_tree(
-                                    revision_ids[0])
             self._branch_revision_id = revision_ids[0]
+        self._allow_leftmost_as_ghost = allow_leftmost_as_ghost
+        self._set_basis()
+    
+    def _set_basis(self):
+        try:
+            self._basis_tree = self.branch.repository.revision_tree(
+                self._branch_revision_id)
+        except errors.NoSuchRevision:
+            if self._allow_leftmost_as_ghost:
+                self._basis_tree = self.branch.repository.revision_tree(
+                    _mod_revision.NULL_REVISION)
+            else:
+                raise
 
     def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
         """See MutableTree.set_parent_trees()."""

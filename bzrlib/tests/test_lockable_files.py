@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from StringIO import StringIO
 
@@ -45,83 +45,6 @@ from bzrlib.transport import get_transport
 # they use an old style of parameterization, but we want to remove this class
 # so won't modernize them now. - mbp 20080430
 class _TestLockableFiles_mixin(object):
-
-    def test_read_write(self):
-        self.assertRaises(NoSuchFile,
-            self.applyDeprecated,
-            deprecated_in((1, 5, 0)),
-            self.lockable.get, 'foo')
-        self.assertRaises(NoSuchFile,
-            self.applyDeprecated,
-            deprecated_in((1, 5, 0)),
-            self.lockable.get_utf8, 'foo')
-        self.lockable.lock_write()
-        try:
-            unicode_string = u'bar\u1234'
-            self.assertEqual(4, len(unicode_string))
-            byte_string = unicode_string.encode('utf-8')
-            self.assertEqual(6, len(byte_string))
-            self.assertRaises(UnicodeEncodeError,
-                self.applyDeprecated,
-                deprecated_in((1, 6, 0)),
-                self.lockable.put, 'foo',
-                StringIO(unicode_string))
-            self.applyDeprecated(
-                deprecated_in((1, 6, 0)),
-                self.lockable.put,
-                'foo', StringIO(byte_string))
-            byte_stream = self.applyDeprecated(
-                deprecated_in((1, 5, 0)),
-                self.lockable.get,
-                'foo')
-            self.assertEqual(byte_string, byte_stream.read())
-            unicode_stream = self.applyDeprecated(
-                deprecated_in((1, 5, 0)),
-                self.lockable.get_utf8,
-                'foo')
-            self.assertEqual(unicode_string,
-                unicode_stream.read())
-            self.assertRaises(BzrBadParameterNotString,
-                self.applyDeprecated,
-                deprecated_in((1, 6, 0)),
-                self.lockable.put_utf8,
-                'bar',
-                StringIO(unicode_string))
-            self.applyDeprecated(
-                deprecated_in((1, 6, 0)),
-                self.lockable.put_utf8,
-                'bar',
-                unicode_string)
-            unicode_stream = self.applyDeprecated(
-                deprecated_in((1, 5, 0)),
-                self.lockable.get_utf8,
-                'bar')
-            self.assertEqual(unicode_string,
-                unicode_stream.read())
-            byte_stream = self.applyDeprecated(
-                deprecated_in((1, 5, 0)),
-                self.lockable.get,
-                'bar')
-            self.assertEqual(byte_string, byte_stream.read())
-            self.applyDeprecated(
-                deprecated_in((1, 6, 0)),
-                self.lockable.put_bytes,
-                'raw', 'raw\xffbytes')
-            byte_stream = self.applyDeprecated(
-                deprecated_in((1, 5, 0)),
-                self.lockable.get,
-                'raw')
-            self.assertEqual('raw\xffbytes', byte_stream.read())
-        finally:
-            self.lockable.unlock()
-
-    def test_locks(self):
-        self.lockable.lock_read()
-        try:
-            self.assertRaises(ReadOnlyError, self.lockable.put, 'foo',
-                              StringIO('bar\u1234'))
-        finally:
-            self.lockable.unlock()
 
     def test_transactions(self):
         self.assertIs(self.lockable.get_transaction().__class__,
@@ -161,8 +84,7 @@ class _TestLockableFiles_mixin(object):
         l2 = self.get_lockable()
         orig_factory = bzrlib.ui.ui_factory
         # silent ui - no need for stdout
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True])
         try:
             l2.break_lock()
         finally:
@@ -176,92 +98,80 @@ class _TestLockableFiles_mixin(object):
 
     def test_lock_write_returns_None_refuses_token(self):
         token = self.lockable.lock_write()
-        try:
-            if token is not None:
-                # This test does not apply, because this lockable supports
-                # tokens.
-                raise TestNotApplicable("%r uses tokens" % (self.lockable,))
-            self.assertRaises(errors.TokenLockingNotSupported,
-                              self.lockable.lock_write, token='token')
-        finally:
-            self.lockable.unlock()
+        self.addCleanup(self.lockable.unlock)
+        if token is not None:
+            # This test does not apply, because this lockable supports
+            # tokens.
+            raise TestNotApplicable("%r uses tokens" % (self.lockable,))
+        self.assertRaises(errors.TokenLockingNotSupported,
+                          self.lockable.lock_write, token='token')
 
     def test_lock_write_returns_token_when_given_token(self):
         token = self.lockable.lock_write()
-        try:
-            if token is None:
-                # This test does not apply, because this lockable refuses
-                # tokens.
-                return
-            new_lockable = self.get_lockable()
-            token_from_new_lockable = new_lockable.lock_write(token=token)
-            try:
-                self.assertEqual(token, token_from_new_lockable)
-            finally:
-                new_lockable.unlock()
-        finally:
-            self.lockable.unlock()
+        self.addCleanup(self.lockable.unlock)
+        if token is None:
+            # This test does not apply, because this lockable refuses
+            # tokens.
+            return
+        new_lockable = self.get_lockable()
+        token_from_new_lockable = new_lockable.lock_write(token=token)
+        self.addCleanup(new_lockable.unlock)
+        self.assertEqual(token, token_from_new_lockable)
 
     def test_lock_write_raises_on_token_mismatch(self):
         token = self.lockable.lock_write()
-        try:
-            if token is None:
-                # This test does not apply, because this lockable refuses
-                # tokens.
-                return
-            different_token = token + 'xxx'
-            # Re-using the same lockable instance with a different token will
-            # raise TokenMismatch.
-            self.assertRaises(errors.TokenMismatch,
-                              self.lockable.lock_write, token=different_token)
-            # A seperate instance for the same lockable will also raise
-            # TokenMismatch.
-            # This detects the case where a caller claims to have a lock (via
-            # the token) for an external resource, but doesn't (the token is
-            # different).  Clients need a seperate lock object to make sure the
-            # external resource is probed, whereas the existing lock object
-            # might cache.
-            new_lockable = self.get_lockable()
-            self.assertRaises(errors.TokenMismatch,
-                              new_lockable.lock_write, token=different_token)
-        finally:
-            self.lockable.unlock()
+        self.addCleanup(self.lockable.unlock)
+        if token is None:
+            # This test does not apply, because this lockable refuses
+            # tokens.
+            return
+        different_token = token + 'xxx'
+        # Re-using the same lockable instance with a different token will
+        # raise TokenMismatch.
+        self.assertRaises(errors.TokenMismatch,
+                          self.lockable.lock_write, token=different_token)
+        # A separate instance for the same lockable will also raise
+        # TokenMismatch.
+        # This detects the case where a caller claims to have a lock (via
+        # the token) for an external resource, but doesn't (the token is
+        # different).  Clients need a separate lock object to make sure the
+        # external resource is probed, whereas the existing lock object
+        # might cache.
+        new_lockable = self.get_lockable()
+        self.assertRaises(errors.TokenMismatch,
+                          new_lockable.lock_write, token=different_token)
 
     def test_lock_write_with_matching_token(self):
         # If the token matches, so no exception is raised by lock_write.
         token = self.lockable.lock_write()
-        try:
-            if token is None:
-                # This test does not apply, because this lockable refuses
-                # tokens.
-                return
-            # The same instance will accept a second lock_write if the specified
-            # token matches.
-            self.lockable.lock_write(token=token)
-            self.lockable.unlock()
-            # Calling lock_write on a new instance for the same lockable will
-            # also succeed.
-            new_lockable = self.get_lockable()
-            new_lockable.lock_write(token=token)
-            new_lockable.unlock()
-        finally:
-            self.lockable.unlock()
+        self.addCleanup(self.lockable.unlock)
+        if token is None:
+            # This test does not apply, because this lockable refuses
+            # tokens.
+            return
+        # The same instance will accept a second lock_write if the specified
+        # token matches.
+        self.lockable.lock_write(token=token)
+        self.lockable.unlock()
+        # Calling lock_write on a new instance for the same lockable will
+        # also succeed.
+        new_lockable = self.get_lockable()
+        new_lockable.lock_write(token=token)
+        new_lockable.unlock()
 
     def test_unlock_after_lock_write_with_token(self):
         # If lock_write did not physically acquire the lock (because it was
         # passed a token), then unlock should not physically release it.
         token = self.lockable.lock_write()
-        try:
-            if token is None:
-                # This test does not apply, because this lockable refuses
-                # tokens.
-                return
-            new_lockable = self.get_lockable()
-            new_lockable.lock_write(token=token)
-            new_lockable.unlock()
-            self.assertTrue(self.lockable.get_physical_lock_status())
-        finally:
-            self.lockable.unlock()
+        self.addCleanup(self.lockable.unlock)
+        if token is None:
+            # This test does not apply, because this lockable refuses
+            # tokens.
+            return
+        new_lockable = self.get_lockable()
+        new_lockable.lock_write(token=token)
+        new_lockable.unlock()
+        self.assertTrue(self.lockable.get_physical_lock_status())
 
     def test_lock_write_with_token_fails_when_unlocked(self):
         # Lock and unlock to get a superficially valid token.  This mimics a
@@ -332,6 +242,11 @@ class _TestLockableFiles_mixin(object):
         # But should be relockable with a token.
         self.lockable.lock_write(token=token)
         self.lockable.unlock()
+        # Cleanup: we should still be able to get the lock, but we restore the
+        # behavior to clearing the lock when unlocking.
+        self.lockable.lock_write(token=token)
+        self.lockable.dont_leave_in_place()
+        self.lockable.unlock()
 
     def test_dont_leave_in_place(self):
         token = self.lockable.lock_write()
@@ -370,8 +285,8 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
         self.lockable = self.get_lockable()
         self.lockable.create_lock()
 
-    def tearDown(self):
-        super(TestLockableFiles_TransportLock, self).tearDown()
+    def stop_server(self):
+        super(TestLockableFiles_TransportLock, self).stop_server()
         # free the subtransport so that we do not get a 5 second
         # timeout due to the SFTP connection cache.
         try:

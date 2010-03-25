@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr help.
@@ -105,19 +105,49 @@ class TestHelp(ExternalBase):
         self.assertEquals(dash_help, qmark_cmds)
 
     def test_hidden(self):
-        commands = self.run_bzr('help commands')[0]
-        hidden = self.run_bzr('help hidden-commands')[0]
+        help_commands = self.run_bzr('help commands')[0]
+        help_hidden = self.run_bzr('help hidden-commands')[0]
+
+        def extract_cmd_names(help_output):
+            # keep only the command names to avoid matching on help text (there
+            # is a high risk to fail a test when a plugin get installed
+            # otherwise)
+            cmds = []
+            for line in help_output.split('\n'):
+                if line.startswith(' '):
+                    continue # help on more than one line
+                cmd = line.split(' ')[0]
+                if line:
+                    cmds.append(cmd)
+            return cmds
+        commands = extract_cmd_names(help_commands)
+        hidden = extract_cmd_names(help_hidden)
         self.assertTrue('commit' in commands)
         self.assertTrue('commit' not in hidden)
         self.assertTrue('rocks' in hidden)
         self.assertTrue('rocks' not in commands)
 
     def test_help_detail(self):
-        dash_h  = self.run_bzr('commit -h')[0]
-        help_x  = self.run_bzr('help commit')[0]
-        qmark_x = self.run_bzr('help commit')[0]
+        dash_h  = self.run_bzr('diff -h')[0]
+        help_x  = self.run_bzr('help diff')[0]
         self.assertEquals(dash_h, help_x)
-        self.assertEquals(dash_h, qmark_x)
+        self.assertContainsRe(help_x, "Purpose:")
+        self.assertContainsRe(help_x, "Usage:")
+        self.assertContainsRe(help_x, "Options:")
+        self.assertContainsRe(help_x, "Description:")
+        self.assertContainsRe(help_x, "Examples:")
+        self.assertContainsRe(help_x, "See also:")
+        self.assertContainsRe(help_x, "Aliases:")
+
+    def test_help_usage(self):
+        usage  = self.run_bzr('diff --usage')[0]
+        self.assertContainsRe(usage, "Purpose:")
+        self.assertContainsRe(usage, "Usage:")
+        self.assertContainsRe(usage, "Options:")
+        self.assertNotContainsRe(usage, "Description:")
+        self.assertNotContainsRe(usage, "Examples:")
+        self.assertContainsRe(usage, "See also:")
+        self.assertContainsRe(usage, "Aliases:")
 
     def test_help_help(self):
         help = self.run_bzr('help help')[0]

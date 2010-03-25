@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from bzrlib import bugtracker, errors, urlutils
-from bzrlib.tests import TestCaseWithMemoryTransport
+from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
 
 
 class TestGetBugURL(TestCaseWithMemoryTransport):
@@ -41,8 +41,7 @@ class TestGetBugURL(TestCaseWithMemoryTransport):
         self.tracker_type = TestGetBugURL.TransientTracker
         self.tracker_type.log = []
         bugtracker.tracker_registry.register('transient', self.tracker_type)
-        self.addCleanup(lambda:
-                        bugtracker.tracker_registry.remove('transient'))
+        self.addCleanup(bugtracker.tracker_registry.remove, 'transient')
 
     def test_get_bug_url_for_transient_tracker(self):
         branch = self.make_branch('some_branch')
@@ -194,7 +193,7 @@ class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
         """If asked for a valid tag, return a tracker instance that can map bug
         IDs to <base_url>/<bug_area> + <bug_id>."""
         bugtracker.tracker_registry.register('some', self.tracker)
-        self.addCleanup(lambda: bugtracker.tracker_registry.remove('some'))
+        self.addCleanup(bugtracker.tracker_registry.remove, 'some')
 
         branch = self.make_branch('some_branch')
         config = branch.get_config()
@@ -210,3 +209,22 @@ class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
         """
         self.assertRaises(
             errors.MalformedBugIdentifier, self.tracker.get_bug_url, 'bad')
+
+
+class TestPropertyEncoding(TestCase):
+    """Tests for how the bug URLs are encoded as revision properties."""
+
+    def test_encoding_one(self):
+        self.assertEqual(
+            'http://example.com/bugs/1 fixed',
+            bugtracker.encode_fixes_bug_urls(['http://example.com/bugs/1']))
+
+    def test_encoding_zero(self):
+        self.assertEqual('', bugtracker.encode_fixes_bug_urls([]))
+
+    def test_encoding_two(self):
+        self.assertEqual(
+            'http://example.com/bugs/1 fixed\n'
+            'http://example.com/bugs/2 fixed',
+            bugtracker.encode_fixes_bug_urls(
+                ['http://example.com/bugs/1', 'http://example.com/bugs/2']))

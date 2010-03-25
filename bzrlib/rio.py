@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # \subsection{\emph{rio} - simple text metaformat}
 #
@@ -32,6 +32,7 @@
 
 import re
 
+from bzrlib import osutils
 from bzrlib.iterablefile import IterableFile
 
 # XXX: some redundancy is allowing to write stanzas in isolation as well as
@@ -129,6 +130,12 @@ class Stanza(object):
                             % (value, type(value)))
         self.items.append((tag, value))
 
+    @classmethod
+    def from_pairs(cls, pairs):
+        ret = cls()
+        ret.items = pairs
+        return ret
+
     def __contains__(self, find_tag):
         """True if there is any field in this stanza with the given tag."""
         for tag, value in self.items:
@@ -191,16 +198,16 @@ class Stanza(object):
 
         result = []
         for tag, value in self.items:
-            if value == '':
-                result.append(tag + ': \n')
-            elif '\n' in value:
+            if value == u'':
+                result.append(tag + u': \n')
+            elif u'\n' in value:
                 # don't want splitlines behaviour on empty lines
-                val_lines = value.split('\n')
-                result.append(tag + ': ' + val_lines[0] + '\n')
+                val_lines = value.split(u'\n')
+                result.append(tag + u': ' + val_lines[0] + u'\n')
                 for line in val_lines[1:]:
-                    result.append('\t' + line + '\n')
+                    result.append(u'\t' + line + u'\n')
             else:
-                result.append(tag + ': ' + value + '\n')
+                result.append(tag + u': ' + value + u'\n')
         return u''.join(result)
 
     def write(self, to_file):
@@ -236,9 +243,9 @@ class Stanza(object):
             d[tag] = value
         return d
 
-_tag_re = re.compile(r'^[-a-zA-Z0-9_]+$')
+
 def valid_tag(tag):
-    return bool(_tag_re.match(tag))
+    return _valid_tag(tag)
 
 
 def read_stanza(line_iter):
@@ -254,8 +261,7 @@ def read_stanza(line_iter):
 
     The raw lines must be in utf-8 encoding.
     """
-    unicode_iter = (line.decode('utf-8') for line in line_iter)
-    return read_stanza_unicode(unicode_iter)
+    return _read_stanza_utf8(line_iter)
 
 
 def read_stanza_unicode(unicode_iter):
@@ -275,42 +281,7 @@ def read_stanza_unicode(unicode_iter):
     :return: A Stanza object if there are any lines in the file.
         None otherwise
     """
-    stanza = Stanza()
-    tag = None
-    accum_value = None
-
-    # TODO: jam 20060922 This code should raise real errors rather than
-    #       using 'assert' to process user input, or raising ValueError
-    #       rather than a more specific error.
-
-    for line in unicode_iter:
-        if line is None or line == '':
-            break       # end of file
-        if line == '\n':
-            break       # end of stanza
-        real_l = line
-        if line[0] == '\t': # continues previous value
-            if tag is None:
-                raise ValueError('invalid continuation line %r' % real_l)
-            accum_value += '\n' + line[1:-1]
-        else: # new tag:value line
-            if tag is not None:
-                stanza.add(tag, accum_value)
-            try:
-                colon_index = line.index(': ')
-            except ValueError:
-                raise ValueError('tag/value separator not found in line %r'
-                                 % real_l)
-            tag = str(line[:colon_index])
-            if not valid_tag(tag):
-                raise ValueError("invalid rio tag %r" % (tag,))
-            accum_value = line[colon_index+2:-1]
-
-    if tag is not None: # add last tag-value
-        stanza.add(tag, accum_value)
-        return stanza
-    else:     # didn't see any content
-        return None
+    return _read_stanza_unicode(unicode_iter)
 
 
 def to_patch_lines(stanza, max_width=72):
@@ -399,3 +370,18 @@ def read_patch_stanza(line_iter):
     :return: a Stanza
     """
     return read_stanza(_patch_stanza_iter(line_iter))
+
+
+try:
+    from bzrlib._rio_pyx import (
+        _read_stanza_utf8,
+        _read_stanza_unicode,
+        _valid_tag,
+        )
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
+    from bzrlib._rio_py import (
+       _read_stanza_utf8,
+       _read_stanza_unicode,
+       _valid_tag,
+       )

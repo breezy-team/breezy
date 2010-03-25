@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: For things like --diff-prefix, we want a way to customize the display
 # of the option argument.
@@ -40,25 +40,25 @@ def _parse_revision_str(revstr):
     each revision specifier supplied.
 
     >>> _parse_revision_str('234')
-    [<RevisionSpec_revno 234>]
+    [<RevisionSpec_dwim 234>]
     >>> _parse_revision_str('234..567')
-    [<RevisionSpec_revno 234>, <RevisionSpec_revno 567>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec_dwim 567>]
     >>> _parse_revision_str('..')
     [<RevisionSpec None>, <RevisionSpec None>]
     >>> _parse_revision_str('..234')
-    [<RevisionSpec None>, <RevisionSpec_revno 234>]
+    [<RevisionSpec None>, <RevisionSpec_dwim 234>]
     >>> _parse_revision_str('234..')
-    [<RevisionSpec_revno 234>, <RevisionSpec None>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec None>]
     >>> _parse_revision_str('234..456..789') # Maybe this should be an error
-    [<RevisionSpec_revno 234>, <RevisionSpec_revno 456>, <RevisionSpec_revno 789>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec_dwim 456>, <RevisionSpec_dwim 789>]
     >>> _parse_revision_str('234....789') #Error ?
-    [<RevisionSpec_revno 234>, <RevisionSpec None>, <RevisionSpec_revno 789>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec None>, <RevisionSpec_dwim 789>]
     >>> _parse_revision_str('revid:test@other.com-234234')
     [<RevisionSpec_revid revid:test@other.com-234234>]
     >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
     [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revid revid:test@other.com-234235>]
     >>> _parse_revision_str('revid:test@other.com-234234..23')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_dwim 23>]
     >>> _parse_revision_str('date:2005-04-12')
     [<RevisionSpec_date date:2005-04-12>]
     >>> _parse_revision_str('date:2005-04-12 12:24:33')
@@ -68,27 +68,23 @@ def _parse_revision_str(revstr):
     >>> _parse_revision_str('date:2005-04-12,12:24:33')
     [<RevisionSpec_date date:2005-04-12,12:24:33>]
     >>> _parse_revision_str('-5..23')
-    [<RevisionSpec_revno -5>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_dwim -5>, <RevisionSpec_dwim 23>]
     >>> _parse_revision_str('-5')
-    [<RevisionSpec_revno -5>]
+    [<RevisionSpec_dwim -5>]
     >>> _parse_revision_str('123a')
-    Traceback (most recent call last):
-      ...
-    NoSuchRevisionSpec: No namespace registered for string: '123a'
+    [<RevisionSpec_dwim 123a>]
     >>> _parse_revision_str('abc')
-    Traceback (most recent call last):
-      ...
-    NoSuchRevisionSpec: No namespace registered for string: 'abc'
+    [<RevisionSpec_dwim abc>]
     >>> _parse_revision_str('branch:../branch2')
     [<RevisionSpec_branch branch:../branch2>]
     >>> _parse_revision_str('branch:../../branch2')
     [<RevisionSpec_branch branch:../../branch2>]
     >>> _parse_revision_str('branch:../../branch2..23')
-    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_dwim 23>]
     >>> _parse_revision_str('branch:..\\\\branch2')
     [<RevisionSpec_branch branch:..\\branch2>]
     >>> _parse_revision_str('branch:..\\\\..\\\\branch2..23')
-    [<RevisionSpec_branch branch:..\\..\\branch2>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_branch branch:..\\..\\branch2>, <RevisionSpec_dwim 23>]
     """
     # TODO: Maybe move this into revisionspec.py
     revs = []
@@ -104,7 +100,7 @@ def _parse_change_str(revstr):
     parent of the revision.
 
     >>> _parse_change_str('123')
-    (<RevisionSpec_before before:123>, <RevisionSpec_revno 123>)
+    (<RevisionSpec_before before:123>, <RevisionSpec_dwim 123>)
     >>> _parse_change_str('123..124')
     Traceback (most recent call last):
       ...
@@ -150,7 +146,8 @@ class Option(object):
     OPTIONS = {}
 
     def __init__(self, name, help='', type=None, argname=None,
-                 short_name=None, param_name=None, custom_callback=None):
+                 short_name=None, param_name=None, custom_callback=None,
+                 hidden=False):
         """Make a new command option.
 
         :param name: regular name of the command, used in the double-dash
@@ -173,6 +170,8 @@ class Option(object):
         :param custom_callback: a callback routine to be called after normal
             processing. The signature of the callback routine is
             (option, name, new_value, parser).
+        :param hidden: If True, the option should be hidden in help and
+            documentation.
         """
         self.name = name
         self.help = help
@@ -189,6 +188,7 @@ class Option(object):
         else:
             self._param_name = param_name
         self.custom_callback = custom_callback
+        self.hidden = hidden
 
     def short_name(self):
         if self._short_name:
@@ -208,12 +208,16 @@ class Option(object):
         option_strings = ['--%s' % self.name]
         if short_name is not None:
             option_strings.append('-%s' % short_name)
+        if self.hidden:
+            help = optparse.SUPPRESS_HELP
+        else:
+            help = self.help
         optargfn = self.type
         if optargfn is None:
             parser.add_option(action='callback',
                               callback=self._optparse_bool_callback,
                               callback_args=(True,),
-                              help=self.help,
+                              help=help,
                               *option_strings)
             negation_strings = ['--%s' % self.get_negation_name()]
             parser.add_option(action='callback',
@@ -224,7 +228,7 @@ class Option(object):
             parser.add_option(action='callback',
                               callback=self._optparse_callback,
                               type='string', metavar=self.argname.upper(),
-                              help=self.help,
+                              help=help,
                               default=OptionParser.DEFAULT_VALUE,
                               *option_strings)
 
@@ -250,7 +254,7 @@ class Option(object):
         yield self.name, self.short_name(), argname, self.help
 
     def is_hidden(self, name):
-        return False
+        return self.hidden
 
 
 class ListOption(Option):
@@ -357,7 +361,7 @@ class RegistryOption(Option):
 
         name, help, value_switches and enum_switch are passed to the
         RegistryOption constructor.  Any other keyword arguments are treated
-        as values for the option, and they value is treated as the help.
+        as values for the option, and their value is treated as the help.
         """
         reg = _mod_registry.Registry()
         for name, switch_help in kwargs.iteritems():
@@ -502,6 +506,8 @@ _merge_type_registry.register_lazy('lca', 'bzrlib.merge', 'LCAMerger',
 # Declare the standard options
 _standard_option('help', short_name='h',
                  help='Show help message.')
+_standard_option('usage',
+                 help='Show usage message and options.')
 _standard_option('verbose', short_name='v',
                  help='Display more information.',
                  custom_callback=_verbosity_level_callback)

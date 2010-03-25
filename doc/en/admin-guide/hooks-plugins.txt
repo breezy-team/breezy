@@ -1,0 +1,310 @@
+Extending Bazaar with Hooks and Plugins
+=======================================
+
+Bazaar offers a powerful extension mechanism for adding capabilities.  In
+addition to offering full library API access to all of its structures, which
+can be useful for outside programs that would like to interact with Bazaar
+branches, Bazaar can also load *plugins* that perform specific tasks.  These
+specific tasks are specified by *hooks* that run during certain steps of the
+version control process.  
+
+For full documentation on the available hooks, see ``bzr help hooks``.  Among
+those, some of the most significant hooks from an administration
+standpoint are `pre_commit`, `post_commit` and `post_change_branch_tip`.
+A `pre_commit` hook can inspect a commit before it happens and cancel it if
+some criteria are not met.  This can be useful for enforcing policies about
+the code, such as line-endings or whitespace conventions.  A
+`post_commit` hook can take actions based on the commit that just happened,
+such as providing various types of notifications.  Finally, a
+`post_change_branch_tip` hook is a more general form of a `post_commit`
+hook which is used whenever the tip of a branch changes (which can happen in
+more ways than just committing).  This too can be used for notification
+purposes, as well as for backups and mirroring.
+
+Information on the whole range of Bazaar plugins is available at
+http://doc.bazaar.canonical.com/plugins/en/.  For purposes of installation,
+plugins are simply python packages.  They can be installed alongside Bazaar in
+the ``bzrlib.plugins`` package using each plugin's ``setup.py``.  They can
+also be installed in the plugin path which is the user's ``~/.bazaar/plugins``
+directory or can be specified with the ``BZR_PLUGIN_PATH`` environment
+variable.  See ``bzr help configuration`` for more on specifying the location
+of plugins.
+
+
+Email Notification
+------------------
+
+A common need is for every change made on a branch to send an email message to
+some address, most often a mailing list.  These plugins provide that capability
+in a number of different ways.  
+
+The `email` plugin sends email from each individual developer's computer.  This
+can be useful for situations that want to track what each individual developer
+is working on.  On the downside, it requires that every developer's branches be
+configured individually to use the same plugin.  
+
+The next two plugins `hookless-email` and `email-notifier` address this concern
+by running on a central server whenever changes happen on centrally stored
+branches.
+
+email
+~~~~~
+
+To configure this plugin, simply install the plugin and configure the
+``post_commit_to``  option for each branch.  This configuration can be done
+in the ``locations.conf`` file or individually in each branch's
+``branch.conf`` file.  The sender's email address can be specified as
+``post_commit_sender`` if it is different than the email address reported by
+``bzr whoami``.  The ``post_commit_mailer`` option specifies how the
+mail should be sent.  If it isn't set, email is sent via ``/usr/bin/mail``.
+It can also be configured to communicate directly with an SMTP server.
+For more details on configuring this plugin, see
+http://doc.bazaar-vcs.org/plugins/en/email-plugin.html.  As examples, consider
+the following two possible configurations.  A minimal one (uses
+``/usr/bin/mail``)
+
+::
+
+  [DEFAULT]
+  post_commit_to = projectx-commits@example.com
+
+and a more complicated one (using all of the options)
+
+::
+
+  [DEFAULT]
+  post_commit_url = http://www.example.com/code/projectx/trunk
+  post_commit_to = projectx-commits@example.com
+  post_commit_sender = donotreply@example.com
+  post_commit_mailer = smtplib
+  smtp_server = mail.example.com:587
+  smtp_username = bob
+  # smtp_password = 'not specified, will prompt'
+
+
+hookless-email
+~~~~~~~~~~~~~~
+
+This plugin is basically a server-side version of the `email` plugin.  It is
+a program that runs either from the command line or as a daemon that monitors
+the branches specified on the command line for any changes.  When a change
+occurs to any of the monitored branches, it will send an email to the
+specified address.  Using our simple example, the following command would send
+an email to ``projectx-commits@example.com`` on any of the branches under
+``/srv/bzr`` since the last time the command was run.  (This command could be
+set up to run at regular intervals, for example from ``cron``.)
+
+::
+
+  $ bzr_hookless_email.py --email=projectx-commits@example.com \
+  --recurse /srv/bzr
+
+email-notifier
+~~~~~~~~~~~~~~
+
+This is a more elaborate version of the `hookless-email` plugin that can send
+templated HTML emails, render wiki-style markup in commit messages and update
+working copies on the server (similar to `push_and_update`_).  It can also
+send emails reporting the creation of new branches or the removal of branches
+under a specified directory (here ``/srv/bzr/projectx``).  As it is more
+complicated, its configuration is also more complicated and we won't repeat
+its documentation here, but a simple configuration that will send emails on
+commits and creation/deletion of branches is
+
+::
+
+  [smtp]
+
+  server=smtp.example.com
+  # If user is not provided then no authentication will be performed.
+  user=bob
+  password=pAssW0rd
+
+  [commits]
+
+  # The address to send commit emails to. 
+  to=projctx-commits@example.com
+  from=$revision.committer
+
+  # A Cheetah template used to construct the subject of the email message.
+  subject=$relative_path: $revision_number $summary
+
+  [new-branches]
+  to=projectx-commits@example.com
+  from=donotreply@example.com
+  subject=$relative_path: New branch created
+
+  [removed-branches]
+  to=projectx-commits@example.com
+  from=donotreply@example.com
+  subject=$relative_path: Branch removed
+
+If this file is stored as ``/srv/bzr/email-notifier.conf``, then the command
+
+::
+ 
+  $ bzr-email-notifier.py --config=/srv/bzr/email-notifier.conf /srv/bzr/projectx
+
+will watch all branches under the given directory for commits, branch
+creations and branch deletions.
+  
+
+Feed Generation
+---------------
+
+A related concept to sending out emails when branches change is the generation
+of news feeds from changes on each branch.  Interested parties can then choose
+to follow those news feeds in order to see what is happening on a branch.
+
+branchfeed
+~~~~~~~~~~
+
+This plugin creates an ATOM feed for every branch on every branch change
+(commit, etc.).  It stores these files as ``.bzr/branch/branch.atom`` inside
+each branch.  Currently, it includes the 20 most recent changes in each feed.
+To use it, simply install the plugin and set your feed reader to follow the
+``branch.atom`` files.
+
+In addition, there are other tools that are not plugins for creating news
+feeds from Bazaar branches.  See http://bazaar-vcs.org/FeedGenerators for more
+on those tools.
+
+Mirroring
+---------
+
+Sometimes it is useful to ensure that one branch exists as an exact copy of
+another.  This can be used to provide simple backup facilities or redundancy
+(see `Back-up and restore <backup.html>`_ for more details on backups).  One
+way to do this using Bazaar's workflows is to make the branch where changes
+happen into a bound branch of the mirror branch.  Then, when commits happen on
+the working branch, they will also happen on the mirror branch.  Note that
+commits to bound branches do *not* update the mirror branch's working copy, so
+if the mirror branch is more than just a backup of the complete history of the
+branch, for example if it is being served as a web page, then additional
+plugins are necessary.
+
+push_and_update
+~~~~~~~~~~~~~~~
+
+This plugin updates Bazaar's ``push`` command to also update the remote
+working copy.  It can only work over connections that imply filesystem or SSH
+access to the remote working copy (``bzr+ssh://``, ``sftp://`` and
+``file://``).  Also, it is only useful when the remote branch is updated with
+an explicit ``push`` command.
+
+automirror
+~~~~~~~~~~
+
+This plugin is similar to `push_and_update` in that it updates the working
+copy of a remote branch.  The difference is that this plugin is designed to
+update the remote branch on every change to the working branch.  To configure
+this, set the ``post_commit_mirror = URL`` option on a branch.  This option
+can include multiple branch URLs separated by commas to create multiple
+mirrors.  For example, if we want to mirror our ``/srv/bzr/projectx/trunk``
+branch to the URL ``sftp://www.example.com/var/www/projectx`` (for example if
+ProjectX were a web project that we wanted to access at
+``http://www.example.com/projectx``), then we could include
+
+::
+ 
+  [DEFAULT]
+  post_commit_mirror = sftp://www.example.com/var/www/branches/trunk
+
+in the file ``/srv/bzr/projectx/trunk/.bzr/branch/branch.conf``.
+
+
+Other Useful Plugins
+--------------------
+
+pqm (plugin)
+~~~~~~~~~~~~
+
+Facilitating interaction with `PQM
+<integration.html#patch-queue-manager-pqm>`_, this plugin provides support for 
+submitting merge requests to a remote Patch Queue Manager.  PQM provides 
+a way to automatically run the test suite before merging changes to the
+trunk branch.
+
+testrunner
+~~~~~~~~~~
+
+Sometimes referred to as the poor man's PQM, this plugin runs a single command
+on the updated revision (in a temporary directory) and if the command returns
+0, then the revision can be committed to that branch.  For example, if the
+testsuite is run with the command ``nosetests`` in the root of the branch
+(which returns 0 if the test suite passes and 1 if it doesn't pass), then one
+can set 
+
+::
+
+  [DEFAULT]
+  pre_change_branch_tip_test_command = nosetests
+
+in ``.bzr/branch/branch.conf``.
+
+checkeol
+~~~~~~~~
+
+This plugin is an example of a `pre_commit` hook that checks the revision
+being committed for meeting some policy.  In this case, it checks that all of
+the files have the specified line endings.  It uses a configuration file
+``.bzreol`` in the root of the working tree (similar to the ``.bzrignore``
+file).  This configuration file has sections for line feed endings (LF),
+carriage return/line-feed endings (CRLF) and carriage return endings (CR).
+For an unusual example that specifies different line endings for different
+files, that file might look like
+
+:: 
+
+  [LF]
+  *.py
+  *.[ch]
+
+  [CRLF]
+  *.txt
+  *.ini
+
+  [CR]
+  foo.mac
+
+or if you simply want to enforce a single line ending convention on the branch
+you can use
+
+::
+  
+  [LF]
+  *
+
+This plugin needs to be installed on the server where the branch updates will
+happen, and the ``.bzreol`` file must be in each branch where line ending
+policies will be enforced.  (Adding it to the branch with ``bzr add .bzreol``
+is an easy way to ensure this, although it means that branches on the server
+must have working trees.)
+
+text_checker
+~~~~~~~~~~~~
+
+This plugin is a more advanced version of `checkeol` that can check such
+coding style guidelines such as trailing whitespace, long lines and files that
+don't end with a newline.  It is configured using Bazaar's built in rules
+specification in ``BZR_HOME/rules`` (see ``bzr help rules`` for more
+information.  For different types of undesired changes, you can specify
+different types of actions.  For example
+
+::
+
+  [name NEWS README]
+  trailing_whitespace=fail
+  long_lines=warn
+  newline_at_eof=ignore
+
+  [name *.py]
+  tabs=fail
+  long_line_length=78
+  long_lines=fail
+  trailing_whitespace=fail
+
+will prevent changes from adding new trailing whitespace to the specified
+files and keep all python source files free of tabs and lines over 78
+characters.  To commit while violating these rules, one can pass the
+``--text-check-warn-only`` option to commit.

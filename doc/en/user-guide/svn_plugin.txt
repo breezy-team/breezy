@@ -30,13 +30,11 @@ Here's a simple example of how you can use bzr-svn to hack on a
 GNOME project like **beagle**. Firstly, setup a local shared repository
 for storing your branches in and checkout the trunk::
 
-  bzr init-repo --rich-root-pack beagle-repo
+  bzr init-repo beagle-repo
   cd beagle-repo
   bzr checkout svn+ssh://svn.gnome.org/svn/beagle/trunk beagle-trunk
 
-Note that using the ``rich-root-pack`` option to ``init-repo`` is
-important as bzr-svn requires some extra metadata not yet supported in Bazaar's
-default repository format. Next, create a feature branch and hack away::
+Next, create a feature branch and hack away::
 
   bzr branch beagle-trunk beagle-feature1
   cd beagle-feature1
@@ -71,7 +69,7 @@ repository-to-repository conversion. Here's an example of how to use it::
 
 Here's the recipe from above updated to use a central Bazaar mirror::
 
-  bzr init-repo --rich-root-pack beagle-repo
+  bzr init-repo beagle-repo
   cd beagle-repo
   bzr branch bzr+ssh://bzr.gnome.org/beagle.bzr/trunk beagle-trunk
   bzr branch beagle-trunk beagle-feature1
@@ -105,16 +103,11 @@ Limitations of bzr-svn
 
 Bazaar and Subversion are different tools with different capabilities
 so there will always be some limited interoperability issues.
-Here are some examples current as of bzr-svn 0.4.10:
+Here are some examples current as of bzr-svn 0.5.4:
 
  * Bazaar doesn't support versioned properties
 
  * Bazaar doesn't support tracking of file copies.
-
- * ``bzr push`` to an existing Subversion branch works but 
-   ``bzr push`` to a new Subversion branch doesn't. Until
-   the relevant bug is fixed (#121875), you need to use
-   ``bzr svn-push`` in the latter case.
 
 See the bzr-svn web page,
 http://bazaar-vcs.org/BzrForeignBranches/Subversion,

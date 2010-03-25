@@ -25,10 +25,8 @@ current view. In both cases, Bazaar notifies the user each time it uses
 a view implicitly so that it is clear that the operation or output is
 being masked accordingly.
 
-Note: Bazaar's default format does not yet support filtered views. That
-is likely to change in the near future. To use filtered views in the
-meantime, you currently need to upgrade to ``development-wt5`` (or
-``development-wt5-rich-root``) format first.
+Note: Filtered views are only supported in format 2a, the default in
+Bazaar 2.0, or later.
 
 
 Creating a view

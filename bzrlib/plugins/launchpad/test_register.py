@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import base64
 import os
@@ -335,12 +335,14 @@ class TestGatherUserCredentials(tests.TestCaseInTempDir):
         g_conf = config.GlobalConfig()
         g_conf.set_user_option('email', 'Test User <test@user.com>')
         stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdin='userpass\n',
-                                            stdout=stdout)
+                                            stdout=stdout, stderr=stderr)
         self.assertIs(None, service.registrant_password)
         service.gather_user_credentials()
         self.assertEqual('test@user.com', service.registrant_email)
         self.assertEqual('userpass', service.registrant_password)
-        self.assertContainsRe(stdout.getvalue(),
+        self.assertEquals('', stdout.getvalue())
+        self.assertContainsRe(stderr.getvalue(),
                              'launchpad.net password for test@user\\.com')
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that decorates another transport.
 
@@ -175,50 +175,6 @@ class TransportDecorator(Transport):
                                   redirected)
         else:
             return None
-
-
-class DecoratorServer(Server):
-    """Server for the TransportDecorator for testing with.
-
-    To use this when subclassing TransportDecorator, override override the
-    get_decorator_class method.
-    """
-
-    def setUp(self, server=None):
-        """See bzrlib.transport.Server.setUp.
-
-        :server: decorate the urls given by server. If not provided a
-        LocalServer is created.
-        """
-        if server is not None:
-            self._made_server = False
-            self._server = server
-        else:
-            from bzrlib.transport.local import LocalURLServer
-            self._made_server = True
-            self._server = LocalURLServer()
-            self._server.setUp()
-
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        if self._made_server:
-            self._server.tearDown()
-
-    def get_decorator_class(self):
-        """Return the class of the decorators we should be constructing."""
-        raise NotImplementedError(self.get_decorator_class)
-
-    def get_url_prefix(self):
-        """What URL prefix does this decorator produce?"""
-        return self.get_decorator_class()._get_url_prefix()
-
-    def get_bogus_url(self):
-        """See bzrlib.transport.Server.get_bogus_url."""
-        return self.get_url_prefix() + self._server.get_bogus_url()
-
-    def get_url(self):
-        """See bzrlib.transport.Server.get_url."""
-        return self.get_url_prefix() + self._server.get_url()
 
 
 def get_test_permutations():

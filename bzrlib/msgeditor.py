@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Commit message editor support."""
@@ -29,7 +29,7 @@ from bzrlib import (
     trace,
     )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
-from bzrlib.hooks import Hooks
+from bzrlib.hooks import HookPoint, Hooks
 
 
 def _get_editor():
@@ -63,16 +63,14 @@ def _run_editor(filename):
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError, e:
-            # We're searching for an editor, so catch safe errors and continue
-            if e.errno in (errno.ENOENT, errno.EACCES):
-                if candidate_source is not None:
-                    # We tried this editor because some user configuration (an
-                    # environment variable or config file) said to try it.  Let
-                    # the user know their configuration is broken.
-                    trace.warning(
-                        'Could not start editor "%s" (specified by %s): %s\n'
-                        % (candidate, candidate_source, str(e)))
-                continue
+            if candidate_source is not None:
+                # We tried this editor because some user configuration (an
+                # environment variable or config file) said to try it.  Let
+                # the user know their configuration is broken.
+                trace.warning(
+                    'Could not start editor "%s" (specified by %s): %s\n'
+                    % (candidate, candidate_source, str(e)))
+            continue
             raise
         if x == 0:
             return True
@@ -293,13 +291,15 @@ class MessageEditorHooks(Hooks):
         These are all empty initially.
         """
         Hooks.__init__(self)
-        # Introduced in 1.10:
-        # Invoked to generate the commit message template shown in the editor
-        # The api signature is:
-        # (commit, message), and the function should return the new message
-        # There is currently no way to modify the order in which
-        # template hooks are invoked
-        self['commit_message_template'] = []
+        self.create_hook(HookPoint('commit_message_template',
+            "Called when a commit message is being generated. "
+            "commit_message_template is called with the bzrlib.commit.Commit "
+            "object and the message that is known so far. "
+            "commit_message_template must return a new message to use (which "
+            "could be the same as it was given. When there are multiple "
+            "hooks registered for commit_message_template, they are chained "
+            "with the result from the first passed into the second, and so "
+            "on.", (1, 10), None))
 
 
 hooks = MessageEditorHooks()

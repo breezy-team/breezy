@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr diff.
@@ -21,11 +21,10 @@
 import os
 import re
 
-import bzrlib
-from bzrlib import workingtree
-from bzrlib.branch import Branch
-from bzrlib.tests import TestSkipped
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib import (
+    tests,
+    workingtree,
+    )
 
 
 def subst_dates(string):
@@ -34,7 +33,7 @@ def subst_dates(string):
                   'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
 
 
-class DiffBase(ExternalBase):
+class DiffBase(tests.TestCaseWithTransport):
     """Base class with common setup method"""
 
     def make_example_branch(self):
@@ -355,25 +354,19 @@ class TestExternalDiff(DiffBase):
 
     def test_external_diff(self):
         """Test that we can spawn an external diff process"""
+        self.disable_missing_extensions_warning()
         # We have to use run_bzr_subprocess, because we need to
         # test writing directly to stdout, (there was a bug in
         # subprocess.py that we had to workaround).
         # However, if 'diff' may not be available
         self.make_example_branch()
-        orig_progress = os.environ.get('BZR_PROGRESS_BAR')
-        try:
-            os.environ['BZR_PROGRESS_BAR'] = 'none'
-            out, err = self.run_bzr_subprocess('diff -r 1 --diff-options -ub',
-                                               universal_newlines=True,
-                                               retcode=None)
-        finally:
-            if orig_progress is None:
-                del os.environ['BZR_PROGRESS_BAR']
-            else:
-                os.environ['BZR_PROGRESS_BAR'] = orig_progress
-
+        # this will be automatically restored by the base bzr test class
+        os.environ['BZR_PROGRESS_BAR'] = 'none'
+        out, err = self.run_bzr_subprocess('diff -r 1 --diff-options -ub',
+                                           universal_newlines=True,
+                                           retcode=None)
         if 'Diff is not installed on this machine' in err:
-            raise TestSkipped("No external 'diff' is available")
+            raise tests.TestSkipped("No external 'diff' is available")
         self.assertEqual('', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()

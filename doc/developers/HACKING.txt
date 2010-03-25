@@ -2,7 +2,7 @@
 Bazaar Developer Guide
 ======================
 
-This document describes the Bazaar internals and the development process.  
+This document describes the Bazaar internals and the development process.
 It's meant for people interested in developing Bazaar, and some parts will
 also be useful to people developing Bazaar plugins.
 
@@ -11,14 +11,8 @@ missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write to
 the Bazaar mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
-The current version of this document is available in the file 
-``doc/developers/HACKING.txt`` in the source tree, or at
-http://doc.bazaar-vcs.org/bzr.dev/en/developer-guide/HACKING.html
-
-See also:
-`Bazaar Developer Documentation Catalog <../../developers/index.html>`_.
-
-.. contents::
+The latest developer documentation can be found online at
+http://doc.bazaar-vcs.org/developers/.
 
 
 Getting Started
@@ -46,6 +40,15 @@ overall Bazaar Platform. Here are some links to browse:
 If nothing else, perhaps you'll find inspiration in how other developers
 have solved their challenges.
 
+Finding Something To Do
+=======================
+
+Ad-hoc performance work can also be done. One useful tool is the 'evil' debug
+flag. For instance running ``bzr -Devil commit -m "test"`` will log a backtrace
+to the bzr log file for every method call which triggers a slow or non-scalable
+part of the bzr library. So checking that a given command with ``-Devil`` has
+no backtraces logged to the log file is a good way to find problem function
+calls that might be nested deep in the code base.
 
 Planning and Discussing Changes
 ===============================
@@ -59,9 +62,9 @@ on the IRC channel and/or on the mailing list. There are many advantages
 to involving the community before you spend much time on a change.
 These include:
 
-* you get to build on the wisdom on others, saving time
+* you get to build on the wisdom of others, saving time
 
-* if others can direct you to similar code, it minimises the work to be done 
+* if others can direct you to similar code, it minimises the work to be done
 
 * it assists everyone in coordinating direction, priorities and effort.
 
@@ -73,10 +76,85 @@ friendly, helpful and always keen to welcome newcomers.
 Bazaar Development in a Nutshell
 ================================
 
-Looking for a 10 minute introduction to submitting a change?
-See http://bazaar-vcs.org/BzrGivingBack.
+.. was from bazaar-vcs.org/BzrGivingBack
 
-TODO: Merge that Wiki page into this document.
+One of the fun things about working on a version control system like Bazaar is
+that the users have a high level of proficiency in contributing back into
+the tool.  Consider the following very brief introduction to contributing back
+to Bazaar.  More detailed instructions are in the following sections.
+
+Making the change
+-----------------
+
+First, get a local copy of the development mainline (See `Why make a local
+copy of bzr.dev?`_.)
+::
+
+ $ bzr init-repo ~/bzr
+ $ cd ~/bzr
+ $ bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
+
+Now make your own branch::
+
+ $ bzr branch bzr.dev 123456-my-bugfix
+
+This will give you a branch called "123456-my-bugfix" that you can work on
+and commit in. Here, you can study the code, make a fix or a new feature.
+Feel free to commit early and often (after all, it's your branch!).
+
+Documentation improvements are an easy place to get started giving back to the
+Bazaar project.  The documentation is in the `doc/` subdirectory of the Bazaar
+source tree.
+
+When you are done, make sure that you commit your last set of changes as well!
+Once you are happy with your changes, ask for them to be merged, as described
+below.
+
+Making a Merge Proposal
+-----------------------
+
+The Bazaar developers use Launchpad to further enable a truly distributed
+style of development.  Anyone can propose a branch for merging into the Bazaar
+trunk.  To start this process, you need to push your branch to Launchpad.  To
+do this, you will need a Launchpad account and user name, e.g.
+`your_lp_username`.  You can push your branch to Launchpad directly from
+Bazaar::
+
+  $ bzr push lp:~your_lp_username/bzr/meaningful_name_here
+
+After you have pushed your branch, you will need to propose it for merging to
+the Bazaar trunk.  Go to
+<https://launchpad.net/your_lp_username/bzr/meaningful_name_here> and choose
+"Propose for merging into another branch".  Select "~bzr/bzr/trunk" to hand
+your changes off to the Bazaar developers for review and merging.
+
+Using a meaningful name for your branch will help you and the reviewer(s)
+better track the submission. Use a very succint description of your submission
+and prefix it with bug number if needed (lp:~mbp/bzr/484558-merge-directory
+for example). Alternatively, you can suffix with the bug number
+(lp:~jameinel/bzr/export-file-511987).
+
+
+Why make a local copy of bzr.dev?
+---------------------------------
+
+Making a local mirror of bzr.dev is not strictly necessary, but it means
+
+- You can use that copy of bzr.dev as your main bzr executable, and keep it
+  up-to-date using ``bzr pull``.
+- Certain operations are faster, and can be done when offline.  For example:
+
+  - ``bzr bundle``
+  - ``bzr diff -r ancestor:...``
+  - ``bzr merge``
+
+- When it's time to create your next branch, it's more convenient.  When you
+  have further contributions to make, you should do them in their own branch::
+
+    $ cd ~/bzr
+    $ bzr branch bzr.dev additional_fixes
+    $ cd additional_fixes # hack, hack, hack
+
 
 
 Understanding the Development Process
@@ -123,10 +201,10 @@ As a starting suggestion though:
 
 * create a local copy of the main development branch (bzr.dev) by using
   this command::
-  
+
     bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
-   
-* keep your copy of bzr.dev prestine (by not developing in it) and keep
+
+* keep your copy of bzr.dev pristine (by not developing in it) and keep
   it up to date (by using bzr pull)
 
 * create a new branch off your local bzr.dev copy for each issue
@@ -134,7 +212,7 @@ As a starting suggestion though:
 
 This approach makes it easy to go back and make any required changes
 after a code review. Resubmitting the change is then simple with no
-risk of accidentially including edits related to other issues you may
+risk of accidentally including edits related to other issues you may
 be working on. After the changes for an issue are accepted and merged,
 the associated branch can be deleted or archived as you wish.
 
@@ -152,10 +230,10 @@ bzr
 
 README
     This file covers a brief introduction to Bazaar and lists some of its
-    key features. 
+    key features.
 
 NEWS
-    Summary of changes in each Bazaar release that can affect users or 
+    Summary of changes in each Bazaar release that can affect users or
     plugin developers.
 
 setup.py
@@ -167,7 +245,7 @@ setup.py
     with this but don't be confused by it. The build process puts a copy
     of the main code base into this build directory, along with some other
     files. You don't need to go in here for anything discussed in this
-    guide. 
+    guide.
 
 bzrlib
     Possibly the most exciting folder of all, bzrlib holds the main code
@@ -178,19 +256,20 @@ doc
     Holds documentation on a whole range of things on Bazaar from the
     origination of ideas within the project to information on Bazaar
     features and use cases.  Within this directory there is a subdirectory
-    for each translation into a human language.  All the documentation 
+    for each translation into a human language.  All the documentation
     is in the ReStructuredText markup language.
 
-doc/developers 
-    Documentation specifically targetted at Bazaar and plugin developers.
+doc/developers
+    Documentation specifically targeted at Bazaar and plugin developers.
     (Including this document.)
-    
-        
 
-Automatically-generated API reference information is available at 
-<http://starship.python.net/crew/mwh/bzrlibapi/>.  
 
-See also the `Bazaar Architectural Overview  <../../developers/overview.html>`_.
+
+Automatically-generated API reference information is available at
+<http://starship.python.net/crew/mwh/bzrlibapi/>.
+
+See also the `Bazaar Architectural Overview
+<http://doc.bazaar-vcs.org/developers/overview.html>`_.
 
 
 The Code Review Process
@@ -204,40 +283,11 @@ developers.  Use intelligent discretion if the patch is trivial.
 Good reviews do take time. They also regularly require a solid
 understanding of the overall code base. In practice, this means a small
 number of people often have a large review burden - with knowledge comes
-responsibility. No one like their merge requests sitting in a queue going
+responsibility. No one likes their merge requests sitting in a queue going
 nowhere, so reviewing sooner rather than later is strongly encouraged.
 
 
 
-Sending patches for review
-==========================
-
-If you'd like to propose a change, please post to the
-bazaar@lists.canonical.com list with a bundle, patch, or link to a
-branch. Put ``[PATCH]`` or ``[MERGE]`` in the subject so Bundle Buggy
-can pick it out, and explain the change in the email message text.
-Remember to update the NEWS file as part of your change if it makes any
-changes visible to users or plugin developers. Please include a diff
-against mainline if you're giving a link to a branch.
-
-You can generate a merge request like this::
-
-  bzr send -o bug-1234.patch
-  
-A ``.patch`` extension is recommended instead of .bundle as many mail clients
-will send the latter as a binary file.
-
-``bzr send`` can also send mail directly if you prefer; see the help.
-
-Please do **NOT** put [PATCH] or [MERGE] in the subject line if you don't
-want it to be merged. If you want comments from developers rather than
-to be merged, you can put ``[RFC]`` in the subject line.
-
-If this change addresses a bug, please put the bug number in the subject
-line too, in the form ``[#1]`` so that Bundle Buggy can recognize it.
-
-If the change is intended for a particular release mark that in the
-subject too, e.g. ``[1.6]``.
 
 
 Review cover letters
@@ -249,7 +299,7 @@ Please put a "cover letter" on your merge request explaining:
 
 * **how** this change achieves this purpose
 
-* anything else you may have fixed in passing 
+* anything else you may have fixed in passing
 
 * anything significant that you thought of doing, such as a more
   extensive fix or a different approach, but didn't or couldn't do now
@@ -294,7 +344,7 @@ Code that goes in should not degrade any of these aspects.  Patches are
 welcome that only cleanup the code without changing the external
 behaviour.  The core developers take care to keep the code quality high
 and understandable while recognising that perfect is sometimes the enemy
-of good. 
+of good.
 
 It is easy for reviews to make people notice other things which should be
 fixed but those things should not hold up the original fix being accepted.
@@ -332,9 +382,104 @@ Checklist for reviewers
 * (your ideas here...)
 
 
-Bundle Buggy and review outcomes
-================================
+Reviews on Launchpad
+====================
 
+From May 2009 on, we prefer people to propose code reviews through
+Launchpad.
+
+ * <https://launchpad.net/+tour/code-review>
+
+ * <https://help.launchpad.net/Code/Review>
+
+Anyone can propose or comment on a merge proposal just by creating a
+Launchpad account.
+
+There are two ways to create a new merge proposal: through the web
+interface or by email.
+
+
+Proposing a merge through the web
+---------------------------------
+
+To create the proposal through the web, first push your branch to Launchpad.
+For example, a branch dealing with documentation belonging to the Launchpad
+User mbp could be pushed as ::
+
+  bzr push lp:~mbp/bzr/doc
+
+Then go to the branch's web page, which in this case would be
+<https://code.launchpad.net/~mbp/bzr/doc>.  You can simplify this step by just
+running ::
+
+  bzr lp-open
+
+You can then click "Propose for merging into another branch", and enter your
+cover letter (see above) into the web form.  Typically you'll want to merge
+into ``~bzr/bzr/trunk`` which will be the default; you might also want to
+nominate merging into a release branch for a bug fix.  There is the option to
+specify a specific reviewer or type of review, and you shouldn't normally
+change those.
+
+Submitting the form takes you to the new page about the merge proposal
+containing the diff of the changes, comments by interested people, and
+controls to comment or vote on the change.
+
+Proposing a merge by mail
+-------------------------
+
+To propose a merge by mail, send a bundle to ``merge@code.launchpad.net``.
+
+You can generate a merge request like this::
+
+  bzr send -o bug-1234.diff
+
+``bzr send`` can also send mail directly if you prefer; see the help.
+
+Reviewing changes
+-----------------
+
+From <https://code.launchpad.net/bzr/+activereviews> you can see all
+currently active reviews, and choose one to comment on.  This page also
+shows proposals that are now approved and should be merged by someone with
+PQM access.
+
+
+Reviews through Bundle Buggy
+============================
+
+The Bundle Buggy tool used up to May 2009 is still available as a review
+mechanism.
+
+Sending patches for review
+--------------------------
+
+If you'd like to propose a change, please post to the
+bazaar@lists.canonical.com list with a bundle, patch, or link to a
+branch. Put ``[PATCH]`` or ``[MERGE]`` in the subject so Bundle Buggy
+can pick it out, and explain the change in the email message text.
+Remember to update the NEWS file as part of your change if it makes any
+changes visible to users or plugin developers. Please include a diff
+against mainline if you're giving a link to a branch.
+
+You can generate a merge request like this::
+
+  bzr send -o bug-1234.patch
+
+A ``.patch`` extension is recommended instead of .bundle as many mail clients
+will send the latter as a binary file.
+
+``bzr send`` can also send mail directly if you prefer; see the help.
+
+Please do **NOT** put [PATCH] or [MERGE] in the subject line if you don't
+want it to be merged. If you want comments from developers rather than
+to be merged, you can put ``[RFC]`` in the subject line.
+
+If this change addresses a bug, please put the bug number in the subject
+line too, in the form ``[#1]`` so that Bundle Buggy can recognize it.
+
+If the change is intended for a particular release mark that in the
+subject too, e.g. ``[1.6]``.
 Anyone can "vote" on the mailing list by expressing an opinion. Core
 developers can also vote using Bundle Buggy. Here are the voting codes and
 their explanations.
@@ -375,7 +520,7 @@ hasattr and getattr
 Code layout
 ===========
 
-Please write PEP-8__ compliant code.  
+Please write PEP-8__ compliant code.
 
 __ http://www.python.org/peps/pep-0008.html
 
@@ -385,14 +530,15 @@ should be a self-contained one-sentence summary.
 We use 4 space indents for blocks, and never use tab characters.  (In vim,
 ``set expandtab``.)
 
-No trailing white space is allowed.
+Trailing white space should be avoided, but is allowed.
+You should however not make lots of unrelated white space changes.
 
 Unix style newlines (LF) are used.
 
 Each file must have a newline at the end of it.
 
 Lines should be no more than 79 characters if at all possible.
-Lines that continue a long statement may be indented in either of 
+Lines that continue a long statement may be indented in either of
 two ways:
 
 within the parenthesis or other character that opens the block, e.g.::
@@ -437,7 +583,7 @@ future::
         marmalade,
         )
 
-There should be spaces between function paramaters, but not between the
+There should be spaces between function parameters, but not between the
 keyword name and the value::
 
     call(1, 3, cheese=quark)
@@ -482,12 +628,10 @@ Module Imports
 Naming
 ======
 
-Functions, methods or members that are "private" to bzrlib are given
+Functions, methods or members that are relatively private are given
 a leading underscore prefix.  Names without a leading underscore are
 public not just across modules but to programmers using bzrlib as an
-API. As a consequence, a leading underscore is appropriate for names
-exposed across modules but that are not to be exposed to bzrlib API
-programmers.
+API.
 
 We prefer class names to be concatenated capital words (``TestCase``)
 and variables, methods and functions to be lowercase words joined by
@@ -535,12 +679,25 @@ what can be done inside them.
     may not catch every case but it's still useful sometimes.
 
 
+Cleanup methods
+===============
+
+Often when something has failed later code, including cleanups invoked
+from ``finally`` blocks, will fail too.  These secondary failures are
+generally uninteresting compared to the original exception.  So use the
+``only_raises`` decorator (from ``bzrlib.decorators``) for methods that
+are typically called in ``finally`` blocks, such as ``unlock`` methods.
+For example, ``@only_raises(LockNotHeld, LockBroken)``.  All errors that
+are unlikely to be a knock-on failure from a previous failure should be
+allowed.
+
+
 Factories
 =========
 
 In some places we have variables which point to callables that construct
 new instances.  That is to say, they can be used a lot like class objects,
-but they shouldn't be *named* like classes:
+but they shouldn't be *named* like classes::
 
 > I think that things named FooBar should create instances of FooBar when
 > called. Its plain confusing for them to do otherwise. When we have
@@ -553,8 +710,8 @@ but they shouldn't be *named* like classes:
 Registries
 ==========
 
-Several places in Bazaar use (or will use) a registry, which is a 
-mapping from names to objects or classes.  The registry allows for 
+Several places in Bazaar use (or will use) a registry, which is a
+mapping from names to objects or classes.  The registry allows for
 loading in registered code only when it's needed, and keeping
 associated information such as a help string or description.
 
@@ -564,15 +721,17 @@ InterObject and multiple dispatch
 
 The ``InterObject`` provides for two-way `multiple dispatch`__: matching
 up for example a source and destination repository to find the right way
-to transfer data between them. 
+to transfer data between them.
 
 .. __: http://en.wikipedia.org/wiki/Multiple_dispatch
 
 There is a subclass ``InterObject`` classes for each type of object that is
 dispatched this way, e.g. ``InterRepository``.  Calling ``.get()`` on this
-class will return an ``InterObject`` instance providing the best match for 
+class will return an ``InterObject`` instance providing the best match for
 those parameters, and this instance then has methods for operations
 between the objects.
+
+::
 
   inter = InterRepository.get(source_repo, target_repo)
   inter.fetch(revision_id)
@@ -657,7 +816,7 @@ wrong.
 
 If you add a new class you should generally add a ``__repr__`` method
 unless there is an adequate method in a parent class.  There should be a
-test for the repr.  
+test for the repr.
 
 Representations should typically look like Python constructor syntax, but
 they don't need to include every value in the object and they don't need
@@ -698,8 +857,9 @@ be better.
 Test coverage
 =============
 
-All code should be exercised by the test suite.  See `Guide to Testing
-Bazaar <testing.html>`_ for detailed information about writing tests.
+All code should be exercised by the test suite.  See the `Bazaar Testing
+Guide <http://doc.bazaar-vcs.org/developers/testing.html>`_ for detailed
+information about writing tests.
 
 
 Core Topics
@@ -708,8 +868,8 @@ Core Topics
 Evolving Interfaces
 ===================
 
-We have a commitment to 6 months API stability - any supported symbol in a
-release of bzr MUST NOT be altered in any way that would result in
+We don't change APIs in stable branches: any supported symbol in a stable
+release of bzr must not be altered in any way that would result in
 breaking existing code that uses it. That means that method names,
 parameter ordering, parameter names, variable and attribute names etc must
 not be changed without leaving a 'deprecated forwarder' behind. This even
@@ -719,13 +879,16 @@ If you wish to change the behaviour of a supported API in an incompatible
 way, you need to change its name as well. For instance, if I add an optional keyword
 parameter to branch.commit - that's fine. On the other hand, if I add a
 keyword parameter to branch.commit which is a *required* transaction
-object, I should rename the API - i.e. to 'branch.commit_transaction'. 
+object, I should rename the API - i.e. to 'branch.commit_transaction'.
+
+  (Actually, that may break code that provides a new implementation of
+  ``commit`` and doesn't expect to receive the parameter.)
 
 When renaming such supported API's, be sure to leave a deprecated_method (or
 _function or ...) behind which forwards to the new API. See the
 bzrlib.symbol_versioning module for decorators that take care of the
 details for you - such as updating the docstring, and issuing a warning
-when the old api is used.
+when the old API is used.
 
 For unsupported API's, it does not hurt to follow this discipline, but it's
 not required. Minimally though, please try to rename things so that
@@ -824,6 +987,45 @@ The policy about how output is presented in the text-mode client
 should be only in the command-line tool.
 
 
+Progress and Activity Indications
+---------------------------------
+
+bzrlib has a way for code to display to the user that stuff is happening
+during a long operation.  There are two particular types: *activity* which
+means that IO is happening on a Transport, and *progress* which means that
+higher-level application work is occurring.  Both are drawn together by
+the `ui_factory`.
+
+Transport objects are responsible for calling `report_transport_activity`
+when they do IO.
+
+Progress uses a model/view pattern: application code acts on a
+`ProgressTask` object, which notifies the UI when it needs to be
+displayed.  Progress tasks form a stack.  To create a new progress task on
+top of the stack, call `bzrlib.ui.ui_factory.nested_progress_bar()`, then
+call `update()` on the returned ProgressTask.  It can be updated with just
+a text description, with a numeric count, or with a numeric count and
+expected total count.  If an expected total count is provided the view
+can show the progress moving along towards the expected total.
+
+The user should call `finish` on the `ProgressTask` when the logical
+operation has finished, so it can be removed from the stack.
+
+Progress tasks have a complex relationship with generators: it's a very
+good place to use them, but because python2.4 does not allow ``finally``
+blocks in generators it's hard to clean them up properly.  In this case
+it's probably better to have the code calling the generator allocate a
+progress task for its use and then call `finalize` when it's done, which
+will close it if it was not already closed.  The generator should also
+finish the progress task when it exits, because it may otherwise be a long
+time until the finally block runs.
+
+https://wiki.ubuntu.com/UnitsPolicy provides a good explanation about
+which unit should be used when. Roughly speaking, IEC standard applies
+for base-2 units and SI standard applies for base-10 units::
+* for network bandwidth an disk sizes, use base-10 (Mbits/s, kB/s, GB),
+* for RAM sizes, use base-2 (GiB, TiB).
+
 
 Displaying help
 ===============
@@ -853,8 +1055,8 @@ Recommended values are:
 
     0. OK.
     1. Conflicts in merge-like operations, or changes are present in
-       diff-like operations. 
-    2. Unrepresentable diff changes (i.e. binary files that we cannot show 
+       diff-like operations.
+    2. Unrepresentable diff changes (i.e. binary files that we cannot show
        a diff of).
     3. An error or exception has occurred.
     4. An internal error occurred (one that shows a traceback.)
@@ -891,13 +1093,13 @@ that exception specifically, or when it needs a substantially different
 format string.
 
 #. If it is something that a caller can recover from, a custom exception
-   is reasonable. 
+   is reasonable.
 
 #. If it is a data consistency issue, using a builtin like
-   ``ValueError``/``TypeError`` is reasonable. 
+   ``ValueError``/``TypeError`` is reasonable.
 
 #. If it is a programmer error (using an api incorrectly)
-   ``AssertionError`` is reasonable. 
+   ``AssertionError`` is reasonable.
 
 #. Otherwise, use ``BzrError`` or ``InternalBzrError``.
 
@@ -956,17 +1158,20 @@ should be done.
 Within each release, entries in the news file should have the most
 user-visible changes first.  So the order should be approximately:
 
- * changes to existing behaviour - the highest priority because the 
+ * changes to existing behaviour - the highest priority because the
    user's existing knowledge is incorrect
  * new features - should be brought to their attention
  * bug fixes - may be of interest if the bug was affecting them, and
    should include the bug number if any
- * major documentation changes
+ * major documentation changes, including fixed documentation bugs
  * changes to internal interfaces
 
 People who made significant contributions to each change are listed in
 parenthesis.  This can include reporting bugs (particularly with good
 details or reproduction recipes), submitting patches, etc.
+
+To help with merging, NEWS entries should be sorted lexicographically
+within each section.
 
 Commands
 --------
@@ -981,7 +1186,7 @@ API Documentation
 -----------------
 
 Functions, methods, classes and modules should have docstrings
-describing how they are used. 
+describing how they are used.
 
 The first line of the docstring should be a self-contained sentence.
 
@@ -1012,13 +1217,13 @@ for grammatical correctness)::
     We had the problem that lots of our files were "Copyright Canonical
     Development Ltd" which is not a real company, and some other variations
     on this theme. Also, some files were missing the GPL statements.
-    
+
     I want to be clear about the intent of this patch, since copyright can
     be a little controversial.
-    
+
     1) The big motivation for this is not to shut out the community, but
     just to clean up all of the invalid copyright statements.
-    
+
     2) It has been the general policy for bzr that we want a single
     copyright holder for all of the core code. This is following the model
     set by the FSF, which makes it easier to update the code to a new
@@ -1031,15 +1236,15 @@ for grammatical correctness)::
     I'm sure Canonical would do the same).
     As such, Canonical has requested copyright assignments from all of the
     major contributers.
-    
+
     3) If someone wants to add code and not attribute it to Canonical, there
     is a specific list of files that are excluded from this check. And the
     test failure indicates where that is, and how to update it.
-    
+
     4) If anyone feels that I changed a copyright statement incorrectly, just
     let me know, and I'll be happy to correct it. Whenever you have large
     mechanical changes like this, it is possible to make some mistakes.
-    
+
     Just to reiterate, this is a community project, and it is meant to stay
     that way. Core bzr code is copyright Canonical for legal reasons, and
     the tests are just there to help us maintain that.
@@ -1056,14 +1261,16 @@ Python debugger.
 
 .. _pdb: http://docs.python.org/lib/debugger-commands.html
 
-If the ``BZR_PDB`` environment variable is set 
+If the ``BZR_PDB`` environment variable is set
 then bzr will go into pdb post-mortem mode when an unhandled exception
 occurs.
 
-If you send a SIGQUIT signal to bzr, which can be done by pressing
-Ctrl-\\ on Unix, bzr will go into the debugger immediately.  You can
-continue execution by typing ``c``.  This can be disabled if necessary
-by setting the environment variable ``BZR_SIGQUIT_PDB=0``.
+If you send a SIGQUIT or SIGBREAK signal to bzr then it will drop into the
+debugger immediately. SIGQUIT can be generated by pressing Ctrl-\\ on
+Unix.  SIGBREAK is generated with Ctrl-Pause on Windows (some laptops have
+this as Fn-Pause).  You can continue execution by typing ``c``.  This can
+be disabled if necessary by setting the environment variable
+``BZR_SIGQUIT_PDB=0``.
 
 
 Debug Flags
@@ -1078,6 +1285,14 @@ don't write out too much information if it's not needed.
 Debug flags may have effects other than just emitting trace messages.
 
 Run ``bzr help global-options`` to see them all.
+
+These flags may also be set as a comma-separated list in the
+``debug_flags`` option in e.g.  ``~/.bazaar/bazaar.conf``.  (Note that it
+must be in this global file, not in the branch or location configuration,
+because it's currently only loaded at startup time.)  For instance you may
+want to always record hpss traces and to see full error tracebacks::
+
+    debug_flags = hpss, error
 
 
 Jargon
@@ -1114,17 +1329,17 @@ handled.  This parameter can take one of 3 values:
     for automated processing.
     For example: ``bzr log`` should not fail if one of the entries has text
     that cannot be displayed.
-  
+
   strict
     Attempting to print an unprintable character will cause a UnicodeError.
     This is for commands that are intended more as scripting support, rather
     than plain user review.
-    For exampl: ``bzr ls`` is designed to be used with shell scripting. One
-    use would be ``bzr ls --null --unknows | xargs -0 rm``.  If ``bzr``
+    For example: ``bzr ls`` is designed to be used with shell scripting. One
+    use would be ``bzr ls --null --unknowns | xargs -0 rm``.  If ``bzr``
     printed a filename with a '?', the wrong file could be deleted. (At the
     very least, the correct file would not be deleted). An error is used to
     indicate that the requested action could not be performed.
-  
+
   exact
     Do not attempt to automatically convert Unicode strings. This is used
     for commands that must handle conversion themselves.
@@ -1178,16 +1393,16 @@ maintained over time.
 
 To create an extension, add rules to setup.py for building it with pyrex,
 and with distutils. Now start with an empty .pyx file. At the top add
-"include 'yourmodule.py'". This will import the contents of foo.py into this 
+"include 'yourmodule.py'". This will import the contents of foo.py into this
 file at build time - remember that only one module will be loaded at
 runtime. Now you can subclass classes, or replace functions, and only your
 changes need to be present in the .pyx file.
 
 Note that pyrex does not support all 2.4 programming idioms, so some
-syntax changes may be required. I.e. 
+syntax changes may be required. I.e.
 
- - 'from foo import (bar, gam)' needs to change to not use the brackets. 
- - 'import foo.bar as bar' needs to be 'import foo.bar; bar = foo.bar' 
+ - 'from foo import (bar, gam)' needs to change to not use the brackets.
+ - 'import foo.bar as bar' needs to be 'import foo.bar; bar = foo.bar'
 
 If the changes are too dramatic, consider
 maintaining the python code twice - once in the .pyx, and once in the .py,
@@ -1217,7 +1432,7 @@ stuff covered above, "core" developers have responsibility for:
 * reviewing changes
 * reviewing blueprints
 * planning releases
-* managing releases (see the `Releasing Bazaar <../../developers/releasing.html>`_)
+* managing releases (see `Releasing Bazaar <http://doc.bazaar-vcs.org/developers/releasing.html>`_)
 
 .. note::
   Removing barriers to community participation is a key reason for adopting
@@ -1425,7 +1640,7 @@ is done using Launchpad's relevant tracker,
 https://blueprints.launchpad.net/bzr/. Once a blueprint for ready for
 review, please announce it on the mailing list.
 
-Alternatively, send an email begining with [RFC] with the proposal to the
+Alternatively, send an email beginning with [RFC] with the proposal to the
 list. In some cases, you may wish to attach proposed code  or a proposed
 developer document if that best communicates the idea. Debate can then
 proceed using the normal merge review processes.
@@ -1442,16 +1657,6 @@ using Launchpad's whiteboard feature.
 
 Planning Releases
 =================
-
-Roadmaps
---------
-
-As the two senior developers, Martin Pool and Robert Collins coordinate
-the overall Bazaar product development roadmap. Core developers provide
-input and review into this, particularly during sprints. It's totally
-expected that community members ought to be working on things that
-interest them the most. The roadmap is valuable though because it provides
-context for understanding where the product is going as a whole and why.
 
 
 Using Releases and Milestones in Launchpad
@@ -1480,7 +1685,7 @@ active role with particular attention to the following tasks:
 .. note::
   As well as prioritizing bugs and nominating them against a
   target milestone, Launchpad lets core developers offer to mentor others in
-  fixing them. 
+  fixing them.
 
 
 ..

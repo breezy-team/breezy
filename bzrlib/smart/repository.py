@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,23 +12,25 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Server-side repository related request implmentations."""
 
 import bz2
 import os
 import Queue
-import struct
 import sys
-import tarfile
 import tempfile
 import threading
 
 from bzrlib import (
+    bencode,
     errors,
+    graph,
     osutils,
     pack,
+    ui,
+    versionedfile,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
@@ -38,8 +40,10 @@ from bzrlib.smart.request import (
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
 from bzrlib import revision as _mod_revision
-from bzrlib.util import bencode
-from bzrlib.versionedfile import NetworkRecordStream, record_to_fulltext_bytes
+from bzrlib.versionedfile import (
+    NetworkRecordStream,
+    record_to_fulltext_bytes,
+    )
 
 
 class SmartServerRepositoryRequest(SmartServerRequest):
@@ -70,8 +74,34 @@ class SmartServerRepositoryRequest(SmartServerRequest):
         # is expected)
         return None
 
-    def recreate_search(self, repository, recipe_bytes):
-        lines = recipe_bytes.split('\n')
+    def recreate_search(self, repository, search_bytes, discard_excess=False):
+        """Recreate a search from its serialised form.
+
+        :param discard_excess: If True, and the search refers to data we don't
+            have, just silently accept that fact - the verb calling
+            recreate_search trusts that clients will look for missing things
+            they expected and get it from elsewhere.
+        """
+        lines = search_bytes.split('\n')
+        if lines[0] == 'ancestry-of':
+            heads = lines[1:]
+            search_result = graph.PendingAncestryResult(heads, repository)
+            return search_result, None
+        elif lines[0] == 'search':
+            return self.recreate_search_from_recipe(repository, lines[1:],
+                discard_excess=discard_excess)
+        else:
+            return (None, FailedSmartServerResponse(('BadSearch',)))
+
+    def recreate_search_from_recipe(self, repository, lines,
+        discard_excess=False):
+        """Recreate a specific revision search (vs a from-tip search).
+
+        :param discard_excess: If True, and the search refers to data we don't
+            have, just silently accept that fact - the verb calling
+            recreate_search trusts that clients will look for missing things
+            they expected and get it from elsewhere.
+        """
         start_keys = set(lines[0].split(' '))
         exclude_keys = set(lines[1].split(' '))
         revision_count = int(lines[2])
@@ -86,14 +116,15 @@ class SmartServerRepositoryRequest(SmartServerRequest):
                     break
                 search.stop_searching_any(exclude_keys.intersection(next_revs))
             search_result = search.get_result()
-            if search_result.get_recipe()[2] != revision_count:
+            if (not discard_excess and
+                search_result.get_recipe()[3] != revision_count):
                 # we got back a different amount of data than expected, this
                 # gets reported as NoSuchRevision, because less revisions
                 # indicates missing revisions, and more should never happen as
                 # the excludes list considers ghosts and ensures that ghost
                 # filling races are not a problem.
                 return (None, FailedSmartServerResponse(('NoSuchRevision',)))
-            return (search, None)
+            return (search_result, None)
         finally:
             repository.unlock()
 
@@ -123,6 +154,10 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         from revision_ids is returned. The verb takes a body containing the
         current search state, see do_body for details.
 
+        If 'include-missing:' is in revision_ids, ghosts encountered in the
+        graph traversal for getting parent data are included in the result with
+        a prefix of 'missing:'.
+
         :param repository: The repository to query in.
         :param revision_ids: The utf8 encoded revision_id to answer for.
         """
@@ -147,12 +182,17 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
     def _do_repository_request(self, body_bytes):
         repository = self._repository
         revision_ids = set(self._revision_ids)
-        search, error = self.recreate_search(repository, body_bytes)
+        include_missing = 'include-missing:' in revision_ids
+        if include_missing:
+            revision_ids.remove('include-missing:')
+        body_lines = body_bytes.split('\n')
+        search_result, error = self.recreate_search_from_recipe(
+            repository, body_lines)
         if error is not None:
             return error
         # TODO might be nice to start up the search again; but thats not
         # written or tested yet.
-        client_seen_revs = set(search.get_result().get_keys())
+        client_seen_revs = set(search_result.get_keys())
         # Always include the requested ids.
         client_seen_revs.difference_update(revision_ids)
         lines = []
@@ -165,19 +205,29 @@ class SmartServerRepositoryGetParentMap(SmartServerRepositoryRequest):
         while next_revs:
             queried_revs.update(next_revs)
             parent_map = repo_graph.get_parent_map(next_revs)
+            current_revs = next_revs
             next_revs = set()
-            for revision_id, parents in parent_map.iteritems():
-                # adjust for the wire
-                if parents == (_mod_revision.NULL_REVISION,):
-                    parents = ()
-                # prepare the next query
-                next_revs.update(parents)
-                if revision_id not in client_seen_revs:
+            for revision_id in current_revs:
+                missing_rev = False
+                parents = parent_map.get(revision_id)
+                if parents is not None:
+                    # adjust for the wire
+                    if parents == (_mod_revision.NULL_REVISION,):
+                        parents = ()
+                    # prepare the next query
+                    next_revs.update(parents)
+                    encoded_id = revision_id
+                else:
+                    missing_rev = True
+                    encoded_id = "missing:" + revision_id
+                    parents = []
+                if (revision_id not in client_seen_revs and
+                    (not missing_rev or include_missing)):
                     # Client does not have this revision, give it to it.
                     # add parents to the result
-                    result[revision_id] = parents
+                    result[encoded_id] = parents
                     # Approximate the serialized cost of this revision_id.
-                    size_so_far += 2 + len(revision_id) + sum(map(len, parents))
+                    size_so_far += 2 + len(encoded_id) + sum(map(len, parents))
             # get all the directly asked for parents, and then flesh out to
             # 64K (compressed) or so. We do one level of depth at a time to
             # stay in sync with the client. The 250000 magic number is
@@ -235,6 +285,31 @@ class SmartServerRepositoryGetRevisionGraph(SmartServerRepositoryReadLocked):
             lines.append(' '.join((revision, ) + tuple(parents)))
 
         return SuccessfulSmartServerResponse(('ok', ), '\n'.join(lines))
+
+
+class SmartServerRepositoryGetRevIdForRevno(SmartServerRepositoryReadLocked):
+
+    def do_readlocked_repository_request(self, repository, revno,
+            known_pair):
+        """Find the revid for a given revno, given a known revno/revid pair.
+        
+        New in 1.17.
+        """
+        try:
+            found_flag, result = repository.get_rev_id_for_revno(revno, known_pair)
+        except errors.RevisionNotPresent, err:
+            if err.revision_id != known_pair[1]:
+                raise AssertionError(
+                    'get_rev_id_for_revno raised RevisionNotPresent for '
+                    'non-initial revision: ' + err.revision_id)
+            return FailedSmartServerResponse(
+                ('nosuchrevision', err.revision_id))
+        if found_flag:
+            return SuccessfulSmartServerResponse(('ok', result))
+        else:
+            earliest_revno, earliest_revid = result
+            return SuccessfulSmartServerResponse(
+                ('history-incomplete', earliest_revno, earliest_revid))
 
 
 class SmartServerRequestHasRevision(SmartServerRepositoryRequest):
@@ -343,19 +418,53 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             repository.
         """
         self._to_format = network_format_registry.get(to_network_name)
+        if self._should_fake_unknown():
+            return FailedSmartServerResponse(
+                ('UnknownMethod', 'Repository.get_stream'))
         return None # Signal that we want a body.
+
+    def _should_fake_unknown(self):
+        """Return True if we should return UnknownMethod to the client.
+        
+        This is a workaround for bugs in pre-1.19 clients that claim to
+        support receiving streams of CHK repositories.  The pre-1.19 client
+        expects inventory records to be serialized in the format defined by
+        to_network_name, but in pre-1.19 (at least) that format definition
+        tries to use the xml5 serializer, which does not correctly handle
+        rich-roots.  After 1.19 the client can also accept inventory-deltas
+        (which avoids this issue), and those clients will use the
+        Repository.get_stream_1.19 verb instead of this one.
+        So: if this repository is CHK, and the to_format doesn't match,
+        we should just fake an UnknownSmartMethod error so that the client
+        will fallback to VFS, rather than sending it a stream we know it
+        cannot handle.
+        """
+        from_format = self._repository._format
+        to_format = self._to_format
+        if not from_format.supports_chks:
+            # Source not CHK: that's ok
+            return False
+        if (to_format.supports_chks and
+            from_format.repository_class is to_format.repository_class and
+            from_format._serializer == to_format._serializer):
+            # Source is CHK, but target matches: that's ok
+            # (e.g. 2a->2a, or CHK2->2a)
+            return False
+        # Source is CHK, and target is not CHK or incompatible CHK.  We can't
+        # generate a compatible stream.
+        return True
 
     def do_body(self, body_bytes):
         repository = self._repository
         repository.lock_read()
         try:
-            search, error = self.recreate_search(repository, body_bytes)
+            search_result, error = self.recreate_search(repository, body_bytes,
+                discard_excess=True)
             if error is not None:
                 repository.unlock()
                 return error
-            search = search.get_result()
             source = repository._get_source(self._to_format)
-            stream = source.get_stream(search)
+            stream = source.get_stream(search_result)
         except Exception:
             exc_info = sys.exc_info()
             try:
@@ -380,15 +489,33 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
             repository.unlock()
 
 
+class SmartServerRepositoryGetStream_1_19(SmartServerRepositoryGetStream):
+
+    def _should_fake_unknown(self):
+        """Returns False; we don't need to workaround bugs in 1.19+ clients."""
+        return False
+
+
 def _stream_to_byte_stream(stream, src_format):
     """Convert a record stream to a self delimited byte stream."""
     pack_writer = pack.ContainerSerialiser()
     yield pack_writer.begin()
     yield pack_writer.bytes_record(src_format.network_name(), '')
     for substream_type, substream in stream:
+        if substream_type == 'inventory-deltas':
+            # This doesn't feel like the ideal place to issue this warning;
+            # however we don't want to do it in the Repository that's
+            # generating the stream, because that might be on the server.
+            # Instead we try to observe it as the stream goes by.
+            ui.ui_factory.warn_cross_format_fetch(src_format,
+                '(remote)')
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
+            elif record.storage_kind == 'inventory-delta':
+                serialised = record_to_inventory_delta_bytes(record)
+            elif record.storage_kind == 'absent':
+                raise ValueError("Absent factory for %s" % (record.key,))
             else:
                 serialised = record.get_bytes_as(record.storage_kind)
             if serialised:
@@ -399,36 +526,97 @@ def _stream_to_byte_stream(stream, src_format):
     yield pack_writer.end()
 
 
+class _ByteStreamDecoder(object):
+    """Helper for _byte_stream_to_stream.
+
+    The expected usage of this class is via the function _byte_stream_to_stream
+    which creates a _ByteStreamDecoder, pops off the stream format and then
+    yields the output of record_stream(), the main entry point to
+    _ByteStreamDecoder.
+
+    Broadly this class has to unwrap two layers of iterators:
+    (type, substream)
+    (substream details)
+
+    This is complicated by wishing to return type, iterator_for_type, but
+    getting the data for iterator_for_type when we find out type: we can't
+    simply pass a generator down to the NetworkRecordStream parser, instead
+    we have a little local state to seed each NetworkRecordStream instance,
+    and gather the type that we'll be yielding.
+
+    :ivar byte_stream: The byte stream being decoded.
+    :ivar stream_decoder: A pack parser used to decode the bytestream
+    :ivar current_type: The current type, used to join adjacent records of the
+        same type into a single stream.
+    :ivar first_bytes: The first bytes to give the next NetworkRecordStream.
+    """
+
+    def __init__(self, byte_stream):
+        """Create a _ByteStreamDecoder."""
+        self.stream_decoder = pack.ContainerPushParser()
+        self.current_type = None
+        self.first_bytes = None
+        self.byte_stream = byte_stream
+
+    def iter_stream_decoder(self):
+        """Iterate the contents of the pack from stream_decoder."""
+        # dequeue pending items
+        for record in self.stream_decoder.read_pending_records():
+            yield record
+        # Pull bytes of the wire, decode them to records, yield those records.
+        for bytes in self.byte_stream:
+            self.stream_decoder.accept_bytes(bytes)
+            for record in self.stream_decoder.read_pending_records():
+                yield record
+
+    def iter_substream_bytes(self):
+        if self.first_bytes is not None:
+            yield self.first_bytes
+            # If we run out of pack records, single the outer layer to stop.
+            self.first_bytes = None
+        for record in self.iter_pack_records:
+            record_names, record_bytes = record
+            record_name, = record_names
+            substream_type = record_name[0]
+            if substream_type != self.current_type:
+                # end of a substream, seed the next substream.
+                self.current_type = substream_type
+                self.first_bytes = record_bytes
+                return
+            yield record_bytes
+
+    def record_stream(self):
+        """Yield substream_type, substream from the byte stream."""
+        self.seed_state()
+        # Make and consume sub generators, one per substream type:
+        while self.first_bytes is not None:
+            substream = NetworkRecordStream(self.iter_substream_bytes())
+            # after substream is fully consumed, self.current_type is set to
+            # the next type, and self.first_bytes is set to the matching bytes.
+            yield self.current_type, substream.read()
+
+    def seed_state(self):
+        """Prepare the _ByteStreamDecoder to decode from the pack stream."""
+        # Set a single generator we can use to get data from the pack stream.
+        self.iter_pack_records = self.iter_stream_decoder()
+        # Seed the very first subiterator with content; after this each one
+        # seeds the next.
+        list(self.iter_substream_bytes())
+
+
 def _byte_stream_to_stream(byte_stream):
     """Convert a byte stream into a format and a stream.
 
     :param byte_stream: A bytes iterator, as output by _stream_to_byte_stream.
     :return: (RepositoryFormat, stream_generator)
     """
-    stream_decoder = pack.ContainerPushParser()
-    def record_stream():
-        """Closure to return the substreams."""
-        # May have fully parsed records already.
-        for record in stream_decoder.read_pending_records():
-            record_names, record_bytes = record
-            record_name, = record_names
-            substream_type = record_name[0]
-            substream = NetworkRecordStream([record_bytes])
-            yield substream_type, substream.read()
-        for bytes in byte_stream:
-            stream_decoder.accept_bytes(bytes)
-            for record in stream_decoder.read_pending_records():
-                record_names, record_bytes = record
-                record_name, = record_names
-                substream_type = record_name[0]
-                substream = NetworkRecordStream([record_bytes])
-                yield substream_type, substream.read()
+    decoder = _ByteStreamDecoder(byte_stream)
     for bytes in byte_stream:
-        stream_decoder.accept_bytes(bytes)
-        for record in stream_decoder.read_pending_records(max=1):
+        decoder.stream_decoder.accept_bytes(bytes)
+        for record in decoder.stream_decoder.read_pending_records(max=1):
             record_names, src_format_name = record
             src_format = network_format_registry.get(src_format_name)
-            return src_format, record_stream()
+            return src_format, decoder.record_stream()
 
 
 class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
@@ -494,6 +682,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             temp.close()
 
     def _tarball_of_dir(self, dirname, compression, ofile):
+        import tarfile
         filename = os.path.basename(ofile.name)
         tarball = tarfile.open(fileobj=ofile, name=filename,
             mode='w|' + compression)
@@ -512,17 +701,22 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             tarball.close()
 
 
-class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
+class SmartServerRepositoryInsertStreamLocked(SmartServerRepositoryRequest):
     """Insert a record stream from a RemoteSink into a repository.
 
     This gets bytes pushed to it by the network infrastructure and turns that
     into a bytes iterator using a thread. That is then processed by
     _byte_stream_to_stream.
+
+    New in 1.14.
     """
 
-    def do_repository_request(self, repository, resume_tokens):
+    def do_repository_request(self, repository, resume_tokens, lock_token):
         """StreamSink.insert_stream for a remote repository."""
-        repository.lock_write()
+        repository.lock_write(token=lock_token)
+        self.do_insert_stream_request(repository, resume_tokens)
+
+    def do_insert_stream_request(self, repository, resume_tokens):
         tokens = [token for token in resume_tokens.split(' ') if token]
         self.tokens = tokens
         self.repository = repository
@@ -570,3 +764,38 @@ class SmartServerRepositoryInsertStream(SmartServerRepositoryRequest):
         else:
             self.repository.unlock()
             return SuccessfulSmartServerResponse(('ok', ))
+
+
+class SmartServerRepositoryInsertStream_1_19(SmartServerRepositoryInsertStreamLocked):
+    """Insert a record stream from a RemoteSink into a repository.
+
+    Same as SmartServerRepositoryInsertStreamLocked, except:
+     - the lock token argument is optional
+     - servers that implement this verb accept 'inventory-delta' records in the
+       stream.
+
+    New in 1.19.
+    """
+
+    def do_repository_request(self, repository, resume_tokens, lock_token=None):
+        """StreamSink.insert_stream for a remote repository."""
+        SmartServerRepositoryInsertStreamLocked.do_repository_request(
+            self, repository, resume_tokens, lock_token)
+
+
+class SmartServerRepositoryInsertStream(SmartServerRepositoryInsertStreamLocked):
+    """Insert a record stream from a RemoteSink into an unlocked repository.
+
+    This is the same as SmartServerRepositoryInsertStreamLocked, except it
+    takes no lock_tokens; i.e. it works with an unlocked (or lock-free, e.g.
+    like pack format) repository.
+
+    New in 1.13.
+    """
+
+    def do_repository_request(self, repository, resume_tokens):
+        """StreamSink.insert_stream for a remote repository."""
+        repository.lock_write()
+        self.do_insert_stream_request(repository, resume_tokens)
+
+

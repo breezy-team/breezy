@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Wire-level encoding and decoding of requests and responses for the smart
 client and server.
@@ -22,14 +22,19 @@ import collections
 from cStringIO import StringIO
 import struct
 import sys
+import thread
+import threading
 import time
 
 import bzrlib
-from bzrlib import debug
-from bzrlib import errors
+from bzrlib import (
+    debug,
+    errors,
+    osutils,
+    )
 from bzrlib.smart import message, request
 from bzrlib.trace import log_exception_quietly, mutter
-from bzrlib.util.bencode import bdecode_as_tuple, bencode
+from bzrlib.bencode import bdecode_as_tuple, bencode
 
 
 # Protocol version strings.  These are sent as prefixes of bzr requests and
@@ -114,9 +119,11 @@ class SmartProtocolBase(object):
 class SmartServerRequestProtocolOne(SmartProtocolBase):
     """Server-side encoding and decoding logic for smart version 1."""
 
-    def __init__(self, backing_transport, write_func, root_client_path='/'):
+    def __init__(self, backing_transport, write_func, root_client_path='/',
+            jail_root=None):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
+        self._jail_root = jail_root
         self.unused_data = ''
         self._finished = False
         self.in_buffer = ''
@@ -144,8 +151,9 @@ class SmartServerRequestProtocolOne(SmartProtocolBase):
                 req_args = _decode_tuple(first_line)
                 self.request = request.SmartServerRequestHandler(
                     self._backing_transport, commands=request.request_handlers,
-                    root_client_path=self._root_client_path)
-                self.request.dispatch_command(req_args[0], req_args[1:])
+                    root_client_path=self._root_client_path,
+                    jail_root=self._jail_root)
+                self.request.args_received(req_args)
                 if self.request.finished_reading:
                     # trivial request
                     self.unused_data = self.in_buffer
@@ -612,7 +620,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             mutter('hpss call:   %s', repr(args)[1:-1])
             if getattr(self._request._medium, 'base', None) is not None:
                 mutter('             (to %s)', self._request._medium.base)
-            self._request_start_time = time.time()
+            self._request_start_time = osutils.timer_func()
         self._write_args(args)
         self._request.finished_writing()
         self._last_verb = args[0]
@@ -627,7 +635,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             if getattr(self._request._medium, '_path', None) is not None:
                 mutter('                  (to %s)', self._request._medium._path)
             mutter('              %d bytes', len(body))
-            self._request_start_time = time.time()
+            self._request_start_time = osutils.timer_func()
             if 'hpssdetail' in debug.debug_flags:
                 mutter('hpss body content: %s', body)
         self._write_args(args)
@@ -646,7 +654,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
             mutter('hpss call w/readv: %s', repr(args)[1:-1])
             if getattr(self._request._medium, '_path', None) is not None:
                 mutter('                  (to %s)', self._request._medium._path)
-            self._request_start_time = time.time()
+            self._request_start_time = osutils.timer_func()
         self._write_args(args)
         readv_bytes = self._serialise_offsets(body)
         bytes = self._encode_bulk_data(readv_bytes)
@@ -678,7 +686,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         if 'hpss' in debug.debug_flags:
             if self._request_start_time is not None:
                 mutter('   result:   %6.3fs  %s',
-                       time.time() - self._request_start_time,
+                       osutils.timer_func() - self._request_start_time,
                        repr(result)[1:-1])
                 self._request_start_time = None
             else:
@@ -858,10 +866,10 @@ class SmartClientRequestProtocolTwo(SmartClientRequestProtocolOne):
 
 
 def build_server_protocol_three(backing_transport, write_func,
-                                root_client_path):
+                                root_client_path, jail_root=None):
     request_handler = request.SmartServerRequestHandler(
         backing_transport, commands=request.request_handlers,
-        root_client_path=root_client_path)
+        root_client_path=root_client_path, jail_root=jail_root)
     responder = ProtocolThreeResponder(write_func)
     message_handler = message.ConventionalRequestHandler(request_handler, responder)
     return ProtocolThreeDecoder(message_handler)
@@ -897,7 +905,8 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             # We do *not* set self.decoding_failed here.  The message handler
             # has raised an error, but the decoder is still able to parse bytes
             # and determine when this message ends.
-            log_exception_quietly()
+            if not isinstance(exception.exc_value, errors.UnknownSmartMethod):
+                log_exception_quietly()
             self.message_handler.protocol_error(exception.exc_value)
             # The state machine is ready to continue decoding, but the
             # exception has interrupted the loop that runs the state machine.
@@ -1036,7 +1045,7 @@ class ProtocolThreeDecoder(_StatefulDecoder):
             raise errors.SmartMessageHandlerError(sys.exc_info())
 
     def _state_accept_reading_unused(self):
-        self.unused_data = self._get_in_buffer()
+        self.unused_data += self._get_in_buffer()
         self._set_in_buffer(None)
 
     def next_read_size(self):
@@ -1058,20 +1067,32 @@ class ProtocolThreeDecoder(_StatefulDecoder):
 class _ProtocolThreeEncoder(object):
 
     response_marker = request_marker = MESSAGE_VERSION_THREE
+    BUFFER_SIZE = 1024*1024 # 1 MiB buffer before flushing
 
     def __init__(self, write_func):
         self._buf = []
+        self._buf_len = 0
         self._real_write_func = write_func
 
     def _write_func(self, bytes):
+        # TODO: It is probably more appropriate to use sum(map(len, _buf))
+        #       for total number of bytes to write, rather than buffer based on
+        #       the number of write() calls
+        # TODO: Another possibility would be to turn this into an async model.
+        #       Where we let another thread know that we have some bytes if
+        #       they want it, but we don't actually block for it
+        #       Note that osutils.send_all always sends 64kB chunks anyway, so
+        #       we might just push out smaller bits at a time?
         self._buf.append(bytes)
-        if len(self._buf) > 100:
+        self._buf_len += len(bytes)
+        if self._buf_len > self.BUFFER_SIZE:
             self.flush()
 
     def flush(self):
         if self._buf:
             self._real_write_func(''.join(self._buf))
             del self._buf[:]
+            self._buf_len = 0
 
     def _serialise_offsets(self, offsets):
         """Serialise a readv offset list."""
@@ -1126,6 +1147,25 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         _ProtocolThreeEncoder.__init__(self, write_func)
         self.response_sent = False
         self._headers = {'Software version': bzrlib.__version__}
+        if 'hpss' in debug.debug_flags:
+            self._thread_id = thread.get_ident()
+            self._response_start_time = None
+
+    def _trace(self, action, message, extra_bytes=None, include_time=False):
+        if self._response_start_time is None:
+            self._response_start_time = osutils.timer_func()
+        if include_time:
+            t = '%5.3fs ' % (time.clock() - self._response_start_time)
+        else:
+            t = ''
+        if extra_bytes is None:
+            extra = ''
+        else:
+            extra = ' ' + repr(extra_bytes[:40])
+            if len(extra) > 33:
+                extra = extra[:29] + extra[-1] + '...'
+        mutter('%12s: [%s] %s%s%s'
+               % (action, self._thread_id, t, message, extra))
 
     def send_error(self, exception):
         if self.response_sent:
@@ -1137,6 +1177,8 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                 ('UnknownMethod', exception.verb))
             self.send_response(failure)
             return
+        if 'hpss' in debug.debug_flags:
+            self._trace('error', str(exception))
         self.response_sent = True
         self._write_protocol_version()
         self._write_headers(self._headers)
@@ -1156,11 +1198,19 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
             self._write_success_status()
         else:
             self._write_error_status()
+        if 'hpss' in debug.debug_flags:
+            self._trace('response', repr(response.args))
         self._write_structure(response.args)
         if response.body is not None:
             self._write_prefixed_body(response.body)
+            if 'hpss' in debug.debug_flags:
+                self._trace('body', '%d bytes' % (len(response.body),),
+                            response.body, include_time=True)
         elif response.body_stream is not None:
+            count = num_bytes = 0
+            first_chunk = None
             for exc_info, chunk in _iter_with_errors(response.body_stream):
+                count += 1
                 if exc_info is not None:
                     self._write_error_status()
                     error_struct = request._translate_error(exc_info[1])
@@ -1171,8 +1221,23 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                         self._write_error_status()
                         self._write_structure(chunk.args)
                         break
+                    num_bytes += len(chunk)
+                    if first_chunk is None:
+                        first_chunk = chunk
                     self._write_prefixed_body(chunk)
+                    if 'hpssdetail' in debug.debug_flags:
+                        # Not worth timing separately, as _write_func is
+                        # actually buffered
+                        self._trace('body chunk',
+                                    '%d bytes' % (len(chunk),),
+                                    chunk, suppress_time=True)
+            if 'hpss' in debug.debug_flags:
+                self._trace('body stream',
+                            '%d bytes %d chunks' % (num_bytes, count),
+                            first_chunk)
         self._write_end()
+        if 'hpss' in debug.debug_flags:
+            self._trace('response end', '', include_time=True)
 
 
 def _iter_with_errors(iterable):
@@ -1208,6 +1273,8 @@ def _iter_with_errors(iterable):
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception:
+            mutter('_iter_with_errors caught error')
+            log_exception_quietly()
             yield sys.exc_info(), None
             return
 
@@ -1228,7 +1295,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             base = getattr(self._medium_request._medium, 'base', None)
             if base is not None:
                 mutter('             (to %s)', base)
-            self._request_start_time = time.time()
+            self._request_start_time = osutils.timer_func()
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_structure(args)
@@ -1246,7 +1313,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             if path is not None:
                 mutter('                  (to %s)', path)
             mutter('              %d bytes', len(body))
-            self._request_start_time = time.time()
+            self._request_start_time = osutils.timer_func()
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_structure(args)
@@ -1265,7 +1332,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             path = getattr(self._medium_request._medium, '_path', None)
             if path is not None:
                 mutter('                  (to %s)', path)
-            self._request_start_time = time.time()
+            self._request_start_time = osutils.timer_func()
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_structure(args)
@@ -1282,7 +1349,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
             path = getattr(self._medium_request._medium, '_path', None)
             if path is not None:
                 mutter('                  (to %s)', path)
-            self._request_start_time = time.time()
+            self._request_start_time = osutils.timer_func()
         self._write_protocol_version()
         self._write_headers(self._headers)
         self._write_structure(args)

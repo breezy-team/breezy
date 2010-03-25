@@ -47,6 +47,29 @@ problem because there are good reasons why a full merge should never
 be done at a later time. In other cases, additional conflicts will need
 to be resolved when the changes are merged again.
 
+Merging without parents
+-----------------------
+
+A related technique to cherrypicking, in that it makes changes without
+reference to the revisions that they came from is to perform a merge, but
+forget about the parent revisions before committing.  This has the effect of
+making all of the changes that would have been in the merge happen in a single
+commit.  After the merge and before the corresponding commit, you can do::
+
+  bzr revert --forget-merges
+
+to keep the changes in the working tree, but remove the record of the
+revisions where the changes originated.  The next commit would then record
+all of those changes without any record of the merged revisions.
+
+This is desired by some users to make their history "cleaner", but you should
+be careful that the loss of history does not outweigh the value of cleanliness,
+particularly given Bazaar's capabilities for progressively disclosing merged
+revisions.  In particular, because this will include the changes from the
+source branch, but without attribution to that branch, it can lead to
+additional conflicts on later merges that involve the same source and
+target branches.
+
 
 Reverse cherrypicking
 ---------------------

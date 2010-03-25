@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that uses memory for its storage.
 
@@ -27,6 +27,10 @@ from stat import S_IFREG, S_IFDIR
 from cStringIO import StringIO
 import warnings
 
+from bzrlib import (
+    transport,
+    urlutils,
+    )
 from bzrlib.errors import (
     FileExists,
     LockError,
@@ -39,11 +43,7 @@ from bzrlib.transport import (
     AppendBasedFileStream,
     _file_streams,
     LateReadError,
-    register_transport,
-    Server,
-    Transport,
     )
-import bzrlib.urlutils as urlutils
 
 
 
@@ -61,7 +61,7 @@ class MemoryStat(object):
             self.st_mode = S_IFDIR | perms
 
 
-class MemoryTransport(Transport):
+class MemoryTransport(transport.Transport):
     """This is an in memory file system for transient data storage."""
 
     def __init__(self, url=""):
@@ -85,7 +85,7 @@ class MemoryTransport(Transport):
         if len(path) == 0 or path[-1] != '/':
             path += '/'
         url = self._scheme + path
-        result = MemoryTransport(url)
+        result = self.__class__(url)
         result._dirs = self._dirs
         result._files = self._files
         result._locks = self._locks
@@ -300,30 +300,34 @@ class _MemoryLock(object):
         self.transport = None
 
 
-class MemoryServer(Server):
+class MemoryServer(transport.Server):
     """Server for the MemoryTransport for testing with."""
 
-    def setUp(self):
-        """See bzrlib.transport.Server.setUp."""
+    def start_server(self):
         self._dirs = {'/':None}
         self._files = {}
         self._locks = {}
         self._scheme = "memory+%s:///" % id(self)
         def memory_factory(url):
-            result = MemoryTransport(url)
+            from bzrlib.transport import memory
+            result = memory.MemoryTransport(url)
             result._dirs = self._dirs
             result._files = self._files
             result._locks = self._locks
             return result
-        register_transport(self._scheme, memory_factory)
+        self._memory_factory = memory_factory
+        transport.register_transport(self._scheme, self._memory_factory)
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         # unregister this server
+        transport.unregister_transport(self._scheme, self._memory_factory)
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
         return self._scheme
+
+    def get_bogus_url(self):
+        raise NotImplementedError
 
 
 def get_test_permutations():

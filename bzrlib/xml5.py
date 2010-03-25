@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     cache_utf8,
@@ -30,7 +30,8 @@ class Serializer_v5(xml6.Serializer_v6):
     format_num = '5'
     root_id = inventory.ROOT_ID
 
-    def _unpack_inventory(self, elt, revision_id, entry_cache=None):
+    def _unpack_inventory(self, elt, revision_id, entry_cache=None,
+                          return_from_cache=False):
         """Construct from XML Element
         """
         root_id = elt.get('file_id') or inventory.ROOT_ID
@@ -39,8 +40,8 @@ class Serializer_v5(xml6.Serializer_v6):
         format = elt.get('format')
         if format is not None:
             if format != '5':
-                raise BzrError("invalid format version %r on inventory"
-                                % format)
+                raise errors.BzrError("invalid format version %r on inventory"
+                                      % format)
         data_revision_id = elt.get('revision_id')
         if data_revision_id is not None:
             revision_id = cache_utf8.encode(data_revision_id)
@@ -54,7 +55,8 @@ class Serializer_v5(xml6.Serializer_v6):
         unpack_entry = self._unpack_entry
         byid = inv._byid
         for e in elt:
-            ie = unpack_entry(e, entry_cache=entry_cache)
+            ie = unpack_entry(e, entry_cache=entry_cache,
+                              return_from_cache=return_from_cache)
             parent_id = ie.parent_id
             if parent_id is None:
                 ie.parent_id = parent_id = root_id
@@ -83,7 +85,7 @@ class Serializer_v5(xml6.Serializer_v6):
         In this version, no checking is done.
 
         :param inv: An inventory about to be serialised, to be checked.
-        :raises: AssertionError if an error has occured.
+        :raises: AssertionError if an error has occurred.
         """
 
     def _append_inventory_root(self, append, inv):

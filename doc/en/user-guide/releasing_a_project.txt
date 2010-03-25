@@ -40,7 +40,7 @@ command like this::
 
   bzr tag version-1-5
 
-That tag can be be used later whenever a revision identifier is
+That tag can be used later whenever a revision identifier is
 required, e.g.::
 
   bzr diff -r tag:version-1-5

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Classes to provide name-to-object registry-like support."""
 
@@ -62,10 +62,15 @@ class _LazyObjectGetter(_ObjectGetter):
         return super(_LazyObjectGetter, self).get_obj()
 
     def _do_import(self):
-        obj = __import__(self._module_name, globals(), locals(),
-                         [self._member_name])
         if self._member_name:
-            obj = getattr(obj, self._member_name)
+            segments = self._member_name.split('.')
+            names = segments[0:1]
+        else:
+            names = [self._member_name]
+        obj = __import__(self._module_name, globals(), locals(), names)
+        if self._member_name:
+            for segment in segments:
+                obj = getattr(obj, segment)
         self._obj = obj
         self._imported = True
 
@@ -217,7 +222,10 @@ class Registry(object):
             yield key, getter.get_obj()
 
     def items(self):
-        return sorted(self.iteritems())
+        # We should not use the iteritems() implementation below (see bug
+        # #430510)
+        return sorted([(key, getter.get_obj())
+                       for key, getter in self._dict.items()])
 
     def _set_default_key(self, key):
         if not self._dict.has_key(key):

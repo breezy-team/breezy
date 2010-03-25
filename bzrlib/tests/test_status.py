@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from StringIO import StringIO
@@ -53,7 +53,7 @@ class TestStatus(TestCaseWithTransport):
         tree2.commit('commit 3b', timestamp=1196796819, timezone=0)
         tree3.commit('commit 3c', timestamp=1196796819, timezone=0)
         tree.merge_from_branch(tree2.branch)
-        tree.merge_from_branch(tree3.branch)
+        tree.merge_from_branch(tree3.branch, force=True)
         return tree
 
     def test_multiple_pending(self):

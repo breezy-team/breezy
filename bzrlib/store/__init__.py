@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # TODO: Could remember a bias towards whether a particular store is typically
 # compressed or not.
@@ -102,7 +102,7 @@ class Store(object):
 
         :param other: Another Store object
         :param ids: A list of entry ids to be copied
-        :param pb: A ProgressBar object, if none is given, the default will be created.
+        :param pb: A ProgressTask object, if none is given, the default will be created.
         :param permit_failure: Allow missing entries to be ignored
         :return: (n_copied, [failed]) The number of entries copied successfully,
             followed by a list of entries which could not be copied (because they

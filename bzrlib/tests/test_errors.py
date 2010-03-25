@@ -1,6 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
-#            and others
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,11 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the formatting and construction of errors."""
 
+import socket
 import sys
+
 from bzrlib import (
     bzrdir,
     errors,
@@ -87,6 +87,12 @@ class TestErrors(TestCaseWithTransport):
             "reason: reason for foo",
             str(error))
 
+    def test_inconsistent_delta_delta(self):
+        error = errors.InconsistentDeltaDelta([], 'reason')
+        self.assertEqualDiff(
+            "An inconsistent delta was supplied: []\nreason: reason",
+            str(error))
+
     def test_in_process_transport(self):
         error = errors.InProcessTransport('fpp')
         self.assertEqualDiff(
@@ -114,14 +120,11 @@ class TestErrors(TestCaseWithTransport):
             "read without data loss.",
             str(error))
 
-    def test_install_failed(self):
-        error = errors.InstallFailed(['rev-one'])
-        self.assertEqual("Could not install revisions:\nrev-one", str(error))
-        error = errors.InstallFailed(['rev-one', 'rev-two'])
-        self.assertEqual("Could not install revisions:\nrev-one, rev-two",
-                         str(error))
-        error = errors.InstallFailed([None])
-        self.assertEqual("Could not install revisions:\nNone", str(error))
+    def test_jail_break(self):
+        error = errors.JailBreak("some url")
+        self.assertEqualDiff("An attempt to access a url outside the server"
+            " jail was made: 'some url'.",
+            str(error))
 
     def test_lock_active(self):
         error = errors.LockActive("lock description")
@@ -243,6 +246,11 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff(
             "The branch '/foo'(foo) is not a stackable format. "
             "You will need to upgrade the branch to permit branch stacking.",
+            str(error))
+
+    def test_unstackable_location(self):
+        error = errors.UnstackableLocationError('foo', 'bar')
+        self.assertEqualDiff("The branch 'foo' cannot be stacked on 'bar'.",
             str(error))
 
     def test_unstackable_repository_format(self):
@@ -404,7 +412,8 @@ class TestErrors(TestCaseWithTransport):
         """Test the formatting of MalformedBugIdentifier."""
         error = errors.MalformedBugIdentifier('bogus', 'reason for bogosity')
         self.assertEqual(
-            "Did not understand bug identifier bogus: reason for bogosity",
+            'Did not understand bug identifier bogus: reason for bogosity. '
+            'See "bzr help bugs" for more information on this feature.',
             str(error))
 
     def test_unknown_bug_tracker_abbreviation(self):
@@ -533,7 +542,7 @@ class TestErrors(TestCaseWithTransport):
             1/0
         except ZeroDivisionError:
             exc_info = sys.exc_info()
-        err = errors.HookFailed('hook stage', 'hook name', exc_info)
+        err = errors.HookFailed('hook stage', 'hook name', exc_info, warn=False)
         self.assertStartsWith(
             str(err), 'Hook \'hook name\' during hook stage failed:\n')
         self.assertEndsWith(
@@ -614,6 +623,38 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             'Repository dummy repo cannot suspend a write group.', str(err))
 
+    def test_not_branch_no_args(self):
+        err = errors.NotBranchError('path')
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_bzrdir_with_repo(self):
+        bzrdir = self.make_repository('repo').bzrdir
+        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual(
+            'Not a branch: "path": location is a repository.', str(err))
+
+    def test_not_branch_bzrdir_without_repo(self):
+        bzrdir = self.make_bzrdir('bzrdir')
+        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_laziness(self):
+        real_bzrdir = self.make_bzrdir('path')
+        class FakeBzrDir(object):
+            def __init__(self):
+                self.calls = []
+            def open_repository(self):
+                self.calls.append('open_repository')
+                raise errors.NoRepositoryPresent(real_bzrdir)
+        fake_bzrdir = FakeBzrDir()
+        err = errors.NotBranchError('path', bzrdir=fake_bzrdir)
+        self.assertEqual([], fake_bzrdir.calls)
+        str(err)
+        self.assertEqual(['open_repository'], fake_bzrdir.calls)
+        # Stringifying twice doesn't try to open a repository twice.
+        str(err)
+        self.assertEqual(['open_repository'], fake_bzrdir.calls)
+
 
 class PassThroughError(errors.BzrError):
 
@@ -660,3 +701,15 @@ class TestErrorFormatting(TestCase):
         e = ErrorWithBadFormat(not_thing='x')
         self.assertStartsWith(
             str(e), 'Unprintable exception ErrorWithBadFormat')
+
+    def test_cannot_bind_address(self):
+        # see <https://bugs.edge.launchpad.net/bzr/+bug/286871>
+        e = errors.CannotBindAddress('example.com', 22,
+            socket.error(13, 'Permission denied'))
+        self.assertContainsRe(str(e),
+            r'Cannot bind address "example\.com:22":.*Permission denied')
+
+    def test_file_timestamp_unavailable(self):            
+        e = errors.FileTimestampUnavailable("/path/foo")
+        self.assertEquals("The filestamp for /path/foo is not available.",
+            str(e))

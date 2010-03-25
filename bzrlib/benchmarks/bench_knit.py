@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Benchmarks for Knit performance"""
 
@@ -61,20 +61,12 @@ class BenchKnitIndex(Benchmark):
 
     def setup_load_data_c(self):
         self.requireFeature(CompiledKnitFeature)
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
-        from bzrlib._knit_load_data_c import _load_data_c
-        knit._load_data = _load_data_c
+        from bzrlib._knit_load_data_pyx import _load_data_c
+        self.overrideAttr(knit, '_load_data', _load_data_c)
 
     def setup_load_data_py(self):
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
         from bzrlib._knit_load_data_py import _load_data_py
-        knit._load_data = _load_data_py
+        self.overrideAttr(knit, '_load_data', _load_data_py)
 
     def test_read_50k_index_c(self):
         self.setup_load_data_c()

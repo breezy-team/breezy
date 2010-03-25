@@ -1,10 +1,6 @@
 Configuration Settings
 =======================
 
-.. TODO: Should have some explanation of why you'd want things in
-.. branch.conf.
-
-
 Environment settings
 ---------------------
 
@@ -67,6 +63,60 @@ BZR_PLUGIN_PATH
 ~~~~~~~~~~~~~~~
 
 The path to the plugins directory that Bazaar should use.
+If not set, Bazaar will search for plugins in:
+
+* the user specific plugin directory (containing the ``user`` plugins),
+
+* the bzrlib directory (containing the ``core`` plugins),
+
+* the site specific plugin directory if applicable (containing
+  the ``site`` plugins).
+
+If ``BZR_PLUGIN_PATH`` is set in any fashion, it will change the
+the way the plugin are searched. 
+
+As for the ``PATH`` variables, if multiple directories are
+specified in ``BZR_PLUGIN_PATH`` they should be separated by the
+platform specific appropriate character (':' on Unix/Linux/etc,
+';' on windows)
+
+By default if ``BZR_PLUGIN_PATH`` is set, it replaces searching
+in ``user``.  However it will continue to search in ``core`` and
+``site`` unless they are explicitly removed.
+
+If you need to change the order or remove one of these
+directories, you should use special values:
+
+* ``-user``, ``-core``, ``-site`` will remove the corresponding
+  path from the default values,
+
+* ``+user``, ``+core``, ``+site`` will add the corresponding path
+  before the remaining default values (and also remove it from
+  the default values).
+
+Note that the special values 'user', 'core' and 'site' should be
+used literally, they will be substituted by the corresponding,
+platform specific, values.
+
+Examples:
+^^^^^^^^^
+
+The examples below uses ':' as the separator, windows users
+should use ';'.
+
+Overriding the default user plugin directory:
+``BZR_PLUGIN_PATH='/path/to/my/other/plugins'``
+
+Disabling the site directory while retaining the user directory:
+``BZR_PLUGIN_PATH='-site:+user'``
+
+Disabling all plugins (better achieved with --no-plugins):
+``BZR_PLUGIN_PATH='-user:-core:-site'``
+
+Overriding the default site plugin directory:
+``BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user``
+
+
 
 BZRPATH
 ~~~~~~~
@@ -222,11 +272,20 @@ The syntax of the file obeys the same rules as the others except for the
 variable policies which don't apply.
 
 For more information on the possible uses of the authentication configuration
-file see `Authentication Settings`_.
+file see :doc:`authentication-help`.
 
 
 Common variable options
 -----------------------
+
+debug_flags
+~~~~~~~~~~~
+
+A comma-separated list of debugging options to turn on.  The same values
+can be used as with the -D command-line option (see `help global-options`).
+For example::
+
+    debug_flags = hpss
 
 email
 ~~~~~
@@ -369,6 +428,18 @@ public_branch
 A publically-accessible version of this branch (implying that this version is
 not publically-accessible).  Used (and set) by ``bzr send``.
 
+suppress_warnings
+~~~~~~~~~~~~~~~~~
+
+A list of strings, each string represent a warning that can be emitted by
+bzr. Mentioning a warning in this list tells bzr to not emit it.
+
+Valid values:
+
+* ``format_deprecation``:
+    whether the format deprecation warning is shown on repositories that are
+    using deprecated formats.
+
 
 Branch type specific options
 ----------------------------
@@ -399,6 +470,19 @@ push_location
 If present, the location of the default branch for push.  This option
 is normally set by ``push --remember``.
 
+push_strict
+~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before pushing.
+
+dpush_strict
+~~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before pushing into a different VCS without any
+custom bzr metadata.
+
 bound_location
 ~~~~~~~~~~~~~~
 
@@ -410,3 +494,10 @@ bound
 
 If set to "True", the branch should act as a checkout, and push each commit to
 the bound_location.  This option is normally set by ``bind``/``unbind``.
+
+send_strict
+~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before sending a merge directive.
+

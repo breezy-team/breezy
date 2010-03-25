@@ -1,0 +1,13 @@
+{% extends "!layout.html" %}
+
+{% block linktags %}
+{{ super() }}
+<link rel="stylesheet" href="_static/bzr-doc.css" type="text/css" />
+{% endblock %}
+
+{% block rootrellink %}
+<li><a href="http://bazaar.canonical.com/">
+    <img src="{{ pathto("_static/bzr icon 16.png", 1) }}" /> Home</a>&nbsp;|&nbsp;</li>
+<a href="http://doc.bazaar.canonical.com/en/">Documentation</a>&nbsp;|&nbsp;</li>
+{{ super() }}
+{% endblock %}

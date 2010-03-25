@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the BranchBuilder class."""
 
@@ -167,6 +167,15 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev_id = builder.build_snapshot(None, None,
             [('add', (u'', None, 'directory', None))],
             message=u'Foo')
+        branch = builder.get_branch()
+        rev = branch.repository.get_revision(rev_id)
+        self.assertEqual(u'Foo', rev.message)
+
+    def test_commit_message_callback(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id = builder.build_snapshot(None, None,
+            [('add', (u'', None, 'directory', None))],
+            message_callback=lambda x:u'Foo')
         branch = builder.get_branch()
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(u'Foo', rev.message)
@@ -326,3 +335,18 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
             builder.finish_series()
         self.assertIs(None, builder._tree)
         self.assertFalse(builder._branch.is_locked())
+
+    def test_ghost_mainline_history(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        builder.start_series()
+        try:
+            builder.build_snapshot('tip', ['ghost'],
+                [('add', ('', 'ROOT_ID', 'directory', ''))],
+                allow_leftmost_as_ghost=True)
+        finally:
+            builder.finish_series()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        self.assertEqual(('ghost',),
+            b.repository.get_graph().get_parent_map(['tip'])['tip'])

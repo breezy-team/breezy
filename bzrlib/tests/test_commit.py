@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
@@ -107,8 +107,8 @@ class TestCommit(TestCaseWithTransport):
         tree2.unlock()
         self.assertEqual('version 2', text)
 
-    def test_delete_commit(self):
-        """Test a commit with a deleted file"""
+    def test_missing_commit(self):
+        """Test a commit with a missing file"""
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         file('hello', 'w').write('hello world')
@@ -274,7 +274,7 @@ class TestCommit(TestCaseWithTransport):
         try:
             self.check_inventory_shape(wt.read_working_inventory(),
                                        ['a/', 'a/hello', 'a/b/'])
-            self.check_inventory_shape(b.repository.get_revision_inventory(r3),
+            self.check_inventory_shape(b.repository.get_inventory(r3),
                                        ['a/', 'a/hello', 'a/b/'])
         finally:
             wt.unlock()
@@ -289,7 +289,7 @@ class TestCommit(TestCaseWithTransport):
         finally:
             wt.unlock()
 
-        inv = b.repository.get_revision_inventory(r4)
+        inv = b.repository.get_inventory(r4)
         eq(inv['hello-id'].revision, r4)
         eq(inv['a-id'].revision, r1)
         eq(inv['b-id'].revision, r3)
@@ -484,7 +484,7 @@ class TestCommit(TestCaseWithTransport):
         other_bzrdir = master_branch.bzrdir.sprout('other')
         other_tree = other_bzrdir.open_workingtree()
 
-        # do a commit to the the other branch changing the content file so
+        # do a commit to the other branch changing the content file so
         # that our commit after merging will have a merged revision in the
         # content file history.
         self.build_tree_contents([('other/content_file', 'change in other\n')])
@@ -550,10 +550,7 @@ class TestCommit(TestCaseWithTransport):
         this_tree.merge_from_branch(other_tree.branch)
         reporter = CapturingReporter()
         this_tree.commit('do the commit', reporter=reporter)
-        self.assertEqual([
-            ('change', 'unchanged', ''),
-            ('change', 'unchanged', 'dirtoleave'),
-            ('change', 'unchanged', 'filetoleave'),
+        expected = set([
             ('change', 'modified', 'filetomodify'),
             ('change', 'added', 'newdir'),
             ('change', 'added', 'newfile'),
@@ -563,8 +560,11 @@ class TestCommit(TestCaseWithTransport):
             ('renamed', 'renamed', 'filetoreparent', 'renameddir/reparentedfile'),
             ('deleted', 'dirtoremove'),
             ('deleted', 'filetoremove'),
-            ],
-            reporter.calls)
+            ])
+        result = set(reporter.calls)
+        missing = expected - result
+        new = result - expected
+        self.assertEqual((set(), set()), (missing, new))
 
     def test_commit_removals_respects_filespec(self):
         """Commit respects the specified_files for removals."""
@@ -708,9 +708,10 @@ class TestCommit(TestCaseWithTransport):
         cb = self.Callback(u'commit 2', self)
         repository = tree.branch.repository
         # simulate network failure
-        def raise_(self, arg, arg2):
+        def raise_(self, arg, arg2, arg3=None, arg4=None):
             raise errors.NoSuchFile('foo')
         repository.add_inventory = raise_
+        repository.add_inventory_by_delta = raise_
         self.assertRaises(errors.NoSuchFile, tree.commit, message_callback=cb)
         self.assertFalse(cb.called)
 

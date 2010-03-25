@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """create_ssls.py -- create sll keys and certificates for tests.
 
@@ -46,6 +46,13 @@ from subprocess import (
     Popen,
     PIPE,
     )
+import sys
+
+# We want to use the right bzrlib: the one we are part of
+# FIXME: The fllowing is correct but looks a bit ugly 
+_dir = os.path.dirname
+our_bzr = _dir(_dir(_dir(_dir(os.path.realpath(__file__)))))
+sys.path.insert(0, our_bzr)
 
 from bzrlib import (
     osutils,
@@ -105,7 +112,7 @@ ssl_params=dict(
     server_locality='LocalHost',
     server_organization='Testing Ltd',
     server_section='https server',
-    server_name='localhost', # Always accessed under that name
+    server_name='127.0.0.1', # Always accessed under that name
     server_email='https_server@locahost',
     server_optional_company_name='',
     )

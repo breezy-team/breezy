@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,14 +12,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Serializer factory for reading and writing bundles.
 """
 
 import os
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    ui,
+    )
 from bzrlib.bundle.serializer import (BundleSerializer,
                                       _get_bundle_header,
                                      )
@@ -27,9 +30,7 @@ from bzrlib.bundle.serializer import binary_diff
 from bzrlib.bundle.bundle_data import (RevisionInfo, BundleInfo, BundleTree)
 from bzrlib.diff import internal_diff
 from bzrlib.osutils import pathjoin
-from bzrlib.progress import DummyProgress
 from bzrlib.revision import NULL_REVISION
-import bzrlib.ui
 from bzrlib.testament import StrictTestament
 from bzrlib.timestamp import (
     format_highres_date,
@@ -119,12 +120,11 @@ class BundleSerializerV08(BundleSerializer):
         source.lock_read()
         try:
             self._write_main_header()
-            pb = DummyProgress()
+            pb = ui.ui_factory.nested_progress_bar()
             try:
                 self._write_revisions(pb)
             finally:
-                pass
-                #pb.finished()
+                pb.finished()
         finally:
             source.unlock()
 
@@ -183,7 +183,7 @@ class BundleSerializerV08(BundleSerializer):
 
         i_max = len(self.revision_ids)
         for i, rev_id in enumerate(self.revision_ids):
-            pb.update("Generating revsion data", i, i_max)
+            pb.update("Generating revision data", i, i_max)
             rev = self.source.get_revision(rev_id)
             if rev_id == last_rev_id:
                 rev_tree = last_rev_tree

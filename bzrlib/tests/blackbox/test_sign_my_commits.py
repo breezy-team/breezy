@@ -13,19 +13,21 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for bzr sign-my-commits."""
 
 import os
 
-import bzrlib.gpg
+from bzrlib import (
+    gpg,
+    tests,
+    )
 from bzrlib.testament import Testament
-from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class SignMyCommits(TestCaseWithTransport):
+class SignMyCommits(tests.TestCaseWithTransport):
 
     def monkey_patch_gpg(self):
         """Monkey patch the gpg signing strategy to be a loopback.
@@ -33,15 +35,8 @@ class SignMyCommits(TestCaseWithTransport):
         This also registers the cleanup, so that we will revert to
         the original gpg strategy when done.
         """
-        self._oldstrategy = bzrlib.gpg.GPGStrategy
-
         # monkey patch gpg signing mechanism
-        bzrlib.gpg.GPGStrategy = bzrlib.gpg.LoopbackGPGStrategy
-
-        self.addCleanup(self._fix_gpg_strategy)
-
-    def _fix_gpg_strategy(self):
-        bzrlib.gpg.GPGStrategy = self._oldstrategy
+        self.overrideAttr(gpg, 'GPGStrategy', gpg.LoopbackGPGStrategy)
 
     def setup_tree(self, location='.'):
         wt = self.make_branch_and_tree(location)

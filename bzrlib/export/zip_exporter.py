@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Export a Tree to a non-versioned directory.
 """
@@ -26,18 +26,23 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.export import _export_iter_entries
+from bzrlib.filters import (
+    ContentFilterContext,
+    filtered_output_bytes,
+    )
 from bzrlib.trace import mutter
 
 
 # Windows expects this bit to be set in the 'external_attr' section
 # Or it won't consider the entry a directory
 ZIP_DIRECTORY_BIT = (1 << 4)
+FILE_PERMISSIONS = (0644 << 16)
 
-_FILE_ATTR = stat.S_IFREG
+_FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT
 
 
-def zip_exporter(tree, dest, root, subdir):
+def zip_exporter(tree, dest, root, subdir, filtered=False):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -64,7 +69,15 @@ def zip_exporter(tree, dest, root, subdir):
                             date_time=now)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
-                zipf.writestr(zinfo, tree.get_file_text(file_id))
+                if filtered:
+                    chunks = tree.get_file_lines(file_id)
+                    filters = tree._content_filter_stack(dp)
+                    context = ContentFilterContext(dp, tree, ie)
+                    contents = filtered_output_bytes(chunks, filters, context)
+                    content = ''.join(contents)
+                else:
+                    content = tree.get_file_text(file_id)
+                zipf.writestr(zinfo, content)
             elif ie.kind == "directory":
                 # Directories must contain a trailing slash, to indicate
                 # to the zip routine that they are really directories and
@@ -90,4 +103,3 @@ def zip_exporter(tree, dest, root, subdir):
         os.remove(dest)
         from bzrlib.errors import BzrError
         raise BzrError("Can't export non-ascii filenames to zip")
-

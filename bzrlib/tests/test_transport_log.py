@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,15 +12,19 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for log+ transport decorator."""
 
 
+import types
+
+
 from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.trace import mutter
 from bzrlib.transport import get_transport
+from bzrlib.transport.log import TransportLogDecorator
 
 
 class TestTransportLog(TestCaseWithMemoryTransport):
@@ -32,13 +36,43 @@ class TestTransportLog(TestCaseWithMemoryTransport):
         # operations such as mkdir are logged
         mutter('where are you?')
         logging_transport.mkdir('subdir')
-        self.assertContainsRe(self._get_log(True),
-            r'mkdir memory\+\d+://.*subdir')
-        self.assertContainsRe(self._get_log(True),
-            '  --> None')
+        log = self.get_log()
+        self.assertContainsRe(log, r'mkdir memory\+\d+://.*subdir')
+        self.assertContainsRe(log, '  --> None')
         # they have the expected effect
         self.assertTrue(logging_transport.has('subdir'))
         # and they operate on the underlying transport
         self.assertTrue(base_transport.has('subdir'))
 
+    def test_log_readv(self):
+        # see <https://bugs.launchpad.net/bzr/+bug/340347>
 
+        # transports are not required to return a generator, but we
+        # specifically want to check that those that do cause it to be passed
+        # through, for the sake of minimum interference
+        base_transport = DummyReadvTransport()
+        # construct it directly to avoid needing the dummy transport to be
+        # registered etc
+        logging_transport = TransportLogDecorator(
+            'log+dummy:///', _decorated=base_transport)
+
+        result = base_transport.readv('foo', [(0, 10)])
+        # sadly there's no types.IteratorType, and GeneratorType is too
+        # specific
+        self.assertTrue(getattr(result, 'next'))
+
+        result = logging_transport.readv('foo', [(0, 10)])
+        self.assertTrue(getattr(result, 'next'))
+        self.assertEquals(list(result),
+            [(0, 'abcdefghij')])
+
+
+class DummyReadvTransport(object):
+
+    base = 'dummy:///'
+
+    def readv(self, filename, offset_length_pairs):
+        yield (0, 'abcdefghij')
+
+    def abspath(self, path):
+        return self.base + path

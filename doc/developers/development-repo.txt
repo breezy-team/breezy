@@ -28,7 +28,7 @@ renamed to e.g. 'development0', 'development1' etc.
 
 When a release of bzr is done, all the older numbered development
 formats will be removed from 'bzr.dev', so we will not be carrying the
-code for them around indefinately. 
+code for them around indefinately.
 
 Support for upgrade and migration
 ---------------------------------
@@ -40,7 +40,7 @@ test out development formats (though we cannot guarantee bugs of course
  - users of a given development format can always get back onto regular
    formats by switching to the next bzr released version which is
    guaranteed to be able to upgrade from that development format.
- - users that routinely use bzr.dev should upgrade to the most recent 
+ - users that routinely use bzr.dev should upgrade to the most recent
    development version available before pulling in bzr.dev changes
    around release time, as that is when old format cleanups will occur.
 
@@ -244,18 +244,33 @@ Format Details
 development
 -----------
 
-Currently an alias for Development2
+Not currently available, as our development formats are all rich root or
+subtrees now.
+
+development-rich-root
+---------------------
+
+Currently an alias for Development6Subtree
 
 development-subtree
 -------------------
 
-Currently an alias for Development2Subtree
+Currently an alias for Development6Subtree
 
-Development2[Subtree]
----------------------
+Development6RichRoot[Subtree]
+-----------------------------
 
-These formats use B+Tree indices which are considerably faster than
-the earlier indices in bzr.
+These formats use the new groupcompress delta compress and a CHK(Content
+Hash Key) based inventory store which is much faster at incremental
+operations than the prior XML based store.
+*Note* Converting from a non-rich-root to a rich-root format is a
+one-way upgrade, and you cannot merge back afterwards: using this format
+for everyday use is likely to cause all developers of a project to
+upgrade to a rich-root format themselves. This is fine, as bzr is moving
+to make rich-root formats the default and to get all users to upgrade,
+but we have not finalised the migration process, and until we do do not
+recomment that casual users upgrade. Users of bzr-svn are already using
+rich-root formats and can test with this with impunity.
 
 
 ..

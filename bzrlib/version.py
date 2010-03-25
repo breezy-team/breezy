@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Report on version of bzrlib"""
 
@@ -31,6 +31,8 @@ from bzrlib.branch import Branch
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):
+    import platform
+
     if to_file is None:
         to_file = sys.stdout
     to_file.write("Bazaar (bzr) %s\n" % bzrlib.__version__)
@@ -48,8 +50,9 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     # show path to python interpreter
     # (bzr.exe use python interpreter from pythonXY.dll
     # but sys.executable point to bzr.exe itself)
-    if not hasattr(sys, 'frozen'):  # check for bzr.exe
-        # python executable
+    # however, sys.frozen exists if running from bzr.exe
+    # see http://www.py2exe.org/index.cgi/Py2exeEnvironment
+    if getattr(sys, 'frozen', None) is None: # if not bzr.exe
         to_file.write(sys.executable + ' ')
     else:
         # pythonXY.dll
@@ -62,6 +65,7 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
 
     to_file.write("  Python standard library:" + ' ')
     to_file.write(os.path.dirname(os.__file__) + '\n')
+    to_file.write("  Platform: %s\n" % platform.platform(aliased=1))
     to_file.write("  bzrlib: ")
     if len(bzrlib.__path__) > 1:
         # print repr, which is a good enough way of making it clear it's
@@ -79,11 +83,13 @@ def show_version(show_config=True, show_copyright=True, to_file=None):
     if show_copyright:
         to_file.write('\n')
         to_file.write(bzrlib.__copyright__ + '\n')
-        to_file.write("http://bazaar-vcs.org/\n")
+        to_file.write("http://bazaar.canonical.com/\n")
         to_file.write('\n')
         to_file.write("bzr comes with ABSOLUTELY NO WARRANTY.  bzr is free software, and\n")
         to_file.write("you may use, modify and redistribute it under the terms of the GNU\n")
         to_file.write("General Public License version 2 or later.\n")
+        to_file.write("\nBazaar is part of the GNU Project to produce a free operating "
+                "system.\n")
     to_file.write('\n')
 
 
