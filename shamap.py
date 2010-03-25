@@ -29,6 +29,7 @@ from bzrlib import (
     index as _mod_index,
     osutils,
     trace,
+    ui,
     )
 
 # Data stored in the cache:
@@ -206,6 +207,22 @@ class SqliteGitShaMap(GitShaMap):
         create unique index if not exists trees_fileid_revid on trees(fileid, revid);
 """)
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.path)
+    
+    @classmethod
+    def remove_for_repository(cls, repository):
+        repository._transport.delete('git.db')
+
+    @classmethod
+    def exists_for_repository(cls, repository):
+        try:
+            transport = getattr(repository, "_transport", None)
+            if transport is not None:
+                return transport.has("git.db")
+        except bzrlib.errors.NotLocalUrl:
+            return False
+
     @classmethod
     def from_repository(cls, repository):
         try:
@@ -336,6 +353,22 @@ class TdbGitShaMap(GitShaMap):
         except KeyError:
             self.db["version"] = str(TDB_MAP_VERSION)
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.path)
+
+    @classmethod
+    def exists_for_repository(cls, repository):
+        try:
+            transport = getattr(repository, "_transport", None)
+            if transport is not None:
+                return transport.has("git.tdb")
+        except bzrlib.errors.NotLocalUrl:
+            return False
+
+    @classmethod
+    def remove_for_repository(cls, repository):
+        repository._transport.delete('git.tdb')
+
     @classmethod
     def from_repository(cls, repository):
         try:
@@ -453,6 +486,12 @@ class IndexGitShaMap(GitShaMap):
         from bzrlib.transport import get_transport
         return cls(get_transport(get_cache_dir()))
 
+    def __repr__(self):
+        if self._transport is not None:
+            return "%s(%r)" % (self.__class__.__name__, self._transport.base)
+        else:
+            return "%s()" % (self.__class__.__name__)
+
     def repack(self):
         assert self._builder is None
         self.start_write_group()
@@ -560,3 +599,35 @@ class IndexGitShaMap(GitShaMap):
         """List the SHA1s."""
         for key in self._iter_keys_prefix(("git", None, None)):
             yield key[1]
+
+
+def migrate(source, target):
+    """Migrate from one cache map to another."""
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        target.start_write_group()
+        try:
+            for i, sha in enumerate(source.sha1s()):
+                pb.update("migrating sha map", i)
+                (kind, info) = source.lookup_git_sha(sha)
+                target.add_entry(sha, kind, info)
+        except:
+            target.abort_write_group()
+            raise
+        else:
+            target.commit_write_group()
+    finally:
+        pb.finished()
+
+
+def from_repository(repository):
+    shamap = IndexGitShaMap.from_repository(repository)
+    for cls in (SqliteGitShaMap, TdbGitShaMap):
+        if not cls.exists_for_repository(repository):
+            continue
+        old_shamap = cls.from_repository(repository)
+        trace.info('Importing SHA map from %r into %r',
+            old_shamap, shamap)
+        migrate(old_shamap, shamap)
+        cls.remove_for_repository(repository)
+    return shamap
