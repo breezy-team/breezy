@@ -309,14 +309,14 @@ class SqliteGitShaMap(GitShaMap):
 
     def revids(self):
         """List the revision ids known."""
-        for row in self.db.execute("select revid from commits").fetchall():
-            yield row[0]
+        return (row for (row,) in self.db.execute("select revid from commits"))
 
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            for row in self.db.execute("select sha1 from %s" % table).fetchall():
-                yield row[0]
+            trace.note(table)
+            for (row,) in self.db.execute("select sha1 from %s" % table):
+                yield row
 
 
 TDB_MAP_VERSION = 2
