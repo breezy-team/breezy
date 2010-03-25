@@ -2,6 +2,8 @@
 
  BUG FIXES
 
+  * Mark as compatible with Bazaar 2.2 (Jelmer Vernooij)
+
   * Use host specified rather than localhost in `bzr serve`.
     (David Coles, #543998)
 
