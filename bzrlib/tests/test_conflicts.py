@@ -220,19 +220,37 @@ class TestResolveTextConflicts(TestResolveConflicts):
 class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     """This class provides a base to test single conflict resolution.
 
-    The aim is to define scenarios in daughter classes (one for each conflict
-    type) that create a single conflict object when one branch is merged in
-    another (and vice versa). Each class can define as many scenarios as
-    needed. Each scenario should define a couple of actions that will be
-    swapped to define the sibling scenarios.
+    Since all conflict objects are created with specific semantics for their
+    attributes, each class should implement the necessary functions and
+    attributes described below.
 
-    From there, both resolutions are tested (--take-this and --take-other).
+    Each class should define the scenarios that create the expected (single)
+    conflict.
 
-    Each conflict type use its attributes in a specific way, so each class 
-    should define a specific _assert_conflict method.
+    Each scenario describes:
+    * how to create 'base' tree (and revision)
+    * how to create 'left' tree (and revision, parent rev 'base')
+    * how to create 'right' tree (and revision, parent rev 'base')
+    * how to check that changes in 'base'->'left' have been taken
+    * how to check that changes in 'base'->'right' have been taken
 
-    Since the resolution change the working tree state, each action should
-    define an associated check.
+    From each base scenario, we generate two concrete scenarios where:
+    * this=left, other=right
+    * this=right, other=left
+
+    Then the test case verifies each concrete scenario by:
+    * creating a branch containing the 'base', 'this' and 'other' revisions
+    * creating a working tree for the 'this' revision
+    * performing the merge of 'other' into 'this'
+    * verifying the expected conflict was generated
+    * resolving with --take-this or --take-other, and running the corresponding
+      checks (for either 'base'->'this', or 'base'->'other')
+
+    :cvar _conflict_type: The expected class of the generated conflict.
+
+    :cvar _assert_conflict: A method receiving the working tree and the
+        conflict object and checking its attributes.
+
     """
 
     # Set by daughter classes
@@ -241,10 +259,10 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
     # Set by load_tests
     _base_actions = None
-    _this_actions = None
-    _other_actions = None
+    _this = None
+    _other = None
 
-    # Set by _this_actions and other_actions for more refined checks about the
+    # Set by the 'this' and 'other' actions for more refined checks about the
     # conflict object. Each daughter class should describe the associated
     # semantic
     _this_args = None
@@ -253,28 +271,16 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     @classmethod
     def mirror_scenarios(klass, base_scenarios):
         scenarios = []
-        def adapt(d, side):
-            """Modify dict to apply to the given side.
-
-            'actions' key is turned into '_actions_this' if side is 'this' for
-            example.
-            """
-            t = {}
-            # Turn each key into _side_key
-            for k,v in d.iteritems():
-                t['_%s_%s' % (k, side)] = v
-            return t
         # Each base scenario is duplicated switching the roles of 'this' and
         # 'other'
         left = [l for l, r, c in base_scenarios]
         right = [r for l, r, c in base_scenarios]
         common = [c for l, r, c in base_scenarios]
         for (lname, ldict), (rname, rdict), common in zip(left, right, common):
-            a = tests.multiply_scenarios([(lname, adapt(ldict, 'this'))],
-                                         [(rname, adapt(rdict, 'other'))])
-            b = tests.multiply_scenarios(
-                    [(rname, adapt(rdict, 'this'))],
-                    [(lname, adapt(ldict, 'other'))])
+            a = tests.multiply_scenarios([(lname, dict(_this=ldict))],
+                                         [(rname, dict(_other=rdict))])
+            b = tests.multiply_scenarios([(rname, dict(_this=rdict))],
+                                         [(lname, dict(_other=ldict))])
             # Inject the common parameters in all scenarios
             for name, d in a + b:
                 d.update(common)
@@ -295,15 +301,15 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         builder.build_snapshot('start', None, [
                 ('add', ('', 'root-id', 'directory', ''))])
         # Add a minimal base content
-        (_, actions_base) = self._get_actions(self._actions_base)()
-        builder.build_snapshot('base', ['start'], actions_base)
+        (_, base_actions) = self._get_actions(self._base_actions)()
+        builder.build_snapshot('base', ['start'], base_actions)
         # Modify the base content in branch
         (self._other_args,
-         actions_other) = self._get_actions(self._actions_other)()
+         actions_other) = self._get_actions(self._other['actions'])()
         builder.build_snapshot('other', ['base'], actions_other)
         # Modify the base content in trunk
         (self._this_args,
-         actions_this) = self._get_actions(self._actions_this)()
+         actions_this) = self._get_actions(self._this['actions'])()
         builder.build_snapshot('this', ['base'], actions_this)
         # builder.get_branch() tip is now 'this'
 
@@ -346,14 +352,14 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         wt = self._merge_other_into_this()
         self.assertConflict(wt)
         self.check_resolved(wt, 'take_this')
-        check_this = self._get_check(self._check_this)
+        check_this = self._get_check(self._this['check'])
         check_this()
 
     def test_resolve_taking_other(self):
         wt = self._merge_other_into_this()
         self.assertConflict(wt)
         self.check_resolved(wt, 'take_other')
-        check_other = self._get_check(self._check_other)
+        check_other = self._get_check(self._other['check'])
         check_other()
 
 
@@ -374,7 +380,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
                                    check='file_has_more_content')),
              ('file_deleted', dict(actions='delete_file',
                                    check='file_doesnt_exist')),
-             dict(_actions_base='create_file')),
+             dict(_base_actions='create_file')),
             ]
         return klass.mirror_scenarios(base_scenarios)
 
@@ -421,9 +427,9 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
     @classmethod
     def scenarios(klass):
-        for_file = dict(_actions_base='create_file',
+        for_file = dict(_base_actions='create_file',
                   _item_path='new-file', _item_id='file-id',)
-        for_dir = dict(_actions_base='create_dir',
+        for_dir = dict(_base_actions='create_dir',
                         _item_path='new-dir', _item_id='dir-id',)
         base_scenarios = [
             (('file_renamed',
@@ -548,7 +554,7 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
                                     check='file_content_a')),
              ('fileb_created', dict(actions='create_file_b',
                                    check='file_content_b')),
-             dict(_actions_base='nothing')),
+             dict(_base_actions='nothing')),
             ]
         return klass.mirror_scenarios(base_scenarios)
 
@@ -766,12 +772,12 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
                                       check='dir1_moved')),
              ('dir2_into_dir1', dict(actions='move_dir2_into_dir1',
                                       check='dir2_moved')),
-             dict(_actions_base='create_dir1_dir2')),
+             dict(_base_actions='create_dir1_dir2')),
             (('dir1_into_dir4', dict(actions='move_dir1_into_dir4',
                                       check='dir1_2_moved')),
              ('dir3_into_dir2', dict(actions='move_dir3_into_dir2',
                                       check='dir3_4_moved')),
-             dict(_actions_base='create_dir1_4')),
+             dict(_base_actions='create_dir1_4')),
             ]
         return klass.mirror_scenarios(base_scenarios)
 
