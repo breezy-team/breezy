@@ -4424,8 +4424,8 @@ class cmd_pack(Command):
     used.
 
     Warning:
-    It may not be safe to use this options with certain transports
-    like SFTP, HTTP, NFS etc.
+    It may not be safe to use the --clean-obsolete-packs options with
+    certain transports like SFTP, HTTP, NFS etc.
     """
 
     _see_also = ['repositories']
