@@ -314,7 +314,6 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            trace.note(table)
             for (row,) in self.db.execute("select sha1 from %s" % table):
                 yield row
 
@@ -594,6 +593,14 @@ class IndexGitShaMap(GitShaMap):
         """List the revision ids known."""
         for key in self._iter_keys_prefix(("commit", None, None)):
             yield key[1]
+
+    def missing_revisions(self, revids):
+        """Return set of all the revisions that are not present."""
+        missing_revids = set(revids)
+        for _, key, value in self._index.iter_entries((
+            ("commit", revid, "X") for revid in revids)):
+            missing_revids.remove(key[1])
+        return missing_revids
 
     def sha1s(self):
         """List the SHA1s."""
