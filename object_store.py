@@ -163,14 +163,16 @@ class BazaarObjectStore(BaseObjectStore):
                     hexsha = None
                 else:
                     hexsha = ret.id
-                self._idmap.add_entry(hexsha, "tree", (entry.file_id, inv.revision_id))
+                self._idmap.add_entry(hexsha, "tree", (entry.file_id,
+                    inv.revision_id))
                 return hexsha, ret
         elif entry.kind in ("file", "symlink"):
             try:
                 return self._idmap.lookup_blob(entry.file_id, entry.revision), None
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
-                self._idmap.add_entry(ret.id, "blob", (entry.file_id, entry.revision))
+                self._idmap.add_entry(ret.id, "blob", (entry.file_id,
+                    entry.revision))
                 return ret.id, ret
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
