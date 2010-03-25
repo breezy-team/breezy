@@ -218,6 +218,22 @@ class TestResolveTextConflicts(TestResolveConflicts):
 # FIXME: Get rid of parametrized (in the class name) once we delete
 # TestResolveConflicts -- vila 20100308
 class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
+    """This class provides a base to test single conflict resolution.
+
+    The aim is to define scenarios in daughter classes (one for each conflict
+    type) that create a single conflict object when one branch is merged in
+    another (and vice versa). Each class can define as many scenarios as
+    needed. Each scenario should define a couple of actions that will be
+    swapped to define the sibling scenarios.
+
+    From there, both resolutions are tested (--take-this and --take-other).
+
+    Each conflict type use its attributes in a specific way, so each class 
+    should define a specific _assert_conflict method.
+
+    Since the resolution change the working tree state, each action should
+    define an associated check.
+    """
 
     # Set by daughter classes
     _conflict_type = None
@@ -491,7 +507,7 @@ class TestResolvePathConflictBefore531967(TestResolvePathConflict):
         # compatibility code.
         old_c = conflicts.PathConflict('<deleted>', self._item_path,
                                        file_id=None)
-        wt.set_conflicts(conflicts.ConflictList([c]))
+        wt.set_conflicts(conflicts.ConflictList([old_c]))
 
 
 class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
