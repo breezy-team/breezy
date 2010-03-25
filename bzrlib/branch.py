@@ -1715,9 +1715,10 @@ class BranchHooks(Hooks):
             (2, 2), None))
         self.create_hook(HookPoint('post_branch_init',
             "Called after new branch initialization completes. "
-            "post_branch_init is called with a bzrlib.branch.BranchInitHookParams. "
-            "Note that init, branch and checkout will all trigger this hook.",
-            (2, 2), None))
+            "post_branch_init is called with a "
+            "bzrlib.branch.BranchInitHookParams. "
+            "Note that init, branch and checkout (both heavyweight and "
+            "lightweight) will all trigger this hook.", (2, 2), None))
         self.create_hook(HookPoint('post_switch',
             "Called after a checkout switches branch. "
             "post_switch is called with a "
@@ -1773,18 +1774,27 @@ class BranchInitHookParams(object):
     There are 4 fields that hooks may wish to access:
 
     :ivar format: the branch format
-    :ivar bzrdir: the bzrdir where the branch will be/has been initialized
+    :ivar bzrdir: the BzrDir where the branch will be/has been initialized
     :ivar name: name of colocated branch, if any (or None)
-    :ivar branch: the branch
+    :ivar branch: the branch created
+
+    Note that for lightweight checkouts, the bzrdir and format fields refer to
+    the checkout, hence they are different from the corresponding fields in
+    branch, which refer to the original branch.
     """
 
     def __init__(self, format, a_bzrdir, name, branch):
         """Create a group of BranchInitHook parameters.
 
         :param format: the branch format
-        :param a_bzrdir: the bzrdir where the branch will be/has been initialized
+        :param a_bzrdir: the BzrDir where the branch will be/has been
+            initialized
         :param name: name of colocated branch, if any (or None)
-        :param branch: the branch
+        :param branch: the branch created
+
+        Note that for lightweight checkouts, the bzrdir and format fields refer
+        to the checkout, hence they are different from the corresponding fields
+        in branch, which refer to the original branch.
         """
         self.format = format
         self.bzrdir = a_bzrdir
