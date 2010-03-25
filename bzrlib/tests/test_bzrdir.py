@@ -36,6 +36,7 @@ from bzrlib import (
     )
 import bzrlib.branch
 from bzrlib.errors import (NotBranchError,
+                           NoColocatedBranchSupport,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
@@ -206,8 +207,10 @@ class SampleBzrDir(bzrdir.BzrDir):
         """See BzrDir.open_repository."""
         return SampleRepository(self)
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise NoColocatedBranchSupport(self)
         return SampleBranch(self)
 
     def create_workingtree(self):
@@ -468,7 +471,8 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         # Make stackable source branch with an unstackable repo format.
         source_bzrdir = self.make_bzrdir('source')
         pack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
-        source_branch = bzrlib.branch.BzrBranchFormat7().initialize(source_bzrdir)
+        source_branch = bzrlib.branch.BzrBranchFormat7().initialize(
+            source_bzrdir)
         # Make a directory with a default stacking policy
         parent_bzrdir = self.make_bzrdir('parent')
         stacked_on = self.make_branch('parent/stacked-on', format='pack-0.92')

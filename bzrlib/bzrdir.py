@@ -396,16 +396,23 @@ class BzrDir(object):
         """Destroy the repository in this BzrDir"""
         raise NotImplementedError(self.destroy_repository)
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """Create a branch in this BzrDir.
+
+        :param name: Name of the colocated branch to create, None for
+            the default branch.
 
         The bzrdir's format will control what branch format is created.
         For more control see BranchFormatXX.create(a_bzrdir).
         """
         raise NotImplementedError(self.create_branch)
 
-    def destroy_branch(self):
-        """Destroy the branch in this BzrDir"""
+    def destroy_branch(self, name=None):
+        """Destroy a branch in this BzrDir.
+        
+        :param name: Name of the branch to destroy, None for the default 
+            branch.
+        """
         raise NotImplementedError(self.destroy_branch)
 
     @staticmethod
@@ -595,8 +602,6 @@ class BzrDir(object):
             # already exists, but it should instead either remove it or make
             # a new backup directory.
             #
-            # FIXME: bug 262450 -- the backup directory should have the same
-            # permissions as the .bzr directory (probably a bug in copy_tree)
             old_path = self.root_transport.abspath('.bzr')
             new_path = self.root_transport.abspath(backup_dir)
             ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))
@@ -708,7 +713,7 @@ class BzrDir(object):
         """
         return None
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         """Get the transport for use by branch format in this BzrDir.
 
         Note that bzr dirs that do not support format strings will raise
@@ -892,7 +897,8 @@ class BzrDir(object):
         BzrDir._check_supported(format, _unsupported)
         return format.open(transport, _found=True)
 
-    def open_branch(self, unsupported=False, ignore_fallbacks=False):
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
         """Open the branch object at this BzrDir if one is present.
 
         If unsupported is True, then no longer supported branch formats can
@@ -1036,7 +1042,7 @@ class BzrDir(object):
         """
         raise NotImplementedError(self.open_workingtree)
 
-    def has_branch(self):
+    def has_branch(self, name=None):
         """Tell if this bzrdir contains a branch.
 
         Note: if you're going to open the branch, you should just go ahead
@@ -1044,7 +1050,7 @@ class BzrDir(object):
         branch and discards it, and that's somewhat expensive.)
         """
         try:
-            self.open_branch()
+            self.open_branch(name)
             return True
         except errors.NotBranchError:
             return False
@@ -1373,11 +1379,11 @@ class BzrDirPreSplitOut(BzrDir):
             tree.clone(result)
         return result
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """See BzrDir.create_branch."""
-        return self._format.get_branch_format().initialize(self)
+        return self._format.get_branch_format().initialize(self, name=name)
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch."""
         raise errors.UnsupportedOperation(self.destroy_branch, self)
 
@@ -1439,8 +1445,10 @@ class BzrDirPreSplitOut(BzrDir):
         raise errors.UnsupportedOperation(self.destroy_workingtree_metadata,
                                           self)
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         if branch_format is None:
             return self.transport
         try:
@@ -1479,12 +1487,13 @@ class BzrDirPreSplitOut(BzrDir):
             format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
-    def open_branch(self, unsupported=False, ignore_fallbacks=False):
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         self._check_supported(format, unsupported)
-        return format.open(self, _found=True)
+        return format.open(self, name, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
@@ -1607,12 +1616,14 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.can_convert_format()."""
         return True
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """See BzrDir.create_branch."""
-        return self._format.get_branch_format().initialize(self)
+        return self._format.get_branch_format().initialize(self, name=name)
 
-    def destroy_branch(self):
+    def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         self.transport.delete_tree('branch')
 
     def create_repository(self, shared=False):
@@ -1661,8 +1672,10 @@ class BzrDirMeta1(BzrDir):
         format = BranchFormat.find_format(self)
         return format.get_reference(self)
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
         if branch_format is None:
@@ -1739,13 +1752,11 @@ class BzrDirMeta1(BzrDir):
                 return True
         except errors.NoRepositoryPresent:
             pass
-        try:
-            if not isinstance(self.open_branch()._format,
+        for branch in self.list_branches():
+            if not isinstance(branch._format,
                               format.get_branch_format().__class__):
                 # the branch needs an upgrade.
                 return True
-        except errors.NotBranchError:
-            pass
         try:
             my_wt = self.open_workingtree(recommend_upgrade=False)
             if not isinstance(my_wt._format,
@@ -1756,11 +1767,13 @@ class BzrDirMeta1(BzrDir):
             pass
         return False
 
-    def open_branch(self, unsupported=False, ignore_fallbacks=False):
+    def open_branch(self, name=None, unsupported=False,
+                    ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         format = self.find_branch_format()
         self._check_supported(format, unsupported)
-        return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
+        return format.open(self, name=name,
+            _found=True, ignore_fallbacks=ignore_fallbacks)
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""
@@ -1798,6 +1811,8 @@ class BzrDirFormat(object):
     Once a format is deprecated, just deprecate the initialize and open
     methods on the format class. Do not deprecate the object, as the
     object will be created every system load.
+
+    :cvar colocated_branches: Whether this formats supports colocated branches.
     """
 
     _default_format = None
@@ -1819,6 +1834,10 @@ class BzrDirFormat(object):
     """
 
     _lock_file_name = 'branch-lock'
+
+    colocated_branches = False
+    """Whether co-located branches are supported for this control dir format.
+    """
 
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
