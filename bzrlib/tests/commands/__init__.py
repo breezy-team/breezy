@@ -41,6 +41,7 @@ def load_tests(basic_tests, module, loader):
         'bzrlib.tests.commands.test_pull',
         'bzrlib.tests.commands.test_push',
         'bzrlib.tests.commands.test_update',
+        'bzrlib.tests.commands.test_revert',
         ]
     # add the tests for the sub modules
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
