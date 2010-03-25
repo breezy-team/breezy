@@ -141,6 +141,10 @@ Bug Fixes
 * Fix stub sftp test server to call os.getcwdu().
   (Vincent Ladeuil, #526211, #526353)
 
+* Path conflicts now support --take-this and --take-other even when a
+  deletion is involved.
+  (Vincent Ladeuil, #531967)
+
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)
