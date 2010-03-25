@@ -4411,19 +4411,37 @@ class cmd_missing(Command):
 
 
 class cmd_pack(Command):
-    """Compress the data within a repository."""
+    """Compress the data within a repository.
+
+    This opration compresses the data within a bazaar repository. As
+    bazaar supports automatic packing of repository, this operation is
+    normally not required to be done manually.
+
+    During the pack operation, bazaar takes a backup of existing data,
+    i.e. pack files. This backup is eventually removed by bazaar
+    automatically when it is safe to do so. To save disk space by removing
+    the backed up pack files, the --clean-obsolete-packs option may be
+    used.
+
+    Warning:
+    It may not be safe to use this options with certain transports
+    like SFTP, HTTP, NFS etc.
+    """
 
     _see_also = ['repositories']
     takes_args = ['branch_or_repo?']
+    takes_options = [
+        Option('clean-obsolete-packs', 'Delete obsolete packs to save disk space.'),
+        ]
 
-    def run(self, branch_or_repo='.'):
+    def run(self, branch_or_repo='.', clean_obsolete_packs=False):
         dir = bzrdir.BzrDir.open_containing(branch_or_repo)[0]
         try:
             branch = dir.open_branch()
             repository = branch.repository
         except errors.NotBranchError:
             repository = dir.open_repository()
-        repository.pack()
+        repository.pack(clean_obsolete_packs=clean_obsolete_packs)
 
 
 class cmd_plugins(Command):
