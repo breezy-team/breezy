@@ -214,7 +214,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         dir = self.make_bzrdir('.')
         local_result = dir.cloning_metadir()
         reference = _mod_branch.BranchReferenceFormat().initialize(
-            dir, referenced_branch)
+            dir, target_branch=referenced_branch)
         reference_url = _mod_branch.BranchReferenceFormat().get_reference(dir)
         # The server shouldn't try to follow the branch reference, so it's fine
         # if the referenced branch isn't reachable.

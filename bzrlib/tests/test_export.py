@@ -20,7 +20,6 @@ import time
 from bzrlib import (
     errors,
     export,
-    osutils,
     tests,
     )
 
@@ -99,3 +98,25 @@ class TestExport(tests.TestCaseWithTransport):
         st_b = t.stat('b')
         # All files must be given the same mtime.
         self.assertEqual(st_a.st_mtime, st_b.st_mtime)
+
+    def test_dir_export_files_per_file_timestamps(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        builder.build_snapshot(None, None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('a', 'a-id', 'file', 'content\n'))],
+            timestamp=3423)
+        builder.build_snapshot(None, None, [
+            ('add', ('b', 'b-id', 'file', 'content\n'))],
+            timestamp=42)
+        builder.finish_series()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        tree = b.basis_tree()
+        export.export(tree, 'target', format='dir', per_file_timestamps=True)
+        t = self.get_transport('target')
+        st_a = t.stat('a')
+        st_b = t.stat('b')
+        self.assertEqual(42.0, st_b.st_mtime)
+        self.assertEqual(3423.0, st_a.st_mtime)

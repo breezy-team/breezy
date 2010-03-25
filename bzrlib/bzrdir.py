@@ -602,8 +602,6 @@ class BzrDir(object):
             # already exists, but it should instead either remove it or make
             # a new backup directory.
             #
-            # FIXME: bug 262450 -- the backup directory should have the same
-            # permissions as the .bzr directory (probably a bug in copy_tree)
             old_path = self.root_transport.abspath('.bzr')
             new_path = self.root_transport.abspath(backup_dir)
             ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))
@@ -715,7 +713,7 @@ class BzrDir(object):
         """
         return None
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         """Get the transport for use by branch format in this BzrDir.
 
         Note that bzr dirs that do not support format strings will raise
@@ -1383,9 +1381,7 @@ class BzrDirPreSplitOut(BzrDir):
 
     def create_branch(self, name=None):
         """See BzrDir.create_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
-        return self._format.get_branch_format().initialize(self)
+        return self._format.get_branch_format().initialize(self, name=name)
 
     def destroy_branch(self, name=None):
         """See BzrDir.destroy_branch."""
@@ -1449,8 +1445,10 @@ class BzrDirPreSplitOut(BzrDir):
         raise errors.UnsupportedOperation(self.destroy_workingtree_metadata,
                                           self)
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         if branch_format is None:
             return self.transport
         try:
@@ -1492,12 +1490,10 @@ class BzrDirPreSplitOut(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
         from bzrlib.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         self._check_supported(format, unsupported)
-        return format.open(self, _found=True)
+        return format.open(self, name, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                possible_transports=None, accelerator_tree=None,
@@ -1622,9 +1618,7 @@ class BzrDirMeta1(BzrDir):
 
     def create_branch(self, name=None):
         """See BzrDir.create_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
-        return self._format.get_branch_format().initialize(self)
+        return self._format.get_branch_format().initialize(self, name=name)
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
@@ -1678,8 +1672,10 @@ class BzrDirMeta1(BzrDir):
         format = BranchFormat.find_format(self)
         return format.get_reference(self)
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         # XXX: this shouldn't implicitly create the directory if it's just
         # promising to get a transport -- mbp 20090727
         if branch_format is None:
@@ -1774,11 +1770,10 @@ class BzrDirMeta1(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(self)
         format = self.find_branch_format()
         self._check_supported(format, unsupported)
-        return format.open(self, _found=True, ignore_fallbacks=ignore_fallbacks)
+        return format.open(self, name=name,
+            _found=True, ignore_fallbacks=ignore_fallbacks)
 
     def open_repository(self, unsupported=False):
         """See BzrDir.open_repository."""

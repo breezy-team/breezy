@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -203,7 +203,7 @@ class ReadVFile(object):
         result = self._string.readline()
         if self._string.tell() == self._string_length and result[-1] != '\n':
             raise errors.BzrError('short readline in the readvfile hunk: %r'
-                % (readline, ))
+                % (result, ))
         return result
 
 

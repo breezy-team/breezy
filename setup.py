@@ -37,7 +37,7 @@ META_INFO = {
     'version':      bzrlib.__version__,
     'author':       'Canonical Ltd',
     'author_email': 'bazaar@lists.canonical.com',
-    'url':          'http://www.bazaar.canonical.com/',
+    'url':          'http://bazaar.canonical.com/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
     'download_url': 'https://launchpad.net/bzr/+download',
@@ -553,7 +553,7 @@ elif 'py2exe' in sys.argv:
                                      version = version_str,
                                      description = META_INFO['description'],
                                      author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2009",
+                                     copyright = "(c) Canonical Ltd, 2005-2010",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
@@ -572,7 +572,7 @@ elif 'py2exe' in sys.argv:
     if sys.version.startswith('2.4'):
         # adding elementtree package
         additional_packages.add('elementtree')
-    elif sys.version.startswith('2.5'):
+    elif sys.version.startswith('2.6') or sys.version.startswith('2.5'):
         additional_packages.add('xml.etree')
     else:
         import warnings
@@ -624,7 +624,11 @@ elif 'py2exe' in sys.argv:
             excludes.extend(["bzrlib.plugins." + d for d in dirs])
         x = []
         for i in files:
-            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll", ".mo"]:
+            # Throw away files we don't want packaged. Note that plugins may
+            # have data files with all sorts of extensions so we need to
+            # be conservative here about what we ditch.
+            ext = os.path.splitext(i)[1]
+            if ext.endswith('~') or ext in [".pyc", ".swp"]:
                 continue
             if i == '__init__.py' and root == 'bzrlib/plugins':
                 continue
