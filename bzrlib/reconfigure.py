@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -368,7 +368,7 @@ class Reconfigure(object):
             local_branch = self.local_branch
         if self._create_reference:
             format = branch.BranchReferenceFormat().initialize(self.bzrdir,
-                reference_branch)
+                target_branch=reference_branch)
         if self._destroy_tree:
             self.bzrdir.destroy_workingtree()
         if self._create_tree:

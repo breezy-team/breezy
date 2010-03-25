@@ -567,7 +567,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     else:
                         # yield keys
                         for value in key_dict.itervalues():
-                            yield (self, ) + value
+                            yield (self, ) + tuple(value)
             else:
                 yield (self, ) + key_dict
 
