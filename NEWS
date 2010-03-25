@@ -13,6 +13,9 @@ bzr 2.2.0b1
 Compatibility Breaks
 ********************
 
+* BTreeGraphIndex can now take an offset to indicate that the data starts
+  somewhere other than then beginning of the file. (John Arbash Meinel)
+
 * Deleted very old hidden commands ``versionedfile-list``,
   ``weave-plan-merge``, ``weave-merge-text``.
   (Martin Pool)
