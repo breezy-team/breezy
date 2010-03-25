@@ -44,6 +44,11 @@ New Features
   to set file mtimes to the last timestamp of the last revision in which
   they were changed rather than the current time. (Jelmer Vernooij)
 
+* ``bzr pack`` now supports the ``--clean-obsolete-packs`` option that
+  can save disk space by deleting obsolete pack files created during the
+  pack operation.
+  (Parth Malwankar, #304320)
+
 * If the Apport crash-reporting tool is available, bzr crashes are now
   stored into the ``/var/crash`` apport spool directory, and the user is
   invited to report them to the developers from there, either
