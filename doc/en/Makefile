@@ -14,13 +14,16 @@ ALLSPHINXOPTS   = -d _build/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) .
 # Note that this assumes name of the output dir is same as name of the rule.
 define make_output_dirs
 # Create output directory (only needed for sphinx < 0.5)
-mkdir -p _build/$@
+[ -d _build ] || mkdir _build
+[ -d "_build/$@" ] || mkdir "_build/$@"
 # Workaround for a bug in sphinx < 0.5 where it tries to delete
 # nonexistent static dirs and does not catch the exception.  This was
 # fixed in svn+ssh://pythondev@svn.python.org/doctools/branches/0.4.x
 # at r65551 and merged as 280b62246342 in hg branch released as 0.5.
+[ -d "_build/$@/_static" ] || mkdir "_build/$@/_static"
 for fn in _static/*; do \
-    [ -d "$$fn" ] && mkdir -p "_build/$@/_static/$${fn#_static/}" || true; \
+    [ ! -d "$$fn" ] && continue; \
+    [ -d "_build/$@/$$fn" ] || mkdir "_build/$@/$$fn"; \
 done
 endef
 
