@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import os
 import time
 
 from bzrlib import (
@@ -134,15 +135,29 @@ def send(submit_branch, revision, public_branch, remember, format,
             directive.compose_merge_request(mail_client, mail_to, body,
                                             branch, tree)
         else:
-            if output == '-':
-                outfile = to_file
+            if directive.multiple_output_files:
+                if output == '-':
+                    raise errors.BzrCommandError('- not supported for '
+                        'merge directives that use more than one output file.')
+                if not os.path.exists(output):
+                    os.mkdir(output, 0755)
+                for (filename, lines) in directive.to_files():
+                    path = os.path.join(output, filename)
+                    outfile = open(path, 'wb')
+                    try:
+                        outfile.writelines(lines)
+                    finally:
+                        outfile.close()
             else:
-                outfile = open(output, 'wb')
-            try:
-                outfile.writelines(directive.to_lines())
-            finally:
-                if outfile is not to_file:
-                    outfile.close()
+                if output == '-':
+                    outfile = to_file
+                else:
+                    outfile = open(output, 'wb')
+                try:
+                    outfile.writelines(directive.to_lines())
+                finally:
+                    if outfile is not to_file:
+                        outfile.close()
     finally:
         branch.unlock()
 

@@ -42,7 +42,8 @@ _FILE_ATTR = stat.S_IFREG | FILE_PERMISSIONS
 _DIR_ATTR = stat.S_IFDIR | ZIP_DIRECTORY_BIT
 
 
-def zip_exporter(tree, dest, root, subdir, filtered=False):
+def zip_exporter(tree, dest, root, subdir, filtered=False,
+                 per_file_timestamps=False):
     """ Export this tree to a new zip file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -62,11 +63,15 @@ def zip_exporter(tree, dest, root, subdir, filtered=False):
 
             # zipfile.ZipFile switches all paths to forward
             # slashes anyway, so just stick with that.
+            if per_file_timestamps:
+                mtime = tree.get_file_mtime(ie.file_id, dp)
+            else:
+                mtime = now
             filename = osutils.pathjoin(root, dp).encode('utf8')
             if ie.kind == "file":
                 zinfo = zipfile.ZipInfo(
                             filename=filename,
-                            date_time=now)
+                            date_time=mtime)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
                 if filtered:
@@ -84,14 +89,14 @@ def zip_exporter(tree, dest, root, subdir, filtered=False):
                 # not just empty files.
                 zinfo = zipfile.ZipInfo(
                             filename=filename + '/',
-                            date_time=now)
+                            date_time=mtime)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _DIR_ATTR
                 zipf.writestr(zinfo,'')
             elif ie.kind == "symlink":
                 zinfo = zipfile.ZipInfo(
                             filename=(filename + '.lnk'),
-                            date_time=now)
+                            date_time=mtime)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
                 zipf.writestr(zinfo, ie.symlink_target)

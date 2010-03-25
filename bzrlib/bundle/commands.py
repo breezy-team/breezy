@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,7 +54,7 @@ class cmd_bundle_info(Command):
         from bzrlib import osutils
         term_encoding = osutils.get_terminal_encoding()
         bundle_info = read_mergeable_from_url(location)
-        if isinstance(bundle_info, merge_directive._BaseMergeDirective):
+        if isinstance(bundle_info, merge_directive.BaseMergeDirective):
             bundle_file = StringIO(bundle_info.get_raw_bundle())
             bundle_info = read_bundle(bundle_file)
         else:

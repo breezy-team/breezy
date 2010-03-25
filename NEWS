@@ -8,7 +8,6 @@ Bazaar Release Notes
 bzr 2.2.0b1
 ###########
 
-:Codename: ???
 :2.2.0b1: Not released yet
 
 Compatibility Breaks
@@ -31,8 +30,19 @@ Compatibility Breaks
   ``bzrlib.tests.test_server``.
   (Vincent Ladeuil)
 
+* ``BranchReferenceFormat.initialize()`` now takes an optional name argument
+  as its second parameter, for consistency with the initialize() method of
+  other formats. (Jelmer Vernooij)
+
 New Features
 ************
+
+* Added ``bzr remove-branch`` command that can remove a local or remote 
+  branch. (Jelmer Vernooij, #276295)
+
+* ``bzr export`` now takes an optional argument ``--per-file-timestamps``
+  to set file mtimes to the last timestamp of the last revision in which
+  they were changed rather than the current time. (Jelmer Vernooij)
 
 * If the Apport crash-reporting tool is available, bzr crashes are now
   stored into the ``/var/crash`` apport spool directory, and the user is
@@ -43,6 +53,21 @@ New Features
 * Parsing of command lines, for example in ``diff --using``, no longer
   treats backslash as an escape character on Windows.   (Gordon Tyler,
   #392248)
+
+* Plugins can be disabled by defining ``BZR_DISABLE_PLUGINS`` as
+  a list of plugin names separated by ':' (';' on windows).
+  (Vincent Ladeuil, #411413)
+
+* Plugins can be loaded from arbitrary locations by defining
+  ``BZR_PLUGINS_AT`` as a list of name@path separated by ':' (';' on
+  windows). This takes precedence over ``BZR_PLUGIN_PATH`` for the
+  specified plugins. This is targeted at plugin developers for punctual
+  needs and *not* intended to replace ``BZR_PLUGIN_PATH``.  
+  (Vincent Ladeuil, #82693)
+
+* Tag names can now be determined automatically by ``automatic_tag_name`` 
+  hooks on ``Branch`` if they are not specified on the command line.
+  (Jelmer Vernooij)
 
 * Tree-shape conflicts can be resolved by providing ``--take-this`` and
   ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
@@ -61,6 +86,11 @@ Bug Fixes
 * Allow exporting a single file using ``bzr export``.
   (Michal Junák, #511987)
 
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
 * Avoid infinite recursion when probing for apport.
   (Vincent Ladeuil, #516934)
 
@@ -70,11 +100,19 @@ Bug Fixes
 * ``bzr add`` will not add conflict related files unless explicitly required.
   (Vincent Ladeuil, #322767, #414589)
 
+* ``bzr dump-btree`` now works on ``*.cix`` and ``*.six`` files.  Those
+  indices do not have reference lists, so ``dump-btree`` will simply show
+  ``None`` instead.  (Andrew Bennetts, #488607)
+
 * ``bzr help`` will no longer trigger the get_missing_command hook when
   doing a topic lookup. This avoids prompting (like 'no command plugins/loom,
   did you mean log?') when getting help. In future we may trigger the hook 
   deliberately when no help topics match from any help index.
   (Robert Collins, #396261)
+
+* ``bzr log -n0 -r..A.B.C`` should not crash but just consider the None
+  revspec as representing the first revision of the branch.
+  (Vincent Ladeuil, #519862)
 
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
@@ -82,6 +120,10 @@ Bug Fixes
 * ``bzr resolve --take-this`` and ``--take-other`` now correctly renames
   the kept file on content conflicts where one side deleted the file.
   (Vincent Ladeuil, #529968)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
 
 * ``bzr upgrade`` now names backup directory as ``backup.bzr.~N~`` instead
   of ``backup.bzr``. This directory is ignored by bzr commands such as
@@ -91,6 +133,13 @@ Bug Fixes
 * Correctly interpret "451 Rename/move failure: Directory not empty" from
   ftp servers while trying to take a lock.
   (Martin Pool, #528722)
+
+* DirStateRevisionTree.kind() was returning wrong result when 'kind'
+  changes occured between the workingtree and one of its parents.
+  (Vincent Ladeuil, #533437)
+
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
 
 * Path conflicts now support --take-this and --take-other even when a
   deletion is involved.
@@ -117,16 +166,43 @@ Bug Fixes
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
 
+* ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
+  group ownership from the containing directory. This allow bzr to work
+  better with sudo.
+  (Parth Malwankar, #376388)
+
 API Changes
 ***********
+
+* ``bzrlib.merge_directive._BaseMergeDirective`` has been renamed to 
+  ``bzrlib.merge_directive.BaseMergeDirective`` and is now public.
+  (Jelmer Vernooij)
+
+* ``BranchFormat.initialize`` now takes an optional ``name`` of the colocated 
+  branch to create. (Jelmer Vernooij)
+
+* ``BzrDir.get_branch_transport`` now takes an optional ``name`` of the 
+  colocated branch to open. (Jelmer Vernooij)
+
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
 
 * New ``bzrlib.initialize`` is recommended for programs using bzrlib to 
   run when starting up; it sets up several things that previously needed
   to be done separately.
   (Martin Pool, #507710)
 
+* Exporters now support a ``per_file_timestamps`` argument to write out the 
+  timestamp of the commit in which a file revision was introduced.
+  (Jelmer Vernooij)
+
 * New method ``BzrDir.list_branches()`` that returns a sequence of branches 
   present in a control directory. (Jelmer Vernooij)
+
+* New transport methods ``readlink``, ``symlink`` and ``hardlink``.
+  (Neil Santos)
 
 * Remove unused ``CommandFailed`` exception.
   (Martin Pool)
@@ -149,6 +225,9 @@ Internals
 
 * ``bzrlib.errors.BoundBranchOutOfDate`` has a new field ``extra_help``
   which can be set to add extra help to the error. (Gary van der Merwe)
+
+* New method ``Branch.automatic_tag_name`` that can be used to find the
+  tag name for a particular revision automatically. (Jelmer Vernooij)
 
 * The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
   ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
@@ -191,6 +270,22 @@ bzr 2.1.1
 Bug Fixes
 *********
 
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
+
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
+
 * Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
 
 * Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
@@ -214,6 +309,14 @@ Documentation
 
 * Drop Google Analytics from the core docs as they caused problems
   in the CHM files. (Ian Clatworthy, #502010)
+
+API Changes
+***********
+
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
 
 
 bzr 2.1.0
@@ -573,8 +676,8 @@ Testing
   (Martin Pool)
 
 
-bzr 2.0.5 (not released yet)
-############################
+bzr 2.0.5
+#########
 
 :Codename:
 :2.0.5: NOT RELEASED YET

@@ -456,7 +456,12 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            refs_as_tuples = static_tuple.as_tuples(node[3])
+            try:
+                refs = node[3]
+            except IndexError:
+                refs_as_tuples = None
+            else:
+                refs_as_tuples = static_tuple.as_tuples(refs)
             as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
 
@@ -2433,7 +2438,11 @@ def _get_revision_range(revisionspec_list, branch, command_name):
             raise errors.BzrCommandError(
                 "bzr %s doesn't accept two revisions in different"
                 " branches." % command_name)
-        rev1 = start_spec.in_history(branch)
+        if start_spec.spec is None:
+            # Avoid loading all the history.
+            rev1 = RevisionInfo(branch, None, None)
+        else:
+            rev1 = start_spec.in_history(branch)
         # Avoid loading all of history when we know a missing
         # end of range means the last revision ...
         if end_spec.spec is None:
@@ -2806,9 +2815,12 @@ class cmd_export(Command):
         Option('root',
                type=str,
                help="Name of the root directory inside the exported file."),
+        Option('per-file-timestamps',
+               help='Set modification time of files to that of the last '
+                    'revision in which it was changed.'),
         ]
     def run(self, dest, branch_or_subdir=None, revision=None, format=None,
-        root=None, filters=False):
+        root=None, filters=False, per_file_timestamps=False):
         from bzrlib.export import export
 
         if branch_or_subdir is None:
@@ -2821,7 +2833,8 @@ class cmd_export(Command):
 
         rev_tree = _get_one_revision_tree('export', revision, branch=b, tree=tree)
         try:
-            export(rev_tree, dest, format, root, subdir, filtered=filters)
+            export(rev_tree, dest, format, root, subdir, filtered=filters,
+                   per_file_timestamps=per_file_timestamps)
         except errors.NoSuchExportFormat, e:
             raise errors.BzrCommandError('Unsupported export format: %s' % e.format)
 
@@ -5139,7 +5152,7 @@ class cmd_send(Command):
                short_name='f',
                type=unicode),
         Option('output', short_name='o',
-               help='Write merge directive to this file; '
+               help='Write merge directive to this file or directory; '
                     'use - for stdout.',
                type=unicode),
         Option('strict',
@@ -5255,10 +5268,15 @@ class cmd_tag(Command):
 
     To rename a tag (change the name but keep it on the same revsion), run ``bzr
     tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``.
+
+    If no tag name is specified it will be determined through the 
+    'automatic_tag_name' hook. This can e.g. be used to automatically tag
+    upstream releases by reading configure.ac. See ``bzr help hooks`` for
+    details.
     """
 
     _see_also = ['commit', 'tags']
-    takes_args = ['tag_name']
+    takes_args = ['tag_name?']
     takes_options = [
         Option('delete',
             help='Delete this tag rather than placing it.',
@@ -5274,7 +5292,7 @@ class cmd_tag(Command):
         'revision',
         ]
 
-    def run(self, tag_name,
+    def run(self, tag_name=None,
             delete=None,
             directory='.',
             force=None,
@@ -5284,6 +5302,8 @@ class cmd_tag(Command):
         branch.lock_write()
         self.add_cleanup(branch.unlock)
         if delete:
+            if tag_name is None:
+                raise errors.BzrCommandError("No tag specified to delete.")
             branch.tags.delete_tag(tag_name)
             self.outf.write('Deleted tag %s.\n' % tag_name)
         else:
@@ -5295,6 +5315,11 @@ class cmd_tag(Command):
                 revision_id = revision[0].as_revision_id(branch)
             else:
                 revision_id = branch.last_revision()
+            if tag_name is None:
+                tag_name = branch.automatic_tag_name(revision_id)
+                if tag_name is None:
+                    raise errors.BzrCommandError(
+                        "Please specify a tag name.")
             if (not force) and branch.tags.has_tag(tag_name):
                 raise errors.TagAlreadyExists(tag_name)
             branch.tags.set_tag(tag_name, revision_id)
@@ -5736,6 +5761,31 @@ class cmd_hooks(Command):
                     self.outf.write("    <no hooks installed>\n")
 
 
+class cmd_remove_branch(Command):
+    """Remove a branch.
+
+    This will remove the branch from the specified location but 
+    will keep any working tree or repository in place.
+
+    :Examples:
+
+      Remove the branch at repo/trunk::
+
+        bzr remove-branch repo/trunk
+
+    """
+
+    takes_args = ["location?"]
+
+    aliases = ["rmbranch"]
+
+    def run(self, location=None):
+        if location is None:
+            location = "."
+        branch = Branch.open_containing(location)[0]
+        branch.bzrdir.destroy_branch()
+        
+
 class cmd_shelve(Command):
     """Temporarily set aside some changes from the current tree.
 
@@ -5924,15 +5974,7 @@ class cmd_reference(Command):
             self.outf.write('%s %s\n' % (path, location))
 
 
-# these get imported and then picked up by the scan for cmd_*
-# TODO: Some more consistent way to split command definitions across files;
-# we do need to load at least some information about them to know of
-# aliases.  ideally we would avoid loading the implementation until the
-# details were needed.
 from bzrlib.cmd_version_info import cmd_version_info
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
-from bzrlib.bundle.commands import (
-    cmd_bundle_info,
-    )
 from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits
