@@ -617,7 +617,10 @@ class TestBTreeIndex(BTreeTestCase):
                                            reference_lists=ref_lists)
         builder.add_nodes(nodes)
         transport = self.get_transport('')
-        content = builder.finish().read()
+        # NamedTemporaryFile dies on builder.finish().read(). weird.
+        temp_file = builder.finish()
+        content = temp_file.read()
+        del temp_file
         size = len(content)
         transport.put_bytes('index', (' '*offset)+content)
         return btree_index.BTreeGraphIndex(transport, 'index', size=size,
