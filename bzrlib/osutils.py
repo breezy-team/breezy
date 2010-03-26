@@ -51,10 +51,9 @@ import unicodedata
 from bzrlib import (
     cache_utf8,
     errors,
+    trace,
     win32utils,
     )
-from bzrlib.smart import medium
-from bzrlib.tests import test_smart_transport
 """)
 
 from bzrlib.symbol_versioning import (
@@ -1810,6 +1809,52 @@ def copy_tree(from_path, to_path, handlers={}):
     for dir_info, entries in walkdirs(from_path, prefix=to_path):
         for relpath, name, kind, st, abspath in entries:
             real_handlers[kind](abspath, relpath)
+
+
+def copy_ownership(dst, src=None):
+    """Copy usr/grp ownership from src file/dir to dst file/dir.
+
+    If src is None, the containing directory is used as source. If chown
+    fails, the error is ignored and a warning is printed.
+    """
+    chown = getattr(os, 'chown', None)
+    if chown is None:
+        return
+
+    if src == None:
+        src = os.path.dirname(dst)
+        if src == '':
+            src = '.'
+
+    try:
+        s = os.stat(src)
+        chown(dst, s.st_uid, s.st_gid)
+    except OSError, e:
+        trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
+
+
+def mkdir_with_ownership(path, ownership_src=None):
+    """Create the directory 'path' with specified ownership.
+
+    If ownership_src is given, copies (chown) usr/grp ownership
+    from 'ownership_src' to 'path'. If ownership_src is None, use the
+    containing dir ownership.
+    """
+    os.mkdir(path)
+    copy_ownership(path, ownership_src)
+
+
+def open_with_ownership(filename, mode='r', bufsize=-1, ownership_src=None):
+    """Open the file 'filename' with the specified ownership.
+
+    If ownership_src is specified, copy usr/grp ownership from ownership_src
+    to filename. If ownership_src is None, copy ownership from containing
+    directory.
+    Returns the opened file object.
+    """
+    f = open(filename, mode, bufsize)
+    copy_ownership(filename, ownership_src)
+    return f
 
 
 def path_prefix_key(path):

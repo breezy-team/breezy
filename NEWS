@@ -13,6 +13,9 @@ bzr 2.2.0b1
 Compatibility Breaks
 ********************
 
+* BTreeGraphIndex can now take an offset to indicate that the data starts
+  somewhere other than then beginning of the file. (John Arbash Meinel)
+
 * Deleted very old hidden commands ``versionedfile-list``,
   ``weave-plan-merge``, ``weave-merge-text``.
   (Martin Pool)
@@ -37,6 +40,9 @@ Compatibility Breaks
 New Features
 ************
 
+* Added ``bzr remove-branch`` command that can remove a local or remote 
+  branch. (Jelmer Vernooij, #276295)
+
 * ``bzr export`` now takes an optional argument ``--per-file-timestamps``
   to set file mtimes to the last timestamp of the last revision in which
   they were changed rather than the current time. (Jelmer Vernooij)
@@ -50,6 +56,21 @@ New Features
 * Parsing of command lines, for example in ``diff --using``, no longer
   treats backslash as an escape character on Windows.   (Gordon Tyler,
   #392248)
+
+* Plugins can be disabled by defining ``BZR_DISABLE_PLUGINS`` as
+  a list of plugin names separated by ':' (';' on windows).
+  (Vincent Ladeuil, #411413)
+
+* Plugins can be loaded from arbitrary locations by defining
+  ``BZR_PLUGINS_AT`` as a list of name@path separated by ':' (';' on
+  windows). This takes precedence over ``BZR_PLUGIN_PATH`` for the
+  specified plugins. This is targeted at plugin developers for punctual
+  needs and *not* intended to replace ``BZR_PLUGIN_PATH``.  
+  (Vincent Ladeuil, #82693)
+
+* Tag names can now be determined automatically by ``automatic_tag_name`` 
+  hooks on ``Branch`` if they are not specified on the command line.
+  (Jelmer Vernooij)
 
 * Tree-shape conflicts can be resolved by providing ``--take-this`` and
   ``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
@@ -95,6 +116,10 @@ Bug Fixes
   deliberately when no help topics match from any help index.
   (Robert Collins, #396261)
 
+* ``bzr log -n0 -r..A.B.C`` should not crash but just consider the None
+  revspec as representing the first revision of the branch.
+  (Vincent Ladeuil, #519862)
+
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
 
@@ -129,6 +154,10 @@ Bug Fixes
   ``sock.sendall``).
   (Andrew Bennetts, Martin <gzlist@googlemail.com>, #496813)
 
+* Path conflicts now support --take-this and --take-other even when a
+  deletion is involved.
+  (Vincent Ladeuil, #531967)
+
 * Network transfer amounts and rates are now displayed in SI units according
   to the Ubuntu Units Policy <https://wiki.ubuntu.com/UnitsPolicy>.
   (Gordon Tyler, #514399)
@@ -146,6 +175,11 @@ Bug Fixes
 
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
+
+* ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
+  group ownership from the containing directory. This allow bzr to work
+  better with sudo.
+  (Parth Malwankar, #376388)
 
 API Changes
 ***********
@@ -202,6 +236,9 @@ Internals
 * ``bzrlib.errors.BoundBranchOutOfDate`` has a new field ``extra_help``
   which can be set to add extra help to the error. (Gary van der Merwe)
 
+* New method ``Branch.automatic_tag_name`` that can be used to find the
+  tag name for a particular revision automatically. (Jelmer Vernooij)
+
 * The methods ``BzrDir.create_branch()``, ``BzrDir.destroy_branch()`` and 
   ``BzrDir.open_branch()`` now take an optional ``name`` argument. 
   (Jelmer Vernooij)
@@ -215,6 +252,10 @@ Testing
 
 * Documentation about testing with ``subunit`` has been tweaked.
   (Robert Collins)
+
+* Known failures has been added for resolve --take-other on ParentLoop
+  conflicts. This reflects bug #537956 without fixing it.
+  (Vincent Ladeuil)
 
 * New ``bzrlib.tests.test_import_tariff`` can make assertions about what
   Python modules are loaded, to guard against startup time or library
