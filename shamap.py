@@ -26,7 +26,6 @@ import threading
 import bzrlib
 from bzrlib import (
     trace,
-    ui,
     )
 
 
@@ -103,20 +102,12 @@ class GitShaMap(object):
         raise NotImplementedError(self.add_entry)
 
     def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
-                    invdelta, shamap):
+                    entries):
         """Add multiple new entries to the database.
         """
         self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
-        for (oldpath, newpath, fileid, new_ie) in invdelta:
-            if newpath is None:
-                continue
-            if new_ie.kind in ("file", "symlink"):
-                self.add_entry(shamap[fileid], "blob",
-                    (fileid, new_ie.revision))
-            elif new_ie.kind == "directory":
-                self.add_entry(shamap[fileid], "tree", (fileid, revid))
-            else:
-                raise AssertionError
+        for (fileid, kind, hexsha, revision) in entries:
+            self.add_entry(hexsha, kind, (fileid, revision))
 
     def get_inventory_sha_map(self, revid):
         """Return the inventory SHA map for a revision.
@@ -259,17 +250,17 @@ class SqliteGitShaMap(GitShaMap):
         self.db.commit()
 
     def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
-                    invdelta, shamap):
+                    entries):
         self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
         trees = []
         blobs = []
-        for (oldpath, newpath, fileid, new_ie) in invdelta:
-            if newpath is None:
+        for (fileid, kind, hexsha, revision) in entries:
+            if kind is None:
                 continue
-            if new_ie.kind in ("file", "symlink"):
-                trees.append((shamap[fileid], "tree", (fileid, revid)))
-            elif new_ie.kind == "directory":
-                blobs.append((shamap[fileid], (fileid, new_ie.revision)))
+            if kind == "tree":
+                trees.append((hexsha, "tree", (fileid, revid)))
+            elif kind == "blob":
+                blobs.append((hexsha, (fileid, revision)))
             else:
                 raise AssertionError
         if trees:

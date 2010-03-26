@@ -318,8 +318,19 @@ def import_git_commit(repo, mapping, head, lookup_object,
             mapping, "", o.tree, base_inv, base_inv_shamap, base_ie, None,
             rev.revision_id, parent_invs, lookup_object,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
+    entries = []
+    for (oldpath, newpath, fileid, new_ie) in inv_delta:
+        if newpath is None:
+            entries.append((fileid, None, None, None))
+        else:
+            if new_ie.kind in ("file", "symlink"):
+                entries.append((fileid, "blob", shamap[fileid], new_ie.revision))
+            elif new_ie.kind == "directory":
+                entries.append((fileid, "tree", shamap[fileid], rev.revision_id))
+            else:
+                raise AssertionError
     target_git_object_retriever._idmap.add_entries(rev.revision_id,
-        rev.parent_ids, head, o.tree, inv_delta, shamap)
+        rev.parent_ids, head, o.tree, entries)
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)
