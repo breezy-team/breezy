@@ -151,18 +151,15 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _get_ie_object_or_sha1(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
-            try:
-                return self._idmap.lookup_tree(entry.file_id, inv.revision_id), None
-            except KeyError:
-                ret = self._get_ie_object(entry, inv, unusual_modes)
-                if ret is None:
-                    # Empty directory
-                    hexsha = None
-                else:
-                    hexsha = ret.id
-                self._idmap.add_entry(hexsha, "tree",
-                    (entry.file_id, inv.revision_id))
-                return hexsha, ret
+            ret = self._get_ie_object(entry, inv, unusual_modes)
+            if ret is None:
+                # Empty directory
+                hexsha = None
+            else:
+                hexsha = ret.id
+            self._idmap.add_entry(hexsha, "tree",
+                (entry.file_id, inv.revision_id))
+            return hexsha, ret
         elif entry.kind in ("file", "symlink"):
             try:
                 return self._idmap.lookup_blob(entry.file_id, entry.revision), None

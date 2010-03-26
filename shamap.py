@@ -89,10 +89,6 @@ class GitShaMap(object):
         for e in entries:
             self.add_entry(*e)
 
-    def lookup_tree(self, fileid, revid):
-        """Lookup the SHA of a git tree."""
-        raise NotImplementedError(self.lookup_tree)
-
     def lookup_blob(self, fileid, revid):
         """Lookup a blob by the fileid it has in a bzr revision."""
         raise NotImplementedError(self.lookup_blob)
@@ -142,12 +138,6 @@ class DictGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         return self.dict[sha]
 
-    def lookup_tree(self, fileid, revid):
-        for k, v in self.dict.iteritems():
-            if v == ("tree", (fileid, revid)):
-                return k
-        raise KeyError((fileid, revid))
-
     def lookup_blob(self, fileid, revid):
         for k, v in self.dict.iteritems():
             if v == ("blob", (fileid, revid)):
@@ -190,11 +180,11 @@ class SqliteGitShaMap(GitShaMap):
         create index if not exists blobs_sha1 on blobs(sha1);
         create unique index if not exists blobs_fileid_revid on blobs(fileid, revid);
         create table if not exists trees(
-            sha1 text not null check(length(sha1) == 40),
+            sha1 text unique not null check(length(sha1) == 40),
             fileid text not null,
             revid text not null
         );
-        create index if not exists trees_sha1 on trees(sha1);
+        create unique index if not exists trees_sha1 on trees(sha1);
         create unique index if not exists trees_fileid_revid on trees(fileid, revid);
 """)
 
@@ -249,12 +239,6 @@ class SqliteGitShaMap(GitShaMap):
             self.db.execute("replace into %ss (sha1, fileid, revid) values (?, ?, ?)" % type, (sha, type_data[0], type_data[1]))
         else:
             raise AssertionError("Unknown type %s" % type)
-
-    def lookup_tree(self, fileid, revid):
-        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid,revid)).fetchone()
-        if row is None:
-            raise KeyError((fileid, revid))
-        return row[0]
 
     def lookup_blob(self, fileid, revid):
         row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revid)).fetchone()
@@ -353,13 +337,6 @@ class TdbGitShaMap(GitShaMap):
             self.db["commit\0" + type_data[0]] = "\0".join((sha, type_data[1]))
         else:
             self.db["\0".join((type, type_data[0], type_data[1]))] = sha
-
-    def lookup_tree(self, fileid, revid):
-        sha = self.db["\0".join(("tree", fileid, revid))]
-        if sha == "":
-            return None
-        else:
-            return sha_to_hex(sha)
 
     def lookup_blob(self, fileid, revid):
         return sha_to_hex(self.db["\0".join(("blob", fileid, revid))])
