@@ -439,27 +439,32 @@ class IndexGitShaMap(GitShaMap):
     """
 
     def __init__(self, transport=None):
-        self._builder = None
+        self._transport = transport
         if transport is None:
-            self._transport = None
+            self._index_transport = None
             self._index = _mod_index.InMemoryGraphIndex(0, key_elements=3)
             self._builder = self._index
         else:
-            self._transport = transport
+            self._builder = None
             try:
-                format = self._transport.get_bytes('format')
+                transport.mkdir('index')
+            except bzrlib.errors.FileExists:
+                pass
+            self._index_transport = transport.clone('index')
+            try:
+                format = self._index_transport.get_bytes('format')
             except bzrlib.errors.NoSuchFile:
-                self._transport.put_bytes('format', INDEX_FORMAT)
+                self._index_transport.put_bytes('format', INDEX_FORMAT)
             else:
                 if format != INDEX_FORMAT:
                     trace.warning("SHA Map is incompatible (%s -> %s), rebuilding database.",
                                   format, INDEX_FORMAT)
                     raise KeyError
             self._index = _mod_index.CombinedGraphIndex([])
-            for name in self._transport.list_dir("."):
+            for name in self._index_transport.list_dir("."):
                 if not name.endswith(".rix"):
                     continue
-                x = _mod_btree_index.BTreeGraphIndex(self._transport, name, self._transport.stat(name).st_size)
+                x = _mod_btree_index.BTreeGraphIndex(self._index_transport, name, self._index_transport.stat(name).st_size)
                 self._index.insert_index(0, x)
 
     @classmethod
@@ -486,13 +491,13 @@ class IndexGitShaMap(GitShaMap):
         for _, key, value in self._index.iter_all_entries():
             self._builder.add_node(key, value)
         to_remove = []
-        for name in self._transport.list_dir('.'):
+        for name in self._index_transport.list_dir('.'):
             if name.endswith('.rix'):
                 to_remove.append(name)
         self.commit_write_group()
         del self._index.indices[1:]
         for name in to_remove:
-            self._transport.rename(name, name + '.old')
+            self._index_transport.rename(name, name + '.old')
 
     def start_write_group(self):
         assert self._builder is None
@@ -503,8 +508,8 @@ class IndexGitShaMap(GitShaMap):
         assert self._builder is not None
         stream = self._builder.finish()
         name = self._name.hexdigest() + ".rix"
-        size = self._transport.put_file(name, stream)
-        index = _mod_btree_index.BTreeGraphIndex(self._transport, name, size)
+        size = self._index_transport.put_file(name, stream)
+        index = _mod_btree_index.BTreeGraphIndex(self._index_transport, name, size)
         self._index.insert_index(0, index)
         self._builder = None
         self._name = None
