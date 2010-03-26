@@ -470,6 +470,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
 
 def get_svn_py2exe_info(includes, excludes, packages):
     packages.append('subvertpy')
+    packages.append('sqlite')
 
 
 if 'bdist_wininst' in sys.argv:
