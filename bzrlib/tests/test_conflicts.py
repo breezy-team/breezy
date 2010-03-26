@@ -313,6 +313,14 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
         Daughters classes are free to add their specific attributes as they see
         fit in any of the three dicts.
+
+        This is a class method so that load_tests can find it.
+
+        '_base_actions' in the commont dict, 'actions' and 'check' in the left
+        and right dicts use names that map to methods in the test classes. Some
+        prefixes are added to these names to get the correspong methods (see
+        _get_actions() and _get_check()). The motivation here is to avoid
+        collisions in the class namespace.
         """
         # Only concrete classes return actual scenarios
         return []
@@ -395,12 +403,13 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     @classmethod
     def scenarios(klass):
         base_scenarios = [
+            # File modified/deleted
             (dict(_base_actions='create_file',
                   _path='file', _file_id='file-id'),
-             ('file_modified', dict(actions='modify_file',
-                                    check='file_has_more_content')),
-             ('file_deleted', dict(actions='delete_file',
-                                   check='file_doesnt_exist')),),
+             ('file_modified',
+              dict(actions='modify_file', check='file_has_more_content')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_doesnt_exist')),),
             ]
         return mirror_scenarios(base_scenarios)
 
@@ -426,7 +435,6 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         self.assertEqual(self._file_id, c.file_id)
         self.assertEqual(self._path, c.path)
     _assert_conflict = assertContentsConflict
-
 
 
 class TestResolvePathConflict(TestParametrizedResolveConflicts):
