@@ -99,8 +99,22 @@ class GitShaMap(object):
             self.add_entry(*e)
 
     def lookup_blob(self, fileid, revid):
-        """Lookup a blob by the fileid it has in a bzr revision."""
+        """Lookup a blob by the fileid it has in a bzr revision.
+        
+        :param fileid: File id of the file
+        :param revid: Revision in which the file was changed
+        :return: SHA1
+        """
         raise NotImplementedError(self.lookup_blob)
+
+    def lookup_tree(self, fileid, revid):
+        """Lookup a blob by the fileid it has in a bzr revision.
+        
+        :param fileid: File id of the file
+        :param revid: Revision for which to find the tree
+        :return: SHA1
+        """
+        raise NotImplementedError(self.lookup_tree)
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
