@@ -160,7 +160,8 @@ class BazaarObjectStore(BaseObjectStore):
                     hexsha = None
                 else:
                     hexsha = ret.id
-                self._idmap.add_entry(hexsha, "tree", (entry.file_id, inv.revision_id))
+                self._idmap.add_entry(hexsha, "tree",
+                    (entry.file_id, inv.revision_id))
                 return hexsha, ret
         elif entry.kind in ("file", "symlink"):
             try:
