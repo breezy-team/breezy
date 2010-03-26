@@ -547,8 +547,8 @@ class IndexGitShaMap(GitShaMap):
         if type == "commit":
             self._add_node(("commit", type_data[0], "X"),
                 " ".join((hexsha, type_data[1])))
-        else:
-            self._add_node((type, type_data[0], type_data[1]), hexsha)
+        elif type == "blob":
+            self._add_node(("blob", type_data[0], type_data[1]), hexsha)
 
     def lookup_tree(self, fileid, revid):
         sha = self._get_entry(("tree", fileid, revid))
