@@ -151,24 +151,22 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _get_ie_object_or_sha1(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
-            try:
-                return self._idmap.lookup_tree(entry.file_id, inv.revision_id), None
-            except KeyError:
-                ret = self._get_ie_object(entry, inv, unusual_modes)
-                if ret is None:
-                    # Empty directory
-                    hexsha = None
-                else:
-                    hexsha = ret.id
-                self._idmap.add_entry(hexsha, "tree",
-                    (entry.file_id, inv.revision_id))
-                return hexsha, ret
+            ret = self._get_ie_object(entry, inv, unusual_modes)
+            if ret is None:
+                # Empty directory
+                hexsha = None
+            else:
+                hexsha = ret.id
+            self._idmap.add_entry(hexsha, "tree",
+                (entry.file_id, inv.revision_id))
+            return hexsha, ret
         elif entry.kind in ("file", "symlink"):
             try:
                 return self._idmap.lookup_blob(entry.file_id, entry.revision), None
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
-                self._idmap.add_entry(ret.id, "blob", (entry.file_id, entry.revision))
+                self._idmap.add_entry(ret.id, "blob", (entry.file_id,
+                    entry.revision))
                 return ret.id, ret
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
@@ -312,8 +310,8 @@ class BazaarObjectStore(BaseObjectStore):
                 raise KeyError(sha)
             unusual_modes = extract_unusual_modes(rev)
             try:
-                return self._get_tree(type_data[0], type_data[1], inv, unusual_modes,
-                                      expected_sha=sha)
+                return self._get_tree(type_data[0], type_data[1], inv,
+                    unusual_modes, expected_sha=sha)
             except errors.NoSuchRevision:
                 raise KeyError(sha)
         else:

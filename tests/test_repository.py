@@ -213,10 +213,19 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
 
     def object_iter(self):
         store = BazaarObjectStore(self.bzr_tree.branch.repository, default_mapping)
-        return MissingObjectsIterator(store, self.bzr_tree.branch.repository)
+        store_iterator = MissingObjectsIterator(store, self.bzr_tree.branch.repository)
+        return store, store_iterator
 
     def import_rev(self, revid, parent_lookup=None):
-        return self.object_iter().import_revision(revid)
+        store, store_iter = self.object_iter()
+        store._idmap.start_write_group()
+        try:
+            return store_iter.import_revision(revid)
+        except:
+            store._idmap.abort_write_group()
+            raise
+        else:
+            store._idmap.commit_write_group()
 
     def test_pointless(self):
         revid = self.bzr_tree.commit("pointless", timestamp=1205433193,
