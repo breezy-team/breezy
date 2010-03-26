@@ -86,6 +86,9 @@ Bug Fixes
 * Added docstring for ``Tree.iter_changes``
   (John Arbash Meinel, #304182)
 
+* Allow additional arguments to
+  ``RemoteRepository.add_inventory_by_delta()``. (Jelmer Vernooij, #532631)
+
 * Allow exporting a single file using ``bzr export``.
   (Michal Junák, #511987)
 
@@ -144,6 +147,13 @@ Bug Fixes
 * Fix stub sftp test server to call os.getcwdu().
   (Vincent Ladeuil, #526211, #526353)
 
+* Many IO operations that returned ``EINTR`` were retried even if it
+  wasn't safe to do so via careless use of ``until_no_eintr``.  Bazaar now
+  only retries operations that are safe to retry, and in some cases has
+  switched to operations that can be retried (e.g. ``sock.send`` rather than
+  ``sock.sendall``).
+  (Andrew Bennetts, Martin <gzlist@googlemail.com>, #496813)
+
 * Path conflicts now support --take-this and --take-other even when a
   deletion is involved.
   (Vincent Ladeuil, #531967)
@@ -162,9 +172,6 @@ Bug Fixes
 * SSH child processes will now ignore SIGQUIT on nix systems so breaking into
   the debugger won't kill the session.
   (Martin <gzlist@googlemail.com>, #162502)
-
-* Allow additional arguments to
-  ``RemoteRepository.add_inventory_by_delta()``. (Jelmer Vernooij, #532631)
 
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
