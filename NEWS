@@ -275,7 +275,10 @@ Testing
 bzr 2.1.1
 #########
 
-:2.1.1: not released yet
+:2.1.1: 2010-03-24
+
+This is a small bugfix release.  Upgrading is recommended for anyone
+running 2.1.0 or earlier.
 
 Bug Fixes
 *********
@@ -308,7 +311,6 @@ Bug Fixes
 * Warn if pyrex is too old to compile the new ``SimpleSet`` and
   ``StaticTuple`` extensions, rather than having the build fail randomly.
   (John Arbash Meinel, #449776)
-
 
 Documentation
 *************
@@ -709,6 +711,12 @@ Bug Fixes
   happen fairly often if the process is suddenly interrupted while taking
   a lock.
   (Martin Pool, #185103)
+
+* Give the warning about potentially slow cross-format fetches much
+  earlier on in the fetch operation.  Don't show this message during
+  upgrades, and show the correct format indication for remote
+  repositories.
+  (Martin Pool, #456077, #515356, #513157)
 
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
