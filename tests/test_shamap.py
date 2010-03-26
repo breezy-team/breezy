@@ -73,6 +73,14 @@ class TestGitShaMap:
         self.map.commit_write_group()
         self.assertEquals(["myrevid"], list(self.map.revids()))
 
+    def test_missing_revisions(self):
+        self.map.start_write_group()
+        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301",
+            "commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"))
+        self.map.commit_write_group()
+        self.assertEquals(set(["lala", "bla"]),
+            set(self.map.missing_revisions(["myrevid", "lala", "bla"])))
+
 
 class DictGitShaMapTests(TestCase,TestGitShaMap):
 
