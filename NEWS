@@ -4,8 +4,10 @@ bzr-grep 0.2.0-dev
   files that have not changed between revisions.
   (Parth Malwankar, #542375)
 
+* Faster grep for specific revision. (Parth Malwankar, #539429)
+
 * Added support for -F/--fixed-string for faster search.
-  Simple alphanumeric patterns are now implicitly -F and searched faster.
+  Simple patterns [a-zA-Z0-9 _] are now implicitly -F and searched faster.
   (Parth Malwankar, #539263)
 
 * Significant performance improvement. Working tree grep for bzr.dev
