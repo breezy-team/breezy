@@ -141,7 +141,8 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _get_ie_object(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
-            return self._get_tree(entry.file_id, inv.revision_id, inv, unusual_modes)
+            return self._get_tree(entry.file_id, inv.revision_id, inv,
+                unusual_modes)
         elif entry.kind == "symlink":
             return self._get_blob_for_symlink(entry.symlink_target)
         elif entry.kind == "file":
@@ -309,8 +310,8 @@ class BazaarObjectStore(BaseObjectStore):
                 raise KeyError(sha)
             unusual_modes = extract_unusual_modes(rev)
             try:
-                return self._get_tree(type_data[0], type_data[1], inv, unusual_modes,
-                                      expected_sha=sha)
+                return self._get_tree(type_data[0], type_data[1], inv,
+                    unusual_modes, expected_sha=sha)
             except errors.NoSuchRevision:
                 raise KeyError(sha)
         else:
