@@ -240,19 +240,6 @@ class SqliteGitShaMap(GitShaMap):
         return "%s(%r)" % (self.__class__.__name__, self.path)
     
     @classmethod
-    def remove_for_repository(cls, repository):
-        repository._transport.delete('git.db')
-
-    @classmethod
-    def exists_for_repository(cls, repository):
-        try:
-            transport = getattr(repository, "_transport", None)
-            if transport is not None:
-                return transport.has("git.db")
-        except bzrlib.errors.NotLocalUrl:
-            return False
-
-    @classmethod
     def from_repository(cls, repository):
         try:
             transport = getattr(repository, "_transport", None)
@@ -400,19 +387,6 @@ class TdbGitShaMap(GitShaMap):
         return "%s(%r)" % (self.__class__.__name__, self.path)
 
     @classmethod
-    def exists_for_repository(cls, repository):
-        try:
-            transport = getattr(repository, "_transport", None)
-            if transport is not None:
-                return transport.has("git.tdb")
-        except bzrlib.errors.NotLocalUrl:
-            return False
-
-    @classmethod
-    def remove_for_repository(cls, repository):
-        repository._transport.delete('git.tdb')
-
-    @classmethod
     def from_repository(cls, repository):
         try:
             transport = getattr(repository, "_transport", None)
@@ -487,38 +461,8 @@ class TdbGitShaMap(GitShaMap):
                 yield sha_to_hex(key[4:])
 
 
-def migrate(source, target):
-    """Migrate from one cache map to another."""
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
-        target.start_write_group()
-        try:
-            for i, sha in enumerate(source.sha1s()):
-                pb.update("migrating sha map", i)
-                (kind, info) = source.lookup_git_sha(sha)
-                target.add_entry(sha, kind, info)
-        except:
-            target.abort_write_group()
-            raise
-        else:
-            target.commit_write_group()
-    finally:
-        pb.finished()
-
-
 def from_repository(repository):
-    upgrade_from = []
     try:
-        shamap = TdbGitShaMap.from_repository(repository)
-        upgrade_from = [SqliteGitShaMap]
+        return TdbGitShaMap.from_repository(repository)
     except ImportError:
-        shamap = SqliteGitShaMap.from_repository(repository)
-    for cls in upgrade_from:
-        if not cls.exists_for_repository(repository):
-            continue
-        old_shamap = cls.from_repository(repository)
-        trace.info('Importing SHA map from %r into %r',
-            old_shamap, shamap)
-        migrate(old_shamap, shamap)
-        cls.remove_for_repository(repository)
-    return shamap
+        return SqliteGitShaMap.from_repository(repository)
