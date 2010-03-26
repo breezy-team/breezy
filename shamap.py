@@ -26,6 +26,7 @@ import threading
 import bzrlib
 from bzrlib import (
     trace,
+    ui,
     )
 
 
@@ -294,7 +295,7 @@ class SqliteGitShaMap(GitShaMap):
                 yield row
 
 
-TDB_MAP_VERSION = 2
+TDB_MAP_VERSION = 3
 TDB_HASH_SIZE = 50000
 
 
@@ -320,13 +321,13 @@ class TdbGitShaMap(GitShaMap):
                                           os.O_RDWR|os.O_CREAT)
             self.db = mapdbs()[path]
         try:
-            if int(self.db["version"]) != TDB_MAP_VERSION:
+            if int(self.db["version"]) not in (2, 3):
                 trace.warning("SHA Map is incompatible (%s -> %d), rebuilding database.",
                               self.db["version"], TDB_MAP_VERSION)
                 self.db.clear()
-                self.db["version"] = str(TDB_MAP_VERSION)
         except KeyError:
-            self.db["version"] = str(TDB_MAP_VERSION)
+            pass
+        self.db["version"] = str(TDB_MAP_VERSION)
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
@@ -367,8 +368,8 @@ class TdbGitShaMap(GitShaMap):
             self.db["git\0" + sha] = "\0".join((type, type_data[0], type_data[1]))
         if type == "commit":
             self.db["commit\0" + type_data[0]] = "\0".join((sha, type_data[1]))
-        else:
-            self.db["\0".join((type, type_data[0], type_data[1]))] = sha
+        elif type == "blob":
+            self.db["\0".join(("blob", type_data[0], type_data[1]))] = sha
 
     def lookup_blob(self, fileid, revid):
         return sha_to_hex(self.db["\0".join(("blob", fileid, revid))])
@@ -425,8 +426,13 @@ def migrate(source, target):
 
 
 def from_repository(repository):
-    shamap = SqliteGitShaMap.from_repository(repository)
-    for cls in ():
+    upgrade_from = []
+    try:
+        shamap = TdbGitShaMap.from_repository(repository)
+        upgrade_from = [SqliteGitShaMap]
+    except ImportError:
+        shamap = SqliteGitShaMap.from_repository(repository)
+    for cls in upgrade_from:
         if not cls.exists_for_repository(repository):
             continue
         old_shamap = cls.from_repository(repository)
