@@ -350,22 +350,6 @@ class TdbGitShaMap(GitShaMap):
     def remove_for_repository(cls, repository):
         repository._transport.delete('git.tdb')
 
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.path)
-
-    @classmethod
-    def exists_for_repository(cls, repository):
-        try:
-            transport = getattr(repository, "_transport", None)
-            if transport is not None:
-                return transport.has("git.tdb")
-        except bzrlib.errors.NotLocalUrl:
-            return False
-
-    @classmethod
-    def remove_for_repository(cls, repository):
-        repository._transport.delete('git.tdb')
-
     @classmethod
     def from_repository(cls, repository):
         try:
