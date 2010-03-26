@@ -148,6 +148,9 @@ Bug Fixes
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
 
+* ``bzr pull`` now uses the correct URL when a Launchpad URI is explicitly
+  defined as the pull location in locations.conf. (Gordon Tyler, #534787)
+
 API Changes
 ***********
 
