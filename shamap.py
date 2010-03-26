@@ -278,17 +278,15 @@ class SqliteGitShaMap(GitShaMap):
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
         """
-        def format(type, row):
-            return (type, (row[0], row[1]))
         row = self.db.execute("select revid, tree_sha from commits where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return format("commit", row)
+            return ("commit", row)
         row = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return format("blob", row)
+            return ("blob", row)
         row = self.db.execute("select fileid, revid from trees where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return format("tree", row)
+            return ("tree", row)
         raise KeyError(sha)
 
     def revids(self):
@@ -298,8 +296,8 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            for (row,) in self.db.execute("select sha1 from %s" % table):
-                yield row
+            for (sha,) in self.db.execute("select sha1 from %s" % table):
+                yield sha
 
 
 TDB_MAP_VERSION = 2
@@ -506,7 +504,10 @@ class IndexGitShaMap(GitShaMap):
         try:
             self._builder.add_node(key, value)
         except bzrlib.errors.BadIndexDuplicateKey:
-            pass # Multiple bzr objects can have the same contents
+            # Multiple bzr objects can have the same contents
+            return True
+        else:
+            return False
 
     def _get_entry(self, key):
         entries = self._index.iter_entries([key])
@@ -593,8 +594,13 @@ def migrate(source, target):
         try:
             for i, sha in enumerate(source.sha1s()):
                 pb.update("migrating sha map", i)
-                (kind, info) = source.lookup_git_sha(sha)
-                target.add_entry(sha, kind, info)
+                try:
+                    (kind, info) = source.lookup_git_sha(sha)
+                except KeyError:
+                    trace.warning("Inconsistency in %r: object with %s listed "
+                        "but does not exist.", source, sha)
+                else:
+                    target.add_entry(sha, kind, info)
         except:
             target.abort_write_group()
             raise
