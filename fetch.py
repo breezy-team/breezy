@@ -324,7 +324,8 @@ def import_git_commit(repo, mapping, head, lookup_object,
             mapping, "", o.tree, base_inv, base_inv_shamap, base_ie, None,
             rev.revision_id, parent_invs, lookup_object,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
-    target_git_object_retriever._idmap.add_entries(rev.revision_id, shamap)
+    target_git_object_retriever._idmap.add_entries(rev.revision_id,
+        rev.parent_ids, shamap)
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)

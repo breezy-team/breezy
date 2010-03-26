@@ -102,7 +102,7 @@ class GitShaMap(object):
         """
         raise NotImplementedError(self.add_entry)
 
-    def add_entries(self, revid, entries):
+    def add_entries(self, revid, parent_revids, entries):
         """Add multiple new entries to the database.
         """
         for e in entries:
@@ -262,7 +262,7 @@ class SqliteGitShaMap(GitShaMap):
     def commit_write_group(self):
         self.db.commit()
 
-    def add_entries(self, revid, entries):
+    def add_entries(self, revid, parent_revids, entries):
         trees = []
         blobs = []
         for sha, type, type_data in entries:
