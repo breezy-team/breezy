@@ -251,6 +251,18 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     :cvar _assert_conflict: A method receiving the working tree and the
         conflict object and checking its attributes.
 
+    :cvar _base_actions: The branchbuilder actions to create the 'base'
+        revision.
+
+    :cvar _this: The dict related to 'base' -> 'this'. It contains at least:
+      * 'actions': The branchbuilder actions to create the 'this'
+          revision.
+      * 'check': how to check the changes after resolution in with --take-this.
+
+    :cvar _other: The dict related to 'base' -> 'other'. It contains at least:
+      * 'actions': The branchbuilder actions to create the 'other'
+          revision.
+      * 'check': how to check the changes after resolution in with --take-other.
     """
 
     # Set by daughter classes
@@ -297,7 +309,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
           will be available as '_this' and '_other' test instance attributes.
 
         Daughters classes are free to add their specific attributes as they see
-        fit.
+        fit in any of the three dicts.
         """
         # Only concrete classes return actual scenarios
         return []
@@ -839,10 +851,9 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         self.failUnlessExists('branch/dir1/dir2/dir3/dir4')
 
     def _get_resolve_path_arg(self, wt, action):
-        # ParentLoop says: 
-        # moving <conflict_path> into <path>. Cancelled move.
+        # ParentLoop says: moving <conflict_path> into <path>. Cancelled move.
         # But since <path> doesn't exist in the working tree, we need to use
-        # <conflict_path> instead, and that, in turn, is given by dir_id.
+        # <conflict_path> instead, and that, in turn, is given by dir_id. Pfew.
         return wt.id2path(self._other['dir_id'])
 
     def assertParentLoop(self, wt, c):
