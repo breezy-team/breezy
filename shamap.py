@@ -27,9 +27,11 @@ import bzrlib
 from bzrlib import (
     btree_index as _mod_btree_index,
     index as _mod_index,
+    knit,
     osutils,
     trace,
     ui,
+    versionedfile,
     )
 
 # Data stored in the cache:
@@ -428,21 +430,24 @@ INDEX_FORMAT = 'bzr-git sha map version 1'
 
 
 class IndexGitShaMap(GitShaMap):
-    """SHA Map that uses the Bazaar Index API.
+    """SHA Map that uses the Bazaar APIs to store a cache.
 
-    Entries:
+    BTree Index file with the following contents:
 
-    ("git", <sha1>, "X") -> "<type> <type-data1> <type-data2>"
-    ("commit", <revid>, "X") -> "<sha1> <tree-id>"
-    ("tree", <fileid>, <revid>) -> "<sha1>"
-    ("blob", <fileid>, <revid>) -> "<sha1>"
+    ("git", <sha1>) -> "<type> <type-data1> <type-data2>"
+    ("commit", <revid>) -> "<sha1> <tree-id>"
+
+    CHKMap with the following contents:
+
+    revid -> map of:
+        fileid -> <sha1>
     """
 
     def __init__(self, transport=None):
         self._transport = transport
         if transport is None:
             self._index_transport = None
-            self._index = _mod_index.InMemoryGraphIndex(0, key_elements=3)
+            self._index = _mod_index.InMemoryGraphIndex(0, key_elements=2)
             self._builder = self._index
         else:
             self._builder = None
@@ -466,6 +471,8 @@ class IndexGitShaMap(GitShaMap):
                     continue
                 x = _mod_btree_index.BTreeGraphIndex(self._index_transport, name, self._index_transport.stat(name).st_size)
                 self._index.insert_index(0, x)
+            mapper = versionedfile.ConstantMapper("trees1")
+            self._trees_store = knit.make_file_factory(True, mapper)(transport)
 
     @classmethod
     def from_repository(cls, repository):
@@ -549,7 +556,7 @@ class IndexGitShaMap(GitShaMap):
                 yield entry[1]
 
     def lookup_commit(self, revid):
-        return self._get_entry(("commit", revid, "X"))[:40]
+        return self._get_entry(("commit", revid))[:40]
 
     def add_entry(self, hexsha, type, type_data):
         """Add a new entry to the database.
@@ -557,7 +564,7 @@ class IndexGitShaMap(GitShaMap):
         assert type in ("commit", "tree", "blob")
         if hexsha is not None:
             self._name.update(hexsha)
-            self._add_node(("git", hexsha, "X"),
+            self._add_node(("git", hexsha),
                 " ".join((type, type_data[0], type_data[1])))
         else:
             # This object is not represented in Git - perhaps an empty
@@ -565,25 +572,29 @@ class IndexGitShaMap(GitShaMap):
             hexsha = ""
             self._name.update(type + " ".join(type_data))
         if type == "commit":
-            self._add_node(("commit", type_data[0], "X"),
+            self._add_node(("commit", type_data[0]),
                 " ".join((hexsha, type_data[1])))
         elif type == "blob":
             self._add_node(("blob", type_data[0], type_data[1]), hexsha)
 
+    def _lookup_revision_map(self, revid):
+        # FIXME
+        return None
+
     def lookup_tree(self, fileid, revid):
-        sha = self._get_entry(("tree", fileid, revid))
+        sha = self._lookup_revision_map(revid)[fileid]
         if sha == "":
             return None
         else:
             return sha
 
     def lookup_blob(self, fileid, revid):
-        return self._get_entry(("blob", fileid, revid))
+        return self._lookup_revision_map(revid)[fileid]
 
     def lookup_git_sha(self, sha):
         if len(sha) == 20:
             sha = sha_to_hex(sha)
-        data = self._get_entry(("git", sha, "X")).split(" ", 2)
+        data = self._get_entry(("git", sha)).split(" ", 2)
         return (data[0], (data[1], data[2]))
 
     def revids(self):
@@ -595,7 +606,7 @@ class IndexGitShaMap(GitShaMap):
         """Return set of all the revisions that are not present."""
         missing_revids = set(revids)
         for _, key, value in self._index.iter_entries((
-            ("commit", revid, "X") for revid in revids)):
+            ("commit", revid) for revid in revids)):
             missing_revids.remove(key[1])
         return missing_revids
 
