@@ -157,9 +157,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
         else: 
             data = blob.data
         texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, data)])
-        shamap = [(hexsha, "blob", (ie.file_id, ie.revision))]
-    else:
-        shamap = []
+    shamap = { ie.file_id: hexsha }
     invdelta = []
     if base_ie is not None:
         old_path = base_inv.id2path(file_id)
@@ -249,7 +247,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
     # Remember for next time
     existing_children = set()
     child_modes = {}
-    shamap = []
+    shamap = {}
     tree = lookup_object(hexsha)
     for mode, name, child_hexsha in tree.entries():
         basename = name.decode("utf-8")
@@ -261,26 +259,22 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
                     base_inv_shamap, base_children.get(basename), file_id,
                     revision_id, parent_invs, lookup_object,
                     allow_submodules=allow_submodules)
-            invdelta.extend(subinvdelta)
-            child_modes.update(grandchildmodes)
-            shamap.extend(subshamap)
         elif S_ISGITLINK(mode): # submodule
             if not allow_submodules:
                 raise SubmodulesRequireSubtrees()
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
                     texts, mapping, child_path, child_hexsha, base_inv, base_children.get(basename),
                     file_id, revision_id, parent_invs, lookup_object)
-            invdelta.extend(subinvdelta)
-            child_modes.update(grandchildmodes)
-            shamap.extend(subshamap)
         else:
             subinvdelta, subshamap = import_git_blob(texts, mapping,
                     child_path, child_hexsha, base_inv, base_inv_shamap,
                     base_children.get(basename), file_id,
                     revision_id, parent_invs, lookup_object,
                     mode_is_executable(mode), stat.S_ISLNK(mode))
-            invdelta.extend(subinvdelta)
-            shamap.extend(subshamap)
+            grandchildmodes = {}
+        child_modes.update(grandchildmodes)
+        invdelta.extend(subinvdelta)
+        shamap.update(subshamap)
         if mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = mode
@@ -288,7 +282,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
     if base_ie is not None and base_ie.kind == "directory":
         invdelta.extend(remove_disappeared_children(base_inv.id2path(file_id),
             base_children, existing_children))
-    shamap.append((hexsha, "tree", (file_id, revision_id)))
+    shamap[file_id] = hexsha
     return invdelta, child_modes, shamap
 
 
@@ -324,7 +318,8 @@ def import_git_commit(repo, mapping, head, lookup_object,
             mapping, "", o.tree, base_inv, base_inv_shamap, base_ie, None,
             rev.revision_id, parent_invs, lookup_object,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
-    target_git_object_retriever._idmap.add_entries(rev.revision_id, shamap)
+    target_git_object_retriever._idmap.add_entries(rev.revision_id,
+        rev.parent_ids, head, o.tree, inv_delta, shamap)
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)
@@ -374,7 +369,6 @@ def import_git_objects(repo, mapping, object_iter,
     heads = list(set(heads))
     parent_invs_cache = lru_cache.LRUSizeCache(compute_size=approx_inv_size,
                                                max_size=MAX_INV_CACHE_SIZE)
-    target_git_object_retriever.start_write_group() # FIXME: try/finally
     # Find and convert commit objects
     while heads:
         if pb is not None:
@@ -391,8 +385,6 @@ def import_git_objects(repo, mapping, object_iter,
                 continue
             squash_revision(repo, rev)
             graph.append((o.id, o.parents))
-            target_git_object_retriever._idmap.add_entry(o.id, "commit",
-                    (rev.revision_id, o.tree))
             heads.extend([p for p in o.parents if p not in checked])
         elif isinstance(o, Tag):
             if o.object[1] not in checked:
@@ -410,23 +402,29 @@ def import_git_objects(repo, mapping, object_iter,
         revision_ids = revision_ids[:limit]
     last_imported = None
     for offset in range(0, len(revision_ids), batch_size):
-        repo.start_write_group()
+        target_git_object_retriever.start_write_group() 
         try:
-            for i, head in enumerate(revision_ids[offset:offset+batch_size]):
-                if pb is not None:
-                    pb.update("fetching revisions", offset+i, len(revision_ids))
-                import_git_commit(repo, mapping, head, lookup_object,
-                                  target_git_object_retriever,
-                                  parent_invs_cache)
-                last_imported = head
+            repo.start_write_group()
+            try:
+                for i, head in enumerate(revision_ids[offset:offset+batch_size]):
+                    if pb is not None:
+                        pb.update("fetching revisions", offset+i, len(revision_ids))
+                    import_git_commit(repo, mapping, head, lookup_object,
+                                      target_git_object_retriever,
+                                      parent_invs_cache)
+                    last_imported = head
+            except:
+                repo.abort_write_group()
+                raise
+            else:
+                hint = repo.commit_write_group()
+                if hint is not None:
+                    pack_hints.extend(hint)
         except:
-            repo.abort_write_group()
+            target_git_object_retriever.abort_write_group()
             raise
         else:
-            hint = repo.commit_write_group()
-            if hint is not None:
-                pack_hints.extend(hint)
-    target_git_object_retriever.commit_write_group()
+            target_git_object_retriever.commit_write_group()
     return pack_hints, last_imported
 
 

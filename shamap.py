@@ -36,6 +36,9 @@ from bzrlib import (
 from bzrlib.chk_map import (
     CHKMap,
     )
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
 
 # Data stored in the cache:
 # Git SHA -> Bazaar inventory entry / revision
@@ -115,11 +118,21 @@ class GitShaMap(object):
         """
         raise NotImplementedError(self.add_entry)
 
-    def add_entries(self, revid, entries):
+    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
+                    invdelta, shamap):
         """Add multiple new entries to the database.
         """
-        for e in entries:
-            self.add_entry(*e)
+        self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
+        for (oldpath, newpath, fileid, new_ie) in invdelta:
+            if newpath is None:
+                continue
+            if new_ie.kind in ("file", "symlink"):
+                self.add_entry(shamap[fileid], "blob",
+                    (fileid, new_ie.revision))
+            elif new_ie.kind == "directory":
+                self.add_entry(shamap[fileid], "tree", (fileid, revid))
+            else:
+                raise AssertionError
 
     def get_inventory_sha_map(self, revid):
         """Return the inventory SHA map for a revision.
@@ -131,7 +144,6 @@ class GitShaMap(object):
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
-
         :param sha: Git object sha
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
@@ -275,17 +287,18 @@ class SqliteGitShaMap(GitShaMap):
     def commit_write_group(self):
         self.db.commit()
 
-    def add_entries(self, entries):
+    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
+                    invdelta, shamap):
+        self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
         trees = []
         blobs = []
-        for sha, type, type_data in entries:
-            assert isinstance(type_data[0], str)
-            assert isinstance(type_data[1], str)
-            entry = (sha, type_data[0], type_data[1])
-            if type == "tree":
-                trees.append(entry)
-            elif type == "blob":
-                blobs.append(entry)
+        for (oldpath, newpath, fileid, new_ie) in invdelta:
+            if newpath is None:
+                continue
+            if new_ie.kind in ("file", "symlink"):
+                trees.append((shamap[fileid], "tree", (fileid, revid)))
+            elif new_ie.kind == "directory":
+                blobs.append((shamap[fileid], (fileid, new_ie.revision)))
             else:
                 raise AssertionError
         if trees:
@@ -618,10 +631,7 @@ class IndexGitShaMap(GitShaMap):
     def lookup_commit(self, revid):
         return self._get_entry(("commit", revid))[:40]
 
-    def add_entry(self, hexsha, type, type_data):
-        """Add a new entry to the database.
-        """
-        assert type in ("commit", "tree", "blob")
+    def _add_git_sha(self, hexsha, type, type_data):
         if hexsha is not None:
             self._name.update(hexsha)
             self._add_node(("git", hexsha),
@@ -629,13 +639,39 @@ class IndexGitShaMap(GitShaMap):
         else:
             # This object is not represented in Git - perhaps an empty
             # directory?
-            hexsha = ""
             self._name.update(type + " ".join(type_data))
-        if type == "commit":
-            self._add_node(("commit", type_data[0]),
-                " ".join((hexsha, type_data[1])))
-        #elif type == "blob":
-        #    self._add_node(("blob", type_data[0], type_data[1]), hexsha)
+
+    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
+                    invdelta, shamap):
+        if len(parent_revids) == 0:
+            baseshamap = self.get_inventory_sha_map(NULL_REVISION)
+        else:
+            baseshamap = self.get_inventory_sha_map(parent_revids[0])
+        self._add_git_sha(commit_sha, "commit", (revid, root_tree_sha))
+        self._add_node(("commit", revid),
+            " ".join((commit_sha, root_tree_sha)))
+        chk_delta = []
+        for (oldpath, newpath, fileid, ie) in invdelta:
+            if newpath is None:
+                # Removed
+                chk_delta.append(((fileid,), None, None))
+                continue
+            try:
+                hexsha = shamap[fileid]
+            except KeyError:
+                hexsha = baseshamap.lookup(fileid)
+            if ie.kind in ("file", "symlink"):
+                self._add_git_sha(hexsha, "blob", (fileid, ie.revision))
+            elif ie.kind == "directory":
+                self._add_git_sha(hexsha, "tree", (fileid, revid))
+            else:
+                raise AssertionError
+            if oldpath is None:
+                chk_delta.append((None, (fileid,), hex_to_sha(hexsha)))
+            else:
+                chk_delta.append(((fileid,), (fileid,), hex_to_sha(hexsha)))
+        (rootkey, ) = baseshamap.chkmap.apply_delta(chk_delta)
+        self._add_node(("invsha", revid), rootkey)
 
     def get_inventory_sha_map(self, revid):
 
@@ -644,7 +680,8 @@ class IndexGitShaMap(GitShaMap):
             def __init__(self, chkmap):
                 self.chkmap = chkmap
 
-            def lookup_tree(self, fileid):
+            def lookup(self, fileid):
+                assert type(fileid) is str
                 try:
                     sha = self.chkmap.iteritems([(fileid,)]).next()[1]
                 except StopIteration:
@@ -652,16 +689,19 @@ class IndexGitShaMap(GitShaMap):
                 if sha == "":
                     return None
                 else:
-                    return sha
+                    return sha_to_hex(sha)
 
-            def lookup_blob(self, fileid, revid):
-                try:
-                    return self.chkmap.iteritems([(fileid,)]).next()[1]
-                except StopIteration:
-                    raise KeyError(fileid)
+            def lookup_tree(self, fileid):
+                return self.lookup(fileid)
 
-        rootkey = self._get_entry(("invsha", revid))
-        return CHKMap(self._trees_store, rootkey)
+            def lookup_blob(self, fileid, revision_hint=None):
+                return self.lookup(fileid)
+
+        if revid == NULL_REVISION:
+            rootkey = CHKMap.from_dict(self._trees_store, {})
+        else:
+            rootkey = (self._get_entry(("invsha", revid)), )
+        return CHKInventorySHAMap(CHKMap(self._trees_store, rootkey))
 
     def lookup_git_sha(self, sha):
         if len(sha) == 20:

@@ -285,8 +285,6 @@ class BazaarObjectStore(BaseObjectStore):
                 raise AssertionError("Unknown object type '%s'" % type)
         except KeyError:
             return False
-        else:
-            return True
 
     def _lookup_git_sha(self, sha):
         # See if sha is in map
