@@ -64,7 +64,6 @@ class TestGitShaMap:
         self.assertEquals(
             ("tree", ("somepath", "myrevid")),
             self.map.lookup_git_sha(thesha))
-        self.assertEquals(thesha, self.map.lookup_tree("somepath", "myrevid"))
 
     def test_revids(self):
         self.map.start_write_group()

@@ -89,10 +89,6 @@ class GitShaMap(object):
         for e in entries:
             self.add_entry(*e)
 
-    def lookup_tree(self, fileid, revid):
-        """Lookup the SHA of a git tree."""
-        raise NotImplementedError(self.lookup_tree)
-
     def lookup_blob(self, fileid, revid):
         """Lookup a blob by the fileid it has in a bzr revision."""
         raise NotImplementedError(self.lookup_blob)
@@ -142,12 +138,6 @@ class DictGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         return self.dict[sha]
 
-    def lookup_tree(self, fileid, revid):
-        for k, v in self.dict.iteritems():
-            if v == ("tree", (fileid, revid)):
-                return k
-        raise KeyError((fileid, revid))
-
     def lookup_blob(self, fileid, revid):
         for k, v in self.dict.iteritems():
             if v == ("blob", (fileid, revid)):
@@ -190,13 +180,29 @@ class SqliteGitShaMap(GitShaMap):
         create index if not exists blobs_sha1 on blobs(sha1);
         create unique index if not exists blobs_fileid_revid on blobs(fileid, revid);
         create table if not exists trees(
-            sha1 text not null check(length(sha1) == 40),
+            sha1 text unique not null check(length(sha1) == 40),
             fileid text not null,
             revid text not null
         );
-        create index if not exists trees_sha1 on trees(sha1);
+        create unique index if not exists trees_sha1 on trees(sha1);
         create unique index if not exists trees_fileid_revid on trees(fileid, revid);
 """)
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.path)
+    
+    @classmethod
+    def remove_for_repository(cls, repository):
+        repository._transport.delete('git.db')
+
+    @classmethod
+    def exists_for_repository(cls, repository):
+        try:
+            transport = getattr(repository, "_transport", None)
+            if transport is not None:
+                return transport.has("git.db")
+        except bzrlib.errors.NotLocalUrl:
+            return False
 
     @classmethod
     def from_repository(cls, repository):
@@ -249,12 +255,6 @@ class SqliteGitShaMap(GitShaMap):
             self.db.execute("replace into %ss (sha1, fileid, revid) values (?, ?, ?)" % type, (sha, type_data[0], type_data[1]))
         else:
             raise AssertionError("Unknown type %s" % type)
-
-    def lookup_tree(self, fileid, revid):
-        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid,revid)).fetchone()
-        if row is None:
-            raise KeyError((fileid, revid))
-        return row[0]
 
     def lookup_blob(self, fileid, revid):
         row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revid)).fetchone()
@@ -328,6 +328,22 @@ class TdbGitShaMap(GitShaMap):
         except KeyError:
             self.db["version"] = str(TDB_MAP_VERSION)
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.path)
+
+    @classmethod
+    def exists_for_repository(cls, repository):
+        try:
+            transport = getattr(repository, "_transport", None)
+            if transport is not None:
+                return transport.has("git.tdb")
+        except bzrlib.errors.NotLocalUrl:
+            return False
+
+    @classmethod
+    def remove_for_repository(cls, repository):
+        repository._transport.delete('git.tdb')
+
     @classmethod
     def from_repository(cls, repository):
         try:
@@ -353,13 +369,6 @@ class TdbGitShaMap(GitShaMap):
             self.db["commit\0" + type_data[0]] = "\0".join((sha, type_data[1]))
         else:
             self.db["\0".join((type, type_data[0], type_data[1]))] = sha
-
-    def lookup_tree(self, fileid, revid):
-        sha = self.db["\0".join(("tree", fileid, revid))]
-        if sha == "":
-            return None
-        else:
-            return sha_to_hex(sha)
 
     def lookup_blob(self, fileid, revid):
         return sha_to_hex(self.db["\0".join(("blob", fileid, revid))])
@@ -394,3 +403,35 @@ class TdbGitShaMap(GitShaMap):
         for key in self.db.iterkeys():
             if key.startswith("git\0"):
                 yield sha_to_hex(key[4:])
+
+
+def migrate(source, target):
+    """Migrate from one cache map to another."""
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        target.start_write_group()
+        try:
+            for i, sha in enumerate(source.sha1s()):
+                pb.update("migrating sha map", i)
+                (kind, info) = source.lookup_git_sha(sha)
+                target.add_entry(sha, kind, info)
+        except:
+            target.abort_write_group()
+            raise
+        else:
+            target.commit_write_group()
+    finally:
+        pb.finished()
+
+
+def from_repository(repository):
+    shamap = SqliteGitShaMap.from_repository(repository)
+    for cls in ():
+        if not cls.exists_for_repository(repository):
+            continue
+        old_shamap = cls.from_repository(repository)
+        trace.info('Importing SHA map from %r into %r',
+            old_shamap, shamap)
+        migrate(old_shamap, shamap)
+        cls.remove_for_repository(repository)
+    return shamap

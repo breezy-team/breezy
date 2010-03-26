@@ -41,8 +41,7 @@ from bzrlib.plugins.git.mapping import (
     mapping_registry,
     )
 from bzrlib.plugins.git.shamap import (
-    SqliteGitShaMap,
-    TdbGitShaMap,
+    from_repository as idmap_from_repository,
     )
 
 
@@ -62,7 +61,7 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping = default_mapping
         else:
             self.mapping = mapping
-        self._idmap = SqliteGitShaMap.from_repository(repository)
+        self._idmap = idmap_from_repository(repository)
         self.start_write_group = self._idmap.start_write_group
         self.abort_write_group = self._idmap.abort_write_group
         self.commit_write_group = self._idmap.commit_write_group
@@ -83,11 +82,15 @@ class BazaarObjectStore(BaseObjectStore):
             missing_revids.update(heads)
         if NULL_REVISION in missing_revids:
             missing_revids.remove(NULL_REVISION)
+        missing_revids = self.repository.has_revisions(missing_revids)
+        if not missing_revids:
+            return
         self.start_write_group()
         try:
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 for i, revid in enumerate(graph.iter_topo_order(missing_revids)):
+                    trace.mutter('processing %r', revid)
                     pb.update("updating git map", i, len(missing_revids))
                     self._update_sha_map_revision(revid)
             finally:
@@ -141,7 +144,8 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _get_ie_object(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
-            return self._get_tree(entry.file_id, inv.revision_id, inv, unusual_modes)
+            return self._get_tree(entry.file_id, inv.revision_id, inv,
+                unusual_modes)
         elif entry.kind == "symlink":
             return self._get_blob_for_symlink(entry.symlink_target)
         elif entry.kind == "file":
