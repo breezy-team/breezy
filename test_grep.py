@@ -73,12 +73,21 @@ class TestGrep(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr(['grep', 'line1', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt:line1", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 2) # finds line1 and line10
 
-        out, err = self.run_bzr(['grep', 'line\d', 'file0.txt'])
+        out, err = self.run_bzr(['grep', 'line\d+', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt:line1", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 10)
 
+        # unknown file is not grepped unless explicitely specified
         out, err = self.run_bzr(['grep', 'line1'])
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 0)
+
+        # unknown file is not grepped unless explicitely specified
+        out, err = self.run_bzr(['grep', 'line1$'])
+        self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 0)
 
     def test_ver_basic_file(self):
         """(versioned) Search for pattern in specfic file.
@@ -90,9 +99,16 @@ class TestGrep(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr(['grep', '-r', '1', 'line1', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt~1:line1", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 2) # finds line1 and line10
 
+        out, err = self.run_bzr(['grep', '-r', '1', 'line[0-9]$', 'file0.txt'])
+        self.assertContainsRe(out, "file0.txt~1:line1", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 9)
+
+        # finds all the lines
         out, err = self.run_bzr(['grep', '-r', '1', 'line[0-9]', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt~1:line1", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 10)
 
     def test_wtree_basic_file(self):
         """(wtree) Search for pattern in specfic file.
@@ -105,15 +121,19 @@ class TestGrep(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr(['grep', 'ABC', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt:ABC", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 1)
 
         out, err = self.run_bzr(['grep', '[A-Z]{3}', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt:ABC", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 1)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', 'ABC', 'file0.txt'])
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 0)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '[A-Z]{3}', 'file0.txt'])
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 0)
 
     def test_ver_basic_include(self):
         """(versioned) Ensure that -I flag is respected.
@@ -130,24 +150,32 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "file0.aa~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb~.:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # two lines each (line1, line10) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 4)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1',
-            '--include', '*.aa', '--include', '*.bb', 'line\d'])
+            '--include', '*.aa', '--include', '*.bb', 'line1$'])
         self.assertContainsRe(out, "file0.aa~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb~.:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # one lines each (line1) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 2)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1',
             '-I', '*.aa', '-I', '*.bb', 'line1'])
         self.assertContainsRe(out, "file0.aa~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb~.:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # two lines each (line1, line10) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 4)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1',
-            '-I', '*.aa', '-I', '*.bb', 'line\d'])
+            '-I', '*.aa', '-I', '*.bb', 'line1$'])
         self.assertContainsRe(out, "file0.aa~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb~.:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # one lines each (line1) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 2)
 
     def test_wtree_basic_include(self):
         """(wtree) Ensure that --include flag is respected.
@@ -164,12 +192,16 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "file0.aa:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # two lines each (line1, line10) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 4)
 
         out, err = self.run_bzr(['grep', '--include', '*.aa',
-            '--include', '*.bb', 'line\d'])
+            '--include', '*.bb', 'line1$'])
         self.assertContainsRe(out, "file0.aa:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # one line each (line1) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 2)
 
     def test_ver_basic_exclude(self):
         """(versioned) Ensure that --exclude flag is respected.
@@ -183,21 +215,29 @@ class TestGrep(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr(['grep', '-r', 'last:1',
             '--exclude', '*.cc', 'line1'])
-        self.assertContainsRe(out, "file0.aa~.:line1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "file0.bb~.:line1", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "file0.aa~.:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "file0.bb~.:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "file0.aa~.:line10", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "file0.bb~.:line10", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # two lines each (line1, line10) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 4)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1',
-            '--exclude', '*.cc', 'line\d'])
+            '--exclude', '*.cc', 'line1$'])
         self.assertContainsRe(out, "file0.aa~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb~.:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # one line each (line1) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 2)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1',
             '-X', '*.cc', 'line1'])
         self.assertContainsRe(out, "file0.aa~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb~.:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # two lines each (line1, line10) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 4)
 
     def test_wtree_basic_exclude(self):
         """(wtree) Ensure that --exclude flag is respected.
@@ -213,11 +253,15 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "file0.aa:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # two lines each (line1, line10) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 4)
 
-        out, err = self.run_bzr(['grep', '--exclude', '*.cc', 'lin.\d'])
+        out, err = self.run_bzr(['grep', '--exclude', '*.cc', 'lin.1$'])
         self.assertContainsRe(out, "file0.aa:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.bb:line1", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.cc", flags=TestGrep._reflags)
+        # one line each (line1) from file0.aa and file0.bb
+        self.assertTrue(len(out.splitlines()) == 2)
 
     def test_ver_multiple_files(self):
         """(versioned) Search for pattern in multiple files.
@@ -229,13 +273,14 @@ class TestGrep(tests.TestCaseWithTransport):
         self._mk_versioned_file('file1.txt', total_lines=2)
         self._mk_versioned_file('file2.txt', total_lines=2)
 
-        out, err = self.run_bzr(['grep', '-r', 'last:1', 'line[1-2]'])
+        out, err = self.run_bzr(['grep', '-r', 'last:1', 'line[1-2]$'])
         self.assertContainsRe(out, "file0.txt~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.txt~.:line2", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file1.txt~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file1.txt~.:line2", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file2.txt~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file2.txt~.:line2", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 6)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', 'line'])
         self.assertContainsRe(out, "file0.txt~.:line1", flags=TestGrep._reflags)
@@ -244,6 +289,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "file1.txt~.:line2", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file2.txt~.:line1", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file2.txt~.:line2", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 6)
 
     def test_multiple_wtree_files(self):
         """(wtree) Search for pattern in multiple files in working tree.
