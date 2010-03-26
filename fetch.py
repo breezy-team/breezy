@@ -205,8 +205,9 @@ def remove_disappeared_children(path, base_children, existing_children):
     return ret
 
 
-def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
-    revision_id, parent_invs, shagitmap, lookup_object, allow_submodules=False):
+def import_git_tree(texts, mapping, path, hexsha, base_inv, base_inv_trees,
+    base_ie, parent_id, revision_id, parent_invs, shagitmap, lookup_object,
+    allow_submodules=False):
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
@@ -228,7 +229,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
     else:
         # See if this has changed at all
         try:
-            base_sha = shagitmap.lookup_tree(file_id, base_inv.revision_id)
+            base_sha = base_inv_trees[file_id]
         except KeyError:
             pass
         else:
@@ -255,8 +256,8 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_ie, parent_id,
         if stat.S_ISDIR(mode):
             subinvdelta, grandchildmodes, subshamap = import_git_tree(
                     texts, mapping, child_path, child_hexsha, base_inv,
-                    base_children.get(basename), file_id, revision_id,
-                    parent_invs, shagitmap, lookup_object,
+                    base_inv_trees, base_children.get(basename), file_id,
+                    revision_id, parent_invs, shagitmap, lookup_object,
                     allow_submodules=allow_submodules)
             invdelta.extend(subinvdelta)
             child_modes.update(grandchildmodes)
@@ -311,12 +312,15 @@ def import_git_commit(repo, mapping, head, lookup_object,
     if parent_invs == []:
         base_inv = Inventory(root_id=None)
         base_ie = None
+        base_inv_trees = {}
     else:
         base_inv = parent_invs[0]
         base_ie = base_inv.root
+        base_inv_trees = {} # FIXME: Fill this in, mapping fileid -> tree sha1
     inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
-            mapping, "", o.tree, base_inv, base_ie, None, rev.revision_id,
-            parent_invs, target_git_object_retriever._idmap, lookup_object,
+            mapping, "", o.tree, base_inv, base_inv_trees, base_ie, None,
+            rev.revision_id, parent_invs, target_git_object_retriever._idmap,
+            lookup_object,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
     target_git_object_retriever._idmap.add_entries(shamap)
     if unusual_modes != {}:

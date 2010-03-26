@@ -443,7 +443,14 @@ def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
             mode = unusual_modes[ie.file_id]
         except KeyError:
             mode = entry_mode(ie)
-        hexsha = lookup_ie_sha1(ie)
+        if ie.kind == 'directory':
+            subtree = directory_to_tree(ie, lookup_ie_sha1, unusual_modes)
+            if subtree is None:
+                hexsha = None
+            else:
+                hexsha = subtree.id
+        else:
+            hexsha = lookup_ie_sha1(ie)
         if hexsha is not None:
             tree.add(mode, name.encode("utf-8"), hexsha)
     if entry.parent_id is not None and len(tree) == 0:
