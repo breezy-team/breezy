@@ -242,7 +242,12 @@ def _open_bzr_log():
     _rollover_trace_maybe(_bzr_log_filename)
     try:
         buffering = 0 # unbuffered
-        bzr_log_file = osutils.open_with_ownership(_bzr_log_filename, 'at', buffering)
+        if os.path.exists(_bzr_log_filename):
+            bzr_log_file = open(_bzr_log_filename, 'at', buffering=buffering)
+        else:
+            # create log file with ownership of containing directory
+            bzr_log_file = osutils.open_with_ownership(_bzr_log_filename,
+                'at', buffering)
         # bzr_log_file.tell() on windows always return 0 until some writing done
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
