@@ -215,6 +215,28 @@ class TestResolveTextConflicts(TestResolveConflicts):
     pass
 
 
+def mirror_scenarios(base_scenarios):
+    """Return a list of mirrored scenarios.
+
+    Each scenario in base_scenarios is duplicated switching the roles of 'this'
+    and 'other'
+    """
+    scenarios = []
+    common = [c for c, l, r in base_scenarios]
+    left = [l for c, l, r in base_scenarios]
+    right = [r for c, l, r in base_scenarios]
+    for common, (lname, ldict), (rname, rdict) in zip(common, left, right):
+        a = tests.multiply_scenarios([(lname, dict(_this=ldict))],
+                                     [(rname, dict(_other=rdict))])
+        b = tests.multiply_scenarios([(rname, dict(_this=rdict))],
+                                     [(lname, dict(_other=ldict))])
+        # Inject the common parameters in all scenarios
+        for name, d in a + b:
+            d.update(common)
+        scenarios.extend(a + b)
+    return scenarios
+
+
 # FIXME: Get rid of parametrized (in the class name) once we delete
 # TestResolveConflicts -- vila 20100308
 class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
@@ -273,25 +295,6 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _base_actions = None
     _this = None
     _other = None
-
-    @classmethod
-    def mirror_scenarios(klass, base_scenarios):
-        scenarios = []
-        # Each base scenario is duplicated switching the roles of 'this' and
-        # 'other'
-        common = [c for c, l, r in base_scenarios]
-        left = [l for c, l, r in base_scenarios]
-        right = [r for c, l, r in base_scenarios]
-        for common, (lname, ldict), (rname, rdict) in zip(common, left, right):
-            a = tests.multiply_scenarios([(lname, dict(_this=ldict))],
-                                         [(rname, dict(_other=rdict))])
-            b = tests.multiply_scenarios([(rname, dict(_this=rdict))],
-                                         [(lname, dict(_other=ldict))])
-            # Inject the common parameters in all scenarios
-            for name, d in a + b:
-                d.update(common)
-            scenarios.extend(a + b)
-        return scenarios
 
     @classmethod
     def scenarios(klass):
@@ -399,7 +402,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
              ('file_deleted', dict(actions='delete_file',
                                    check='file_doesnt_exist')),),
             ]
-        return klass.mirror_scenarios(base_scenarios)
+        return mirror_scenarios(base_scenarios)
 
     def do_create_file(self):
         return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
@@ -476,7 +479,7 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
               dict(actions='rename_dir2', check='dir_renamed2',
                    path='new-dir2', file_id='dir-id')),),
         ]
-        return klass.mirror_scenarios(base_scenarios)
+        return mirror_scenarios(base_scenarios)
 
     def do_create_file(self):
         return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
@@ -577,7 +580,7 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
               dict(actions='create_file_b', check='file_content_b',
                    path='file', file_id='file-b-id')),),
             ]
-        return klass.mirror_scenarios(base_scenarios)
+        return mirror_scenarios(base_scenarios)
 
     def do_nothing(self):
         return []
@@ -808,7 +811,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
               dict(actions='move_dir3_into_dir2', check='dir3_4_moved',
                    dir_id='dir3-id', target_id='dir2-id', xfail=True))),
             ]
-        return klass.mirror_scenarios(base_scenarios)
+        return mirror_scenarios(base_scenarios)
 
     def do_create_dir1_dir2(self):
         return [('add', ('dir1', 'dir1-id', 'directory', '')),
