@@ -210,6 +210,7 @@ class TestUrlToPath(TestCase):
         test('http://foo/bar/baz', 'http://foo', 'bar/baz')
         test('http://foo/baz', 'http://foo', 'bar/../baz')
         test('http://foo/baz', 'http://foo/bar/', '../baz')
+        test('lp:foo/bar', 'lp:foo', 'bar')
 
         # Absolute paths
         test('http://foo', 'http://foo') # abs url with nothing is preserved.
@@ -219,6 +220,7 @@ class TestUrlToPath(TestCase):
         test('http://bar/', 'http://foo', 'http://bar/')
         test('http://bar/a', 'http://foo', 'http://bar/a')
         test('http://bar/a/', 'http://foo', 'http://bar/a/')
+        test('lp:bar', 'http://foo', 'lp:bar')
 
         # From a base path
         test('file:///foo', 'file:///', 'foo')
