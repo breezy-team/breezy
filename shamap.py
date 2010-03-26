@@ -96,18 +96,18 @@ class InventorySHAMap(object):
 class GitShaMap(object):
     """Git<->Bzr revision id mapping database."""
 
-    def add_entry(self, sha, type, type_data):
+    def _add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """
-        raise NotImplementedError(self.add_entry)
+        raise NotImplementedError(self._add_entry)
 
     def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
                     entries):
         """Add multiple new entries to the database.
         """
-        self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
+        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
         for (fileid, kind, hexsha, revision) in entries:
-            self.add_entry(hexsha, kind, (fileid, revision))
+            self._add_entry(hexsha, kind, (fileid, revision))
 
     def get_inventory_sha_map(self, revid):
         """Return the inventory SHA map for a revision.
@@ -156,7 +156,7 @@ class DictGitShaMap(GitShaMap):
         self._by_sha = {}
         self._by_fileid = {}
 
-    def add_entry(self, sha, type, type_data):
+    def _add_entry(self, sha, type, type_data):
         self._by_sha[sha] = (type, type_data)
         if type in ("blob", "tree"):
             self._by_fileid.setdefault(type_data[1], {})[type_data[0]] = sha
@@ -251,7 +251,7 @@ class SqliteGitShaMap(GitShaMap):
 
     def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
                     entries):
-        self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
+        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
         trees = []
         blobs = []
         for (fileid, kind, hexsha, revision) in entries:
@@ -269,7 +269,7 @@ class SqliteGitShaMap(GitShaMap):
             self.db.executemany("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", blobs)
 
 
-    def add_entry(self, sha, type, type_data):
+    def _add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """
         assert isinstance(type_data, tuple)
@@ -390,7 +390,7 @@ class TdbGitShaMap(GitShaMap):
     def lookup_commit(self, revid):
         return sha_to_hex(self.db["commit\0" + revid][:20])
 
-    def add_entry(self, hexsha, type, type_data):
+    def _add_entry(self, hexsha, type, type_data):
         """Add a new entry to the database.
         """
         if hexsha is None:

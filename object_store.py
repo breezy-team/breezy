@@ -128,7 +128,8 @@ class BazaarObjectStore(BaseObjectStore):
             if foreign_revid != commit_obj.id:
                 if not "fix-shamap" in debug.debug_flags:
                     raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
-        self._idmap.add_entry(commit_obj.id, "commit", (revid, tree_sha))
+        self._idmap.add_entries(revid, rev.parent_ids, commit_obj.id, 
+            tree_sha, [])
 
     def _check_expected_sha(self, expected_sha, object):
         if expected_sha is None:
@@ -166,7 +167,7 @@ class BazaarObjectStore(BaseObjectStore):
                     hexsha = None
                 else:
                     hexsha = ret.id
-                self._idmap.add_entry(hexsha, "tree",
+                self._idmap._add_entry(hexsha, "tree",
                     (entry.file_id, inv.revision_id))
                 return hexsha, ret
         elif entry.kind in ("file", "symlink"):
@@ -174,7 +175,7 @@ class BazaarObjectStore(BaseObjectStore):
                 return invshamap.lookup_blob(entry.file_id, entry.revision), None
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
-                self._idmap.add_entry(ret.id, "blob", (entry.file_id,
+                self._idmap._add_entry(ret.id, "blob", (entry.file_id,
                     entry.revision))
                 return ret.id, ret
         else:
