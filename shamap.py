@@ -102,9 +102,11 @@ class GitShaMap(object):
         """
         raise NotImplementedError(self.add_entry)
 
-    def add_entries(self, revid, parent_revids, entries):
+    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
+                    entries):
         """Add multiple new entries to the database.
         """
+        self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
         for e in entries:
             self.add_entry(*e)
 
@@ -118,7 +120,6 @@ class GitShaMap(object):
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
-
         :param sha: Git object sha
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
@@ -262,7 +263,9 @@ class SqliteGitShaMap(GitShaMap):
     def commit_write_group(self):
         self.db.commit()
 
-    def add_entries(self, revid, parent_revids, entries):
+    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
+                    entries):
+        self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
         trees = []
         blobs = []
         for sha, type, type_data in entries:

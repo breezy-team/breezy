@@ -325,7 +325,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
             rev.revision_id, parent_invs, lookup_object,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
     target_git_object_retriever._idmap.add_entries(rev.revision_id,
-        rev.parent_ids, shamap)
+        rev.parent_ids, head, o.tree, shamap)
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)
@@ -392,8 +392,6 @@ def import_git_objects(repo, mapping, object_iter,
                 continue
             squash_revision(repo, rev)
             graph.append((o.id, o.parents))
-            target_git_object_retriever._idmap.add_entry(o.id, "commit",
-                    (rev.revision_id, o.tree))
             heads.extend([p for p in o.parents if p not in checked])
         elif isinstance(o, Tag):
             if o.object[1] not in checked:
