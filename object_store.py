@@ -118,7 +118,8 @@ class BazaarObjectStore(BaseObjectStore):
         inv = self.repository.get_inventory(revid)
         rev = self.repository.get_revision(revid)
         unusual_modes = extract_unusual_modes(rev)
-        tree_sha = self._get_ie_sha1(inv.root, inv, unusual_modes)
+        invshamap = self._idmap.get_inventory_sha_map(revid)
+        tree_sha = self._get_ie_sha1(inv.root, inv, invshamap, unusual_modes)
         commit_obj = self._revision_to_commit(rev, tree_sha)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(revid)
@@ -154,9 +155,7 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
 
-    def _get_ie_object_or_sha1(self, entry, inv, unusual_modes):
-        # FIXME: Pass in?
-        invshamap = self._idmap.get_inventory_sha_map(inv.revision_id)
+    def _get_ie_object_or_sha1(self, entry, inv, invshamap, unusual_modes):
         if entry.kind == "directory":
             try:
                 return invshamap.lookup_tree(entry.file_id), None
@@ -181,8 +180,8 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
 
-    def _get_ie_sha1(self, entry, inv, unusual_modes):
-        return self._get_ie_object_or_sha1(entry, inv, unusual_modes)[0]
+    def _get_ie_sha1(self, entry, inv, invshamap, unusual_modes):
+        return self._get_ie_object_or_sha1(entry, inv, invshamap, unusual_modes)[0]
 
     def _get_blob_for_symlink(self, symlink_target, expected_sha=None):
         """Return a Git Blob object for symlink.
@@ -232,8 +231,9 @@ class BazaarObjectStore(BaseObjectStore):
         :param fileid: fileid in the tree.
         :param revision: Revision of the tree.
         """
+        invshamap = self._idmap.get_inventory_sha_map(inv.revision_id)
         tree = directory_to_tree(inv[fileid],
-            lambda ie: self._get_ie_sha1(ie, inv, unusual_modes),
+            lambda ie: self._get_ie_sha1(ie, inv, invshamap, unusual_modes),
             unusual_modes)
         self._check_expected_sha(expected_sha, tree)
         return tree

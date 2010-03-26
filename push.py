@@ -100,12 +100,13 @@ class MissingObjectsIterator(object):
         """
         inv = self.source.get_inventory(revid)
         rev = self.source.get_revision(revid)
+        invshamap = self._object_store._idmap.get_inventory_sha_map(revid)
         unusual_modes = extract_unusual_modes(rev)
         todo = [inv.root]
         tree_sha = None
         while todo:
             ie = todo.pop()
-            (sha, object) = self._object_store._get_ie_object_or_sha1(ie, inv, unusual_modes)
+            (sha, object) = self._object_store._get_ie_object_or_sha1(ie, inv, invshamap, unusual_modes)
             if ie.parent_id is None:
                 tree_sha = sha
             if not self.need_sha(sha):
