@@ -257,12 +257,12 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     :cvar _this: The dict related to 'base' -> 'this'. It contains at least:
       * 'actions': The branchbuilder actions to create the 'this'
           revision.
-      * 'check': how to check the changes after resolution in with --take-this.
+      * 'check': how to check the changes after resolution with --take-this.
 
     :cvar _other: The dict related to 'base' -> 'other'. It contains at least:
       * 'actions': The branchbuilder actions to create the 'other'
           revision.
-      * 'check': how to check the changes after resolution in with --take-other.
+      * 'check': how to check the changes after resolution with --take-other.
     """
 
     # Set by daughter classes
