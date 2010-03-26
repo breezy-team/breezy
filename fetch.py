@@ -295,7 +295,8 @@ def approx_inv_size(inv):
 
 
 def import_git_commit(repo, mapping, head, lookup_object,
-                      target_git_object_retriever, parent_invs_cache):
+                      target_git_object_retriever, parent_invs_cache,
+                      parent_inv_trees_cache):
     o = lookup_object(head)
     rev = mapping.import_commit(o)
     # We have to do this here, since we have to walk the tree and
@@ -316,12 +317,15 @@ def import_git_commit(repo, mapping, head, lookup_object,
     else:
         base_inv = parent_invs[0]
         base_ie = base_inv.root
-        base_inv_trees = {} # FIXME: Fill this in, mapping fileid -> tree sha1
+        base_inv_trees = parent_inv_trees_cache.get(rev.parent_ids[0], {})
     inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
             mapping, "", o.tree, base_inv, base_inv_trees, base_ie, None,
             rev.revision_id, parent_invs, target_git_object_retriever._idmap,
             lookup_object,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
+    parent_inv_trees_cache[rev.revision_id] = dict(base_inv_trees.iteritems())
+    parent_inv_trees_cache[rev.revision_id].update(dict(
+        ((key[0], hexsha) for (hexsha, kind, key) in shamap if kind == "tree")))
     target_git_object_retriever._idmap.add_entries(shamap)
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
@@ -372,6 +376,8 @@ def import_git_objects(repo, mapping, object_iter,
     heads = list(set(heads))
     parent_invs_cache = lru_cache.LRUSizeCache(compute_size=approx_inv_size,
                                                max_size=MAX_INV_CACHE_SIZE)
+    parent_inv_trees_cache = lru_cache.LRUSizeCache(
+        compute_size=approx_inv_size, max_size=MAX_INV_CACHE_SIZE)
     target_git_object_retriever.start_write_group() # FIXME: try/finally
     # Find and convert commit objects
     while heads:
@@ -415,7 +421,7 @@ def import_git_objects(repo, mapping, object_iter,
                     pb.update("fetching revisions", offset+i, len(revision_ids))
                 import_git_commit(repo, mapping, head, lookup_object,
                                   target_git_object_retriever,
-                                  parent_invs_cache)
+                                  parent_invs_cache, parent_inv_trees_cache)
                 last_imported = head
         except:
             repo.abort_write_group()
