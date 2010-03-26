@@ -341,9 +341,12 @@ class RemoteGitBranch(GitBranch):
         if self._ref is not None:
             return self._ref
         heads = self.repository.get_refs()
-        if not self.name in heads:
+        if self.name in heads:
+            self._ref = heads[self.name]
+        elif ("refs/heads/" + self.name) in heads:
+            self._ref = heads["refs/heads/" + self.name]
+        else:
             raise NoSuchRef(self.name)
-        self._ref = heads[self.name]
         return self._ref
 
     def _synchronize_history(self, destination, revision_id):

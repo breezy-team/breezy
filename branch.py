@@ -399,15 +399,18 @@ class InterFromGitBranch(branch.GenericInterBranch):
             if self.target.repository.has_revision(self._last_revid):
                 return []
             return [head]
-        _, head = interrepo.fetch_objects(
+        pack_hint, head = interrepo.fetch_objects(
             determine_wants, self.source.mapping, limit=limit)
+        if pack_hint is not None and self.target.repository._format.pack_compresses:
+            self.target.repository.pack(hint=pack_hint)
         if head is not None:
             self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(head)
         if overwrite:
             prev_last_revid = None
         else:
             prev_last_revid = self.target.last_revision()
-        self.target.generate_revision_history(self._last_revid, prev_last_revid)
+        self.target.generate_revision_history(self._last_revid,
+            prev_last_revid)
         return head
 
     def update_revisions(self, stop_revision=None, overwrite=False,
