@@ -41,9 +41,6 @@ from bzrlib.repository import (
 from bzrlib.tests import (
     TestCaseWithTransport,
     )
-from bzrlib.transport import (
-    get_transport,
-    )
 
 from bzrlib.plugins.git import (
     get_rich_root_format,
@@ -298,7 +295,7 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "", 
-               tree.id, base_inv, {}, None,
+               tree.id, base_inv, None,
                None, "somerevid", [], self._map, {tree.id: tree}.__getitem__)
         self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
@@ -316,7 +313,7 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", 
-           tree.id, base_inv, {}, None, None, "somerevid", [], 
+           tree.id, base_inv, None, None, "somerevid", [], 
            self._map, { tree.id: tree }.__getitem__)
         self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
@@ -337,7 +334,7 @@ class ImportObjects(TestCaseWithTransport):
         tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
         ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", tree.id, 
-            base_inv, {}, None, None, "somerevid", [], self._map, objects.__getitem__)
+            base_inv, None, None, "somerevid", [], self._map, objects.__getitem__)
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("bla", ret[0][1])
@@ -360,7 +357,7 @@ class ImportObjects(TestCaseWithTransport):
         tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
         ret, _, _ = import_git_tree(self._texts, self._mapping, "", tree.id, 
-            base_inv, {}, None, None, "somerevid", [], self._map, objects.__getitem__)
+            base_inv, None, None, "somerevid", [], self._map, objects.__getitem__)
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("", ret[0][1])
