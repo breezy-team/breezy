@@ -238,9 +238,6 @@ class TestSwitch(ExternalBase):
         self.assertLength(0, calls)
         out, err = self.run_bzr('switch ../branch2')
         self.assertLength(1, calls)
-        self.assertContainsRe(err, 'Tree is up to date at revision 0.\n')
-        self.assertContainsRe(err, 'Switched to branch: .*/branch2.\n')
-        self.assertEqual('', out)
 
     def test_switch_lightweight_co_with_post_switch_hook(self):
         from bzrlib import branch as _mod_branch
@@ -254,6 +251,3 @@ class TestSwitch(ExternalBase):
         self.assertLength(0, calls)
         out, err = self.run_bzr('switch ../branch2')
         self.assertLength(1, calls)
-        self.assertContainsRe(err, 'Tree is up to date at revision 0.\n')
-        self.assertContainsRe(err, 'Switched to branch: .*/branch2.\n')
-        self.assertEqual('', out)
