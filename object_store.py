@@ -154,9 +154,11 @@ class BazaarObjectStore(BaseObjectStore):
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
 
     def _get_ie_object_or_sha1(self, entry, inv, unusual_modes):
+        # FIXME: Pass in?
+        invshamap = self._idmap.get_inventory_sha_map(inv.revision_id)
         if entry.kind == "directory":
             try:
-                return self._idmap.lookup_tree(entry.file_id, inv.revision_id), None
+                return invshamap.lookup_tree(entry.file_id), None
             except (KeyError, NotImplementedError):
                 ret = self._get_ie_object(entry, inv, unusual_modes)
                 if ret is None:
@@ -169,7 +171,7 @@ class BazaarObjectStore(BaseObjectStore):
                 return hexsha, ret
         elif entry.kind in ("file", "symlink"):
             try:
-                return self._idmap.lookup_blob(entry.file_id, entry.revision), None
+                return invshamap.lookup_blob(entry.file_id, entry.revision), None
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
                 self._idmap.add_entry(ret.id, "blob", (entry.file_id,
