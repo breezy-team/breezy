@@ -114,12 +114,17 @@ class BazaarObjectStore(BaseObjectStore):
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup)
 
+    def _inventory_to_objects(self, inv, invshamap, unusual_modes):
+        tree_sha = self._get_ie_sha1(inv.root, inv, invshamap, unusual_modes)
+        return tree_sha, []
+
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
         rev = self.repository.get_revision(revid)
         unusual_modes = extract_unusual_modes(rev)
         invshamap = self._idmap.get_inventory_sha_map(revid)
-        tree_sha = self._get_ie_sha1(inv.root, inv, invshamap, unusual_modes)
+        tree_sha, entries = self._inventory_to_objects(inv, invshamap,
+            unusual_modes)
         commit_obj = self._revision_to_commit(rev, tree_sha)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(revid)
@@ -130,7 +135,7 @@ class BazaarObjectStore(BaseObjectStore):
                 if not "fix-shamap" in debug.debug_flags:
                     raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
         self._idmap.add_entries(revid, rev.parent_ids, commit_obj.id, 
-            tree_sha, [])
+            tree_sha, entries)
 
     def _check_expected_sha(self, expected_sha, object):
         if expected_sha is None:
