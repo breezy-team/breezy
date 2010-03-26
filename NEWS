@@ -48,6 +48,8 @@
   * Don't import head revision twice when pulling from Git.
     (Jelmer Vernooij)
 
+  * Use Bazaar index files to store the cache. (#520694, Jelmer Vernooij)
+
  FEATURES
 
   * Support (dumb) HTTP repositories. (#373688, Jelmer Vernooij)

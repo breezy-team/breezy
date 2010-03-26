@@ -25,8 +25,17 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    btree_index as _mod_btree_index,
+    index as _mod_index,
+    osutils,
     trace,
+    ui,
     )
+
+# Data stored in the cache:
+# Git SHA -> Bazaar inventory entry / revision
+# Bazaar file id / revision -> Git SHA
+# Bazaar revision id -> Git SHA
 
 
 def get_cache_dir():
@@ -188,6 +197,22 @@ class SqliteGitShaMap(GitShaMap):
         create unique index if not exists trees_fileid_revid on trees(fileid, revid);
 """)
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.path)
+    
+    @classmethod
+    def remove_for_repository(cls, repository):
+        repository._transport.delete('git.db')
+
+    @classmethod
+    def exists_for_repository(cls, repository):
+        try:
+            transport = getattr(repository, "_transport", None)
+            if transport is not None:
+                return transport.has("git.db")
+        except bzrlib.errors.NotLocalUrl:
+            return False
+
     @classmethod
     def from_repository(cls, repository):
         try:
@@ -273,7 +298,6 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            trace.note(table)
             for (row,) in self.db.execute("select sha1 from %s" % table):
                 yield row
 
@@ -311,6 +335,22 @@ class TdbGitShaMap(GitShaMap):
                 self.db["version"] = str(TDB_MAP_VERSION)
         except KeyError:
             self.db["version"] = str(TDB_MAP_VERSION)
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.path)
+
+    @classmethod
+    def exists_for_repository(cls, repository):
+        try:
+            transport = getattr(repository, "_transport", None)
+            if transport is not None:
+                return transport.has("git.tdb")
+        except bzrlib.errors.NotLocalUrl:
+            return False
+
+    @classmethod
+    def remove_for_repository(cls, repository):
+        repository._transport.delete('git.tdb')
 
     @classmethod
     def from_repository(cls, repository):
@@ -371,3 +411,207 @@ class TdbGitShaMap(GitShaMap):
         for key in self.db.iterkeys():
             if key.startswith("git\0"):
                 yield sha_to_hex(key[4:])
+
+INDEX_FORMAT = 'bzr-git sha map version 1'
+
+
+class IndexGitShaMap(GitShaMap):
+    """SHA Map that uses the Bazaar Index API.
+
+    Entries:
+
+    ("git", <sha1>, "X") -> "<type> <type-data1> <type-data2>"
+    ("commit", <revid>, "X") -> "<sha1> <tree-id>"
+    ("tree", <fileid>, <revid>) -> "<sha1>"
+    ("blob", <fileid>, <revid>) -> "<sha1>"
+    """
+
+    def __init__(self, transport=None):
+        self._builder = None
+        if transport is None:
+            self._transport = None
+            self._index = _mod_index.InMemoryGraphIndex(0, key_elements=3)
+            self._builder = self._index
+        else:
+            self._transport = transport
+            try:
+                format = self._transport.get_bytes('format')
+            except bzrlib.errors.NoSuchFile:
+                self._transport.put_bytes('format', INDEX_FORMAT)
+            else:
+                if format != INDEX_FORMAT:
+                    trace.warning("SHA Map is incompatible (%s -> %s), rebuilding database.",
+                                  format, INDEX_FORMAT)
+                    raise KeyError
+            self._index = _mod_index.CombinedGraphIndex([])
+            for name in self._transport.list_dir("."):
+                if not name.endswith(".rix"):
+                    continue
+                x = _mod_btree_index.BTreeGraphIndex(self._transport, name, self._transport.stat(name).st_size)
+                self._index.insert_index(0, x)
+
+    @classmethod
+    def from_repository(cls, repository):
+        transport = getattr(repository, "_transport", None)
+        if transport is not None:
+            try:
+                transport.mkdir('git')
+            except bzrlib.errors.FileExists:
+                pass
+            return cls(transport.clone('git'))
+        from bzrlib.transport import get_transport
+        return cls(get_transport(get_cache_dir()))
+
+    def __repr__(self):
+        if self._transport is not None:
+            return "%s(%r)" % (self.__class__.__name__, self._transport.base)
+        else:
+            return "%s()" % (self.__class__.__name__)
+
+    def repack(self):
+        assert self._builder is None
+        self.start_write_group()
+        for _, key, value in self._index.iter_all_entries():
+            self._builder.add_node(key, value)
+        to_remove = []
+        for name in self._transport.list_dir('.'):
+            if name.endswith('.rix'):
+                to_remove.append(name)
+        self.commit_write_group()
+        del self._index.indices[1:]
+        for name in to_remove:
+            self._transport.rename(name, name + '.old')
+
+    def start_write_group(self):
+        assert self._builder is None
+        self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
+        self._name = osutils.sha()
+
+    def commit_write_group(self):
+        assert self._builder is not None
+        stream = self._builder.finish()
+        name = self._name.hexdigest() + ".rix"
+        size = self._transport.put_file(name, stream)
+        index = _mod_btree_index.BTreeGraphIndex(self._transport, name, size)
+        self._index.insert_index(0, index)
+        self._builder = None
+        self._name = None
+
+    def abort_write_group(self):
+        assert self._builder is not None
+        self._builder = None
+        self._name = None
+
+    def _add_node(self, key, value):
+        try:
+            self._builder.add_node(key, value)
+        except bzrlib.errors.BadIndexDuplicateKey:
+            pass # Multiple bzr objects can have the same contents
+
+    def _get_entry(self, key):
+        entries = self._index.iter_entries([key])
+        try:
+            return entries.next()[2]
+        except StopIteration:
+            if self._builder is None:
+                raise KeyError
+            entries = self._builder.iter_entries([key])
+            try:
+                return entries.next()[2]
+            except StopIteration:
+                raise KeyError
+
+    def _iter_keys_prefix(self, prefix):
+        for entry in self._index.iter_entries_prefix([prefix]):
+            yield entry[1]
+        if self._builder is not None:
+            for entry in self._builder.iter_entries_prefix([prefix]):
+                yield entry[1]
+
+    def lookup_commit(self, revid):
+        return self._get_entry(("commit", revid, "X"))[:40]
+
+    def add_entry(self, hexsha, type, type_data):
+        """Add a new entry to the database.
+        """
+        assert type in ("commit", "tree", "blob")
+        if hexsha is not None:
+            self._name.update(hexsha)
+            self._add_node(("git", hexsha, "X"),
+                " ".join((type, type_data[0], type_data[1])))
+        else:
+            # This object is not represented in Git - perhaps an empty
+            # directory?
+            hexsha = ""
+            self._name.update(type + " ".join(type_data))
+        if type == "commit":
+            self._add_node(("commit", type_data[0], "X"),
+                " ".join((hexsha, type_data[1])))
+        else:
+            self._add_node((type, type_data[0], type_data[1]), hexsha)
+
+    def lookup_tree(self, fileid, revid):
+        sha = self._get_entry(("tree", fileid, revid))
+        if sha == "":
+            return None
+        else:
+            return sha
+
+    def lookup_blob(self, fileid, revid):
+        return self._get_entry(("blob", fileid, revid))
+
+    def lookup_git_sha(self, sha):
+        if len(sha) == 20:
+            sha = sha_to_hex(sha)
+        data = self._get_entry(("git", sha, "X")).split(" ", 2)
+        return (data[0], (data[1], data[2]))
+
+    def revids(self):
+        """List the revision ids known."""
+        for key in self._iter_keys_prefix(("commit", None, None)):
+            yield key[1]
+
+    def missing_revisions(self, revids):
+        """Return set of all the revisions that are not present."""
+        missing_revids = set(revids)
+        for _, key, value in self._index.iter_entries((
+            ("commit", revid, "X") for revid in revids)):
+            missing_revids.remove(key[1])
+        return missing_revids
+
+    def sha1s(self):
+        """List the SHA1s."""
+        for key in self._iter_keys_prefix(("git", None, None)):
+            yield key[1]
+
+
+def migrate(source, target):
+    """Migrate from one cache map to another."""
+    pb = ui.ui_factory.nested_progress_bar()
+    try:
+        target.start_write_group()
+        try:
+            for i, sha in enumerate(source.sha1s()):
+                pb.update("migrating sha map", i)
+                (kind, info) = source.lookup_git_sha(sha)
+                target.add_entry(sha, kind, info)
+        except:
+            target.abort_write_group()
+            raise
+        else:
+            target.commit_write_group()
+    finally:
+        pb.finished()
+
+
+def from_repository(repository):
+    shamap = IndexGitShaMap.from_repository(repository)
+    for cls in (SqliteGitShaMap, TdbGitShaMap):
+        if not cls.exists_for_repository(repository):
+            continue
+        old_shamap = cls.from_repository(repository)
+        trace.info('Importing SHA map from %r into %r',
+            old_shamap, shamap)
+        migrate(old_shamap, shamap)
+        cls.remove_for_repository(repository)
+    return shamap

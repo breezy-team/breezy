@@ -23,9 +23,13 @@ from bzrlib.tests import (
     TestCaseInTempDir,
     UnavailableFeature,
     )
+from bzrlib.transport import (
+    get_transport,
+    )
 
 from bzrlib.plugins.git.shamap import (
     DictGitShaMap,
+    IndexGitShaMap,
     SqliteGitShaMap,
     TdbGitShaMap,
     )
@@ -103,3 +107,10 @@ class TdbGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
             self.map = TdbGitShaMap(os.path.join(self.test_dir, 'foo.tdb'))
         except ImportError:
             raise UnavailableFeature("Missing tdb")
+
+
+class IndexGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
+
+    def setUp(self):
+        TestCaseInTempDir.setUp(self)
+        self.map = IndexGitShaMap(get_transport(self.test_dir))
