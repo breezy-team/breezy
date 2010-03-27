@@ -393,8 +393,9 @@ class CommitBuilderRevisionRewriter(object):
     :ivar repository: Repository in which the revision is present.
     """
 
-    def __init__(self, repository):
+    def __init__(self, repository, map_ids=True):
         self.repository = repository
+        self.map_ids = map_ids
 
     def _process_file(self, old_ie, oldtree, oldrevid, newrevid,
                       old_parent_invs, new_parent_invs, path):
@@ -455,10 +456,13 @@ class CommitBuilderRevisionRewriter(object):
             # use old and new parent inventories to generate new_id map
             nonghost_oldparents = self._get_present_revisions(oldrev.parent_ids)
             nonghost_newparents = self._get_present_revisions(new_parents)
-            fileid_map = map_file_ids(self.repository, nonghost_oldparents,
-                nonghost_newparents)
             oldtree = self.repository.revision_tree(oldrevid)
-            mappedtree = MapTree(oldtree, fileid_map)
+            if self.map_ids:
+                fileid_map = map_file_ids(self.repository, nonghost_oldparents,
+                    nonghost_newparents)
+                mappedtree = MapTree(oldtree, fileid_map)
+            else:
+                mappedtree = oldtree
             old_parent_invs = list(self.repository.iter_inventories(nonghost_oldparents))
             new_parent_invs = list(self.repository.iter_inventories(nonghost_newparents))
             pb = ui.ui_factory.nested_progress_bar()
