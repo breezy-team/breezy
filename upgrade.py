@@ -28,7 +28,7 @@ from bzrlib.errors import (
     )
 from bzrlib.plugins.rewrite.rebase import (
     generate_transpose_plan,
-    replay_snapshot,
+    SnapshotRevisionRewriter,
     rebase,
     rebase_todo,
     )
@@ -178,7 +178,7 @@ def upgrade_repository(repository, generate_rebase_map,
         if verbose:
             for revid in rebase_todo(repository, plan):
                 trace.note("%s -> %s" % (revid, plan[revid][0]))
-        rebase(repository, plan, replay_snapshot(repository))
+        rebase(repository, plan, SnapshotRevisionRewriter(repository))
         return revid_renames
     finally:
         repository.unlock()

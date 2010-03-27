@@ -89,7 +89,7 @@ class cmd_rebase(Command):
             generate_simple_plan,
             rebase,
             RebaseState1,
-            workingtree_replay,
+            WorkingTreeRevisionRewriter,
             regenerate_default_revid,
             rebase_todo,
             )
@@ -195,7 +195,7 @@ class cmd_rebase(Command):
                 # Start executing plan
                 try:
                     rebase(wt.branch.repository, replace_map,
-                           workingtree_replay(wt, state, merge_type=merge_type))
+                           WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type))
                 except ConflictsInTree:
                     raise BzrCommandError("A conflict occurred replaying a "
                         "commit. Resolve the conflict and run "
@@ -240,14 +240,14 @@ class cmd_rebase_continue(Command):
         from bzrlib.plugins.rewrite.rebase import (
             RebaseState1,
             rebase,
-            workingtree_replay,
+            WorkingTreeRevisionRewriter,
             )
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing('.')[0]
         wt.lock_write()
         try:
             state = RebaseState1(wt)
-            replayer = workingtree_replay(wt, state, merge_type=merge_type)
+            replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
             # Abort if there are any conflicts
             if len(wt.conflicts()) != 0:
                 raise BzrCommandError("There are still conflicts present. "
@@ -320,7 +320,7 @@ class cmd_replay(Command):
         from bzrlib.plugins.rewrite.rebase import (
             RebaseState1,
             regenerate_default_revid,
-            workingtree_replay,
+            WorkingTreeRevisionRewriter,
             )
 
         from_branch = Branch.open_containing(location)[0]
@@ -346,7 +346,7 @@ class cmd_replay(Command):
         wt = WorkingTree.open(".")
         wt.lock_write()
         state = RebaseState1(wt)
-        replayer = workingtree_replay(wt, state, merge_type=merge_type)
+        replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid in todo:

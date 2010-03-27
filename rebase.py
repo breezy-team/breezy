@@ -377,7 +377,7 @@ def rebase(repository, replace_map, revision_rewriter):
         pb.finished()
 
 
-class replay_snapshot(object):
+class SnapshotRevisionRewriter(object):
 
     def __init__(self, repository):
         self.repository = repository
@@ -391,7 +391,7 @@ class replay_snapshot(object):
         :param newrevid: Revision id of the revision to create.
         :param new_parents: Revision ids of the new parent revisions.
         """
-        assert isinstance(new_parents, tuple), "replay_snapshot: Expected tuple for %r" % new_parents
+        assert isinstance(new_parents, tuple), "SnapshotRevisionRewriter: Expected tuple for %r" % new_parents
         mutter('creating copy %r of %r with new parents %r' %
                                    (newrevid, oldrevid, new_parents))
         oldrev = self.repository.get_revision(oldrevid)
@@ -459,7 +459,7 @@ class replay_snapshot(object):
             raise
 
 
-class workingtree_replay(object):
+class WorkingTreeRevisionRewriter(object):
     
     def __init__(self, wt, state, merge_type=None):
         """
