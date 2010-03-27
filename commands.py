@@ -44,8 +44,9 @@ class cmd_rebase(Command):
     but the history will be different.
 
     The command takes the location of another branch on to which the branch in
-    the current working directory will be rebased. If a branch is not specified
-    then the parent branch is used, and this is usually the desired result.
+    the specified directory (by default, the current working directory) 
+    will be rebased. If a branch is not specified then the parent branch 
+    is used, and this is usually the desired result.
 
     The first step identifies the revisions that are in the current branch that
     are not in the parent branch. The current branch is then set to be at the
@@ -76,12 +77,18 @@ class cmd_rebase(Command):
         Option('pending-merges',
             help="Rebase pending merges onto local branch."),
         Option('onto', help='Different revision to replay onto.',
-            type=str)]
+            type=str),
+        Option('directory', 
+            short_name='d',
+            help="Branch to replay onto, rather than the one containing the working directory.",
+             type=str)
+        ]
 
     @display_command
     def run(self, upstream_location=None, onto=None, revision=None,
             merge_type=None, verbose=False, dry_run=False,
-            always_rebase_merges=False, pending_merges=False):
+            always_rebase_merges=False, pending_merges=False,
+            directory="."):
         from bzrlib.branch import Branch
         from bzrlib.revisionspec import RevisionSpec
         from bzrlib.workingtree import WorkingTree
@@ -97,12 +104,12 @@ class cmd_rebase(Command):
             raise BzrCommandError(
                 "--revision and --pending-merges are mutually exclusive")
 
-        wt = WorkingTree.open_containing(".")[0]
+        wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
         state = RebaseState1(wt)
         if upstream_location is None:
             if pending_merges:
-                upstream_location = "."
+                upstream_location = directory
             else:
                 upstream_location = wt.branch.get_parent()
                 note("Rebasing on %s" % upstream_location)
@@ -211,14 +218,19 @@ class cmd_rebase(Command):
 class cmd_rebase_abort(Command):
     """Abort an interrupted rebase."""
 
+    takes_options = [Option('directory',
+            short_name='d',
+            help="Branch to replay onto, rather than the one containing the working directory.",
+            type=str)]
+
     @display_command
-    def run(self):
+    def run(self, directory="."):
         from bzrlib.plugins.rewrite.rebase import (
             RebaseState1,
             complete_revert,
             )
         from bzrlib.workingtree import WorkingTree
-        wt = WorkingTree.open_containing('.')[0]
+        wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
         state = RebaseState1(wt)
         try:
@@ -235,17 +247,20 @@ class cmd_rebase_abort(Command):
 
 class cmd_rebase_continue(Command):
     """Continue an interrupted rebase after resolving conflicts."""
-    takes_options = ['merge-type']
+    takes_options = ['merge-type', Option('directory',
+            short_name='d',
+            help="Branch to replay onto, rather than the one containing the working directory.",
+            type=str)]
 
     @display_command
-    def run(self, merge_type=None):
+    def run(self, merge_type=None, directory="."):
         from bzrlib.plugins.rewrite.rebase import (
             RebaseState1,
             rebase,
             WorkingTreeRevisionRewriter,
             )
         from bzrlib.workingtree import WorkingTree
-        wt = WorkingTree.open_containing('.')[0]
+        wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
         try:
             state = RebaseState1(wt)
@@ -283,13 +298,18 @@ class cmd_rebase_todo(Command):
 
     """
 
-    def run(self):
+    takes_options = [Option('directory',
+            short_name='d',
+            help="Branch to replay onto, rather than the one containing the working directory.",
+            type=str)]
+
+    def run(self, directory="."):
         from bzrlib.plugins.rewrite.rebase import (
             RebaseState1,
             rebase_todo,
             )
         from bzrlib.workingtree import WorkingTree
-        wt = WorkingTree.open_containing('.')[0]
+        wt = WorkingTree.open_containing(directory)[0]
         wt.lock_read()
         try:
             state = RebaseState1(wt)
@@ -311,11 +331,14 @@ class cmd_replay(Command):
 
     """
 
-    takes_options = ['revision', 'merge-type']
+    takes_options = ['revision', 'merge-type', Option('directory', 
+            short_name='d',
+            help="Branch to replay onto, rather than the one containing the working directory.",
+            type=str)]
     takes_args = ['location']
     hidden = True
 
-    def run(self, location, revision=None, merge_type=None):
+    def run(self, location, revision=None, merge_type=None, directory="."):
         from bzrlib.branch import Branch
         from bzrlib.workingtree import WorkingTree
         from bzrlib import ui
@@ -345,7 +368,7 @@ class cmd_replay(Command):
         else:
             raise BzrCommandError("--revision is mandatory")
 
-        wt = WorkingTree.open(".")
+        wt = WorkingTree.open(directory)
         wt.lock_write()
         state = RebaseState1(wt)
         replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
@@ -393,9 +416,14 @@ class cmd_rebase_foreign(Command):
     takes_args = ['new_base?']
     takes_options = ['verbose',
         Option("idmap-file", help="Write map with old and new revision ids.",
-               type=str)]
+               type=str),
+        Option('directory', 
+            short_name='d',
+            help="Branch to replay onto, rather than the one containing the working directory.",
+            type=str)
+        ]
 
-    def run(self, new_base=None, verbose=False, idmap_file=None):
+    def run(self, new_base=None, verbose=False, idmap_file=None, directory="."):
         from bzrlib import (
             urlutils,
             )
@@ -415,11 +443,11 @@ class cmd_rebase_foreign(Command):
             )
 
         try:
-            wt_to = WorkingTree.open(".")
+            wt_to = WorkingTree.open(directory)
             branch_to = wt_to.branch
         except NoWorkingTree:
             wt_to = None
-            branch_to = Branch.open(".")
+            branch_to = Branch.open(directory)
 
         stored_loc = branch_to.get_parent()
         if new_base is None:

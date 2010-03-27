@@ -286,6 +286,17 @@ class TestRebaseSimple(ExternalBase):
         self.assertEqual(self.strip_last_revid_part(revid2),
                          self.strip_last_revid_part(merge_parents[1]))
 
+    def test_directory(self):
+        self.make_file('test_directory1', "testing non-current directories")
+        self.run_bzr('add')
+        self.run_bzr('commit -m blah')
+        os.chdir('../feature')
+        self.make_file('test_directory2', "testing non-current directories")
+        self.run_bzr('add')
+        self.run_bzr('commit -m blah')
+        os.chdir('..')
+        self.check_output('', 'rebase -d feature main')
+ 
 
 class ReplayTests(ExternalBase):
 

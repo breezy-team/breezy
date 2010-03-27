@@ -5,6 +5,9 @@
    * Don't do pulls either when running with dry-run. (Jelmer Vernooij,
      #522960)
 
+   * Allow branch to operate on to be specified explicitly.
+     (Levi Bard, #459371)
+
 0.6.0	2010-03-27
 
   BUG FIXES
