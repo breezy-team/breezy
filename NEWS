@@ -142,10 +142,10 @@ Bug Fixes
 
 * DirStateRevisionTree.kind() was returning wrong result when 'kind'
   changes occured between the workingtree and one of its parents.
-  (Vincent Ladeuil, #533437)
+  (Vincent Ladeuil, #535547)
 
-* Fix stub sftp test server to call os.getcwdu().
-  (Vincent Ladeuil, #526211, #526353)
+* Fix ``log`` to better check ancestors even if merged revisions are involved.
+  (Vincent Ladeuil, #476293)
 
 * Many IO operations that returned ``EINTR`` were retried even if it
   wasn't safe to do so via careless use of ``until_no_eintr``.  Bazaar now
@@ -294,7 +294,7 @@ Bug Fixes
 * Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
 
 * Fix stub sftp test server to call os.getcwdu().
-  (Vincent Ladeuil, #526211, #526353)
+  (Vincent Ladeuil, #526221, #526353)
 
 * Fixed CHM generation by moving the NEWS section template into
   a separate file. (Ian Clatworthy, #524184)
@@ -362,9 +362,6 @@ Bug Fixes
 * ``bzr update`` performs the two merges in a more logical order and will stop
   when it encounters conflicts.  
   (Gerard Krol, #113809)
-
-* Fix ``log`` to better check ancestors even if merged revisions are involved.
-  (Vincent Ladeuil, #476293)
 
 * Give a better error message when doing ``bzr bind`` in an already bound
   branch.  (Neil Martinsen-Burrell, #513063)
