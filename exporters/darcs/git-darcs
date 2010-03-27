@@ -76,7 +76,7 @@ fetch()
 	location=$(get_location $remote)
 	git_map=$git_dir/darcs-git/$remote-git-map
 	darcs_map=$git_dir/darcs-git/$remote-darcs-map
-	common_opts="--working $git_dir/darcs-git/repo --logfile $git_dir/darcs-git/fetch.log --git-branch=darcs/$remote"
+	common_opts="--working $git_dir/darcs-git/repo --logfile $git_dir/darcs-git/fetch.log --git-branch=refs/remotes/darcs/$remote"
         dfe_opts=$(git config git-darcs.$remote.darcs-fast-export-options)
 	pre_fetch="$(git config git-darcs.$remote.pre-fetch)"
 	if [ -n "$pre_fetch" ]; then
@@ -90,10 +90,10 @@ fetch()
 			git fast-import --export-marks=$git_map
 	elif [ -f $git_map -a -f $darcs_map ]; then
 		echo "Updating remote $remote"
-		old_rev=$(git rev-parse darcs/$remote)
+		old_rev=$(git rev-parse refs/remotes/darcs/$remote)
 		darcs-fast-export --import-marks=$darcs_map --export-marks=$darcs_map $common_opts $dfe_opts $location | \
 			git fast-import --quiet --import-marks=$git_map --export-marks=$git_map
-		new_rev=$(git rev-parse darcs/$remote)
+		new_rev=$(git rev-parse refs/remotes/darcs/$remote)
 		if [ "$old_rev" != "$new_rev" ]; then
 			echo "Fetched the following updates:"
 			git shortlog $old_rev..$new_rev
@@ -123,9 +123,9 @@ pull()
 	# see if we need to merge or rebase
 	branch=$(git symbolic-ref HEAD|sed 's|.*/||')
 	if [ "$(git config branch.$branch.rebase)" = "true" ]; then
-		git rebase darcs/$remote
+		git rebase refs/remotes/darcs/$remote
 	else
-		git merge darcs/$remote
+		git merge refs/remotes/darcs/$remote
 	fi
 }
 
@@ -138,11 +138,11 @@ push()
 		exit
 	fi
 	location=$(get_location $remote)
-	if [ -n "$(git rev-list --left-right HEAD...darcs/$remote | sed -n '/^>/ p')" ]; then
+	if [ -n "$(git rev-list --left-right HEAD...refs/remotes/darcs/$remote | sed -n '/^>/ p')" ]; then
 		echo "HEAD is not a strict child of $remote, cannot push. Merge first"
 		exit
 	fi
-	if [ -z "$(git rev-list --left-right HEAD...darcs/$remote | sed -n '/^</ p')" ]; then
+	if [ -z "$(git rev-list --left-right HEAD...refs/remotes/darcs/$remote | sed -n '/^</ p')" ]; then
 		echo "Nothing to push. Commit something first"
 		exit
 	fi
@@ -157,12 +157,12 @@ push()
 		$pre_push
 	fi
 	echo "Pushing the following updates:"
-	git shortlog darcs/$remote..
+	git shortlog refs/remotes/darcs/$remote..
 	git fast-export --import-marks=$git_map --export-marks=$git_map HEAD | \
 		(cd $location; darcs-fast-import --import-marks=$darcs_map --export-marks=$darcs_map \
 		--logfile $git_dir/darcs-git/push.log)
 	if [ $? == 0 ]; then
-		git update-ref darcs/$remote HEAD
+		git update-ref refs/remotes/darcs/$remote HEAD
 		post_push="$(git config git-darcs.$remote.post-push)"
 		if [ -n "$post_push" ]; then
 			$post_push
@@ -200,7 +200,7 @@ find_darcs()
 		echo "Usage: git darcs find-darcs <sha1-prefix>"
 		exit 1
 	fi
-	for remote in $git_dir/darcs/*
+	for remote in $(git for-each-ref --format='%(refname)' refs/remotes/darcs)
 	do
 		remote=`basename $remote`
 		git_map=$git_dir/darcs-git/$remote-git-map
@@ -227,7 +227,7 @@ find_git()
 		echo "Usage: git darcs find-git <patch-prefix>"
 		exit 1
 	fi
-	for remote in $git_dir/darcs/*
+	for remote in $(git for-each-ref --format='%(refname)' refs/remotes/darcs)
 	do
 		remote=`basename $remote`
 		git_map=$git_dir/darcs-git/$remote-git-map
