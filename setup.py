@@ -20,5 +20,5 @@ if __name__ == '__main__':
           Hooks into Bazaar and provides commands for rebasing.
           """,
           package_dir={'bzrlib.plugins.rewrite':'.'},
-          packages=['bzrlib.plugins.rewrite']
+          packages=['bzrlib.plugins.rewrite', 'bzrlib.plugins.rewrite.tests']
     )
