@@ -377,21 +377,68 @@ def rebase(repository, replace_map, revision_rewriter):
         pb.finished()
 
 
-class SnapshotRevisionRewriter(object):
+class ReplayParentsInconsistent(BzrError):
+    """Raised when parents were inconsistent."""
+    _fmt = """Parents were inconsistent while replaying commit for file id %(fileid)s, revision %(revid)s."""
+
+    def __init__(self, fileid, revid):
+        BzrError.__init__(self)
+        self.fileid = fileid
+        self.revid = revid
+
+
+class CommitBuilderRevisionRewriter(object):
+    """Revision rewriter that use commit builder.
+
+    :ivar repository: Repository in which the revision is present.
+    """
 
     def __init__(self, repository):
         self.repository = repository
+
+    def _process_file(self, old_ie, oldtree, oldrevid, newrevid,
+                      old_parent_invs, new_parent_invs, path):
+        ie = old_ie.copy()
+        # Either this file was modified last in this revision,
+        # in which case it has to be rewritten
+        if old_ie.revision == oldrevid:
+            if self.repository.texts.has_key((ie.file_id, newrevid)):
+                # Use the existing text
+                ie.revision = newrevid
+            else:
+                # Create a new text
+                ie.revision = None
+        else:
+            # or it was already there before the commit, in
+            # which case the right revision should be used
+            # one of the old parents had this revision, so find that
+            # and then use the matching new parent
+            old_file_id = oldtree.inventory.path2id(path)
+            assert old_file_id is not None
+            ie = None
+            for (old_pinv, new_pinv) in zip(old_parent_invs, new_parent_invs):
+                if (old_pinv.has_id(old_file_id) and
+                    old_pinv[old_file_id].revision == old_ie.revision):
+                    try:
+                        ie = new_pinv[old_ie.file_id].copy()
+                    except NoSuchId:
+                        raise ReplayParentsInconsistent(old_ie.file_id, old_ie.revision)
+                    break
+            assert ie is not None
+        return ie
+
+    def _get_present_revisions(self, revids):
+        return tuple([p for p in revids if self.repository.has_revision(p)])
 
     def __call__(self, oldrevid, newrevid, new_parents):
         """Replay a commit by simply commiting the same snapshot with different
         parents.
 
-        :param repository: Repository in which the revision is present.
         :param oldrevid: Revision id of the revision to copy.
         :param newrevid: Revision id of the revision to create.
         :param new_parents: Revision ids of the new parent revisions.
         """
-        assert isinstance(new_parents, tuple), "SnapshotRevisionRewriter: Expected tuple for %r" % new_parents
+        assert isinstance(new_parents, tuple), "CommitBuilderRevisionRewriter: Expected tuple for %r" % new_parents
         mutter('creating copy %r of %r with new parents %r' %
                                    (newrevid, oldrevid, new_parents))
         oldrev = self.repository.get_revision(oldrevid)
@@ -400,55 +447,28 @@ class SnapshotRevisionRewriter(object):
         revprops[REVPROP_REBASE_OF] = oldrevid
 
         builder = self.repository.get_commit_builder(branch=None,
-                                                parents=new_parents,
-                                                config=Config(),
-                                                committer=oldrev.committer,
-                                                timestamp=oldrev.timestamp,
-                                                timezone=oldrev.timezone,
-                                                revprops=revprops,
-                                                revision_id=newrevid)
+            parents=new_parents, config=Config(), committer=oldrev.committer,
+            timestamp=oldrev.timestamp, timezone=oldrev.timezone,
+            revprops=revprops, revision_id=newrevid)
         try:
             # Check what new_ie.file_id should be
             # use old and new parent inventories to generate new_id map
-            nonghost_oldparents = tuple([p for p in oldrev.parent_ids if self.repository.has_revision(p)])
-            nonghost_newparents = tuple([p for p in new_parents if self.repository.has_revision(p)])
-            fileid_map = map_file_ids(self.repository, nonghost_oldparents, nonghost_newparents)
+            nonghost_oldparents = self._get_present_revisions(oldrev.parent_ids)
+            nonghost_newparents = self._get_present_revisions(new_parents)
+            fileid_map = map_file_ids(self.repository, nonghost_oldparents,
+                nonghost_newparents)
             oldtree = self.repository.revision_tree(oldrevid)
             mappedtree = MapTree(oldtree, fileid_map)
+            old_parent_invs = list(self.repository.iter_inventories(nonghost_oldparents))
+            new_parent_invs = list(self.repository.iter_inventories(nonghost_newparents))
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                old_parent_invs = list(self.repository.iter_inventories(nonghost_oldparents))
-                new_parent_invs = list(self.repository.iter_inventories(nonghost_newparents))
                 for i, (path, old_ie) in enumerate(mappedtree.inventory.iter_entries()):
                     pb.update('upgrading file', i, len(mappedtree.inventory))
-                    ie = old_ie.copy()
-                    # Either this file was modified last in this revision,
-                    # in which case it has to be rewritten
-                    if old_ie.revision == oldrevid:
-                        if self.repository.texts.has_key((ie.file_id, newrevid)):
-                            # Use the existing text
-                            ie.revision = newrevid
-                        else:
-                            # Create a new text
-                            ie.revision = None
-                    else:
-                        # or it was already there before the commit, in
-                        # which case the right revision should be used
-                        # one of the old parents had this revision, so find that
-                        # and then use the matching new parent
-                        old_file_id = oldtree.inventory.path2id(path)
-                        assert old_file_id is not None
-                        ie = None
-                        for (old_pinv, new_pinv) in zip(old_parent_invs, new_parent_invs):
-                            if (old_pinv.has_id(old_file_id) and
-                                old_pinv[old_file_id].revision == old_ie.revision):
-                                try:
-                                    ie = new_pinv[old_ie.file_id].copy()
-                                except NoSuchId:
-                                    raise ReplayParentsInconsistent(old_ie.file_id, old_ie.revision)
-                                break
-                        assert ie is not None
-                    builder.record_entry_contents(ie, new_parent_invs, path, mappedtree,
+                    ie = self._process_file(old_ie, oldtree, oldrevid, newrevid,
+                        old_parent_invs, new_parent_invs, path)
+                    builder.record_entry_contents(ie,
+                            new_parent_invs, path, mappedtree,
                             mappedtree.path_content_summary(path))
             finally:
                 pb.finished()
@@ -521,8 +541,8 @@ class WorkingTreeRevisionRewriter(object):
         if len(oldparents) == 1:
             return oldparents[0]
 
-        # In case the rhs parent(s) of the origin revision has already been merged
-        # in the new branch, use diff between rhs parent and diff from
+        # In case the rhs parent(s) of the origin revision has already been
+        # merged in the new branch, use diff between rhs parent and diff from
         # original revision
         if len(newparents) == 1:
             # FIXME: Find oldparents entry that matches newparents[0]
@@ -593,11 +613,4 @@ class ReplaySnapshotError(BzrError):
         self.msg = msg
 
 
-class ReplayParentsInconsistent(BzrError):
-    """Raised when parents were inconsistent."""
-    _fmt = """Parents were inconsistent while replaying commit for file id %(fileid)s, revision %(revid)s."""
 
-    def __init__(self, fileid, revid):
-        BzrError.__init__(self)
-        self.fileid = fileid
-        self.revid = revid

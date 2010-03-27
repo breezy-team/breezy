@@ -32,7 +32,7 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.plugins.rewrite.rebase import (
     marshall_rebase_plan,
     unmarshall_rebase_plan,
-    SnapshotRevisionRewriter,
+    CommitBuilderRevisionRewriter,
     generate_simple_plan,
     generate_transpose_plan,
     rebase_todo,
@@ -87,7 +87,7 @@ class ConversionTests(TestCaseWithTransport):
         wt.commit(message='change hello', rev_id="bla2")
 
         wt.branch.repository.lock_write()
-        newrev = SnapshotRevisionRewriter(wt.branch.repository)("bla2", "bla4",
+        newrev = CommitBuilderRevisionRewriter(wt.branch.repository)("bla2", "bla4",
                 ("bloe",))
         self.assertEqual("bla4", newrev)
         self.assertTrue(wt.branch.repository.has_revision(newrev))
@@ -357,7 +357,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.add(["afile"])
         wt.commit("bla", rev_id="oldcommit")
         wt.branch.repository.lock_write()
-        SnapshotRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit", ())
+        CommitBuilderRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit", ())
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
         newrev = wt.branch.repository.get_revision("newcommit")
@@ -370,7 +370,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         self.assertEquals("newcommit", inv[inv.path2id("afile")].revision)
 
     def test_parents_different(self):
-        """SnapshotRevisionRewriter() relies on the fact that the contents of
+        """CommitBuilderRevisionRewriter() relies on the fact that the contents of
         the old and new parents is equal (at least concerning tree shape). If
         it turns out it isn't, an exception should be raised."""
         wt = self.make_branch_and_tree(".")
@@ -385,7 +385,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.branch.repository.lock_write()
         self.assertRaises(
                 ReplayParentsInconsistent,
-                SnapshotRevisionRewriter(wt.branch.repository),
+                CommitBuilderRevisionRewriter(wt.branch.repository),
                 "oldcommit", "newcommit", ("base",))
         wt.branch.repository.unlock()
 
@@ -403,7 +403,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
         wt.branch.repository.lock_write()
-        SnapshotRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit",
+        CommitBuilderRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit",
                 ("newparent",))
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
@@ -431,7 +431,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
         wt.branch.repository.lock_write()
-        SnapshotRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit",
+        CommitBuilderRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit",
                         ("newparent",))
         wt.branch.repository.unlock()
 
@@ -459,7 +459,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
         wt.branch.repository.lock_write()
-        SnapshotRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit",
+        CommitBuilderRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit",
                 ("newparent",))
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
@@ -489,7 +489,7 @@ class ReplaySnapshotTests(TestCaseWithTransport):
         wt.commit("bla", rev_id="newparent")
         wt.branch.repository.fetch(oldrepos)
         wt.branch.repository.lock_write()
-        SnapshotRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit",
+        CommitBuilderRevisionRewriter(wt.branch.repository)("oldcommit", "newcommit",
                 ("newparent",))
         wt.branch.repository.unlock()
         oldrev = wt.branch.repository.get_revision("oldcommit")
