@@ -248,6 +248,12 @@ class GitBranch(ForeignBranch):
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
+    def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
+        super(LocalGitBranch, self).__init__(bzrdir, repository, name, 
+              lockfiles, tagsdict)
+        if not name in repository._git.refs:
+            raise errors.NotBranchError(self.base)
+
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
         accelerator_tree=None, hardlink=False):
         if lightweight:

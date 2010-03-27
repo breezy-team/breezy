@@ -78,7 +78,7 @@ class GitDir(bzrdir.BzrDir):
         return get_rich_root_format(stacked)
 
     def _branch_name_to_ref(self, name):
-        if name is None and name != "HEAD":
+        if name is None:
             return "HEAD"
         if not "/" in name:
             return "refs/heads/%s" % name
@@ -120,7 +120,7 @@ class LocalGitDir(GitDir):
     get_workingtree_transport = get_branch_transport
 
 
-    def open_branch(self, ignore_fallbacks=None, name=None, unsupported=False):
+    def open_branch(self, name=None, ignore_fallbacks=None, unsupported=False):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
