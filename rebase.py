@@ -611,6 +611,3 @@ class ReplaySnapshotError(BzrError):
     def __init__(self, msg):
         BzrError.__init__(self)
         self.msg = msg
-
-
-
