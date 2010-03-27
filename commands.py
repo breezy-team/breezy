@@ -177,7 +177,7 @@ class cmd_rebase(Command):
                     not always_rebase_merges
                     )
 
-            if verbose:
+            if verbose or dry_run:
                 todo = list(rebase_todo(wt.branch.repository, replace_map))
                 note('%d revisions will be rebased:' % len(todo))
                 for revid in todo:
@@ -195,7 +195,8 @@ class cmd_rebase(Command):
                 # Start executing plan
                 try:
                     rebase(wt.branch.repository, replace_map,
-                           WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type))
+                        WorkingTreeRevisionRewriter(wt, state,
+                            merge_type=merge_type))
                 except ConflictsInTree:
                     raise BzrCommandError("A conflict occurred replaying a "
                         "commit. Resolve the conflict and run "
@@ -428,7 +429,7 @@ class cmd_rebase_foreign(Command):
                 display_url = urlutils.unescape_for_display(stored_loc,
                         self.outf.encoding)
                 self.outf.write("Using saved location: %s\n" % display_url)
-                new_bsae = Branch.open(stored_loc)
+                new_base = Branch.open(stored_loc)
         else:
             new_base = Branch.open(new_base)
 
