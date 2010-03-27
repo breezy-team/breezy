@@ -1510,13 +1510,17 @@ class TestGrep(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr(['grep', '-r', 'revno:1..2', 'v3'])
         self.assertNotContainsRe(out, "file0", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 0)
 
         out, err = self.run_bzr(['grep', '-r', 'revno:4..', 'v4'])
         self.assertContainsRe(out, "^dir0/file0.txt", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 2) # find v4 in rev4 and rev5
 
         out, err = self.run_bzr(['grep', '-r', '..revno:3', 'v4'])
         self.assertNotContainsRe(out, "file0", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 0)
 
         out, err = self.run_bzr(['grep', '-r', '..revno:3', 'v3'])
         self.assertContainsRe(out, "^dir0/file0.txt", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 1)
 
