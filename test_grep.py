@@ -603,12 +603,18 @@ class TestGrep(tests.TestCaseWithTransport):
         os.chdir('dir0')
 
         out, err = self.run_bzr(['grep', '--exclude', '*.txt', 'li.e1'])
-        self.assertContainsRe(out, "^file1.aa:line1", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^file1.aa:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^file1.aa:line10$", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
+        # finds line1 and line10
+        self.assertTrue(len(out.splitlines()) == 2)
 
         out, err = self.run_bzr(['grep', '--exclude', '*.txt', 'line1'])
-        self.assertContainsRe(out, "^file1.aa:line1", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^file1.aa:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^file1.aa:line10$", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
+        # finds line1 and line10
+        self.assertTrue(len(out.splitlines()) == 2)
 
     def test_versioned_include_from_outside_dir(self):
         """(versioned) Ensure --include is respected during recursive search.
@@ -628,15 +634,23 @@ class TestGrep(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr(['grep', '-r', 'last:1',
             '--include', '*.aa', '--include', '*.bb', 'l..e1'])
-        self.assertContainsRe(out, "^dir0/file0.aa~.:line1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "^dir1/file1.bb~.:line1", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file0.aa~.:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir1/file1.bb~.:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file0.aa~.:line10$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir1/file1.bb~.:line10$", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file1.cc", flags=TestGrep._reflags)
+        # finds line1 and line10
+        self.assertTrue(len(out.splitlines()) == 4)
 
         out, err = self.run_bzr(['grep', '-r', 'last:1',
             '--include', '*.aa', '--include', '*.bb', 'line1'])
-        self.assertContainsRe(out, "^dir0/file0.aa~.:line1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "^dir1/file1.bb~.:line1", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file0.aa~.:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir1/file1.bb~.:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file0.aa~.:line10$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir1/file1.bb~.:line10$", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file1.cc", flags=TestGrep._reflags)
+        # finds line1 and line10
+        self.assertTrue(len(out.splitlines()) == 4)
 
     def test_wtree_include_from_outside_dir(self):
         """(wtree) Ensure --include is respected during recursive search.
@@ -656,15 +670,23 @@ class TestGrep(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr(['grep', '--include', '*.aa',
             '--include', '*.bb', 'l.n.1'])
-        self.assertContainsRe(out, "^dir0/file0.aa:line1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "^dir1/file1.bb:line1", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file0.aa:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir1/file1.bb:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file0.aa:line10$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir1/file1.bb:line10$", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file1.cc", flags=TestGrep._reflags)
+        # finds line1 and line10
+        self.assertTrue(len(out.splitlines()) == 4)
 
         out, err = self.run_bzr(['grep', '--include', '*.aa',
             '--include', '*.bb', 'line1'])
-        self.assertContainsRe(out, "^dir0/file0.aa:line1", flags=TestGrep._reflags)
-        self.assertContainsRe(out, "^dir1/file1.bb:line1", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file0.aa:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir1/file1.bb:line1$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file0.aa:line10$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir1/file1.bb:line10$", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file1.cc", flags=TestGrep._reflags)
+        # finds line1 and line10
+        self.assertTrue(len(out.splitlines()) == 4)
 
     def test_versioned_exclude_from_outside_dir(self):
         """(versioned) Ensure --exclude is respected during recursive search.
@@ -1184,23 +1206,36 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "file0.txt~3:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.txt~4:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.txt~5:v3", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "file0.txt~6:v3", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 4)
 
         out, err = self.run_bzr(['grep', '-r', '1..5', 'v3'])
         self.assertContainsRe(out, "file0.txt~3:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.txt~4:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.txt~5:v3", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.txt~6:v3", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 3)
 
         out, err = self.run_bzr(['grep', '-r', '1..', '[tuv]3'])
         self.assertContainsRe(out, "file0.txt~3:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.txt~4:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.txt~5:v3", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "file0.txt~6:v3", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 4)
 
         out, err = self.run_bzr(['grep', '-r', '1..5', '[tuv]3'])
         self.assertContainsRe(out, "file0.txt~3:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.txt~4:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "file0.txt~5:v3", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "file0.txt~6:v3", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 3)
+
+        out, err = self.run_bzr(['grep', '-r', '5..1', '[tuv]3'])
+        self.assertContainsRe(out, "file0.txt~3:v3", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "file0.txt~4:v3", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "file0.txt~5:v3", flags=TestGrep._reflags)
+        self.assertNotContainsRe(out, "file0.txt~6:v3", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 3)
 
     def test_revno_range_versioned_file_in_dir(self):
         """Grep rev-range for pattern for file withing a dir.
@@ -1220,12 +1255,14 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "^dir0/file0.txt~4:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "^dir0/file0.txt~5:v3", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "^dir0/file0.txt~6:v3", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 3)
 
         out, err = self.run_bzr(['grep', '-r', '2..5', '[tuv]3'])
         self.assertContainsRe(out, "^dir0/file0.txt~3:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "^dir0/file0.txt~4:v3", flags=TestGrep._reflags)
         self.assertContainsRe(out, "^dir0/file0.txt~5:v3", flags=TestGrep._reflags)
         self.assertNotContainsRe(out, "^dir0/file0.txt~6:v3", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 3)
 
     def test_revno_range_versioned_file_from_outside_dir(self):
         """Grep rev-range for pattern from outside dir.

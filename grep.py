@@ -56,7 +56,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
     # ensure that we go in reverse order
     if s_tuple > e_tuple:
         s_tuple, e_tuple = e_tuple, s_tuple
-        start_rev_id, end_rev_id == end_rev_id, start_rev_id
+        start_rev_id, end_rev_id = end_rev_id, start_rev_id
 
     repo = branch.repository
     for revision_id in repo.iter_reverse_revision_history(end_rev_id):
