@@ -889,6 +889,7 @@ class TestGrep(tests.TestCaseWithTransport):
 
         out, err = self.run_bzr(['grep', '-r', 'last:1', '--no-recursive', 'line1'])
         self.assertNotContainsRe(out, "file0.txt", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 0)
 
     def test_wtree_file_within_dir_two_levels(self):
         """(wtree) Search for pattern while in nested dir (two levels).
@@ -1436,6 +1437,7 @@ class TestGrep(tests.TestCaseWithTransport):
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
         os.chdir(wd)
+        self._mk_versioned_file('file.txt')
         self._mk_versioned_file('file0.bin')
         self._update_file('file0.bin', "\x00lineNN\x00\n")
 
@@ -1444,11 +1446,15 @@ class TestGrep(tests.TestCaseWithTransport):
             'lineNN', 'file0.bin'])
         self.assertNotContainsRe(out, "file0.bin", flags=TestGrep._reflags)
         self.assertContainsRe(err, "Binary file.*file0.bin.*skipped", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 0)
+        self.assertTrue(len(err.splitlines()) == 1)
 
         out, err = self.run_bzr(['grep', '-v', '-r', 'last:1',
             'line.N', 'file0.bin'])
         self.assertNotContainsRe(out, "file0.bin", flags=TestGrep._reflags)
         self.assertContainsRe(err, "Binary file.*file0.bin.*skipped", flags=TestGrep._reflags)
+        self.assertTrue(len(out.splitlines()) == 0)
+        self.assertTrue(len(err.splitlines()) == 1)
 
     def test_wtree_binary_file_grep(self):
         """(wtree) Grep for pattern in binary file.
