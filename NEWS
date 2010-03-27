@@ -1,5 +1,10 @@
 0.6.1	UNRELEASED
 
+  BUG FIXES
+
+   * Don't do pulls either when running with dry-run. (Jelmer Vernooij,
+     #522960)
+
 0.6.0	2010-03-27
 
   BUG FIXES
