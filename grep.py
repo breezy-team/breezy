@@ -50,14 +50,7 @@ def _rev_on_mainline(rev_tuple):
 # bzrlib.log._linear_view_revisions.
 # This should probably be a common public API
 def _linear_view_revisions(branch, start_rev_id, end_rev_id):
-    s_tuple = branch.revision_id_to_dotted_revno(start_rev_id)
-    e_tuple = branch.revision_id_to_dotted_revno(end_rev_id)
-
-    # ensure that we go in reverse order
-    if s_tuple > e_tuple:
-        s_tuple, e_tuple = e_tuple, s_tuple
-        start_rev_id, end_rev_id = end_rev_id, start_rev_id
-
+    # requires that start is older than end
     repo = branch.repository
     for revision_id in repo.iter_reverse_revision_history(end_rev_id):
         revno = branch.revision_id_to_dotted_revno(revision_id)
@@ -81,6 +74,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
       revision is found?
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
     """
+    # requires that start is older than end
     view_revisions = branch.iter_merge_sorted_revisions(
         start_revision_id=end_rev_id, stop_revision_id=start_rev_id,
         stop_rule="with-merges")
@@ -151,17 +145,19 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
                 end_revno, end_revid = wt.branch.last_revision_info()
             erevno_tuple = wt.branch.revision_id_to_dotted_revno(end_revid)
 
-            if (not _rev_on_mainline(srevno_tuple) or
-                not _rev_on_mainline(erevno_tuple)):
-                levels = 0
+            grep_mainline = (_rev_on_mainline(srevno_tuple) and
+                _rev_on_mainline(erevno_tuple))
+
+            # ensure that we go in reverse order
+            if srevno_tuple > erevno_tuple:
+                srevno_tuple, erevno_tuple = erevno_tuple, srevno_tuple
+                start_revid, end_revid = end_revid, start_revid
 
             # Optimization: Traversing the mainline in reverse order is much
             # faster when we don't want to look at merged revs. We try this
             # with _linear_view_revisions. If all revs are to be grepped we
             # use the slower _graph_view_revisions
-            if (    levels == 1 and
-                    _rev_on_mainline(srevno_tuple) and
-                    _rev_on_mainline(erevno_tuple)):
+            if levels==1 and grep_mainline:
                 given_revs = _linear_view_revisions(wt.branch, start_revid, end_revid)
             else:
                 given_revs = _graph_view_revisions(wt.branch, start_revid, end_revid)
