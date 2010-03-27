@@ -78,7 +78,7 @@ class GitDir(bzrdir.BzrDir):
         return get_rich_root_format(stacked)
 
     def _branch_name_to_ref(self, name):
-        if name is None:
+        if name is None or name == "HEAD":
             return "HEAD"
         if not "/" in name:
             return "refs/heads/%s" % name
