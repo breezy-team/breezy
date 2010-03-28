@@ -157,7 +157,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
         else: 
             data = blob.data
         texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, data)])
-        shamap = { ie.file_id: hexsha }
+    shamap = { ie.file_id: hexsha }
     invdelta = []
     if base_ie is not None:
         old_path = base_inv.id2path(file_id)
