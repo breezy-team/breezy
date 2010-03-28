@@ -89,6 +89,8 @@ class cmd_grep(Command):
             help="Skip files whose base name matches GLOB."),
         ListOption('include', type=str, argname='glob', short_name='I',
             help="Search only files whose base name matches GLOB."),
+        Option('files-with-matches', short_name='l',
+               help='Print only the name of each input file in which PATTERN is found.'),
         Option('fixed-string', short_name='F',
                help='Interpret PATTERN is a single fixed string (not regex).'),
         Option('from-root',
@@ -114,7 +116,7 @@ class cmd_grep(Command):
     def run(self, verbose=False, ignore_case=False, no_recursive=False,
             from_root=False, null=False, levels=None, line_number=False,
             path_list=None, revision=None, pattern=None, include=None,
-            exclude=None, fixed_string=False):
+            exclude=None, fixed_string=False, files_with_matches=False):
 
         recursive = not no_recursive
 
@@ -150,12 +152,14 @@ class cmd_grep(Command):
         if revision == None:
             grep.workingtree_grep(pattern, patternc, path_list, recursive,
                 line_number, from_root, eol_marker, include, exclude,
-                verbose, fixed_string, ignore_case, self.outf)
+                verbose, fixed_string, ignore_case, files_with_matches,
+                self.outf)
         else:
             grep.versioned_grep(revision, pattern, patternc, path_list,
                 recursive, line_number, from_root, eol_marker,
                 print_revno, levels, include, exclude, verbose,
-                fixed_string, ignore_case, self.outf)
+                fixed_string, ignore_case, files_with_matches,
+                self.outf)
 
 
 register_command(cmd_grep)
