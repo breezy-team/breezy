@@ -79,12 +79,8 @@ class GitDir(bzrdir.BzrDir):
         return get_rich_root_format(stacked)
 
     def _branch_name_to_ref(self, name):
-        if name is None or name == "HEAD":
-            return "HEAD"
-        if not "/" in name:
-            return "refs/heads/%s" % name
-        else:
-            return name
+        from bzrlib.plugins.git.branch import branch_name_to_ref
+        return branch_name_to_ref(name)
 
 
 class LocalGitDir(GitDir):
@@ -140,10 +136,8 @@ class LocalGitDir(GitDir):
     def list_branches(self):
         ret = []
         for name in self._git.get_refs():
-            if name.startswith("refs/heads/"):
+            if name.startswith("refs/heads/") or name == "HEAD":
                 ret.append(self.open_branch(name=name))
-            elif name == "HEAD":
-                ret.append(self.open_branch(name=None))
         return ret
 
     def open_repository(self, shared=False):
