@@ -85,28 +85,28 @@ class cmd_grep(Command):
     takes_options = [
         'verbose',
         'revision',
+        ListOption('exclude', type=str, argname='glob', short_name='X',
+            help="Skip files whose base name matches GLOB."),
+        ListOption('include', type=str, argname='glob', short_name='I',
+            help="Search only files whose base name matches GLOB."),
         Option('fixed-string', short_name='F',
                help='Interpret PATTERN is a single fixed string (not regex).'),
-        Option('line-number', short_name='n',
-               help='show 1-based line number.'),
-        Option('ignore-case', short_name='i',
-               help='ignore case distinctions while matching.'),
-        Option('no-recursive',
-               help="Don't recurse into subdirectories. (default is --recursive)"),
         Option('from-root',
                help='Search for pattern starting from the root of the branch. '
                '(implies --recursive)'),
-        Option('null', short_name='Z',
-               help='Write an ASCII NUL (\\0) separator '
-               'between output lines rather than a newline.'),
+        Option('ignore-case', short_name='i',
+               help='ignore case distinctions while matching.'),
         Option('levels',
            help='Number of levels to display - 0 for all, 1 for collapsed (1 is default).',
            argname='N',
            type=_parse_levels),
-        ListOption('include', type=str, argname='glob', short_name='I',
-            help="Search only files whose base name matches GLOB."),
-        ListOption('exclude', type=str, argname='glob', short_name='X',
-            help="Skip files whose base name matches GLOB."),
+        Option('line-number', short_name='n',
+               help='show 1-based line number.'),
+        Option('no-recursive',
+               help="Don't recurse into subdirectories. (default is --recursive)"),
+        Option('null', short_name='Z',
+               help='Write an ASCII NUL (\\0) separator '
+               'between output lines rather than a newline.'),
         ]
 
 
