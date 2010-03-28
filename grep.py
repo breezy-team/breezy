@@ -294,11 +294,20 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                     from_dir = '.'
 
                 path_for_file = osutils.pathjoin(tree.basedir, from_dir, fp)
-                file_text = codecs.open(path_for_file, 'r').read()
-                _file_grep(file_text, rpath, fp,
-                    pattern, compiled_pattern, eol_marker, line_number, revno,
-                    print_revno, include, exclude, verbose, fixed_string,
-                    ignore_case, files_with_matches, outf, path_prefix)
+                if not files_with_matches:
+                    file_text = codecs.open(path_for_file, 'r').read()
+                    _file_grep(file_text, rpath, fp,
+                        pattern, compiled_pattern, eol_marker, line_number, revno,
+                        print_revno, include, exclude, verbose, fixed_string,
+                        ignore_case, files_with_matches, outf, path_prefix)
+                else:
+                    # Optimize for wtree list-only as we don't need to read the
+                    # entire file
+                    file = codecs.open(path_for_file, 'r')
+                    _file_grep_list_only_wtree(file, rpath, fp,
+                        pattern, compiled_pattern, eol_marker, line_number, revno,
+                        print_revno, include, exclude, verbose, fixed_string,
+                        ignore_case, files_with_matches, outf, path_prefix)
 
     if revno != None: # grep versioned files
         for (path, fid), chunks in tree.iter_files_bytes(to_grep):
@@ -346,6 +355,49 @@ def _path_in_glob_list(path, glob_list):
             present = True
             break
     return present
+
+def _file_grep_list_only_wtree(file, relpath, path, pattern, patternc,
+        eol_marker, line_number, revno, print_revno, include, exclude,
+        verbose, fixed_string, ignore_case, files_with_matches, outf,
+        path_prefix=None):
+    res = []
+    _te = _terminal_encoding
+    _ue = _user_encoding
+
+    pattern = pattern.encode(_ue, 'replace')
+    if fixed_string and ignore_case:
+        pattern = pattern.lower()
+
+    # test and skip binary files
+    if '\x00' in file.read(1024):
+        if verbose:
+            trace.warning("Binary file '%s' skipped." % path)
+        return res
+
+    if path_prefix and path_prefix != '.':
+        # user has passed a dir arg, show that as result prefix
+        path = osutils.pathjoin(path_prefix, path)
+
+    path = path.encode(_te, 'replace')
+
+    file.seek(0)
+    if fixed_string:
+        for line in file:
+            if ignore_case:
+                line = line.lower()
+            if pattern in line:
+                s = path + eol_marker
+                res.append(s)
+                outf.write(s)
+                break
+    else:
+        for line in file:
+            if patternc.search(line):
+                s = path + eol_marker
+                res.append(s)
+                outf.write(s)
+                break
+    return res
 
 
 def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
