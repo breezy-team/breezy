@@ -21,6 +21,7 @@ from bzrlib import (
     errors as bzr_errors,
     lockable_files,
     urlutils,
+    version_info as bzrlib_version,
     )
 
 LockWarner = getattr(lockable_files, "_LockWarner", None)
@@ -119,13 +120,20 @@ class LocalGitDir(GitDir):
     get_repository_transport = get_branch_transport
     get_workingtree_transport = get_branch_transport
 
-
-    def open_branch(self, name=None, ignore_fallbacks=None, unsupported=False):
+    def _open_branch(self, name=None, ignore_fallbacks=None,
+            unsupported=False):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
         return LocalGitBranch(self, repo, self._branch_name_to_ref(name),
             self._lockfiles)
+
+    if bzrlib_version >= (2, 2):
+        open_branch = _open_branch
+    else:
+        def open_branch(self, ignore_fallbacks=None, unsupported=False):
+            return self._open_branch(name=None,
+                ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
 
     def destroy_branch(self, name=None):
         del self._git.refs[self._branch_name_to_ref(name)]
