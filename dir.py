@@ -133,7 +133,10 @@ class LocalGitDir(GitDir):
     def list_branches(self):
         ret = []
         for name in self._git.get_refs():
-            ret.append(self.open_branch(name=name))
+            if name.startswith("refs/heads/"):
+                ret.append(self.open_branch(name=name))
+            elif name == "HEAD":
+                ret.append(self.open_branch(name=None))
         return ret
 
     def open_repository(self, shared=False):
