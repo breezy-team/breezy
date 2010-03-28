@@ -56,19 +56,20 @@ class TestGitBranch(tests.TestCaseInTempDir):
 
     def test_open_existing(self):
         GitRepo.init('.')
-
-        thebranch = Branch.open('.')
+        d = BzrDir.open('.')
+        thebranch = d.create_branch()
         self.assertIsInstance(thebranch, branch.GitBranch)
 
     def test_repr(self):
         GitRepo.init('.')
-        thebranch = Branch.open('.')
+        d = BzrDir.open('.')
+        thebranch = d.create_branch()
         self.assertEquals("LocalGitBranch('file://%s/', 'HEAD')" % self.test_dir, repr(thebranch))
 
     def test_last_revision_is_null(self):
         GitRepo.init('.')
-
-        thebranch = Branch.open('.')
+        thedir = BzrDir.open('.')
+        thebranch = thedir.create_branch()
         self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
         self.assertEqual((0, revision.NULL_REVISION),
                          thebranch.last_revision_info())
@@ -82,7 +83,6 @@ class TestGitBranch(tests.TestCaseInTempDir):
     def test_last_revision_is_valid(self):
         self.simple_commit_a()
         head = tests.run_git('rev-parse', 'HEAD').strip()
-
         thebranch = Branch.open('.')
         self.assertEqual(default_mapping.revision_id_foreign_to_bzr(head),
                          thebranch.last_revision())
@@ -122,7 +122,8 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         dulwich.repo.Repo.create(self.test_dir)
-        self.git_branch = Branch.open(self.test_dir)
+        d = BzrDir.open(self.test_dir)
+        self.git_branch = d.create_branch()
 
     def test_get_parent(self):
         self.assertIs(None, self.git_branch.get_parent())
@@ -239,6 +240,7 @@ class BranchTests(tests.TestCaseInTempDir):
 class ForeignTestsBranchFactory(object):
 
     def make_empty_branch(self, transport):
-        return LocalGitBzrDirFormat().initialize_on_transport(transport).open_branch()
+        d = LocalGitBzrDirFormat().initialize_on_transport(transport)
+        return d.create_branch()
 
     make_branch = make_empty_branch

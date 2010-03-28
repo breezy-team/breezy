@@ -120,8 +120,7 @@ class LocalGitDir(GitDir):
     get_repository_transport = get_branch_transport
     get_workingtree_transport = get_branch_transport
 
-    def _open_branch(self, name=None, ignore_fallbacks=None,
-            unsupported=False):
+    def _open_branch(self, name=None, ignore_fallbacks=None, unsupported=False):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch

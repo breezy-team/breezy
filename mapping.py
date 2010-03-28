@@ -125,6 +125,8 @@ class BzrGitMapping(foreign.VcsMapping):
     @classmethod
     def revision_id_foreign_to_bzr(cls, git_rev_id):
         """Convert a git revision id handle to a Bazaar revision id."""
+        if git_rev_id == "0" * 40:
+            return NULL_REVISION
         return "%s:%s" % (cls.revid_prefix, git_rev_id)
 
     @classmethod

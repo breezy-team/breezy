@@ -251,7 +251,7 @@ class LocalGitBranch(GitBranch):
     def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
         super(LocalGitBranch, self).__init__(bzrdir, repository, name, 
               lockfiles, tagsdict)
-        if not name in repository._git.refs.get_refs().keys():
+        if not name in repository._git.get_refs().keys():
             raise errors.NotBranchError(self.base)
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,

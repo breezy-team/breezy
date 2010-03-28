@@ -22,7 +22,10 @@ from dulwich.repo import (
 
 import os
 
-from bzrlib.tests import KnownFailure
+from bzrlib.bzrdir import (
+    BzrDir,
+    )
+
 from bzrlib.tests.blackbox import ExternalBase
 
 from bzrlib.plugins.git import (
@@ -42,6 +45,8 @@ class TestGitBlackBox(ExternalBase):
 
     def test_nick(self):
         GitRepo.init(self.test_dir)
+        dir = BzrDir.open(self.test_dir)
+        dir.create_branch()
         output, error = self.run_bzr(['nick'])
         self.assertEquals("HEAD\n", output)
 
@@ -129,5 +134,5 @@ class TestGitBlackBox(ExternalBase):
     def test_init_repo(self):
         output, error = self.run_bzr(["init-repo", "--git", "bla.git"])
         self.assertEquals(error, '')
-        self.assertEquals(output, 'Repository branch (format: git)\nLocation:\n  shared repository: bla.git\n  repository branch: bla.git\n')
+        self.assertEquals(output, 'Shared repository with trees (format: git)\nLocation:\n  shared repository: bla.git\n')
 
