@@ -372,34 +372,36 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         # print file name or print file name with revno.
         if print_revno:
             pfmt = "~%s".encode(_te, 'replace')
-            s = path + (pfmt % (revno,)) + eol_marker
             if fixed_string:
                 for line in file_text.splitlines():
                     if ignore_case:
                         line = line.lower()
                     if pattern in line:
+                        s = path + (pfmt % (revno,)) + eol_marker
                         res.append(s)
                         outf.write(s)
                         break
             else:
                 for line in file_text.splitlines():
                     if patternc.search(line):
+                        s = path + (pfmt % (revno,)) + eol_marker
                         res.append(s)
                         outf.write(s)
                         break
         else:
-            s = path + eol_marker
             if fixed_string:
                 for line in file_text.splitlines():
                     if ignore_case:
                         line = line.lower()
                     if pattern in line:
+                        s = path + eol_marker
                         res.append(s)
                         outf.write(s)
                         break
             else:
                 for line in file_text.splitlines():
                     if patternc.search(line):
+                        s = path + eol_marker
                         res.append(s)
                         outf.write(s)
                         break
