@@ -239,6 +239,7 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
         include, exclude, verbose, fixed_string, ignore_case,
         files_with_matches, outf, path_prefix, res_cache={}):
     _revno_pattern = re.compile("\~[0-9.]+:")
+    _revno_pattern_list_only = re.compile("\~[0-9.]+")
     dir_res = {}
 
     # setup relpath to open files relative to cwd
@@ -271,9 +272,17 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                 if old_res != None:
                     res = []
                     res_append = res.append
-                    new_rev = ('~%s:' % (revno,))
+
+                    if not files_with_matches:
+                        new_rev = ('~%s:' % (revno,))
+                    else:
+                        new_rev = '~' + revno
+
                     for line in old_res:
-                        s = _revno_pattern.sub(new_rev, line)
+                        if not files_with_matches:
+                            s = _revno_pattern.sub(new_rev, line)
+                        else:
+                            s = _revno_pattern_list_only.sub(new_rev, line)
                         res_append(s)
                         outf_write(s)
                     dir_res[file_rev] = res
