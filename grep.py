@@ -312,7 +312,8 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                 else:
                     # Optimize for wtree list-only as we don't need to read the
                     # entire file
-                    file = codecs.open(path_for_file, 'r')
+                    bufsize = 4 * 1024 # 4KiB buffer based on experimentation
+                    file = codecs.open(path_for_file, 'r', buffering=bufsize)
                     _file_grep_list_only_wtree(file, rpath, fp,
                         pattern, compiled_pattern, eol_marker, line_number, revno,
                         print_revno, include, exclude, verbose, fixed_string,
@@ -372,45 +373,47 @@ def _file_grep_list_only_wtree(file, relpath, path, pattern, patternc,
         eol_marker, line_number, revno, print_revno, include, exclude,
         verbose, fixed_string, ignore_case, files_with_matches, outf,
         path_prefix=None):
-    res = []
-    _te = _terminal_encoding
-    _ue = _user_encoding
-
-    pattern = pattern.encode(_ue, 'replace')
-    if fixed_string and ignore_case:
-        pattern = pattern.lower()
 
     # test and skip binary files
     if '\x00' in file.read(1024):
         if verbose:
             trace.warning("Binary file '%s' skipped." % path)
-        return res
+            return
 
-    if path_prefix and path_prefix != '.':
-        # user has passed a dir arg, show that as result prefix
-        path = osutils.pathjoin(path_prefix, path)
+    file.seek(0) # search from beginning
 
-    path = path.encode(_te, 'replace')
-
-    file.seek(0)
+    found = False
     if fixed_string:
-        for line in file:
-            if ignore_case:
+        pattern = pattern.encode(_user_encoding, 'replace')
+        if fixed_string and ignore_case:
+            pattern = pattern.lower()
+        if ignore_case:
+
+            for line in file:
                 line = line.lower()
-            if pattern in line:
-                s = path + eol_marker
-                res.append(s)
-                outf.write(s)
-                break
-    else:
+                if pattern in line:
+                    found = True
+                    break
+        else: # don't ignore case
+
+            for line in file:
+                if pattern in line:
+                    found = True
+                    break
+    else:   # not fixed_string
+
         for line in file:
             if patternc.search(line):
-                s = path + eol_marker
-                res.append(s)
-                outf.write(s)
+                found = True
                 break
-    return res
 
+    if found:
+        if path_prefix and path_prefix != '.':
+            # user has passed a dir arg, show that as result prefix
+            path = osutils.pathjoin(path_prefix, path)
+        path = path.encode(_terminal_encoding, 'replace')
+        s = path + eol_marker
+        outf.write(s)
 
 def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         line_number, revno, print_revno, include, exclude, verbose,
