@@ -37,14 +37,17 @@ from bzrlib import (
 _terminal_encoding = osutils.get_terminal_encoding()
 _user_encoding = osutils.get_user_encoding()
 
+
 class _RevisionNotLinear(Exception):
     """Raised when a revision is not on left-hand history."""
+
 
 def _rev_on_mainline(rev_tuple):
     """returns True is rev tuple is on mainline"""
     if len(rev_tuple) == 1:
         return True
     return rev_tuple[1] == 0 and rev_tuple[2] == 0
+
 
 # NOTE: _linear_view_revisions is basided on
 # bzrlib.log._linear_view_revisions.
@@ -59,6 +62,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
             yield revision_id, revno_str, 0
             break
         yield revision_id, revno_str, 0
+
 
 # NOTE: _graph_view_revisions is copied from
 # bzrlib.log._graph_view_revisions.
@@ -102,6 +106,7 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
                 merge_depth -= depth_adjustment
             yield rev_id, '.'.join(map(str, revno)), merge_depth
 
+
 def compile_pattern(pattern, flags=0):
     patternc = None
     try:
@@ -112,10 +117,12 @@ def compile_pattern(pattern, flags=0):
         raise errors.BzrError("Invalid pattern: '%s'" % pattern)
     return patternc
 
+
 def is_fixed_string(s):
     if re.match("^([A-Za-z0-9_]|\s)*$", s):
         return True
     return False
+
 
 def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
         line_number, from_root, eol_marker, print_revno, levels,
@@ -202,6 +209,7 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
     finally:
         wt.unlock()
 
+
 def workingtree_grep(pattern, compiled_pattern, path_list, recursive,
         line_number, from_root, eol_marker, include, exclude, verbose,
         fixed_string, ignore_case, files_with_matches, outf):
@@ -225,6 +233,7 @@ def workingtree_grep(pattern, compiled_pattern, path_list, recursive,
                     fixed_string, ignore_case, files_with_matches, outf)
     finally:
         tree.unlock()
+
 
 def _skip_file(include, exclude, path):
     if include and not _path_in_glob_list(path, include):
@@ -320,6 +329,7 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
             dir_res[file_rev] = res
     return dir_res
 
+
 def _make_display_path(relpath, path):
     """Return path string relative to user cwd.
 
@@ -348,6 +358,7 @@ def versioned_file_grep(tree, id, relpath, path, pattern, patternc,
         line_number, revno, print_revno, include, exclude, verbose,
         fixed_string, ignore_case, files_with_matches, outf, path_prefix)
 
+
 def _path_in_glob_list(path, glob_list):
     present = False
     for glob in glob_list:
@@ -355,6 +366,7 @@ def _path_in_glob_list(path, glob_list):
             present = True
             break
     return present
+
 
 def _file_grep_list_only_wtree(file, relpath, path, pattern, patternc,
         eol_marker, line_number, revno, print_revno, include, exclude,
