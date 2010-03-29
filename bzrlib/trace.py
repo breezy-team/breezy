@@ -238,17 +238,35 @@ def _open_bzr_log():
     This sets the global _bzr_log_filename.
     """
     global _bzr_log_filename
+
+    def create_log_file(filename):
+        """Create a log file in while avoiding race.
+        """
+        buffering = 0 # unbuffered
+        mode = os.O_WRONLY | os.O_APPEND | osutils.O_TEXT
+        try:
+            fd = os.open(filename, mode)
+            logfile = os.fdopen(fd, 'at', buffering)
+            return logfile
+        except OSError, e:
+            if e.errno != errno.ENOENT:
+                raise
+        try:
+            fd = os.open(filename, mode | os.O_CREAT | os.O_EXCL)
+            logfile = os.fdopen(fd, 'at', buffering)
+        except OSError, e:
+            if e.errno != errno.EEXIST:
+                raise
+        else:
+            # Copy ownership from parent directory
+            osutils.copy_ownership(filename)
+            return logfile
+
+
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        buffering = 0 # unbuffered
-        if os.path.exists(_bzr_log_filename):
-            bzr_log_file = open(_bzr_log_filename, 'at', buffering=buffering)
-        else:
-            # create log file with ownership of containing directory
-            bzr_log_file = osutils.open_with_ownership(_bzr_log_filename,
-                'at', buffering)
-        # bzr_log_file.tell() on windows always return 0 until some writing done
+        bzr_log_file = create_log_file(_bzr_log_filename)
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
             bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")

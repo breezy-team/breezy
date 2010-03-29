@@ -1990,6 +1990,30 @@ class TestCreationOps(tests.TestCaseInTempDir):
     def _dummy_chown(self, path, uid, gid):
         self.path, self.uid, self.gid = path, uid, gid
 
+    def test_copy_ownership(self):
+        """Ensure that copy_ownership copies ownership from specified src.
+        """
+        ownsrc = '/'
+        f = open('test_file', 'wt')
+        osutils.copy_ownership('test_file', ownsrc)
+
+        s = os.stat(ownsrc)
+        self.assertEquals(self.path, 'test_file')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+
+    def test_copy_ownership_nonesrc(self):
+        """Ensure that copy_ownership copies ownership from parent dir.
+        """
+        f = open('test_file', 'wt')
+        # should use parent dir for permissions
+        osutils.copy_ownership('test_file')
+
+        s = os.stat('..')
+        self.assertEquals(self.path, 'test_file')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+
     def test_mkdir_with_ownership_chown(self):
         """Ensure that osutils.mkdir_with_ownership chowns correctly with ownership_src.
         """
@@ -2000,19 +2024,3 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.path, 'foo')
         self.assertEquals(self.uid, s.st_uid)
         self.assertEquals(self.gid, s.st_gid)
-
-    def test_open_with_ownership_chown(self):
-        """Ensure that osutils.open_with_ownership chowns correctly with ownership_src.
-        """
-        ownsrc = '/'
-        f = osutils.open_with_ownership('foo', 'w', ownership_src=ownsrc)
-
-        # do a test write and close
-        f.write('hello')
-        f.close()
-
-        s = os.stat(ownsrc)
-        self.assertEquals(self.path, 'foo')
-        self.assertEquals(self.uid, s.st_uid)
-        self.assertEquals(self.gid, s.st_gid)
-

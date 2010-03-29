@@ -1844,19 +1844,6 @@ def mkdir_with_ownership(path, ownership_src=None):
     copy_ownership(path, ownership_src)
 
 
-def open_with_ownership(filename, mode='r', bufsize=-1, ownership_src=None):
-    """Open the file 'filename' with the specified ownership.
-
-    If ownership_src is specified, copy usr/grp ownership from ownership_src
-    to filename. If ownership_src is None, copy ownership from containing
-    directory.
-    Returns the opened file object.
-    """
-    f = open(filename, mode, bufsize)
-    copy_ownership(filename, ownership_src)
-    return f
-
-
 def path_prefix_key(path):
     """Generate a prefix-order path key for path.
 

@@ -511,7 +511,8 @@ class GlobalConfig(IniBasedConfig):
 
     def _write_config_file(self):
         path = self._get_filename()
-        f = osutils.open_with_ownership(path, 'wb')
+        f = open(path, 'wb')
+        osutils.copy_ownership(path) # Copy ownership from parent dir
         self._get_parser().write(f)
         f.close()
 
