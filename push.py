@@ -57,22 +57,15 @@ class MissingObjectsIterator(object):
         """
         self.source = source
         self._object_store = store
-        self._revids = set()
-        self._sent_shas = set()
         self._pending = []
         self.pb = pb
 
     def import_revisions(self, revids):
-        self._revids.update(revids)
         for i, revid in enumerate(revids):
             if self.pb:
                 self.pb.update("pushing revisions", i, len(revids))
             git_commit = self.import_revision(revid)
             yield (revid, git_commit)
-
-    def queue(self, obj, path):
-        self._pending.append((obj, path))
-        self._sent_shas.add(obj.id)
 
     def import_revision(self, revid):
         """Import the gist of a revision into this Git repository.
@@ -84,17 +77,14 @@ class MissingObjectsIterator(object):
         for path, obj in self._object_store._revision_to_objects(rev, inv):
             if obj._type == "commit":
                 commit = obj
-            self.queue(obj, path)
+            self._pending.append((obj, path))
         return commit.id
 
     def __len__(self):
         return len(self._pending)
 
     def __iter__(self):
-        for i, (object, path) in enumerate(self._pending):
-            if self.pb:
-                self.pb.update("writing pack objects", i, len(self))
-            yield (object, path)
+        return iter(self._pending)
 
 
 class InterToGitRepository(InterRepository):
