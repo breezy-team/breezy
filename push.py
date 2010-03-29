@@ -30,9 +30,6 @@ from bzrlib.revision import (
 from bzrlib.plugins.git.errors import (
     NoPushSupport,
     )
-from bzrlib.plugins.git.mapping import (
-    extract_unusual_modes,
-    )
 from bzrlib.plugins.git.object_store import (
     BazaarObjectStore,
     )

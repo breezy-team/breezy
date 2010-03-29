@@ -375,26 +375,29 @@ class BazaarObjectStore(BaseObjectStore):
         (type, type_data) = self._lookup_git_sha(sha)
         # convert object to git object
         if type == "commit":
+            (revid, tree_sha) = type_data
             try:
-                rev = self.repository.get_revision(type_data[0])
+                rev = self.repository.get_revision(revid)
             except errors.NoSuchRevision:
                 trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
                 raise KeyError(sha)
-            commit = self._revision_to_commit(rev, type_data[1])
+            commit = self._revision_to_commit(rev, tree_sha)
             self._check_expected_sha(sha, commit)
             return commit
         elif type == "blob":
-            return self._get_blob(type_data[0], type_data[1], expected_sha=sha)
+            (fileid, revision) = type_data
+            return self._get_blob(fileid, revision, expected_sha=sha)
         elif type == "tree":
+            (fileid, revid) = type_data
             try:
-                inv = self.repository.get_inventory(type_data[1])
-                rev = self.repository.get_revision(type_data[1])
+                inv = self.repository.get_inventory(revid)
+                rev = self.repository.get_revision(revid)
             except errors.NoSuchRevision:
                 trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
                 raise KeyError(sha)
             unusual_modes = extract_unusual_modes(rev)
             try:
-                return self._get_tree(type_data[0], type_data[1], inv,
+                return self._get_tree(fileid, revid, inv,
                     unusual_modes, expected_sha=sha)
             except errors.NoSuchRevision:
                 raise KeyError(sha)
@@ -407,4 +410,43 @@ class BazaarObjectStore(BaseObjectStore):
         :param have: List of SHA1s of objects that should not be sent
         :param want: List of SHA1s of objects that should be sent
         """
-        return self.iter_shas(self.find_missing_objects(have, want))
+        processed = set()
+        for commit_sha in have:
+            try:
+                (type, (revid, tree_sha)) = self._lookup_git_sha(commit_sha)
+            except KeyError:
+                pass
+            else:
+                assert type == "commit"
+                processed.add(revid)
+        pending = set()
+        for commit_sha in want:
+            if commit_sha in have:
+                continue
+            (type, (revid, tree_sha)) = self._lookup_git_sha(commit_sha)
+            assert type == "commit"
+            pending.add(revid)
+        todo = set()
+        while pending:
+            processed.update(pending)
+            next_map = self.repository.get_parent_map(pending)
+            next_pending = set()
+            for item in next_map.iteritems():
+                todo.add(item[0])
+                next_pending.update(p for p in item[1] if p not in processed)
+            pending = next_pending
+        if NULL_REVISION in todo:
+            todo.remove(NULL_REVISION)
+        trace.mutter('sending revisions %r', todo)
+        ret = []
+        pb = ui.ui_factory.nested_progress_bar()
+        try:
+            for i, revid in enumerate(todo):
+                pb.update("generating git objects", i, len(todo))
+                rev = self.repository.get_revision(revid)
+                inv = self.repository.get_inventory(revid)
+                for path, obj in self._revision_to_objects(rev, inv):
+                    ret.append((obj, path))
+        finally:
+            pb.finished()
+        return ret
