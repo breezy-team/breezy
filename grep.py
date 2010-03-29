@@ -128,7 +128,7 @@ def is_fixed_string(s):
 def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
         line_number, from_root, eol_marker, print_revno, levels,
         include, exclude, verbose, fixed_string, ignore_case, files_with_matches,
-        outf):
+        files_without_matches, outf):
 
     wt, relpath = WorkingTree.open_containing('.')
     wt.lock_read()
@@ -199,21 +199,22 @@ def versioned_grep(revision, pattern, compiled_pattern, path_list, recursive,
                         line_number, pattern, compiled_pattern,
                         from_root, eol_marker, revno, print_revno,
                         include, exclude, verbose, fixed_string,
-                        ignore_case, files_with_matches,
+                        ignore_case, files_with_matches, files_without_matches,
                         outf, path_prefix, res_cache)
                 else:
                     versioned_file_grep(tree, id, '.', path,
                         pattern, compiled_pattern, eol_marker, line_number,
                         revno, print_revno, include, exclude, verbose,
                         fixed_string, ignore_case, files_with_matches,
-                        outf)
+                        files_without_matches, outf)
     finally:
         wt.unlock()
 
 
 def workingtree_grep(pattern, compiled_pattern, path_list, recursive,
         line_number, from_root, eol_marker, include, exclude, verbose,
-        fixed_string, ignore_case, files_with_matches, outf):
+        fixed_string, ignore_case, files_with_matches, files_without_matches,
+        outf):
     revno = print_revno = None # for working tree set revno to None
 
     tree, branch, relpath = \
@@ -226,12 +227,14 @@ def workingtree_grep(pattern, compiled_pattern, path_list, recursive,
                 dir_grep(tree, path, relpath, recursive, line_number,
                     pattern, compiled_pattern, from_root, eol_marker, revno,
                     print_revno, include, exclude, verbose, fixed_string,
-                    ignore_case, files_with_matches, outf, path_prefix)
+                    ignore_case, files_with_matches, files_without_matches,
+                    outf, path_prefix)
             else:
                 _file_grep(open(path).read(), '.', path, pattern,
                     compiled_pattern, eol_marker, line_number, revno,
                     print_revno, include, exclude, verbose,
-                    fixed_string, ignore_case, files_with_matches, outf)
+                    fixed_string, ignore_case, files_with_matches,
+                    files_without_matches, outf)
     finally:
         tree.unlock()
 
@@ -247,7 +250,8 @@ def _skip_file(include, exclude, path):
 def dir_grep(tree, path, relpath, recursive, line_number, pattern,
         compiled_pattern, from_root, eol_marker, revno, print_revno,
         include, exclude, verbose, fixed_string, ignore_case,
-        files_with_matches, outf, path_prefix, res_cache={}):
+        files_with_matches, files_without_matches, outf,
+        path_prefix, res_cache={}):
     _revno_pattern = re.compile("\~[0-9.]+:")
     _revno_pattern_list_only = re.compile("\~[0-9.]+")
     dir_res = {}
@@ -304,20 +308,22 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                     from_dir = '.'
 
                 path_for_file = osutils.pathjoin(tree.basedir, from_dir, fp)
-                if not files_with_matches:
-                    file_text = codecs.open(path_for_file, 'r').read()
-                    _file_grep(file_text, rpath, fp,
-                        pattern, compiled_pattern, eol_marker, line_number, revno,
-                        print_revno, include, exclude, verbose, fixed_string,
-                        ignore_case, files_with_matches, outf, path_prefix)
-                else:
+                if files_with_matches or files_without_matches:
                     # Optimize for wtree list-only as we don't need to read the
                     # entire file
                     file = codecs.open(path_for_file, 'r', buffering=4096)
                     _file_grep_list_only_wtree(file, rpath, fp,
                         pattern, compiled_pattern, eol_marker, line_number, revno,
                         print_revno, include, exclude, verbose, fixed_string,
-                        ignore_case, files_with_matches, outf, path_prefix)
+                        ignore_case, files_with_matches, files_without_matches,
+                        outf, path_prefix)
+                else:
+                    file_text = codecs.open(path_for_file, 'r').read()
+                    _file_grep(file_text, rpath, fp,
+                        pattern, compiled_pattern, eol_marker, line_number, revno,
+                        print_revno, include, exclude, verbose, fixed_string,
+                        ignore_case, files_with_matches, files_without_matches,
+                        outf, path_prefix)
 
     if revno != None: # grep versioned files
         for (path, fid), chunks in tree.iter_files_bytes(to_grep):
@@ -325,7 +331,8 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
             res = _file_grep(chunks[0], rpath, path, pattern,
                 compiled_pattern, eol_marker, line_number, revno,
                 print_revno, include, exclude, verbose, fixed_string,
-                ignore_case, files_with_matches, outf, path_prefix)
+                ignore_case, files_with_matches, files_without_matches,
+                outf, path_prefix)
             file_rev = tree.inventory[fid].revision
             dir_res[file_rev] = res
     return dir_res
@@ -349,7 +356,7 @@ def _make_display_path(relpath, path):
 def versioned_file_grep(tree, id, relpath, path, pattern, patternc,
         eol_marker, line_number, revno, print_revno, include, exclude,
         verbose, fixed_string, ignore_case, files_with_matches,
-        outf, path_prefix = None):
+        files_without_matches, outf, path_prefix = None):
     """Create a file object for the specified id and pass it on to _file_grep.
     """
 
@@ -357,7 +364,8 @@ def versioned_file_grep(tree, id, relpath, path, pattern, patternc,
     file_text = tree.get_file_text(id)
     _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         line_number, revno, print_revno, include, exclude, verbose,
-        fixed_string, ignore_case, files_with_matches, outf, path_prefix)
+        fixed_string, ignore_case, files_with_matches, files_without_matches,
+        outf, path_prefix)
 
 
 def _path_in_glob_list(path, glob_list):
@@ -371,8 +379,8 @@ def _path_in_glob_list(path, glob_list):
 
 def _file_grep_list_only_wtree(file, relpath, path, pattern, patternc,
         eol_marker, line_number, revno, print_revno, include, exclude,
-        verbose, fixed_string, ignore_case, files_with_matches, outf,
-        path_prefix=None):
+        verbose, fixed_string, ignore_case, files_with_matches,
+        files_without_matches, outf, path_prefix=None):
 
     # test and skip binary files
     if '\x00' in file.read(1024):
@@ -400,14 +408,14 @@ def _file_grep_list_only_wtree(file, relpath, path, pattern, patternc,
                 if pattern in line:
                     found = True
                     break
-    else:   # not fixed_string
+    else: # not fixed_string
 
         for line in file:
             if patternc.search(line):
                 found = True
                 break
 
-    if found:
+    if (files_with_matches and found) or (files_without_matches and not found):
         if path_prefix and path_prefix != '.':
             # user has passed a dir arg, show that as result prefix
             path = osutils.pathjoin(path_prefix, path)
@@ -415,9 +423,11 @@ def _file_grep_list_only_wtree(file, relpath, path, pattern, patternc,
         s = path + eol_marker
         outf.write(s)
 
+
 def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         line_number, revno, print_revno, include, exclude, verbose,
-        fixed_string, ignore_case, files_with_matches, outf, path_prefix=None):
+        fixed_string, ignore_case, files_with_matches, files_without_matches,
+        outf, path_prefix=None):
     res = []
     res_append = res.append
     outf_write = outf.write
@@ -445,9 +455,10 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
     # of the core loop. hence, the core loop is somewhat duplicated
     # for various combinations of formatting options.
 
-    if files_with_matches:
+    if files_with_matches or files_without_matches:
         # While printing files with matches we only have two case
         # print file name or print file name with revno.
+        found = False
         if print_revno:
             pfmt = "~%s".encode(_te, 'replace')
             if fixed_string:
@@ -456,15 +467,13 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
                         line = line.lower()
                     if pattern in line:
                         s = path + (pfmt % (revno,)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
+                        found = True
                         break
             else:
                 for line in file_text.splitlines():
                     if patternc.search(line):
                         s = path + (pfmt % (revno,)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
+                        found = True
                         break
         else:
             if fixed_string:
@@ -473,16 +482,18 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
                         line = line.lower()
                     if pattern in line:
                         s = path + eol_marker
-                        res_append(s)
-                        outf_write(s)
+                        found = True
                         break
             else:
                 for line in file_text.splitlines():
                     if patternc.search(line):
                         s = path + eol_marker
-                        res_append(s)
-                        outf_write(s)
+                        found = True
                         break
+        if (files_with_matches and found) or \
+                (files_without_matches and not found):
+            res_append(s)
+            outf_write(s)
         return res # return from files_with_matches
 
 
