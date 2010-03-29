@@ -1711,7 +1711,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_wtree_files_without_matches(self):
-        """(wtree) Ensure --files-without-matches, -L works
+        """(wtree) Ensure --files-without-match, -L works
         """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
@@ -1727,14 +1727,14 @@ class TestGrep(tests.TestCaseWithTransport):
         self._update_file('dir0/file00.txt', 'HELLO\n', checkin=False)
 
         # fixed-string
-        out, err = self.run_bzr(['grep', '--files-without-matches', 'HELLO'])
+        out, err = self.run_bzr(['grep', '--files-without-match', 'HELLO'])
 
         self.assertContainsRe(out, "^file1.txt$", flags=TestGrep._reflags)
         self.assertContainsRe(out, "^dir0/file01.txt$", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 2)
 
         # regex
-        out, err = self.run_bzr(['grep', '--files-without-matches', 'HE.LO'])
+        out, err = self.run_bzr(['grep', '--files-without-match', 'HE.LO'])
 
         self.assertContainsRe(out, "^file1.txt$", flags=TestGrep._reflags)
         self.assertContainsRe(out, "^dir0/file01.txt$", flags=TestGrep._reflags)
@@ -1793,7 +1793,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertEqual(len(out.splitlines()), 1)
 
     def test_ver_files_without_matches(self):
-        """(ver) Ensure --files-without-matches, -L works
+        """(ver) Ensure --files-without-match, -L works
         """
         wd = 'foobar0'
         self.make_branch_and_tree(wd)
@@ -1809,7 +1809,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._update_file('dir0/file00.txt', 'HELLO\n')             # rev 7
 
         # fixed-string
-        out, err = self.run_bzr(['grep', '-r', '-1', '--files-without-matches',
+        out, err = self.run_bzr(['grep', '-r', '-1', '--files-without-match',
             'HELLO'])
 
         self.assertContainsRe(out, "^file1.txt~7$", flags=TestGrep._reflags)
@@ -1817,7 +1817,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertEqual(len(out.splitlines()), 2)
 
         # regex
-        out, err = self.run_bzr(['grep', '-r', '-1', '--files-without-matches',
+        out, err = self.run_bzr(['grep', '-r', '-1', '--files-without-match',
             'H.LLO'])
 
         self.assertContainsRe(out, "^file1.txt~7$", flags=TestGrep._reflags)
@@ -1825,7 +1825,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertEqual(len(out.splitlines()), 2)
 
         # fixed-string
-        out, err = self.run_bzr(['grep', '-r', '6..7', '--files-without-matches',
+        out, err = self.run_bzr(['grep', '-r', '6..7', '--files-without-match',
             'HELLO'])
 
         self.assertContainsRe(out, "^file1.txt~6$", flags=TestGrep._reflags)
@@ -1836,7 +1836,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertEqual(len(out.splitlines()), 5)
 
         # regex
-        out, err = self.run_bzr(['grep', '-r', '6..7', '--files-without-matches',
+        out, err = self.run_bzr(['grep', '-r', '6..7', '--files-without-match',
             'H.LLO'])
 
         self.assertContainsRe(out, "^file1.txt~6$", flags=TestGrep._reflags)

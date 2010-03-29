@@ -92,7 +92,7 @@ class cmd_grep(Command):
         Option('files-with-matches', short_name='l',
                help='Print only the name of each input file in '
                'which PATTERN is found.'),
-        Option('files-without-matches', short_name='L',
+        Option('files-without-match', short_name='L',
                help='Print only the name of each input file in '
                'which PATTERN is not found.'),
         Option('fixed-string', short_name='F',
@@ -122,7 +122,7 @@ class cmd_grep(Command):
             from_root=False, null=False, levels=None, line_number=False,
             path_list=None, revision=None, pattern=None, include=None,
             exclude=None, fixed_string=False, files_with_matches=False,
-            files_without_matches=False):
+            files_without_match=False):
 
         recursive = not no_recursive
 
@@ -135,7 +135,7 @@ class cmd_grep(Command):
             if from_root:
                 raise errors.BzrCommandError('cannot specify both --from-root and PATH.')
 
-        if files_with_matches and files_without_matches:
+        if files_with_matches and files_without_match:
             raise errors.BzrCommandError('cannot specify both '
                 '-l/--files-with-matches and -L/--files-without-matches.')
 
@@ -163,13 +163,13 @@ class cmd_grep(Command):
             grep.workingtree_grep(pattern, patternc, path_list, recursive,
                 line_number, from_root, eol_marker, include, exclude,
                 verbose, fixed_string, ignore_case, files_with_matches,
-                files_without_matches, self.outf)
+                files_without_match, self.outf)
         else:
             grep.versioned_grep(revision, pattern, patternc, path_list,
                 recursive, line_number, from_root, eol_marker,
                 print_revno, levels, include, exclude, verbose,
                 fixed_string, ignore_case, files_with_matches,
-                files_without_matches, self.outf)
+                files_without_match, self.outf)
 
 
 register_command(cmd_grep)
