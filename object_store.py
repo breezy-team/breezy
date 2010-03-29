@@ -215,6 +215,7 @@ class BazaarObjectStore(BaseObjectStore):
                     raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
         self._idmap.add_entries(revid, rev.parent_ids, commit_obj.id, 
             tree_sha, entries)
+        return commit_obj.id
 
     def _check_expected_sha(self, expected_sha, object):
         if expected_sha is None:
