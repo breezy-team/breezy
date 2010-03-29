@@ -244,23 +244,24 @@ def _open_bzr_log():
         """
         buffering = 0 # unbuffered
         mode = os.O_WRONLY | os.O_APPEND | osutils.O_TEXT
-        try:
-            fd = os.open(filename, mode)
-            logfile = os.fdopen(fd, 'at', buffering)
-            return logfile
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
-        try:
-            fd = os.open(filename, mode | os.O_CREAT | os.O_EXCL)
-            logfile = os.fdopen(fd, 'at', buffering)
-        except OSError, e:
-            if e.errno != errno.EEXIST:
-                raise
-        else:
-            # Copy ownership from parent directory
-            osutils.copy_ownership(filename)
-            return logfile
+        while True:
+            try:
+                fd = os.open(filename, mode)
+                logfile = os.fdopen(fd, 'at', buffering)
+                return logfile
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+            try:
+                fd = os.open(filename, mode | os.O_CREAT | os.O_EXCL)
+                logfile = os.fdopen(fd, 'at', buffering)
+            except OSError, e:
+                if e.errno != errno.EEXIST:
+                    raise
+            else:
+                # Copy ownership from parent directory
+                osutils.copy_ownership(filename)
+                return logfile
 
 
     _bzr_log_filename = _get_bzr_log_filename()
