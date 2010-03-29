@@ -325,6 +325,8 @@ class TestBranchStacked(ExternalBase):
             '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
+            'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
+            'This may take some time. Upgrade the repositories to the same format for better performance.\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 
@@ -338,6 +340,8 @@ class TestBranchStacked(ExternalBase):
             '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
+            'Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n'
+            'This may take some time. Upgrade the repositories to the same format for better performance.\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 

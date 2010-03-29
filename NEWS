@@ -86,6 +86,9 @@ Bug Fixes
 * Added docstring for ``Tree.iter_changes``
   (John Arbash Meinel, #304182)
 
+* Allow additional arguments to
+  ``RemoteRepository.add_inventory_by_delta()``. (Jelmer Vernooij, #532631)
+
 * Allow exporting a single file using ``bzr export``.
   (Michal Junák, #511987)
 
@@ -99,6 +102,9 @@ Bug Fixes
 
 * Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
   (Martin Pool, #331095)
+
+* Avoid truncating svn URLs.
+  (Martin Pool, Martin von Gagern, #545185)
 
 * ``bzr add`` will not add conflict related files unless explicitly required.
   (Vincent Ladeuil, #322767, #414589)
@@ -139,10 +145,17 @@ Bug Fixes
 
 * DirStateRevisionTree.kind() was returning wrong result when 'kind'
   changes occured between the workingtree and one of its parents.
-  (Vincent Ladeuil, #533437)
+  (Vincent Ladeuil, #535547)
 
-* Fix stub sftp test server to call os.getcwdu().
-  (Vincent Ladeuil, #526211, #526353)
+* Fix ``log`` to better check ancestors even if merged revisions are involved.
+  (Vincent Ladeuil, #476293)
+
+* Many IO operations that returned ``EINTR`` were retried even if it
+  wasn't safe to do so via careless use of ``until_no_eintr``.  Bazaar now
+  only retries operations that are safe to retry, and in some cases has
+  switched to operations that can be retried (e.g. ``sock.send`` rather than
+  ``sock.sendall``).
+  (Andrew Bennetts, Martin <gzlist@googlemail.com>, #496813)
 
 * Path conflicts now support --take-this and --take-other even when a
   deletion is involved.
@@ -162,9 +175,6 @@ Bug Fixes
 * SSH child processes will now ignore SIGQUIT on nix systems so breaking into
   the debugger won't kill the session.
   (Martin <gzlist@googlemail.com>, #162502)
-
-* Allow additional arguments to
-  ``RemoteRepository.add_inventory_by_delta()``. (Jelmer Vernooij, #532631)
 
 * Tolerate patches with leading noise in ``bzr-handle-patch``.
   (Toshio Kuratomi, Martin Pool, #502076)
@@ -268,7 +278,10 @@ Testing
 bzr 2.1.1
 #########
 
-:2.1.1: not released yet
+:2.1.1: 2010-03-24
+
+This is a small bugfix release.  Upgrading is recommended for anyone
+running 2.1.0 or earlier.
 
 Bug Fixes
 *********
@@ -284,7 +297,7 @@ Bug Fixes
 * Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
 
 * Fix stub sftp test server to call os.getcwdu().
-  (Vincent Ladeuil, #526211, #526353)
+  (Vincent Ladeuil, #526221, #526353)
 
 * Fixed CHM generation by moving the NEWS section template into
   a separate file. (Ian Clatworthy, #524184)
@@ -301,7 +314,6 @@ Bug Fixes
 * Warn if pyrex is too old to compile the new ``SimpleSet`` and
   ``StaticTuple`` extensions, rather than having the build fail randomly.
   (John Arbash Meinel, #449776)
-
 
 Documentation
 *************
@@ -353,9 +365,6 @@ Bug Fixes
 * ``bzr update`` performs the two merges in a more logical order and will stop
   when it encounters conflicts.  
   (Gerard Krol, #113809)
-
-* Fix ``log`` to better check ancestors even if merged revisions are involved.
-  (Vincent Ladeuil, #476293)
 
 * Give a better error message when doing ``bzr bind`` in an already bound
   branch.  (Neil Martinsen-Burrell, #513063)
@@ -702,6 +711,12 @@ Bug Fixes
   happen fairly often if the process is suddenly interrupted while taking
   a lock.
   (Martin Pool, #185103)
+
+* Give the warning about potentially slow cross-format fetches much
+  earlier on in the fetch operation.  Don't show this message during
+  upgrades, and show the correct format indication for remote
+  repositories.
+  (Martin Pool, #456077, #515356, #513157)
 
 * Handle renames correctly when there are files or directories that 
   differ only in case.  (Chris Jones, Martin Pool, #368931)
