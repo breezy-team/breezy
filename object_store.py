@@ -29,6 +29,7 @@ from bzrlib import (
     errors,
     trace,
     ui,
+    urlutils,
     )
 from bzrlib.revision import (
     NULL_REVISION,
@@ -114,17 +115,90 @@ class BazaarObjectStore(BaseObjectStore):
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup)
 
-    def _inventory_to_objects(self, inv, invshamap, unusual_modes):
-        tree_sha = self._get_ie_sha1(inv.root, inv, invshamap, unusual_modes)
-        return tree_sha, []
+    def _inventory_to_objects(self, inv, parent_invs, parent_invshamaps,
+            unusual_modes):
+        """Iterate over the objects that were introduced in a revision.
+
+        :param inv: Inventory to process
+        :param parent_invs: parent inventory SHA maps
+        :param parent_invshamaps: parent inventory SHA Map
+        :param unusual_modes: Unusual file modes
+        :return: Yields (path, object) entries
+        """
+        new_trees = {}
+        shamap = {}
+        for path, ie in inv.entries():
+            if ie.kind in ("file", "symlink"):
+                for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
+                    try:
+                        pie = pinv[ie.file_id]
+                    except errors.NoSuchId:
+                        pass
+                    else:
+                        if pie.kind == ie.kind and pie.revision == ie.revision:
+                            shamap[ie.file_id] = pinvshamap.lookup_blob(ie.file_id, ie.revision)
+                            break
+                else:
+                    obj = self._get_blob(ie.file_id, ie.revision)
+                    yield path, obj
+                    shamap[ie.file_id] = obj.id
+                    new_trees[urlutils.dirname(path)] = ie.parent_id
+            elif ie.kind == "directory":
+                for pinv in parent_invs:
+                    try:
+                        pie = pinv[ie.file_id]
+                    except errors.NoSuchId:
+                        pass
+                    else:
+                        if (pie.kind == ie.kind and 
+                            pie.children.keys() == ie.children.keys()):
+                            shamap[ie.file_id] = pinvshamap.lookup_tree(ie.file_id)
+                            break
+                else:
+                    new_trees[path] = ie.file_id
+            else:
+                raise AssertionError(ie.kind)
+        for fid in unusual_modes:
+            new_trees[inv.id2path(fid)] = inv[fid].parent_id
+        
+        trees = {}
+        while new_trees:
+            items = new_trees.items()
+            new_trees = {}
+            for path, file_id in items:
+                parent_id = inv[file_id].parent_id
+                if parent_id is not None:
+                    parent_path = urlutils.dirname(path)
+                    new_trees[parent_path] = parent_id
+                trees[path] = file_id
+
+        for path in sorted(trees.keys(), reverse=True):
+            ie = inv[trees[path]]
+            assert ie.kind == "directory"
+            obj = directory_to_tree(ie, 
+                    lambda ie: shamap[ie.file_id], unusual_modes)
+            shamap[ie.file_id] = obj.id
+            yield path, obj
 
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
         rev = self.repository.get_revision(revid)
         unusual_modes = extract_unusual_modes(rev)
-        invshamap = self._idmap.get_inventory_sha_map(revid)
-        tree_sha, entries = self._inventory_to_objects(inv, invshamap,
-            unusual_modes)
+        parent_invs = self.repository.iter_inventories(rev.parent_ids)
+        parent_invshamaps = [self._idmap.get_inventory_sha_map(r) for r in rev.parent_ids]
+        entries = []
+        tree_sha = None
+        for path, obj in self._inventory_to_objects(inv, parent_invs,
+                parent_invshamaps, unusual_modes):
+            file_id = inv.path2id(path)
+            ie = inv[file_id]
+            if obj._type == "blob":
+                revision = ie.revision
+            else:
+                revision = revid
+            entries.append((file_id, obj._type, obj.id, revision))
+            if path == "":
+                tree_sha = obj.id
         commit_obj = self._revision_to_commit(rev, tree_sha)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(revid)
@@ -171,16 +245,12 @@ class BazaarObjectStore(BaseObjectStore):
                     hexsha = None
                 else:
                     hexsha = ret.id
-                self._idmap._add_entry(hexsha, "tree",
-                    (entry.file_id, inv.revision_id))
                 return hexsha, ret
         elif entry.kind in ("file", "symlink"):
             try:
                 return invshamap.lookup_blob(entry.file_id, entry.revision), None
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
-                self._idmap._add_entry(ret.id, "blob", (entry.file_id,
-                    entry.revision))
                 return ret.id, ret
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
