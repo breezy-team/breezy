@@ -76,7 +76,7 @@ def branch_name_to_ref(name):
     """
     if name is None or name == "HEAD":
         return "HEAD"
-    if not "/" in name:
+    if not name.startswith("refs/"):
         return "refs/heads/%s" % name
     else:
         return name
@@ -422,14 +422,14 @@ class InterFromGitBranch(branch.GenericInterBranch):
         """
         interrepo = self._get_interrepo(self.source, self.target)
         def determine_wants(heads):
-            if not self.source.name in heads:
-                raise NoSuchRef(self.source.name, heads.keys())
+            if not self.source.ref in heads:
+                raise NoSuchRef(self.source.ref, heads.keys())
             if stop_revision is not None:
                 self._last_revid = stop_revision
                 head, mapping = self.source.repository.lookup_bzr_revision_id(
                     stop_revision)
             else:
-                head = heads[self.source.name]
+                head = heads[self.source.ref]
                 self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(
                     head)
             if self.target.repository.has_revision(self._last_revid):

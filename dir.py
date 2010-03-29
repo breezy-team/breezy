@@ -82,6 +82,16 @@ class GitDir(bzrdir.BzrDir):
         from bzrlib.plugins.git.branch import branch_name_to_ref
         return branch_name_to_ref(name)
 
+    if bzrlib_version >= (2, 2):
+        def open_branch(self, name=None, ignore_fallbacks=None,
+            unsupported=False):
+            return self._open_branch(name=name,
+                ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
+    else:
+        def open_branch(self, ignore_fallbacks=None, unsupported=False):
+            return self._open_branch(name=None,
+                ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
+
 
 class LocalGitDir(GitDir):
     """An adapter to the '.git' dir used by git."""
@@ -122,13 +132,6 @@ class LocalGitDir(GitDir):
         from bzrlib.plugins.git.branch import LocalGitBranch
         return LocalGitBranch(self, repo, self._branch_name_to_ref(name),
             self._lockfiles)
-
-    if bzrlib_version >= (2, 2):
-        open_branch = _open_branch
-    else:
-        def open_branch(self, ignore_fallbacks=None, unsupported=False):
-            return self._open_branch(name=None,
-                ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
 
     def destroy_branch(self, name=None):
         del self._git.refs[self._branch_name_to_ref(name)]
