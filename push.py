@@ -70,29 +70,9 @@ class MissingObjectsIterator(object):
             git_commit = self.import_revision(revid)
             yield (revid, git_commit)
 
-    def need_sha(self, sha):
-        if sha is None or sha in self._sent_shas:
-            return False
-        (type, (fileid, revid)) = self._object_store._idmap.lookup_git_sha(sha)
-        assert type in ("blob", "tree")
-        if revid in self._revids:
-            # Not sent yet, and part of the set of revisions to send
-            return True
-        # Not changed in the revisions to send, so either not necessary
-        # or already present remotely (as git doesn't do ghosts)
-        return False
-
-    def queue(self, sha, obj, path, ie=None, inv=None, unusual_modes=None):
-        if obj is None:
-            # Can't lazy-evaluate directories, since they might be eliminated
-            if ie.kind == "directory":
-                obj = self._object_store._get_ie_object(ie, inv, unusual_modes)
-                if obj is None:
-                    return
-            else:
-                obj = (ie, inv, unusual_modes)
+    def queue(self, obj, path):
         self._pending.append((obj, path))
-        self._sent_shas.add(sha)
+        self._sent_shas.add(obj.id)
 
     def import_revision(self, revid):
         """Import the gist of a revision into this Git repository.
@@ -108,9 +88,8 @@ class MissingObjectsIterator(object):
                 list(self.source.iter_inventories(rev.parent_ids)),
                 parent_invshamaps,
                 unusual_modes):
-            ie = inv[inv.path2id(path)]
-            self.queue(obj.id, obj, path, ie, inv, unusual_modes)
-            if ie.parent_id is None:
+            self.queue(obj, path)
+            if path == "":
                 tree_sha = obj.id
         if tree_sha is None:
             if not rev.parent_ids:
@@ -119,7 +98,7 @@ class MissingObjectsIterator(object):
             else:
                 tree_sha = parent_invshamaps[0][inv.root.file_id]
         commit = self._object_store._get_commit(rev, tree_sha)
-        self.queue(commit.id, commit, None, None)
+        self.queue(commit, None)
         return commit.id
 
     def __len__(self):
@@ -129,8 +108,6 @@ class MissingObjectsIterator(object):
         for i, (object, path) in enumerate(self._pending):
             if self.pb:
                 self.pb.update("writing pack objects", i, len(self))
-            if isinstance(object, tuple):
-                object = self._object_store._get_ie_object(*object)
             yield (object, path)
 
 
