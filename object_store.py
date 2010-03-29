@@ -185,23 +185,14 @@ class BazaarObjectStore(BaseObjectStore):
                 shamap[ie.file_id] = obj.id
                 yield path, obj
 
-    def _update_sha_map_revision(self, revid):
-        inv = self.repository.get_inventory(revid)
-        rev = self.repository.get_revision(revid)
+    def _revision_to_objects(self, rev, inv):
         unusual_modes = extract_unusual_modes(rev)
         parent_invs = self.repository.iter_inventories(rev.parent_ids)
         parent_invshamaps = [self._idmap.get_inventory_sha_map(r) for r in rev.parent_ids]
-        entries = []
         tree_sha = None
         for path, obj in self._inventory_to_objects(inv, parent_invs,
                 parent_invshamaps, unusual_modes):
-            file_id = inv.path2id(path)
-            ie = inv[file_id]
-            if obj._type == "blob":
-                revision = ie.revision
-            else:
-                revision = revid
-            entries.append((file_id, obj._type, obj.id, revision))
+            yield path, obj
             if path == "":
                 tree_sha = obj.id
         commit_obj = self._revision_to_commit(rev, tree_sha)
@@ -213,8 +204,28 @@ class BazaarObjectStore(BaseObjectStore):
             if foreign_revid != commit_obj.id:
                 if not "fix-shamap" in debug.debug_flags:
                     raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
+        yield None, commit_obj
+
+    def _update_sha_map_revision(self, revid):
+        rev = self.repository.get_revision(revid)
+        inv = self.repository.get_inventory(rev.revision_id)
+        commit_obj = None
+        entries = []
+        for path, obj in self._revision_to_objects(rev, inv):
+            if obj._type == "commit":
+                commit_obj = obj
+            elif obj._type in ("blob", "tree"):
+                file_id = inv.path2id(path)
+                ie = inv[file_id]
+                if obj._type == "blob":
+                    revision = ie.revision
+                else:
+                    revision = revid
+                entries.append((file_id, obj._type, obj.id, revision))
+            else:
+                raise AssertionError
         self._idmap.add_entries(revid, rev.parent_ids, commit_obj.id, 
-            tree_sha, entries)
+            commit_obj.tree, entries)
         return commit_obj.id
 
     def _check_expected_sha(self, expected_sha, object):
