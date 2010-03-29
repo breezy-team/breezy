@@ -103,6 +103,9 @@ Bug Fixes
 * Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
   (Martin Pool, #331095)
 
+* Avoid truncating svn URLs.
+  (Martin Pool, Martin von Gagern, #545185)
+
 * ``bzr add`` will not add conflict related files unless explicitly required.
   (Vincent Ladeuil, #322767, #414589)
 
