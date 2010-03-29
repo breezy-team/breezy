@@ -152,8 +152,12 @@ class BazaarObjectStore(BaseObjectStore):
                     else:
                         if (pie.kind == ie.kind and 
                             pie.children.keys() == ie.children.keys()):
-                            shamap[ie.file_id] = pinvshamap.lookup_tree(ie.file_id)
-                            break
+                            try:
+                                shamap[ie.file_id] = pinvshamap.lookup_tree(ie.file_id)
+                            except NotImplementedError:
+                                pass
+                            else:
+                                break
                 else:
                     new_trees[path] = ie.file_id
             else:
