@@ -21,6 +21,7 @@ import cStringIO
 from fnmatch import fnmatch
 import os
 import re
+import string
 
 from bzrlib import bzrdir
 from bzrlib.workingtree import WorkingTree
@@ -312,8 +313,7 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                 else:
                     # Optimize for wtree list-only as we don't need to read the
                     # entire file
-                    bufsize = 4 * 1024 # 4KiB buffer based on experimentation
-                    file = codecs.open(path_for_file, 'r', buffering=bufsize)
+                    file = codecs.open(path_for_file, 'r', buffering=4096)
                     _file_grep_list_only_wtree(file, rpath, fp,
                         pattern, compiled_pattern, eol_marker, line_number, revno,
                         print_revno, include, exclude, verbose, fixed_string,
@@ -419,6 +419,8 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         line_number, revno, print_revno, include, exclude, verbose,
         fixed_string, ignore_case, files_with_matches, outf, path_prefix=None):
     res = []
+    res_append = res.append
+    outf_write = outf.write
 
     _te = _terminal_encoding
     _ue = _user_encoding
@@ -454,15 +456,15 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
                         line = line.lower()
                     if pattern in line:
                         s = path + (pfmt % (revno,)) + eol_marker
-                        res.append(s)
-                        outf.write(s)
+                        res_append(s)
+                        outf_write(s)
                         break
             else:
                 for line in file_text.splitlines():
                     if patternc.search(line):
                         s = path + (pfmt % (revno,)) + eol_marker
-                        res.append(s)
-                        outf.write(s)
+                        res_append(s)
+                        outf_write(s)
                         break
         else:
             if fixed_string:
@@ -471,98 +473,123 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
                         line = line.lower()
                     if pattern in line:
                         s = path + eol_marker
-                        res.append(s)
-                        outf.write(s)
+                        res_append(s)
+                        outf_write(s)
                         break
             else:
                 for line in file_text.splitlines():
                     if patternc.search(line):
                         s = path + eol_marker
-                        res.append(s)
-                        outf.write(s)
+                        res_append(s)
+                        outf_write(s)
                         break
-        return res
+        return res # return from files_with_matches
 
 
     if print_revno and line_number:
 
         pfmt = "~%s:%d:%s".encode(_te)
         if fixed_string:
-            for index, line in enumerate(file_text.splitlines()):
-                if ignore_case:
-                    line = line.lower()
-                if pattern in line:
-                    line = line.decode(_te, 'replace')
-                    s = path + (pfmt % (revno, index+1, line)) + eol_marker
-                    res.append(s)
-                    outf.write(s)
+            if ignore_case:
+                for index, line in enumerate(file_text.splitlines()):
+                    if pattern in line.lower():
+                        line = line.decode(_te, 'replace')
+                        s = path + (pfmt % (revno, index+1, line)) + eol_marker
+                        res_append(s)
+                        outf_write(s)
+            else: # don't ignore case
+                for index, line in enumerate(file_text.splitlines()):
+                    if pattern in line:
+                        line = line.decode(_te, 'replace')
+                        s = path + (pfmt % (revno, index+1, line)) + eol_marker
+                        res_append(s)
+                        outf_write(s)
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
                     line = line.decode(_te, 'replace')
                     s = path + (pfmt % (revno, index+1, line)) + eol_marker
-                    res.append(s)
-                    outf.write(s)
+                    res_append(s)
+                    outf_write(s)
 
     elif print_revno and not line_number:
 
         pfmt = "~%s:%s".encode(_te, 'replace')
         if fixed_string:
-            for line in file_text.splitlines():
-                if ignore_case:
-                    line = line.lower()
-                if pattern in line:
-                    line = line.decode(_te, 'replace')
-                    s = path + (pfmt % (revno, line)) + eol_marker
-                    res.append(s)
-                    outf.write(s)
+            if ignore_case:
+                for line in file_text.splitlines():
+                    if pattern in line.lower():
+                        line = line.decode(_te, 'replace')
+                        s = path + (pfmt % (revno, line)) + eol_marker
+                        res_append(s)
+                        outf_write(s)
+            else: # don't ignore case
+                for line in file_text.splitlines():
+                    if pattern in line:
+                        line = line.decode(_te, 'replace')
+                        s = path + (pfmt % (revno, line)) + eol_marker
+                        res_append(s)
+                        outf_write(s)
+
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
                     line = line.decode(_te, 'replace')
                     s = path + (pfmt % (revno, line)) + eol_marker
-                    res.append(s)
-                    outf.write(s)
+                    res_append(s)
+                    outf_write(s)
 
     elif not print_revno and line_number:
 
         pfmt = ":%d:%s".encode(_te)
         if fixed_string:
-            for index, line in enumerate(file_text.splitlines()):
-                if ignore_case:
-                    line = line.lower()
-                if pattern in line:
-                    line = line.decode(_te, 'replace')
-                    s = path + (pfmt % (index+1, line)) + eol_marker
-                    res.append(s)
-                    outf.write(s)
+            if ignore_case:
+                for index, line in enumerate(file_text.splitlines()):
+                    if pattern in line.lower():
+                        line = line.decode(_te, 'replace')
+                        s = path + (pfmt % (index+1, line)) + eol_marker
+                        res_append(s)
+                        outf_write(s)
+            else: # don't ignore case
+                for index, line in enumerate(file_text.splitlines()):
+                    if pattern in line:
+                        line = line.decode(_te, 'replace')
+                        s = path + (pfmt % (index+1, line)) + eol_marker
+                        res_append(s)
+                        outf_write(s)
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
                     line = line.decode(_te, 'replace')
                     s = path + (pfmt % (index+1, line)) + eol_marker
-                    res.append(s)
-                    outf.write(s)
+                    res_append(s)
+                    outf_write(s)
 
     else:
 
         pfmt = ":%s".encode(_te)
         if fixed_string:
-            for line in file_text.splitlines():
-                if ignore_case:
-                    line = line.lower()
-                if pattern in line:
-                    line = line.decode(_te, 'replace')
-                    s = path + (pfmt % (line,)) + eol_marker
-                    res.append(s)
-                    outf.write(s)
+            if ignore_case:
+                for line in file_text.splitlines():
+                    if pattern in line.lower():
+                        line = line.decode(_te, 'replace')
+                        s = path + (pfmt % (line,)) + eol_marker
+                        res_append(s)
+                        outf_write(s)
+            else: # don't ignore case
+                for line in file_text.splitlines():
+                    if pattern in line:
+                        line = line.decode(_te, 'replace')
+                        s = path + (pfmt % (line,)) + eol_marker
+                        res_append(s)
+                        outf_write(s)
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
                     line = line.decode(_te, 'replace')
                     s = path + (pfmt % (line,)) + eol_marker
-                    res.append(s)
-                    outf.write(s)
+                    res_append(s)
+                    outf_write(s)
 
     return res
 
