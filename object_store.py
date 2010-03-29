@@ -317,11 +317,6 @@ class BazaarObjectStore(BaseObjectStore):
         self._check_expected_sha(expected_sha, tree)
         return tree
 
-    def _get_commit(self, rev, tree_sha, expected_sha=None):
-        commit = self._revision_to_commit(rev, tree_sha)
-        self._check_expected_sha(expected_sha, commit)
-        return commit
-
     def get_parents(self, sha):
         """Retrieve the parents of a Git commit by SHA1.
 
@@ -385,7 +380,9 @@ class BazaarObjectStore(BaseObjectStore):
             except errors.NoSuchRevision:
                 trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
                 raise KeyError(sha)
-            return self._get_commit(rev, type_data[1], expected_sha=sha)
+            commit = self._revision_to_commit(rev, type_data[1])
+            self._check_expected_sha(sha, commit)
+            return commit
         elif type == "blob":
             return self._get_blob(type_data[0], type_data[1], expected_sha=sha)
         elif type == "tree":
