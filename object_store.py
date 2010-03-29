@@ -386,3 +386,11 @@ class BazaarObjectStore(BaseObjectStore):
                 raise KeyError(sha)
         else:
             raise AssertionError("Unknown object type '%s'" % type)
+
+    def generate_pack_contents(self, have, want):
+        """Iterate over the contents of a pack file.
+
+        :param have: List of SHA1s of objects that should not be sent
+        :param want: List of SHA1s of objects that should be sent
+        """
+        return self.iter_shas(self.find_missing_objects(have, want))

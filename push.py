@@ -86,8 +86,7 @@ class MissingObjectsIterator(object):
         tree_sha = None
         for path, obj in self._object_store._inventory_to_objects(inv, 
                 list(self.source.iter_inventories(rev.parent_ids)),
-                parent_invshamaps,
-                unusual_modes):
+                parent_invshamaps, unusual_modes):
             self.queue(obj, path)
             if path == "":
                 tree_sha = obj.id
