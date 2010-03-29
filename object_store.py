@@ -18,6 +18,7 @@
 
 from dulwich.objects import (
     Blob,
+    Tree,
     sha_to_hex,
     )
 from dulwich.object_store import (
@@ -195,9 +196,14 @@ class BazaarObjectStore(BaseObjectStore):
             yield path, obj
             if path == "":
                 tree_sha = obj.id
+        if tree_sha is None:
+            if not rev.parent_ids:
+                tree_sha = Tree().id
+            else:
+                tree_sha = parent_invshamaps[0][inv.root.file_id]
         commit_obj = self._revision_to_commit(rev, tree_sha)
         try:
-            foreign_revid, mapping = mapping_registry.parse_revision_id(revid)
+            foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
         except errors.InvalidRevisionId:
             pass
         else:

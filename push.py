@@ -80,24 +80,11 @@ class MissingObjectsIterator(object):
         """
         inv = self.source.get_inventory(revid)
         rev = self.source.get_revision(revid)
-        invshamap = self._object_store._idmap.get_inventory_sha_map(revid)
-        unusual_modes = extract_unusual_modes(rev)
-        parent_invshamaps = [self._object_store._idmap.get_inventory_sha_map(r) for r in rev.parent_ids]
-        tree_sha = None
-        for path, obj in self._object_store._inventory_to_objects(inv, 
-                list(self.source.iter_inventories(rev.parent_ids)),
-                parent_invshamaps, unusual_modes):
+        commit = None
+        for path, obj in self._object_store._revision_to_objects(rev, inv):
+            if obj._type == "commit":
+                commit = obj
             self.queue(obj, path)
-            if path == "":
-                tree_sha = obj.id
-        if tree_sha is None:
-            if not rev.parent_ids:
-                from dulwich.objects import Tree
-                tree_sha = Tree().id
-            else:
-                tree_sha = parent_invshamaps[0][inv.root.file_id]
-        commit = self._object_store._get_commit(rev, tree_sha)
-        self.queue(commit, None)
         return commit.id
 
     def __len__(self):
