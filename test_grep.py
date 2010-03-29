@@ -1583,6 +1583,7 @@ class TestGrep(tests.TestCaseWithTransport):
         self._update_file('file0.txt', 'HELLO\n')                   # rev 6
         self._update_file('dir0/file00.txt', 'HELLO\n')             # rev 7
 
+        # fixed-string
         out, err = self.run_bzr(['grep', '-r', '-1', '--files-with-matches',
             'HELLO'])
 
@@ -1590,6 +1591,15 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "^dir0/file00.txt~7$", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 2)
 
+        # regex
+        out, err = self.run_bzr(['grep', '-r', '-1', '--files-with-matches',
+            'H.LLO'])
+
+        self.assertContainsRe(out, "^file0.txt~7$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file00.txt~7$", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 2)
+
+        # fixed-string
         out, err = self.run_bzr(['grep', '-r', '6..7', '--files-with-matches',
             'HELLO'])
 
@@ -1598,28 +1608,68 @@ class TestGrep(tests.TestCaseWithTransport):
         self.assertContainsRe(out, "^dir0/file00.txt~7$", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 3)
 
+        # regex
+        out, err = self.run_bzr(['grep', '-r', '6..7', '--files-with-matches',
+            'H.LLO'])
+
+        self.assertContainsRe(out, "^file0.txt~6$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^file0.txt~7$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file00.txt~7$", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 3)
+
+        # fixed-string
         out, err = self.run_bzr(['grep', '-r', '-1', '-l', 'HELLO'])
 
         self.assertContainsRe(out, "^file0.txt~7$", flags=TestGrep._reflags)
         self.assertContainsRe(out, "^dir0/file00.txt~7$", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 2)
 
+        # regex
+        out, err = self.run_bzr(['grep', '-r', '-1', '-l', 'H.LLO'])
+
+        self.assertContainsRe(out, "^file0.txt~7$", flags=TestGrep._reflags)
+        self.assertContainsRe(out, "^dir0/file00.txt~7$", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 2)
+
+        # fixed-string
         out, err = self.run_bzr(['grep', '-l', 'HELLO', '-r', '-1',
             'dir0', 'file1.txt'])
 
         self.assertContainsRe(out, "^dir0/file00.txt~7$", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 1)
 
+        # regex
+        out, err = self.run_bzr(['grep', '-l', 'H.LLO', '-r', '-1',
+            'dir0', 'file1.txt'])
+
+        self.assertContainsRe(out, "^dir0/file00.txt~7$", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        # fixed-string
         out, err = self.run_bzr(['grep', '-l', 'HELLO',
             '-r', '-2', 'file0.txt'])
 
         self.assertContainsRe(out, "^file0.txt~6$", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 1)
 
+        # regex
+        out, err = self.run_bzr(['grep', '-l', 'HE.LO',
+            '-r', '-2', 'file0.txt'])
+
+        self.assertContainsRe(out, "^file0.txt~6$", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        # fixed-string
         out, err = self.run_bzr(['grep', '--no-recursive', '-r', '-1',
             '-l', 'HELLO'])
 
         self.assertContainsRe(out, "^file0.txt~7$", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 1)
 
+        # regex
+        out, err = self.run_bzr(['grep', '--no-recursive', '-r', '-1',
+            '-l', '.ELLO'])
+
+        self.assertContainsRe(out, "^file0.txt~7$", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 1)
 
