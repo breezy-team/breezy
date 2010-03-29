@@ -139,8 +139,12 @@ def _write_apport_report_to_file(exc_info, crash_file):
     pr['SourcePackage'] = 'bzr'
     pr['Package'] = 'bzr'
 
-    # TODO: tell apport to file directly against the bzr package using 
-    # https://bugs.edge.launchpad.net/bzr/+bug/391015
+    # tell apport to file directly against the bzr package using 
+    # <https://bugs.edge.launchpad.net/bzr/+bug/391015>
+    #
+    # XXX: unfortunately apport may crash later if the crashdb definition
+    # file isn't present
+    pr['CrashDb'] = 'bzr'
 
     tb_file = StringIO()
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
