@@ -133,6 +133,15 @@ def _write_apport_report_to_file(exc_info, crash_file):
     pr['PythonLoadedModules'] = _format_module_list()
     pr['BzrDebugFlags'] = pprint.pformat(debug.debug_flags)
 
+    # actually we'd rather file directly against the upstream product, but
+    # apport does seem to count on there being one in there; we might need to
+    # redirect it elsewhere anyhow
+    pr['SourcePackage'] = 'bzr'
+    pr['Package'] = 'bzr'
+
+    # TODO: tell apport to file directly against the bzr package using 
+    # https://bugs.edge.launchpad.net/bzr/+bug/391015
+
     tb_file = StringIO()
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
     pr['Traceback'] = tb_file.getvalue()
