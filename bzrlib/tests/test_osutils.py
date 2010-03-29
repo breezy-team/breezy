@@ -2013,14 +2013,3 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.path, 'test_file')
         self.assertEquals(self.uid, s.st_uid)
         self.assertEquals(self.gid, s.st_gid)
-
-    def test_mkdir_with_ownership_chown(self):
-        """Ensure that osutils.mkdir_with_ownership chowns correctly with ownership_src.
-        """
-        ownsrc = '/'
-        osutils.mkdir_with_ownership('foo', ownsrc)
-
-        s = os.stat(ownsrc)
-        self.assertEquals(self.path, 'foo')
-        self.assertEquals(self.uid, s.st_uid)
-        self.assertEquals(self.gid, s.st_gid)

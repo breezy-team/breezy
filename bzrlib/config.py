@@ -811,7 +811,8 @@ def ensure_config_dir_exists(path=None):
                 trace.mutter('creating config parent directory: %r', parent_dir)
             os.mkdir(parent_dir)
         trace.mutter('creating config directory: %r', path)
-        osutils.mkdir_with_ownership(path)
+        os.mkdir(path)
+        osutils.copy_ownership(path) # Copy ownership from parent dir.
 
 
 def config_dir():

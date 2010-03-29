@@ -1833,17 +1833,6 @@ def copy_ownership(dst, src=None):
         trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
 
 
-def mkdir_with_ownership(path, ownership_src=None):
-    """Create the directory 'path' with specified ownership.
-
-    If ownership_src is given, copies (chown) usr/grp ownership
-    from 'ownership_src' to 'path'. If ownership_src is None, use the
-    containing dir ownership.
-    """
-    os.mkdir(path)
-    copy_ownership(path, ownership_src)
-
-
 def path_prefix_key(path):
     """Generate a prefix-order path key for path.
 
