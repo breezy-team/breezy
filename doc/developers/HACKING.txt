@@ -1027,6 +1027,21 @@ for base-2 units and SI standard applies for base-10 units::
 * for RAM sizes, use base-2 (GiB, TiB).
 
 
+Showing filenames
+-----------------
+
+When filenames or similar variables are presented inline within a message,
+they should be enclosed in double quotes (ascii 0x22, not chiral unicode
+quotes)::
+
+  bzr: error: no such file "asdf"
+
+When we print just a list of filenames there should not be any quoting:
+see bug `544297`_.
+
+.. _bug 544297: https://bugs.launchpad.net/bugs/544297
+
+
 Displaying help
 ===============
 
