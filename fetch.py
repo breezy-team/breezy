@@ -27,7 +27,6 @@ import stat
 
 from bzrlib import (
     debug,
-    lru_cache,
     osutils,
     trace,
     ui,
@@ -66,6 +65,7 @@ from bzrlib.plugins.git.mapping import (
     )
 from bzrlib.plugins.git.object_store import (
     BazaarObjectStore,
+    LRUInventoryCache,
     )
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
@@ -75,9 +75,6 @@ from bzrlib.plugins.git.repository import (
     GitRepositoryFormat,
     LocalGitRepository,
     )
-
-
-MAX_INV_CACHE_SIZE = 50 * 1024 * 1024
 
 
 def import_git_blob(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
@@ -286,11 +283,6 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
     return invdelta, child_modes, shamap
 
 
-def approx_inv_size(inv):
-    # Very rough estimate, 1k per inventory entry
-    return len(inv) * 1024
-
-
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, parent_invs_cache):
     o = lookup_object(head)
@@ -298,14 +290,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
-    parent_invs = []
-    for parent_id in rev.parent_ids:
-        try:
-            parent_invs.append(parent_invs_cache[parent_id])
-        except KeyError:
-            parent_inv = repo.get_inventory(parent_id)
-            parent_invs.append(parent_inv)
-            parent_invs_cache[parent_id] = parent_inv
+    parent_invs = parent_invs_cache.get_inventories(rev.parent_ids)
     if parent_invs == []:
         base_inv = Inventory(root_id=None)
         base_ie = None
@@ -343,7 +328,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
               inv_delta, rev.revision_id, rev.parent_ids,
               base_inv)
-    parent_invs_cache[rev.revision_id] = inv
+    parent_invs_cache.add(rev.revision_id, inv)
     repo.add_revision(rev.revision_id, rev)
     if "verify" in debug.debug_flags:
         new_unusual_modes = mapping.export_unusual_file_modes(rev)
@@ -378,8 +363,7 @@ def import_git_objects(repo, mapping, object_iter,
     graph = []
     checked = set()
     heads = list(set(heads))
-    parent_invs_cache = lru_cache.LRUSizeCache(compute_size=approx_inv_size,
-                                               max_size=MAX_INV_CACHE_SIZE)
+    parent_invs_cache = LRUInventoryCache(repo)
     target_git_object_retriever.start_write_group() # FIXME: try/finally
     # Find and convert commit objects
     while heads:

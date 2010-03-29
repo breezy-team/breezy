@@ -28,6 +28,7 @@ from dulwich.object_store import (
 from bzrlib import (
     debug,
     errors,
+    lru_cache,
     trace,
     ui,
     urlutils,
@@ -54,6 +55,38 @@ def get_object_store(repo, mapping=None):
     return BazaarObjectStore(repo, mapping)
 
 
+MAX_INV_CACHE_SIZE = 50 * 1024 * 1024
+
+
+class LRUInventoryCache(object):
+
+    def __init__(self, repository):
+        def approx_inv_size(inv):
+            # Very rough estimate, 1k per inventory entry
+            return len(inv) * 1024
+        self.repository = repository
+        self._cache = lru_cache.LRUSizeCache(max_size=MAX_INV_CACHE_SIZE,
+            after_cleanup_size=None, compute_size=approx_inv_size)
+
+    def get_inventory(self, revid):            
+        try:
+            return self._cache[revid] 
+        except KeyError:
+            inv = self.repository.get_inventory(revid)
+            self._cache.add(revid, inv)
+            return inv
+
+    def get_inventories(self, revids):
+        invs = dict([(k, self._cache.get(k)) for k in revids]) 
+        for inv in self.repository.iter_inventories([r for r, v in invs.iteritems() if v is None]):
+            invs[inv.revision_id] = inv
+            self._cache.add(inv.revision_id, inv)
+        return [invs[r] for r in revids]
+
+    def add(self, revid, inv):
+        self._cache.add(revid, inv)
+
+
 class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
@@ -67,6 +100,7 @@ class BazaarObjectStore(BaseObjectStore):
         self.start_write_group = self._idmap.start_write_group
         self.abort_write_group = self._idmap.abort_write_group
         self.commit_write_group = self._idmap.commit_write_group
+        self.parent_invs_cache = LRUInventoryCache(self.repository)
 
     def _update_sha_map(self, stop_revision=None):
         graph = self.repository.get_graph()
@@ -188,8 +222,9 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _revision_to_objects(self, rev, inv):
         unusual_modes = extract_unusual_modes(rev)
-        parent_invs = self.repository.iter_inventories(rev.parent_ids)
-        parent_invshamaps = [self._idmap.get_inventory_sha_map(r) for r in rev.parent_ids]
+        present_parents = self.repository.has_revisions(rev.parent_ids)
+        parent_invs = self.parent_invs_cache.get_inventories([p for p in rev.parent_ids if p in present_parents])
+        parent_invshamaps = [self._idmap.get_inventory_sha_map(r) for r in rev.parent_ids if r in present_parents]
         tree_sha = None
         for path, obj in self._inventory_to_objects(inv, parent_invs,
                 parent_invshamaps, unusual_modes):
@@ -214,7 +249,7 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _update_sha_map_revision(self, revid):
         rev = self.repository.get_revision(revid)
-        inv = self.repository.get_inventory(rev.revision_id)
+        inv = self.parent_invs_cache.get_inventory(rev.revision_id)
         commit_obj = None
         entries = []
         for path, obj in self._revision_to_objects(rev, inv):
@@ -288,7 +323,7 @@ class BazaarObjectStore(BaseObjectStore):
         :param revision: Revision of the text
         """
         if inv is None:
-            inv = self.repository.get_inventory(revision)
+            inv = self.parent_invs_cache.get_inventory(revision)
         entry = inv[fileid]
 
         if entry.kind == 'file':
@@ -391,7 +426,7 @@ class BazaarObjectStore(BaseObjectStore):
         elif type == "tree":
             (fileid, revid) = type_data
             try:
-                inv = self.repository.get_inventory(revid)
+                inv = self.parent_invs_cache.get_inventory(revid)
                 rev = self.repository.get_revision(revid)
             except errors.NoSuchRevision:
                 trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
@@ -445,7 +480,7 @@ class BazaarObjectStore(BaseObjectStore):
             for i, revid in enumerate(todo):
                 pb.update("generating git objects", i, len(todo))
                 rev = self.repository.get_revision(revid)
-                inv = self.repository.get_inventory(revid)
+                inv = self.parent_invs_cache.get_inventory(revid)
                 for path, obj in self._revision_to_objects(rev, inv):
                     ret.append((obj, path))
         finally:

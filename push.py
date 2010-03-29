@@ -68,7 +68,7 @@ class MissingObjectsIterator(object):
         """Import the gist of a revision into this Git repository.
 
         """
-        inv = self.source.get_inventory(revid)
+        inv = self._object_store.parent_invs_cache.get_inventory(revid)
         rev = self.source.get_revision(revid)
         commit = None
         for path, obj in self._object_store._revision_to_objects(rev, inv):

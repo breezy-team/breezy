@@ -162,6 +162,7 @@ class DictGitShaMap(GitShaMap):
             self._by_fileid.setdefault(type_data[1], {})[type_data[0]] = sha
 
     def get_inventory_sha_map(self, revid):
+
         class DictInventorySHAMap(InventorySHAMap):
 
             def __init__(self, base, revid):
