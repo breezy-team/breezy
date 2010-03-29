@@ -234,10 +234,10 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
 
-    def _get_ie_object_or_sha1(self, entry, inv, invshamap, unusual_modes):
+    def _get_ie_sha1(self, entry, inv, invshamap, unusual_modes):
         if entry.kind == "directory":
             try:
-                return invshamap.lookup_tree(entry.file_id), None
+                return invshamap.lookup_tree(entry.file_id)
             except (KeyError, NotImplementedError):
                 ret = self._get_ie_object(entry, inv, unusual_modes)
                 if ret is None:
@@ -245,18 +245,15 @@ class BazaarObjectStore(BaseObjectStore):
                     hexsha = None
                 else:
                     hexsha = ret.id
-                return hexsha, ret
+                return hexsha
         elif entry.kind in ("file", "symlink"):
             try:
-                return invshamap.lookup_blob(entry.file_id, entry.revision), None
+                return invshamap.lookup_blob(entry.file_id, entry.revision)
             except KeyError:
                 ret = self._get_ie_object(entry, inv, unusual_modes)
-                return ret.id, ret
+                return ret.id
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
-
-    def _get_ie_sha1(self, entry, inv, invshamap, unusual_modes):
-        return self._get_ie_object_or_sha1(entry, inv, invshamap, unusual_modes)[0]
 
     def _get_blob_for_symlink(self, symlink_target, expected_sha=None):
         """Return a Git Blob object for symlink.
