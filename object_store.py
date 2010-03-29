@@ -177,8 +177,9 @@ class BazaarObjectStore(BaseObjectStore):
             assert ie.kind == "directory"
             obj = directory_to_tree(ie, 
                     lambda ie: shamap[ie.file_id], unusual_modes)
-            shamap[ie.file_id] = obj.id
-            yield path, obj
+            if obj is not None:
+                shamap[ie.file_id] = obj.id
+                yield path, obj
 
     def _update_sha_map_revision(self, revid):
         inv = self.repository.get_inventory(revid)
@@ -234,27 +235,6 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise AssertionError("unknown entry kind '%s'" % entry.kind)
 
-    def _get_ie_sha1(self, entry, inv, invshamap, unusual_modes):
-        if entry.kind == "directory":
-            try:
-                return invshamap.lookup_tree(entry.file_id)
-            except (KeyError, NotImplementedError):
-                ret = self._get_ie_object(entry, inv, unusual_modes)
-                if ret is None:
-                    # Empty directory
-                    hexsha = None
-                else:
-                    hexsha = ret.id
-                return hexsha
-        elif entry.kind in ("file", "symlink"):
-            try:
-                return invshamap.lookup_blob(entry.file_id, entry.revision)
-            except KeyError:
-                ret = self._get_ie_object(entry, inv, unusual_modes)
-                return ret.id
-        else:
-            raise AssertionError("unknown entry kind '%s'" % entry.kind)
-
     def _get_blob_for_symlink(self, symlink_target, expected_sha=None):
         """Return a Git Blob object for symlink.
 
@@ -304,9 +284,14 @@ class BazaarObjectStore(BaseObjectStore):
         :param revision: Revision of the tree.
         """
         invshamap = self._idmap.get_inventory_sha_map(inv.revision_id)
-        tree = directory_to_tree(inv[fileid],
-            lambda ie: self._get_ie_sha1(ie, inv, invshamap, unusual_modes),
-            unusual_modes)
+        def get_ie_sha1(entry):
+            if entry.kind == "directory":
+                return invshamap.lookup_tree(entry.file_id)
+            elif entry.kind in ("file", "symlink"):
+                return invshamap.lookup_blob(entry.file_id, entry.revision)
+            else:
+                raise AssertionError("unknown entry kind '%s'" % entry.kind)
+        tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes)
         self._check_expected_sha(expected_sha, tree)
         return tree
 
