@@ -105,9 +105,9 @@ class GitShaMap(object):
                     entries):
         """Add multiple new entries to the database.
         """
-        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
         for (fileid, kind, hexsha, revision) in entries:
             self._add_entry(hexsha, kind, (fileid, revision))
+        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
 
     def get_inventory_sha_map(self, revid):
         """Return the inventory SHA map for a revision.
@@ -251,7 +251,6 @@ class SqliteGitShaMap(GitShaMap):
 
     def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
                     entries):
-        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
         trees = []
         blobs = []
         for (fileid, kind, hexsha, revision) in entries:
@@ -267,7 +266,7 @@ class SqliteGitShaMap(GitShaMap):
             self.db.executemany("replace into trees (sha1, fileid, revid) values (?, ?, ?)", trees)
         if blobs:
             self.db.executemany("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", blobs)
-
+        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
 
     def _add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
@@ -373,6 +372,21 @@ class TdbGitShaMap(GitShaMap):
         except KeyError:
             pass
         self.db["version"] = str(TDB_MAP_VERSION)
+
+    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
+                    entries):
+        """Add multiple new entries to the database.
+        """
+        self.db.transaction_start()
+        try:
+            self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
+            for (fileid, kind, hexsha, revision) in entries:
+                self._add_entry(hexsha, kind, (fileid, revision))
+        except:
+            self.db.transaction_cancel()
+            raise
+        else:
+            self.db.transaction_commit()
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
