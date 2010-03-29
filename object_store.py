@@ -140,7 +140,7 @@ class BazaarObjectStore(BaseObjectStore):
                             shamap[ie.file_id] = pinvshamap.lookup_blob(ie.file_id, ie.revision)
                             break
                 else:
-                    obj = self._get_blob(ie.file_id, ie.revision)
+                    obj = self._get_blob(ie.file_id, ie.revision, inv=inv)
                     yield path, obj
                     shamap[ie.file_id] = obj.id
                     new_trees[urlutils.dirname(path)] = ie.parent_id
@@ -281,13 +281,14 @@ class BazaarObjectStore(BaseObjectStore):
         self._check_expected_sha(expected_sha, blob)
         return blob
 
-    def _get_blob(self, fileid, revision, expected_sha=None):
+    def _get_blob(self, fileid, revision, expected_sha=None, inv=None):
         """Return a Git Blob object from a fileid and revision stored in bzr.
 
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        inv = self.repository.get_inventory(revision)
+        if inv is None:
+            inv = self.repository.get_inventory(revision)
         entry = inv[fileid]
 
         if entry.kind == 'file':
