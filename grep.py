@@ -287,16 +287,16 @@ def dir_grep(tree, path, relpath, recursive, line_number, pattern,
                     res = []
                     res_append = res.append
 
-                    if not files_with_matches:
-                        new_rev = ('~%s:' % (revno,))
-                    else:
+                    if files_with_matches or files_without_matches:
                         new_rev = '~' + revno
+                    else:
+                        new_rev = ('~%s:' % (revno,))
 
                     for line in old_res:
-                        if not files_with_matches:
-                            s = _revno_pattern.sub(new_rev, line)
-                        else:
+                        if files_with_matches or files_without_matches:
                             s = _revno_pattern_list_only.sub(new_rev, line)
+                        else:
+                            s = _revno_pattern.sub(new_rev, line)
                         res_append(s)
                         outf_write(s)
                     dir_res[file_rev] = res
@@ -460,19 +460,16 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
         # print file name or print file name with revno.
         found = False
         if print_revno:
-            pfmt = "~%s".encode(_te, 'replace')
             if fixed_string:
                 for line in file_text.splitlines():
                     if ignore_case:
                         line = line.lower()
                     if pattern in line:
-                        s = path + (pfmt % (revno,)) + eol_marker
                         found = True
                         break
             else:
                 for line in file_text.splitlines():
                     if patternc.search(line):
-                        s = path + (pfmt % (revno,)) + eol_marker
                         found = True
                         break
         else:
@@ -481,20 +478,23 @@ def _file_grep(file_text, relpath, path, pattern, patternc, eol_marker,
                     if ignore_case:
                         line = line.lower()
                     if pattern in line:
-                        s = path + eol_marker
                         found = True
                         break
             else:
                 for line in file_text.splitlines():
                     if patternc.search(line):
-                        s = path + eol_marker
                         found = True
                         break
         if (files_with_matches and found) or \
                 (files_without_matches and not found):
+            if print_revno:
+                pfmt = "~%s".encode(_te, 'replace')
+                s = path + (pfmt % (revno,)) + eol_marker
+            else:
+                s = path + eol_marker
             res_append(s)
             outf_write(s)
-        return res # return from files_with_matches
+        return res # return from files_with|without_matches
 
 
     if print_revno and line_number:
