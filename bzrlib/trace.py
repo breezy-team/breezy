@@ -240,27 +240,32 @@ def _open_bzr_log():
     global _bzr_log_filename
 
     def create_log_file(filename):
-        """Create a log file in while avoiding race.
+        """Create the .bzr.log file.
+
+        It inherits the ownership and permissions (masked by umask) from
+        the containing directory to cope better with being run under sudo
+        with $HOME still set to the user's homedir.
         """
         buffering = 0 # unbuffered
-        mode = os.O_WRONLY | os.O_APPEND | osutils.O_TEXT
+        flags = os.O_WRONLY | os.O_APPEND | osutils.O_TEXT
         while True:
             try:
-                fd = os.open(filename, mode)
+                fd = os.open(filename, flags)
                 logfile = os.fdopen(fd, 'at', buffering)
                 return logfile
             except OSError, e:
                 if e.errno != errno.ENOENT:
                     raise
             try:
-                fd = os.open(filename, mode | os.O_CREAT | os.O_EXCL)
+                flags = flags | os.O_CREAT | os.O_EXCL
+                permissions = 0644
+                fd = os.open(filename, flags, permissions)
                 logfile = os.fdopen(fd, 'at', buffering)
             except OSError, e:
                 if e.errno != errno.EEXIST:
                     raise
             else:
-                # Copy ownership from parent directory
-                osutils.copy_ownership(filename)
+                osutils.copy_ownership_from_path(filename)
                 return logfile
 
 

@@ -1990,8 +1990,8 @@ class TestCreationOps(tests.TestCaseInTempDir):
     def _dummy_chown(self, path, uid, gid):
         self.path, self.uid, self.gid = path, uid, gid
 
-    def test_copy_ownership(self):
-        """Ensure that copy_ownership copies ownership from specified src.
+    def test_copy_ownership_from_path(self):
+        """copy_ownership_from_path test with specified src.
         """
         ownsrc = '/'
         f = open('test_file', 'wt')
@@ -2003,7 +2003,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.gid, s.st_gid)
 
     def test_copy_ownership_nonesrc(self):
-        """Ensure that copy_ownership copies ownership from parent dir.
+        """copy_ownership_from_path test with src=None.
         """
         f = open('test_file', 'wt')
         # should use parent dir for permissions

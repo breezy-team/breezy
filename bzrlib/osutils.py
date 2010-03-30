@@ -1811,7 +1811,7 @@ def copy_tree(from_path, to_path, handlers={}):
             real_handlers[kind](abspath, relpath)
 
 
-def copy_ownership(dst, src=None):
+def copy_ownership_from_path(dst, src=None):
     """Copy usr/grp ownership from src file/dir to dst file/dir.
 
     If src is None, the containing directory is used as source. If chown
