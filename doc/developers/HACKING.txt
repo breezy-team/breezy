@@ -1039,7 +1039,7 @@ https://wiki.ubuntu.com/UnitsPolicy provides a good explanation about
 which unit should be used when. Roughly speaking, IEC standard applies
 for base-2 units and SI standard applies for base-10 units:
 
-* for network bandwidth an disk sizes, use base-10 (Mbits/s, kB/s, GB)
+* for network bandwidth and disk sizes, use base-10 (Mbits/s, kB/s, GB)
 
 * for RAM sizes, use base-2 (GiB, TiB)
 
