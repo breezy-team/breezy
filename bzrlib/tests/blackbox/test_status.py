@@ -472,6 +472,24 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEqual("working tree is out of date, run 'bzr update'\n",
                          err)
 
+    def test_status_on_ignored(self):
+        """Tests branch status on an unversioned file which is considered ignored.
+
+        See https://bugs.launchpad.net/bzr/+bug/40103
+        """
+        tree = self.make_branch_and_tree('.')
+
+        self.build_tree(['test.c', 'test.c~'])
+        result = self.run_bzr('status')[0]
+        self.assertContainsRe(result, "unknown:\n  test.c\n")
+
+        result = self.run_bzr('status test.c')[0]
+        self.assertContainsRe(result, "unknown:\n  test.c\n")
+
+        out, err = self.run_bzr('status test.c~')
+        self.assertEqual("File test.c~ is marked as ignored,"
+                         " see 'bzr help ignore'\n", err)
+
     def test_status_write_lock(self):
         """Test that status works without fetching history and
         having a write lock.
