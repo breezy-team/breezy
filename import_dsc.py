@@ -475,21 +475,24 @@ class DistributionBranch(object):
         tag_name = self.upstream_tag_name(version)
         return self.upstream_branch.tags.lookup_tag(tag_name)
 
-    def tag_version(self, version):
+    def tag_version(self, version, revid=None):
         """Tags the branch's last revision with the given version.
 
         Sets a tag on the last revision of the branch with a tag that refers
         to the version provided.
 
         :param version: the Version object to derive the tag name from.
+        :param revid: the revid to associate the tag with, or None for the
+            tip of self.branch.
         :return: Name of the tag set
         """
         tag_name = self.tag_name(version)
-        self.branch.tags.set_tag(tag_name,
-                self.branch.last_revision())
+        if revid is None:
+            revid = self.branch.last_revision()
+        self.branch.tags.set_tag(tag_name, revid)
         return tag_name
 
-    def tag_upstream_version(self, version):
+    def tag_upstream_version(self, version, revid=None):
         """Tags the upstream branch's last revision with an upstream version.
 
         Sets a tag on the last revision of the upstream branch with a tag
@@ -497,13 +500,15 @@ class DistributionBranch(object):
 
         :param version: the upstream part of the version number to derive the 
             tag name from.
+        :param revid: the revid to associate the tag with, or None for the
+            tip of self.upstream_branch.
         """
         assert isinstance(version, str)
         tag_name = self.upstream_tag_name(version)
-        self.upstream_branch.tags.set_tag(tag_name,
-                self.upstream_branch.last_revision())
-        self.branch.tags.set_tag(tag_name,
-                self.upstream_branch.last_revision())
+        if revid is None:
+            revid = self.upstream_branch.last_revision()
+        self.upstream_branch.tags.set_tag(tag_name, revid)
+        self.branch.tags.set_tag(tag_name, revid)
 
     def _default_config_for_tree(self, tree):
         # FIXME: shouldn't go to configobj directly
@@ -754,7 +759,7 @@ class DistributionBranch(object):
             "Can't pull upstream with no tree"
         self.upstream_tree.pull(up_pull_branch,
                 stop_revision=pull_revision)
-        self.tag_upstream_version(version)
+        self.tag_upstream_version(version, revid=pull_revision)
         self.branch.fetch(self.upstream_branch, last_revision=pull_revision)
         self.upstream_branch.tags.merge_to(self.branch.tags)
 
@@ -784,7 +789,7 @@ class DistributionBranch(object):
                 % (str(version), pull_revision))
         assert self.tree is not None, "Can't pull branch with no tree"
         self.tree.pull(pull_branch.branch, stop_revision=pull_revision)
-        self.tag_version(version)
+        self.tag_version(version, revid=pull_revision)
         if not native and not self.has_upstream_version(version.upstream_version):
             if pull_branch.has_upstream_version(version.upstream_version):
                 self.pull_upstream_from_branch(pull_branch, 
@@ -928,7 +933,7 @@ class DistributionBranch(object):
         revid = self.upstream_tree.commit("Import upstream version %s" \
                 % (version,),
                 revprops=revprops, timestamp=timestamp, timezone=timezone)
-        self.tag_upstream_version(version)
+        self.tag_upstream_version(version, revid=revid)
         return revid
 
     def _mark_native_config(self, native):
@@ -1060,9 +1065,9 @@ class DistributionBranch(object):
             timezone = timestamp[1]
             timestamp = timestamp[0]
         self._mark_native_config(native)
-        self.tree.commit(message, revprops=revprops, timestamp=timestamp,
+        revid = self.tree.commit(message, revprops=revprops, timestamp=timestamp,
                 timezone=timezone)
-        self.tag_version(version)
+        self.tag_version(version, revid=revid)
 
     def upstream_parents(self, versions, version):
         """Get the parents for importing a new upstream.
