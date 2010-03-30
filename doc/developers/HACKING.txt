@@ -1020,11 +1020,29 @@ will close it if it was not already closed.  The generator should also
 finish the progress task when it exits, because it may otherwise be a long
 time until the finally block runs.
 
+
+Message guidelines
+------------------
+
+When filenames or similar variables are presented inline within a message,
+they should be enclosed in double quotes (ascii 0x22, not chiral unicode
+quotes)::
+
+  bzr: ERROR: No such file "asdf"
+
+When we print just a list of filenames there should not be any quoting:
+see `bug 544297`_.
+
+.. _bug 544297: https://bugs.launchpad.net/bugs/544297
+
 https://wiki.ubuntu.com/UnitsPolicy provides a good explanation about
 which unit should be used when. Roughly speaking, IEC standard applies
-for base-2 units and SI standard applies for base-10 units::
-* for network bandwidth an disk sizes, use base-10 (Mbits/s, kB/s, GB),
-* for RAM sizes, use base-2 (GiB, TiB).
+for base-2 units and SI standard applies for base-10 units:
+
+* for network bandwidth an disk sizes, use base-10 (Mbits/s, kB/s, GB)
+
+* for RAM sizes, use base-2 (GiB, TiB)
+
 
 
 Displaying help
