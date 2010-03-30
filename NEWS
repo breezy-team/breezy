@@ -139,6 +139,9 @@ Bug Fixes
   ``add``.
   (Parth Malwankar, #335033, #300001)
 
+* Cope with non-utf8 characters inside ``.bzrignore``.
+  (Jason Spashett, #183504)
+
 * Correctly interpret "451 Rename/move failure: Directory not empty" from
   ftp servers while trying to take a lock.
   (Martin Pool, #528722)
