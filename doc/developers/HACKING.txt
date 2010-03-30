@@ -1031,7 +1031,7 @@ quotes)::
   bzr: ERROR: No such file "asdf"
 
 When we print just a list of filenames there should not be any quoting:
-see bug `544297`_.
+see `bug 544297`_.
 
 .. _bug 544297: https://bugs.launchpad.net/bugs/544297
 
