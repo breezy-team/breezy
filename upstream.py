@@ -110,7 +110,7 @@ class AptSource(UpstreamSource):
         # URIs (LP:375897)
         try:
             get_sources = getattr(apt_pkg, 'SourceRecords',
-                    getattr(apt_pkg, 'GetPkgSrcRecords'))
+                    getattr(apt_pkg, 'GetPkgSrcRecords', None))
             sources = get_sources()
         except SystemError:
             raise PackageVersionNotPresent(package, upstream_version, self)
