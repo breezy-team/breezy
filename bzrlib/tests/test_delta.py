@@ -221,7 +221,7 @@ class TestChangesFrom(tests.TestCaseWithTransport):
 
     def show_string(self, delta, *args,  **kwargs):
         to_file = StringIO()
-        delta.show(to_file, *args, **kwargs)
+        _mod_delta.report_delta(to_file, delta, *args, **kwargs)
         return to_file.getvalue()
 
     def test_kind_change(self):
