@@ -258,9 +258,9 @@ class SqliteGitShaMap(GitShaMap):
             if kind is None:
                 continue
             if kind == "tree":
-                trees.append((hexsha, "tree", (fileid, revid)))
+                trees.append((hexsha, fileid, revid))
             elif kind == "blob":
-                blobs.append((hexsha, (fileid, revision)))
+                blobs.append((hexsha, fileid, revision))
             else:
                 raise AssertionError
         if trees:
