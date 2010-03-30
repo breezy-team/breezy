@@ -8,6 +8,8 @@ bzr-builddeb (2.5) UNRELEASED; urgency=low
     deterministic, and so hopefully producing the same tarballs when it is
     used for that.
   * Fix use of getattr to have 3 arguments to avoid exception. (LP: #572093)
+  * Implement the automatic_tag_name hook so that "bzr tag" with no arguments
+    will tag based on the version in debian/changelog.
 
  -- James Westby <james.westby@ubuntu.com>  Thu, 18 Mar 2010 14:19:53 -0400
 
