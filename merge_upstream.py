@@ -27,6 +27,7 @@
 #
 
 import itertools
+import subprocess
 
 from debian_bundle.changelog import Version
 
@@ -163,3 +164,30 @@ def package_version(merged_version, distribution_name):
     else:
         ret.debian_version = "%d" % (prev_packaging_revnum+1)
     return ret
+
+
+def changelog_add_new_version(tree, version, distribution_name, changelog,
+        package):
+    """Add an entry to the changelog for a new version.
+
+    :param tree: WorkingTree in which the package lives
+    :param version: Version to add
+    :param distribution_name: Distribution name (debian, ubuntu, ...)
+    :param changelog: Changelog object
+    :param package: Package name
+    :return: Whether an entry was successfully added
+    """
+    from bzrlib.plugins.builddeb.merge_upstream import package_version
+    if "~bzr" in str(version) or "+bzr" in str(version):
+        entry_description = "New upstream snapshot."
+    else:
+        entry_description = "New upstream release."
+    proc = subprocess.Popen(["dch", "-v",
+            str(package_version(version, distribution_name)),
+            "-D", "UNRELEASED", "--release-heuristic", "changelog",
+            entry_description], cwd=tree.basedir)
+    proc.wait()
+    # FIXME: Raise insightful exception here rather than just checking
+    # return code.
+    return proc.returncode == 0
+
