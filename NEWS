@@ -123,6 +123,11 @@ Bug Fixes
   revspec as representing the first revision of the branch.
   (Vincent Ladeuil, #519862)
 
+* ``bzr pull`` now uses the correct URL when a Launchpad URI is explicitly
+  defined as the pull location in locations.conf.  Strings like ``lp:bzr``
+  can now be correctly joined to other URLs.
+  (Gordon Tyler, #534787)
+
 * ``bzr remove-tree`` can now remove multiple working trees.
   (Jared Hance, Andrew Bennetts, #253137)
 
