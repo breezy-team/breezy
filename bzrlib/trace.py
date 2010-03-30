@@ -258,7 +258,7 @@ def _open_bzr_log():
                     raise
             try:
                 flags = flags | os.O_CREAT | os.O_EXCL
-                permissions = 0644
+                permissions = 0666
                 fd = os.open(filename, flags, permissions)
                 logfile = os.fdopen(fd, 'at', buffering)
             except OSError, e:
