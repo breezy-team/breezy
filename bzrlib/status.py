@@ -156,6 +156,10 @@ def show_tree_status(wt, show_unchanged=None,
         try:
             specific_files, nonexistents \
                 = _filter_nonexistent(specific_files, old, new)
+            # If we request the status of one specific file when this file should be ignored,
+            # warn the user to avoid any confusion
+            if specific_files and len(specific_files) == 1 and new.is_ignored(specific_files[0]):
+                warning("File %s is marked as ignored, see 'bzr help ignore'" % specific_files[0])
             want_unversioned = not versioned
 
             # Reporter used for short outputs
