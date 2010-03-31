@@ -381,7 +381,10 @@ def text_to_blob(texts, entry):
 def symlink_to_blob(entry):
     from dulwich.objects import Blob
     blob = Blob()
-    blob._text = entry.symlink_target
+    symlink_target = entry.symlink_target
+    if type(symlink_target) == unicode:
+        symlink_target = symlink_target.encode('utf-8')
+    blob._text = symlink_target
     return blob
 
 

@@ -26,7 +26,6 @@ from dulwich.object_store import (
     )
 
 from bzrlib import (
-    debug,
     errors,
     lru_cache,
     trace,
@@ -42,6 +41,7 @@ from bzrlib.plugins.git.mapping import (
     directory_to_tree,
     extract_unusual_modes,
     mapping_registry,
+    symlink_to_blob,
     )
 from bzrlib.plugins.git.shamap import (
     from_repository as idmap_from_repository,
@@ -192,7 +192,12 @@ class BazaarObjectStore(BaseObjectStore):
                             shamap[ie.file_id] = pinvshamap.lookup_blob(ie.file_id, ie.revision)
                             break
                 else:
-                    new_blobs.append(ie)
+                    if ie.kind == "file":
+                        new_blobs.append(ie)
+                    else:
+                        blob = symlink_to_blob(ie)
+                        yield path, blob
+                        shamap[ie.file_id] = blob.id
                     new_trees[urlutils.dirname(path)] = ie.parent_id
             elif ie.kind == "directory":
                 for pinv in parent_invs:
@@ -214,8 +219,10 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 raise AssertionError(ie.kind)
         
-        for ie in new_blobs:
-            obj = self._get_blob(ie.file_id, ie.revision, inv=inv)
+        for ie, chunks in self.repository.iter_files_bytes(
+            [(ie.file_id, ie.revision, ie) for ie in new_blobs]):
+            obj = Blob()
+            obj._text = "".join(chunks)
             yield path, obj
             shamap[ie.file_id] = obj.id
 
@@ -289,41 +296,6 @@ class BazaarObjectStore(BaseObjectStore):
             commit_obj.tree, entries)
         return commit_obj.id
 
-    def _get_ie_object(self, entry, inv, unusual_modes):
-        if entry.kind == "directory":
-            return self._get_tree(entry.file_id, inv.revision_id, inv,
-                unusual_modes)
-        elif entry.kind == "symlink":
-            return self._get_blob_for_symlink(entry.symlink_target)
-        elif entry.kind == "file":
-            return self._get_blob_for_file(entry.file_id, entry.revision)
-        else:
-            raise AssertionError("unknown entry kind '%s'" % entry.kind)
-
-    def _get_blob_for_symlink(self, symlink_target, expected_sha=None):
-        """Return a Git Blob object for symlink.
-
-        :param symlink_target: target of symlink.
-        """
-        if type(symlink_target) == unicode:
-            symlink_target = symlink_target.encode('utf-8')
-        blob = Blob()
-        blob._text = symlink_target
-        _check_expected_sha(expected_sha, blob)
-        return blob
-
-    def _get_blob_for_file(self, fileid, revision, expected_sha=None):
-        """Return a Git Blob object from a fileid and revision stored in bzr.
-
-        :param fileid: File id of the text
-        :param revision: Revision of the text
-        """
-        blob = Blob()
-        chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
-        blob._text = "".join(chunks)
-        _check_expected_sha(expected_sha, blob)
-        return blob
-
     def _get_blob(self, fileid, revision, expected_sha=None, inv=None):
         """Return a Git Blob object from a fileid and revision stored in bzr.
 
@@ -335,13 +307,15 @@ class BazaarObjectStore(BaseObjectStore):
         entry = inv[fileid]
 
         if entry.kind == 'file':
-            return self._get_blob_for_file(entry.file_id, entry.revision,
-                                           expected_sha=expected_sha)
+            blob = Blob()
+            chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
+            blob._text = "".join(chunks)
         elif entry.kind == 'symlink':
-            return self._get_blob_for_symlink(entry.symlink_target,
-                                              expected_sha=expected_sha)
+            blob = symlink_to_blob(entry)
         else:
             raise AssertionError
+        _check_expected_sha(expected_sha, blob)
+        return blob
 
     def _get_tree(self, fileid, revid, inv, unusual_modes, expected_sha=None):
         """Return a Git Tree object from a file id and a revision stored in bzr.
