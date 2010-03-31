@@ -370,14 +370,6 @@ foreign_git = ForeignGit()
 default_mapping = mapping_registry.get_default()()
 
 
-def text_to_blob(texts, entry):
-    from dulwich.objects import Blob
-    text = texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
-    blob = Blob()
-    blob.data = text
-    return blob
-
-
 def symlink_to_blob(entry):
     from dulwich.objects import Blob
     blob = Blob()
@@ -496,7 +488,10 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=No
             tree = Tree()
         else:
             if entry.kind == "file":
-                blob = text_to_blob(texts, entry)
+                from dulwich.objects import Blob
+                text = texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
+                blob = Blob()
+                blob.data = text
             elif entry.kind == "symlink":
                 blob = symlink_to_blob(entry)
             else:
