@@ -143,7 +143,8 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         try:
-            if not (transport.has('info/refs') or transport.has('.git/branches') or 
+            if not (transport.has('info/refs') or 
+                    transport.has('.git/branches') or 
                     transport.has('branches')):
                 raise bzr_errors.NotBranchError(path=transport.base)
         except bzr_errors.NoSuchFile:
@@ -176,7 +177,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
                 "non-local transports")
         lazy_check_versions()
         from dulwich.repo import Repo
-        Repo.create(transport.local_abspath(".").encode(osutils._fs_enc))
+        Repo.init(transport.local_abspath(".").encode(osutils._fs_enc))
         return self.open(transport)
 
     def is_supported(self):

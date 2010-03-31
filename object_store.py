@@ -156,8 +156,8 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
                         break
             else:
                 yield path, blob
+                new_trees[urlutils.dirname(path)] = ie.parent_id
             shamap[ie.file_id] = blob.id
-            new_trees[urlutils.dirname(path)] = ie.parent_id
         elif ie.kind == "directory":
             for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
                 try:
@@ -187,8 +187,6 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
         yield path, obj
         shamap[fid] = obj.id
 
-    assert all([ie.file_id in shamap for (path, ie) in new_blobs])
-
     for fid in unusual_modes:
         new_trees[inv.id2path(fid)] = inv[fid].parent_id
     
@@ -209,8 +207,8 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
         obj = directory_to_tree(ie, 
                 lambda ie: shamap[ie.file_id], unusual_modes)
         if obj is not None:
-            shamap[ie.file_id] = obj.id
             yield path, obj
+            shamap[ie.file_id] = obj.id
 
 
 class BazaarObjectStore(BaseObjectStore):

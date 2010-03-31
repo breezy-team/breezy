@@ -32,9 +32,6 @@ from bzrlib import (
     trace,
     versionedfile,
     )
-from bzrlib.chk_map import (
-    CHKMap,
-    )
 from bzrlib.revision import (
     NULL_REVISION,
     )
@@ -89,12 +86,11 @@ def mapdbs():
 class InventorySHAMap(object):
     """Maps inventory file ids to Git SHAs."""
 
-    def lookup_blob(self, file_id, revision_hint=None):
+    def lookup_blob(self, file_id, revision):
         """Retrieve a Git blob SHA by file id.
 
         :param file_id: File id of the file/symlink
-        :param revision_hint: Optional revision in which the file was last
-            changed.
+        :param revision: revision in which the file was last changed.
         """
         raise NotImplementedError(self.lookup_blob)
 
@@ -180,12 +176,8 @@ class DictGitShaMap(GitShaMap):
                 self._base = base
                 self.revid = revid
 
-            def lookup_blob(self, fileid, revision_hint=None):
-                if revision_hint is not None:
-                    revid = revision_hint
-                else:
-                    revid = self.revid
-                return self._base._by_fileid[revid][fileid]
+            def lookup_blob(self, fileid, revision):
+                return self._base._by_fileid[revision][fileid]
 
             def lookup_tree(self, fileid):
                 return self._base._by_fileid[self.revid][fileid]
@@ -301,12 +293,8 @@ class SqliteGitShaMap(GitShaMap):
                 self.db = db
                 self.revid = revid
 
-            def lookup_blob(self, fileid, revision_hint=None):
-                if revision_hint is not None:
-                    revid = revision_hint
-                else:
-                    revid = self.revid
-                row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revid)).fetchone()
+            def lookup_blob(self, fileid, revision):
+                row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revision)).fetchone()
                 if row is not None:
                     return row[0]
                 raise KeyError(fileid)
@@ -434,12 +422,8 @@ class TdbGitShaMap(GitShaMap):
                 self.db = db
                 self.revid = revid
 
-            def lookup_blob(self, fileid, revision_hint=None):
-                if revision_hint is not None:
-                    revid = revision_hint
-                else:
-                    revid = self.revid
-                return sha_to_hex(self.db["\0".join(("blob", fileid, revid))])
+            def lookup_blob(self, fileid, revision):
+                return sha_to_hex(self.db["\0".join(("blob", fileid, revision))])
                 
         return TdbInventorySHAMap(self.db, revid)
 
@@ -484,18 +468,15 @@ class IndexGitShaMap(GitShaMap):
 
     ("git", <sha1>) -> "<type> <type-data1> <type-data2>"
     ("commit", <revid>) -> "<sha1> <tree-id>"
+    ("blob", <fileid>, <revid>) -> <sha1>
 
-    CHKMap with the following contents:
-
-    revid -> map of:
-        fileid -> <sha1>
     """
 
     def __init__(self, transport=None):
         self._transport = transport
         if transport is None:
             self._index_transport = None
-            self._index = _mod_index.InMemoryGraphIndex(0, key_elements=2)
+            self._index = _mod_index.InMemoryGraphIndex(0, key_elements=3)
             self._builder = self._index
         else:
             self._builder = None
@@ -556,7 +537,7 @@ class IndexGitShaMap(GitShaMap):
 
     def start_write_group(self):
         assert self._builder is None
-        self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=2)
+        self._builder = _mod_btree_index.BTreeBuilder(0, key_elements=3)
         self._name = osutils.sha()
 
     def commit_write_group(self):
@@ -604,12 +585,12 @@ class IndexGitShaMap(GitShaMap):
                 yield entry[1]
 
     def lookup_commit(self, revid):
-        return self._get_entry(("commit", revid))[:40]
+        return self._get_entry(("commit", revid, "X"))[:40]
 
     def _add_git_sha(self, hexsha, type, type_data):
         if hexsha is not None:
             self._name.update(hexsha)
-            self._add_node(("git", hexsha),
+            self._add_node(("git", hexsha, "X"),
                 " ".join((type, type_data[0], type_data[1])))
         else:
             # This object is not represented in Git - perhaps an empty
@@ -617,75 +598,43 @@ class IndexGitShaMap(GitShaMap):
             self._name.update(type + " ".join(type_data))
 
     def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
-                    invdelta, shamap):
+                    entries):
         if len(parent_revids) == 0:
             baseshamap = self.get_inventory_sha_map(NULL_REVISION)
         else:
             baseshamap = self.get_inventory_sha_map(parent_revids[0])
         self._add_git_sha(commit_sha, "commit", (revid, root_tree_sha))
-        self._add_node(("commit", revid), " ".join((commit_sha, root_tree_sha)))
-        chk_delta = []
-        for (oldpath, newpath, fileid, ie) in invdelta:
-            if newpath is None:
-                # Removed
-                chk_delta.append(((fileid,), None, None))
-                continue
-            try:
-                hexsha = shamap[fileid]
-            except KeyError:
-                hexsha = baseshamap.lookup(fileid)
-            if ie.kind in ("file", "symlink"):
-                self._add_git_sha(hexsha, "blob", (fileid, ie.revision))
-            elif ie.kind == "directory":
+        self._add_node(("commit", revid, "X"), " ".join((commit_sha, root_tree_sha)))
+        for (fileid, kind, hexsha, revision) in entries:
+            if kind == "blob":
+                self._add_git_sha(hexsha, "blob", (fileid, revision))
+                self._add_node(("blob", fileid, revision), hexsha)
+            elif kind == "tree":
                 self._add_git_sha(hexsha, "tree", (fileid, revid))
             else:
                 raise AssertionError
-            if oldpath is None:
-                chk_delta.append((None, (fileid,), hex_to_sha(hexsha)))
-            else:
-                chk_delta.append(((fileid,), (fileid,), hex_to_sha(hexsha)))
-        (rootkey, ) = baseshamap.chkmap.apply_delta(chk_delta)
-        self._add_node(("invsha", revid), rootkey)
 
     def get_inventory_sha_map(self, revid):
 
-        class CHKInventorySHAMap(InventorySHAMap):
+        class IndexInventorySHAMap(InventorySHAMap):
 
-            def __init__(self, chkmap):
-                self.chkmap = chkmap
+            def __init__(self, cache):
+                self._cache = cache
 
-            def lookup(self, fileid):
-                assert type(fileid) is str
-                try:
-                    sha = self.chkmap.iteritems([(fileid,)]).next()[1]
-                except StopIteration:
-                    raise KeyError(fileid)
-                if sha == "":
-                    return None
-                else:
-                    return sha_to_hex(sha)
+            def lookup_blob(self, fileid, revision):
+                return self._cache._get_entry(("blob", fileid, revision))
 
-            def lookup_tree(self, fileid):
-                return self.lookup(fileid)
-
-            def lookup_blob(self, fileid, revision_hint=None):
-                return self.lookup(fileid)
-
-        if revid == NULL_REVISION:
-            rootkey = CHKMap.from_dict(self._trees_store, {})
-        else:
-            rootkey = (self._get_entry(("invsha", revid)), )
-        return CHKInventorySHAMap(CHKMap(self._trees_store, rootkey))
+        return IndexInventorySHAMap(self)
 
     def lookup_git_sha(self, sha):
         if len(sha) == 20:
             sha = sha_to_hex(sha)
-        data = self._get_entry(("git", sha)).split(" ", 2)
+        data = self._get_entry(("git", sha, "X")).split(" ", 2)
         return (data[0], (data[1], data[2]))
 
     def revids(self):
         """List the revision ids known."""
-        for key in self._iter_keys_prefix(("commit", None)):
+        for key in self._iter_keys_prefix(("commit", None, None)):
             yield key[1]
 
     def missing_revisions(self, revids):
@@ -698,7 +647,7 @@ class IndexGitShaMap(GitShaMap):
 
     def sha1s(self):
         """List the SHA1s."""
-        for key in self._iter_keys_prefix(("git", None)):
+        for key in self._iter_keys_prefix(("git", None, None)):
             yield key[1]
 
 
