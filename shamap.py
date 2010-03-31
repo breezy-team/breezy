@@ -78,12 +78,11 @@ def mapdbs():
 class InventorySHAMap(object):
     """Maps inventory file ids to Git SHAs."""
 
-    def lookup_blob(self, file_id, revision_hint=None):
+    def lookup_blob(self, file_id, revision):
         """Retrieve a Git blob SHA by file id.
 
         :param file_id: File id of the file/symlink
-        :param revision_hint: Optional revision in which the file was last
-            changed.
+        :param revision: revision in which the file was last changed.
         """
         raise NotImplementedError(self.lookup_blob)
 
@@ -169,12 +168,8 @@ class DictGitShaMap(GitShaMap):
                 self._base = base
                 self.revid = revid
 
-            def lookup_blob(self, fileid, revision_hint=None):
-                if revision_hint is not None:
-                    revid = revision_hint
-                else:
-                    revid = self.revid
-                return self._base._by_fileid[revid][fileid]
+            def lookup_blob(self, fileid, revision):
+                return self._base._by_fileid[revision][fileid]
 
             def lookup_tree(self, fileid):
                 return self._base._by_fileid[self.revid][fileid]
@@ -290,12 +285,8 @@ class SqliteGitShaMap(GitShaMap):
                 self.db = db
                 self.revid = revid
 
-            def lookup_blob(self, fileid, revision_hint=None):
-                if revision_hint is not None:
-                    revid = revision_hint
-                else:
-                    revid = self.revid
-                row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revid)).fetchone()
+            def lookup_blob(self, fileid, revision):
+                row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revision)).fetchone()
                 if row is not None:
                     return row[0]
                 raise KeyError(fileid)
@@ -426,12 +417,8 @@ class TdbGitShaMap(GitShaMap):
                 self.db = db
                 self.revid = revid
 
-            def lookup_blob(self, fileid, revision_hint=None):
-                if revision_hint is not None:
-                    revid = revision_hint
-                else:
-                    revid = self.revid
-                return sha_to_hex(self.db["\0".join(("blob", fileid, revid))])
+            def lookup_blob(self, fileid, revision):
+                return sha_to_hex(self.db["\0".join(("blob", fileid, revision))])
                 
         return TdbInventorySHAMap(self.db, revid)
 
