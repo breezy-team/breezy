@@ -63,7 +63,7 @@ class TestGitShaMap:
             ("blob", ("myfileid", "myrevid")),
             self.map.lookup_git_sha(thesha))
         invshamap = self.map.get_inventory_sha_map("myrevid")
-        self.assertEquals(thesha, invshamap.lookup_blob("myfileid"))
+        self.assertEquals(thesha, invshamap.lookup_blob("myfileid", "myrevid"))
 
     def test_tree(self):
         thesha = "8686645d49063c73d35436192dfc9a160c672301"

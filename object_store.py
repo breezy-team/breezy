@@ -201,11 +201,21 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
                 new_trees[parent_path] = parent_id
             trees[path] = file_id
 
+    def ie_to_hexsha(ie):
+        try:
+            return shamap[ie.file_id]
+        except KeyError:
+            # Not all cache backends store the tree information, 
+            # calculate again from scratch
+            ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
+            if ret is None:
+                return ret
+            return ret.id
+
     for path in sorted(trees.keys(), reverse=True):
         ie = inv[trees[path]]
         assert ie.kind == "directory"
-        obj = directory_to_tree(ie, 
-                lambda ie: shamap[ie.file_id], unusual_modes)
+        obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
         if obj is not None:
             yield path, obj
             shamap[ie.file_id] = obj.id
@@ -351,7 +361,15 @@ class BazaarObjectStore(BaseObjectStore):
         invshamap = self._idmap.get_inventory_sha_map(inv.revision_id)
         def get_ie_sha1(entry):
             if entry.kind == "directory":
-                return invshamap.lookup_tree(entry.file_id)
+                try:
+                    return invshamap.lookup_tree(entry.file_id)
+                except NotImplementedError:
+                    obj = self._get_tree(entry.file_id, revid, inv,
+                        unusual_modes)
+                    if obj is None:
+                        return None
+                    else:
+                        return obj.id
             elif entry.kind in ("file", "symlink"):
                 return invshamap.lookup_blob(entry.file_id, entry.revision)
             else:

@@ -259,8 +259,8 @@ class SqliteGitShaMap(GitShaMap):
         blobs = []
         for (fileid, kind, hexsha, revision) in entries:
             if kind is None:
-                continue
-            if kind == "tree":
+                pass # removal
+            elif kind == "tree":
                 trees.append((hexsha, fileid, revid))
             elif kind == "blob":
                 blobs.append((hexsha, fileid, revision))
@@ -370,20 +370,17 @@ class TdbGitShaMap(GitShaMap):
             pass
         self.db["version"] = str(TDB_MAP_VERSION)
 
-    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
-                    entries):
-        """Add multiple new entries to the database.
-        """
+    def start_write_group(self):
+        """Start writing changes."""
         self.db.transaction_start()
-        try:
-            self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
-            for (fileid, kind, hexsha, revision) in entries:
-                self._add_entry(hexsha, kind, (fileid, revision))
-        except:
-            self.db.transaction_cancel()
-            raise
-        else:
-            self.db.transaction_commit()
+
+    def commit_write_group(self):
+        """Commit any pending changes."""
+        self.db.transaction_commit()
+
+    def abort_write_group(self):
+        """Abort any pending changes."""
+        self.db.transaction_cancel()
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
@@ -606,7 +603,9 @@ class IndexGitShaMap(GitShaMap):
         self._add_git_sha(commit_sha, "commit", (revid, root_tree_sha))
         self._add_node(("commit", revid, "X"), " ".join((commit_sha, root_tree_sha)))
         for (fileid, kind, hexsha, revision) in entries:
-            if kind == "blob":
+            if kind is None:
+                pass # Removal
+            elif kind == "blob":
                 self._add_git_sha(hexsha, "blob", (fileid, revision))
                 self._add_node(("blob", fileid, revision), hexsha)
             elif kind == "tree":
@@ -641,7 +640,7 @@ class IndexGitShaMap(GitShaMap):
         """Return set of all the revisions that are not present."""
         missing_revids = set(revids)
         for _, key, value in self._index.iter_entries((
-            ("commit", revid) for revid in revids)):
+            ("commit", revid, "X") for revid in revids)):
             missing_revids.remove(key[1])
         return missing_revids
 

@@ -100,8 +100,7 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
         base_sha = None
     else:
         try:
-            base_sha = base_inv_shamap.lookup_blob(file_id,
-                revision_hint=base_ie.revision)
+            base_sha = base_inv_shamap.lookup_blob(file_id, base_ie.revision)
         except KeyError:
             base_sha = None
         else:
