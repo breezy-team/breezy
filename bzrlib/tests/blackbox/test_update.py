@@ -288,6 +288,12 @@ $ bzr update -r 1
         self.assertContainsRe(err, 'All changes applied successfully\.')
         self.assertContainsRe(err, 'Updated to revision 1.1.1 of branch .*')
 
+        # Switch back to latest
+        out, err = self.run_bzr('update')
+        self.assertContainsRe(err, '\+N\s+file3')
+        self.assertContainsRe(err, 'All changes applied successfully\.')
+        self.assertContainsRe(err, 'Updated to revision 2 of branch .*')
+
     def test_update_dash_r_in_master(self):
         # Test that 'bzr update' works correctly when you have
         # an update in the master tree,
