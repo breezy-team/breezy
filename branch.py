@@ -55,12 +55,44 @@ from bzrlib.foreign import ForeignBranch
 
 
 def extract_tags(refs):
+    """Extract the tags from a refs dictionary.
+
+    :param refs: Refs to extract the tags from.
+    :return: Dictionary mapping tag names to SHA1s.
+    """
     ret = {}
     for k,v in refs.iteritems():
         if k.startswith("refs/tags/") and not k.endswith("^{}"):
             v = refs.get(k+"^{}", v)
             ret[k[len("refs/tags/"):]] = v
     return ret
+
+
+def branch_name_to_ref(name):
+    """Map a branch name to a ref.
+
+    :param name: Branch name
+    :return: ref string
+    """
+    if name is None or name == "HEAD":
+        return "HEAD"
+    if not name.startswith("refs/"):
+        return "refs/heads/%s" % name
+    else:
+        return name
+
+
+def ref_to_branch_name(ref):
+    """Map a ref to a branch name
+
+    :param ref: Ref
+    :return: A branch name
+    """
+    if ref == "HEAD":
+        return "HEAD"
+    if ref.startswith("refs/heads/"):
+        return ref[len("refs/heads/"):]
+    raise ValueError("unable to map ref %s back to branch name")
 
 
 class GitPullResult(branch.PullResult):
@@ -122,14 +154,12 @@ class LocalGitTagDict(tag.BasicTags):
 
 class DictTagDict(LocalGitTagDict):
 
-
     def __init__(self, branch, tags):
         super(DictTagDict, self).__init__(branch)
         self._tags = tags
 
     def get_tag_dict(self):
         return self._tags
-
 
 
 class GitBranchFormat(branch.BranchFormat):
@@ -158,7 +188,7 @@ class GitBranchFormat(branch.BranchFormat):
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
-    def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
+    def __init__(self, bzrdir, repository, ref, lockfiles, tagsdict=None):
         self.repository = repository
         self._format = GitBranchFormat()
         self.control_files = lockfiles
@@ -166,11 +196,10 @@ class GitBranch(ForeignBranch):
         super(GitBranch, self).__init__(repository.get_mapping())
         if tagsdict is not None:
             self.tags = DictTagDict(self, tagsdict)
-        self.name = name
+        self.ref = ref
+        self.name = ref_to_branch_name(ref)
         self._head = None
         self.base = bzrdir.root_transport.base
-        if self.name != "HEAD":
-            self.base += ",%s" % self.name
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -198,7 +227,8 @@ class GitBranch(ForeignBranch):
     nick = property(_get_nick, _set_nick)
 
     def __repr__(self):
-        return "%s(%r, %r)" % (self.__class__.__name__, self.repository.base, self.name)
+        return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
+            self.ref)
 
     def generate_revision_history(self, revid, old_revid=None):
         # FIXME: Check that old_revid is in the ancestry of revid
@@ -248,6 +278,12 @@ class GitBranch(ForeignBranch):
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
+    def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
+        super(LocalGitBranch, self).__init__(bzrdir, repository, name, 
+              lockfiles, tagsdict)
+        if not name in repository._git.get_refs().keys():
+            raise errors.NotBranchError(self.base)
+
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
         accelerator_tree=None, hardlink=False):
         if lightweight:
@@ -292,7 +328,7 @@ class LocalGitBranch(GitBranch):
 
     def _get_head(self):
         try:
-            return self.repository._git.ref(self.name)
+            return self.repository._git.ref(self.ref)
         except KeyError:
             return None
 
@@ -306,7 +342,7 @@ class LocalGitBranch(GitBranch):
 
     def _set_head(self, value):
         self._head = value
-        self.repository._git.refs[self.name] = self._head
+        self.repository._git.refs[self.ref] = self._head
         self._clear_cached_state()
 
     head = property(_get_head, _set_head)
@@ -386,14 +422,14 @@ class InterFromGitBranch(branch.GenericInterBranch):
         """
         interrepo = self._get_interrepo(self.source, self.target)
         def determine_wants(heads):
-            if not self.source.name in heads:
-                raise NoSuchRef(self.source.name, heads.keys())
+            if not self.source.ref in heads:
+                raise NoSuchRef(self.source.ref, heads.keys())
             if stop_revision is not None:
                 self._last_revid = stop_revision
                 head, mapping = self.source.repository.lookup_bzr_revision_id(
                     stop_revision)
             else:
-                head = heads[self.source.name]
+                head = heads[self.source.ref]
                 self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(
                     head)
             if self.target.repository.has_revision(self._last_revid):

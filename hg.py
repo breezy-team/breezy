@@ -15,6 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+"""Compatibility for hg-git."""
+
 import urllib
 
 def format_hg_metadata(renames, branch, extra):

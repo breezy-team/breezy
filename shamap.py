@@ -30,7 +30,6 @@ from bzrlib import (
     knit,
     osutils,
     trace,
-    ui,
     versionedfile,
     )
 from bzrlib.chk_map import (
@@ -39,11 +38,6 @@ from bzrlib.chk_map import (
 from bzrlib.revision import (
     NULL_REVISION,
     )
-
-# Data stored in the cache:
-# Git SHA -> Bazaar inventory entry / revision
-# Bazaar file id / revision -> Git SHA
-# Bazaar revision id -> Git SHA
 
 
 def get_cache_dir():
@@ -113,26 +107,18 @@ class InventorySHAMap(object):
 class GitShaMap(object):
     """Git<->Bzr revision id mapping database."""
 
-    def add_entry(self, sha, type, type_data):
+    def _add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """
-        raise NotImplementedError(self.add_entry)
+        raise NotImplementedError(self._add_entry)
 
     def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
-                    invdelta, shamap):
+                    entries):
         """Add multiple new entries to the database.
         """
-        self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
-        for (oldpath, newpath, fileid, new_ie) in invdelta:
-            if newpath is None:
-                continue
-            if new_ie.kind in ("file", "symlink"):
-                self.add_entry(shamap[fileid], "blob",
-                    (fileid, new_ie.revision))
-            elif new_ie.kind == "directory":
-                self.add_entry(shamap[fileid], "tree", (fileid, revid))
-            else:
-                raise AssertionError
+        for (fileid, kind, hexsha, revision) in entries:
+            self._add_entry(hexsha, kind, (fileid, revision))
+        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
 
     def get_inventory_sha_map(self, revid):
         """Return the inventory SHA map for a revision.
@@ -181,12 +167,13 @@ class DictGitShaMap(GitShaMap):
         self._by_sha = {}
         self._by_fileid = {}
 
-    def add_entry(self, sha, type, type_data):
+    def _add_entry(self, sha, type, type_data):
         self._by_sha[sha] = (type, type_data)
         if type in ("blob", "tree"):
             self._by_fileid.setdefault(type_data[1], {})[type_data[0]] = sha
 
     def get_inventory_sha_map(self, revid):
+
         class DictInventorySHAMap(InventorySHAMap):
 
             def __init__(self, base, revid):
@@ -256,19 +243,6 @@ class SqliteGitShaMap(GitShaMap):
         return "%s(%r)" % (self.__class__.__name__, self.path)
     
     @classmethod
-    def remove_for_repository(cls, repository):
-        repository._transport.delete('git.db')
-
-    @classmethod
-    def exists_for_repository(cls, repository):
-        try:
-            transport = getattr(repository, "_transport", None)
-            if transport is not None:
-                return transport.has("git.db")
-        except bzrlib.errors.NotLocalUrl:
-            return False
-
-    @classmethod
     def from_repository(cls, repository):
         try:
             transport = getattr(repository, "_transport", None)
@@ -288,26 +262,25 @@ class SqliteGitShaMap(GitShaMap):
         self.db.commit()
 
     def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
-                    invdelta, shamap):
-        self.add_entry(commit_sha, "commit", (revid, root_tree_sha))
+                    entries):
         trees = []
         blobs = []
-        for (oldpath, newpath, fileid, new_ie) in invdelta:
-            if newpath is None:
+        for (fileid, kind, hexsha, revision) in entries:
+            if kind is None:
                 continue
-            if new_ie.kind in ("file", "symlink"):
-                trees.append((shamap[fileid], "tree", (fileid, revid)))
-            elif new_ie.kind == "directory":
-                blobs.append((shamap[fileid], (fileid, new_ie.revision)))
+            if kind == "tree":
+                trees.append((hexsha, fileid, revid))
+            elif kind == "blob":
+                blobs.append((hexsha, fileid, revision))
             else:
                 raise AssertionError
         if trees:
             self.db.executemany("replace into trees (sha1, fileid, revid) values (?, ?, ?)", trees)
         if blobs:
             self.db.executemany("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", blobs)
+        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
 
-
-    def add_entry(self, sha, type, type_data):
+    def _add_entry(self, sha, type, type_data):
         """Add a new entry to the database.
         """
         assert isinstance(type_data, tuple)
@@ -409,21 +382,23 @@ class TdbGitShaMap(GitShaMap):
             pass
         self.db["version"] = str(TDB_MAP_VERSION)
 
+    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
+                    entries):
+        """Add multiple new entries to the database.
+        """
+        self.db.transaction_start()
+        try:
+            self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
+            for (fileid, kind, hexsha, revision) in entries:
+                self._add_entry(hexsha, kind, (fileid, revision))
+        except:
+            self.db.transaction_cancel()
+            raise
+        else:
+            self.db.transaction_commit()
+
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
-
-    @classmethod
-    def exists_for_repository(cls, repository):
-        try:
-            transport = getattr(repository, "_transport", None)
-            if transport is not None:
-                return transport.has("git.tdb")
-        except bzrlib.errors.NotLocalUrl:
-            return False
-
-    @classmethod
-    def remove_for_repository(cls, repository):
-        repository._transport.delete('git.tdb')
 
     @classmethod
     def from_repository(cls, repository):
@@ -438,7 +413,7 @@ class TdbGitShaMap(GitShaMap):
     def lookup_commit(self, revid):
         return sha_to_hex(self.db["commit\0" + revid][:20])
 
-    def add_entry(self, hexsha, type, type_data):
+    def _add_entry(self, hexsha, type, type_data):
         """Add a new entry to the database.
         """
         if hexsha is None:
@@ -728,42 +703,9 @@ class IndexGitShaMap(GitShaMap):
             yield key[1]
 
 
-def migrate(source, target):
-    """Migrate from one cache map to another."""
-    pb = ui.ui_factory.nested_progress_bar()
-    try:
-        target.start_write_group()
-        try:
-            for i, sha in enumerate(source.sha1s()):
-                pb.update("migrating sha map", i)
-                try:
-                    (kind, info) = source.lookup_git_sha(sha)
-                except KeyError:
-                    trace.warning("Inconsistency in %r: object with %s listed "
-                        "but does not exist.", source, sha)
-                else:
-                    target.add_entry(sha, kind, info)
-        except:
-            target.abort_write_group()
-            raise
-        else:
-            target.commit_write_group()
-    finally:
-        pb.finished()
-
-
 def from_repository(repository):
-    upgrade_from = [SqliteGitShaMap, TdbGitShaMap]
-    shamap = IndexGitShaMap.from_repository(repository)
-    for cls in upgrade_from:
-        if not cls.exists_for_repository(repository):
-            continue
-        try:
-            old_shamap = cls.from_repository(repository)
-        except ImportError:
-            continue
-        trace.info('Importing SHA map from %r into %r',
-            old_shamap, shamap)
-        migrate(old_shamap, shamap)
-        cls.remove_for_repository(repository)
-    return shamap
+    return IndexGitShaMap.from_repository(repository)
+    try:
+        return TdbGitShaMap.from_repository(repository)
+    except ImportError:
+        return SqliteGitShaMap.from_repository(repository)

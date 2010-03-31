@@ -21,6 +21,7 @@ from bzrlib import (
     errors as bzr_errors,
     lockable_files,
     urlutils,
+    version_info as bzrlib_version,
     )
 
 LockWarner = getattr(lockable_files, "_LockWarner", None)
@@ -78,12 +79,18 @@ class GitDir(bzrdir.BzrDir):
         return get_rich_root_format(stacked)
 
     def _branch_name_to_ref(self, name):
-        if name is None and name != "HEAD":
-            return "HEAD"
-        if not "/" in name:
-            return "refs/heads/%s" % name
-        else:
-            return name
+        from bzrlib.plugins.git.branch import branch_name_to_ref
+        return branch_name_to_ref(name)
+
+    if bzrlib_version >= (2, 2):
+        def open_branch(self, name=None, ignore_fallbacks=None,
+            unsupported=False):
+            return self._open_branch(name=name,
+                ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
+    else:
+        def open_branch(self, ignore_fallbacks=None, unsupported=False):
+            return self._open_branch(name=None,
+                ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
 
 
 class LocalGitDir(GitDir):
@@ -119,8 +126,7 @@ class LocalGitDir(GitDir):
     get_repository_transport = get_branch_transport
     get_workingtree_transport = get_branch_transport
 
-
-    def open_branch(self, ignore_fallbacks=None, name=None, unsupported=False):
+    def _open_branch(self, name=None, ignore_fallbacks=None, unsupported=False):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch
@@ -133,7 +139,8 @@ class LocalGitDir(GitDir):
     def list_branches(self):
         ret = []
         for name in self._git.get_refs():
-            ret.append(self.open_branch(name=name))
+            if name.startswith("refs/heads/") or name == "HEAD":
+                ret.append(self.open_branch(name=name))
         return ret
 
     def open_repository(self, shared=False):

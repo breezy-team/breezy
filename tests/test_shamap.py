@@ -38,8 +38,9 @@ class TestGitShaMap:
 
     def test_commit(self):
         self.map.start_write_group()
-        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301",
-            "commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"))
+        self.map.add_entries("myrevid", [], 
+            "5686645d49063c73d35436192dfc9a160c672301",
+            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [])
         self.map.commit_write_group()
         self.assertEquals(
             ("commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba")),
@@ -50,9 +51,13 @@ class TestGitShaMap:
             self.map.lookup_git_sha, "5686645d49063c73d35436192dfc9a160c672301")
 
     def test_blob(self):
-        thesha = "5686645d49063c73d35436192dfc9a160c672301"
+        thesha = "9686645d49063c73d35436192dfc9a160c672301"
         self.map.start_write_group()
-        self.map.add_entry(thesha, "blob", ("myfileid", "myrevid"))
+        self.map.add_entries("myrevid", [], 
+            "5686645d49063c73d35436192dfc9a160c672301",
+            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [
+                ("myfileid", "blob", thesha, "myrevid")
+                ])
         self.map.commit_write_group()
         self.assertEquals(
             ("blob", ("myfileid", "myrevid")),
@@ -61,10 +66,12 @@ class TestGitShaMap:
         self.assertEquals(thesha, invshamap.lookup_blob("myfileid"))
 
     def test_tree(self):
-        thesha = "5686645d49063c73d35436192dfc9a160c672301"
+        thesha = "8686645d49063c73d35436192dfc9a160c672301"
         self.map.start_write_group()
-        self.map.add_entry(thesha,
-            "tree", ("somepath", "myrevid"))
+        self.map.add_entries("myrevid", [], 
+            "5686645d49063c73d35436192dfc9a160c672301",
+            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [
+            ("somepath", "tree", thesha, "myrevid")])
         self.map.commit_write_group()
         self.assertEquals(
             ("tree", ("somepath", "myrevid")),
@@ -72,15 +79,17 @@ class TestGitShaMap:
 
     def test_revids(self):
         self.map.start_write_group()
-        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301",
-            "commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"))
+        self.map.add_entries("myrevid", [], 
+            "5686645d49063c73d35436192dfc9a160c672301",
+            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [])
         self.map.commit_write_group()
         self.assertEquals(["myrevid"], list(self.map.revids()))
 
     def test_missing_revisions(self):
         self.map.start_write_group()
-        self.map.add_entry("5686645d49063c73d35436192dfc9a160c672301",
-            "commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"))
+        self.map.add_entries("myrevid", [], 
+            "5686645d49063c73d35436192dfc9a160c672301",
+            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [])
         self.map.commit_write_group()
         self.assertEquals(set(["lala", "bla"]),
             set(self.map.missing_revisions(["myrevid", "lala", "bla"])))

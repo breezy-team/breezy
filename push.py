@@ -30,9 +30,6 @@ from bzrlib.revision import (
 from bzrlib.plugins.git.errors import (
     NoPushSupport,
     )
-from bzrlib.plugins.git.mapping import (
-    extract_unusual_modes,
-    )
 from bzrlib.plugins.git.object_store import (
     BazaarObjectStore,
     )
@@ -57,77 +54,34 @@ class MissingObjectsIterator(object):
         """
         self.source = source
         self._object_store = store
-        self._revids = set()
-        self._sent_shas = set()
         self._pending = []
         self.pb = pb
 
     def import_revisions(self, revids):
-        self._revids.update(revids)
         for i, revid in enumerate(revids):
             if self.pb:
                 self.pb.update("pushing revisions", i, len(revids))
             git_commit = self.import_revision(revid)
             yield (revid, git_commit)
 
-    def need_sha(self, sha):
-        if sha is None or sha in self._sent_shas:
-            return False
-        (type, (fileid, revid)) = self._object_store._idmap.lookup_git_sha(sha)
-        assert type in ("blob", "tree")
-        if revid in self._revids:
-            # Not sent yet, and part of the set of revisions to send
-            return True
-        # Not changed in the revisions to send, so either not necessary
-        # or already present remotely (as git doesn't do ghosts)
-        return False
-
-    def queue(self, sha, obj, path, ie=None, inv=None, unusual_modes=None):
-        if obj is None:
-            # Can't lazy-evaluate directories, since they might be eliminated
-            if ie.kind == "directory":
-                obj = self._object_store._get_ie_object(ie, inv, unusual_modes)
-                if obj is None:
-                    return
-            else:
-                obj = (ie, inv, unusual_modes)
-        self._pending.append((obj, path))
-        self._sent_shas.add(sha)
-
     def import_revision(self, revid):
         """Import the gist of a revision into this Git repository.
 
         """
-        inv = self.source.get_inventory(revid)
+        inv = self._object_store.parent_invs_cache.get_inventory(revid)
         rev = self.source.get_revision(revid)
-        unusual_modes = extract_unusual_modes(rev)
-        todo = [inv.root]
-        tree_sha = None
-        while todo:
-            ie = todo.pop()
-            (sha, object) = self._object_store._get_ie_object_or_sha1(ie, inv, unusual_modes)
-            if ie.parent_id is None:
-                tree_sha = sha
-            if not self.need_sha(sha):
-                continue
-            self.queue(sha, object, inv.id2path(ie.file_id), ie, inv, unusual_modes)
-            if ie.kind == "directory":
-                todo.extend(ie.children.values())
-        assert tree_sha is not None
-        commit = self._object_store._get_commit(rev, tree_sha)
-        self.queue(commit.id, commit, None, None)
+        commit = None
+        for path, obj in self._object_store._revision_to_objects(rev, inv):
+            if obj._type == "commit":
+                commit = obj
+            self._pending.append((obj, path))
         return commit.id
 
     def __len__(self):
         return len(self._pending)
 
     def __iter__(self):
-        for i, (object, path) in enumerate(self._pending):
-            if self.pb:
-                self.pb.update("writing pack objects", i, len(self))
-            if isinstance(object, tuple):
-                object = self._object_store._get_ie_object(*object)
-            yield (object, path)
+        return iter(self._pending)
 
 
 class InterToGitRepository(InterRepository):
