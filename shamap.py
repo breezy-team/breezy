@@ -365,20 +365,17 @@ class TdbGitShaMap(GitShaMap):
             pass
         self.db["version"] = str(TDB_MAP_VERSION)
 
-    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
-                    entries):
-        """Add multiple new entries to the database.
-        """
+    def start_write_group(self):
+        """Start writing changes."""
         self.db.transaction_start()
-        try:
-            self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
-            for (fileid, kind, hexsha, revision) in entries:
-                self._add_entry(hexsha, kind, (fileid, revision))
-        except:
-            self.db.transaction_cancel()
-            raise
-        else:
-            self.db.transaction_commit()
+
+    def commit_write_group(self):
+        """Commit any pending changes."""
+        self.db.transaction_commit()
+
+    def abort_write_group(self):
+        """Abort any pending changes."""
+        self.db.transaction_cancel()
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
