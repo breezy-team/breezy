@@ -143,7 +143,8 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         try:
-            if not (transport.has('info/refs') or transport.has('.git/branches') or 
+            if not (transport.has('info/refs') or 
+                    transport.has('.git/branches') or 
                     transport.has('branches')):
                 raise bzr_errors.NotBranchError(path=transport.base)
         except bzr_errors.NoSuchFile:
