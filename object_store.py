@@ -170,7 +170,7 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
                         try:
                             shamap[ie.file_id] = pinvshamap.lookup_tree(
                                 ie.file_id)
-                        except NotImplementedError:
+                        except (NotImplementedError, KeyError):
                             pass
                         else:
                             break
@@ -363,7 +363,7 @@ class BazaarObjectStore(BaseObjectStore):
             if entry.kind == "directory":
                 try:
                     return invshamap.lookup_tree(entry.file_id)
-                except NotImplementedError:
+                except (NotImplementedError, KeyError):
                     obj = self._get_tree(entry.file_id, revid, inv,
                         unusual_modes)
                     if obj is None:
