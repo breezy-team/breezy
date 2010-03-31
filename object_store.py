@@ -128,24 +128,21 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
     shamap = {}
     for path, ie in inv.entries():
         if ie.kind == "file":
-            if ie.revision == inv.revision_id:
-                new_blobs.append((path, ie))
-                new_trees[urlutils.dirname(path)] = ie.parent_id
-            elif has_ghost_parents:
+            if ie.revision != inv.revision_id:
                 for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
                     try:
                         pie = pinv[ie.file_id]
                     except errors.NoSuchId:
                         pass
                     else:
-                        if (pie.kind == ie.kind and
-                            pie.text_sha1 == ie.text_sha1):
+                        if (pie.text_sha1 == ie.text_sha1 and 
+                            pie.kind == ie.kind):
                             shamap[ie.file_id] = pinvshamap.lookup_blob(
                                 pie.file_id, pie.revision)
                             break
-                else:
-                    new_blobs.append((path, ie))
-                    new_trees[urlutils.dirname(path)] = ie.parent_id
+            if not ie.file_id in shamap:
+                new_blobs.append((path, ie))
+                new_trees[urlutils.dirname(path)] = ie.parent_id
         elif ie.kind == "symlink":
             blob = symlink_to_blob(ie)
             for pinv in parent_invs:
