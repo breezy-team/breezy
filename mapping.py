@@ -442,7 +442,7 @@ def entry_mode(entry):
 def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
     from dulwich.objects import Tree
     tree = Tree()
-    for name in sorted(entry.children.keys()):
+    for name, value in entry.children.iteritems():
         ie = entry.children[name]
         try:
             mode = unusual_modes[ie.file_id]
