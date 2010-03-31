@@ -91,6 +91,19 @@ class LRUInventoryCache(object):
         self._cache.add(revid, inv)
 
 
+def _check_expected_sha(expected_sha, object):
+    if expected_sha is None:
+        return
+    if len(expected_sha) == 40:
+        if expected_sha != object.sha().hexdigest():
+            raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
+    elif len(expected_sha) == 20:
+        if expected_sha != object.sha().digest():
+            raise AssertionError("Invalid sha for %r: %s" % (object, sha_to_hex(expected_sha)))
+    else:
+        raise AssertionError("Unknown length %d for %r" % (len(expected_sha), expected_sha))
+
+
 class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
@@ -278,18 +291,6 @@ class BazaarObjectStore(BaseObjectStore):
             commit_obj.tree, entries)
         return commit_obj.id
 
-    def _check_expected_sha(self, expected_sha, object):
-        if expected_sha is None:
-            return
-        if len(expected_sha) == 40:
-            if expected_sha != object.sha().hexdigest():
-                raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
-        elif len(expected_sha) == 20:
-            if expected_sha != object.sha().digest():
-                raise AssertionError("Invalid sha for %r: %s" % (object, sha_to_hex(expected_sha)))
-        else:
-            raise AssertionError("Unknown length %d for %r" % (len(expected_sha), expected_sha))
-
     def _get_ie_object(self, entry, inv, unusual_modes):
         if entry.kind == "directory":
             return self._get_tree(entry.file_id, inv.revision_id, inv,
@@ -310,7 +311,7 @@ class BazaarObjectStore(BaseObjectStore):
             symlink_target = symlink_target.encode('utf-8')
         blob = Blob()
         blob._text = symlink_target
-        self._check_expected_sha(expected_sha, blob)
+        _check_expected_sha(expected_sha, blob)
         return blob
 
     def _get_blob_for_file(self, fileid, revision, expected_sha=None):
@@ -322,7 +323,7 @@ class BazaarObjectStore(BaseObjectStore):
         blob = Blob()
         chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
         blob._text = "".join(chunks)
-        self._check_expected_sha(expected_sha, blob)
+        _check_expected_sha(expected_sha, blob)
         return blob
 
     def _get_blob(self, fileid, revision, expected_sha=None, inv=None):
@@ -359,7 +360,7 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
         tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes)
-        self._check_expected_sha(expected_sha, tree)
+        _check_expected_sha(expected_sha, tree)
         return tree
 
     def get_parents(self, sha):
@@ -427,7 +428,7 @@ class BazaarObjectStore(BaseObjectStore):
                 trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
                 raise KeyError(sha)
             commit = self._revision_to_commit(rev, tree_sha)
-            self._check_expected_sha(sha, commit)
+            _check_expected_sha(sha, commit)
             return commit
         elif type == "blob":
             (fileid, revision) = type_data
