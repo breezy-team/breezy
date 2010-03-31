@@ -183,7 +183,7 @@ Bug Fixes
   (Toshio Kuratomi, Martin Pool, #502076)
 
 * ``update -r`` now supports updating to revisions that are not on
-  mainline (i.e. dotted revisions).
+  mainline (i.e. it supports dotted revisions).
   (Parth Malwankar, #517800)
 
 * ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
