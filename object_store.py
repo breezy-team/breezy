@@ -26,7 +26,6 @@ from dulwich.object_store import (
     )
 
 from bzrlib import (
-    debug,
     errors,
     lru_cache,
     trace,
@@ -42,6 +41,7 @@ from bzrlib.plugins.git.mapping import (
     directory_to_tree,
     extract_unusual_modes,
     mapping_registry,
+    symlink_to_blob,
     )
 from bzrlib.plugins.git.shamap import (
     from_repository as idmap_from_repository,
@@ -76,15 +76,141 @@ class LRUInventoryCache(object):
             self._cache.add(revid, inv)
             return inv
 
-    def get_inventories(self, revids):
+    def iter_inventories(self, revids):
         invs = dict([(k, self._cache.get(k)) for k in revids]) 
-        for inv in self.repository.iter_inventories([r for r, v in invs.iteritems() if v is None]):
+        for inv in self.repository.iter_inventories(
+                [r for r, v in invs.iteritems() if v is None]):
             invs[inv.revision_id] = inv
             self._cache.add(inv.revision_id, inv)
-        return [invs[r] for r in revids]
+        return (invs[r] for r in revids)
+
+    def get_inventories(self, revids):
+        return list(self.iter_inventories(revids))
 
     def add(self, revid, inv):
         self._cache.add(revid, inv)
+
+
+def _check_expected_sha(expected_sha, object):
+    """Check whether an object matches an expected SHA.
+
+    :param expected_sha: None or expected SHA as either binary or as hex digest
+    :param object: Object to verify
+    """
+    if expected_sha is None:
+        return
+    if len(expected_sha) == 40:
+        if expected_sha != object.sha().hexdigest():
+            raise AssertionError("Invalid sha for %r: %s" % (object,
+                expected_sha))
+    elif len(expected_sha) == 20:
+        if expected_sha != object.sha().digest():
+            raise AssertionError("Invalid sha for %r: %s" % (object,
+                sha_to_hex(expected_sha)))
+    else:
+        raise AssertionError("Unknown length %d for %r" % (len(expected_sha),
+            expected_sha))
+
+
+def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
+        unusual_modes, iter_files_bytes, has_ghost_parents):
+    """Iterate over the objects that were introduced in a revision.
+
+    :param inv: Inventory to process
+    :param parent_invs: parent inventory SHA maps
+    :param parent_invshamaps: parent inventory SHA Map
+    :param unusual_modes: Unusual file modes
+    :param iter_files_bytes: Repository.iter_files_bytes-like callback
+    :return: Yields (path, object) entries
+    """
+    new_trees = {}
+    new_blobs = []
+    shamap = {}
+    for path, ie in inv.entries():
+        if ie.kind == "file":
+            if ie.revision != inv.revision_id:
+                for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
+                    try:
+                        pie = pinv[ie.file_id]
+                    except errors.NoSuchId:
+                        pass
+                    else:
+                        if (pie.text_sha1 == ie.text_sha1 and 
+                            pie.kind == ie.kind):
+                            shamap[ie.file_id] = pinvshamap.lookup_blob(
+                                pie.file_id, pie.revision)
+                            break
+            if not ie.file_id in shamap:
+                new_blobs.append((path, ie))
+                new_trees[urlutils.dirname(path)] = ie.parent_id
+        elif ie.kind == "symlink":
+            blob = symlink_to_blob(ie)
+            for pinv in parent_invs:
+                try:
+                    pie = pinv[ie.file_id]
+                except errors.NoSuchId:
+                    pass
+                else:
+                    if (ie.kind == pie.kind and
+                        ie.symlink_target == pie.symlink_target):
+                        break
+            else:
+                yield path, blob
+            shamap[ie.file_id] = blob.id
+            new_trees[urlutils.dirname(path)] = ie.parent_id
+        elif ie.kind == "directory":
+            for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
+                try:
+                    pie = pinv[ie.file_id]
+                except errors.NoSuchId:
+                    pass
+                else:
+                    if (pie.kind == ie.kind and 
+                        pie.children.keys() == ie.children.keys()):
+                        try:
+                            shamap[ie.file_id] = pinvshamap.lookup_tree(
+                                ie.file_id)
+                        except NotImplementedError:
+                            pass
+                        else:
+                            break
+            else:
+                new_trees[path] = ie.file_id
+        else:
+            raise AssertionError(ie.kind)
+    
+    for (path, fid), chunks in iter_files_bytes(
+        [(ie.file_id, ie.revision, (path, ie.file_id))
+            for (path, ie) in new_blobs]):
+        obj = Blob()
+        obj.data = "".join(chunks)
+        yield path, obj
+        shamap[fid] = obj.id
+
+    assert all([ie.file_id in shamap for (path, ie) in new_blobs])
+
+    for fid in unusual_modes:
+        new_trees[inv.id2path(fid)] = inv[fid].parent_id
+    
+    trees = {}
+    while new_trees:
+        items = new_trees.items()
+        new_trees = {}
+        for path, file_id in items:
+            parent_id = inv[file_id].parent_id
+            if parent_id is not None:
+                parent_path = urlutils.dirname(path)
+                new_trees[parent_path] = parent_id
+            trees[path] = file_id
+
+    for path in sorted(trees.keys(), reverse=True):
+        ie = inv[trees[path]]
+        assert ie.kind == "directory"
+        obj = directory_to_tree(ie, 
+                lambda ie: shamap[ie.file_id], unusual_modes)
+        if obj is not None:
+            shamap[ie.file_id] = obj.id
+            yield path, obj
 
 
 class BazaarObjectStore(BaseObjectStore):
@@ -150,84 +276,17 @@ class BazaarObjectStore(BaseObjectStore):
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup)
 
-    def _inventory_to_objects(self, inv, parent_invs, parent_invshamaps,
-            unusual_modes):
-        """Iterate over the objects that were introduced in a revision.
-
-        :param inv: Inventory to process
-        :param parent_invs: parent inventory SHA maps
-        :param parent_invshamaps: parent inventory SHA Map
-        :param unusual_modes: Unusual file modes
-        :return: Yields (path, object) entries
-        """
-        new_trees = {}
-        shamap = {}
-        for path, ie in inv.entries():
-            if ie.kind in ("file", "symlink"):
-                for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
-                    try:
-                        pie = pinv[ie.file_id]
-                    except errors.NoSuchId:
-                        pass
-                    else:
-                        if pie.kind == ie.kind and pie.revision == ie.revision:
-                            shamap[ie.file_id] = pinvshamap.lookup_blob(ie.file_id, ie.revision)
-                            break
-                else:
-                    obj = self._get_blob(ie.file_id, ie.revision, inv=inv)
-                    yield path, obj
-                    shamap[ie.file_id] = obj.id
-                    new_trees[urlutils.dirname(path)] = ie.parent_id
-            elif ie.kind == "directory":
-                for pinv in parent_invs:
-                    try:
-                        pie = pinv[ie.file_id]
-                    except errors.NoSuchId:
-                        pass
-                    else:
-                        if (pie.kind == ie.kind and 
-                            pie.children.keys() == ie.children.keys()):
-                            try:
-                                shamap[ie.file_id] = pinvshamap.lookup_tree(ie.file_id)
-                            except NotImplementedError:
-                                pass
-                            else:
-                                break
-                else:
-                    new_trees[path] = ie.file_id
-            else:
-                raise AssertionError(ie.kind)
-        for fid in unusual_modes:
-            new_trees[inv.id2path(fid)] = inv[fid].parent_id
-        
-        trees = {}
-        while new_trees:
-            items = new_trees.items()
-            new_trees = {}
-            for path, file_id in items:
-                parent_id = inv[file_id].parent_id
-                if parent_id is not None:
-                    parent_path = urlutils.dirname(path)
-                    new_trees[parent_path] = parent_id
-                trees[path] = file_id
-
-        for path in sorted(trees.keys(), reverse=True):
-            ie = inv[trees[path]]
-            assert ie.kind == "directory"
-            obj = directory_to_tree(ie, 
-                    lambda ie: shamap[ie.file_id], unusual_modes)
-            if obj is not None:
-                shamap[ie.file_id] = obj.id
-                yield path, obj
-
     def _revision_to_objects(self, rev, inv):
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
-        parent_invs = self.parent_invs_cache.get_inventories([p for p in rev.parent_ids if p in present_parents])
+        has_ghost_parents = (len(rev.parent_ids) < len(present_parents))
+        parent_invs = self.parent_invs_cache.get_inventories(
+            [p for p in rev.parent_ids if p in present_parents])
         parent_invshamaps = [self._idmap.get_inventory_sha_map(r) for r in rev.parent_ids if r in present_parents]
         tree_sha = None
-        for path, obj in self._inventory_to_objects(inv, parent_invs,
-                parent_invshamaps, unusual_modes):
+        for path, obj in _inventory_to_objects(inv, parent_invs,
+                parent_invshamaps, unusual_modes,
+                self.repository.iter_files_bytes, has_ghost_parents):
             yield path, obj
             if path == "":
                 tree_sha = obj.id
@@ -242,9 +301,7 @@ class BazaarObjectStore(BaseObjectStore):
         except errors.InvalidRevisionId:
             pass
         else:
-            if foreign_revid != commit_obj.id:
-                if not "fix-shamap" in debug.debug_flags:
-                    raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
+            _check_expected_sha(foreign_revid, commit_obj)
         yield None, commit_obj
 
     def _update_sha_map_revision(self, revid):
@@ -269,42 +326,7 @@ class BazaarObjectStore(BaseObjectStore):
             commit_obj.tree, entries)
         return commit_obj.id
 
-    def _check_expected_sha(self, expected_sha, object):
-        if expected_sha is None:
-            return
-        if len(expected_sha) == 40:
-            if expected_sha != object.sha().hexdigest():
-                raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
-        elif len(expected_sha) == 20:
-            if expected_sha != object.sha().digest():
-                raise AssertionError("Invalid sha for %r: %s" % (object, sha_to_hex(expected_sha)))
-        else:
-            raise AssertionError("Unknown length %d for %r" % (len(expected_sha), expected_sha))
-
-    def _get_ie_object(self, entry, inv, unusual_modes):
-        if entry.kind == "directory":
-            return self._get_tree(entry.file_id, inv.revision_id, inv,
-                unusual_modes)
-        elif entry.kind == "symlink":
-            return self._get_blob_for_symlink(entry.symlink_target)
-        elif entry.kind == "file":
-            return self._get_blob_for_file(entry.file_id, entry.revision)
-        else:
-            raise AssertionError("unknown entry kind '%s'" % entry.kind)
-
-    def _get_blob_for_symlink(self, symlink_target, expected_sha=None):
-        """Return a Git Blob object for symlink.
-
-        :param symlink_target: target of symlink.
-        """
-        if type(symlink_target) == unicode:
-            symlink_target = symlink_target.encode('utf-8')
-        blob = Blob()
-        blob._text = symlink_target
-        self._check_expected_sha(expected_sha, blob)
-        return blob
-
-    def _get_blob_for_file(self, fileid, revision, expected_sha=None):
+    def _get_blob(self, fileid, revision, expected_sha):
         """Return a Git Blob object from a fileid and revision stored in bzr.
 
         :param fileid: File id of the text
@@ -312,28 +334,15 @@ class BazaarObjectStore(BaseObjectStore):
         """
         blob = Blob()
         chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
-        blob._text = "".join(chunks)
-        self._check_expected_sha(expected_sha, blob)
-        return blob
-
-    def _get_blob(self, fileid, revision, expected_sha=None, inv=None):
-        """Return a Git Blob object from a fileid and revision stored in bzr.
-
-        :param fileid: File id of the text
-        :param revision: Revision of the text
-        """
-        if inv is None:
+        blob.data = "".join(chunks)
+        if blob.id != expected_sha:
+            # Perhaps it's a symlink ?
             inv = self.parent_invs_cache.get_inventory(revision)
-        entry = inv[fileid]
-
-        if entry.kind == 'file':
-            return self._get_blob_for_file(entry.file_id, entry.revision,
-                                           expected_sha=expected_sha)
-        elif entry.kind == 'symlink':
-            return self._get_blob_for_symlink(entry.symlink_target,
-                                              expected_sha=expected_sha)
-        else:
-            raise AssertionError
+            entry = inv[fileid]
+            assert entry.kind == 'symlink'
+            blob = symlink_to_blob(entry)
+        _check_expected_sha(expected_sha, blob)
+        return blob
 
     def _get_tree(self, fileid, revid, inv, unusual_modes, expected_sha=None):
         """Return a Git Tree object from a file id and a revision stored in bzr.
@@ -350,7 +359,7 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
         tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes)
-        self._check_expected_sha(expected_sha, tree)
+        _check_expected_sha(expected_sha, tree)
         return tree
 
     def get_parents(self, sha):
@@ -418,7 +427,7 @@ class BazaarObjectStore(BaseObjectStore):
                 trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
                 raise KeyError(sha)
             commit = self._revision_to_commit(rev, tree_sha)
-            self._check_expected_sha(sha, commit)
+            _check_expected_sha(sha, commit)
             return commit
         elif type == "blob":
             (fileid, revision) = type_data

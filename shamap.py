@@ -623,8 +623,7 @@ class IndexGitShaMap(GitShaMap):
         else:
             baseshamap = self.get_inventory_sha_map(parent_revids[0])
         self._add_git_sha(commit_sha, "commit", (revid, root_tree_sha))
-        self._add_node(("commit", revid),
-            " ".join((commit_sha, root_tree_sha)))
+        self._add_node(("commit", revid), " ".join((commit_sha, root_tree_sha)))
         chk_delta = []
         for (oldpath, newpath, fileid, ie) in invdelta:
             if newpath is None:

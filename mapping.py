@@ -374,14 +374,17 @@ def text_to_blob(texts, entry):
     from dulwich.objects import Blob
     text = texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
     blob = Blob()
-    blob._text = text
+    blob.data = text
     return blob
 
 
 def symlink_to_blob(entry):
     from dulwich.objects import Blob
     blob = Blob()
-    blob._text = entry.symlink_target
+    symlink_target = entry.symlink_target
+    if type(symlink_target) == unicode:
+        symlink_target = symlink_target.encode('utf-8')
+    blob.data = symlink_target
     return blob
 
 
