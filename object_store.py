@@ -92,16 +92,24 @@ class LRUInventoryCache(object):
 
 
 def _check_expected_sha(expected_sha, object):
+    """Check whether an object matches an expected SHA.
+
+    :param expected_sha: None or expected SHA as either binary or as hex digest
+    :param object: Object to verify
+    """
     if expected_sha is None:
         return
     if len(expected_sha) == 40:
         if expected_sha != object.sha().hexdigest():
-            raise AssertionError("Invalid sha for %r: %s" % (object, expected_sha))
+            raise AssertionError("Invalid sha for %r: %s" % (object,
+                expected_sha))
     elif len(expected_sha) == 20:
         if expected_sha != object.sha().digest():
-            raise AssertionError("Invalid sha for %r: %s" % (object, sha_to_hex(expected_sha)))
+            raise AssertionError("Invalid sha for %r: %s" % (object,
+                sha_to_hex(expected_sha)))
     else:
-        raise AssertionError("Unknown length %d for %r" % (len(expected_sha), expected_sha))
+        raise AssertionError("Unknown length %d for %r" % (len(expected_sha),
+            expected_sha))
 
 
 class BazaarObjectStore(BaseObjectStore):
@@ -188,8 +196,10 @@ class BazaarObjectStore(BaseObjectStore):
                     except errors.NoSuchId:
                         pass
                     else:
-                        if pie.kind == ie.kind and pie.revision == ie.revision:
-                            shamap[ie.file_id] = pinvshamap.lookup_blob(ie.file_id, ie.revision)
+                        if (pie.kind == ie.kind and
+                            pie.text_sha1 == ie.text_sha1):
+                            shamap[ie.file_id] = pinvshamap.lookup_blob(
+                                pie.file_id, pie.revision)
                             break
                 else:
                     if ie.kind == "file":
@@ -200,7 +210,7 @@ class BazaarObjectStore(BaseObjectStore):
                         shamap[ie.file_id] = blob.id
                     new_trees[urlutils.dirname(path)] = ie.parent_id
             elif ie.kind == "directory":
-                for pinv in parent_invs:
+                for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
                     try:
                         pie = pinv[ie.file_id]
                     except errors.NoSuchId:
@@ -209,7 +219,8 @@ class BazaarObjectStore(BaseObjectStore):
                         if (pie.kind == ie.kind and 
                             pie.children.keys() == ie.children.keys()):
                             try:
-                                shamap[ie.file_id] = pinvshamap.lookup_tree(ie.file_id)
+                                shamap[ie.file_id] = pinvshamap.lookup_tree(
+                                    ie.file_id)
                             except NotImplementedError:
                                 pass
                             else:
@@ -252,7 +263,8 @@ class BazaarObjectStore(BaseObjectStore):
     def _revision_to_objects(self, rev, inv):
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
-        parent_invs = self.parent_invs_cache.get_inventories([p for p in rev.parent_ids if p in present_parents])
+        parent_invs = self.parent_invs_cache.get_inventories(
+            [p for p in rev.parent_ids if p in present_parents])
         parent_invshamaps = [self._idmap.get_inventory_sha_map(r) for r in rev.parent_ids if r in present_parents]
         tree_sha = None
         for path, obj in self._inventory_to_objects(inv, parent_invs,
