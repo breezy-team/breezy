@@ -10,6 +10,9 @@
   * Handle working trees without valid HEAD branch.
     (Jelmer Vernooij, #501385)
 
+  * Default to non-bare repositories when initializing a control directory.
+    (Jelmer Vernooij)
+
 0.5.0	2010-03-18
 
  BUG FIXES

@@ -150,12 +150,14 @@ class LocalGitDir(GitDir):
     def open_workingtree(self, recommend_upgrade=True):
         if not self._git.bare:
             from dulwich.errors import NoIndexPresent
+            repo = self.open_repository()
             try:
-                from bzrlib.plugins.git.workingtree import GitWorkingTree
-                return GitWorkingTree(self, self.open_repository(),
-                                                      self.open_branch())
+                index = repo._git.open_index()
             except NoIndexPresent:
                 pass
+            else:
+                from bzrlib.plugins.git.workingtree import GitWorkingTree
+                return GitWorkingTree(self, repo, self.open_branch(), index)
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)
 

@@ -176,7 +176,7 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
                 "non-local transports")
         lazy_check_versions()
         from dulwich.repo import Repo
-        Repo.create(transport.local_abspath(".").encode(osutils._fs_enc))
+        Repo.init(transport.local_abspath(".").encode(osutils._fs_enc))
         return self.open(transport)
 
     def is_supported(self):

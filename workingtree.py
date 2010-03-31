@@ -58,7 +58,7 @@ IGNORE_FILENAME = ".gitignore"
 class GitWorkingTree(workingtree.WorkingTree):
     """A Git working tree."""
 
-    def __init__(self, bzrdir, repo, branch):
+    def __init__(self, bzrdir, repo, branch, index):
         self.basedir = bzrdir.root_transport.local_abspath('.')
         self.bzrdir = bzrdir
         self.repository = repo
@@ -77,7 +77,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._control_files = lockable_files.LockableFiles(
             transport.get_transport(self.controldir), 'lock', lockdir.LockDir)
         self._format = GitWorkingTreeFormat()
-        self.index = self.repository._git.open_index()
+        self.index = index
         self.views = self._make_views()
         self._detect_case_handling()
 
