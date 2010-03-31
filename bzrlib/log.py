@@ -1526,9 +1526,10 @@ class LongLogFormatter(LogFormatter):
         to_file = self.to_file
         to_file.write("%s%s\n" % (indent, ('\n' + indent).join(lines)))
         if revision.delta is not None:
-            # We don't respect delta_format for compatibility
-            revision.delta.show(to_file, self.show_ids, indent=indent,
-                                short_status=False)
+            # Use the standard status output to display changes
+            from bzrlib.delta import report_delta
+            report_delta(to_file, revision.delta, short_status=False, 
+                         show_ids=self.show_ids, indent=indent)
         if revision.diff is not None:
             to_file.write(indent + 'diff:\n')
             to_file.flush()
@@ -1597,8 +1598,11 @@ class ShortLogFormatter(LogFormatter):
                 to_file.write(indent + offset + '%s\n' % (l,))
 
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids, indent=indent + offset,
-                                short_status=self.delta_format==1)
+            # Use the standard status output to display changes
+            from bzrlib.delta import report_delta
+            report_delta(to_file, revision.delta, 
+                         short_status=self.delta_format==1, 
+                         show_ids=self.show_ids, indent=indent + offset)
         if revision.diff is not None:
             self.show_diff(self.to_exact_file, revision.diff, '      ')
         to_file.write('\n')
