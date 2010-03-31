@@ -4417,15 +4417,16 @@ class cmd_pack(Command):
     bazaar supports automatic packing of repository, this operation is
     normally not required to be done manually.
 
-    During the pack operation, bazaar takes a backup of existing data,
-    i.e. pack files. This backup is eventually removed by bazaar
+    During the pack operation, bazaar takes a backup of existing repository
+    data, i.e. pack files. This backup is eventually removed by bazaar
     automatically when it is safe to do so. To save disk space by removing
     the backed up pack files, the --clean-obsolete-packs option may be
     used.
 
-    Warning:
-    It may not be safe to use the --clean-obsolete-packs options with
-    certain transports like SFTP, HTTP, NFS etc.
+    Warning: If you use --clean-obsolete-packs and your machine crashes
+    during or immediately after repacking, you may be left with a state
+    where the deletion has been written to disk but the new packs have not
+    been. In this case the repository may be unusable.
     """
 
     _see_also = ['repositories']
