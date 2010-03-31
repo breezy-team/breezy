@@ -112,6 +112,93 @@ def _check_expected_sha(expected_sha, object):
             expected_sha))
 
 
+def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
+        unusual_modes, iter_files_bytes):
+    """Iterate over the objects that were introduced in a revision.
+
+    :param inv: Inventory to process
+    :param parent_invs: parent inventory SHA maps
+    :param parent_invshamaps: parent inventory SHA Map
+    :param unusual_modes: Unusual file modes
+    :param iter_files_bytes: Repository.iter_files_bytes-like callback
+    :return: Yields (path, object) entries
+    """
+    new_trees = {}
+    new_blobs = []
+    shamap = {}
+    for path, ie in inv.entries():
+        if ie.kind in ("file", "symlink"):
+            for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
+                try:
+                    pie = pinv[ie.file_id]
+                except errors.NoSuchId:
+                    pass
+                else:
+                    if (pie.kind == ie.kind and
+                        pie.text_sha1 == ie.text_sha1):
+                        shamap[ie.file_id] = pinvshamap.lookup_blob(
+                            pie.file_id, pie.revision)
+                        break
+            else:
+                if ie.kind == "file":
+                    new_blobs.append((path, ie))
+                else:
+                    blob = symlink_to_blob(ie)
+                    yield path, blob
+                    shamap[ie.file_id] = blob.id
+                new_trees[urlutils.dirname(path)] = ie.parent_id
+        elif ie.kind == "directory":
+            for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
+                try:
+                    pie = pinv[ie.file_id]
+                except errors.NoSuchId:
+                    pass
+                else:
+                    if (pie.kind == ie.kind and 
+                        pie.children.keys() == ie.children.keys()):
+                        try:
+                            shamap[ie.file_id] = pinvshamap.lookup_tree(
+                                ie.file_id)
+                        except NotImplementedError:
+                            pass
+                        else:
+                            break
+            else:
+                new_trees[path] = ie.file_id
+        else:
+            raise AssertionError(ie.kind)
+    
+    for (path, fid), chunks in iter_files_bytes(
+        [(ie.file_id, ie.revision, (path, ie.file_id)) for (path, ie) in new_blobs]):
+        obj = Blob()
+        obj.data = "".join(chunks)
+        yield path, obj
+        shamap[fid] = obj.id
+
+    for fid in unusual_modes:
+        new_trees[inv.id2path(fid)] = inv[fid].parent_id
+    
+    trees = {}
+    while new_trees:
+        items = new_trees.items()
+        new_trees = {}
+        for path, file_id in items:
+            parent_id = inv[file_id].parent_id
+            if parent_id is not None:
+                parent_path = urlutils.dirname(path)
+                new_trees[parent_path] = parent_id
+            trees[path] = file_id
+
+    for path in sorted(trees.keys(), reverse=True):
+        ie = inv[trees[path]]
+        assert ie.kind == "directory"
+        obj = directory_to_tree(ie, 
+                lambda ie: shamap[ie.file_id], unusual_modes)
+        if obj is not None:
+            shamap[ie.file_id] = obj.id
+            yield path, obj
+
+
 class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
@@ -175,91 +262,6 @@ class BazaarObjectStore(BaseObjectStore):
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup)
 
-    def _inventory_to_objects(self, inv, parent_invs, parent_invshamaps,
-            unusual_modes):
-        """Iterate over the objects that were introduced in a revision.
-
-        :param inv: Inventory to process
-        :param parent_invs: parent inventory SHA maps
-        :param parent_invshamaps: parent inventory SHA Map
-        :param unusual_modes: Unusual file modes
-        :return: Yields (path, object) entries
-        """
-        new_trees = {}
-        new_blobs = []
-        shamap = {}
-        for path, ie in inv.entries():
-            if ie.kind in ("file", "symlink"):
-                for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
-                    try:
-                        pie = pinv[ie.file_id]
-                    except errors.NoSuchId:
-                        pass
-                    else:
-                        if (pie.kind == ie.kind and
-                            pie.text_sha1 == ie.text_sha1):
-                            shamap[ie.file_id] = pinvshamap.lookup_blob(
-                                pie.file_id, pie.revision)
-                            break
-                else:
-                    if ie.kind == "file":
-                        new_blobs.append(ie)
-                    else:
-                        blob = symlink_to_blob(ie)
-                        yield path, blob
-                        shamap[ie.file_id] = blob.id
-                    new_trees[urlutils.dirname(path)] = ie.parent_id
-            elif ie.kind == "directory":
-                for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
-                    try:
-                        pie = pinv[ie.file_id]
-                    except errors.NoSuchId:
-                        pass
-                    else:
-                        if (pie.kind == ie.kind and 
-                            pie.children.keys() == ie.children.keys()):
-                            try:
-                                shamap[ie.file_id] = pinvshamap.lookup_tree(
-                                    ie.file_id)
-                            except NotImplementedError:
-                                pass
-                            else:
-                                break
-                else:
-                    new_trees[path] = ie.file_id
-            else:
-                raise AssertionError(ie.kind)
-        
-        for ie, chunks in self.repository.iter_files_bytes(
-            [(ie.file_id, ie.revision, ie) for ie in new_blobs]):
-            obj = Blob()
-            obj._text = "".join(chunks)
-            yield path, obj
-            shamap[ie.file_id] = obj.id
-
-        for fid in unusual_modes:
-            new_trees[inv.id2path(fid)] = inv[fid].parent_id
-        
-        trees = {}
-        while new_trees:
-            items = new_trees.items()
-            new_trees = {}
-            for path, file_id in items:
-                parent_id = inv[file_id].parent_id
-                if parent_id is not None:
-                    parent_path = urlutils.dirname(path)
-                    new_trees[parent_path] = parent_id
-                trees[path] = file_id
-
-        for path in sorted(trees.keys(), reverse=True):
-            ie = inv[trees[path]]
-            assert ie.kind == "directory"
-            obj = directory_to_tree(ie, 
-                    lambda ie: shamap[ie.file_id], unusual_modes)
-            if obj is not None:
-                shamap[ie.file_id] = obj.id
-                yield path, obj
-
     def _revision_to_objects(self, rev, inv):
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
@@ -267,8 +269,9 @@ class BazaarObjectStore(BaseObjectStore):
             [p for p in rev.parent_ids if p in present_parents])
         parent_invshamaps = [self._idmap.get_inventory_sha_map(r) for r in rev.parent_ids if r in present_parents]
         tree_sha = None
-        for path, obj in self._inventory_to_objects(inv, parent_invs,
-                parent_invshamaps, unusual_modes):
+        for path, obj in _inventory_to_objects(inv, parent_invs,
+                parent_invshamaps, unusual_modes,
+                self.repository.iter_files_bytes):
             yield path, obj
             if path == "":
                 tree_sha = obj.id
@@ -316,7 +319,7 @@ class BazaarObjectStore(BaseObjectStore):
         """
         blob = Blob()
         chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
-        blob._text = "".join(chunks)
+        blob.data = "".join(chunks)
         if blob.id != expected_sha:
             # Perhaps it's a symlink ?
             inv = self.parent_invs_cache.get_inventory(revision)
