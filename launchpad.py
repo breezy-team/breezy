@@ -23,8 +23,9 @@ import os
 from bzrlib.trace import mutter
 
 try:
-    from launchpadlib.launchpad import Launchpad, EDGE_SERVICE_ROOT
+    from launchpadlib.launchpad import Launchpad
     from launchpadlib.credentials import Credentials
+    from launchpadlib.uris import LPNET_SERVICE_ROOT
     HAVE_LPLIB = True
 except ImportError:
     HAVE_LPLIB = False
@@ -40,7 +41,7 @@ def _get_launchpad():
         creds.load(f)
     finally:
         f.close()
-    lp = Launchpad(creds, EDGE_SERVICE_ROOT)
+    lp = Launchpad(creds, service_root=LPNET_SERVICE_ROOT)
     return lp
 
 
@@ -51,8 +52,7 @@ def ubuntu_bugs_for_debian_bug(bug_id):
     if lp is None:
         return []
     try:
-        bug = lp.load("https://api.edge.launchpad.net/beta/bugs/"
-                "bugtrackers/debbugs/%s")
+        bug = lp.load(str(lp._root_uri) + "bugs/bugtrackers/debbugs/%s")
         tasks = bug.bug_tasks
         for task in tasks:
             if task.bug_target_name.endswith("(Ubuntu)"):
