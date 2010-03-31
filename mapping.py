@@ -448,20 +448,12 @@ def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
             mode = unusual_modes[ie.file_id]
         except KeyError:
             mode = entry_mode(ie)
-        if ie.kind == 'directory':
-            subtree = directory_to_tree(ie, lookup_ie_sha1, unusual_modes)
-            if subtree is None:
-                hexsha = None
-            else:
-                hexsha = subtree.id
-        else:
-            hexsha = lookup_ie_sha1(ie)
+        hexsha = lookup_ie_sha1(ie)
         if hexsha is not None:
             tree.add(mode, name.encode("utf-8"), hexsha)
     if entry.parent_id is not None and len(tree) == 0:
         # Only the root can be an empty tree
         return None
-    tree.serialize()
     return tree
 
 
@@ -491,7 +483,6 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=No
     for path, entry in inventory.iter_entries():
         while stack and not path.startswith(osutils.pathjoin(cur, "")):
             # We've hit a file that's not a child of the previous path
-            tree.serialize()
             sha = tree.id
             yield sha, tree, cur.encode("utf-8")
             mode = unusual_modes.get(cur.encode("utf-8"), stat.S_IFDIR)
@@ -517,7 +508,6 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=No
             tree.add(mode, name, sha)
 
     while len(stack) > 1:
-        tree.serialize()
         sha = tree.id
         yield sha, tree, cur.encode("utf-8")
         mode = unusual_modes.get(cur.encode('utf-8'), stat.S_IFDIR)
@@ -525,7 +515,6 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=No
         cur, tree = stack.pop()
         tree.add(*t)
 
-    tree.serialize()
     yield tree.id, tree, cur.encode("utf-8")
 
 
