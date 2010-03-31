@@ -264,9 +264,7 @@ class BazaarObjectStore(BaseObjectStore):
         except errors.InvalidRevisionId:
             pass
         else:
-            if foreign_revid != commit_obj.id:
-                if not "fix-shamap" in debug.debug_flags:
-                    raise AssertionError("recreated git commit had different sha1: expected %s, got %s" % (foreign_revid, commit_obj.id))
+            _check_expected_sha(foreign_revid, commit_obj)
         yield None, commit_obj
 
     def _update_sha_map_revision(self, revid):
