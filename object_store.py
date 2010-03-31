@@ -171,7 +171,7 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
                             shamap[ie.file_id] = pinvshamap.lookup_tree(
                                 ie.file_id)
                         except NotImplementedError:
-                            pass
+                            shamap[ie.file_id] = None
                         else:
                             break
             else:
@@ -186,8 +186,6 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
         obj.data = "".join(chunks)
         yield path, obj
         shamap[fid] = obj.id
-
-    assert all([ie.file_id in shamap for (path, ie) in new_blobs])
 
     for fid in unusual_modes:
         new_trees[inv.id2path(fid)] = inv[fid].parent_id
@@ -209,8 +207,9 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
         obj = directory_to_tree(ie, 
                 lambda ie: shamap[ie.file_id], unusual_modes)
         if obj is not None:
+            if not ie.file_id in shamap:
+                yield path, obj
             shamap[ie.file_id] = obj.id
-            yield path, obj
 
 
 class BazaarObjectStore(BaseObjectStore):
