@@ -296,24 +296,21 @@ class BazaarObjectStore(BaseObjectStore):
             commit_obj.tree, entries)
         return commit_obj.id
 
-    def _get_blob(self, fileid, revision, expected_sha=None, inv=None):
+    def _get_blob(self, fileid, revision, expected_sha):
         """Return a Git Blob object from a fileid and revision stored in bzr.
 
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        if inv is None:
+        blob = Blob()
+        chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
+        blob._text = "".join(chunks)
+        if blob.id != expected_sha:
+            # Perhaps it's a symlink ?
             inv = self.parent_invs_cache.get_inventory(revision)
-        entry = inv[fileid]
-
-        if entry.kind == 'file':
-            blob = Blob()
-            chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
-            blob._text = "".join(chunks)
-        elif entry.kind == 'symlink':
+            entry = inv[fileid]
+            assert entry.kind == 'symlink'
             blob = symlink_to_blob(entry)
-        else:
-            raise AssertionError
         _check_expected_sha(expected_sha, blob)
         return blob
 
