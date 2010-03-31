@@ -76,12 +76,16 @@ class LRUInventoryCache(object):
             self._cache.add(revid, inv)
             return inv
 
-    def get_inventories(self, revids):
+    def iter_inventories(self, revids):
         invs = dict([(k, self._cache.get(k)) for k in revids]) 
-        for inv in self.repository.iter_inventories([r for r, v in invs.iteritems() if v is None]):
+        for inv in self.repository.iter_inventories(
+                [r for r, v in invs.iteritems() if v is None]):
             invs[inv.revision_id] = inv
             self._cache.add(inv.revision_id, inv)
-        return [invs[r] for r in revids]
+        return (invs[r] for r in revids)
+
+    def get_inventories(self, revids):
+        return list(self.iter_inventories(revids))
 
     def add(self, revid, inv):
         self._cache.add(revid, inv)
