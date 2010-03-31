@@ -165,6 +165,7 @@ class BazaarObjectStore(BaseObjectStore):
         :return: Yields (path, object) entries
         """
         new_trees = {}
+        new_blobs = []
         shamap = {}
         for path, ie in inv.entries():
             if ie.kind in ("file", "symlink"):
@@ -178,9 +179,7 @@ class BazaarObjectStore(BaseObjectStore):
                             shamap[ie.file_id] = pinvshamap.lookup_blob(ie.file_id, ie.revision)
                             break
                 else:
-                    obj = self._get_blob(ie.file_id, ie.revision, inv=inv)
-                    yield path, obj
-                    shamap[ie.file_id] = obj.id
+                    new_blobs.append(ie)
                     new_trees[urlutils.dirname(path)] = ie.parent_id
             elif ie.kind == "directory":
                 for pinv in parent_invs:
@@ -201,6 +200,12 @@ class BazaarObjectStore(BaseObjectStore):
                     new_trees[path] = ie.file_id
             else:
                 raise AssertionError(ie.kind)
+        
+        for ie in new_blobs:
+            obj = self._get_blob(ie.file_id, ie.revision, inv=inv)
+            yield path, obj
+            shamap[ie.file_id] = obj.id
+
         for fid in unusual_modes:
             new_trees[inv.id2path(fid)] = inv[fid].parent_id
         
