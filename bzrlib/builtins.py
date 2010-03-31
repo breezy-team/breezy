@@ -1444,9 +1444,9 @@ class cmd_update(Command):
         else:
             revision_id = branch.last_revision()
         if revision_id == _mod_revision.ensure_null(tree.last_revision()):
-            revno = branch.revision_id_to_revno(revision_id)
-            note("Tree is up to date at revision %d of branch %s" %
-                (revno, branch_location))
+            revno = branch.revision_id_to_dotted_revno(revision_id)
+            note("Tree is up to date at revision %s of branch %s" %
+                ('.'.join(map(str, revno)), branch_location))
             return 0
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
@@ -1464,10 +1464,10 @@ class cmd_update(Command):
                                   "bzr update --revision only works"
                                   " for a revision in the branch history"
                                   % (e.revision))
-        revno = tree.branch.revision_id_to_revno(
+        revno = tree.branch.revision_id_to_dotted_revno(
             _mod_revision.ensure_null(tree.last_revision()))
-        note('Updated to revision %d of branch %s' %
-             (revno, branch_location))
+        note('Updated to revision %s of branch %s' %
+             ('.'.join(map(str, revno)), branch_location))
         if tree.get_parent_ids()[1:] != existing_pending_merges:
             note('Your local commits will now show as pending merges with '
                  "'bzr status', and can be committed with 'bzr commit'.")

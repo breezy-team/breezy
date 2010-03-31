@@ -2258,9 +2258,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             last_rev = _mod_revision.NULL_REVISION
         if revision is None:
             revision = self.branch.last_revision()
-        else:
-            if revision not in self.branch.revision_history():
-                raise errors.NoSuchRevision(self.branch, revision)
 
         old_tip = old_tip or _mod_revision.NULL_REVISION
 
