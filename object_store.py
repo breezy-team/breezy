@@ -156,8 +156,8 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
                         break
             else:
                 yield path, blob
+                new_trees[urlutils.dirname(path)] = ie.parent_id
             shamap[ie.file_id] = blob.id
-            new_trees[urlutils.dirname(path)] = ie.parent_id
         elif ie.kind == "directory":
             for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
                 try:
