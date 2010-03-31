@@ -113,7 +113,7 @@ def _check_expected_sha(expected_sha, object):
 
 
 def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
-        unusual_modes, iter_files_bytes):
+        unusual_modes, iter_files_bytes, has_ghost_parents):
     """Iterate over the objects that were introduced in a revision.
 
     :param inv: Inventory to process
@@ -127,26 +127,40 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
     new_blobs = []
     shamap = {}
     for path, ie in inv.entries():
-        if ie.kind in ("file", "symlink"):
-            for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
+        if ie.kind == "file":
+            if ie.revision == inv.revision_id:
+                new_blobs.append((path, ie))
+                new_trees[urlutils.dirname(path)] = ie.parent_id
+            elif has_ghost_parents:
+                for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
+                    try:
+                        pie = pinv[ie.file_id]
+                    except errors.NoSuchId:
+                        pass
+                    else:
+                        if (pie.kind == ie.kind and
+                            pie.text_sha1 == ie.text_sha1):
+                            shamap[ie.file_id] = pinvshamap.lookup_blob(
+                                pie.file_id, pie.revision)
+                            break
+                else:
+                    new_blobs.append((path, ie))
+                    new_trees[urlutils.dirname(path)] = ie.parent_id
+        elif ie.kind == "symlink":
+            blob = symlink_to_blob(ie)
+            for pinv in parent_invs:
                 try:
                     pie = pinv[ie.file_id]
                 except errors.NoSuchId:
                     pass
                 else:
-                    if (pie.kind == ie.kind and
-                        pie.text_sha1 == ie.text_sha1):
-                        shamap[ie.file_id] = pinvshamap.lookup_blob(
-                            pie.file_id, pie.revision)
+                    if (ie.kind == pie.kind and
+                        ie.symlink_target == pie.symlink_target):
                         break
             else:
-                if ie.kind == "file":
-                    new_blobs.append((path, ie))
-                else:
-                    blob = symlink_to_blob(ie)
-                    yield path, blob
-                    shamap[ie.file_id] = blob.id
-                new_trees[urlutils.dirname(path)] = ie.parent_id
+                yield path, blob
+            shamap[ie.file_id] = blob.id
+            new_trees[urlutils.dirname(path)] = ie.parent_id
         elif ie.kind == "directory":
             for (pinv, pinvshamap) in zip(parent_invs, parent_invshamaps):
                 try:
@@ -169,11 +183,14 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
             raise AssertionError(ie.kind)
     
     for (path, fid), chunks in iter_files_bytes(
-        [(ie.file_id, ie.revision, (path, ie.file_id)) for (path, ie) in new_blobs]):
+        [(ie.file_id, ie.revision, (path, ie.file_id))
+            for (path, ie) in new_blobs]):
         obj = Blob()
         obj.data = "".join(chunks)
         yield path, obj
         shamap[fid] = obj.id
+
+    assert all([ie.file_id in shamap for (path, ie) in new_blobs])
 
     for fid in unusual_modes:
         new_trees[inv.id2path(fid)] = inv[fid].parent_id
@@ -265,13 +282,14 @@ class BazaarObjectStore(BaseObjectStore):
     def _revision_to_objects(self, rev, inv):
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
+        has_ghost_parents = (len(rev.parent_ids) < len(present_parents))
         parent_invs = self.parent_invs_cache.get_inventories(
             [p for p in rev.parent_ids if p in present_parents])
         parent_invshamaps = [self._idmap.get_inventory_sha_map(r) for r in rev.parent_ids if r in present_parents]
         tree_sha = None
         for path, obj in _inventory_to_objects(inv, parent_invs,
                 parent_invshamaps, unusual_modes,
-                self.repository.iter_files_bytes):
+                self.repository.iter_files_bytes, has_ghost_parents):
             yield path, obj
             if path == "":
                 tree_sha = obj.id
