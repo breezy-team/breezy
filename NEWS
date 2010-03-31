@@ -182,7 +182,7 @@ Bug Fixes
 * ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
   group ownership from the containing directory. This allow bzr to work
   better with sudo.
-  (Parth Malwankar, #376388)
+  (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
 
 API Changes
 ***********
