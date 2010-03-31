@@ -171,7 +171,7 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
                             shamap[ie.file_id] = pinvshamap.lookup_tree(
                                 ie.file_id)
                         except NotImplementedError:
-                            shamap[ie.file_id] = None
+                            pass
                         else:
                             break
             else:
@@ -207,8 +207,7 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
         obj = directory_to_tree(ie, 
                 lambda ie: shamap[ie.file_id], unusual_modes)
         if obj is not None:
-            if not ie.file_id in shamap:
-                yield path, obj
+            yield path, obj
             shamap[ie.file_id] = obj.id
 
 
