@@ -53,7 +53,7 @@ from bzrlib.tsort import (
     topo_sort,
     )
 from bzrlib.versionedfile import (
-    FulltextContentFactory,
+    ChunkedContentFactory,
     )
 
 from bzrlib.plugins.git.mapping import (
@@ -149,10 +149,13 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
         assert file_id is not None
         assert ie.revision is not None
         if ie.kind == 'symlink':
-            data = ''
+            chunks = []
         else: 
-            data = blob.data
-        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, data)])
+            try:
+                chunks = blob.chunked
+            except AttributeError: # older version of dulwich
+                chunks = [blob.data]
+        texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, chunks)])
     shamap = { ie.file_id: hexsha }
     invdelta = []
     if base_ie is not None:
@@ -184,7 +187,7 @@ def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie,
             base_ie.reference_revision == ie.reference_revision):
             ie.revision = base_ie.revision
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
-    texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), None, "")])
+    texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
     invdelta = [(oldpath, path, file_id, ie)]
     return invdelta, {}, {}
 
@@ -220,7 +223,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
     if base_ie is None:
         # Newly appeared here
         ie.revision = revision_id
-        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), None, "")])
+        texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
         invdelta.append((None, path, file_id, ie))
     else:
         # See if this has changed at all
@@ -234,7 +237,7 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
                 return [], {}, []
         if base_ie.kind != "directory":
             ie.revision = revision_id
-            texts.insert_record_stream([FulltextContentFactory((ie.file_id, ie.revision), (), None, "")])
+            texts.insert_record_stream([ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
             invdelta.append((base_inv.id2path(ie.file_id), path, ie.file_id, ie))
     if base_ie is not None and base_ie.kind == "directory":
         base_children = base_ie.children
