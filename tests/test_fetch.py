@@ -51,6 +51,7 @@ from bzrlib.plugins.git.fetch import (
     )
 from bzrlib.plugins.git.mapping import (
     BzrGitMappingv1,
+    DEFAULT_FILE_MODE,
     )
 from bzrlib.plugins.git.tests import (
     GitBranchBuilder,
@@ -272,8 +273,8 @@ class ImportObjects(TestCaseWithTransport):
         objs = { "blobname": blob}
         ret, _= import_git_blob(self._texts, self._mapping, "bla", 
             (None, "blobname"), 
-            base_inv, None, None, None, "somerevid", [], objs.__getitem__, False,
-            False)
+            base_inv, None, None, None, "somerevid", [], objs.__getitem__, 
+            (None, DEFAULT_FILE_MODE))
         self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())
         self.assertEquals(self._texts.get_record_stream([('bla', 'somerevid')],
             "unordered", True).next().get_bytes_as("fulltext"), "bar")
