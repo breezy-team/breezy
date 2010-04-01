@@ -1015,7 +1015,6 @@ class Merge3Merger(object):
                         continue
                 else:
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
-                # XXX: We need to handle kind == 'symlink'
 
             # If we have gotten this far, that means something has changed
             result.append((file_id, content_changed,
@@ -1110,16 +1109,18 @@ class Merge3Merger(object):
 
     @staticmethod
     def _three_way(base, other, this):
-        #if base == other, either they all agree, or only THIS has changed.
         if base == other:
+            # if 'base == other', either they all agree, or only 'this' has
+            # changed.
             return 'this'
         elif this not in (base, other):
+            # 'this' is neither 'base' nor 'other', so both sides changed
             return 'conflict'
-        # "Ambiguous clean merge" -- both sides have made the same change.
         elif this == other:
+            # "Ambiguous clean merge" -- both sides have made the same change.
             return "this"
-        # this == base: only other has changed.
         else:
+            # this == base: only other has changed.
             return "other"
 
     @staticmethod
@@ -1169,7 +1170,7 @@ class Merge3Merger(object):
                 # only has an lca value
                 return 'other'
 
-        # At this point, the lcas disagree, and the tips disagree
+        # At this point, the lcas disagree, and the tip disagree
         return 'conflict'
 
     @staticmethod

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 #          and others
 #
@@ -61,7 +61,7 @@ def make_scenarios(transport_server, transport_readonly_server,
 
 
 class TestCaseWithBranch(TestCaseWithBzrDir):
-    """This helper will be parameterised in each branch_implementation test."""
+    """This helper will be parameterised in each per_branch test."""
 
     def setUp(self):
         super(TestCaseWithBranch, self).setUp()

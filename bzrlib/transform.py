@@ -2824,7 +2824,7 @@ def conflict_pass(tt, conflicts, path_tree=None):
                         # special-case the other tree root (move its
                         # children to current root)
                         if entry.parent_id is None:
-                            create=False
+                            create = False
                             moved = _reparent_transform_children(
                                 tt, trans_id, tt.root)
                             for child in moved:
