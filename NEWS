@@ -5,6 +5,40 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.2b2
+#########
+
+:2.2b2: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+* Less code is loaded at startup.  (Cold-cache start time is about 10-20%
+  less.)
+  (Martin Pool, #553017)
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 bzr 2.2.0b1
 ###########
 

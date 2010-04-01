@@ -91,8 +91,15 @@ class TestImportTariffs(TestCaseWithTransport):
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
             'bzrlib.bundle.commands',
+            'bzrlib.cmd_version_info',
+            'bzrlib.foreign',
             'bzrlib.remote',
+            'bzrlib.sign_my_commits',
             'bzrlib.smart',
             'smtplib',
             'tarfile',
             ])
+        # TODO: similar test for repository-only operations, checking we avoid
+        # loading wt-specific stuff
+        #
+        # See https://bugs.edge.launchpad.net/bzr/+bug/553017

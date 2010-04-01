@@ -60,7 +60,11 @@ from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 """)
 
-from bzrlib.commands import Command, display_command
+from bzrlib.commands import (
+    Command,
+    builtin_command_registry,
+    display_command,
+    )
 from bzrlib.option import (
     ListOption,
     Option,
@@ -4062,6 +4066,7 @@ class cmd_remerge(Command):
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
+        from bzrlib.conflicts import restore
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
         tree, file_list = tree_files(file_list)
@@ -5975,7 +5980,15 @@ class cmd_reference(Command):
             self.outf.write('%s %s\n' % (path, location))
 
 
-from bzrlib.cmd_version_info import cmd_version_info
-from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
-from bzrlib.foreign import cmd_dpush
-from bzrlib.sign_my_commits import cmd_sign_my_commits
+def _register_lazy_builtins():
+    # register lazy builtins from other modules; called at startup and should
+    # be only called once.
+    for (name, aliases, module_name) in [
+        ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
+        ('cmd_dpush', [], 'bzrlib.foreign'),
+        ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
+        ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
+        ('cmd_conflicts', [], 'bzrlib.conflicts'),
+        ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ]:
+        builtin_command_registry.register_lazy(name, aliases, module_name)

@@ -182,10 +182,7 @@ def _register_builtin_commands():
     import bzrlib.builtins
     for cmd_class in _scan_module_for_commands(bzrlib.builtins).values():
         builtin_command_registry.register(cmd_class)
-    # lazy builtins
-    builtin_command_registry.register_lazy('cmd_bundle_info',
-        [],
-        'bzrlib.bundle.commands')
+    bzrlib.builtins._register_lazy_builtins()
 
 
 def _scan_module_for_commands(module):
