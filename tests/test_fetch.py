@@ -270,8 +270,9 @@ class ImportObjects(TestCaseWithTransport):
         blob = Blob.from_string("bar")
         base_inv = Inventory()
         objs = { "blobname": blob}
-        ret, _= import_git_blob(self._texts, self._mapping, "bla", "blobname", 
-            None, base_inv, None, None, None, "somerevid", [], objs.__getitem__, False,
+        ret, _= import_git_blob(self._texts, self._mapping, "bla", 
+            (None, "blobname"), 
+            base_inv, None, None, None, "somerevid", [], objs.__getitem__, False,
             False)
         self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())
         self.assertEquals(self._texts.get_record_stream([('bla', 'somerevid')],
@@ -290,7 +291,7 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "", 
-               tree.id, None, base_inv, None, None,
+               (None, tree.id), base_inv, None, None,
                None, "somerevid", [], {tree.id: tree}.__getitem__)
         self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
@@ -308,7 +309,7 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", 
-           tree.id, None, base_inv, None, None, None, "somerevid", [], 
+           (None, tree.id), base_inv, None, None, None, "somerevid", [], 
            { tree.id: tree }.__getitem__)
         self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
@@ -328,8 +329,8 @@ class ImportObjects(TestCaseWithTransport):
         tree.add(0100600, "foo", blob.id)
         tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", tree.id, 
-            None, base_inv, None, None, None, "somerevid", [],
+        ret, _, _ = import_git_tree(self._texts, self._mapping, "bla",
+                (None, tree.id), base_inv, None, None, None, "somerevid", [],
             objects.__getitem__)
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -352,8 +353,8 @@ class ImportObjects(TestCaseWithTransport):
         tree.add(0100755, "foo", blob.id)
         tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "", tree.id, 
-            None, base_inv, None, None, None, "somerevid", [],
+        ret, _, _ = import_git_tree(self._texts, self._mapping, "", 
+                (None, tree.id), base_inv, None, None, None, "somerevid", [],
             objects.__getitem__)
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])

@@ -78,7 +78,7 @@ from bzrlib.plugins.git.repository import (
     )
 
 
-def import_git_blob(texts, mapping, path, hexsha, base_hexsha, 
+def import_git_blob(texts, mapping, path, (base_hexsha, hexsha), 
         base_inv, base_inv_shamap, base_ie, parent_id, revision_id,
         parent_invs, lookup_object, executable, symlink):
     """Import a git blob object into a bzr repository.
@@ -166,7 +166,7 @@ class SubmodulesRequireSubtrees(BzrError):
     internal = False
 
 
-def import_git_submodule(texts, mapping, path, hexsha, base_hexsha, 
+def import_git_submodule(texts, mapping, path, (base_hexsha, hexsha),
     base_inv, base_ie, parent_id, revision_id, parent_invs, lookup_object):
     file_id = mapping.generate_file_id(path)
     ie = TreeReference(file_id, urlutils.basename(path.decode("utf-8")),
@@ -197,7 +197,7 @@ def remove_disappeared_children(path, base_children, existing_children):
     return ret
 
 
-def import_git_tree(texts, mapping, path, hexsha, base_hexsha, base_inv,
+def import_git_tree(texts, mapping, path, (base_hexsha, hexsha), base_inv,
     base_inv_shamap, base_ie, parent_id, revision_id, parent_invs,
     lookup_object, allow_submodules=False):
     """Import a git tree object into a bzr repository.
@@ -255,7 +255,8 @@ def import_git_tree(texts, mapping, path, hexsha, base_hexsha, base_inv,
             child_base_mode = 0
         if stat.S_ISDIR(mode):
             subinvdelta, grandchildmodes, subshamap = import_git_tree(
-                    texts, mapping, child_path, child_hexsha, child_base_hexsha,
+                    texts, mapping, child_path,
+                    (child_base_hexsha, child_hexsha),
                     base_inv, base_inv_shamap, base_children.get(basename),
                     file_id, revision_id, parent_invs, lookup_object,
                     allow_submodules=allow_submodules)
@@ -263,12 +264,13 @@ def import_git_tree(texts, mapping, path, hexsha, base_hexsha, base_inv,
             if not allow_submodules:
                 raise SubmodulesRequireSubtrees()
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
-                    texts, mapping, child_path, child_hexsha, child_base_hexsha,
+                    texts, mapping, child_path,
+                    (child_base_hexsha, child_hexsha),
                     base_inv, base_children.get(basename),
                     file_id, revision_id, parent_invs, lookup_object)
         else:
             subinvdelta, subshamap = import_git_blob(texts, mapping,
-                    child_path, child_hexsha, child_base_hexsha,
+                    child_path, (child_base_hexsha, child_hexsha),
                     base_inv, base_inv_shamap,
                     base_children.get(basename), file_id,
                     revision_id, parent_invs, lookup_object,
@@ -307,7 +309,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_inv_shamap = target_git_object_retriever._idmap.get_inventory_sha_map(base_inv.revision_id)
         base_tree = lookup_object(o.parents[0]).tree
     inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
-            mapping, "", o.tree, base_tree, base_inv, base_inv_shamap,
+            mapping, "", (base_tree, o.tree), base_inv, base_inv_shamap,
             base_ie, None, rev.revision_id, parent_invs, lookup_object,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
     entries = []
