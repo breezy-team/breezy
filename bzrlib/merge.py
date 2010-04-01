@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -903,18 +903,36 @@ class Merge3Merger(object):
             return
         try:
             self.tt.final_kind(other_root)
+            present = True
         except NoSuchFile:
-            return
+            # The other root hasn't been added or versioned, so we're done for
+            # now
+            present = False
         if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
-            # the other tree's root is a non-root in the current tree
+            # the other tree's root is a non-root in the current tree (as when
+            # a previsously unrelated branch is merged into another)
             return
-        self.reparent_children(self.other_tree.inventory.root, self.tt.root)
-        self.tt.cancel_creation(other_root)
-        self.tt.cancel_versioning(other_root)
+        self.reparent_children(self.other_tree.inventory.root, self.tt.root,
+                               present)
+        if present:
+            self.tt.cancel_creation(other_root)
+            self.tt.cancel_versioning(other_root)
 
-    def reparent_children(self, ie, target):
+    def reparent_children(self, ie, target, present):
         for thing, child in ie.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
+            if not present:
+                try:
+                    # If the other root is not in the current tree, we don't
+                    # reparent file and dirs that are expected in the final
+                    # tree. These paths where preventively introduced in
+                    # _merge_names for possible conflicts. We may want to find
+                    # a better way -- vila 20100401
+                    self.tt.final_kind(trans_id)
+                    self.tt.final_name(trans_id)
+                    continue
+                except (errors.NoFinalPath, errors.NoSuchFile), e:
+                    pass
             self.tt.adjust_path(self.tt.final_name(trans_id), target, trans_id)
 
     def write_modified(self, results):
