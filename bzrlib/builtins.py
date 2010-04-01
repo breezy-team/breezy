@@ -5989,8 +5989,6 @@ def _register_lazy_builtins():
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
+        ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)
-
-
-from bzrlib.sign_my_commits import cmd_sign_my_commits
