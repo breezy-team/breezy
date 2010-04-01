@@ -138,7 +138,6 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     if ie.revision is None:
         # Need to store a new revision
         ie.revision = revision_id
-        assert file_id is not None
         assert ie.revision is not None
         if ie.kind == 'symlink':
             chunks = []
