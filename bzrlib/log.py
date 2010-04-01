@@ -1703,7 +1703,7 @@ class GnuChangelogLogFormatter(LogFormatter):
                                date_fmt='%Y-%m-%d',
                                show_offset=False)
         committer_str = self.authors(revision.rev, 'first', sep=', ')
-        committer_str = committer_str.replace (' <', '  <')
+        committer_str = committer_str.replace(' <', '  <')
         to_file.write('%s  %s\n\n' % (date_str,committer_str))
 
         if revision.delta is not None and revision.delta.has_changed():
