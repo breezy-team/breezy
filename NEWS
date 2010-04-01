@@ -77,6 +77,10 @@ New Features
 * Merges can be proposed on Launchpad with the new lp-propose-merge command.
   (Aaron Bentley, Jonathan Lange)
 
+* New command line option ``--authors`` to ``bzr log`` allows users to
+  select which of the apparent authors and committer should be
+  included in the log. Defaults depend on format.
+
 Bug Fixes
 *********
 

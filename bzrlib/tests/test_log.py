@@ -1541,3 +1541,147 @@ message:
 
     def test_bugs_handler_present(self):
         self.properties_handler_registry.get('bugs_properties_handler')
+
+
+class TestLogForAuthors(TestCaseForLogFormatter):
+
+    def setUp(self):
+        TestCaseForLogFormatter.setUp(self)
+        self.wt = self.make_standard_commit('nicky',
+            authors=['John Doe <jdoe@example.com>',
+                     'Jane Rey <jrey@example.com>'])
+
+    def assertFormatterResult(self, formatter, who, result):
+        formatter_kwargs = dict()
+        if who is not None:
+            formatter_kwargs['authors'] = who
+        TestCaseForLogFormatter.assertFormatterResult(self, result,
+            self.wt.branch, formatter, formatter_kwargs=formatter_kwargs)
+
+    def test_line_default(self):
+        self.assertFormatterResult(log.LineLogFormatter, None, """\
+1: John Doe 2005-11-22 add a
+""")
+
+    def test_line_committer(self):
+        self.assertFormatterResult(log.LineLogFormatter, 'committer', """\
+1: Lorem Ipsum 2005-11-22 add a
+""")
+
+    def test_line_first(self):
+        self.assertFormatterResult(log.LineLogFormatter, 'first', """\
+1: John Doe 2005-11-22 add a
+""")
+
+    def test_line_all(self):
+        self.assertFormatterResult(log.LineLogFormatter, 'all', """\
+1: John Doe, Jane Rey 2005-11-22 add a
+""")
+
+
+    def test_short_default(self):
+        self.assertFormatterResult(log.ShortLogFormatter, None, """\
+    1 John Doe\t2005-11-22
+      add a
+
+""")
+
+    def test_short_committer(self):
+        self.assertFormatterResult(log.ShortLogFormatter, 'committer', """\
+    1 Lorem Ipsum\t2005-11-22
+      add a
+
+""")
+
+    def test_short_first(self):
+        self.assertFormatterResult(log.ShortLogFormatter, 'first', """\
+    1 John Doe\t2005-11-22
+      add a
+
+""")
+
+    def test_short_all(self):
+        self.assertFormatterResult(log.ShortLogFormatter, 'all', """\
+    1 John Doe, Jane Rey\t2005-11-22
+      add a
+
+""")
+
+    def test_long_default(self):
+        self.assertFormatterResult(log.LongLogFormatter, None, """\
+------------------------------------------------------------
+revno: 1
+author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
+committer: Lorem Ipsum <test@example.com>
+branch nick: nicky
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  add a
+""")
+
+    def test_long_committer(self):
+        self.assertFormatterResult(log.LongLogFormatter, 'committer', """\
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: nicky
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  add a
+""")
+
+    def test_long_first(self):
+        self.assertFormatterResult(log.LongLogFormatter, 'first', """\
+------------------------------------------------------------
+revno: 1
+author: John Doe <jdoe@example.com>
+committer: Lorem Ipsum <test@example.com>
+branch nick: nicky
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  add a
+""")
+
+    def test_long_all(self):
+        self.assertFormatterResult(log.LongLogFormatter, 'all', """\
+------------------------------------------------------------
+revno: 1
+author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
+committer: Lorem Ipsum <test@example.com>
+branch nick: nicky
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  add a
+""")
+
+    def test_gnu_changelog_default(self):
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, None, """\
+2005-11-22  John Doe  <jdoe@example.com>
+
+\tadd a
+
+""")
+
+    def test_gnu_changelog_committer(self):
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'committer', """\
+2005-11-22  Lorem Ipsum  <test@example.com>
+
+\tadd a
+
+""")
+
+    def test_gnu_changelog_first(self):
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'first', """\
+2005-11-22  John Doe  <jdoe@example.com>
+
+\tadd a
+
+""")
+
+    def test_gnu_changelog_all(self):
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'all', """\
+2005-11-22  John Doe  <jdoe@example.com>, Jane Rey  <jrey@example.com>
+
+\tadd a
+
+""")
