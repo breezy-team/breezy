@@ -187,6 +187,9 @@ Bug Fixes
   better with sudo.
   (Parth Malwankar, #376388)
 
+* Use first apparent author not committer in GNU Changelog format.
+  (Martin von Gagern, #513322)
+
 API Changes
 ***********
 
