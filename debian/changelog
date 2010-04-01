@@ -1,4 +1,4 @@
-bzr-builddeb (2.4.1) UNRELEASED; urgency=low
+bzr-builddeb (2.4.1) unstable; urgency=low
 
   [ Colin Watson ]
   * Consider a .dsc without a Format: to be Format: 1.0.
