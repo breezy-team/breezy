@@ -29,6 +29,11 @@ from bzrlib.revisionspec import (
 
 
 def valid_git_sha1(hex):
+    """Check if `hex` is a validly formatted Git SHA1.
+    
+    :param hex: Hex string to validate
+    :return: Boolean
+    """
     import binascii
     try:
         binascii.unhexlify(hex)

@@ -44,13 +44,11 @@ from dulwich.server import (
     Backend,
     )
 from dulwich.pack import (
-    Pack,
     PackData,
     write_pack_index_v2,
     )
 from dulwich.objects import (
     ShaFile,
-    sha_to_hex,
     hex_to_sha,
     )
 
