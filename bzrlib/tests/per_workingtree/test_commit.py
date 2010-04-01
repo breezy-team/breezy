@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -168,7 +168,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree_a.commit('change n in A')
 
         # Merging from A should introduce conflicts because 'n' was modified
-        # and removed, so 'a' needs to be restored.
+        # (in A) and removed (in B), so 'a' needs to be restored.
         num_conflicts = tree_b.merge_from_branch(tree_a.branch)
         self.assertEqual(3, num_conflicts)
         paths = [(path, ie.file_id)
