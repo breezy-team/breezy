@@ -23,6 +23,7 @@ from dulwich.objects import (
 from dulwich.object_store import (
     tree_lookup_path,
     )
+import posixpath
 import re
 import stat
 
@@ -31,7 +32,6 @@ from bzrlib import (
     osutils,
     trace,
     ui,
-    urlutils,
     )
 from bzrlib.errors import (
     BzrError,
@@ -96,7 +96,6 @@ def import_git_blob(texts, mapping, path, basename, (base_hexsha, hexsha),
         cls = InventoryLink
     else:
         cls = InventoryFile
-    # We just have to hope this is indeed utf-8:
     ie = cls(file_id, basename, parent_id)
     ie.executable = mode_is_executable(mode)
     if base_hexsha == hexsha and base_ie.kind == ie.kind:
@@ -164,14 +163,13 @@ class SubmodulesRequireSubtrees(BzrError):
     internal = False
 
 
-def import_git_submodule(texts, mapping, path, (base_hexsha, hexsha),
+def import_git_submodule(texts, mapping, path, basename, (base_hexsha, hexsha),
     base_inv, parent_id, revision_id, parent_invs, lookup_object,
     (base_mode, mode)):
     if base_hexsha == hexsha and base_mode == mode:
         return [], {}, {}
     file_id = mapping.generate_file_id(path)
-    ie = TreeReference(file_id, urlutils.basename(path.decode("utf-8")),
-        parent_id)
+    ie = TreeReference(file_id, basename, parent_id)
     ie.revision = revision_id
     if base_hexsha is None:
         oldpath = None
@@ -185,13 +183,13 @@ def import_git_submodule(texts, mapping, path, (base_hexsha, hexsha),
 
 def remove_disappeared_children(path, base_children, existing_children):
     ret = []
-    deletable = [(osutils.pathjoin(path, k), v) for k,v in base_children.iteritems() if k not in existing_children]
+    deletable = [(posixpath.join(path, k), v) for k,v in base_children.iteritems() if k not in existing_children]
     while deletable:
         (path, ie) = deletable.pop()
         ret.append((path, None, ie.file_id, None))
         if ie.kind == "directory":
             for name, child_ie in ie.children.iteritems():
-                deletable.append((osutils.pathjoin(path, name), child_ie))
+                deletable.append((posixpath.join(path, name), child_ie))
     return ret
 
 
@@ -238,7 +236,7 @@ def import_git_tree(texts, mapping, path, basename, (base_hexsha, hexsha),
     for child_mode, name, child_hexsha in tree.entries():
         basename = name.decode("utf-8")
         existing_children.add(basename)
-        child_path = osutils.pathjoin(path, name)
+        child_path = posixpath.join(path, name)
         if type(base_tree) is Tree:
             try:
                 child_base_mode, child_base_hexsha = base_tree[name]
@@ -260,7 +258,7 @@ def import_git_tree(texts, mapping, path, basename, (base_hexsha, hexsha),
             if not allow_submodules:
                 raise SubmodulesRequireSubtrees()
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
-                    texts, mapping, child_path,
+                    texts, mapping, child_path, basename,
                     (child_base_hexsha, child_hexsha),
                     base_inv, file_id, revision_id, parent_invs, lookup_object,
                     (child_base_mode, child_mode))
