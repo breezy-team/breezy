@@ -91,6 +91,7 @@ class TestImportTariffs(TestCaseWithTransport):
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
             'bzrlib.bundle.commands',
+            'bzrlib.cmd_version_info',
             'bzrlib.remote',
             'bzrlib.smart',
             'smtplib',

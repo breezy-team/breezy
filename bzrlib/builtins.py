@@ -60,7 +60,11 @@ from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 """)
 
-from bzrlib.commands import Command, display_command
+from bzrlib.commands import (
+    Command,
+    builtin_command_registry,
+    display_command,
+    )
 from bzrlib.option import (
     ListOption,
     Option,
@@ -5975,7 +5979,16 @@ class cmd_reference(Command):
             self.outf.write('%s %s\n' % (path, location))
 
 
-from bzrlib.cmd_version_info import cmd_version_info
+def _register_lazy_builtins():
+    # register lazy builtins from other modules; called at startup and should
+    # be only called once.
+    for (name, aliases, module_name) in [
+        ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
+        ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
+        ]:
+        builtin_command_registry.register_lazy(name, aliases, module_name)
+
+
 from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits
