@@ -16,36 +16,12 @@
 
 # FIXME: This is totally incomplete but I'm only the patch pilot :-)
 # -- vila 100120
+# Note that the single test from this file is now in
+# test_merge.TestConfigurableFileMerger -- rbc 20100129.
 
 from bzrlib import (
     option,
     tests,
     )
+from bzrlib.merge import Merger
 from bzrlib.plugins import news_merge
-from bzrlib.tests import test_merge_core
-
-
-class TestFilenameMatchesConfig(tests.TestCaseWithTransport):
-
-    def test_affected_files_cached(self):
-        """Ensures that the config variable is cached"""
-        news_merge.install_hook()
-        self.affected_files = None
-        orig = news_merge.filename_matches_config
-        def wrapper(params):
-            ret = orig(params)
-            # Capture the value set by the hook
-            self.affected_files = params._news_merge_affected_files
-            return ret
-        def restore():
-            news_merge.filename_matches_config = orig
-        self.addCleanup(restore)
-        news_merge.filename_matches_config = wrapper
-
-        builder = test_merge_core.MergeBuilder(self.test_base_dir)
-        self.addCleanup(builder.cleanup)
-        builder.add_file('NEWS', builder.tree_root, 'name1', 'text1', True)
-        builder.change_contents('NEWS', other='text4', this='text3')
-        conflicts = builder.merge()
-        # The hook should set the variable
-        self.assertIsNot(None, self.affected_files)

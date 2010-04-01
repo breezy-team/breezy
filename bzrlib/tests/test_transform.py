@@ -1923,6 +1923,10 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.assertTrue(source.is_executable('file1-id'))
 
     def install_rot13_content_filter(self, pattern):
+        # We could use
+        # self.addCleanup(filters._reset_registry, filters._reset_registry())
+        # below, but that looks a bit... hard to read even if it's exactly
+        # the same thing.
         original_registry = filters._reset_registry()
         def restore_registry():
             filters._reset_registry(original_registry)
@@ -2367,7 +2371,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
     def test_ignore_pb(self):
         # pb could be supported, but TT.iter_changes doesn't support it.
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
-        preview_tree.iter_changes(revision_tree, pb=progress.DummyProgress())
+        preview_tree.iter_changes(revision_tree)
 
     def test_kind(self):
         revision_tree = self.create_tree()
@@ -2775,9 +2779,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         file_trans_id = preview.trans_id_file_id('file-id')
         preview.delete_contents(file_trans_id)
         preview.create_file('a\nb\n', file_trans_id)
-        pb = progress.DummyProgress()
         preview_tree = preview.get_preview_tree()
-        merger = Merger.from_revision_ids(pb, preview_tree,
+        merger = Merger.from_revision_ids(None, preview_tree,
                                           child_tree.branch.last_revision(),
                                           other_branch=child_tree.branch,
                                           tree_branch=work_tree.branch)
@@ -2795,9 +2798,8 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tt.new_file('name', tt.root, 'content', 'file-id')
         tree2 = self.make_branch_and_tree('tree2')
         tree2.set_root_id('TREE_ROOT')
-        pb = progress.DummyProgress()
         merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
-                                         pb, tree.basis_tree())
+                                         None, tree.basis_tree())
         merger.merge_type = Merge3Merger
         merger.do_merge()
 
@@ -2813,7 +2815,7 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         tt.create_file('baz', trans_id)
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         self.build_tree_contents([('tree2/foo', 'qux')])
-        pb = progress.DummyProgress()
+        pb = None
         merger = Merger.from_uncommitted(tree2, tt.get_preview_tree(),
                                          pb, tree.basis_tree())
         merger.merge_type = Merge3Merger

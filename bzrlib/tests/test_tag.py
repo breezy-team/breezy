@@ -14,16 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for bzrlib.tag."""
+
 
 from bzrlib import (
-    branch,
     bzrdir,
     errors,
-    tag,
     )
 from bzrlib.tag import (
     BasicTags,
-    _merge_tags_if_possible,
     DisabledTags,
     )
 from bzrlib.tests import (
@@ -184,3 +183,6 @@ class DisabledTagsTests(TestCaseWithTransport):
 
     def test_get_reverse_tag_dict(self):
         self.assertEqual(self.tags.get_reverse_tag_dict(), {})
+
+
+

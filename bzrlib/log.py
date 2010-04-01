@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ def find_touching_revisions(branch, file_id):
     last_path = None
     revno = 1
     for revision_id in branch.revision_history():
-        this_inv = branch.repository.get_revision_inventory(revision_id)
+        this_inv = branch.repository.get_inventory(revision_id)
         if file_id in this_inv:
             this_ie = this_inv[file_id]
             this_path = this_inv.id2path(file_id)
@@ -534,16 +534,35 @@ def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction):
 
 
 def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
-    delayed_graph_generation):
+                            delayed_graph_generation):
     # On large trees, generating the merge graph can take 30-60 seconds
     # so we delay doing it until a merge is detected, incrementally
     # returning initial (non-merge) revisions while we can.
+
+    # The above is only true for old formats (<= 0.92), for newer formats, a
+    # couple of seconds only should be needed to load the whole graph and the
+    # other graph operations needed are even faster than that -- vila 100201
     initial_revisions = []
     if delayed_graph_generation:
         try:
-            for rev_id, revno, depth in \
-                _linear_view_revisions(branch, start_rev_id, end_rev_id):
+            for rev_id, revno, depth in  _linear_view_revisions(
+                branch, start_rev_id, end_rev_id):
                 if _has_merges(branch, rev_id):
+                    # The end_rev_id can be nested down somewhere. We need an
+                    # explicit ancestry check. There is an ambiguity here as we
+                    # may not raise _StartNotLinearAncestor for a revision that
+                    # is an ancestor but not a *linear* one. But since we have
+                    # loaded the graph to do the check (or calculate a dotted
+                    # revno), we may as well accept to show the log...  We need
+                    # the check only if start_rev_id is not None as all
+                    # revisions have _mod_revision.NULL_REVISION as an ancestor
+                    # -- vila 20100319
+                    graph = branch.repository.get_graph()
+                    if (start_rev_id is not None
+                        and not graph.is_ancestor(start_rev_id, end_rev_id)):
+                        raise _StartNotLinearAncestor()
+                    # Since we collected the revisions so far, we need to
+                    # adjust end_rev_id.
                     end_rev_id = rev_id
                     break
                 else:
@@ -562,6 +581,9 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
             raise errors.BzrCommandError('Start revision not found in'
                 ' history of end revision.')
 
+    # We exit the loop above because we encounter a revision with merges, from
+    # this revision, we need to switch to _graph_view_revisions.
+
     # A log including nested merges is required. If the direction is reverse,
     # we rebase the initial merge depths so that the development line is
     # shown naturally, i.e. just like it is for linear logging. We can easily
@@ -569,7 +591,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
     # indented at the end seems slightly nicer in that case.
     view_revisions = chain(iter(initial_revisions),
         _graph_view_revisions(branch, start_rev_id, end_rev_id,
-        rebase_initial_depths=direction == 'reverse'))
+                              rebase_initial_depths=(direction == 'reverse')))
     if direction == 'reverse':
         return view_revisions
     elif direction == 'forward':
@@ -641,7 +663,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
 
 
 def _graph_view_revisions(branch, start_rev_id, end_rev_id,
-    rebase_initial_depths=True):
+                          rebase_initial_depths=True):
     """Calculate revisions to view including merges, newest to oldest.
 
     :param branch: the branch
@@ -1433,7 +1455,8 @@ class LogFormatter(object):
         """
         # Revision comes directly from a foreign repository
         if isinstance(rev, foreign.ForeignRevision):
-            return rev.mapping.vcs.show_foreign_revid(rev.foreign_revid)
+            return self._format_properties(
+                rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
         if not ":" in rev.revision_id:
@@ -2016,7 +2039,7 @@ def _bugs_properties_handler(revision):
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if
                           len(row) > 1 and row[1] == 'fixed']
-        
+
         if fixed_bug_urls:
             return {'fixes bug(s)': ' '.join(fixed_bug_urls)}
     return {}

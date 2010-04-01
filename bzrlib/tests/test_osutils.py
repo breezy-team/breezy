@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ from bzrlib import (
     win32utils,
     )
 from bzrlib.tests import (
+    features,
     file_utils,
     test__walkdirs_win32,
     )
@@ -309,7 +310,9 @@ class TestKind(tests.TestCaseInTempDir):
         self.assertEqual("/", osutils.kind_marker(osutils._directory_kind))
         self.assertEqual("@", osutils.kind_marker("symlink"))
         self.assertEqual("+", osutils.kind_marker("tree-reference"))
-        self.assertRaises(errors.BzrError, osutils.kind_marker, "unknown")
+        self.assertEqual("", osutils.kind_marker("fifo"))
+        self.assertEqual("", osutils.kind_marker("socket"))
+        self.assertEqual("", osutils.kind_marker("unknown"))
 
 
 class TestUmask(tests.TestCaseInTempDir):
@@ -1135,14 +1138,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             dirblock[:] = new_dirblock
 
     def _save_platform_info(self):
-        cur_winver = win32utils.winver
-        cur_fs_enc = osutils._fs_enc
-        cur_dir_reader = osutils._selected_dir_reader
-        def restore():
-            win32utils.winver = cur_winver
-            osutils._fs_enc = cur_fs_enc
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
+        self.overrideAttr(win32utils, 'winver')
+        self.overrideAttr(osutils, '_fs_enc')
+        self.overrideAttr(osutils, '_selected_dir_reader')
 
     def assertDirReaderIs(self, expected):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
@@ -1581,7 +1579,6 @@ class TestSetUnsetEnv(tests.TestCase):
         def cleanup():
             if 'BZR_TEST_ENV_VAR' in os.environ:
                 del os.environ['BZR_TEST_ENV_VAR']
-
         self.addCleanup(cleanup)
 
     def test_set(self):
@@ -1698,15 +1695,8 @@ class TestDirReader(tests.TestCaseInTempDir):
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)
-
-        # Save platform specific info and reset it
-        cur_dir_reader = osutils._selected_dir_reader
-
-        def restore():
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
-
-        osutils._selected_dir_reader = self._dir_reader_class()
+        self.overrideAttr(osutils,
+                          '_selected_dir_reader', self._dir_reader_class())
 
     def _get_ascii_tree(self):
         tree = [
@@ -1859,10 +1849,7 @@ class TestConcurrency(tests.TestCase):
 
     def setUp(self):
         super(TestConcurrency, self).setUp()
-        orig = osutils._cached_local_concurrency
-        def restore():
-            osutils._cached_local_concurrency = orig
-        self.addCleanup(restore)
+        self.overrideAttr(osutils, '_cached_local_concurrency')
 
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
@@ -1895,12 +1882,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def setUp(self):
         super(TestFailedToLoadExtension, self).setUp()
-        self.saved_failures = osutils._extension_load_failures[:]
-        del osutils._extension_load_failures[:]
-        self.addCleanup(self.restore_failures)
-
-    def restore_failures(self):
-        osutils._extension_load_failures = self.saved_failures
+        self.overrideAttr(osutils, '_extension_load_failures', [])
 
     def test_failure_to_load(self):
         self._try_loading()
@@ -1929,18 +1911,10 @@ class TestFailedToLoadExtension(tests.TestCase):
 class TestTerminalWidth(tests.TestCase):
 
     def replace_stdout(self, new):
-        orig_stdout = sys.stdout
-        def restore():
-            sys.stdout = orig_stdout
-        self.addCleanup(restore)
-        sys.stdout = new
+        self.overrideAttr(sys, 'stdout', new)
 
     def replace__terminal_size(self, new):
-        orig__terminal_size = osutils._terminal_size
-        def restore():
-            osutils._terminal_size = orig__terminal_size
-        self.addCleanup(restore)
-        osutils._terminal_size = new
+        self.overrideAttr(osutils, '_terminal_size', new)
 
     def set_fake_tty(self):
 
@@ -1996,11 +1970,49 @@ class TestTerminalWidth(tests.TestCase):
             # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
             pass
         else:
-            def restore():
-                termios.TIOCGWINSZ = orig
-            self.addCleanup(restore)
+            self.overrideAttr(termios, 'TIOCGWINSZ')
             del termios.TIOCGWINSZ
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
+
+class TestCreationOps(tests.TestCaseInTempDir):
+    _test_needs_features = [features.chown_feature]
+
+    def setUp(self):
+        tests.TestCaseInTempDir.setUp(self)
+        self.overrideAttr(os, 'chown', self._dummy_chown)
+
+        # params set by call to _dummy_chown
+        self.path = self.uid = self.gid = None
+
+    def _dummy_chown(self, path, uid, gid):
+        self.path, self.uid, self.gid = path, uid, gid
+
+    def test_mkdir_with_ownership_chown(self):
+        """Ensure that osutils.mkdir_with_ownership chowns correctly with ownership_src.
+        """
+        ownsrc = '/'
+        osutils.mkdir_with_ownership('foo', ownsrc)
+
+        s = os.stat(ownsrc)
+        self.assertEquals(self.path, 'foo')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+
+    def test_open_with_ownership_chown(self):
+        """Ensure that osutils.open_with_ownership chowns correctly with ownership_src.
+        """
+        ownsrc = '/'
+        f = osutils.open_with_ownership('foo', 'w', ownership_src=ownsrc)
+
+        # do a test write and close
+        f.write('hello')
+        f.close()
+
+        s = os.stat(ownsrc)
+        self.assertEquals(self.path, 'foo')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+

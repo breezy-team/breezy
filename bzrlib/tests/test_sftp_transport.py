@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>
+# Copyright (C) 2005-2010 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -46,11 +46,7 @@ import bzrlib.transport.http
 
 if features.paramiko.available():
     from bzrlib.transport import sftp as _mod_sftp
-    from bzrlib.transport.sftp import (
-        SFTPAbsoluteServer,
-        SFTPHomeDirServer,
-        SFTPTransport,
-        )
+    from bzrlib.tests import stub_sftp
 
 from bzrlib.workingtree import WorkingTree
 
@@ -60,9 +56,9 @@ def set_test_transport_to_sftp(testcase):
     if getattr(testcase, '_get_remote_is_absolute', None) is None:
         testcase._get_remote_is_absolute = True
     if testcase._get_remote_is_absolute:
-        testcase.transport_server = SFTPAbsoluteServer
+        testcase.transport_server = stub_sftp.SFTPAbsoluteServer
     else:
-        testcase.transport_server = SFTPHomeDirServer
+        testcase.transport_server = stub_sftp.SFTPHomeDirServer
     testcase.transport_readonly_server = HttpServer
 
 
@@ -162,7 +158,8 @@ class SFTPNonServerTest(TestCase):
         self.requireFeature(features.paramiko)
 
     def test_parse_url_with_home_dir(self):
-        s = SFTPTransport('sftp://ro%62ey:h%40t@example.com:2222/~/relative')
+        s = _mod_sftp.SFTPTransport(
+            'sftp://ro%62ey:h%40t@example.com:2222/~/relative')
         self.assertEquals(s._host, 'example.com')
         self.assertEquals(s._port, 2222)
         self.assertEquals(s._user, 'robey')
@@ -170,7 +167,7 @@ class SFTPNonServerTest(TestCase):
         self.assertEquals(s._path, '/~/relative/')
 
     def test_relpath(self):
-        s = SFTPTransport('sftp://user@host.com/abs/path')
+        s = _mod_sftp.SFTPTransport('sftp://user@host.com/abs/path')
         self.assertRaises(errors.PathNotChild, s.relpath,
                           'sftp://user@host.com/~/rel/path/sub')
 
@@ -190,8 +187,7 @@ class SFTPNonServerTest(TestCase):
             ssh._ssh_vendor_manager._cached_ssh_vendor = orig_vendor
 
     def test_abspath_root_sibling_server(self):
-        from bzrlib.transport.sftp import SFTPSiblingAbsoluteServer
-        server = SFTPSiblingAbsoluteServer()
+        server = stub_sftp.SFTPSiblingAbsoluteServer()
         server.start_server()
         try:
             transport = get_transport(server.get_url())
@@ -255,14 +251,13 @@ class SSHVendorConnection(TestCaseWithSFTPServer):
 
     def setUp(self):
         super(SSHVendorConnection, self).setUp()
-        from bzrlib.transport.sftp import SFTPFullAbsoluteServer
 
         def create_server():
             """Just a wrapper so that when created, it will set _vendor"""
             # SFTPFullAbsoluteServer can handle any vendor,
             # it just needs to be set between the time it is instantiated
             # and the time .setUp() is called
-            server = SFTPFullAbsoluteServer()
+            server = stub_sftp.SFTPFullAbsoluteServer()
             server._vendor = self._test_vendor
             return server
         self._test_vendor = 'loopback'
@@ -302,23 +297,17 @@ class SSHVendorBadConnection(TestCaseWithTransport):
     def setUp(self):
         self.requireFeature(features.paramiko)
         super(SSHVendorBadConnection, self).setUp()
-        import bzrlib.transport.ssh
 
         # open a random port, so we know nobody else is using it
         # but don't actually listen on the port.
         s = socket.socket()
         s.bind(('localhost', 0))
+        self.addCleanup(s.close)
         self.bogus_url = 'sftp://%s:%s/' % s.getsockname()
 
-        orig_vendor = bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor
-        def reset():
-            bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor = orig_vendor
-            s.close()
-        self.addCleanup(reset)
-
     def set_vendor(self, vendor):
-        import bzrlib.transport.ssh
-        bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor = vendor
+        from bzrlib.transport import ssh
+        self.overrideAttr(ssh._ssh_vendor_manager, '_cached_ssh_vendor', vendor)
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""
@@ -415,21 +404,20 @@ class TestSocketDelay(TestCase):
         self.requireFeature(features.paramiko)
 
     def test_delay(self):
-        from bzrlib.transport.sftp import SocketDelay
         sending = FakeSocket()
-        receiving = SocketDelay(sending, 0.1, bandwidth=1000000,
-                                really_sleep=False)
+        receiving = stub_sftp.SocketDelay(sending, 0.1, bandwidth=1000000,
+                                          really_sleep=False)
         # check that simulated time is charged only per round-trip:
-        t1 = SocketDelay.simulated_time
+        t1 = stub_sftp.SocketDelay.simulated_time
         receiving.send("connect1")
         self.assertEqual(sending.recv(1024), "connect1")
-        t2 = SocketDelay.simulated_time
+        t2 = stub_sftp.SocketDelay.simulated_time
         self.assertAlmostEqual(t2 - t1, 0.1)
         receiving.send("connect2")
         self.assertEqual(sending.recv(1024), "connect2")
         sending.send("hello")
         self.assertEqual(receiving.recv(1024), "hello")
-        t3 = SocketDelay.simulated_time
+        t3 = stub_sftp.SocketDelay.simulated_time
         self.assertAlmostEqual(t3 - t2, 0.1)
         sending.send("hello")
         self.assertEqual(receiving.recv(1024), "hello")
@@ -437,21 +425,20 @@ class TestSocketDelay(TestCase):
         self.assertEqual(receiving.recv(1024), "hello")
         sending.send("hello")
         self.assertEqual(receiving.recv(1024), "hello")
-        t4 = SocketDelay.simulated_time
+        t4 = stub_sftp.SocketDelay.simulated_time
         self.assertAlmostEqual(t4, t3)
 
     def test_bandwidth(self):
-        from bzrlib.transport.sftp import SocketDelay
         sending = FakeSocket()
-        receiving = SocketDelay(sending, 0, bandwidth=8.0/(1024*1024),
-                                really_sleep=False)
+        receiving = stub_sftp.SocketDelay(sending, 0, bandwidth=8.0/(1024*1024),
+                                          really_sleep=False)
         # check that simulated time is charged only per round-trip:
-        t1 = SocketDelay.simulated_time
+        t1 = stub_sftp.SocketDelay.simulated_time
         receiving.send("connect")
         self.assertEqual(sending.recv(1024), "connect")
         sending.send("a" * 100)
         self.assertEqual(receiving.recv(1024), "a" * 100)
-        t2 = SocketDelay.simulated_time
+        t2 = stub_sftp.SocketDelay.simulated_time
         self.assertAlmostEqual(t2 - t1, 100 + 7)
 
 

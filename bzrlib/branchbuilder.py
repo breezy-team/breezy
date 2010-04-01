@@ -103,11 +103,11 @@ class BranchBuilder(object):
         finally:
             tree.unlock()
 
-    def _do_commit(self, tree, message=None, **kwargs):
+    def _do_commit(self, tree, message=None, message_callback=None, **kwargs):
         reporter = commit.NullCommitReporter()
-        if message is None:
+        if message is None and message_callback is None:
             message = u'commit %d' % (self._branch.revno() + 1,)
-        return tree.commit(message,
+        return tree.commit(message, message_callback=message_callback,
             reporter=reporter,
             **kwargs)
 
@@ -162,7 +162,7 @@ class BranchBuilder(object):
 
     def build_snapshot(self, revision_id, parent_ids, actions,
         message=None, timestamp=None, allow_leftmost_as_ghost=False,
-        committer=None, timezone=None):
+        committer=None, timezone=None, message_callback=None):
         """Build a commit, shaped in a specific way.
 
         :param revision_id: The handle for the new commit, can be None
@@ -175,6 +175,8 @@ class BranchBuilder(object):
             ('rename', ('orig-path', 'new-path'))
         :param message: An optional commit message, if not supplied, a default
             commit message will be written.
+        :param message_callback: A message callback to use for the commit, as
+            per mutabletree.commit.
         :param timestamp: If non-None, set the timestamp of the commit to this
             value.
         :param timezone: An optional timezone for timestamp.
@@ -244,7 +246,8 @@ class BranchBuilder(object):
             for file_id, content in new_contents.iteritems():
                 tree.put_file_bytes_non_atomic(file_id, content)
             return self._do_commit(tree, message=message, rev_id=revision_id,
-                timestamp=timestamp, timezone=timezone, committer=committer)
+                timestamp=timestamp, timezone=timezone, committer=committer,
+                message_callback=message_callback)
         finally:
             tree.unlock()
 

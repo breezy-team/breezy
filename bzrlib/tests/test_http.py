@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -391,10 +391,10 @@ class TestHttpUrls(tests.TestCase):
         self.assertEqual('http://example.com', url)
         self.assertEqual(0, len(f.credentials))
         url = http.extract_auth(
-            'http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
-        self.assertEqual('http://www.bazaar-vcs.org/bzr/bzr.dev', url)
+            'http://user:pass@example.com/bzr/bzr.dev', f)
+        self.assertEqual('http://example.com/bzr/bzr.dev', url)
         self.assertEqual(1, len(f.credentials))
-        self.assertEqual([None, 'www.bazaar-vcs.org', 'user', 'pass'],
+        self.assertEqual([None, 'example.com', 'user', 'pass'],
                          f.credentials[0])
 
 
@@ -452,26 +452,22 @@ class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
         # Import the module locally now that we now it's available.
         pycurl = features.pycurl.module
 
-        version_info_orig = pycurl.version_info
-        def restore():
-            pycurl.version_info = version_info_orig
-        self.addCleanup(restore)
-
-        # Fake the pycurl version_info This was taken from a windows pycurl
-        # without SSL (thanks to bialix)
-        pycurl.version_info = lambda : (2,
-                                        '7.13.2',
-                                        462082,
-                                        'i386-pc-win32',
-                                        2576,
-                                        None,
-                                        0,
-                                        None,
-                                        ('ftp', 'gopher', 'telnet',
-                                         'dict', 'ldap', 'http', 'file'),
-                                        None,
-                                        0,
-                                        None)
+        self.overrideAttr(pycurl, 'version_info',
+                          # Fake the pycurl version_info This was taken from
+                          # a windows pycurl without SSL (thanks to bialix)
+                          lambda : (2,
+                                    '7.13.2',
+                                    462082,
+                                    'i386-pc-win32',
+                                    2576,
+                                    None,
+                                    0,
+                                    None,
+                                    ('ftp', 'gopher', 'telnet',
+                                     'dict', 'ldap', 'http', 'file'),
+                                    None,
+                                    0,
+                                    None))
         self.assertRaises(errors.DependencyNotPresent, self._transport,
                           'https://launchpad.net')
 
@@ -1364,11 +1360,7 @@ class RedirectedRequest(_urllib2_wrappers.Request):
 
 
 def install_redirected_request(test):
-    test.original_class = _urllib2_wrappers.Request
-    def restore():
-        _urllib2_wrappers.Request = test.original_class
-    _urllib2_wrappers.Request = RedirectedRequest
-    test.addCleanup(restore)
+    test.overrideAttr(_urllib2_wrappers, 'Request', RedirectedRequest)
 
 
 class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):

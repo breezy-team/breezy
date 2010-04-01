@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -132,13 +132,9 @@ class TestRuntimeIgnores(TestCase):
     def setUp(self):
         TestCase.setUp(self)
 
-        orig = ignores._runtime_ignores
-        def restore():
-            ignores._runtime_ignores = orig
-        self.addCleanup(restore)
         # For the purposes of these tests, we must have no
         # runtime ignores
-        ignores._runtime_ignores = set()
+        self.overrideAttr(ignores, '_runtime_ignores', set())
 
     def test_add(self):
         """Test that we can add an entry to the list."""

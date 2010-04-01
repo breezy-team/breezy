@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1179,7 +1179,7 @@ class NoSuchRevisionInTree(NoSuchRevision):
 
 class InvalidRevisionSpec(BzrError):
 
-    _fmt = ("Requested revision: %(spec)r does not exist in branch:"
+    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
             " %(branch)s%(extra)s")
 
     def __init__(self, spec, branch, extra=None):
@@ -1297,12 +1297,13 @@ class UnlistableBranch(BzrError):
 class BoundBranchOutOfDate(BzrError):
 
     _fmt = ("Bound branch %(branch)s is out of date with master branch"
-            " %(master)s.")
+            " %(master)s.%(extra_help)s")
 
     def __init__(self, branch, master):
         BzrError.__init__(self)
         self.branch = branch
         self.master = master
+        self.extra_help = ''
 
 
 class CommitToDoubleBoundBranch(BzrError):
@@ -3124,3 +3125,12 @@ class FileTimestampUnavailable(BzrError):
 
     def __init__(self, path):
         self.path = path
+
+
+class NoColocatedBranchSupport(BzrError):
+
+    _fmt = ("%(bzrdir)r does not support co-located branches.")
+
+    def __init__(self, bzrdir):
+        self.bzrdir = bzrdir
+

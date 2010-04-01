@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -145,7 +145,7 @@ def error(*args, **kwargs):
     _bzr_logger.error(*args, **kwargs)
 
 
-def show_error(msg):
+def show_error(*args, **kwargs):
     """Show an error message to the user.
 
     Don't use this for exceptions, use report_exception instead.
@@ -241,14 +241,17 @@ def _open_bzr_log():
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        bzr_log_file = open(_bzr_log_filename, 'at', buffering=0) # unbuffered
+        buffering = 0 # unbuffered
+        bzr_log_file = osutils.open_with_ownership(_bzr_log_filename, 'at', buffering)
         # bzr_log_file.tell() on windows always return 0 until some writing done
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
             bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
             bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
+
         return bzr_log_file
+
     except IOError, e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
@@ -501,3 +504,23 @@ def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
     from bzrlib.crash import report_bug
     report_bug(exc_info, err_file)
+
+
+def _flush_stdout_stderr():
+    # installed into an atexit hook by bzrlib.initialize()
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except IOError, e:
+        import errno
+        if e.errno in [errno.EINVAL, errno.EPIPE]:
+            pass
+        else:
+            raise
+
+
+def _flush_trace():
+    # run from atexit hook
+    global _trace_file
+    if _trace_file:
+        _trace_file.flush()

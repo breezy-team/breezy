@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@ from bzrlib.tests import (
     blackbox,
     http_server,
     test_foreign,
+    test_server,
     )
 from bzrlib.transport import memory
 

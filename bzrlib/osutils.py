@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,11 +21,11 @@ from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import sys
 import time
+import codecs
 import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 from datetime import datetime
 import errno
 from ntpath import (abspath as _nt_abspath,
@@ -51,7 +51,9 @@ from bzrlib import (
     cache_utf8,
     errors,
     win32utils,
+    trace,
     )
+
 """)
 
 # sha and md5 modules are deprecated in python2.6 but hashlib is available as
@@ -85,8 +87,11 @@ if sys.platform == 'win32':
 # be opened in binary mode, rather than text mode.
 # On other platforms, O_BINARY doesn't exist, because
 # they always open in binary mode, so it is okay to
-# OR with 0 on those platforms
+# OR with 0 on those platforms.
+# O_NOINHERIT and O_TEXT exists only on win32 too.
 O_BINARY = getattr(os, 'O_BINARY', 0)
+O_TEXT = getattr(os, 'O_TEXT', 0)
+O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 
 
 def get_unicode_argv():
@@ -179,7 +184,9 @@ def kind_marker(kind):
     try:
         return _kind_marker_map[kind]
     except KeyError:
-        raise errors.BzrError('invalid file kind %r' % kind)
+        # Slightly faster than using .get(, '') when the common case is that
+        # kind will be found
+        return ''
 
 
 lexists = getattr(os.path, 'lexists', None)
@@ -661,7 +668,7 @@ def size_sha_file(f):
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha()
-    f = os.open(fname, os.O_RDONLY | O_BINARY)
+    f = os.open(fname, os.O_RDONLY | O_BINARY | O_NOINHERIT)
     try:
         while True:
             b = os.read(f, 1<<16)
@@ -1344,6 +1351,27 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
+def set_signal_handler(signum, handler, restart_syscall=True):
+    """A wrapper for signal.signal that also calls siginterrupt(signum, False)
+    on platforms that support that.
+
+    :param restart_syscall: if set, allow syscalls interrupted by a signal to
+        automatically restart (by calling `signal.siginterrupt(signum,
+        False)`).  May be ignored if the feature is not available on this
+        platform or Python version.
+    """
+    old_handler = signal.signal(signum, handler)
+    if restart_syscall:
+        try:
+            siginterrupt = signal.siginterrupt
+        except AttributeError: # siginterrupt doesn't exist on this platform, or for this version of
+            # Python.
+            pass
+        else:
+            siginterrupt(signum, False)
+    return old_handler
+
+
 default_terminal_width = 80
 """The default terminal width for ttys.
 
@@ -1438,12 +1466,21 @@ def _terminal_size_changed(signum, frame):
     if width is not None:
         os.environ['COLUMNS'] = str(width)
 
-if sys.platform == 'win32':
-    # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from ReadConsoleInput but
-    # I've no idea how to plug that in the current design -- vila 20091216
-    pass
-else:
-    signal.signal(signal.SIGWINCH, _terminal_size_changed)
+
+_registered_sigwinch = False
+
+def watch_sigwinch():
+    """Register for SIGWINCH, once and only once."""
+    global _registered_sigwinch
+    if not _registered_sigwinch:
+        if sys.platform == 'win32':
+            # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from
+            # ReadConsoleInput but I've no idea how to plug that in
+            # the current design -- vila 20091216
+            pass
+        else:
+            set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
+        _registered_sigwinch = True
 
 
 def supports_executable():
@@ -1767,6 +1804,51 @@ def copy_tree(from_path, to_path, handlers={}):
     for dir_info, entries in walkdirs(from_path, prefix=to_path):
         for relpath, name, kind, st, abspath in entries:
             real_handlers[kind](abspath, relpath)
+
+
+def copy_ownership(dst, src=None):
+    """Copy usr/grp ownership from src file/dir to dst file/dir.
+
+    If src is None, the containing directory is used as source. If chown
+    fails, the error is ignored and a warning is printed.
+    """
+    has_chown = getattr(os, 'chown')
+    if has_chown is None: return
+
+    if src == None:
+        src = os.path.dirname(dst)
+        if src == '':
+            src = '.'
+
+    try:
+        s = os.stat(src)
+        os.chown(dst, s.st_uid, s.st_gid)
+    except OSError, e:
+        trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
+
+
+def mkdir_with_ownership(path, ownership_src=None):
+    """Create the directory 'path' with specified ownership.
+
+    If ownership_src is given, copies (chown) usr/grp ownership
+    from 'ownership_src' to 'path'. If ownership_src is None, use the
+    containing dir ownership.
+    """
+    os.mkdir(path)
+    copy_ownership(path, ownership_src)
+
+
+def open_with_ownership(filename, mode='r', bufsize=-1, ownership_src=None):
+    """Open the file 'filename' with the specified ownership.
+
+    If ownership_src is specified, copy usr/grp ownership from ownership_src
+    to filename. If ownership_src is None, copy ownership from containing
+    directory.
+    Returns the opened file object.
+    """
+    f = open(filename, mode, bufsize)
+    copy_ownership(filename, ownership_src)
+    return f
 
 
 def path_prefix_key(path):
@@ -2106,3 +2188,46 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
+
+if sys.platform == 'win32':
+    def open_file(filename, mode='r', bufsize=-1):
+        """This function is used to override the ``open`` builtin.
+        
+        But it uses O_NOINHERIT flag so the file handle is not inherited by
+        child processes.  Deleting or renaming a closed file opened with this
+        function is not blocking child processes.
+        """
+        writing = 'w' in mode
+        appending = 'a' in mode
+        updating = '+' in mode
+        binary = 'b' in mode
+
+        flags = O_NOINHERIT
+        # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
+        # for flags for each modes.
+        if binary:
+            flags |= O_BINARY
+        else:
+            flags |= O_TEXT
+
+        if writing:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_TRUNC
+        elif appending:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_APPEND
+        else: #reading
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_RDONLY
+
+        return os.fdopen(os.open(filename, flags), mode, bufsize)
+else:
+    open_file = open

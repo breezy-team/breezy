@@ -3,7 +3,7 @@ Bazaar Main Document Catalog
 ============================
 
 The latest version of these documents are available from Bazaar's
-documentation site, <http://doc.bazaar-vcs.org/>, and more documentation
+documentation site, <http://doc.bazaar.canonical.com/>, and more documentation
 may be linked from <http://bazaar-vcs.org/Documentation>.
 
 Core Documentation

@@ -19,7 +19,6 @@
 Such as non-controlled directories, tarfiles, zipfiles, etc.
 """
 
-from bzrlib.trace import mutter
 import os
 import bzrlib.errors as errors
 
@@ -55,14 +54,16 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root, subdir, filtered):
+    def _loader(tree, dest, root, subdir, filtered, per_file_timestamps):
         mod = __import__(module, globals(), locals(), [funcname])
         func = getattr(mod, funcname)
-        return func(tree, dest, root, subdir, filtered=filtered)
+        return func(tree, dest, root, subdir, filtered=filtered,
+                    per_file_timestamps=per_file_timestamps)
     register_exporter(scheme, extensions, _loader)
 
 
-def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
+def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
+           per_file_timestamps=False):
     """Export the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
@@ -81,6 +82,9 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
         a directory to start exporting from.
     :param filtered: If True, content filtering is applied to the
                      files exported.
+    :param per_file_timestamps: Whether to use the timestamp stored in the 
+        tree rather than now(). This will do a revision lookup 
+        for every file so will be significantly slower.
     """
     global _exporters, _exporter_extensions
 
@@ -99,7 +103,8 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
         raise errors.NoSuchExportFormat(format)
     tree.lock_read()
     try:
-        return _exporters[format](tree, dest, root, subdir, filtered=filtered)
+        return _exporters[format](tree, dest, root, subdir, filtered=filtered,
+                                  per_file_timestamps=per_file_timestamps)
     finally:
         tree.unlock()
 
@@ -138,14 +143,23 @@ def _export_iter_entries(tree, subdir):
     """Iter the entries for tree suitable for exporting.
 
     :param tree: A tree object.
-    :param subdir: None or the path of a directory to start exporting from.
+    :param subdir: None or the path of an entry to start exporting from.
     """
     inv = tree.inventory
     if subdir is None:
-        subdir_id = None
+        subdir_object = None
     else:
         subdir_id = inv.path2id(subdir)
-    entries = inv.iter_entries(subdir_id)
+        if subdir_id is not None:
+            subdir_object = inv[subdir_id]
+        # XXX: subdir is path not an id, so NoSuchId isn't proper error
+        else:
+            raise errors.NoSuchId(tree, subdir)
+    if subdir_object is not None and subdir_object.kind != 'directory':
+        yield subdir_object.name, subdir_object
+        return
+    else:
+        entries = inv.iter_entries(subdir_object)
     if subdir is None:
         entries.next() # skip root
     for entry in entries:

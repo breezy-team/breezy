@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ import re
 
 from bzrlib import (
     branchbuilder,
+    errors,
     log,
     osutils,
     tests,
@@ -77,17 +78,12 @@ class TestLogWithLogCatcher(TestLog):
                 # Always return our own log formatter
                 return self.log_catcher
 
-        orig = log.log_formatter_registry.get_default
-        def restore():
-            log.log_formatter_registry.get_default = orig
-        self.addCleanup(restore)
-
         def getme(branch):
                 # Always return our own log formatter class hijacking the
                 # default behavior (which requires setting up a config
                 # variable)
             return MyLogFormatter
-        log.log_formatter_registry.get_default = getme
+        self.overrideAttr(log.log_formatter_registry, 'get_default', getme)
 
     def get_captured_revisions(self):
         return self.log_catcher.revisions
@@ -163,10 +159,10 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
         self.assertLogRevnos(['-c1'], ['1'])
 
 
-class TestBug474807(TestLogWithLogCatcher):
+class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
 
     def setUp(self):
-        super(TestBug474807, self).setUp()
+        super(TestLogMergedLinearAncestry, self).setUp()
         # FIXME: Using a MemoryTree would be even better here (but until we
         # stop calling run_bzr, there is no point) --vila 100118.
         builder = branchbuilder.BranchBuilder(self.get_transport())
@@ -207,6 +203,54 @@ class TestBug474807(TestLogWithLogCatcher):
                              ['1.1.1', '1.1.2', '1.1.3', '1.1.4'])
 
 
+class Test_GenerateAllRevisions(TestLogWithLogCatcher):
+
+    def setUp(self):
+        super(Test_GenerateAllRevisions, self).setUp()
+        builder = self.make_branch_with_many_merges()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        self.branch = b
+
+    def make_branch_with_many_merges(self, path='.', format=None):
+        builder = branchbuilder.BranchBuilder(self.get_transport())
+        builder.start_series()
+        # The graph below may look a bit complicated (and it may be but I've
+        # banged my head enough on it) but the bug requires at least dotted
+        # revnos *and* merged revisions below that.
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2.1.1', ['2'], [])
+        builder.build_snapshot('3', ['2', '1.1.1'], [])
+        builder.build_snapshot('2.1.2', ['2.1.1'], [])
+        builder.build_snapshot('2.2.1', ['2.1.1'], [])
+        builder.build_snapshot('2.1.3', ['2.1.2', '2.2.1'], [])
+        builder.build_snapshot('4', ['3', '2.1.3'], [])
+        builder.build_snapshot('5', ['4', '2.1.2'], [])
+        builder.finish_series()
+        return builder
+
+    def test_not_an_ancestor(self):
+        self.assertRaises(errors.BzrCommandError,
+                          log._generate_all_revisions,
+                          self.branch, '1.1.1', '2.1.3', 'reverse',
+                          delayed_graph_generation=True)
+
+    def test_wrong_order(self):
+        self.assertRaises(errors.BzrCommandError,
+                          log._generate_all_revisions,
+                          self.branch, '5', '2.1.3', 'reverse',
+                          delayed_graph_generation=True)
+
+    def test_no_start_rev_id_with_end_rev_id_being_a_merge(self):
+        revs = log._generate_all_revisions(
+            self.branch, None, '2.1.3',
+            'reverse', delayed_graph_generation=True)
+
+
 class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
 
     def test_log_revno_n_path_wrong_namespace(self):
@@ -215,7 +259,6 @@ class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
         # There is no guarantee that a path exist between two arbitrary
         # revisions.
         self.run_bzr("log -r revno:2:branch1..revno:3:branch2", retcode=3)
-        # But may be it's worth trying though ? -- vila 100115
 
     def test_log_revno_n_path_correct_order(self):
         self.make_linear_branch('branch2')
@@ -611,10 +654,7 @@ class TestLogEncodings(tests.TestCaseInTempDir):
 
     def setUp(self):
         super(TestLogEncodings, self).setUp()
-        self.user_encoding = osutils._cached_user_encoding
-        def restore():
-            osutils._cached_user_encoding = self.user_encoding
-        self.addCleanup(restore)
+        self.overrideAttr(osutils, '_cached_user_encoding')
 
     def create_branch(self):
         bzr = self.run_bzr

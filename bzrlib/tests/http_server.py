@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ import urllib
 import urlparse
 
 from bzrlib import transport
+from bzrlib.tests import test_server
 from bzrlib.transport import local
 
 
@@ -530,8 +531,9 @@ class HttpServer(transport.Server):
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        if not (backing_transport_server is None or \
-                isinstance(backing_transport_server, local.LocalURLServer)):
+        if not (backing_transport_server is None
+                or isinstance(backing_transport_server,
+                              test_server.LocalURLServer)):
             raise AssertionError(
                 "HTTPServer currently assumes local transport, got %s" % \
                 backing_transport_server)
