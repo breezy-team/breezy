@@ -1403,8 +1403,9 @@ class LogFormatter(object):
         elif who == 'all':
             names = rev.get_apparent_authors()[:]
         elif who == 'first':
+            names = rev.get_apparent_authors()
             try:
-                names = [rev.get_apparent_authors()[0]]
+                names = [names[0]]
             except IndexError:
                 names = []
         else:
