@@ -40,6 +40,10 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('commit -m bla')
         self.run_bzr('branch . ../feature')
 
+    def test_no_upstream_branch(self):
+        self.run_bzr_error(['bzr: ERROR: No upstream branch specified.\n'],
+                           'rebase')
+
     def test_notneeded(self):
         os.chdir('../feature')
         self.check_output('No revisions to rebase.\n', 'rebase ../main')

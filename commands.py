@@ -112,7 +112,9 @@ class cmd_rebase(Command):
                 upstream_location = directory
             else:
                 upstream_location = wt.branch.get_parent()
-                note("Rebasing on %s" % upstream_location)
+                if upstream_location is None:
+                    raise BzrCommandError("No upstream branch specified.")
+                note("Rebasing on %s", upstream_location)
         upstream = Branch.open_containing(upstream_location)[0]
         upstream_repository = upstream.repository
         upstream_revision = upstream.last_revision()
