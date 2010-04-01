@@ -218,21 +218,14 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     tree = lookup_object(hexsha)
     if base_hexsha is None:
         base_tree = None
+        old_path = None # Newly appeared here
     else:
         base_tree = lookup_object(base_hexsha)
-    if base_tree is None:
-        # Newly appeared here
-        ie.revision = revision_id
-        texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
-        old_path = None
-        invdelta.append((None, path, file_id, ie))
-    elif type(base_tree) is not Tree:
-        ie.revision = revision_id
         old_path = path # Renames aren't supported yet
-        texts.insert_record_stream([ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
+    if base_tree is None or type(base_tree) is not Tree:
+        ie.revision = revision_id
         invdelta.append((old_path, path, ie.file_id, ie))
-    else:
-        old_path = path # Renames aren't supported yet
+        texts.insert_record_stream([ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
     # Remember for next time
     existing_children = set()
     child_modes = {}
@@ -366,12 +359,10 @@ def import_git_objects(repo, mapping, object_iter,
             return object_iter[sha]
         except KeyError:
             return target_git_object_retriever[sha]
-    # TODO: a more (memory-)efficient implementation of this
     graph = []
     checked = set()
     heads = list(set(heads))
     parent_invs_cache = LRUInventoryCache(repo)
-    target_git_object_retriever.start_write_group() # FIXME: try/finally
     # Find and convert commit objects
     while heads:
         if pb is not None:
@@ -404,6 +395,7 @@ def import_git_objects(repo, mapping, object_iter,
     if limit is not None:
         revision_ids = revision_ids[:limit]
     last_imported = None
+    target_git_object_retriever.start_write_group() # FIXME: try/finally
     for offset in range(0, len(revision_ids), batch_size):
         repo.start_write_group()
         try:
