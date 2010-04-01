@@ -119,7 +119,7 @@ def import_git_blob(texts, mapping, path, (base_hexsha, hexsha),
             ie.text_sha1 = osutils.sha_string(blob.data)
     # Check what revision we should store
     parent_keys = []
-    for pinv in parent_invs:
+    for pinv in parent_invs[1:]:
         if pinv.revision_id == base_inv.revision_id:
             pie = base_ie
             if pie is None:
@@ -165,18 +165,18 @@ class SubmodulesRequireSubtrees(BzrError):
 
 
 def import_git_submodule(texts, mapping, path, (base_hexsha, hexsha),
-    base_inv, base_ie, parent_id, revision_id, parent_invs, lookup_object):
+    base_inv, parent_id, revision_id, parent_invs, lookup_object,
+    (base_mode, mode)):
+    if base_hexsha == hexsha and base_mode == mode:
+        return [], {}, {}
     file_id = mapping.generate_file_id(path)
     ie = TreeReference(file_id, urlutils.basename(path.decode("utf-8")),
         parent_id)
     ie.revision = revision_id
-    if base_ie is None:
+    if base_hexsha is None:
         oldpath = None
     else:
         oldpath = path
-        if (base_ie.kind == ie.kind and
-            base_ie.reference_revision == ie.reference_revision):
-            ie.revision = base_ie.revision
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
     texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
     invdelta = [(oldpath, path, file_id, ie)]
@@ -197,7 +197,7 @@ def remove_disappeared_children(path, base_children, existing_children):
 
 def import_git_tree(texts, mapping, path, (base_hexsha, hexsha), base_inv,
     base_inv_shamap, base_ie, parent_id, revision_id, parent_invs,
-    lookup_object, allow_submodules=False):
+    lookup_object, (base_mode, mode), allow_submodules=False):
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
@@ -206,30 +206,28 @@ def import_git_tree(texts, mapping, path, (base_hexsha, hexsha), base_inv,
     :param base_inv: Base inventory against which to return inventory delta
     :return: Inventory delta for this subtree
     """
+    if base_hexsha == hexsha and base_mode == mode:
+        # If nothing has changed since the base revision, we're done
+        return [], {}, []
     invdelta = []
     file_id = mapping.generate_file_id(path)
     # We just have to hope this is indeed utf-8:
     ie = InventoryDirectory(file_id, urlutils.basename(path.decode("utf-8")),
         parent_id)
-    if base_ie is None:
-        # Newly appeared here
-        ie.revision = revision_id
-        texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
-        invdelta.append((None, path, file_id, ie))
-    else:
-        if base_hexsha == hexsha:
-            # If nothing has changed since the base revision, we're done
-            return [], {}, []
-        if base_ie.kind != "directory":
-            ie.revision = revision_id
-            texts.insert_record_stream([ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
-            invdelta.append((base_inv.id2path(ie.file_id), path, ie.file_id, ie))
     tree = lookup_object(hexsha)
     if base_hexsha is None:
         base_tree = None
     else:
         base_tree = lookup_object(base_hexsha)
-
+    if base_tree is None:
+        # Newly appeared here
+        ie.revision = revision_id
+        texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
+        invdelta.append((None, path, file_id, ie))
+    elif type(base_tree) is not Tree:
+        ie.revision = revision_id
+        texts.insert_record_stream([ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
+        invdelta.append((base_inv.id2path(ie.file_id), path, ie.file_id, ie))
     if base_ie is not None and base_ie.kind == "directory":
         base_children = base_ie.children
     else:
@@ -257,6 +255,7 @@ def import_git_tree(texts, mapping, path, (base_hexsha, hexsha), base_inv,
                     (child_base_hexsha, child_hexsha),
                     base_inv, base_inv_shamap, base_children.get(basename),
                     file_id, revision_id, parent_invs, lookup_object,
+                    (child_base_mode, child_mode),
                     allow_submodules=allow_submodules)
         elif S_ISGITLINK(child_mode): # submodule
             if not allow_submodules:
@@ -264,8 +263,8 @@ def import_git_tree(texts, mapping, path, (base_hexsha, hexsha), base_inv,
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
                     texts, mapping, child_path,
                     (child_base_hexsha, child_hexsha),
-                    base_inv, base_children.get(basename),
-                    file_id, revision_id, parent_invs, lookup_object)
+                    base_inv, file_id, revision_id, parent_invs, lookup_object,
+                    (child_base_mode, child_mode))
         else:
             subinvdelta, subshamap = import_git_blob(texts, mapping,
                     child_path, (child_base_hexsha, child_hexsha),
@@ -281,7 +280,7 @@ def import_git_tree(texts, mapping, path, (base_hexsha, hexsha), base_inv,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = child_mode
     # Remove any children that have disappeared
-    if base_ie is not None and base_ie.kind == "directory":
+    if base_tree is not None and type(base_tree) is Tree:
         invdelta.extend(remove_disappeared_children(base_inv.id2path(file_id),
             base_children, existing_children))
     shamap[file_id] = hexsha
@@ -301,14 +300,17 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_ie = None
         base_inv_shamap = None # Should never be accessed
         base_tree = None
+        base_mode = None
     else:
         base_inv = parent_invs[0]
         base_ie = base_inv.root
         base_inv_shamap = target_git_object_retriever._idmap.get_inventory_sha_map(base_inv.revision_id)
         base_tree = lookup_object(o.parents[0]).tree
+        base_mode = stat.S_IFDIR
     inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
             mapping, "", (base_tree, o.tree), base_inv, base_inv_shamap,
             base_ie, None, rev.revision_id, parent_invs, lookup_object,
+            (base_mode, stat.S_IFDIR),
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
     entries = []
     for (oldpath, newpath, fileid, new_ie) in inv_delta:

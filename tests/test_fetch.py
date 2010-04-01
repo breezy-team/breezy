@@ -23,6 +23,7 @@ from dulwich.repo import (
     Repo as GitRepo,
     )
 import os
+import stat
 
 from bzrlib import (
     knit,
@@ -293,7 +294,8 @@ class ImportObjects(TestCaseWithTransport):
         tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "", 
                (None, tree.id), base_inv, None, None,
-               None, "somerevid", [], {tree.id: tree}.__getitem__)
+               None, "somerevid", [], {tree.id: tree}.__getitem__,
+               (None, stat.S_IFDIR))
         self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -311,7 +313,8 @@ class ImportObjects(TestCaseWithTransport):
         tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", 
            (None, tree.id), base_inv, None, None, None, "somerevid", [], 
-           { tree.id: tree }.__getitem__)
+           { tree.id: tree }.__getitem__,
+           (None, stat.S_IFDIR))
         self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -332,7 +335,7 @@ class ImportObjects(TestCaseWithTransport):
         objects = { blob.id: blob, tree.id: tree }
         ret, _, _ = import_git_tree(self._texts, self._mapping, "bla",
                 (None, tree.id), base_inv, None, None, None, "somerevid", [],
-            objects.__getitem__)
+            objects.__getitem__, (None, stat.S_IFDIR))
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("bla", ret[0][1])
@@ -356,7 +359,7 @@ class ImportObjects(TestCaseWithTransport):
         objects = { blob.id: blob, tree.id: tree }
         ret, _, _ = import_git_tree(self._texts, self._mapping, "", 
                 (None, tree.id), base_inv, None, None, None, "somerevid", [],
-            objects.__getitem__)
+            objects.__getitem__, (None, stat.S_IFDIR))
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("", ret[0][1])
