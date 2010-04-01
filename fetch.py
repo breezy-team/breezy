@@ -61,6 +61,7 @@ from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     inventory_to_tree_and_blobs,
     mode_is_executable,
+    mode_kind,
     squash_revision,
     warn_unusual_mode,
     )
@@ -148,10 +149,10 @@ def import_git_blob(texts, mapping, path, basename, (base_hexsha, hexsha),
         texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, chunks)])
     shamap = { ie.file_id: hexsha }
     invdelta = []
-    if base_ie is not None:
-        old_path = base_inv.id2path(file_id)
-        if base_ie.kind == "directory":
-            invdelta.extend(remove_disappeared_children(old_path, base_ie.children, []))
+    if base_hexsha is not None:
+        old_path = path # Renames are not supported yet
+        if stat.S_ISDIR(base_mode):
+            invdelta.extend(remove_disappeared_children(base_inv, old_path, lookup_object(base_hexsha), [], lookup_object))
     else:
         old_path = None
     invdelta.append((old_path, path, file_id, ie))
@@ -181,15 +182,17 @@ def import_git_submodule(texts, mapping, path, basename, (base_hexsha, hexsha),
     return invdelta, {}, {}
 
 
-def remove_disappeared_children(path, base_children, existing_children):
+def remove_disappeared_children(base_inv, path, base_tree, existing_children,
+        lookup_object):
     ret = []
-    deletable = [(posixpath.join(path, k), v) for k,v in base_children.iteritems() if k not in existing_children]
-    while deletable:
-        (path, ie) = deletable.pop()
-        ret.append((path, None, ie.file_id, None))
-        if ie.kind == "directory":
-            for name, child_ie in ie.children.iteritems():
-                deletable.append((posixpath.join(path, name), child_ie))
+    for name, mode, hexsha in base_tree.iteritems():
+        if name in existing_children:
+            continue
+        c_path = posixpath.join(path, name.decode("utf-8"))
+        ret.append((c_path, None, base_inv.path2id(c_path), None))
+        if stat.S_ISDIR(mode):
+            ret.extend(remove_disappeared_children(
+                base_inv, c_path, lookup_object(hexsha), [], lookup_object))
     return ret
 
 
@@ -220,11 +223,15 @@ def import_git_tree(texts, mapping, path, basename, (base_hexsha, hexsha),
         # Newly appeared here
         ie.revision = revision_id
         texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
+        old_path = None
         invdelta.append((None, path, file_id, ie))
     elif type(base_tree) is not Tree:
         ie.revision = revision_id
+        old_path = path # Renames aren't supported yet
         texts.insert_record_stream([ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
-        invdelta.append((base_inv.id2path(ie.file_id), path, ie.file_id, ie))
+        invdelta.append((old_path, path, ie.file_id, ie))
+    else:
+        old_path = path # Renames aren't supported yet
     if base_ie is not None and base_ie.kind == "directory":
         base_children = base_ie.children
     else:
@@ -235,7 +242,7 @@ def import_git_tree(texts, mapping, path, basename, (base_hexsha, hexsha),
     shamap = {}
     for child_mode, name, child_hexsha in tree.entries():
         basename = name.decode("utf-8")
-        existing_children.add(basename)
+        existing_children.add(name)
         child_path = posixpath.join(path, name)
         if type(base_tree) is Tree:
             try:
@@ -278,8 +285,8 @@ def import_git_tree(texts, mapping, path, basename, (base_hexsha, hexsha),
             child_modes[child_path] = child_mode
     # Remove any children that have disappeared
     if base_tree is not None and type(base_tree) is Tree:
-        invdelta.extend(remove_disappeared_children(base_inv.id2path(file_id),
-            base_children, existing_children))
+        invdelta.extend(remove_disappeared_children(base_inv, old_path, 
+            base_tree, existing_children, lookup_object))
     shamap[file_id] = hexsha
     return invdelta, child_modes, shamap
 
