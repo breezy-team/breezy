@@ -4066,6 +4066,7 @@ class cmd_remerge(Command):
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
+        from bzrlib.conflicts import restore
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
         tree, file_list = tree_files(file_list)
@@ -5985,10 +5986,11 @@ def _register_lazy_builtins():
     for (name, aliases, module_name) in [
         ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
+        ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
+        ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)
 
 
-from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
 from bzrlib.foreign import cmd_dpush
 from bzrlib.sign_my_commits import cmd_sign_my_commits
