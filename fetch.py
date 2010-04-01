@@ -152,7 +152,8 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_hexsha is not None:
         old_path = path # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
-            invdelta.extend(remove_disappeared_children(base_inv, old_path, lookup_object(base_hexsha), [], lookup_object))
+            invdelta.extend(remove_disappeared_children(base_inv, old_path,
+                lookup_object(base_hexsha), [], lookup_object))
     else:
         old_path = None
     invdelta.append((old_path, path, file_id, ie))
