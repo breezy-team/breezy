@@ -147,7 +147,6 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
             except AttributeError: # older version of dulwich
                 chunks = [blob.data]
         texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, chunks)])
-    shamap = { ie.file_id: hexsha }
     invdelta = []
     if base_hexsha is not None:
         old_path = path # Renames are not supported yet
@@ -157,7 +156,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     else:
         old_path = None
     invdelta.append((old_path, path, file_id, ie))
-    return (invdelta, shamap)
+    return (invdelta, [(ie.file_id, "blob", hexsha, ie.revision)])
 
 
 class SubmodulesRequireSubtrees(BzrError):
@@ -180,7 +179,7 @@ def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
     texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
     invdelta = [(oldpath, path, file_id, ie)]
-    return invdelta, {}, {}
+    return invdelta, {}, []
 
 
 def remove_disappeared_children(base_inv, path, base_tree, existing_children,
@@ -229,7 +228,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     # Remember for next time
     existing_children = set()
     child_modes = {}
-    shamap = {}
+    shamap = [(ie.file_id, "tree", hexsha, revision_id)]
     for child_mode, name, child_hexsha in tree.entries():
         existing_children.add(name)
         child_path = posixpath.join(path, name)
@@ -268,7 +267,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
             grandchildmodes = {}
         child_modes.update(grandchildmodes)
         invdelta.extend(subinvdelta)
-        shamap.update(subshamap)
+        shamap.extend(subshamap)
         if child_mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = child_mode
@@ -276,7 +275,6 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_tree is not None and type(base_tree) is Tree:
         invdelta.extend(remove_disappeared_children(base_inv, old_path, 
             base_tree, existing_children, lookup_object))
-    shamap[file_id] = hexsha
     return invdelta, child_modes, shamap
 
 
@@ -298,22 +296,11 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_inv_shamap = target_git_object_retriever._idmap.get_inventory_sha_map(base_inv.revision_id)
         base_tree = lookup_object(o.parents[0]).tree
         base_mode = stat.S_IFDIR
-    inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
+    inv_delta, unusual_modes, entries = import_git_tree(repo.texts,
             mapping, "", u"", (base_tree, o.tree), base_inv, base_inv_shamap,
             None, rev.revision_id, parent_invs, lookup_object,
             (base_mode, stat.S_IFDIR),
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
-    entries = []
-    for (oldpath, newpath, fileid, new_ie) in inv_delta:
-        if newpath is None:
-            entries.append((fileid, None, None, None))
-        else:
-            if new_ie.kind in ("file", "symlink"):
-                entries.append((fileid, "blob", shamap[fileid], new_ie.revision))
-            elif new_ie.kind == "directory":
-                entries.append((fileid, "tree", shamap[fileid], rev.revision_id))
-            else:
-                raise AssertionError
     target_git_object_retriever._idmap.add_entries(rev.revision_id,
         rev.parent_ids, head, o.tree, entries)
     if unusual_modes != {}:
