@@ -395,25 +395,32 @@ def import_git_objects(repo, mapping, object_iter,
     if limit is not None:
         revision_ids = revision_ids[:limit]
     last_imported = None
-    target_git_object_retriever.start_write_group() # FIXME: try/finally
     for offset in range(0, len(revision_ids), batch_size):
-        repo.start_write_group()
+        target_git_object_retriever.start_write_group() # FIXME: try/finally
         try:
-            for i, head in enumerate(revision_ids[offset:offset+batch_size]):
-                if pb is not None:
-                    pb.update("fetching revisions", offset+i, len(revision_ids))
-                import_git_commit(repo, mapping, head, lookup_object,
-                                  target_git_object_retriever,
-                                  parent_invs_cache)
-                last_imported = head
+            repo.start_write_group()
+            try:
+                for i, head in enumerate(
+                    revision_ids[offset:offset+batch_size]):
+                    if pb is not None:
+                        pb.update("fetching revisions", offset+i,
+                                  len(revision_ids))
+                    import_git_commit(repo, mapping, head, lookup_object,
+                                      target_git_object_retriever,
+                                      parent_invs_cache)
+                    last_imported = head
+            except:
+                repo.abort_write_group()
+                raise
+            else:
+                hint = repo.commit_write_group()
+                if hint is not None:
+                    pack_hints.extend(hint)
         except:
-            repo.abort_write_group()
+            target_git_object_retriever.abort_write_group()
             raise
         else:
-            hint = repo.commit_write_group()
-            if hint is not None:
-                pack_hints.extend(hint)
-    target_git_object_retriever.commit_write_group()
+            target_git_object_retriever.commit_write_group()
     return pack_hints, last_imported
 
 
