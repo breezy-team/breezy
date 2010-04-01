@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,13 +20,14 @@
 import os
 
 from bzrlib import (
+    branchbuilder,
     errors,
     merge
     )
-from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrlib.tests import per_workingtree
 
 
-class TestMergeFromBranch(TestCaseWithWorkingTree):
+class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
     def create_two_trees_for_merging(self):
         """Create two trees that can be merged from.
