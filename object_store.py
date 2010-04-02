@@ -441,7 +441,7 @@ class BazaarObjectStore(BaseObjectStore):
                 trace.mutter('entry for %s %s in shamap: %r, but not found in '
                              'repository', type, sha, type_data)
                 raise KeyError(sha)
-            commit = self.reconstruct_commit(rev, tree_sha)
+            commit = self._reconstruct_commit(rev, tree_sha)
             _check_expected_sha(sha, commit)
             return commit
         elif type == "blob":
