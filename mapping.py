@@ -500,9 +500,8 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes,
                 from dulwich.objects import Blob
                 stream = texts.get_record_stream(
                     [(entry.file_id, entry.revision)], 'unordered', True)
-                text = stream.next().get_bytes_as('fulltext')
                 blob = Blob()
-                blob.data = text
+                blob.chunked = stream.next().get_bytes_as('chunks')
             elif entry.kind == "symlink":
                 blob = symlink_to_blob(entry)
             else:

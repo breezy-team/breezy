@@ -76,7 +76,7 @@ class GitInventoryFile(GitInventoryEntry):
 
     @property
     def text_sha1(self):
-        return osutils.sha_string(self.object.data)
+        return osutils.sha_strings(self.object.chunked)
 
     @property
     def text_size(self):

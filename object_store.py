@@ -183,7 +183,7 @@ def _inventory_to_objects(inv, parent_invs, idmap,
         [(ie.file_id, ie.revision, (path, ie))
             for (path, ie) in new_blobs]):
         obj = Blob()
-        obj.data = "".join(chunks)
+        obj.chunked = chunks
         yield path, obj, ie
         shamap[ie.file_id] = obj.id
 
@@ -333,7 +333,7 @@ class BazaarObjectStore(BaseObjectStore):
         """
         blob = Blob()
         chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
-        blob.data = "".join(chunks)
+        blob.chunked = chunks
         if blob.id != expected_sha:
             # Perhaps it's a symlink ?
             inv = self.parent_invs_cache.get_inventory(revision)
