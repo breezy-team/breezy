@@ -22,6 +22,9 @@ Bug Fixes
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
 
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
 
 bzr 2.0.5
 #########
