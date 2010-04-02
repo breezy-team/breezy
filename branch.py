@@ -75,7 +75,7 @@ def branch_name_to_ref(name, default=None):
     :return: ref string
     """
     if name is None:
-        return None
+        return default
     if name == "HEAD":
         return "HEAD"
     if not name.startswith("refs/"):

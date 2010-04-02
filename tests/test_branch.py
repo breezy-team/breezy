@@ -258,3 +258,11 @@ class BranchNameRefConversionTests(tests.TestCase):
     def test_branch(self):
         self.assertEquals("frost", branch.ref_to_branch_name("refs/heads/frost"))
         self.assertEquals("refs/heads/frost", branch.branch_name_to_ref("frost"))
+
+    def test_default(self):
+        self.assertEquals("mydefault",
+            branch.branch_name_to_ref(None, "mydefault"))
+        self.assertEquals(None,
+            branch.branch_name_to_ref(None))
+
+
