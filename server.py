@@ -57,7 +57,7 @@ class BzrBackend(Backend):
         self.mapping = default_mapping
 
     def open_repository(self, path):
-        # FIXME: Sanitize path properly
+        # FIXME: More secure path sanitization
         return BzrBackendRepo(self.transport.clone(path.lstrip("/")), self.mapping)
 
 
@@ -74,14 +74,12 @@ class BzrBackendRepo(BackendRepo):
         """Return a dict of all tags and branches in repository (and shas) """
         ret = {}
         branch = None
-        for branch in self.repo.find_branches(using=True):
+        for branch in self.repo_dir.list_branches():
             #FIXME: Look for 'master' or 'trunk' in here, and set HEAD
             # accordingly...
             #FIXME: Need to get branch path relative to its repository and
             # use this instead of nick
-            ret["refs/heads/"+branch.nick] = self.object_store._lookup_revision_sha1(branch.last_revision())
-        if 'HEAD' not in ret and branch:
-            ret['HEAD'] = self.object_store._lookup_revision_sha1(branch.last_revision())
+            ret["refs/heads/"+branch.name] = self.object_store._lookup_revision_sha1(branch.last_revision())
         return ret
 
     def apply_pack(self, refs, read):
@@ -144,7 +142,7 @@ class BzrBackendRepo(BackendRepo):
                 rev_id = self.mapping.revision_id_foreign_to_bzr(sha)
                 target_branch.generate_revision_history(rev_id)
 
-    def fetch_objects(self, determine_wants, graph_walker, progress):
+    def fetch_objects(self, determine_wants, graph_walker, progress, get_tagged=None):
         """ yield git objects to send to client """
         # If this is a Git repository, just use the existing fetch_objects implementation.
         if getattr(self.repo, "fetch_objects", None) is not None:
