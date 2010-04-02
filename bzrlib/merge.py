@@ -903,7 +903,7 @@ class Merge3Merger(object):
             return
         if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
             # the other tree's root is a non-root in the current tree (as when
-            # a previsously unrelated branch is merged into another)
+            # a previously unrelated branch is merged into another)
             return
         try:
             self.tt.final_kind(other_root)
