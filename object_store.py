@@ -55,40 +55,40 @@ def get_object_store(repo, mapping=None):
     return BazaarObjectStore(repo, mapping)
 
 
-MAX_INV_CACHE_SIZE = 50 * 1024 * 1024
+MAX_TREE_CACHE_SIZE = 50 * 1024 * 1024
 
 
-class LRUInventoryCache(object):
+class LRUTreeCache(object):
 
     def __init__(self, repository):
-        def approx_inv_size(inv):
+        def approx_tree_size(tree):
             # Very rough estimate, 1k per inventory entry
-            return len(inv) * 1024
+            return len(tree.inventory) * 1024
         self.repository = repository
-        self._cache = lru_cache.LRUSizeCache(max_size=MAX_INV_CACHE_SIZE,
-            after_cleanup_size=None, compute_size=approx_inv_size)
+        self._cache = lru_cache.LRUSizeCache(max_size=MAX_TREE_CACHE_SIZE,
+            after_cleanup_size=None, compute_size=approx_tree_size)
 
-    def get_inventory(self, revid):            
+    def revision_tree(self, revid):            
         try:
             return self._cache[revid] 
         except KeyError:
-            inv = self.repository.get_inventory(revid)
-            self._cache.add(revid, inv)
-            return inv
+            tree = self.repository.revision_tree(revid)
+            self.add(tree)
+            return tree
 
-    def iter_inventories(self, revids):
-        invs = dict([(k, self._cache.get(k)) for k in revids]) 
-        for inv in self.repository.iter_inventories(
-                [r for r, v in invs.iteritems() if v is None]):
-            invs[inv.revision_id] = inv
-            self._cache.add(inv.revision_id, inv)
-        return (invs[r] for r in revids)
+    def iter_revision_trees(self, revids):
+        trees = dict([(k, self._cache.get(k)) for k in revids]) 
+        for tree in self.repository.revision_trees(
+                [r for r, v in trees.iteritems() if v is None]):
+            trees[tree.get_revision_id()] = tree
+            self.add(tree)
+        return (trees[r] for r in revids)
 
-    def get_inventories(self, revids):
-        return list(self.iter_inventories(revids))
+    def revision_trees(self, revids):
+        return list(self.iter_revision_trees(revids))
 
-    def add(self, revid, inv):
-        self._cache.add(revid, inv)
+    def add(self, tree):
+        self._cache.add(tree.get_revision_id(), tree)
 
 
 def _check_expected_sha(expected_sha, object):
@@ -112,17 +112,17 @@ def _check_expected_sha(expected_sha, object):
             expected_sha))
 
 
-def _inventory_to_objects(inv, parent_invs, idmap,
+def _tree_to_objects(tree, parent_trees, idmap,
         unusual_modes, iter_files_bytes, has_ghost_parents):
     """Iterate over the objects that were introduced in a revision.
 
-    :param inv: Inventory to process
-    :param parent_invs: parent inventory SHA maps
     :param idmap: id map
     :param unusual_modes: Unusual file modes
     :param iter_files_bytes: Repository.iter_files_bytes-like callback
     :return: Yields (path, object, ie) entries
     """
+    inv = tree.inventory
+    parent_invs = [t.inventory for t in parent_trees]
     new_trees = {}
     new_blobs = []
     shamap = {}
@@ -235,7 +235,7 @@ class BazaarObjectStore(BaseObjectStore):
         self.start_write_group = self._cache.idmap.start_write_group
         self.abort_write_group = self._cache.idmap.abort_write_group
         self.commit_write_group = self._cache.idmap.commit_write_group
-        self.parent_invs_cache = LRUInventoryCache(self.repository)
+        self.tree_cache = LRUTreeCache(self.repository)
 
     def _update_sha_map(self, stop_revision=None):
         graph = self.repository.get_graph()
@@ -285,14 +285,14 @@ class BazaarObjectStore(BaseObjectStore):
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup)
 
-    def _revision_to_objects(self, rev, inv):
+    def _revision_to_objects(self, rev, tree):
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
         has_ghost_parents = (len(rev.parent_ids) < len(present_parents))
-        parent_invs = self.parent_invs_cache.get_inventories(
+        parent_trees = self.tree_cache.revision_trees(
             [p for p in rev.parent_ids if p in present_parents])
         tree_sha = None
-        for path, obj, ie in _inventory_to_objects(inv, parent_invs,
+        for path, obj, ie in _tree_to_objects(tree, parent_trees,
                 self._cache.idmap, unusual_modes,
                 self.repository.iter_files_bytes, has_ghost_parents):
             yield path, obj, ie
@@ -318,9 +318,9 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _update_sha_map_revision(self, revid):
         rev = self.repository.get_revision(revid)
-        inv = self.parent_invs_cache.get_inventory(rev.revision_id)
+        tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
-        for path, obj, ie in self._revision_to_objects(rev, inv):
+        for path, obj, ie in self._revision_to_objects(rev, tree):
             updater.add_object(obj, ie)
         commit_obj = updater.finish()
         return commit_obj.id
@@ -336,8 +336,8 @@ class BazaarObjectStore(BaseObjectStore):
         blob.chunked = chunks
         if blob.id != expected_sha:
             # Perhaps it's a symlink ?
-            inv = self.parent_invs_cache.get_inventory(revision)
-            entry = inv[fileid]
+            tree = self.tree_cache.revision_tree(revision)
+            entry = tree.inventory[fileid]
             assert entry.kind == 'symlink'
             blob = symlink_to_blob(entry)
         _check_expected_sha(expected_sha, blob)
@@ -447,15 +447,15 @@ class BazaarObjectStore(BaseObjectStore):
         elif type == "tree":
             (fileid, revid) = type_data
             try:
-                inv = self.parent_invs_cache.get_inventory(revid)
+                tree = self.tree_cache.revision_tree(revid)
                 rev = self.repository.get_revision(revid)
             except errors.NoSuchRevision:
                 trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
                 raise KeyError(sha)
             unusual_modes = extract_unusual_modes(rev)
             try:
-                return self._get_tree(fileid, revid, inv, unusual_modes,
-                    expected_sha=sha)
+                return self._get_tree(fileid, revid, tree.inventory,
+                    unusual_modes, expected_sha=sha)
             except errors.NoSuchRevision:
                 raise KeyError(sha)
         else:
@@ -501,8 +501,8 @@ class BazaarObjectStore(BaseObjectStore):
             for i, revid in enumerate(todo):
                 pb.update("generating git objects", i, len(todo))
                 rev = self.repository.get_revision(revid)
-                inv = self.parent_invs_cache.get_inventory(revid)
-                for path, obj, ie in self._revision_to_objects(rev, inv):
+                tree = self.tree_cache.revision_tree(revid)
+                for path, obj, ie in self._revision_to_objects(rev, tree):
                     ret.append((obj, path))
         finally:
             pb.finished()

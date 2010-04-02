@@ -53,6 +53,9 @@ from bzrlib.repository import (
 from bzrlib.revision import (
     NULL_REVISION,
     )
+from bzrlib.revisiontree import (
+    RevisionTree,
+    )
 from bzrlib.tsort import (
     topo_sort,
     )
@@ -70,7 +73,7 @@ from bzrlib.plugins.git.mapping import (
     )
 from bzrlib.plugins.git.object_store import (
     BazaarObjectStore,
-    LRUInventoryCache,
+    LRUTreeCache,
     )
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
@@ -272,27 +275,27 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
 
 
 def import_git_commit(repo, mapping, head, lookup_object,
-                      target_git_object_retriever, parent_invs_cache):
+                      target_git_object_retriever, trees_cache):
     o = lookup_object(head)
     rev = mapping.import_commit(o)
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
-    parent_invs = parent_invs_cache.get_inventories(rev.parent_ids)
-    if parent_invs == []:
+    parent_trees = trees_cache.revision_trees(rev.parent_ids)
+    if parent_trees == []:
         base_inv = Inventory(root_id=None)
         base_tree = None
         base_mode = None
     else:
-        base_inv = parent_invs[0]
+        base_inv = parent_trees[0].inventory
         base_tree = lookup_object(o.parents[0]).tree
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
     store_updater.add_object(o, None)
     inv_delta, unusual_modes = import_git_tree(repo.texts,
             mapping, "", u"", (base_tree, o.tree), base_inv, 
-            None, rev.revision_id, parent_invs, lookup_object,
-            (base_mode, stat.S_IFDIR), store_updater,
+            None, rev.revision_id, [p.inventory for p in parent_trees],
+            lookup_object, (base_mode, stat.S_IFDIR), store_updater,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
     store_updater.finish()
     if unusual_modes != {}:
@@ -307,7 +310,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
               inv_delta, rev.revision_id, rev.parent_ids,
               base_inv)
-    parent_invs_cache.add(rev.revision_id, inv)
+    trees_cache.add(RevisionTree(repo, inv, rev.revision_id))
     repo.add_revision(rev.revision_id, rev)
     if "verify" in debug.debug_flags:
         new_unusual_modes = mapping.export_unusual_file_modes(rev)
@@ -341,7 +344,7 @@ def import_git_objects(repo, mapping, object_iter,
     graph = []
     checked = set()
     heads = list(set(heads))
-    parent_invs_cache = LRUInventoryCache(repo)
+    trees_cache = LRUTreeCache(repo)
     # Find and convert commit objects
     while heads:
         if pb is not None:
@@ -386,7 +389,7 @@ def import_git_objects(repo, mapping, object_iter,
                                   len(revision_ids))
                     import_git_commit(repo, mapping, head, lookup_object,
                                       target_git_object_retriever,
-                                      parent_invs_cache)
+                                      trees_cache)
                     last_imported = head
             except:
                 repo.abort_write_group()

@@ -68,10 +68,10 @@ class MissingObjectsIterator(object):
         """Import the gist of a revision into this Git repository.
 
         """
-        inv = self._object_store.parent_invs_cache.get_inventory(revid)
+        tree = self._object_store.tree_cache.revision_tree(revid)
         rev = self.source.get_revision(revid)
         commit = None
-        for path, obj, ie in self._object_store._revision_to_objects(rev, inv):
+        for path, obj, ie in self._object_store._revision_to_objects(rev, tree):
             if obj.type_name == "commit":
                 commit = obj
             self._pending.append((obj, path))
