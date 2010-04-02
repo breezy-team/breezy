@@ -16,7 +16,15 @@
 
 """Tests for GitShaMap."""
 
+from dulwich.objects import (
+    Commit,
+    )
+
 import os
+
+from bzrlib.revision import (
+    Revision,
+    )
 
 from bzrlib.tests import (
     TestCase,
@@ -28,23 +36,26 @@ from bzrlib.transport import (
     )
 
 from bzrlib.plugins.git.shamap import (
-    DictGitShaMap,
-    IndexGitShaMap,
-    SqliteGitShaMap,
-    TdbGitShaMap,
+    DictBzrGitCache,
+    IndexBzrGitCache,
+    SqliteBzrGitCache,
+    TdbBzrGitCache,
     )
 
 class TestGitShaMap:
 
     def test_commit(self):
         self.map.start_write_group()
-        self.map.add_entries("myrevid", [], 
-            "5686645d49063c73d35436192dfc9a160c672301",
-            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [])
+        updater = self.cache.get_updater(Revision("myrevid"))
+        c = Commit()
+        c.committer = "Jelmer <jelmer@samba.org>"
+        c.message = "Teh foo bar"
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        updater.add_object(c, None)
         self.map.commit_write_group()
         self.assertEquals(
             ("commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba")),
-            self.map.lookup_git_sha("5686645d49063c73d35436192dfc9a160c672301"))
+            self.map.lookup_git_sha(c.id))
 
     def test_lookup_notfound(self):
         self.assertRaises(KeyError,
@@ -53,6 +64,8 @@ class TestGitShaMap:
     def test_blob(self):
         thesha = "9686645d49063c73d35436192dfc9a160c672301"
         self.map.start_write_group()
+        updater = self.cache.get_updater(Revision("myrevid"))
+        updater.add_object(Commit(), None)
         self.map.add_entries("myrevid", [], 
             "5686645d49063c73d35436192dfc9a160c672301",
             "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [
@@ -99,14 +112,16 @@ class DictGitShaMapTests(TestCase,TestGitShaMap):
 
     def setUp(self):
         TestCase.setUp(self)
-        self.map = DictGitShaMap()
+        self.cache = DictBzrGitCache()
+        self.map = self.cache.idmap
 
 
 class SqliteGitShaMapTests(TestCase,TestGitShaMap):
 
     def setUp(self):
         TestCase.setUp(self)
-        self.map = SqliteGitShaMap()
+        self.cache = SqliteBzrGitCache(os.path.join(self.test_dir, 'foo.db'))
+        self.map = self.cache.idmap
 
 
 class TdbGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
@@ -114,13 +129,15 @@ class TdbGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
     def setUp(self):
         TestCaseInTempDir.setUp(self)
         try:
-            self.map = TdbGitShaMap(os.path.join(self.test_dir, 'foo.tdb'))
+            self.cache = TdbBzrGitCache(os.path.join(self.test_dir, 'foo.tdb'))
         except ImportError:
             raise UnavailableFeature("Missing tdb")
+        self.map = self.cache.idmap
 
 
 class IndexGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        self.map = IndexGitShaMap(get_transport(self.test_dir))
+        self.cache = IndexBzrGitCache(get_transport(self.test_dir))
+        self.map = self.cache.idmap

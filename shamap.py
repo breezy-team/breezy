@@ -95,19 +95,6 @@ def mapdbs():
 class GitShaMap(object):
     """Git<->Bzr revision id mapping database."""
 
-    def _add_entry(self, sha, type, type_data):
-        """Add a new entry to the database.
-        """
-        raise NotImplementedError(self._add_entry)
-
-    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha, 
-                    entries):
-        """Add multiple new entries to the database.
-        """
-        for (fileid, kind, hexsha, revision) in entries:
-            self._add_entry(hexsha, kind, (fileid, revision))
-        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
-
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
         :param sha: Git object sha
@@ -161,10 +148,6 @@ class ContentCache(object):
         """Retrieve an item, by SHA."""
         raise NotImplementedError(self.__getitem__)
 
-    def add(self, obj):
-        """Add an object to the cache."""
-        raise NotImplementedError(self.add)
-
 
 class BzrGitCacheFormat(object):
 
@@ -199,9 +182,32 @@ class BzrGitCacheFormat(object):
 
 class CacheUpdater(object):
 
-    def __init__(self, cache, rev, content_cache_types):
+    def add_object(self, obj, ie):
+        raise NotImplementedError(self.add_object)
+
+    def finish(self):
+        raise NotImplementedError(self.finish)
+
+
+class BzrGitCache(object):
+    """Caching backend."""
+
+    def __init__(self, idmap, content_cache, cache_updater_klass):
+        self.idmap = idmap
+        self.content_cache = content_cache
+        self._cache_updater_klass = cache_updater_klass
+
+    def get_updater(self, rev):
+        return self._cache_updater_klass(self, rev)
+
+
+DictBzrGitCache = lambda: BzrGitCache(DictGitShaMap(), None, DictCacheUpdater)
+
+
+class DictCacheUpdater(CacheUpdater):
+
+    def __init__(self, cache, rev):
         self.cache = cache
-        self.content_cache_types = content_cache_types
         self.revid = rev.revision_id
         self.parent_revids = rev.parent_ids
         self._commit = None
@@ -211,35 +217,22 @@ class CacheUpdater(object):
         if obj.type_name == "commit":
             self._commit = obj
             assert ie is None
+            type_data = (self.revid, self._commit.tree)
         elif obj.type_name in ("blob", "tree"):
             if obj.type_name == "blob":
                 revision = ie.revision
             else:
                 revision = self.revid
-            self._entries.append((ie.file_id, obj.type_name, obj.id, revision))
+            type_data = (ie.file_id, revision)
+            self._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
         else:
             raise AssertionError
-        if (self.cache.content_cache and 
-            obj.type_name in self.content_cache_types):
-            self.cache.content_cache.add(obj)
+        self._by_sha[obj.id] = (obj.type_name, type_data)
 
     def finish(self):
         if self._commit is None:
             raise AssertionError("No commit object added")
-        self.cache.idmap.add_entries(self.revid, self.parent_revids,
-            self._commit.id, self._commit.tree, self._entries)
         return self._commit
-
-
-class BzrGitCache(object):
-    """Caching backend."""
-
-    def __init__(self, idmap, content_cache):
-        self.idmap = idmap
-        self.content_cache = content_cache
-
-    def get_updater(self, rev, content_cache_types):
-        return CacheUpdater(self, rev, content_cache_types)
 
 
 class DictGitShaMap(GitShaMap):
@@ -247,11 +240,6 @@ class DictGitShaMap(GitShaMap):
     def __init__(self):
         self._by_sha = {}
         self._by_fileid = {}
-
-    def _add_entry(self, sha, type, type_data):
-        self._by_sha[sha] = (type, type_data)
-        if type in ("blob", "tree"):
-            self._by_fileid.setdefault(type_data[1], {})[type_data[0]] = sha
 
     def lookup_blob_id(self, fileid, revision):
         return self._by_fileid[revision][fileid]
@@ -271,6 +259,40 @@ class DictGitShaMap(GitShaMap):
         return self._by_sha.iterkeys()
 
 
+class SqliteCacheUpdater(CacheUpdater):
+
+    def __init__(self, cache, rev):
+        self.cache = cache
+        self.revid = rev.revision_id
+        self._commit = None
+        self._trees = []
+        self._blobs = []
+
+    def add_object(self, obj, ie):
+        if obj.type_name == "commit":
+            self._commit = obj
+            assert ie is None
+        elif obj.type_name == "tree":
+            self._trees.append((obj.id, ie.file_id, self.revid))
+        elif obj.type_name == "blob":
+            self._blobs.append((obj.id, ie.file_id, ie.revision))
+        else:
+            raise AssertionError
+
+    def finish(self):
+        if self._commit is None:
+            raise AssertionError("No commit object added")
+        if self._trees:
+            self.db.executemany("replace into trees (sha1, fileid, revid) values (?, ?, ?)", self._trees)
+        if self._blobs:
+            self.db.executemany("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", self._blobs)
+        self.db.execute("replace into commits (sha1, revid, tree_sha) values (?, ?, ?)", (self._commit.id, self.revid, self._commit.tree))
+        return self._commit
+
+
+SqliteBzrGitCache = lambda p: BzrGitCache(SqliteGitShaMap(p), None, SqliteCacheUpdater)
+
+
 class SqliteGitCacheFormat(BzrGitCacheFormat):
 
     def get_format_string(self):
@@ -281,9 +303,7 @@ class SqliteGitCacheFormat(BzrGitCacheFormat):
             basepath = transport.local_abspath(".")
         except bzrlib.errors.NotLocalUrl:
             basepath = get_cache_dir()
-        return BzrGitCache(
-            SqliteGitShaMap(os.path.join(get_cache_dir(), "idmap.db")),
-            None)
+        return SqliteBzrGitCache(os.path.join(basepath, "idmap.db"))
 
 
 class SqliteGitShaMap(GitShaMap):
@@ -333,37 +353,6 @@ class SqliteGitShaMap(GitShaMap):
     def commit_write_group(self):
         self.db.commit()
 
-    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
-                    entries):
-        trees = []
-        blobs = []
-        for (fileid, kind, hexsha, revision) in entries:
-            if kind == "tree":
-                trees.append((hexsha, fileid, revid))
-            elif kind == "blob":
-                blobs.append((hexsha, fileid, revision))
-            else:
-                raise AssertionError
-        if trees:
-            self.db.executemany("replace into trees (sha1, fileid, revid) values (?, ?, ?)", trees)
-        if blobs:
-            self.db.executemany("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", blobs)
-        self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
-
-    def _add_entry(self, sha, type, type_data):
-        """Add a new entry to the database.
-        """
-        assert isinstance(type_data, tuple)
-        if sha is None:
-            return
-        assert isinstance(sha, str), "type was %r" % sha
-        if type == "commit":
-            self.db.execute("replace into commits (sha1, revid, tree_sha) values (?, ?, ?)", (sha, type_data[0], type_data[1]))
-        elif type in ("blob", "tree"):
-            self.db.execute("replace into %ss (sha1, fileid, revid) values (?, ?, ?)" % type, (sha, type_data[0], type_data[1]))
-        else:
-            raise AssertionError("Unknown type %s" % type)
-
     def lookup_blob_id(self, fileid, revision):
         row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revision)).fetchone()
         if row is not None:
@@ -405,9 +394,40 @@ class SqliteGitShaMap(GitShaMap):
                 yield sha
 
 
-TDB_MAP_VERSION = 3
-TDB_HASH_SIZE = 50000
+class TdbCacheUpdater(CacheUpdater):
 
+    def __init__(self, cache, rev):
+        self.cache = cache
+        self.db = cache.idmap.db
+        self.revid = rev.revision_id
+        self.parent_revids = rev.parent_ids
+        self._commit = None
+        self._entries = []
+
+    def add_object(self, obj, ie):
+        sha = obj.sha().digest()
+        if obj.type_name == "commit":
+            self.db["commit\0" + self.revid] = "\0".join((obj.id, obj.tree))
+            type_data = (self.revid, obj.tree)
+            self._commit = obj
+            assert ie is None
+        elif obj.type_name == "blob":
+            self.db["\0".join(("blob", ie.file_id, ie.revision))] = sha
+            type_data = (ie.file_id, ie.revision)
+        elif obj.type_name == "tree":
+            type_data = (ie.file_id, self.revid)
+        else:
+            raise AssertionError
+        self.db["git\0" + sha] = "\0".join((obj.type_name,
+            type_data[0], type_data[1]))
+
+    def finish(self):
+        if self._commit is None:
+            raise AssertionError("No commit object added")
+        return self._commit
+
+
+TdbBzrGitCache = lambda p: BzrGitCache(TdbGitShaMap(p), None, TdbCacheUpdater)
 
 class TdbGitCacheFormat(BzrGitCacheFormat):
 
@@ -420,9 +440,7 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
         except bzrlib.errors.NotLocalUrl:
             basepath = get_cache_dir()
         try:
-            return BzrGitCache(
-                    TdbGitShaMap(os.path.join(get_cache_dir(), "idmap.tdb")),
-                    None)
+            return TdbBzrGitCache(os.path.join(base_path, "idmap.tdb"))
         except ImportError:
             raise ImportError(
                 "Unable to open existing bzr-git cache because 'tdb' is not "
@@ -440,6 +458,9 @@ class TdbGitShaMap(GitShaMap):
     "blob fileid revid" -> "<sha1>"
     """
 
+    TDB_MAP_VERSION = 3
+    TDB_HASH_SIZE = 50000
+
     def __init__(self, path=None):
         import tdb
         self.path = path
@@ -447,17 +468,17 @@ class TdbGitShaMap(GitShaMap):
             self.db = {}
         else:
             if not mapdbs().has_key(path):
-                mapdbs()[path] = tdb.Tdb(path, TDB_HASH_SIZE, tdb.DEFAULT,
+                mapdbs()[path] = tdb.Tdb(path, self.TDB_HASH_SIZE, tdb.DEFAULT,
                                           os.O_RDWR|os.O_CREAT)
             self.db = mapdbs()[path]
         try:
             if int(self.db["version"]) not in (2, 3):
                 trace.warning("SHA Map is incompatible (%s -> %d), rebuilding database.",
-                              self.db["version"], TDB_MAP_VERSION)
+                              self.db["version"], self.TDB_MAP_VERSION)
                 self.db.clear()
         except KeyError:
             pass
-        self.db["version"] = str(TDB_MAP_VERSION)
+        self.db["version"] = str(self.TDB_MAP_VERSION)
 
     def start_write_group(self):
         """Start writing changes."""
@@ -476,19 +497,6 @@ class TdbGitShaMap(GitShaMap):
 
     def lookup_commit(self, revid):
         return sha_to_hex(self.db["commit\0" + revid][:20])
-
-    def _add_entry(self, hexsha, type, type_data):
-        """Add a new entry to the database.
-        """
-        if hexsha is None:
-            sha = ""
-        else:
-            sha = hex_to_sha(hexsha)
-            self.db["git\0" + sha] = "\0".join((type, type_data[0], type_data[1]))
-        if type == "commit":
-            self.db["commit\0" + type_data[0]] = "\0".join((sha, type_data[1]))
-        elif type == "blob":
-            self.db["\0".join(("blob", type_data[0], type_data[1]))] = sha
 
     def lookup_blob_id(self, fileid, revision):
         return sha_to_hex(self.db["\0".join(("blob", fileid, revision))])
@@ -543,6 +551,46 @@ class VersionedFilesContentCache(ContentCache):
         return ShaFile._parse_legacy_object(entry.get_bytes_as('fulltext'))
 
 
+class IndexCacheUpdater(CacheUpdater):
+
+    def __init__(self, cache, rev):
+        self.cache = cache
+        self.db = cache.idmap.db
+        self.revid = rev.revision_id
+        self.parent_revids = rev.parent_ids
+        self._commit = None
+        self._entries = []
+
+    def add_object(self, obj, ie):
+        if obj.type_name == "commit":
+            self._commit = obj
+            assert ie is None
+            self._add_git_sha(obj.id, "commit", (self.revid, obj.tree))
+            self._add_node(("commit", self.revid, "X"),
+                " ".join((obj.id, obj.tree)))
+        elif obj.type_name == "blob":
+            self._add_git_sha(obj.id, "blob", (ie.file_id, ie.revision))
+            self._add_node(("blob", ie.file_id, ie.revision), obj.id)
+        elif obj.type_name == "tree":
+            self._add_git_sha(obj.id, "tree", (ie.file_id, self.revid))
+            self.cache.content_cache.add(obj)
+        else:
+            raise AssertionError
+
+    def finish(self):
+        return self._commit
+
+
+class IndexBzrGitCache(BzrGitCache):
+
+    def __init__(self, transport=None):
+        mapper = versionedfile.ConstantMapper("trees")
+        trees_store = knit.make_file_factory(True, mapper)(transport)
+        super(IndexBzrGitCache, self).__init__(
+                IndexGitShaMap(transport.clone('index')),
+                VersionedFilesContentCache(trees_store))
+
+
 class IndexGitCacheFormat(BzrGitCacheFormat):
 
     def get_format_string(self):
@@ -553,10 +601,7 @@ class IndexGitCacheFormat(BzrGitCacheFormat):
         transport.mkdir('index')
 
     def open(self, transport):
-        mapper = versionedfile.ConstantMapper("trees")
-        trees_store = knit.make_file_factory(True, mapper)(transport)
-        return BzrGitCache(IndexGitShaMap(transport.clone('index')),
-                VersionedFilesContentCache(trees_store))
+        return IndexBzrGitCache(transport)
 
 
 class IndexGitShaMap(GitShaMap):
@@ -679,21 +724,6 @@ class IndexGitShaMap(GitShaMap):
             # This object is not represented in Git - perhaps an empty
             # directory?
             self._name.update(type + " ".join(type_data))
-
-    def add_entries(self, revid, parent_revids, commit_sha, root_tree_sha,
-                    entries):
-        self._add_git_sha(commit_sha, "commit", (revid, root_tree_sha))
-        self._add_node(("commit", revid, "X"), " ".join((commit_sha, root_tree_sha)))
-        for (fileid, kind, hexsha, revision) in entries:
-            if kind is None:
-                pass # Removal
-            elif kind == "blob":
-                self._add_git_sha(hexsha, "blob", (fileid, revision))
-                self._add_node(("blob", fileid, revision), hexsha)
-            elif kind == "tree":
-                self._add_git_sha(hexsha, "tree", (fileid, revid))
-            else:
-                raise AssertionError
 
     def lookup_blob_id(self, fileid, revision):
         return self._get_entry(("blob", fileid, revision))
