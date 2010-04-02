@@ -18,7 +18,6 @@
 
 from dulwich.objects import (
     Blob,
-    Tree,
     sha_to_hex,
     )
 from dulwich.object_store import (
@@ -112,13 +111,11 @@ def _check_expected_sha(expected_sha, object):
             expected_sha))
 
 
-def _tree_to_objects(tree, parent_trees, idmap,
-        unusual_modes, iter_files_bytes, has_ghost_parents):
+def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
     """Iterate over the objects that were introduced in a revision.
 
     :param idmap: id map
     :param unusual_modes: Unusual file modes
-    :param iter_files_bytes: Repository.iter_files_bytes-like callback
     :return: Yields (path, object, ie) entries
     """
     new_trees = {}
@@ -168,30 +165,14 @@ def _tree_to_objects(tree, parent_trees, idmap,
             shamap[file_id] = blob.id
             new_trees[urlutils.dirname(path[1])] = parent[1]
         elif kind[1] == "directory":
-            ie = tree.inventory[file_id]
-            for ptree in other_parent_trees:
-                try:
-                    pie = ptree.inventory[ie.file_id]
-                except errors.NoSuchId:
-                    pass
-                else:
-                    if (pie.kind == kind[1] and 
-                        pie.children.keys() == ie.children.keys()):
-                        try:
-                            shamap[ie.file_id] = idmap.lookup_tree_id(
-                                ie.file_id, tree.get_revision_id())
-                        except (NotImplementedError, KeyError):
-                            pass
-                        else:
-                            break
-            else:
-                new_trees[path[1]] = file_id
+            pass
         elif kind[1] is not None:
             raise AssertionError(kind[1])
+        if path[0] is not None:
+            new_trees[urlutils.dirname(path[0])] = parent[0]
     
-    for (path, ie), chunks in iter_files_bytes(
-        [(ie.file_id, ie.revision, (path, ie))
-            for (path, ie) in new_blobs]):
+    for (path, ie), chunks in tree.iter_files_bytes(
+        [(ie.file_id, (path, ie)) for (path, ie) in new_blobs]):
         obj = Blob()
         obj.chunked = chunks
         yield path, obj, ie
@@ -205,7 +186,11 @@ def _tree_to_objects(tree, parent_trees, idmap,
         items = new_trees.items()
         new_trees = {}
         for path, file_id in items:
-            parent_id = tree.inventory[file_id].parent_id
+            try:
+                parent_id = tree.inventory[file_id].parent_id
+            except errors.NoSuchId:
+                # Directory was removed recursively perhaps ?
+                continue
             if parent_id is not None:
                 parent_path = urlutils.dirname(path)
                 new_trees[parent_path] = parent_id
@@ -303,21 +288,18 @@ class BazaarObjectStore(BaseObjectStore):
     def _revision_to_objects(self, rev, tree):
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
-        has_ghost_parents = (len(rev.parent_ids) < len(present_parents))
         parent_trees = self.tree_cache.revision_trees(
             [p for p in rev.parent_ids if p in present_parents])
         tree_sha = None
         for path, obj, ie in _tree_to_objects(tree, parent_trees,
-                self._cache.idmap, unusual_modes,
-                self.repository.iter_files_bytes, has_ghost_parents):
+                self._cache.idmap, unusual_modes):
             yield path, obj, ie
             if path == "":
                 tree_sha = obj.id
         if tree_sha is None:
-            if not rev.parent_ids:
-                tree_sha = Tree().id
-            else:
-                raise AssertionError
+            # Pointless commit - get the tree sha elsewhere
+            base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
+            tree_sha = self[base_sha1].tree
         commit_obj = self._reconstruct_commit(rev, tree_sha)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
@@ -346,7 +328,8 @@ class BazaarObjectStore(BaseObjectStore):
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        stream = self.repository.iter_files_bytes(((key[0], key[1], key) for key in keys))
+        stream = self.repository.iter_files_bytes(
+            ((key[0], key[1], key) for key in keys))
         for (fileid, revision, expected_sha), chunks in stream:
             blob = Blob()
             blob.chunked = chunks
