@@ -89,7 +89,7 @@ class MailClient(object):
 
 
 class Editor(MailClient):
-    """DIY mail client that uses commit message editor"""
+    __doc__ = """DIY mail client that uses commit message editor"""
 
     supports_body = True
 
@@ -230,13 +230,13 @@ class BodyExternalMailClient(MailClient):
 
 
 class ExternalMailClient(BodyExternalMailClient):
-    """An external mail client."""
+    __doc__ = """An external mail client."""
 
     supports_body = False
 
 
 class Evolution(BodyExternalMailClient):
-    """Evolution mail client."""
+    __doc__ = """Evolution mail client."""
 
     _client_commands = ['evolution']
 
@@ -258,7 +258,7 @@ mail_client_registry.register('evolution', Evolution,
 
 
 class Mutt(BodyExternalMailClient):
-    """Mutt mail client."""
+    __doc__ = """Mutt mail client."""
 
     _client_commands = ['mutt']
 
@@ -286,7 +286,7 @@ mail_client_registry.register('mutt', Mutt,
 
 
 class Thunderbird(BodyExternalMailClient):
-    """Mozilla Thunderbird (or Icedove)
+    __doc__ = """Mozilla Thunderbird (or Icedove)
 
     Note that Thunderbird 1.5 is buggy and does not support setting
     "to" simultaneously with including a attachment.
@@ -321,7 +321,7 @@ mail_client_registry.register('thunderbird', Thunderbird,
 
 
 class KMail(ExternalMailClient):
-    """KDE mail client."""
+    __doc__ = """KDE mail client."""
 
     _client_commands = ['kmail']
 
@@ -341,7 +341,7 @@ mail_client_registry.register('kmail', KMail,
 
 
 class Claws(ExternalMailClient):
-    """Claws mail client."""
+    __doc__ = """Claws mail client."""
 
     supports_body = True
 
@@ -387,7 +387,7 @@ mail_client_registry.register('claws', Claws,
 
 
 class XDGEmail(BodyExternalMailClient):
-    """xdg-email attempts to invoke the user's preferred mail client"""
+    __doc__ = """xdg-email attempts to invoke the user's preferred mail client"""
 
     _client_commands = ['xdg-email']
 
@@ -409,7 +409,7 @@ mail_client_registry.register('xdg-email', XDGEmail,
 
 
 class EmacsMail(ExternalMailClient):
-    """Call emacsclient to have a mail buffer.
+    __doc__ = """Call emacsclient to have a mail buffer.
 
     This only work for emacs >= 22.1 due to recent -e/--eval support.
 
@@ -519,7 +519,7 @@ mail_client_registry.register('emacsclient', EmacsMail,
 
 
 class MAPIClient(BodyExternalMailClient):
-    """Default Windows mail client launched using MAPI."""
+    __doc__ = """Default Windows mail client launched using MAPI."""
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
                  extension, body=None):
@@ -540,7 +540,7 @@ mail_client_registry.register('mapi', MAPIClient,
 
 
 class MailApp(BodyExternalMailClient):
-    """Use MacOS X's Mail.app for sending email messages.
+    __doc__ = """Use MacOS X's Mail.app for sending email messages.
 
     Although it would be nice to use appscript, it's not installed
     with the shipped Python installations.  We instead build an
@@ -599,7 +599,7 @@ mail_client_registry.register('mail.app', MailApp,
 
 
 class DefaultMail(MailClient):
-    """Default mail handling.  Tries XDGEmail (or MAPIClient on Windows),
+    __doc__ = """Default mail handling.  Tries XDGEmail (or MAPIClient on Windows),
     falls back to Editor"""
 
     supports_body = True

@@ -167,14 +167,14 @@ class TestDecoratorDocs(TestCase):
         """@needs_read_lock exposes underlying name and doc."""
         sam = create_decorator_sample(None)
         self.assertEqual('frob', sam.frob.__name__)
-        self.assertEqual('Frob the sample object', sam.frob.__doc__)
+        self.assertDocstring('Frob the sample object', sam.frob)
 
     def test_write_lock_passthrough(self):
         """@needs_write_lock exposes underlying name and doc."""
         sam = create_decorator_sample(None)
         self.assertEqual('bank', sam.bank.__name__)
-        self.assertEqual('Bank the sample, but using bar and biz.',
-                         sam.bank.__doc__)
+        self.assertDocstring('Bank the sample, but using bar and biz.',
+                             sam.bank)
 
     def test_argument_passthrough(self):
         """Test that arguments get passed around properly."""
@@ -208,8 +208,8 @@ class TestPrettyDecorators(TestCase):
                          my_function.func_code.co_name)
         self.assertEqual('(foo, bar, baz=None, biz=1)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test__fast_needs_read_lock(self):
         """Test the output of _fast_needs_read_lock."""
@@ -222,8 +222,8 @@ class TestPrettyDecorators(TestCase):
         self.assertEqual('read_locked', my_function.func_code.co_name)
         self.assertEqual('(self, *args, **kwargs)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test__pretty_needs_write_lock(self):
         """Test that _pretty_needs_write_lock generates a nice wrapper."""
@@ -237,8 +237,8 @@ class TestPrettyDecorators(TestCase):
                          my_function.func_code.co_name)
         self.assertEqual('(foo, bar, baz=None, biz=1)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test__fast_needs_write_lock(self):
         """Test the output of _fast_needs_write_lock."""
@@ -251,8 +251,8 @@ class TestPrettyDecorators(TestCase):
         self.assertEqual('write_locked', my_function.func_code.co_name)
         self.assertEqual('(self, *args, **kwargs)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test_use_decorators(self):
         """Test that you can switch the type of the decorators."""

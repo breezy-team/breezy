@@ -473,7 +473,7 @@ class TestPluginHelp(tests.TestCaseInTempDir):
         f.write("""\
 from bzrlib import commands
 class cmd_myplug(commands.Command):
-    '''Just a simple test plugin.'''
+    __doc__ = '''Just a simple test plugin.'''
     aliases = ['mplg']
     def run(self):
         print 'Hello from my plugin'
@@ -780,8 +780,8 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         self.overrideAttr(plugin, '_loaded', False)
         plugin.load_plugins(['.'])
         self.assertPluginKnown('test_foo')
-        self.assertEqual("This is the doc for test_foo",
-                         bzrlib.plugins.test_foo.__doc__)
+        self.assertDocstring("This is the doc for test_foo",
+                             bzrlib.plugins.test_foo)
 
     def test_not_loaded(self):
         self.warnings = []
@@ -814,8 +814,8 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
 
     def assertTestFooLoadedFrom(self, dir):
         self.assertPluginKnown('test_foo')
-        self.assertEqual('This is the doc for test_foo',
-                         bzrlib.plugins.test_foo.__doc__)
+        self.assertDocstring('This is the doc for test_foo',
+                             bzrlib.plugins.test_foo)
         self.assertEqual(dir, bzrlib.plugins.test_foo.dir_source)
 
     def test_regular_load(self):

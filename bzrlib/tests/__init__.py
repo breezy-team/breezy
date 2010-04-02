@@ -1312,6 +1312,14 @@ class TestCase(testtools.TestCase):
             f.close()
         self.assertEqualDiff(content, s)
 
+    def assertDocstring(self, expected_docstring, obj):
+        """Fail if obj does not have expected_docstring"""
+        if __doc__ is None:
+            # With -OO the docstring should be None instead
+            self.assertIs(obj.__doc__, None)
+        else:
+            self.assertEqual(expected_docstring, obj.__doc__)
+
     def failUnlessExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
@@ -3795,7 +3803,10 @@ def _test_suite_testmod_names():
 
 
 def _test_suite_modules_to_doctest():
-    """Return the list of modules to doctest."""   
+    """Return the list of modules to doctest."""
+    if __doc__ is None:
+        # GZ 2009-03-31: No docstrings with -OO so there's nothing to doctest
+        return []
     return [
         'bzrlib',
         'bzrlib.branchbuilder',

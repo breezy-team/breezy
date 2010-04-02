@@ -179,6 +179,9 @@ class TestDeprecationWarnings(TestCase):
     def check_deprecated_callable(self, expected_warning, expected_docstring,
                                   expected_name, expected_module,
                                   deprecated_callable):
+        if __doc__ is None:
+            # With -OO the docstring should just be the deprecated version
+            expected_docstring = expected_docstring.split('\n')[-2].lstrip()
         old_warning_method = symbol_versioning.warn
         try:
             symbol_versioning.set_warning_method(self.capture_warning)

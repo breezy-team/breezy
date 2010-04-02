@@ -30,7 +30,7 @@ from bzrlib.option import Option
 
 
 class cmd_sign_my_commits(Command):
-    """Sign all commits by a given committer.
+    __doc__ = """Sign all commits by a given committer.
 
     If location is not specified the local tree is used.
     If committer is not specified the default committer is used.

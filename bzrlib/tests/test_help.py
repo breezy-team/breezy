@@ -41,7 +41,7 @@ class TestCommandHelp(tests.TestCase):
 
     def test_command_help_includes_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
-            """A sample command."""
+            __doc__ = """A sample command."""
             _see_also = ['foo', 'bar']
         cmd = cmd_WithSeeAlso()
         helptext = cmd.get_help_text()
@@ -56,7 +56,7 @@ class TestCommandHelp(tests.TestCase):
     def test_get_help_text(self):
         """Commands have a get_help_text method which returns their help."""
         class cmd_Demo(commands.Command):
-            """A sample command."""
+            __doc__ = """A sample command."""
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
         self.assertStartsWith(helptext,
@@ -67,7 +67,7 @@ class TestCommandHelp(tests.TestCase):
 
     def test_command_with_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
-            """A sample command."""
+            __doc__ = """A sample command."""
             _see_also = ['foo', 'bar']
         cmd = cmd_WithSeeAlso()
         helptext = cmd.get_help_text(['gam'])
@@ -81,7 +81,7 @@ class TestCommandHelp(tests.TestCase):
 
     def test_command_only_additional_see_also(self):
         class cmd_WithSeeAlso(commands.Command):
-            """A sample command."""
+            __doc__ = """A sample command."""
         cmd = cmd_WithSeeAlso()
         helptext = cmd.get_help_text(['gam'])
         self.assertEndsWith(
@@ -95,14 +95,14 @@ class TestCommandHelp(tests.TestCase):
     def test_get_help_topic(self):
         """The help topic for a Command is its name()."""
         class cmd_foo_bar(commands.Command):
-            """A sample command."""
+            __doc__ = """A sample command."""
         cmd = cmd_foo_bar()
         self.assertEqual(cmd.name(), cmd.get_help_topic())
 
     def test_formatted_help_text(self):
         """Help text should be plain text by default."""
         class cmd_Demo(commands.Command):
-            """A sample command.
+            __doc__ = """A sample command.
 
             :Examples:
                 Example 1::
@@ -159,7 +159,7 @@ class TestCommandHelp(tests.TestCase):
     def test_concise_help_text(self):
         """Concise help text excludes the descriptive sections."""
         class cmd_Demo(commands.Command):
-            """A sample command.
+            __doc__ = """A sample command.
  
             Blah blah blah.
 
@@ -206,7 +206,7 @@ class TestCommandHelp(tests.TestCase):
     def test_help_custom_section_ordering(self):
         """Custom descriptive sections should remain in the order given."""
         class cmd_Demo(commands.Command):
-            """A sample command.
+            __doc__ = """A sample command.
  
             Blah blah blah.
 
@@ -252,7 +252,7 @@ class TestCommandHelp(tests.TestCase):
     def test_help_text_custom_usage(self):
         """Help text may contain a custom usage section."""
         class cmd_Demo(commands.Command):
-            """A sample command.
+            __doc__ = """A sample command.
 
             :Usage:
                 cmd Demo [opts] args

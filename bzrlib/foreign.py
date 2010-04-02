@@ -259,7 +259,7 @@ def update_workingtree_fileids(wt, target_tree):
 
 
 class cmd_dpush(Command):
-    """Push into a different VCS without any custom bzr metadata.
+    __doc__ = """Push into a different VCS without any custom bzr metadata.
 
     This will afterwards rebase the local branch on the remote
     branch unless the --no-rebase option is used, in which case 
