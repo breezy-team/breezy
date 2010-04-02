@@ -23,9 +23,15 @@ from dulwich.server import TCPGitServer
 
 from bzrlib.bzrdir import (
     BzrDir,
-    BzrDirFormat,
+    )
+from bzrlib.errors import (
+    NotBranchError,
     )
 
+from bzrlib.plugins.git.branch import (
+    branch_name_to_ref,
+    ref_to_branch_name,
+    )
 from bzrlib.plugins.git.fetch import (
     import_git_objects,
     )
@@ -58,7 +64,8 @@ class BzrBackend(Backend):
 
     def open_repository(self, path):
         # FIXME: More secure path sanitization
-        return BzrBackendRepo(self.transport.clone(path.lstrip("/")), self.mapping)
+        return BzrBackendRepo(self.transport.clone(path.lstrip("/")),
+            self.mapping)
 
 
 class BzrBackendRepo(BackendRepo):
@@ -73,13 +80,17 @@ class BzrBackendRepo(BackendRepo):
     def get_refs(self):
         """Return a dict of all tags and branches in repository (and shas) """
         ret = {}
-        branch = None
-        for branch in self.repo_dir.list_branches():
-            #FIXME: Look for 'master' or 'trunk' in here, and set HEAD
-            # accordingly...
-            #FIXME: Need to get branch path relative to its repository and
-            # use this instead of nick
-            ret["refs/heads/"+branch.name] = self.object_store._lookup_revision_sha1(branch.last_revision())
+        self.repo.lock_read()
+        try:
+            for branch in self.repo_dir.list_branches():
+                ref = branch_name_to_ref(branch.name, "HEAD")
+                ret[ref] = self.object_store._lookup_revision_sha1(
+                    branch.last_revision())
+                assert type(ref) == str and type(ret[ref]) == str, \
+                        "(%s) %r -> %r" % (branch.name, ref, ret[ref])
+
+        finally:
+            self.repo.unlock()
         return ret
 
     def apply_pack(self, refs, read):
@@ -124,23 +135,18 @@ class BzrBackendRepo(BackendRepo):
             self.repo.unlock()
 
         for oldsha, sha, ref in refs:
-            if ref[:11] == 'refs/heads/':
-                branch_nick = ref[11:]
-                transport = self.repo.root_transport.clone(branch_nick)
+            try:
+                branch_name = ref_to_branch_name(ref)
+            except ValueError:
+                # FIXME: Cope with tags!
+                continue
+            try:
+                target_branch = self.repo_dir.open_branch(branch_name)
+            except NotBranchError:
+                target_branch = self.repo.create_branch(branch_name)
 
-                try:
-                    target_dir = BzrDir.open_from_transport(transport)
-                except:
-                    format = BzrDirFormat.get_default_format()
-                    format.initialize_on_transport(transport)
-
-                try:
-                    target_branch = target_dir.open_branch()
-                except:
-                    target_branch = target_dir.create_branch()
-
-                rev_id = self.mapping.revision_id_foreign_to_bzr(sha)
-                target_branch.generate_revision_history(rev_id)
+            rev_id = self.mapping.revision_id_foreign_to_bzr(sha)
+            target_branch.generate_revision_history(rev_id)
 
     def fetch_objects(self, determine_wants, graph_walker, progress, get_tagged=None):
         """ yield git objects to send to client """
