@@ -18,7 +18,6 @@
 
 from dulwich.objects import (
     Blob,
-    Tree,
     sha_to_hex,
     )
 from dulwich.object_store import (
@@ -112,26 +111,31 @@ def _check_expected_sha(expected_sha, object):
             expected_sha))
 
 
-def _tree_to_objects(tree, parent_trees, idmap,
-        unusual_modes, iter_files_bytes, has_ghost_parents):
+def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
     """Iterate over the objects that were introduced in a revision.
 
     :param idmap: id map
     :param unusual_modes: Unusual file modes
-    :param iter_files_bytes: Repository.iter_files_bytes-like callback
     :return: Yields (path, object, ie) entries
     """
-    inv = tree.inventory
-    parent_invs = [t.inventory for t in parent_trees]
     new_trees = {}
     new_blobs = []
     shamap = {}
-    for path, ie in inv.entries():
-        if ie.kind == "file":
-            if ie.revision != inv.revision_id:
-                for pinv in parent_invs:
+    try:
+        base_tree = parent_trees[0]
+        other_parent_trees = parent_trees[1:]
+    except IndexError:
+        base_tree = tree._repository.revision_tree(NULL_REVISION)
+        other_parent_trees = []
+    for (file_id, path, changed_content, versioned, parent, name, kind,
+         executable) in tree.iter_changes(base_tree):
+        if kind[1] == "file":
+            ie = tree.inventory[file_id]
+            if changed_content:
+                # Content changed, find the correct revision id to use
+                for ptree in other_parent_trees:
                     try:
-                        pie = pinv[ie.file_id]
+                        pie = ptree.inventory[file_id]
                     except errors.NoSuchId:
                         pass
                     else:
@@ -140,62 +144,51 @@ def _tree_to_objects(tree, parent_trees, idmap,
                             shamap[ie.file_id] = idmap.lookup_blob_id(
                                 pie.file_id, pie.revision)
                             break
-            if not ie.file_id in shamap:
-                new_blobs.append((path, ie))
-                new_trees[urlutils.dirname(path)] = ie.parent_id
-        elif ie.kind == "symlink":
-            blob = symlink_to_blob(ie)
-            for pinv in parent_invs:
-                try:
-                    pie = pinv[ie.file_id]
-                except errors.NoSuchId:
-                    pass
-                else:
-                    if (ie.kind == pie.kind and
-                        ie.symlink_target == pie.symlink_target):
-                        break
-            else:
-                yield path, blob, ie
-                new_trees[urlutils.dirname(path)] = ie.parent_id
-            shamap[ie.file_id] = blob.id
-        elif ie.kind == "directory":
-            for pinv in parent_invs:
-                try:
-                    pie = pinv[ie.file_id]
-                except errors.NoSuchId:
-                    pass
-                else:
-                    if (pie.kind == ie.kind and 
-                        pie.children.keys() == ie.children.keys()):
-                        try:
-                            shamap[ie.file_id] = idmap.lookup_tree_id(
-                                ie.file_id, inv.revision_id)
-                        except (NotImplementedError, KeyError):
-                            pass
-                        else:
+            if not file_id in shamap:
+                new_blobs.append((path[1], ie))
+            new_trees[urlutils.dirname(path[1])] = parent[1]
+        elif kind[1] == "symlink":
+            ie = tree.inventory[file_id]
+            if changed_content:
+                blob = symlink_to_blob(ie)
+                for ptree in other_parent_trees:
+                    try:
+                        pie = ptree.inventory[file_id]
+                    except errors.NoSuchId:
+                        pass
+                    else:
+                        if (ie.kind == pie.kind and
+                            ie.symlink_target == pie.symlink_target):
                             break
             else:
-                new_trees[path] = ie.file_id
-        else:
-            raise AssertionError(ie.kind)
+                yield path[1], blob, ie
+            shamap[file_id] = blob.id
+            new_trees[urlutils.dirname(path[1])] = parent[1]
+        elif kind[1] not in (None, "directory"):
+            raise AssertionError(kind[1])
+        if path[0] is not None:
+            new_trees[urlutils.dirname(path[0])] = parent[0]
     
-    for (path, ie), chunks in iter_files_bytes(
-        [(ie.file_id, ie.revision, (path, ie))
-            for (path, ie) in new_blobs]):
+    for (path, ie), chunks in tree.iter_files_bytes(
+        [(ie.file_id, (path, ie)) for (path, ie) in new_blobs]):
         obj = Blob()
         obj.chunked = chunks
         yield path, obj, ie
         shamap[ie.file_id] = obj.id
 
     for fid in unusual_modes:
-        new_trees[inv.id2path(fid)] = inv[fid].parent_id
+        new_trees[tree.id2path(fid)] = tree.inventory[fid].parent_id
     
     trees = {}
     while new_trees:
         items = new_trees.items()
         new_trees = {}
         for path, file_id in items:
-            parent_id = inv[file_id].parent_id
+            try:
+                parent_id = tree.inventory[file_id].parent_id
+            except errors.NoSuchId:
+                # Directory was removed recursively perhaps ?
+                continue
             if parent_id is not None:
                 parent_path = urlutils.dirname(path)
                 new_trees[parent_path] = parent_id
@@ -205,15 +198,20 @@ def _tree_to_objects(tree, parent_trees, idmap,
         try:
             return shamap[ie.file_id]
         except KeyError:
-            # Not all cache backends store the tree information, 
-            # calculate again from scratch
-            ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
-            if ret is None:
-                return ret
-            return ret.id
+            if ie.kind in ("file", "symlink"):
+                return idmap.lookup_blob_id(ie.file_id, ie.revision)
+            elif ie.kind == "directory":
+                # Not all cache backends store the tree information, 
+                # calculate again from scratch
+                ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
+                if ret is None:
+                    return ret
+                return ret.id
+            else:
+                raise AssertionError
 
     for path in sorted(trees.keys(), reverse=True):
-        ie = inv[trees[path]]
+        ie = tree.inventory[trees[path]]
         assert ie.kind == "directory"
         obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
         if obj is not None:
@@ -288,21 +286,18 @@ class BazaarObjectStore(BaseObjectStore):
     def _revision_to_objects(self, rev, tree):
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
-        has_ghost_parents = (len(rev.parent_ids) < len(present_parents))
         parent_trees = self.tree_cache.revision_trees(
             [p for p in rev.parent_ids if p in present_parents])
         tree_sha = None
         for path, obj, ie in _tree_to_objects(tree, parent_trees,
-                self._cache.idmap, unusual_modes,
-                self.repository.iter_files_bytes, has_ghost_parents):
+                self._cache.idmap, unusual_modes):
             yield path, obj, ie
             if path == "":
                 tree_sha = obj.id
         if tree_sha is None:
-            if not rev.parent_ids:
-                tree_sha = Tree().id
-            else:
-                raise AssertionError
+            # Pointless commit - get the tree sha elsewhere
+            base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
+            tree_sha = self[base_sha1].tree
         commit_obj = self._reconstruct_commit(rev, tree_sha)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
@@ -331,7 +326,8 @@ class BazaarObjectStore(BaseObjectStore):
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        stream = self.repository.iter_files_bytes(((key[0], key[1], key) for key in keys))
+        stream = self.repository.iter_files_bytes(
+            ((key[0], key[1], key) for key in keys))
         for (fileid, revision, expected_sha), chunks in stream:
             blob = Blob()
             blob.chunked = chunks
