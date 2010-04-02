@@ -161,8 +161,8 @@ class TCPGitSmartTransport(GitSmartTransport):
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port, thin_packs=thin_packs,
-            report_activity=self._report_activity)
+        return git.client.TCPGitClient(self._host, self._port,
+            thin_packs=thin_packs, report_activity=self._report_activity)
 
 
 class SSHGitSmartTransport(GitSmartTransport):

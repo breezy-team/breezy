@@ -354,7 +354,8 @@ class BazaarObjectStore(BaseObjectStore):
         def get_ie_sha1(entry):
             if entry.kind == "directory":
                 try:
-                    return self._cache.idmap.lookup_tree_id(entry.file_id)
+                    return self._cache.idmap.lookup_tree_id(entry.file_id,
+                        revid)
                 except (NotImplementedError, KeyError):
                     obj = self._reconstruct_tree(entry.file_id, revid, inv,
                         unusual_modes)
