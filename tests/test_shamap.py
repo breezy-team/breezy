@@ -17,10 +17,19 @@
 """Tests for GitShaMap."""
 
 from dulwich.objects import (
+    Blob,
     Commit,
+    Tree,
     )
 
 import os
+import stat
+
+from bzrlib.inventory import (
+    InventoryFile,
+    InventoryDirectory,
+    ROOT_ID,
+    )
 
 from bzrlib.revision import (
     Revision,
@@ -40,14 +49,24 @@ from bzrlib.plugins.git.shamap import (
 
 class TestGitShaMap:
 
+    def _get_test_commit(self):
+        c = Commit()
+        c.committer = "Jelmer <jelmer@samba.org>"
+        c.commit_time = 0
+        c.commit_timezone = 0
+        c.author = "Jelmer <jelmer@samba.org>"
+        c.author_time = 0
+        c.author_timezone = 0
+        c.message = "Teh foo bar"
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        return c
+
     def test_commit(self):
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
-        c = Commit()
-        c.committer = "Jelmer <jelmer@samba.org>"
-        c.message = "Teh foo bar"
-        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c = self._get_test_commit()
         updater.add_object(c, None)
+        updater.finish()
         self.map.commit_write_group()
         self.assertEquals(
             ("commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba")),
@@ -58,47 +77,51 @@ class TestGitShaMap:
             self.map.lookup_git_sha, "5686645d49063c73d35436192dfc9a160c672301")
 
     def test_blob(self):
-        thesha = "9686645d49063c73d35436192dfc9a160c672301"
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
-        updater.add_object(Commit(), None)
-        self.map.add_entries("myrevid", [], 
-            "5686645d49063c73d35436192dfc9a160c672301",
-            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [
-                ("myfileid", "blob", thesha, "myrevid")
-                ])
+        updater.add_object(self._get_test_commit(), None)
+        b = Blob()
+        b.data = "TEH BLOB"
+        ie = InventoryFile("myfileid", "somename", ROOT_ID)
+        ie.revision = "myrevid"
+        updater.add_object(b, ie)
+        updater.finish()
         self.map.commit_write_group()
         self.assertEquals(
             ("blob", ("myfileid", "myrevid")),
-            self.map.lookup_git_sha(thesha))
-        self.assertEquals(thesha,
+            self.map.lookup_git_sha(b.id))
+        self.assertEquals(b.id,
             self.map.lookup_blob_id("myfileid", "myrevid"))
 
     def test_tree(self):
-        thesha = "8686645d49063c73d35436192dfc9a160c672301"
         self.map.start_write_group()
-        self.map.add_entries("myrevid", [], 
-            "5686645d49063c73d35436192dfc9a160c672301",
-            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [
-            ("somepath", "tree", thesha, "myrevid")])
+        updater = self.cache.get_updater(Revision("myrevid"))
+        updater.add_object(self._get_test_commit(), None)
+        t = Tree()
+        t.add(stat.S_IFREG, "somename", Blob().id)
+        ie = InventoryDirectory("fileid", "myname", ROOT_ID)
+        ie.revision = "irrelevant"
+        updater.add_object(t, ie)
+        updater.finish()
         self.map.commit_write_group()
-        self.assertEquals(
-            ("tree", ("somepath", "myrevid")),
-            self.map.lookup_git_sha(thesha))
+        self.assertEquals(("tree", ("fileid", "myrevid")),
+            self.map.lookup_git_sha(t.id))
 
     def test_revids(self):
         self.map.start_write_group()
-        self.map.add_entries("myrevid", [], 
-            "5686645d49063c73d35436192dfc9a160c672301",
-            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [])
+        updater = self.cache.get_updater(Revision("myrevid"))
+        c = self._get_test_commit()
+        updater.add_object(c, None)
+        updater.finish()
         self.map.commit_write_group()
         self.assertEquals(["myrevid"], list(self.map.revids()))
 
     def test_missing_revisions(self):
         self.map.start_write_group()
-        self.map.add_entries("myrevid", [], 
-            "5686645d49063c73d35436192dfc9a160c672301",
-            "cc9462f7f8263ef5adfbeff2fb936bb36b504cba", [])
+        updater = self.cache.get_updater(Revision("myrevid"))
+        c = self._get_test_commit()
+        updater.add_object(c, None)
+        updater.finish()
         self.map.commit_write_group()
         self.assertEquals(set(["lala", "bla"]),
             set(self.map.missing_revisions(["myrevid", "lala", "bla"])))
@@ -112,10 +135,10 @@ class DictGitShaMapTests(TestCase,TestGitShaMap):
         self.map = self.cache.idmap
 
 
-class SqliteGitShaMapTests(TestCase,TestGitShaMap):
+class SqliteGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
 
     def setUp(self):
-        TestCase.setUp(self)
+        TestCaseInTempDir.setUp(self)
         self.cache = SqliteBzrGitCache(os.path.join(self.test_dir, 'foo.db'))
         self.map = self.cache.idmap
 
