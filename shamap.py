@@ -78,19 +78,6 @@ def mapdbs():
 class InventorySHAMap(object):
     """Maps inventory file ids to Git SHAs."""
 
-    def lookup_blob_id(self, file_id, revision):
-        """Retrieve a Git blob SHA by file id.
-
-        :param file_id: File id of the file/symlink
-        :param revision: revision in which the file was last changed.
-        """
-        raise NotImplementedError(self.lookup_blob_id)
-
-    def lookup_tree_id(self, file_id):
-        """Retrieve a Git tree SHA by file id.
-        """
-        raise NotImplementedError(self.lookup_tree_id)
-
 
 class GitShaMap(object):
     """Git<->Bzr revision id mapping database."""
@@ -108,14 +95,6 @@ class GitShaMap(object):
             self._add_entry(hexsha, kind, (fileid, revision))
         self._add_entry(commit_sha, "commit", (revid, root_tree_sha))
 
-    def get_inventory_sha_map(self, revid):
-        """Return the inventory SHA map for a revision.
-
-        :param revid: Revision to fetch the map for
-        :return: A `InventorySHAMap`
-        """
-        raise NotImplementedError(self.get_inventory_sha_map)
-
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
         :param sha: Git object sha
@@ -123,6 +102,19 @@ class GitShaMap(object):
             revision: revid, tree sha
         """
         raise NotImplementedError(self.lookup_git_sha)
+
+    def lookup_blob_id(self, file_id, revision):
+        """Retrieve a Git blob SHA by file id.
+
+        :param file_id: File id of the file/symlink
+        :param revision: revision in which the file was last changed.
+        """
+        raise NotImplementedError(self.lookup_blob_id)
+
+    def lookup_tree_id(self, file_id, revision):
+        """Retrieve a Git tree SHA by file id.
+        """
+        raise NotImplementedError(self.lookup_tree_id)
 
     def revids(self):
         """List the revision ids known."""
@@ -160,24 +152,14 @@ class DictGitShaMap(GitShaMap):
         if type in ("blob", "tree"):
             self._by_fileid.setdefault(type_data[1], {})[type_data[0]] = sha
 
-    def get_inventory_sha_map(self, revid):
-
-        class DictInventorySHAMap(InventorySHAMap):
-
-            def __init__(self, base, revid):
-                self._base = base
-                self.revid = revid
-
-            def lookup_blob_id(self, fileid, revision):
-                return self._base._by_fileid[revision][fileid]
-
-            def lookup_tree_id(self, fileid):
-                return self._base._by_fileid[self.revid][fileid]
-
-        return DictInventorySHAMap(self, revid)
+    def lookup_blob_id(self, fileid, revision):
+        return self._by_fileid[revision][fileid]
 
     def lookup_git_sha(self, sha):
         return self._by_sha[sha]
+
+    def lookup_tree_id(self, fileid, revision):
+        return self._base._by_fileid[revision][fileid]
 
     def revids(self):
         for key, (type, type_data) in self._by_sha.iteritems():
@@ -278,26 +260,17 @@ class SqliteGitShaMap(GitShaMap):
         else:
             raise AssertionError("Unknown type %s" % type)
 
-    def get_inventory_sha_map(self, revid):
-        class SqliteInventorySHAMap(InventorySHAMap):
+    def lookup_blob_id(self, fileid, revision):
+        row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revision)).fetchone()
+        if row is not None:
+            return row[0]
+        raise KeyError(fileid)
 
-            def __init__(self, db, revid):
-                self.db = db
-                self.revid = revid
-
-            def lookup_blob_id(self, fileid, revision):
-                row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revision)).fetchone()
-                if row is not None:
-                    return row[0]
-                raise KeyError(fileid)
-
-            def lookup_tree_id(self, fileid):
-                row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid, self.revid)).fetchone()
-                if row is not None:
-                    return row[0]
-                raise KeyError(fileid)
-
-        return SqliteInventorySHAMap(self.db, revid)
+    def lookup_tree_id(self, fileid, revision):
+        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid, self.revid)).fetchone()
+        if row is not None:
+            return row[0]
+        raise KeyError(fileid)
 
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
@@ -406,19 +379,9 @@ class TdbGitShaMap(GitShaMap):
         elif type == "blob":
             self.db["\0".join(("blob", type_data[0], type_data[1]))] = sha
 
-    def get_inventory_sha_map(self, revid):
-
-        class TdbInventorySHAMap(InventorySHAMap):
-
-            def __init__(self, db, revid):
-                self.db = db
-                self.revid = revid
-
-            def lookup_blob_id(self, fileid, revision):
-                return sha_to_hex(self.db["\0".join(("blob", fileid, revision))])
+    def lookup_blob_id(self, fileid, revision):
+        return sha_to_hex(self.db["\0".join(("blob", fileid, revision))])
                 
-        return TdbInventorySHAMap(self.db, revid)
-
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
 
