@@ -221,6 +221,35 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
             shamap[ie.file_id] = obj.id
 
 
+class ObjectStoreUpdater(object):
+
+    def __init__(self, store, rev):
+        self.store = store
+        self.revid = rev.revision_id
+        self.parent_revids = rev.parent_ids
+        self._commit = None
+        self._entries = []
+
+    def add_object(self, obj, ie):
+        if obj.type_name == "commit":
+            self._commit = obj
+        elif obj.type_name in ("blob", "tree"):
+            if obj.type_name == "blob":
+                revision = ie.revision
+            else:
+                revision = self.revid
+            self._entries.append((ie.file_id, obj.type_name, obj.id, revision))
+        else:
+            raise AssertionError
+
+    def finish(self):
+        if self._commit is None:
+            raise AssertionError("No commit object added")
+        self.store._idmap.add_entries(self.revid, self.parent_revids,
+            self._commit.id, self._commit.tree, self._entries)
+        return self._commit
+
+
 class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
@@ -313,24 +342,16 @@ class BazaarObjectStore(BaseObjectStore):
             _check_expected_sha(foreign_revid, commit_obj)
         yield None, commit_obj, None
 
+    def _get_updater(self, rev):
+        return ObjectStoreUpdater(self, rev)
+
     def _update_sha_map_revision(self, revid):
         rev = self.repository.get_revision(revid)
         inv = self.parent_invs_cache.get_inventory(rev.revision_id)
-        commit_obj = None
-        entries = []
+        updater = self._get_updater(rev)
         for path, obj, ie in self._revision_to_objects(rev, inv):
-            if obj.type_name == "commit":
-                commit_obj = obj
-            elif obj.type_name in ("blob", "tree"):
-                if obj.type_name == "blob":
-                    revision = ie.revision
-                else:
-                    revision = revid
-                entries.append((ie.file_id, obj.type_name, obj.id, revision))
-            else:
-                raise AssertionError
-        self._idmap.add_entries(revid, rev.parent_ids, commit_obj.id, 
-            commit_obj.tree, entries)
+            updater.add(obj, ie)
+        commit_obj = updater.finish()
         return commit_obj.id
 
     def _get_blob(self, fileid, revision, expected_sha):
