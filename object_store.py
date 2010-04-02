@@ -137,7 +137,7 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
                     else:
                         if (pie.text_sha1 == ie.text_sha1 and 
                             pie.kind == ie.kind):
-                            shamap[ie.file_id] = pinvshamap.lookup_blob(
+                            shamap[ie.file_id] = pinvshamap.lookup_blob_id(
                                 pie.file_id, pie.revision)
                             break
             if not ie.file_id in shamap:
@@ -168,7 +168,7 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
                     if (pie.kind == ie.kind and 
                         pie.children.keys() == ie.children.keys()):
                         try:
-                            shamap[ie.file_id] = pinvshamap.lookup_tree(
+                            shamap[ie.file_id] = pinvshamap.lookup_tree_id(
                                 ie.file_id)
                         except (NotImplementedError, KeyError):
                             pass
@@ -231,6 +231,7 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             self.mapping = mapping
         self._idmap = idmap_from_repository(repository)
+        self._content_cache = None
         self.start_write_group = self._idmap.start_write_group
         self.abort_write_group = self._idmap.abort_write_group
         self.commit_write_group = self._idmap.commit_write_group
@@ -362,7 +363,7 @@ class BazaarObjectStore(BaseObjectStore):
         def get_ie_sha1(entry):
             if entry.kind == "directory":
                 try:
-                    return invshamap.lookup_tree(entry.file_id)
+                    return invshamap.lookup_tree_id(entry.file_id)
                 except (NotImplementedError, KeyError):
                     obj = self._get_tree(entry.file_id, revid, inv,
                         unusual_modes)
@@ -371,7 +372,7 @@ class BazaarObjectStore(BaseObjectStore):
                     else:
                         return obj.id
             elif entry.kind in ("file", "symlink"):
-                return invshamap.lookup_blob(entry.file_id, entry.revision)
+                return invshamap.lookup_blob_id(entry.file_id, entry.revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
         tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes)
@@ -440,7 +441,8 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 rev = self.repository.get_revision(revid)
             except errors.NoSuchRevision:
-                trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
+                trace.mutter('entry for %s %s in shamap: %r, but not found in '
+                             'repository', type, sha, type_data)
                 raise KeyError(sha)
             commit = self._revision_to_commit(rev, tree_sha)
             _check_expected_sha(sha, commit)
@@ -449,6 +451,11 @@ class BazaarObjectStore(BaseObjectStore):
             (fileid, revision) = type_data
             return self._get_blob(fileid, revision, expected_sha=sha)
         elif type == "tree":
+            if self._content_cache is not None:
+                try:
+                    return self._content_cache[sha]
+                except KeyError:
+                    pass
             (fileid, revid) = type_data
             try:
                 inv = self.parent_invs_cache.get_inventory(revid)
@@ -458,8 +465,8 @@ class BazaarObjectStore(BaseObjectStore):
                 raise KeyError(sha)
             unusual_modes = extract_unusual_modes(rev)
             try:
-                return self._get_tree(fileid, revid, inv,
-                    unusual_modes, expected_sha=sha)
+                return self._get_tree(fileid, revid, inv, unusual_modes,
+                    expected_sha=sha)
             except errors.NoSuchRevision:
                 raise KeyError(sha)
         else:
