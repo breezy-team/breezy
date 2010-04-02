@@ -233,6 +233,7 @@ class ObjectStoreUpdater(object):
     def add_object(self, obj, ie):
         if obj.type_name == "commit":
             self._commit = obj
+            assert ie is None
         elif obj.type_name in ("blob", "tree"):
             if obj.type_name == "blob":
                 revision = ie.revision
