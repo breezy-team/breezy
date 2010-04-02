@@ -25,7 +25,11 @@ import threading
 
 import bzrlib
 from bzrlib import (
+    registry,
     trace,
+    )
+from bzrlib.transport import (
+    get_transport,
     )
 
 
@@ -40,6 +44,10 @@ def get_cache_dir():
     if not os.path.isdir(ret):
         os.makedirs(ret)
     return ret
+
+
+def get_remote_cache_transport():
+    return get_transport(get_cache_dir())
 
 
 def check_pysqlite_version(sqlite3):
@@ -137,6 +145,37 @@ class GitShaMap(object):
         """Abort any pending changes."""
 
 
+class BzrGitCacheFormat(object):
+
+    def get_format_string(self):
+        raise NotImplementedError(self.get_format_string)
+
+    def open(self, transport):
+        raise NotImplementedError(self.open)
+
+    def initialize(self, transport):
+        transport.put_bytes('format', self.get_format_string())
+
+    @classmethod
+    def from_repository(self, repository):
+        repo_transport = getattr(repository, "_transport", None)
+        if repo_transport is not None:
+            try:
+                repo_transport.mkdir('git')
+            except bzrlib.errors.FileExists:
+                pass
+            transport = repo_transport.clone('git')
+        else:
+            transport = get_remote_cache_transport()
+        try:
+            format_name = transport.get_bytes('format')
+            format = formats.get(format_name)
+        except bzrlib.errors.NoSuchFile:
+            format = formats.get('default')
+            format.initialize(transport)
+        return format.open(transport)
+
+
 class DictGitShaMap(GitShaMap):
 
     def __init__(self):
@@ -164,6 +203,19 @@ class DictGitShaMap(GitShaMap):
 
     def sha1s(self):
         return self._by_sha.iterkeys()
+
+
+class SqliteGitCacheFormat(BzrGitCacheFormat):
+
+    def get_format_string(self):
+        return 'bzr-git sha map version 1 using sqlite\n'
+
+    def open(self, transport):
+        try:
+            basepath = transport.local_abspath(".")
+        except bzrlib.errors.NotLocalUrl:
+            basepath = get_cache_dir()
+        return SqliteGitShaMap(os.path.join(get_cache_dir(), "idmap.db")), None
 
 
 class SqliteGitShaMap(GitShaMap):
@@ -204,16 +256,6 @@ class SqliteGitShaMap(GitShaMap):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
     
-    @classmethod
-    def from_repository(cls, repository):
-        try:
-            transport = getattr(repository, "_transport", None)
-            if transport is not None:
-                return cls(os.path.join(transport.local_abspath("."), "git.db"))
-        except bzrlib.errors.NotLocalUrl:
-            pass
-        return cls(os.path.join(get_cache_dir(), "remote.db"))
-
     def lookup_commit(self, revid):
         row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
         if row is not None:
@@ -304,6 +346,25 @@ TDB_MAP_VERSION = 3
 TDB_HASH_SIZE = 50000
 
 
+class TdbGitCacheFormat(BzrGitCacheFormat):
+
+    def get_format_string(self):
+        return 'bzr-git sha map version 3 using tdb\n'
+
+    def open(self, transport):
+        try:
+            basepath = transport.local_abspath(".")
+        except bzrlib.errors.NotLocalUrl:
+            basepath = get_cache_dir()
+        try:
+            return (TdbGitShaMap(os.path.join(get_cache_dir(), "idmap.tdb")),
+                    None)
+        except ImportError:
+            raise ImportError(
+                "Unable to open existing bzr-git cache because 'tdb' is not "
+                "installed.")
+
+
 class TdbGitShaMap(GitShaMap):
     """SHA Map that uses a TDB database.
 
@@ -354,7 +415,7 @@ class TdbGitShaMap(GitShaMap):
         try:
             transport = getattr(repository, "_transport", None)
             if transport is not None:
-                return cls(os.path.join(transport.local_abspath("."), "git.tdb"))
+                return cls(os.path.join(transport.local_abspath("."), "shamap.tdb"))
         except bzrlib.errors.NotLocalUrl:
             pass
         return cls(os.path.join(get_cache_dir(), "remote.tdb"))
@@ -410,8 +471,36 @@ class TdbGitShaMap(GitShaMap):
                 yield sha_to_hex(key[4:])
 
 
+formats = registry.Registry()
+formats.register(TdbGitCacheFormat().get_format_string(),
+    TdbGitCacheFormat())
+formats.register(SqliteGitCacheFormat().get_format_string(),
+    SqliteGitCacheFormat())
+try:
+    import tdb
+except ImportError:
+    formats.register('default', SqliteGitCacheFormat())
+else:
+    formats.register('default', TdbGitCacheFormat())
+
+
+def migrate_ancient_formats(repo_transport):
+    if repo_transport.has("git.tdb"):
+        TdbGitCacheFormat().initialize(repo_transport.clone("git"))
+        repo_transport.rename("git.tdb", "git/idmap.tdb")
+    elif repo_transport.has("git.db"):
+        SqliteGitCacheFormat().initialize(repo_transport.clone("git"))
+        repo_transport.rename("git.db", "git/idmap.db")
+
+
 def from_repository(repository):
-    try:
-        return TdbGitShaMap.from_repository(repository), None
-    except ImportError:
-        return SqliteGitShaMap.from_repository(repository), None
+    repo_transport = getattr(repository, "_transport", None)
+    if repo_transport is not None:
+        # Migrate older cache formats
+        try:
+            repo_transport.mkdir("git")
+        except bzrlib.errors.FileExists:
+            pass
+        else:
+            migrate_ancient_formats(repo_transport)
+    return BzrGitCacheFormat.from_repository(repository)

@@ -169,7 +169,7 @@ def _inventory_to_objects(inv, parent_invs, idmap,
                         pie.children.keys() == ie.children.keys()):
                         try:
                             shamap[ie.file_id] = idmap.lookup_tree_id(
-                                ie.file_id)
+                                ie.file_id, inv.revision_id)
                         except (NotImplementedError, KeyError):
                             pass
                         else:
@@ -180,7 +180,7 @@ def _inventory_to_objects(inv, parent_invs, idmap,
             raise AssertionError(ie.kind)
     
     for (path, ie), chunks in iter_files_bytes(
-        [(ie.file_id, ie.revision, (path, ie.file_id))
+        [(ie.file_id, ie.revision, (path, ie))
             for (path, ie) in new_blobs]):
         obj = Blob()
         obj.data = "".join(chunks)
@@ -354,7 +354,7 @@ class BazaarObjectStore(BaseObjectStore):
         inv = self.parent_invs_cache.get_inventory(rev.revision_id)
         updater = self._get_updater(rev)
         for path, obj, ie in self._revision_to_objects(rev, inv):
-            updater.add(obj, ie)
+            updater.add_object(obj, ie)
         commit_obj = updater.finish()
         return commit_obj.id
 
