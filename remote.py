@@ -336,6 +336,10 @@ class RemoteGitBranch(GitBranch):
 
         return EmptyConfig()
 
+    def _branch_name_to_ref(self, name):
+        from bzrlib.plugins.git.branch import branch_name_to_ref
+        return branch_name_to_ref(name, default="refs/heads/master")
+
     @property
     def head(self):
         if self._ref is not None:

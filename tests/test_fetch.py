@@ -291,7 +291,6 @@ class ImportObjects(TestCaseWithTransport):
     def test_import_tree_empty_root(self):
         base_inv = Inventory(root_id=None)
         tree = Tree()
-        tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "", "",
                (None, tree.id), base_inv, None,
                None, "somerevid", [], {tree.id: tree}.__getitem__,
@@ -310,7 +309,6 @@ class ImportObjects(TestCaseWithTransport):
     def test_import_tree_empty(self):
         base_inv = Inventory()
         tree = Tree()
-        tree.serialize()
         ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
            (None, tree.id), base_inv, None, None, "somerevid", [], 
            { tree.id: tree }.__getitem__,
@@ -331,7 +329,6 @@ class ImportObjects(TestCaseWithTransport):
         blob = Blob.from_string("bar1")
         tree = Tree()
         tree.add(0100600, "foo", blob.id)
-        tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
         ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
                 (None, tree.id), base_inv, None, None, "somerevid", [],
@@ -355,7 +352,6 @@ class ImportObjects(TestCaseWithTransport):
         blob = Blob.from_string("bar")
         tree = Tree()
         tree.add(0100755, "foo", blob.id)
-        tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
         ret, _, _ = import_git_tree(self._texts, self._mapping, "", "",
                 (None, tree.id), base_inv, None, None, "somerevid", [],

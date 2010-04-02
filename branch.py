@@ -68,13 +68,15 @@ def extract_tags(refs):
     return ret
 
 
-def branch_name_to_ref(name):
+def branch_name_to_ref(name, default=None):
     """Map a branch name to a ref.
 
     :param name: Branch name
     :return: ref string
     """
-    if name is None or name == "HEAD":
+    if name is None:
+        return None
+    if name == "HEAD":
         return "HEAD"
     if not name.startswith("refs/"):
         return "refs/heads/%s" % name
