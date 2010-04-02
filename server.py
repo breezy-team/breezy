@@ -39,6 +39,7 @@ from bzrlib.plugins.git.object_store import (
 
 from dulwich.server import (
     Backend,
+    BackendRepo,
     )
 from dulwich.pack import (
     PackData,
@@ -56,25 +57,31 @@ class BzrBackend(Backend):
         self.transport = transport
         self.mapping = default_mapping
 
+    def open_repository(self, path):
+        return BzrBackendRepo(self.transport.clone(path), self.mapping)
+
+
+class BzrBackendRepo(BackendRepo):
+
+    def __init__(self, transport, mapping):
+        self.transport = transport
+        self.mapping = mapping
+        self.repo_dir = BzrDir.open_from_transport(self.transport)
+        self.repo = self.repo_dir.find_repository()
+        self.object_store = get_object_store(self.repo)
+
     def get_refs(self):
         """Return a dict of all tags and branches in repository (and shas) """
         ret = {}
-        repo_dir = BzrDir.open_from_transport(self.transport)
-        repo = repo_dir.find_repository()
-        repo.lock_read()
-        try:
-            store = get_object_store(repo)
-            branch = None
-            for branch in repo.find_branches(using=True):
-                #FIXME: Look for 'master' or 'trunk' in here, and set HEAD
-                # accordingly...
-                #FIXME: Need to get branch path relative to its repository and
-                # use this instead of nick
-                ret["refs/heads/"+branch.nick] = store._lookup_revision_sha1(branch.last_revision())
-            if 'HEAD' not in ret and branch:
-                ret['HEAD'] = store._lookup_revision_sha1(branch.last_revision())
-        finally:
-            repo.unlock()
+        branch = None
+        for branch in self.repo.find_branches(using=True):
+            #FIXME: Look for 'master' or 'trunk' in here, and set HEAD
+            # accordingly...
+            #FIXME: Need to get branch path relative to its repository and
+            # use this instead of nick
+            ret["refs/heads/"+branch.nick] = self.object_store._lookup_revision_sha1(branch.last_revision())
+        if 'HEAD' not in ret and branch:
+            ret['HEAD'] = self.object_store._lookup_revision_sha1(branch.last_revision())
         return ret
 
     def apply_pack(self, refs, read):
