@@ -241,7 +241,7 @@ class DictGitShaMap(GitShaMap):
         return self._by_sha[sha]
 
     def lookup_tree_id(self, fileid, revision):
-        return self._base._by_fileid[revision][fileid]
+        return self._by_fileid[revision][fileid]
 
     def lookup_commit(self, revid):
         return self._by_revid[revid]
@@ -361,7 +361,7 @@ class SqliteGitShaMap(GitShaMap):
         raise KeyError(fileid)
 
     def lookup_tree_id(self, fileid, revision):
-        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid, self.revid)).fetchone()
+        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid, revision)).fetchone()
         if row is not None:
             return row[0]
         raise KeyError(fileid)

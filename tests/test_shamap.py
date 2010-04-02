@@ -107,6 +107,12 @@ class TestGitShaMap:
         self.map.commit_write_group()
         self.assertEquals(("tree", ("fileid", "myrevid")),
             self.map.lookup_git_sha(t.id))
+        # It's possible for a backend to not implement lookup_tree
+        try:
+            self.assertEquals(t.id,
+                self.map.lookup_tree_id("fileid", "myrevid"))
+        except NotImplementedError:
+            pass
 
     def test_revids(self):
         self.map.start_write_group()
