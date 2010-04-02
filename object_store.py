@@ -121,17 +121,24 @@ def _tree_to_objects(tree, parent_trees, idmap,
     :param iter_files_bytes: Repository.iter_files_bytes-like callback
     :return: Yields (path, object, ie) entries
     """
-    inv = tree.inventory
-    parent_invs = [t.inventory for t in parent_trees]
     new_trees = {}
     new_blobs = []
     shamap = {}
-    for path, ie in inv.entries():
-        if ie.kind == "file":
-            if ie.revision != inv.revision_id:
-                for pinv in parent_invs:
+    try:
+        base_tree = parent_trees[0]
+        other_parent_trees = parent_trees[1:]
+    except IndexError:
+        base_tree = tree._repository.revision_tree(NULL_REVISION)
+        other_parent_trees = []
+    for (file_id, path, changed_content, versioned, parent, name, kind,
+         executable) in tree.iter_changes(base_tree):
+        if kind[1] == "file":
+            ie = tree.inventory[file_id]
+            if changed_content:
+                # Content changed, find the correct revision id to use
+                for ptree in other_parent_trees:
                     try:
-                        pie = pinv[ie.file_id]
+                        pie = ptree.inventory[file_id]
                     except errors.NoSuchId:
                         pass
                     else:
@@ -140,44 +147,47 @@ def _tree_to_objects(tree, parent_trees, idmap,
                             shamap[ie.file_id] = idmap.lookup_blob_id(
                                 pie.file_id, pie.revision)
                             break
-            if not ie.file_id in shamap:
-                new_blobs.append((path, ie))
-                new_trees[urlutils.dirname(path)] = ie.parent_id
-        elif ie.kind == "symlink":
-            blob = symlink_to_blob(ie)
-            for pinv in parent_invs:
-                try:
-                    pie = pinv[ie.file_id]
-                except errors.NoSuchId:
-                    pass
-                else:
-                    if (ie.kind == pie.kind and
-                        ie.symlink_target == pie.symlink_target):
-                        break
+            if not file_id in shamap:
+                new_blobs.append((path[1], ie))
+            new_trees[urlutils.dirname(path[1])] = parent[1]
+        elif kind[1] == "symlink":
+            ie = tree.inventory[file_id]
+            if changed_content:
+                blob = symlink_to_blob(ie)
+                for ptree in other_parent_trees:
+                    try:
+                        pie = ptree.inventory[file_id]
+                    except errors.NoSuchId:
+                        pass
+                    else:
+                        if (ie.kind == pie.kind and
+                            ie.symlink_target == pie.symlink_target):
+                            break
             else:
-                yield path, blob, ie
-                new_trees[urlutils.dirname(path)] = ie.parent_id
-            shamap[ie.file_id] = blob.id
-        elif ie.kind == "directory":
-            for pinv in parent_invs:
+                yield path[1], blob, ie
+            shamap[file_id] = blob.id
+            new_trees[urlutils.dirname(path[1])] = parent[1]
+        elif kind[1] == "directory":
+            ie = tree.inventory[file_id]
+            for ptree in other_parent_trees:
                 try:
-                    pie = pinv[ie.file_id]
+                    pie = ptree.inventory[ie.file_id]
                 except errors.NoSuchId:
                     pass
                 else:
-                    if (pie.kind == ie.kind and 
+                    if (pie.kind == kind[1] and 
                         pie.children.keys() == ie.children.keys()):
                         try:
                             shamap[ie.file_id] = idmap.lookup_tree_id(
-                                ie.file_id, inv.revision_id)
+                                ie.file_id, tree.get_revision_id())
                         except (NotImplementedError, KeyError):
                             pass
                         else:
                             break
             else:
-                new_trees[path] = ie.file_id
-        else:
-            raise AssertionError(ie.kind)
+                new_trees[path[1]] = file_id
+        elif kind[1] is not None:
+            raise AssertionError(kind[1])
     
     for (path, ie), chunks in iter_files_bytes(
         [(ie.file_id, ie.revision, (path, ie))
@@ -188,14 +198,14 @@ def _tree_to_objects(tree, parent_trees, idmap,
         shamap[ie.file_id] = obj.id
 
     for fid in unusual_modes:
-        new_trees[inv.id2path(fid)] = inv[fid].parent_id
+        new_trees[tree.id2path(fid)] = tree.inventory[fid].parent_id
     
     trees = {}
     while new_trees:
         items = new_trees.items()
         new_trees = {}
         for path, file_id in items:
-            parent_id = inv[file_id].parent_id
+            parent_id = tree.inventory[file_id].parent_id
             if parent_id is not None:
                 parent_path = urlutils.dirname(path)
                 new_trees[parent_path] = parent_id
@@ -205,15 +215,20 @@ def _tree_to_objects(tree, parent_trees, idmap,
         try:
             return shamap[ie.file_id]
         except KeyError:
-            # Not all cache backends store the tree information, 
-            # calculate again from scratch
-            ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
-            if ret is None:
-                return ret
-            return ret.id
+            if ie.kind in ("file", "symlink"):
+                return idmap.lookup_blob_id(ie.file_id, ie.revision)
+            elif ie.kind == "directory":
+                # Not all cache backends store the tree information, 
+                # calculate again from scratch
+                ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
+                if ret is None:
+                    return ret
+                return ret.id
+            else:
+                raise AssertionError
 
     for path in sorted(trees.keys(), reverse=True):
-        ie = inv[trees[path]]
+        ie = tree.inventory[trees[path]]
         assert ie.kind == "directory"
         obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
         if obj is not None:
