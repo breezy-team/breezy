@@ -28,7 +28,6 @@ from bzrlib.bzrdir import (
 
 from bzrlib.plugins.git.fetch import (
     import_git_objects,
-    BazaarObjectStore,
     )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
@@ -58,7 +57,8 @@ class BzrBackend(Backend):
         self.mapping = default_mapping
 
     def open_repository(self, path):
-        return BzrBackendRepo(self.transport.clone(path), self.mapping)
+        # FIXME: Sanitize path properly
+        return BzrBackendRepo(self.transport.clone(path.lstrip("/")), self.mapping)
 
 
 class BzrBackendRepo(BackendRepo):
@@ -103,9 +103,6 @@ class BzrBackendRepo(BackendRepo):
                 heads.append(sha)
         write_pack_index_v2(path[:-5]+".idx", entries, p.calculate_checksum())
 
-        repo_dir = BzrDir.open_from_transport(self.transport)
-        target = repo_dir.find_repository()
-
         objects = {}
         for tup in p.iterobjects():
             obj_type, obj = p.get_object_at (tup[0])
@@ -113,25 +110,25 @@ class BzrBackendRepo(BackendRepo):
                 sf = ShaFile.from_raw_string (obj_type, obj)
                 objects[hex_to_sha(sf.id)] = sf
 
-        target.lock_write()
+        self.repo.lock_write()
         try:
-            target.start_write_group()
+            self.repo.start_write_group()
             try:
-                import_git_objects(target, self.mapping, objects,
-                                   BazaarObjectStore (target, self.mapping),
+                import_git_objects(self.repo, self.mapping, objects,
+                                   self.object_store,
                                    heads)
             except:
-                target.abort_write_group()
+                self.repo.abort_write_group()
                 raise
             else:
-                target.commit_write_group()
+                self.repo.commit_write_group()
         finally:
-            target.unlock()
+            self.repo.unlock()
 
         for oldsha, sha, ref in refs:
             if ref[:11] == 'refs/heads/':
                 branch_nick = ref[11:]
-                transport = self.transport.clone(branch_nick)
+                transport = self.repo.root_transport.clone(branch_nick)
 
                 try:
                     target_dir = BzrDir.open_from_transport(transport)
@@ -149,20 +146,14 @@ class BzrBackendRepo(BackendRepo):
 
     def fetch_objects(self, determine_wants, graph_walker, progress):
         """ yield git objects to send to client """
-        bzrdir = BzrDir.open_from_transport(self.transport)
-        repo = bzrdir.find_repository()
-
         # If this is a Git repository, just use the existing fetch_objects implementation.
-        if getattr(repo, "fetch_objects", None) is not None:
-            return repo.fetch_objects(determine_wants, graph_walker, None, progress)[0]
+        if getattr(self.repo, "fetch_objects", None) is not None:
+            return self.repo.fetch_objects(determine_wants, graph_walker, None, progress)[0]
 
         wants = determine_wants(self.get_refs())
         graph_walker.reset()
-        repo.lock_read()
-        store = BazaarObjectStore(repo)
-        have = store.find_common_revisions(graph_walker)
-        missing_sha1s = store.find_missing_objects(have, wants, progress)
-        return store.iter_shas(missing_sha1s)
+        have = self.object_store.find_common_revisions(graph_walker)
+        return self.object_store.generate_pack_contents(have, wants)
 
 
 def serve_git(transport, host=None, port=None, inet=False):
