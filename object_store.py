@@ -314,7 +314,7 @@ class BazaarObjectStore(BaseObjectStore):
         yield None, commit_obj, None
 
     def _get_updater(self, rev):
-        return self._cache.get_updater(rev, self._content_cache_types)
+        return self._cache.get_updater(rev)
 
     def _update_sha_map_revision(self, revid):
         rev = self.repository.get_revision(revid)
@@ -424,8 +424,7 @@ class BazaarObjectStore(BaseObjectStore):
 
     def __getitem__(self, sha):
         (type, type_data) = self._lookup_git_sha(sha)
-        if (self._cache.content_cache is not None and 
-            type in self._content_cache_types):
+        if self._cache.content_cache is not None:
             try:
                 return self._cache.content_cache[sha]
             except KeyError:
