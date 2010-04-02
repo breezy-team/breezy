@@ -1,6 +1,6 @@
 bzr_plugin_name = "git"
 
-dulwich_minimum_version = (0, 5, 0)
+dulwich_minimum_version = (0, 5, 1)
 
 # versions ending in 'exp' mean experimental mappings
 # versions ending in 'dev' mean development version

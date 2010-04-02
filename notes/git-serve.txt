@@ -1,0 +1,12 @@
+Git serve
+
+Todo:
+
+ * Fix "bzr serve --git"
+
+ * Evaluate whether it's possible (in other words, whether the disk usage 
+   is acceptable) to cache full Tree objects in .bzr/repository/git, 
+   preferably using something that implements the VersionedFiles API.
+
+ * Fix the pack creation code in Dulwich. It doesn't generate deltas quite 
+   well at the moment.

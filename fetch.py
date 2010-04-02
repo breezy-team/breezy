@@ -23,6 +23,9 @@ from dulwich.objects import (
 from dulwich.object_store import (
     tree_lookup_path,
     )
+from itertools import (
+    imap,
+    )
 import posixpath
 import re
 import stat
@@ -116,8 +119,8 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
             ie.text_size = None
             ie.text_sha1 = None
         else:
-            ie.text_size = len(blob.data)
-            ie.text_sha1 = osutils.sha_string(blob.data)
+            ie.text_size = sum(imap(len, blob.chunked))
+            ie.text_sha1 = osutils.sha_strings(blob.chunked)
     # Check what revision we should store
     parent_keys = []
     for pinv in parent_invs[1:]:
@@ -137,10 +140,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
         if ie.kind == 'symlink':
             chunks = []
         else: 
-            try:
-                chunks = blob.chunked
-            except AttributeError: # older version of dulwich
-                chunks = [blob.data]
+            chunks = blob.chunked
         texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, chunks)])
     invdelta = []
     if base_hexsha is not None:
