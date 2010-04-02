@@ -276,7 +276,7 @@ class BazaarObjectStore(BaseObjectStore):
         self._update_sha_map()
         return iter(self._cache.idmap.sha1s())
 
-    def _revision_to_commit(self, rev, tree_sha):
+    def _reconstruct_commit(self, rev, tree_sha):
         def parent_lookup(revid):
             try:
                 return self._lookup_revision_sha1(revid)
@@ -303,7 +303,7 @@ class BazaarObjectStore(BaseObjectStore):
                 tree_sha = Tree().id
             else:
                 raise AssertionError
-        commit_obj = self._revision_to_commit(rev, tree_sha)
+        commit_obj = self._reconstruct_commit(rev, tree_sha)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
                 rev.revision_id)
@@ -325,7 +325,7 @@ class BazaarObjectStore(BaseObjectStore):
         commit_obj = updater.finish()
         return commit_obj.id
 
-    def _get_blobs(self, keys):
+    def _reconstruct_blobs(self, keys):
         """Return a Git Blob object from a fileid and revision stored in bzr.
 
         :param fileid: File id of the text
@@ -344,7 +344,8 @@ class BazaarObjectStore(BaseObjectStore):
             _check_expected_sha(expected_sha, blob)
             yield blob
 
-    def _get_tree(self, fileid, revid, inv, unusual_modes, expected_sha=None):
+    def _reconstruct_tree(self, fileid, revid, inv, unusual_modes,
+        expected_sha=None):
         """Return a Git Tree object from a file id and a revision stored in bzr.
 
         :param fileid: fileid in the tree.
@@ -355,7 +356,7 @@ class BazaarObjectStore(BaseObjectStore):
                 try:
                     return self._cache.idmap.lookup_tree_id(entry.file_id)
                 except (NotImplementedError, KeyError):
-                    obj = self._get_tree(entry.file_id, revid, inv,
+                    obj = self._reconstruct_tree(entry.file_id, revid, inv,
                         unusual_modes)
                     if obj is None:
                         return None
@@ -440,12 +441,12 @@ class BazaarObjectStore(BaseObjectStore):
                 trace.mutter('entry for %s %s in shamap: %r, but not found in '
                              'repository', type, sha, type_data)
                 raise KeyError(sha)
-            commit = self._revision_to_commit(rev, tree_sha)
+            commit = self.reconstruct_commit(rev, tree_sha)
             _check_expected_sha(sha, commit)
             return commit
         elif type == "blob":
             (fileid, revision) = type_data
-            return self._get_blobs([(fileid, revision, sha)]).next()
+            return self._reconstruct_blobs([(fileid, revision, sha)]).next()
         elif type == "tree":
             (fileid, revid) = type_data
             try:
@@ -456,7 +457,7 @@ class BazaarObjectStore(BaseObjectStore):
                 raise KeyError(sha)
             unusual_modes = extract_unusual_modes(rev)
             try:
-                return self._get_tree(fileid, revid, tree.inventory,
+                return self._reconstruct_tree(fileid, revid, tree.inventory,
                     unusual_modes, expected_sha=sha)
             except errors.NoSuchRevision:
                 raise KeyError(sha)
