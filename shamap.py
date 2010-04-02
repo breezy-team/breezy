@@ -145,6 +145,18 @@ class GitShaMap(object):
         """Abort any pending changes."""
 
 
+class ContentCache(object):
+    """Object that can cache Git objects."""
+
+    def __getitem__(self, sha):
+        """Retrieve an item, by SHA."""
+        raise NotImplementedError(self.__getitem__)
+
+    def add(self, obj):
+        """Add an object to the cache."""
+        raise NotImplementedError(self.add)
+
+
 class BzrGitCacheFormat(object):
 
     def get_format_string(self):
@@ -271,8 +283,8 @@ class SqliteGitShaMap(GitShaMap):
         blobs = []
         for (fileid, kind, hexsha, revision) in entries:
             if kind is None:
-                continue
-            if kind == "tree":
+                pass # removal
+            elif kind == "tree":
                 trees.append((hexsha, fileid, revid))
             elif kind == "blob":
                 blobs.append((hexsha, fileid, revision))
@@ -317,17 +329,15 @@ class SqliteGitShaMap(GitShaMap):
         :return: (type, type_data) with type_data:
             revision: revid, tree sha
         """
-        def format(type, row):
-            return (type, (row[0], row[1]))
         row = self.db.execute("select revid, tree_sha from commits where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return format("commit", row)
+            return ("commit", row)
         row = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return format("blob", row)
+            return ("blob", row)
         row = self.db.execute("select fileid, revid from trees where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return format("tree", row)
+            return ("tree", row)
         raise KeyError(sha)
 
     def revids(self):
@@ -337,9 +347,8 @@ class SqliteGitShaMap(GitShaMap):
     def sha1s(self):
         """List the SHA1s."""
         for table in ("blobs", "commits", "trees"):
-            trace.note(table)
-            for (row,) in self.db.execute("select sha1 from %s" % table):
-                yield row
+            for (sha,) in self.db.execute("select sha1 from %s" % table):
+                yield sha
 
 
 TDB_MAP_VERSION = 3

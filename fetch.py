@@ -379,7 +379,7 @@ def import_git_objects(repo, mapping, object_iter,
         revision_ids = revision_ids[:limit]
     last_imported = None
     for offset in range(0, len(revision_ids), batch_size):
-        target_git_object_retriever.start_write_group() # FIXME: try/finally
+        target_git_object_retriever.start_write_group() 
         try:
             repo.start_write_group()
             try:
