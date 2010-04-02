@@ -242,6 +242,9 @@ class ObjectStoreUpdater(object):
             self._entries.append((ie.file_id, obj.type_name, obj.id, revision))
         else:
             raise AssertionError
+        if (self.store._content_cache and 
+            obj.type_name in self.store._content_cache_types):
+            self.store._content_cache.add(obj)
 
     def finish(self):
         if self._commit is None:
@@ -262,6 +265,7 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping = mapping
         self._idmap = idmap_from_repository(repository)
         self._content_cache = None
+        self._content_cache_types = ()
         self.start_write_group = self._idmap.start_write_group
         self.abort_write_group = self._idmap.abort_write_group
         self.commit_write_group = self._idmap.commit_write_group
@@ -455,6 +459,12 @@ class BazaarObjectStore(BaseObjectStore):
 
     def __getitem__(self, sha):
         (type, type_data) = self._lookup_git_sha(sha)
+        if (self._content_cache is not None and 
+            type in self._content_cache_types):
+            try:
+                return self._content_cache[sha]
+            except KeyError:
+                pass
         # convert object to git object
         if type == "commit":
             (revid, tree_sha) = type_data
@@ -471,11 +481,6 @@ class BazaarObjectStore(BaseObjectStore):
             (fileid, revision) = type_data
             return self._get_blob(fileid, revision, expected_sha=sha)
         elif type == "tree":
-            if self._content_cache is not None:
-                try:
-                    return self._content_cache[sha]
-                except KeyError:
-                    pass
             (fileid, revid) = type_data
             try:
                 inv = self.parent_invs_cache.get_inventory(revid)
