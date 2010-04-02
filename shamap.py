@@ -416,6 +416,6 @@ class TdbGitShaMap(GitShaMap):
 
 def from_repository(repository):
     try:
-        return TdbGitShaMap.from_repository(repository)
+        return TdbGitShaMap.from_repository(repository), None
     except ImportError:
-        return SqliteGitShaMap.from_repository(repository)
+        return SqliteGitShaMap.from_repository(repository), None

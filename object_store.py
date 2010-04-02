@@ -44,7 +44,7 @@ from bzrlib.plugins.git.mapping import (
     symlink_to_blob,
     )
 from bzrlib.plugins.git.shamap import (
-    from_repository as idmap_from_repository,
+    from_repository as cache_from_repository,
     )
 
 
@@ -263,9 +263,8 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping = default_mapping
         else:
             self.mapping = mapping
-        self._idmap = idmap_from_repository(repository)
-        self._content_cache = None
-        self._content_cache_types = ()
+        (self._idmap, self._content_cache) = cache_from_repository(repository)
+        self._content_cache_types = ("tree")
         self.start_write_group = self._idmap.start_write_group
         self.abort_write_group = self._idmap.abort_write_group
         self.commit_write_group = self._idmap.commit_write_group
