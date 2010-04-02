@@ -284,18 +284,17 @@ def import_git_commit(repo, mapping, head, lookup_object,
     parent_invs = parent_invs_cache.get_inventories(rev.parent_ids)
     if parent_invs == []:
         base_inv = Inventory(root_id=None)
-        base_inv_shamap = None # Should never be accessed
         base_tree = None
         base_mode = None
     else:
         base_inv = parent_invs[0]
-        base_inv_shamap = target_git_object_retriever._idmap.get_inventory_sha_map(base_inv.revision_id)
         base_tree = lookup_object(o.parents[0]).tree
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
     store_updater.add_object(o, None)
     inv_delta, unusual_modes = import_git_tree(repo.texts,
-            mapping, "", u"", (base_tree, o.tree), base_inv, base_inv_shamap,
+            mapping, "", u"", (base_tree, o.tree), base_inv, 
+            target_git_object_retriever._idmap,
             None, rev.revision_id, parent_invs, lookup_object,
             (base_mode, stat.S_IFDIR), store_updater,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
