@@ -78,18 +78,18 @@ def mapdbs():
 class InventorySHAMap(object):
     """Maps inventory file ids to Git SHAs."""
 
-    def lookup_blob(self, file_id, revision):
+    def lookup_blob_id(self, file_id, revision):
         """Retrieve a Git blob SHA by file id.
 
         :param file_id: File id of the file/symlink
         :param revision: revision in which the file was last changed.
         """
-        raise NotImplementedError(self.lookup_blob)
+        raise NotImplementedError(self.lookup_blob_id)
 
-    def lookup_tree(self, file_id):
+    def lookup_tree_id(self, file_id):
         """Retrieve a Git tree SHA by file id.
         """
-        raise NotImplementedError(self.lookup_tree)
+        raise NotImplementedError(self.lookup_tree_id)
 
 
 class GitShaMap(object):
@@ -168,10 +168,10 @@ class DictGitShaMap(GitShaMap):
                 self._base = base
                 self.revid = revid
 
-            def lookup_blob(self, fileid, revision):
+            def lookup_blob_id(self, fileid, revision):
                 return self._base._by_fileid[revision][fileid]
 
-            def lookup_tree(self, fileid):
+            def lookup_tree_id(self, fileid):
                 return self._base._by_fileid[self.revid][fileid]
 
         return DictInventorySHAMap(self, revid)
@@ -285,13 +285,13 @@ class SqliteGitShaMap(GitShaMap):
                 self.db = db
                 self.revid = revid
 
-            def lookup_blob(self, fileid, revision):
+            def lookup_blob_id(self, fileid, revision):
                 row = self.db.execute("select sha1 from blobs where fileid = ? and revid = ?", (fileid, revision)).fetchone()
                 if row is not None:
                     return row[0]
                 raise KeyError(fileid)
 
-            def lookup_tree(self, fileid):
+            def lookup_tree_id(self, fileid):
                 row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid, self.revid)).fetchone()
                 if row is not None:
                     return row[0]
@@ -414,7 +414,7 @@ class TdbGitShaMap(GitShaMap):
                 self.db = db
                 self.revid = revid
 
-            def lookup_blob(self, fileid, revision):
+            def lookup_blob_id(self, fileid, revision):
                 return sha_to_hex(self.db["\0".join(("blob", fileid, revision))])
                 
         return TdbInventorySHAMap(self.db, revid)
