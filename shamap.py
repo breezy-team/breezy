@@ -75,10 +75,6 @@ def mapdbs():
         return _mapdbs.cache
 
 
-class InventorySHAMap(object):
-    """Maps inventory file ids to Git SHAs."""
-
-
 class GitShaMap(object):
     """Git<->Bzr revision id mapping database."""
 
