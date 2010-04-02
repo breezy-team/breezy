@@ -577,6 +577,8 @@ class IndexCacheUpdater(CacheUpdater):
             self.cache.idmap._add_git_sha(obj.id, "blob",
                 (ie.file_id, ie.revision))
             self.cache.idmap._add_node(("blob", ie.file_id, ie.revision), obj.id)
+            if ie.kind == "symlink":
+                self.cache.content_cache.add(obj)
         elif obj.type_name == "tree":
             self.cache.idmap._add_git_sha(obj.id, "tree",
                 (ie.file_id, self.revid))
