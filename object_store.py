@@ -221,39 +221,6 @@ def _inventory_to_objects(inv, parent_invs, idmap,
             shamap[ie.file_id] = obj.id
 
 
-class ObjectStoreUpdater(object):
-
-    def __init__(self, store, rev):
-        self.store = store
-        self.revid = rev.revision_id
-        self.parent_revids = rev.parent_ids
-        self._commit = None
-        self._entries = []
-
-    def add_object(self, obj, ie):
-        if obj.type_name == "commit":
-            self._commit = obj
-            assert ie is None
-        elif obj.type_name in ("blob", "tree"):
-            if obj.type_name == "blob":
-                revision = ie.revision
-            else:
-                revision = self.revid
-            self._entries.append((ie.file_id, obj.type_name, obj.id, revision))
-        else:
-            raise AssertionError
-        if (self.store._content_cache and 
-            obj.type_name in self.store._content_cache_types):
-            self.store._content_cache.add(obj)
-
-    def finish(self):
-        if self._commit is None:
-            raise AssertionError("No commit object added")
-        self.store._idmap.add_entries(self.revid, self.parent_revids,
-            self._commit.id, self._commit.tree, self._entries)
-        return self._commit
-
-
 class BazaarObjectStore(BaseObjectStore):
     """A Git-style object store backed onto a Bazaar repository."""
 
@@ -263,11 +230,11 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping = default_mapping
         else:
             self.mapping = mapping
-        (self._idmap, self._content_cache) = cache_from_repository(repository)
+        self._cache = cache_from_repository(repository)
         self._content_cache_types = ("tree")
-        self.start_write_group = self._idmap.start_write_group
-        self.abort_write_group = self._idmap.abort_write_group
-        self.commit_write_group = self._idmap.commit_write_group
+        self.start_write_group = self._cache.idmap.start_write_group
+        self.abort_write_group = self._cache.idmap.abort_write_group
+        self.commit_write_group = self._cache.idmap.commit_write_group
         self.parent_invs_cache = LRUInventoryCache(self.repository)
 
     def _update_sha_map(self, stop_revision=None):
@@ -276,13 +243,13 @@ class BazaarObjectStore(BaseObjectStore):
             heads = graph.heads(self.repository.all_revision_ids())
         else:
             heads = set([stop_revision])
-        missing_revids = self._idmap.missing_revisions(heads)
+        missing_revids = self._cache.idmap.missing_revisions(heads)
         while heads:
             parents = graph.get_parent_map(heads)
             todo = set()
             for p in parents.values():
                 todo.update([x for x in p if x not in missing_revids])
-            heads = self._idmap.missing_revisions(todo)
+            heads = self._cache.idmap.missing_revisions(todo)
             missing_revids.update(heads)
         if NULL_REVISION in missing_revids:
             missing_revids.remove(NULL_REVISION)
@@ -307,7 +274,7 @@ class BazaarObjectStore(BaseObjectStore):
 
     def __iter__(self):
         self._update_sha_map()
-        return iter(self._idmap.sha1s())
+        return iter(self._cache.idmap.sha1s())
 
     def _revision_to_commit(self, rev, tree_sha):
         def parent_lookup(revid):
@@ -326,7 +293,7 @@ class BazaarObjectStore(BaseObjectStore):
             [p for p in rev.parent_ids if p in present_parents])
         tree_sha = None
         for path, obj, ie in _inventory_to_objects(inv, parent_invs,
-                self._idmap, unusual_modes,
+                self._cache.idmap, unusual_modes,
                 self.repository.iter_files_bytes, has_ghost_parents):
             yield path, obj, ie
             if path == "":
@@ -347,7 +314,7 @@ class BazaarObjectStore(BaseObjectStore):
         yield None, commit_obj, None
 
     def _get_updater(self, rev):
-        return ObjectStoreUpdater(self, rev)
+        return self._cache.get_updater(rev, self._content_cache_types)
 
     def _update_sha_map_revision(self, revid):
         rev = self.repository.get_revision(revid)
@@ -385,7 +352,7 @@ class BazaarObjectStore(BaseObjectStore):
         def get_ie_sha1(entry):
             if entry.kind == "directory":
                 try:
-                    return self._idmap.lookup_tree_id(entry.file_id)
+                    return self._cache.idmap.lookup_tree_id(entry.file_id)
                 except (NotImplementedError, KeyError):
                     obj = self._get_tree(entry.file_id, revid, inv,
                         unusual_modes)
@@ -394,7 +361,7 @@ class BazaarObjectStore(BaseObjectStore):
                     else:
                         return obj.id
             elif entry.kind in ("file", "symlink"):
-                return self._idmap.lookup_blob_id(entry.file_id, entry.revision)
+                return self._cache.idmap.lookup_blob_id(entry.file_id, entry.revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
         tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes)
@@ -414,13 +381,13 @@ class BazaarObjectStore(BaseObjectStore):
         if revid == NULL_REVISION:
             return "0" * 40
         try:
-            return self._idmap.lookup_commit(revid)
+            return self._cache.idmap.lookup_commit(revid)
         except KeyError:
             try:
                 return mapping_registry.parse_revision_id(revid)[0]
             except errors.InvalidRevisionId:
                 self._update_sha_map(revid)
-                return self._idmap.lookup_commit(revid)
+                return self._cache.idmap.lookup_commit(revid)
 
     def get_raw(self, sha):
         """Get the raw representation of a Git object by SHA1.
@@ -448,19 +415,19 @@ class BazaarObjectStore(BaseObjectStore):
     def _lookup_git_sha(self, sha):
         # See if sha is in map
         try:
-            return self._idmap.lookup_git_sha(sha)
+            return self._cache.idmap.lookup_git_sha(sha)
         except KeyError:
             # if not, see if there are any unconverted revisions and add them
             # to the map, search for sha in map again
             self._update_sha_map()
-            return self._idmap.lookup_git_sha(sha)
+            return self._cache.idmap.lookup_git_sha(sha)
 
     def __getitem__(self, sha):
         (type, type_data) = self._lookup_git_sha(sha)
-        if (self._content_cache is not None and 
+        if (self._cache.content_cache is not None and 
             type in self._content_cache_types):
             try:
-                return self._content_cache[sha]
+                return self._cache.content_cache[sha]
             except KeyError:
                 pass
         # convert object to git object

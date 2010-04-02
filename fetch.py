@@ -294,7 +294,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     store_updater.add_object(o, None)
     inv_delta, unusual_modes = import_git_tree(repo.texts,
             mapping, "", u"", (base_tree, o.tree), base_inv, 
-            target_git_object_retriever._idmap,
+            target_git_object_retriever._cache.idmap,
             None, rev.revision_id, parent_invs, lookup_object,
             (base_mode, stat.S_IFDIR), store_updater,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))

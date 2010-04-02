@@ -188,6 +188,51 @@ class BzrGitCacheFormat(object):
         return format.open(transport)
 
 
+class CacheUpdater(object):
+
+    def __init__(self, cache, rev, content_cache_types):
+        self.cache = cache
+        self.content_cache_types = content_cache_types
+        self.revid = rev.revision_id
+        self.parent_revids = rev.parent_ids
+        self._commit = None
+        self._entries = []
+
+    def add_object(self, obj, ie):
+        if obj.type_name == "commit":
+            self._commit = obj
+            assert ie is None
+        elif obj.type_name in ("blob", "tree"):
+            if obj.type_name == "blob":
+                revision = ie.revision
+            else:
+                revision = self.revid
+            self._entries.append((ie.file_id, obj.type_name, obj.id, revision))
+        else:
+            raise AssertionError
+        if (self.cache.content_cache and 
+            obj.type_name in self.content_cache_types):
+            self.cache.content_cache.add(obj)
+
+    def finish(self):
+        if self._commit is None:
+            raise AssertionError("No commit object added")
+        self.cache.idmap.add_entries(self.revid, self.parent_revids,
+            self._commit.id, self._commit.tree, self._entries)
+        return self._commit
+
+
+class BzrGitCache(object):
+    """Caching backend."""
+
+    def __init__(self, idmap, content_cache):
+        self.idmap = idmap
+        self.content_cache = content_cache
+
+    def get_updater(self, rev, content_cache_types):
+        return CacheUpdater(self, rev, content_cache_types)
+
+
 class DictGitShaMap(GitShaMap):
 
     def __init__(self):
@@ -227,7 +272,9 @@ class SqliteGitCacheFormat(BzrGitCacheFormat):
             basepath = transport.local_abspath(".")
         except bzrlib.errors.NotLocalUrl:
             basepath = get_cache_dir()
-        return SqliteGitShaMap(os.path.join(get_cache_dir(), "idmap.db")), None
+        return BzrGitCache(
+            SqliteGitShaMap(os.path.join(get_cache_dir(), "idmap.db")),
+            None)
 
 
 class SqliteGitShaMap(GitShaMap):
@@ -364,7 +411,8 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
         except bzrlib.errors.NotLocalUrl:
             basepath = get_cache_dir()
         try:
-            return (TdbGitShaMap(os.path.join(get_cache_dir(), "idmap.tdb")),
+            return BzrGitCache(
+                    TdbGitShaMap(os.path.join(get_cache_dir(), "idmap.tdb")),
                     None)
         except ImportError:
             raise ImportError(
@@ -416,16 +464,6 @@ class TdbGitShaMap(GitShaMap):
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
-
-    @classmethod
-    def from_repository(cls, repository):
-        try:
-            transport = getattr(repository, "_transport", None)
-            if transport is not None:
-                return cls(os.path.join(transport.local_abspath("."), "shamap.tdb"))
-        except bzrlib.errors.NotLocalUrl:
-            pass
-        return cls(os.path.join(get_cache_dir(), "remote.tdb"))
 
     def lookup_commit(self, revid):
         return sha_to_hex(self.db["commit\0" + revid][:20])
