@@ -164,9 +164,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
                 yield path[1], blob, ie
             shamap[file_id] = blob.id
             new_trees[urlutils.dirname(path[1])] = parent[1]
-        elif kind[1] == "directory":
-            pass
-        elif kind[1] is not None:
+        elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
         if path[0] is not None:
             new_trees[urlutils.dirname(path[0])] = parent[0]
