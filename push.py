@@ -72,7 +72,7 @@ class MissingObjectsIterator(object):
         rev = self.source.get_revision(revid)
         commit = None
         for path, obj in self._object_store._revision_to_objects(rev, inv):
-            if obj._type == "commit":
+            if obj.type_name == "commit":
                 commit = obj
             self._pending.append((obj, path))
         return commit.id

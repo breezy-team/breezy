@@ -121,15 +121,10 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     # Check what revision we should store
     parent_keys = []
     for pinv in parent_invs[1:]:
-        if pinv.revision_id == base_inv.revision_id:
-            pie = base_ie
-            if pie is None:
-                continue
-        else:
-            try:
-                pie = pinv[file_id]
-            except NoSuchId:
-                continue
+        try:
+            pie = pinv[file_id]
+        except NoSuchId:
+            continue
         if pie.text_sha1 == ie.text_sha1 and pie.executable == ie.executable and pie.symlink_target == ie.symlink_target:
             # found a revision in one of the parents to use
             ie.revision = pie.revision

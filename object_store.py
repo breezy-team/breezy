@@ -318,16 +318,16 @@ class BazaarObjectStore(BaseObjectStore):
         commit_obj = None
         entries = []
         for path, obj in self._revision_to_objects(rev, inv):
-            if obj._type == "commit":
+            if obj.type_name == "commit":
                 commit_obj = obj
-            elif obj._type in ("blob", "tree"):
+            elif obj.type_name in ("blob", "tree"):
                 file_id = inv.path2id(path)
                 ie = inv[file_id]
-                if obj._type == "blob":
+                if obj.type_name == "blob":
                     revision = ie.revision
                 else:
                     revision = revid
-                entries.append((file_id, obj._type, obj.id, revision))
+                entries.append((file_id, obj.type_name, obj.id, revision))
             else:
                 raise AssertionError
         self._idmap.add_entries(revid, rev.parent_ids, commit_obj.id, 
