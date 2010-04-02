@@ -91,18 +91,6 @@ class LRUInventoryCache(object):
         self._cache.add(revid, inv)
 
 
-class ContentCache(object):
-    """Object that can cache Git objects."""
-
-    def __getitem__(self, sha):
-        """Retrieve an item, by SHA."""
-        raise NotImplementedError(self.__getitem__)
-
-    def add(self, obj):
-        """Add an object to the cache."""
-        raise NotImplementedError(self.add)
-
-
 def _check_expected_sha(expected_sha, object):
     """Check whether an object matches an expected SHA.
 

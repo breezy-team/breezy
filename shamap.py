@@ -23,6 +23,10 @@ from dulwich.objects import (
 import os
 import threading
 
+from dulwich.objects import (
+    ShaFile,
+    )
+
 import bzrlib
 from bzrlib import (
     btree_index as _mod_btree_index,
@@ -148,6 +152,18 @@ class GitShaMap(object):
 
     def abort_write_group(self):
         """Abort any pending changes."""
+
+
+class ContentCache(object):
+    """Object that can cache Git objects."""
+
+    def __getitem__(self, sha):
+        """Retrieve an item, by SHA."""
+        raise NotImplementedError(self.__getitem__)
+
+    def add(self, obj):
+        """Add an object to the cache."""
+        raise NotImplementedError(self.add)
 
 
 class BzrGitCacheFormat(object):
@@ -473,6 +489,24 @@ class TdbGitShaMap(GitShaMap):
                 yield sha_to_hex(key[4:])
 
 
+class VersionedFilesContentCache(ContentCache):
+
+    def __init__(self, vf):
+        self._vf = vf
+
+    def add(self, obj):
+        self._vf.insert_record_stream(
+            [versionedfile.ChunkedContentFactory((obj.id,), [], None,
+                obj.as_legacy_object_chunks())])
+
+    def __getitem__(self, sha):
+        stream = self._vf.get_record_stream([(sha,)], 'unordered', True)
+        entry = stream.next() 
+        if entry.storage_kind == 'absent':
+            raise KeyError(sha)
+        return ShaFile._parse_legacy_object(entry.get_bytes_as('fulltext'))
+
+
 class IndexGitCacheFormat(BzrGitCacheFormat):
 
     def get_format_string(self):
@@ -485,7 +519,8 @@ class IndexGitCacheFormat(BzrGitCacheFormat):
     def open(self, transport):
         mapper = versionedfile.ConstantMapper("trees")
         trees_store = knit.make_file_factory(True, mapper)(transport)
-        return IndexGitShaMap(transport.clone('index')), None
+        return (IndexGitShaMap(transport.clone('index')),
+                VersionedFilesContentCache(trees_store))
 
 
 class IndexGitShaMap(GitShaMap):
