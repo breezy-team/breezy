@@ -48,11 +48,7 @@ from dulwich.server import (
     )
 from dulwich.pack import (
     PackData,
-    write_pack_index_v2,
-    )
-from dulwich.objects import (
-    ShaFile,
-    hex_to_sha,
+    Pack,
     )
 
 class BzrBackend(Backend):
@@ -77,13 +73,16 @@ class BzrBackendRepo(BackendRepo):
         self.repo = self.repo_dir.find_repository()
         self.object_store = get_object_store(self.repo)
 
+    def get_peeled(self, name):
+        return self.get_refs()[name]
+
     def get_refs(self):
         """Return a dict of all tags and branches in repository (and shas) """
         ret = {}
         self.repo.lock_read()
         try:
             for branch in self.repo_dir.list_branches():
-                ref = branch_name_to_ref(branch.name, "HEAD")
+                ref = branch_name_to_ref(branch.name, "refs/heads/master")
                 ret[ref] = self.object_store._lookup_revision_sha1(
                     branch.last_revision())
                 assert type(ref) == str and type(ret[ref]) == str, \
@@ -101,31 +100,19 @@ class BzrBackendRepo(BackendRepo):
         f.write(read())
         f.close()
 
-        p = PackData(path)
-        entries = p.sorted_entries()
-        heads = []
-        for e in entries:
-            sha = e[0]
-            offset = e[1]
-            t, o = p.get_object_at (offset)
-            if t == 1 or t == 4:
-                heads.append(sha)
-        write_pack_index_v2(path[:-5]+".idx", entries, p.calculate_checksum())
+        pd = PackData(path)
+        pd.create_index_v2(path[:-5]+".idx", self.object_store.get_raw)
 
-        objects = {}
-        for tup in p.iterobjects():
-            obj_type, obj = p.get_object_at (tup[0])
-            if obj_type in range(1, 4):
-                sf = ShaFile.from_raw_string (obj_type, obj)
-                objects[hex_to_sha(sf.id)] = sf
+        p = Pack(path[:-5])
+        heads = [k[1] for k in refs]
 
         self.repo.lock_write()
         try:
             self.repo.start_write_group()
             try:
-                import_git_objects(self.repo, self.mapping, objects,
-                                   self.object_store,
-                                   heads)
+                import_git_objects(self.repo, self.mapping, 
+                    p.iterobjects(get_raw=self.object_store.get_raw),
+                    self.object_store, heads)
             except:
                 self.repo.abort_write_group()
                 raise
@@ -146,9 +133,14 @@ class BzrBackendRepo(BackendRepo):
                 target_branch = self.repo.create_branch(branch_name)
 
             rev_id = self.mapping.revision_id_foreign_to_bzr(sha)
-            target_branch.generate_revision_history(rev_id)
+            target_branch.lock_write()
+            try:
+                target_branch.generate_revision_history(rev_id)
+            finally:
+                target_branch.unlock()
 
-    def fetch_objects(self, determine_wants, graph_walker, progress, get_tagged=None):
+    def fetch_objects(self, determine_wants, graph_walker, progress,
+        get_tagged=None):
         """ yield git objects to send to client """
         # If this is a Git repository, just use the existing fetch_objects implementation.
         if getattr(self.repo, "fetch_objects", None) is not None:
@@ -156,8 +148,13 @@ class BzrBackendRepo(BackendRepo):
 
         wants = determine_wants(self.get_refs())
         graph_walker.reset()
-        have = self.object_store.find_common_revisions(graph_walker)
-        return self.object_store.generate_pack_contents(have, wants)
+
+        self.repo.lock_read()
+        try:
+            have = self.object_store.find_common_revisions(graph_walker)
+            return self.object_store.generate_pack_contents(have, wants)
+        finally:
+            self.repo.unlock()
 
 
 def serve_git(transport, host=None, port=None, inet=False):
