@@ -68,13 +68,15 @@ def extract_tags(refs):
     return ret
 
 
-def branch_name_to_ref(name):
+def branch_name_to_ref(name, default=None):
     """Map a branch name to a ref.
 
     :param name: Branch name
     :return: ref string
     """
-    if name is None or name == "HEAD":
+    if name is None:
+        return default
+    if name == "HEAD":
         return "HEAD"
     if not name.startswith("refs/"):
         return "refs/heads/%s" % name
@@ -539,8 +541,8 @@ class InterGitLocalRemoteBranch(InterGitBranch):
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
         def get_changed_refs(old_refs):
-            result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(old_refs.get("refs/heads/master", "0" * 40))
-            refs = { "refs/heads/master": self.source.repository.lookup_bzr_revision_id(stop_revision)[0] }
+            result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(old_refs.get(self.target.ref, "0" * 40))
+            refs = { self.target.ref: self.source.repository.lookup_bzr_revision_id(stop_revision)[0] }
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
                 refs["refs/tags/%s" % name] = sha
@@ -624,24 +626,19 @@ class InterToGitBranch(branch.InterBranch):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        try:
-            result.old_revid = self.target.last_revision()
-        except NoSuchRef:
-            result.old_revid = revision.NULL_REVISION
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
-        refs = { "refs/heads/master": stop_revision }
+        refs = { self.target.ref: stop_revision }
         for name, revid in self.source.tags.get_tag_dict().iteritems():
             if self.source.repository.has_revision(revid):
                 refs["refs/tags/%s" % name] = revid
-        revidmap, new_refs = self.target.repository.dfetch_refs(
+        revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
             self.source.repository, refs)
-        if revidmap != {}:
-            self.target.generate_revision_history(revidmap[stop_revision])
-            result.new_revid = revidmap[stop_revision]
-        else:
-            result.new_revid = result.old_revid
+        result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
+            old_refs.get(self.target.ref, "0" * 40))
+        result.new_revid = self.target.mapping.revision_id_foreign_to_bzr(
+            new_refs[self.target.ref])
         result.revidmap = revidmap
         return result
 

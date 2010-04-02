@@ -23,6 +23,7 @@ from dulwich.repo import (
     Repo as GitRepo,
     )
 import os
+import stat
 
 from bzrlib import (
     knit,
@@ -51,10 +52,7 @@ from bzrlib.plugins.git.fetch import (
     )
 from bzrlib.plugins.git.mapping import (
     BzrGitMappingv1,
-    default_mapping,
-    )
-from bzrlib.plugins.git.shamap import (
-    DictGitShaMap,
+    DEFAULT_FILE_MODE,
     )
 from bzrlib.plugins.git.tests import (
     GitBranchBuilder,
@@ -274,9 +272,10 @@ class ImportObjects(TestCaseWithTransport):
         blob = Blob.from_string("bar")
         base_inv = Inventory()
         objs = { "blobname": blob}
-        ret, _= import_git_blob(self._texts, self._mapping, "bla", "blobname", 
-            base_inv, None, None, None, "somerevid", [], objs.__getitem__, False,
-            False)
+        ret, _= import_git_blob(self._texts, self._mapping, "bla", "bla",
+            (None, "blobname"), 
+            base_inv, None, None, "somerevid", [], objs.__getitem__, 
+            (None, DEFAULT_FILE_MODE))
         self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())
         self.assertEquals(self._texts.get_record_stream([('bla', 'somerevid')],
             "unordered", True).next().get_bytes_as("fulltext"), "bar")
@@ -292,10 +291,10 @@ class ImportObjects(TestCaseWithTransport):
     def test_import_tree_empty_root(self):
         base_inv = Inventory(root_id=None)
         tree = Tree()
-        tree.serialize()
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "", 
-               tree.id, base_inv, None, None,
-               None, "somerevid", [], {tree.id: tree}.__getitem__)
+        ret, _, _ = import_git_tree(self._texts, self._mapping, "", "",
+               (None, tree.id), base_inv, None,
+               None, "somerevid", [], {tree.id: tree}.__getitem__,
+               (None, stat.S_IFDIR))
         self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -310,10 +309,10 @@ class ImportObjects(TestCaseWithTransport):
     def test_import_tree_empty(self):
         base_inv = Inventory()
         tree = Tree()
-        tree.serialize()
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", 
-           tree.id, base_inv, None, None, None, "somerevid", [], 
-           { tree.id: tree }.__getitem__)
+        ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
+           (None, tree.id), base_inv, None, None, "somerevid", [], 
+           { tree.id: tree }.__getitem__,
+           (None, stat.S_IFDIR))
         self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -330,10 +329,10 @@ class ImportObjects(TestCaseWithTransport):
         blob = Blob.from_string("bar1")
         tree = Tree()
         tree.add(0100600, "foo", blob.id)
-        tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", tree.id, 
-            base_inv, None, None, None, "somerevid", [], objects.__getitem__)
+        ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
+                (None, tree.id), base_inv, None, None, "somerevid", [],
+            objects.__getitem__, (None, stat.S_IFDIR))
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("bla", ret[0][1])
@@ -353,10 +352,10 @@ class ImportObjects(TestCaseWithTransport):
         blob = Blob.from_string("bar")
         tree = Tree()
         tree.add(0100755, "foo", blob.id)
-        tree.serialize()
         objects = { blob.id: blob, tree.id: tree }
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "", tree.id, 
-            base_inv, None, None, None, "somerevid", [], objects.__getitem__)
+        ret, _, _ = import_git_tree(self._texts, self._mapping, "", "",
+                (None, tree.id), base_inv, None, None, "somerevid", [],
+            objects.__getitem__, (None, stat.S_IFDIR))
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("", ret[0][1])

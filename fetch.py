@@ -17,11 +17,16 @@
 from dulwich.objects import (
     Commit,
     Tag,
+    Tree,
     S_ISGITLINK,
     )
 from dulwich.object_store import (
     tree_lookup_path,
     )
+from itertools import (
+    imap,
+    )
+import posixpath
 import re
 import stat
 
@@ -30,7 +35,6 @@ from bzrlib import (
     osutils,
     trace,
     ui,
-    urlutils,
     )
 from bzrlib.errors import (
     BzrError,
@@ -53,13 +57,14 @@ from bzrlib.tsort import (
     topo_sort,
     )
 from bzrlib.versionedfile import (
-    FulltextContentFactory,
+    ChunkedContentFactory,
     )
 
 from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     inventory_to_tree_and_blobs,
     mode_is_executable,
+    mode_kind,
     squash_revision,
     warn_unusual_mode,
     )
@@ -77,9 +82,9 @@ from bzrlib.plugins.git.repository import (
     )
 
 
-def import_git_blob(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
-    base_ie, parent_id, revision_id, parent_invs, lookup_object,
-    executable, symlink):
+def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha), 
+        base_inv, base_inv_shamap, parent_id, revision_id,
+        parent_invs, lookup_object, (base_mode, mode)):
     """Import a git blob object into a bzr repository.
 
     :param texts: VersionedFiles to add to
@@ -87,28 +92,18 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
     :param blob: A git blob
     :return: Inventory delta for this file
     """
+    if base_hexsha == hexsha and base_mode == mode:
+        # If nothing has changed since the base revision, we're done
+        return [], []
     file_id = mapping.generate_file_id(path)
-    if symlink:
+    if stat.S_ISLNK(mode):
         cls = InventoryLink
     else:
         cls = InventoryFile
-    # We just have to hope this is indeed utf-8:
-    ie = cls(file_id, urlutils.basename(path).decode("utf-8"), parent_id)
-    ie.executable = executable
-    # See if this has changed at all
-    if base_ie is None:
-        base_sha = None
-    else:
-        try:
-            base_sha = base_inv_shamap.lookup_blob(file_id, base_ie.revision)
-        except KeyError:
-            base_sha = None
-        else:
-            if (base_sha == hexsha and base_ie.executable == ie.executable
-                and base_ie.kind == ie.kind):
-                # If nothing has changed since the base revision, we're done
-                return [], []
-    if base_sha == hexsha and base_ie.kind == ie.kind:
+    ie = cls(file_id, name.decode("utf-8"), parent_id)
+    ie.executable = mode_is_executable(mode)
+    if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
+        base_ie = base_inv[base_inv.path2id(path)]
         ie.text_size = base_ie.text_size
         ie.text_sha1 = base_ie.text_sha1
         ie.symlink_target = base_ie.symlink_target
@@ -124,20 +119,15 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
             ie.text_size = None
             ie.text_sha1 = None
         else:
-            ie.text_size = len(blob.data)
-            ie.text_sha1 = osutils.sha_string(blob.data)
+            ie.text_size = sum(imap(len, blob.chunked))
+            ie.text_sha1 = osutils.sha_strings(blob.chunked)
     # Check what revision we should store
     parent_keys = []
-    for pinv in parent_invs:
-        if pinv.revision_id == base_inv.revision_id:
-            pie = base_ie
-            if pie is None:
-                continue
-        else:
-            try:
-                pie = pinv[file_id]
-            except NoSuchId:
-                continue
+    for pinv in parent_invs[1:]:
+        try:
+            pie = pinv[file_id]
+        except NoSuchId:
+            continue
         if pie.text_sha1 == ie.text_sha1 and pie.executable == ie.executable and pie.symlink_target == ie.symlink_target:
             # found a revision in one of the parents to use
             ie.revision = pie.revision
@@ -146,23 +136,22 @@ def import_git_blob(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
     if ie.revision is None:
         # Need to store a new revision
         ie.revision = revision_id
-        assert file_id is not None
         assert ie.revision is not None
         if ie.kind == 'symlink':
-            data = ''
+            chunks = []
         else: 
-            data = blob.data
-        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, data)])
-    shamap = { ie.file_id: hexsha }
+            chunks = blob.chunked
+        texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, chunks)])
     invdelta = []
-    if base_ie is not None:
-        old_path = base_inv.id2path(file_id)
-        if base_ie.kind == "directory":
-            invdelta.extend(remove_disappeared_children(old_path, base_ie.children, []))
+    if base_hexsha is not None:
+        old_path = path # Renames are not supported yet
+        if stat.S_ISDIR(base_mode):
+            invdelta.extend(remove_disappeared_children(base_inv, old_path,
+                lookup_object(base_hexsha), [], lookup_object))
     else:
         old_path = None
     invdelta.append((old_path, path, file_id, ie))
-    return (invdelta, shamap)
+    return (invdelta, [(ie.file_id, "blob", hexsha, ie.revision)])
 
 
 class SubmodulesRequireSubtrees(BzrError):
@@ -170,40 +159,41 @@ class SubmodulesRequireSubtrees(BzrError):
     internal = False
 
 
-def import_git_submodule(texts, mapping, path, hexsha, base_inv, base_ie,
-    parent_id, revision_id, parent_invs, lookup_object):
+def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
+    base_inv, parent_id, revision_id, parent_invs, lookup_object,
+    (base_mode, mode)):
+    if base_hexsha == hexsha and base_mode == mode:
+        return [], {}, {}
     file_id = mapping.generate_file_id(path)
-    ie = TreeReference(file_id, urlutils.basename(path.decode("utf-8")),
-        parent_id)
+    ie = TreeReference(file_id, name.decode("utf-8"), parent_id)
     ie.revision = revision_id
-    if base_ie is None:
+    if base_hexsha is None:
         oldpath = None
     else:
         oldpath = path
-        if (base_ie.kind == ie.kind and
-            base_ie.reference_revision == ie.reference_revision):
-            ie.revision = base_ie.revision
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
-    texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), None, "")])
+    texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
     invdelta = [(oldpath, path, file_id, ie)]
-    return invdelta, {}, {}
+    return invdelta, {}, []
 
 
-def remove_disappeared_children(path, base_children, existing_children):
+def remove_disappeared_children(base_inv, path, base_tree, existing_children,
+        lookup_object):
     ret = []
-    deletable = [(osutils.pathjoin(path, k), v) for k,v in base_children.iteritems() if k not in existing_children]
-    while deletable:
-        (path, ie) = deletable.pop()
-        ret.append((path, None, ie.file_id, None))
-        if ie.kind == "directory":
-            for name, child_ie in ie.children.iteritems():
-                deletable.append((osutils.pathjoin(path, name), child_ie))
+    for name, mode, hexsha in base_tree.iteritems():
+        if name in existing_children:
+            continue
+        c_path = posixpath.join(path, name.decode("utf-8"))
+        ret.append((c_path, None, base_inv.path2id(c_path), None))
+        if stat.S_ISDIR(mode):
+            ret.extend(remove_disappeared_children(
+                base_inv, c_path, lookup_object(hexsha), [], lookup_object))
     return ret
 
 
-def import_git_tree(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
-    base_ie, parent_id, revision_id, parent_invs, lookup_object,
-    allow_submodules=False):
+def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
+        base_inv, base_inv_shamap, parent_id, revision_id, parent_invs,
+    lookup_object, (base_mode, mode), allow_submodules=False):
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
@@ -212,73 +202,74 @@ def import_git_tree(texts, mapping, path, hexsha, base_inv, base_inv_shamap,
     :param base_inv: Base inventory against which to return inventory delta
     :return: Inventory delta for this subtree
     """
+    if base_hexsha == hexsha and base_mode == mode:
+        # If nothing has changed since the base revision, we're done
+        return [], {}, []
     invdelta = []
     file_id = mapping.generate_file_id(path)
     # We just have to hope this is indeed utf-8:
-    ie = InventoryDirectory(file_id, urlutils.basename(path.decode("utf-8")),
-        parent_id)
-    if base_ie is None:
-        # Newly appeared here
+    ie = InventoryDirectory(file_id, name.decode("utf-8"), parent_id)
+    tree = lookup_object(hexsha)
+    if base_hexsha is None:
+        base_tree = None
+        old_path = None # Newly appeared here
+    else:
+        base_tree = lookup_object(base_hexsha)
+        old_path = path # Renames aren't supported yet
+    if base_tree is None or type(base_tree) is not Tree:
         ie.revision = revision_id
-        texts.insert_record_stream([FulltextContentFactory((file_id, ie.revision), (), None, "")])
-        invdelta.append((None, path, file_id, ie))
-    else:
-        # See if this has changed at all
-        try:
-            base_sha = base_inv_shamap.lookup_tree(file_id)
-        except (KeyError, NotImplementedError):
-            pass
-        else:
-            if base_sha == hexsha:
-                # If nothing has changed since the base revision, we're done
-                return [], {}, []
-        if base_ie.kind != "directory":
-            ie.revision = revision_id
-            texts.insert_record_stream([FulltextContentFactory((ie.file_id, ie.revision), (), None, "")])
-            invdelta.append((base_inv.id2path(ie.file_id), path, ie.file_id, ie))
-    if base_ie is not None and base_ie.kind == "directory":
-        base_children = base_ie.children
-    else:
-        base_children = {}
+        invdelta.append((old_path, path, ie.file_id, ie))
+        texts.insert_record_stream([ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
     # Remember for next time
     existing_children = set()
     child_modes = {}
-    shamap = {}
-    tree = lookup_object(hexsha)
-    for mode, name, child_hexsha in tree.entries():
-        basename = name.decode("utf-8")
-        existing_children.add(basename)
-        child_path = osutils.pathjoin(path, name)
-        if stat.S_ISDIR(mode):
+    shamap = [(ie.file_id, "tree", hexsha, revision_id)]
+    for child_mode, name, child_hexsha in tree.entries():
+        existing_children.add(name)
+        child_path = posixpath.join(path, name)
+        if type(base_tree) is Tree:
+            try:
+                child_base_mode, child_base_hexsha = base_tree[name]
+            except KeyError:
+                child_base_hexsha = None
+                child_base_mode = 0
+        else:
+            child_base_hexsha = None
+            child_base_mode = 0
+        if stat.S_ISDIR(child_mode):
             subinvdelta, grandchildmodes, subshamap = import_git_tree(
-                    texts, mapping, child_path, child_hexsha, base_inv,
-                    base_inv_shamap, base_children.get(basename), file_id,
-                    revision_id, parent_invs, lookup_object,
+                    texts, mapping, child_path, name,
+                    (child_base_hexsha, child_hexsha),
+                    base_inv, base_inv_shamap, 
+                    file_id, revision_id, parent_invs, lookup_object,
+                    (child_base_mode, child_mode),
                     allow_submodules=allow_submodules)
-        elif S_ISGITLINK(mode): # submodule
+        elif S_ISGITLINK(child_mode): # submodule
             if not allow_submodules:
                 raise SubmodulesRequireSubtrees()
             subinvdelta, grandchildmodes, subshamap = import_git_submodule(
-                    texts, mapping, child_path, child_hexsha, base_inv, base_children.get(basename),
-                    file_id, revision_id, parent_invs, lookup_object)
+                    texts, mapping, child_path, name,
+                    (child_base_hexsha, child_hexsha),
+                    base_inv, file_id, revision_id, parent_invs, lookup_object,
+                    (child_base_mode, child_mode))
         else:
             subinvdelta, subshamap = import_git_blob(texts, mapping,
-                    child_path, child_hexsha, base_inv, base_inv_shamap,
-                    base_children.get(basename), file_id,
+                    child_path, name, (child_base_hexsha, child_hexsha),
+                    base_inv, base_inv_shamap,
+                    file_id,
                     revision_id, parent_invs, lookup_object,
-                    mode_is_executable(mode), stat.S_ISLNK(mode))
+                    (child_base_mode, child_mode))
             grandchildmodes = {}
         child_modes.update(grandchildmodes)
         invdelta.extend(subinvdelta)
-        shamap.update(subshamap)
-        if mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
+        shamap.extend(subshamap)
+        if child_mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
-            child_modes[child_path] = mode
+            child_modes[child_path] = child_mode
     # Remove any children that have disappeared
-    if base_ie is not None and base_ie.kind == "directory":
-        invdelta.extend(remove_disappeared_children(base_inv.id2path(file_id),
-            base_children, existing_children))
-    shamap[file_id] = hexsha
+    if base_tree is not None and type(base_tree) is Tree:
+        invdelta.extend(remove_disappeared_children(base_inv, old_path, 
+            base_tree, existing_children, lookup_object))
     return invdelta, child_modes, shamap
 
 
@@ -292,27 +283,19 @@ def import_git_commit(repo, mapping, head, lookup_object,
     parent_invs = parent_invs_cache.get_inventories(rev.parent_ids)
     if parent_invs == []:
         base_inv = Inventory(root_id=None)
-        base_ie = None
         base_inv_shamap = None # Should never be accessed
+        base_tree = None
+        base_mode = None
     else:
         base_inv = parent_invs[0]
-        base_ie = base_inv.root
         base_inv_shamap = target_git_object_retriever._idmap.get_inventory_sha_map(base_inv.revision_id)
-    inv_delta, unusual_modes, shamap = import_git_tree(repo.texts,
-            mapping, "", o.tree, base_inv, base_inv_shamap, base_ie, None,
-            rev.revision_id, parent_invs, lookup_object,
+        base_tree = lookup_object(o.parents[0]).tree
+        base_mode = stat.S_IFDIR
+    inv_delta, unusual_modes, entries = import_git_tree(repo.texts,
+            mapping, "", u"", (base_tree, o.tree), base_inv, base_inv_shamap,
+            None, rev.revision_id, parent_invs, lookup_object,
+            (base_mode, stat.S_IFDIR),
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
-    entries = []
-    for (oldpath, newpath, fileid, new_ie) in inv_delta:
-        if newpath is None:
-            entries.append((fileid, None, None, None))
-        else:
-            if new_ie.kind in ("file", "symlink"):
-                entries.append((fileid, "blob", shamap[fileid], new_ie.revision))
-            elif new_ie.kind == "directory":
-                entries.append((fileid, "tree", shamap[fileid], rev.revision_id))
-            else:
-                raise AssertionError
     target_git_object_retriever._idmap.add_entries(rev.revision_id,
         rev.parent_ids, head, o.tree, entries)
     if unusual_modes != {}:
@@ -358,7 +341,6 @@ def import_git_objects(repo, mapping, object_iter,
             return object_iter[sha]
         except KeyError:
             return target_git_object_retriever[sha]
-    # TODO: a more (memory-)efficient implementation of this
     graph = []
     checked = set()
     heads = list(set(heads))
@@ -389,7 +371,7 @@ def import_git_objects(repo, mapping, object_iter,
     del checked
     # Order the revisions
     # Create the inventory objects
-    batch_size = 100
+    batch_size = 1000
     revision_ids = topo_sort(graph)
     pack_hints = []
     if limit is not None:
@@ -400,9 +382,11 @@ def import_git_objects(repo, mapping, object_iter,
         try:
             repo.start_write_group()
             try:
-                for i, head in enumerate(revision_ids[offset:offset+batch_size]):
+                for i, head in enumerate(
+                    revision_ids[offset:offset+batch_size]):
                     if pb is not None:
-                        pb.update("fetching revisions", offset+i, len(revision_ids))
+                        pb.update("fetching revisions", offset+i,
+                                  len(revision_ids))
                     import_git_commit(repo, mapping, head, lookup_object,
                                       target_git_object_retriever,
                                       parent_invs_cache)

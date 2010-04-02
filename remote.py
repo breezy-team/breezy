@@ -192,6 +192,10 @@ class RemoteGitDir(GitDir):
         self._lockfiles = lockfiles
         self._mode_check_done = None
 
+    def _branch_name_to_ref(self, name):
+        from bzrlib.plugins.git.branch import branch_name_to_ref
+        return branch_name_to_ref(name, default="refs/heads/master")
+
     def open_repository(self):
         return RemoteGitRepository(self, self._lockfiles)
 

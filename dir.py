@@ -79,8 +79,7 @@ class GitDir(bzrdir.BzrDir):
         return get_rich_root_format(stacked)
 
     def _branch_name_to_ref(self, name):
-        from bzrlib.plugins.git.branch import branch_name_to_ref
-        return branch_name_to_ref(name)
+        raise NotImplementedError(self._branch_name_to_ref)
 
     if bzrlib_version >= (2, 2):
         def open_branch(self, name=None, ignore_fallbacks=None,
@@ -113,6 +112,17 @@ class LocalGitDir(GitDir):
         self._lockfiles = lockfiles
         self._mode_check_done = None
 
+    def _branch_name_to_ref(self, name):
+        from bzrlib.plugins.git.branch import branch_name_to_ref
+        if name in (None, "HEAD"):
+            from dulwich.repo import SYMREF
+            refcontents = self._git.refs.read_ref("HEAD")
+            if refcontents.startswith(SYMREF):
+                name = refcontents[len(SYMREF):]
+            else:
+                name = "HEAD"
+        return branch_name_to_ref(name, "HEAD")
+
     def is_control_filename(self, filename):
         return filename == '.git' or filename.startswith('.git/')
 
@@ -139,7 +149,7 @@ class LocalGitDir(GitDir):
     def list_branches(self):
         ret = []
         for name in self._git.get_refs():
-            if name.startswith("refs/heads/") or name == "HEAD":
+            if name.startswith("refs/heads/"):
                 ret.append(self.open_branch(name=name))
         return ret
 

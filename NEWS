@@ -13,6 +13,11 @@
   * Default to non-bare repositories when initializing a control directory.
     (Jelmer Vernooij)
 
+ PERFORMANCE
+ 
+  * Avoid the use of InventoryDirectory.children. This speeds up 
+    imports significantly. (Jelmer Vernooij)
+
 0.5.0	2010-03-18
 
  BUG FIXES

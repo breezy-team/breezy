@@ -67,7 +67,8 @@ def unescape_file_id(file_id):
             elif file_id[i+1] == 's':
                 ret.append(" ")
             else:
-                raise AssertionError("unknown escape character %s" % file_id[i+1])
+                raise AssertionError("unknown escape character %s" %
+                    file_id[i+1])
             i += 1
         i += 1
     return "".join(ret)
@@ -85,8 +86,8 @@ def warn_escaped(commit, num_escaped):
 
 
 def warn_unusual_mode(commit, path, mode):
-    trace.mutter("Unusual file mode %o for %s in %s. Storing as revision property. ",
-                 mode, path, commit)
+    trace.mutter("Unusual file mode %o for %s in %s. Storing as revision "
+                 "property. ", mode, path, commit)
 
 
 def squash_revision(target_repo, rev):
@@ -162,7 +163,8 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def _generate_git_svn_metadata(self, rev, encoding):
         try:
-            return "\ngit-svn-id: %s\n" % rev.properties["git-svn-id"].encode(encoding)
+            return "\ngit-svn-id: %s\n" % rev.properties["git-svn-id"].encode(
+                encoding)
         except KeyError:
             return ""
 
@@ -174,9 +176,11 @@ class BzrGitMapping(foreign.VcsMapping):
             if name == 'hg:extra:branch':
                 branch = rev.properties['hg:extra:branch']
             elif name.startswith('hg:extra'):
-                extra[name[len('hg:extra:'):]] = base64.b64decode(rev.properties[name])
+                extra[name[len('hg:extra:'):]] = base64.b64decode(
+                    rev.properties[name])
             elif name == 'hg:renames':
-                renames = bencode.bdecode(base64.b64decode(rev.properties['hg:renames']))
+                renames = bencode.bdecode(base64.b64decode(
+                    rev.properties['hg:renames']))
             # TODO: Export other properties as 'bzr:' extras?
         ret = format_hg_metadata(renames, branch, extra)
         assert isinstance(ret, str)
@@ -201,7 +205,8 @@ class BzrGitMapping(foreign.VcsMapping):
         for name, value in extra.iteritems():
             rev.properties['hg:extra:' + name] = base64.b64encode(value)
         if renames:
-            rev.properties['hg:renames'] = base64.b64encode(bencode.bencode([(new, old) for (old, new) in renames.iteritems()]))
+            rev.properties['hg:renames'] = base64.b64encode(bencode.bencode(
+                [(new, old) for (old, new) in renames.iteritems()]))
         return message
 
     def _decode_commit_message(self, rev, message, encoding):
@@ -214,7 +219,8 @@ class BzrGitMapping(foreign.VcsMapping):
         """Turn a Bazaar revision in to a Git commit
 
         :param tree_sha: Tree sha for the commit
-        :param parent_lookup: Function for looking up the GIT sha equiv of a bzr revision
+        :param parent_lookup: Function for looking up the GIT sha equiv of a
+            bzr revision
         :return dulwich.objects.Commit represent the revision:
         """
         from dulwich.objects import Commit
@@ -258,7 +264,8 @@ class BzrGitMapping(foreign.VcsMapping):
         """
         if commit is None:
             raise AssertionError("Commit object can't be None")
-        rev = ForeignRevision(commit.id, self, self.revision_id_foreign_to_bzr(commit.id))
+        rev = ForeignRevision(commit.id, self,
+                self.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
         def decode_using_encoding(rev, commit, encoding):
             rev.committer = str(commit.committer).decode(encoding)
@@ -282,7 +289,7 @@ class BzrGitMapping(foreign.VcsMapping):
         if commit.commit_time != commit.author_time:
             rev.properties['author-timestamp'] = str(commit.author_time)
         if commit.commit_timezone != commit.author_timezone:
-            rev.properties['author-timezone'] = "%d" % (commit.author_timezone, )
+            rev.properties['author-timezone'] = "%d" % commit.author_timezone
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         return rev
@@ -334,9 +341,9 @@ class GitMappingRegistry(VcsMappingRegistry):
 
 mapping_registry = GitMappingRegistry()
 mapping_registry.register_lazy('git-v1', "bzrlib.plugins.git.mapping",
-                                   "BzrGitMappingv1")
-mapping_registry.register_lazy('git-experimental', "bzrlib.plugins.git.mapping",
-                                   "BzrGitMappingExperimental")
+    "BzrGitMappingv1")
+mapping_registry.register_lazy('git-experimental',
+    "bzrlib.plugins.git.mapping", "BzrGitMappingExperimental")
 mapping_registry.set_default('git-v1')
 
 
@@ -368,14 +375,6 @@ class ForeignGit(ForeignVcs):
 
 foreign_git = ForeignGit()
 default_mapping = mapping_registry.get_default()()
-
-
-def text_to_blob(texts, entry):
-    from dulwich.objects import Blob
-    text = texts.get_record_stream([(entry.file_id, entry.revision)], 'unordered', True).next().get_bytes_as('fulltext')
-    blob = Blob()
-    blob.data = text
-    return blob
 
 
 def symlink_to_blob(entry):
@@ -459,14 +458,16 @@ def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
 
 def extract_unusual_modes(rev):
     try:
-        foreign_revid, mapping = mapping_registry.parse_revision_id(rev.revision_id)
+        foreign_revid, mapping = mapping_registry.parse_revision_id(
+            rev.revision_id)
     except errors.InvalidRevisionId:
         return {}
     else:
         return mapping.export_unusual_file_modes(rev)
 
 
-def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=None):
+def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes,
+                                cur=None):
     """Convert a Bazaar tree to a Git tree.
 
     :return: Yields tuples with object sha1, object and path
@@ -496,7 +497,12 @@ def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes, cur=No
             tree = Tree()
         else:
             if entry.kind == "file":
-                blob = text_to_blob(texts, entry)
+                from dulwich.objects import Blob
+                stream = texts.get_record_stream(
+                    [(entry.file_id, entry.revision)], 'unordered', True)
+                text = stream.next().get_bytes_as('fulltext')
+                blob = Blob()
+                blob.data = text
             elif entry.kind == "symlink":
                 blob = symlink_to_blob(entry)
             else:

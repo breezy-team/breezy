@@ -48,7 +48,7 @@ class TestGitBlackBox(ExternalBase):
         dir = BzrDir.open(self.test_dir)
         dir.create_branch()
         output, error = self.run_bzr(['nick'])
-        self.assertEquals("HEAD\n", output)
+        self.assertEquals("master\n", output)
 
     def test_info(self):
         self.simple_commit()

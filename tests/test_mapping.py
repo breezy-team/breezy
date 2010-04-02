@@ -81,7 +81,6 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = "Author"
-        c.serialize()
         rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals("Some message", rev.message)
         self.assertEquals("Committer", rev.committer)
@@ -103,7 +102,6 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("iso8859-1")
         c.encoding = "iso8859-1"
-        c.serialize()
         rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("iso8859-1", rev.properties["git-explicit-encoding"])
@@ -119,7 +117,6 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("latin1")
-        c.serialize()
         rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("latin1", rev.properties["git-implicit-encoding"])
@@ -135,7 +132,6 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("utf-8")
-        c.serialize()
         rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertTrue("git-explicit-encoding" not in rev.properties)
@@ -155,7 +151,6 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         raise NotImplementedError(self.assertRoundtripBlob)
 
     def assertRoundtripCommit(self, commit1):
-        commit1.serialize()
         rev = self.mapping.import_commit(commit1)
         commit2 = self.mapping.export_commit(rev, "12341212121212", None)
         self.assertEquals(commit1.committer, commit2.committer)

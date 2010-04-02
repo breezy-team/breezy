@@ -132,15 +132,10 @@ class LocalGitRepository(GitRepository):
                 continue
             hexsha, mapping = self.lookup_bzr_revision_id(revision_id)
             try:
-                commit = self._git.commit(hexsha)
+                commit = self._git[hexsha]
             except KeyError:
                 continue
-            if commit is None:
-                # Older versions of Dulwich used to return None rather than
-                # raise KeyError.
-                continue
-            else:
-                parent_map[revision_id] = [mapping.revision_id_foreign_to_bzr(p) for p in commit.parents]
+            parent_map[revision_id] = [mapping.revision_id_foreign_to_bzr(p) for p in commit.parents]
         return parent_map
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -179,7 +174,7 @@ class LocalGitRepository(GitRepository):
     def get_revision(self, revision_id):
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         try:
-            commit = self._git.commit(git_commit_id)
+            commit = self._git[git_commit_id]
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         # print "fetched revision:", git_commit_id

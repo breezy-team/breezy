@@ -64,7 +64,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         GitRepo.init('.')
         d = BzrDir.open('.')
         thebranch = d.create_branch()
-        self.assertEquals("<LocalGitBranch('file://%s/', 'HEAD')>" % self.test_dir, repr(thebranch))
+        self.assertEquals("<LocalGitBranch('file://%s/', 'refs/heads/master')>" % self.test_dir, repr(thebranch))
 
     def test_last_revision_is_null(self):
         GitRepo.init('.')
@@ -258,3 +258,11 @@ class BranchNameRefConversionTests(tests.TestCase):
     def test_branch(self):
         self.assertEquals("frost", branch.ref_to_branch_name("refs/heads/frost"))
         self.assertEquals("refs/heads/frost", branch.branch_name_to_ref("frost"))
+
+    def test_default(self):
+        self.assertEquals("mydefault",
+            branch.branch_name_to_ref(None, "mydefault"))
+        self.assertEquals(None,
+            branch.branch_name_to_ref(None))
+
+

@@ -72,7 +72,7 @@ class MissingObjectsIterator(object):
         rev = self.source.get_revision(revid)
         commit = None
         for path, obj in self._object_store._revision_to_objects(rev, inv):
-            if obj._type == "commit":
+            if obj.type_name == "commit":
                 commit = obj
             self._pending.append((obj, path))
         return commit.id
@@ -123,6 +123,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             pb.finished()
 
     def dfetch_refs(self, refs):
+        old_refs = self.target._git.get_refs()
         new_refs = {}
         revidmap, gitidmap = self.dfetch(refs.values())
         for name, revid in refs.iteritems():
@@ -132,7 +133,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 gitid = self.source_store._lookup_revision_sha1(revid)
             self.target._git.refs[name] = gitid
             new_refs[name] = gitid
-        return revidmap, new_refs
+        return revidmap, old_refs, new_refs
 
     def dfetch(self, stop_revisions):
         """Import the gist of the ancestry of a particular revision."""
@@ -177,8 +178,10 @@ class InterToRemoteGitRepository(InterToGitRepository):
     def dfetch_refs(self, new_refs):
         """Import the gist of the ancestry of a particular revision."""
         revidmap = {}
+        old_refs = {}
         def determine_wants(refs):
             ret = {}
+            old_refs.update(new_refs)
             for name, revid in new_refs.iteritems():
                 ret[name] = self.source_store._lookup_revision_sha1(revid)
             return ret
@@ -188,7 +191,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
                     self.source_store.generate_pack_contents)
         finally:
             self.source.unlock()
-        return revidmap, new_refs
+        return revidmap, old_refs, new_refs
 
     @staticmethod
     def is_compatible(source, target):
