@@ -31,6 +31,8 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
         super(TestIterMergeSortedRevisionsSimpleGraph, self).setUp()
         builder = self.make_builder_with_merges('.')
         self.branch = builder.get_branch()
+        self.branch.lock_read()
+        self.addCleanup(self.branch.unlock)
 
     def make_builder_with_merges(self, relpath):
         try:
@@ -38,6 +40,13 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
+        # 1
+        # |\
+        # 2 |
+        # | |
+        # | 1.1.1
+        # |/
+        # 3
         builder.build_snapshot('1', None, [
             ('add', ('', 'TREE_ROOT', 'directory', '')),])
         builder.build_snapshot('1.1.1', ['1'], [])
@@ -57,11 +66,11 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
         self.assertIterRevids(['3', '1.1.1', '2', '1'])
 
     def test_merge_sorted_range(self):
-        self.assertIterRevids(['1.1.1', '2'],
+        self.assertIterRevids(['1.1.1'],
                               start_revision_id='1.1.1', stop_revision_id='1')
 
     def test_merge_sorted_range_start_only(self):
-        self.assertIterRevids(['1.1.1', '2', '1'],
+        self.assertIterRevids(['1.1.1', '1'],
                               start_revision_id='1.1.1')
 
     def test_merge_sorted_range_stop_exclude(self):
@@ -105,12 +114,12 @@ class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
         self.assertIterRevids(['1', '2', '1.1.1', '3'], direction='forward')
 
     def test_merge_sorted_range_forward(self):
-        self.assertIterRevids(['2', '1.1.1'],
+        self.assertIterRevids(['1.1.1'],
                               start_revision_id='1.1.1', stop_revision_id='1',
                               direction='forward')
 
     def test_merge_sorted_range_start_only_forward(self):
-        self.assertIterRevids(['1', '2', '1.1.1'],
+        self.assertIterRevids(['1', '1.1.1'],
                               start_revision_id='1.1.1', direction='forward')
 
     def test_merge_sorted_range_stop_exclude_forward(self):
@@ -188,8 +197,8 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         # | |    \
         # | 2.1.2 |
         # | |     |
-        # | |   2.2.1
-        # | |  /
+        # | |     2.2.1
+        # | |    /
         # | 2.1.3
         # |/
         # 4
