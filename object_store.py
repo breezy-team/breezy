@@ -331,9 +331,9 @@ class BazaarObjectStore(BaseObjectStore):
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        for (fileid, revision, expected_sha) in keys:
+        stream = self.repository.iter_files_bytes(((key[0], key[1], key) for key in keys))
+        for (fileid, revision, expected_sha), chunks in stream:
             blob = Blob()
-            chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
             blob.chunked = chunks
             if blob.id != expected_sha:
                 # Perhaps it's a symlink ?
