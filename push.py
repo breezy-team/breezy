@@ -71,7 +71,7 @@ class MissingObjectsIterator(object):
         inv = self._object_store.parent_invs_cache.get_inventory(revid)
         rev = self.source.get_revision(revid)
         commit = None
-        for path, obj in self._object_store._revision_to_objects(rev, inv):
+        for path, obj, ie in self._object_store._revision_to_objects(rev, inv):
             if obj.type_name == "commit":
                 commit = obj
             self._pending.append((obj, path))

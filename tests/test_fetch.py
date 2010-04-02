@@ -260,6 +260,15 @@ class LocalRepositoryFetchTests(RepositoryFetchTests, TestCaseWithTransport):
         return Repository.open(path)
 
 
+class DummyStoreUpdater(object):
+
+    def add_object(self, obj, ie):
+        pass
+
+    def finish(self):
+        pass
+
+
 class ImportObjects(TestCaseWithTransport):
 
     def setUp(self):
@@ -272,10 +281,10 @@ class ImportObjects(TestCaseWithTransport):
         blob = Blob.from_string("bar")
         base_inv = Inventory()
         objs = { "blobname": blob}
-        ret, _= import_git_blob(self._texts, self._mapping, "bla", "bla",
+        ret = import_git_blob(self._texts, self._mapping, "bla", "bla",
             (None, "blobname"), 
             base_inv, None, None, "somerevid", [], objs.__getitem__, 
-            (None, DEFAULT_FILE_MODE))
+            (None, DEFAULT_FILE_MODE), DummyStoreUpdater())
         self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())
         self.assertEquals(self._texts.get_record_stream([('bla', 'somerevid')],
             "unordered", True).next().get_bytes_as("fulltext"), "bar")
@@ -291,10 +300,10 @@ class ImportObjects(TestCaseWithTransport):
     def test_import_tree_empty_root(self):
         base_inv = Inventory(root_id=None)
         tree = Tree()
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "", "",
+        ret, _ = import_git_tree(self._texts, self._mapping, "", "",
                (None, tree.id), base_inv, None,
                None, "somerevid", [], {tree.id: tree}.__getitem__,
-               (None, stat.S_IFDIR))
+               (None, stat.S_IFDIR), DummyStoreUpdater())
         self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -309,10 +318,10 @@ class ImportObjects(TestCaseWithTransport):
     def test_import_tree_empty(self):
         base_inv = Inventory()
         tree = Tree()
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
+        ret, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
            (None, tree.id), base_inv, None, None, "somerevid", [], 
            { tree.id: tree }.__getitem__,
-           (None, stat.S_IFDIR))
+           (None, stat.S_IFDIR), DummyStoreUpdater())
         self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -330,9 +339,9 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.add(0100600, "foo", blob.id)
         objects = { blob.id: blob, tree.id: tree }
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
+        ret, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
                 (None, tree.id), base_inv, None, None, "somerevid", [],
-            objects.__getitem__, (None, stat.S_IFDIR))
+            objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater())
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("bla", ret[0][1])
@@ -353,9 +362,9 @@ class ImportObjects(TestCaseWithTransport):
         tree = Tree()
         tree.add(0100755, "foo", blob.id)
         objects = { blob.id: blob, tree.id: tree }
-        ret, _, _ = import_git_tree(self._texts, self._mapping, "", "",
+        ret, _ = import_git_tree(self._texts, self._mapping, "", "",
                 (None, tree.id), base_inv, None, None, "somerevid", [],
-            objects.__getitem__, (None, stat.S_IFDIR))
+            objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater())
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("", ret[0][1])

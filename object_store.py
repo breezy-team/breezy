@@ -133,7 +133,7 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
     :param parent_invshamaps: parent inventory SHA Map
     :param unusual_modes: Unusual file modes
     :param iter_files_bytes: Repository.iter_files_bytes-like callback
-    :return: Yields (path, object) entries
+    :return: Yields (path, object, ie) entries
     """
     new_trees = {}
     new_blobs = []
@@ -167,7 +167,7 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
                         ie.symlink_target == pie.symlink_target):
                         break
             else:
-                yield path, blob
+                yield path, blob, ie
                 new_trees[urlutils.dirname(path)] = ie.parent_id
             shamap[ie.file_id] = blob.id
         elif ie.kind == "directory":
@@ -191,13 +191,13 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
         else:
             raise AssertionError(ie.kind)
     
-    for (path, fid), chunks in iter_files_bytes(
+    for (path, ie), chunks in iter_files_bytes(
         [(ie.file_id, ie.revision, (path, ie.file_id))
             for (path, ie) in new_blobs]):
         obj = Blob()
         obj.data = "".join(chunks)
-        yield path, obj
-        shamap[fid] = obj.id
+        yield path, obj, ie
+        shamap[ie.file_id] = obj.id
 
     for fid in unusual_modes:
         new_trees[inv.id2path(fid)] = inv[fid].parent_id
@@ -229,8 +229,41 @@ def _inventory_to_objects(inv, parent_invs, parent_invshamaps,
         assert ie.kind == "directory"
         obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
         if obj is not None:
-            yield path, obj
+            yield path, obj, ie
             shamap[ie.file_id] = obj.id
+
+
+class ObjectStoreUpdater(object):
+
+    def __init__(self, store, rev):
+        self.store = store
+        self.revid = rev.revision_id
+        self.parent_revids = rev.parent_ids
+        self._commit = None
+        self._entries = []
+
+    def add_object(self, obj, ie):
+        if obj.type_name == "commit":
+            self._commit = obj
+            assert ie is None
+        elif obj.type_name in ("blob", "tree"):
+            if obj.type_name == "blob":
+                revision = ie.revision
+            else:
+                revision = self.revid
+            self._entries.append((ie.file_id, obj.type_name, obj.id, revision))
+        else:
+            raise AssertionError
+        if (self.store._content_cache and 
+            obj.type_name in self.store._content_cache_types):
+            self.store._content_cache.add(obj)
+
+    def finish(self):
+        if self._commit is None:
+            raise AssertionError("No commit object added")
+        self.store._idmap.add_entries(self.revid, self.parent_revids,
+            self._commit.id, self._commit.tree, self._entries)
+        return self._commit
 
 
 class BazaarObjectStore(BaseObjectStore):
@@ -306,10 +339,10 @@ class BazaarObjectStore(BaseObjectStore):
             [p for p in rev.parent_ids if p in present_parents])
         parent_invshamaps = [self._idmap.get_inventory_sha_map(r) for r in rev.parent_ids if r in present_parents]
         tree_sha = None
-        for path, obj in _inventory_to_objects(inv, parent_invs,
+        for path, obj, ie in _inventory_to_objects(inv, parent_invs,
                 parent_invshamaps, unusual_modes,
                 self.repository.iter_files_bytes, has_ghost_parents):
-            yield path, obj
+            yield path, obj, ie
             if path == "":
                 tree_sha = obj.id
         if tree_sha is None:
@@ -324,31 +357,18 @@ class BazaarObjectStore(BaseObjectStore):
             pass
         else:
             _check_expected_sha(foreign_revid, commit_obj)
-        yield None, commit_obj
+        yield None, commit_obj, None
+
+    def _get_updater(self, rev):
+        return ObjectStoreUpdater(self, rev)
 
     def _update_sha_map_revision(self, revid):
         rev = self.repository.get_revision(revid)
         inv = self.parent_invs_cache.get_inventory(rev.revision_id)
-        commit_obj = None
-        entries = []
-        for path, obj in self._revision_to_objects(rev, inv):
-            if (self._content_cache is not None and 
-                obj.type_name in self._content_cache_types):
-                self._content_cache.add(obj)
-            if obj.type_name == "commit":
-                commit_obj = obj
-            elif obj.type_name in ("blob", "tree"):
-                file_id = inv.path2id(path)
-                ie = inv[file_id]
-                if obj.type_name == "blob":
-                    revision = ie.revision
-                else:
-                    revision = revid
-                entries.append((file_id, obj.type_name, obj.id, revision))
-            else:
-                raise AssertionError
-        self._idmap.add_entries(revid, rev.parent_ids, commit_obj.id, 
-            commit_obj.tree, entries)
+        updater = self._get_updater(rev)
+        for path, obj, ie in self._revision_to_objects(rev, inv):
+            updater.add(obj, ie)
+        commit_obj = updater.finish()
         return commit_obj.id
 
     def _get_blob(self, fileid, revision, expected_sha):
@@ -451,6 +471,12 @@ class BazaarObjectStore(BaseObjectStore):
 
     def __getitem__(self, sha):
         (type, type_data) = self._lookup_git_sha(sha)
+        if (self._content_cache is not None and 
+            type in self._content_cache_types):
+            try:
+                return self._content_cache[sha]
+            except KeyError:
+                pass
         # convert object to git object
         if type == "commit":
             (revid, tree_sha) = type_data
@@ -467,11 +493,6 @@ class BazaarObjectStore(BaseObjectStore):
             (fileid, revision) = type_data
             return self._get_blob(fileid, revision, expected_sha=sha)
         elif type == "tree":
-            if self._content_cache is not None:
-                try:
-                    return self._content_cache[sha]
-                except KeyError:
-                    pass
             (fileid, revid) = type_data
             try:
                 inv = self.parent_invs_cache.get_inventory(revid)
@@ -529,7 +550,7 @@ class BazaarObjectStore(BaseObjectStore):
                 pb.update("generating git objects", i, len(todo))
                 rev = self.repository.get_revision(revid)
                 inv = self.parent_invs_cache.get_inventory(revid)
-                for path, obj in self._revision_to_objects(rev, inv):
+                for path, obj, ie in self._revision_to_objects(rev, inv):
                     ret.append((obj, path))
         finally:
             pb.finished()

@@ -84,7 +84,7 @@ from bzrlib.plugins.git.repository import (
 
 def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha), 
         base_inv, base_inv_shamap, parent_id, revision_id,
-        parent_invs, lookup_object, (base_mode, mode)):
+        parent_invs, lookup_object, (base_mode, mode), store_updater):
     """Import a git blob object into a bzr repository.
 
     :param texts: VersionedFiles to add to
@@ -94,7 +94,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     """
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
-        return [], []
+        return []
     file_id = mapping.generate_file_id(path)
     if stat.S_ISLNK(mode):
         cls = InventoryLink
@@ -151,7 +151,9 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     else:
         old_path = None
     invdelta.append((old_path, path, file_id, ie))
-    return (invdelta, [(ie.file_id, "blob", hexsha, ie.revision)])
+    if base_hexsha != hexsha:
+        store_updater.add_object(blob, ie)
+    return invdelta
 
 
 class SubmodulesRequireSubtrees(BzrError):
@@ -161,9 +163,9 @@ class SubmodulesRequireSubtrees(BzrError):
 
 def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
     base_inv, parent_id, revision_id, parent_invs, lookup_object,
-    (base_mode, mode)):
+    (base_mode, mode), store_updater):
     if base_hexsha == hexsha and base_mode == mode:
-        return [], {}, {}
+        return [], {}
     file_id = mapping.generate_file_id(path)
     ie = TreeReference(file_id, name.decode("utf-8"), parent_id)
     ie.revision = revision_id
@@ -174,7 +176,7 @@ def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
     texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
     invdelta = [(oldpath, path, file_id, ie)]
-    return invdelta, {}, []
+    return invdelta, {}
 
 
 def remove_disappeared_children(base_inv, path, base_tree, existing_children,
@@ -193,7 +195,7 @@ def remove_disappeared_children(base_inv, path, base_tree, existing_children,
 
 def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
         base_inv, base_inv_shamap, parent_id, revision_id, parent_invs,
-    lookup_object, (base_mode, mode), allow_submodules=False):
+    lookup_object, (base_mode, mode), store_updater, allow_submodules=False):
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
@@ -204,7 +206,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     """
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
-        return [], {}, []
+        return [], {}
     invdelta = []
     file_id = mapping.generate_file_id(path)
     # We just have to hope this is indeed utf-8:
@@ -223,7 +225,6 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     # Remember for next time
     existing_children = set()
     child_modes = {}
-    shamap = [(ie.file_id, "tree", hexsha, revision_id)]
     for child_mode, name, child_hexsha in tree.entries():
         existing_children.add(name)
         child_path = posixpath.join(path, name)
@@ -237,32 +238,31 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
             child_base_hexsha = None
             child_base_mode = 0
         if stat.S_ISDIR(child_mode):
-            subinvdelta, grandchildmodes, subshamap = import_git_tree(
+            subinvdelta, grandchildmodes = import_git_tree(
                     texts, mapping, child_path, name,
                     (child_base_hexsha, child_hexsha),
                     base_inv, base_inv_shamap, 
                     file_id, revision_id, parent_invs, lookup_object,
-                    (child_base_mode, child_mode),
+                    (child_base_mode, child_mode), store_updater,
                     allow_submodules=allow_submodules)
         elif S_ISGITLINK(child_mode): # submodule
             if not allow_submodules:
                 raise SubmodulesRequireSubtrees()
-            subinvdelta, grandchildmodes, subshamap = import_git_submodule(
+            subinvdelta, grandchildmodes = import_git_submodule(
                     texts, mapping, child_path, name,
                     (child_base_hexsha, child_hexsha),
                     base_inv, file_id, revision_id, parent_invs, lookup_object,
-                    (child_base_mode, child_mode))
+                    (child_base_mode, child_mode), store_updater)
         else:
-            subinvdelta, subshamap = import_git_blob(texts, mapping,
+            subinvdelta = import_git_blob(texts, mapping,
                     child_path, name, (child_base_hexsha, child_hexsha),
                     base_inv, base_inv_shamap,
                     file_id,
                     revision_id, parent_invs, lookup_object,
-                    (child_base_mode, child_mode))
+                    (child_base_mode, child_mode), store_updater)
             grandchildmodes = {}
         child_modes.update(grandchildmodes)
         invdelta.extend(subinvdelta)
-        shamap.extend(subshamap)
         if child_mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
             child_modes[child_path] = child_mode
@@ -270,7 +270,8 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_tree is not None and type(base_tree) is Tree:
         invdelta.extend(remove_disappeared_children(base_inv, old_path, 
             base_tree, existing_children, lookup_object))
-    return invdelta, child_modes, shamap
+    store_updater.add_object(tree, ie)
+    return invdelta, child_modes
 
 
 def import_git_commit(repo, mapping, head, lookup_object,
@@ -291,13 +292,14 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_inv_shamap = target_git_object_retriever._idmap.get_inventory_sha_map(base_inv.revision_id)
         base_tree = lookup_object(o.parents[0]).tree
         base_mode = stat.S_IFDIR
-    inv_delta, unusual_modes, entries = import_git_tree(repo.texts,
+    store_updater = target_git_object_retriever._get_updater(rev)
+    store_updater.add_object(o, None)
+    inv_delta, unusual_modes = import_git_tree(repo.texts,
             mapping, "", u"", (base_tree, o.tree), base_inv, base_inv_shamap,
             None, rev.revision_id, parent_invs, lookup_object,
-            (base_mode, stat.S_IFDIR),
+            (base_mode, stat.S_IFDIR), store_updater,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
-    target_git_object_retriever._idmap.add_entries(rev.revision_id,
-        rev.parent_ids, head, o.tree, entries)
+    store_updater.finish()
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)
