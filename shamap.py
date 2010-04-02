@@ -282,9 +282,7 @@ class SqliteGitShaMap(GitShaMap):
         trees = []
         blobs = []
         for (fileid, kind, hexsha, revision) in entries:
-            if kind is None:
-                pass # removal
-            elif kind == "tree":
+            if kind == "tree":
                 trees.append((hexsha, fileid, revid))
             elif kind == "blob":
                 blobs.append((hexsha, fileid, revision))
