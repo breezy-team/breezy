@@ -29,8 +29,12 @@ from bzrlib import (
     index as _mod_index,
     knit,
     osutils,
+    registry,
     trace,
     versionedfile,
+    )
+from bzrlib.transport import (
+    get_transport,
     )
 
 
@@ -45,6 +49,10 @@ def get_cache_dir():
     if not os.path.isdir(ret):
         os.makedirs(ret)
     return ret
+
+
+def get_remote_cache_transport():
+    return get_transport(get_cache_dir())
 
 
 def check_pysqlite_version(sqlite3):
@@ -78,10 +86,6 @@ def mapdbs():
     except AttributeError:
         _mapdbs.cache = {}
         return _mapdbs.cache
-
-
-class InventorySHAMap(object):
-    """Maps inventory file ids to Git SHAs."""
 
 
 class GitShaMap(object):
@@ -146,6 +150,37 @@ class GitShaMap(object):
         """Abort any pending changes."""
 
 
+class BzrGitCacheFormat(object):
+
+    def get_format_string(self):
+        raise NotImplementedError(self.get_format_string)
+
+    def open(self, transport):
+        raise NotImplementedError(self.open)
+
+    def initialize(self, transport):
+        transport.put_bytes('format', self.get_format_string())
+
+    @classmethod
+    def from_repository(self, repository):
+        repo_transport = getattr(repository, "_transport", None)
+        if repo_transport is not None:
+            try:
+                repo_transport.mkdir('git')
+            except bzrlib.errors.FileExists:
+                pass
+            transport = repo_transport.clone('git')
+        else:
+            transport = get_remote_cache_transport()
+        try:
+            format_name = transport.get_bytes('format')
+            format = formats.get(format_name)
+        except bzrlib.errors.NoSuchFile:
+            format = formats.get('default')
+            format.initialize(transport)
+        return format.open(transport)
+
+
 class DictGitShaMap(GitShaMap):
 
     def __init__(self):
@@ -173,6 +208,19 @@ class DictGitShaMap(GitShaMap):
 
     def sha1s(self):
         return self._by_sha.iterkeys()
+
+
+class SqliteGitCacheFormat(BzrGitCacheFormat):
+
+    def get_format_string(self):
+        return 'bzr-git sha map version 1 using sqlite\n'
+
+    def open(self, transport):
+        try:
+            basepath = transport.local_abspath(".")
+        except bzrlib.errors.NotLocalUrl:
+            basepath = get_cache_dir()
+        return SqliteGitShaMap(os.path.join(get_cache_dir(), "idmap.db")), None
 
 
 class SqliteGitShaMap(GitShaMap):
@@ -213,16 +261,6 @@ class SqliteGitShaMap(GitShaMap):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
     
-    @classmethod
-    def from_repository(cls, repository):
-        try:
-            transport = getattr(repository, "_transport", None)
-            if transport is not None:
-                return cls(os.path.join(transport.local_abspath("."), "git.db"))
-        except bzrlib.errors.NotLocalUrl:
-            pass
-        return cls(os.path.join(get_cache_dir(), "remote.db"))
-
     def lookup_commit(self, revid):
         row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
         if row is not None:
@@ -310,6 +348,25 @@ TDB_MAP_VERSION = 3
 TDB_HASH_SIZE = 50000
 
 
+class TdbGitCacheFormat(BzrGitCacheFormat):
+
+    def get_format_string(self):
+        return 'bzr-git sha map version 3 using tdb\n'
+
+    def open(self, transport):
+        try:
+            basepath = transport.local_abspath(".")
+        except bzrlib.errors.NotLocalUrl:
+            basepath = get_cache_dir()
+        try:
+            return (TdbGitShaMap(os.path.join(get_cache_dir(), "idmap.tdb")),
+                    None)
+        except ImportError:
+            raise ImportError(
+                "Unable to open existing bzr-git cache because 'tdb' is not "
+                "installed.")
+
+
 class TdbGitShaMap(GitShaMap):
     """SHA Map that uses a TDB database.
 
@@ -360,7 +417,7 @@ class TdbGitShaMap(GitShaMap):
         try:
             transport = getattr(repository, "_transport", None)
             if transport is not None:
-                return cls(os.path.join(transport.local_abspath("."), "git.tdb"))
+                return cls(os.path.join(transport.local_abspath("."), "shamap.tdb"))
         except bzrlib.errors.NotLocalUrl:
             pass
         return cls(os.path.join(get_cache_dir(), "remote.tdb"))
@@ -415,7 +472,20 @@ class TdbGitShaMap(GitShaMap):
             if key.startswith("git\0"):
                 yield sha_to_hex(key[4:])
 
-INDEX_FORMAT = 'bzr-git sha map version 1'
+
+class IndexGitCacheFormat(BzrGitCacheFormat):
+
+    def get_format_string(self):
+        return 'bzr-git sha map version 1\n'
+
+    def initialize(self, transport):
+        super(IndexGitCacheFormat, self).initialize(transport)
+        transport.mkdir('index')
+
+    def open(self, transport):
+        mapper = versionedfile.ConstantMapper("trees")
+        trees_store = knit.make_file_factory(True, mapper)(transport)
+        return IndexGitShaMap(transport.clone('index')), None
 
 
 class IndexGitShaMap(GitShaMap):
@@ -430,35 +500,20 @@ class IndexGitShaMap(GitShaMap):
     """
 
     def __init__(self, transport=None):
-        self._transport = transport
         if transport is None:
-            self._index_transport = None
+            self._transport = None
             self._index = _mod_index.InMemoryGraphIndex(0, key_elements=3)
             self._builder = self._index
         else:
             self._builder = None
-            try:
-                transport.mkdir('index')
-            except bzrlib.errors.FileExists:
-                pass
-            self._index_transport = transport.clone('index')
-            try:
-                format = self._index_transport.get_bytes('format')
-            except bzrlib.errors.NoSuchFile:
-                self._index_transport.put_bytes('format', INDEX_FORMAT)
-            else:
-                if format != INDEX_FORMAT:
-                    trace.warning("SHA Map is incompatible (%s -> %s), rebuilding database.",
-                                  format, INDEX_FORMAT)
-                    raise KeyError
+            self._transport = transport
             self._index = _mod_index.CombinedGraphIndex([])
-            for name in self._index_transport.list_dir("."):
+            for name in self._transport.list_dir("."):
                 if not name.endswith(".rix"):
                     continue
-                x = _mod_btree_index.BTreeGraphIndex(self._index_transport, name, self._index_transport.stat(name).st_size)
+                x = _mod_btree_index.BTreeGraphIndex(self._transport, name,
+                    self._transport.stat(name).st_size)
                 self._index.insert_index(0, x)
-            mapper = versionedfile.ConstantMapper("trees1")
-            self._trees_store = knit.make_file_factory(True, mapper)(transport)
 
     @classmethod
     def from_repository(cls, repository):
@@ -484,13 +539,13 @@ class IndexGitShaMap(GitShaMap):
         for _, key, value in self._index.iter_all_entries():
             self._builder.add_node(key, value)
         to_remove = []
-        for name in self._index_transport.list_dir('.'):
+        for name in self._transport.list_dir('.'):
             if name.endswith('.rix'):
                 to_remove.append(name)
         self.commit_write_group()
         del self._index.indices[1:]
         for name in to_remove:
-            self._index_transport.rename(name, name + '.old')
+            self._transport.rename(name, name + '.old')
 
     def start_write_group(self):
         assert self._builder is None
@@ -501,8 +556,8 @@ class IndexGitShaMap(GitShaMap):
         assert self._builder is not None
         stream = self._builder.finish()
         name = self._name.hexdigest() + ".rix"
-        size = self._index_transport.put_file(name, stream)
-        index = _mod_btree_index.BTreeGraphIndex(self._index_transport, name, size)
+        size = self._transport.put_file(name, stream)
+        index = _mod_btree_index.BTreeGraphIndex(self._transport, name, size)
         self._index.insert_index(0, index)
         self._builder = None
         self._name = None
@@ -597,9 +652,33 @@ class IndexGitShaMap(GitShaMap):
             yield key[1]
 
 
+formats = registry.Registry()
+formats.register(TdbGitCacheFormat().get_format_string(),
+    TdbGitCacheFormat())
+formats.register(SqliteGitCacheFormat().get_format_string(),
+    SqliteGitCacheFormat())
+formats.register(IndexGitCacheFormat().get_format_string(),
+    IndexGitCacheFormat())
+formats.register('default', IndexGitCacheFormat())
+
+
+def migrate_ancient_formats(repo_transport):
+    if repo_transport.has("git.tdb"):
+        TdbGitCacheFormat().initialize(repo_transport.clone("git"))
+        repo_transport.rename("git.tdb", "git/idmap.tdb")
+    elif repo_transport.has("git.db"):
+        SqliteGitCacheFormat().initialize(repo_transport.clone("git"))
+        repo_transport.rename("git.db", "git/idmap.db")
+
+
 def from_repository(repository):
-    return IndexGitShaMap.from_repository(repository)
-    try:
-        return TdbGitShaMap.from_repository(repository)
-    except ImportError:
-        return SqliteGitShaMap.from_repository(repository)
+    repo_transport = getattr(repository, "_transport", None)
+    if repo_transport is not None:
+        # Migrate older cache formats
+        try:
+            repo_transport.mkdir("git")
+        except bzrlib.errors.FileExists:
+            pass
+        else:
+            migrate_ancient_formats(repo_transport)
+    return BzrGitCacheFormat.from_repository(repository)

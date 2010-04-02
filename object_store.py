@@ -44,7 +44,7 @@ from bzrlib.plugins.git.mapping import (
     symlink_to_blob,
     )
 from bzrlib.plugins.git.shamap import (
-    from_repository as idmap_from_repository,
+    from_repository as cache_from_repository,
     )
 
 
@@ -181,7 +181,7 @@ def _inventory_to_objects(inv, parent_invs, idmap,
                         pie.children.keys() == ie.children.keys()):
                         try:
                             shamap[ie.file_id] = idmap.lookup_tree_id(
-                                ie.file_id)
+                                ie.file_id, inv.revision_id)
                         except (NotImplementedError, KeyError):
                             pass
                         else:
@@ -192,7 +192,7 @@ def _inventory_to_objects(inv, parent_invs, idmap,
             raise AssertionError(ie.kind)
     
     for (path, ie), chunks in iter_files_bytes(
-        [(ie.file_id, ie.revision, (path, ie.file_id))
+        [(ie.file_id, ie.revision, (path, ie))
             for (path, ie) in new_blobs]):
         obj = Blob()
         obj.data = "".join(chunks)
@@ -275,8 +275,7 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping = default_mapping
         else:
             self.mapping = mapping
-        self._idmap = idmap_from_repository(repository)
-        self._content_cache = None
+        (self._idmap, self._content_cache) = cache_from_repository(repository)
         self._content_cache_types = ("tree")
         self.start_write_group = self._idmap.start_write_group
         self.abort_write_group = self._idmap.abort_write_group
@@ -367,7 +366,7 @@ class BazaarObjectStore(BaseObjectStore):
         inv = self.parent_invs_cache.get_inventory(rev.revision_id)
         updater = self._get_updater(rev)
         for path, obj, ie in self._revision_to_objects(rev, inv):
-            updater.add(obj, ie)
+            updater.add_object(obj, ie)
         commit_obj = updater.finish()
         return commit_obj.id
 
