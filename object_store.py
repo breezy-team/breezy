@@ -91,6 +91,18 @@ class LRUInventoryCache(object):
         self._cache.add(revid, inv)
 
 
+class ContentCache(object):
+    """Object that can cache Git objects."""
+
+    def __getitem__(self, sha):
+        """Retrieve an item, by SHA."""
+        raise NotImplementedError(self.__getitem__)
+
+    def add(self, obj):
+        """Add an object to the cache."""
+        raise NotImplementedError(self.add)
+
+
 def _check_expected_sha(expected_sha, object):
     """Check whether an object matches an expected SHA.
 
@@ -232,6 +244,7 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping = mapping
         self._idmap = idmap_from_repository(repository)
         self._content_cache = None
+        self._content_cache_types = ("tree")
         self.start_write_group = self._idmap.start_write_group
         self.abort_write_group = self._idmap.abort_write_group
         self.commit_write_group = self._idmap.commit_write_group
@@ -319,6 +332,9 @@ class BazaarObjectStore(BaseObjectStore):
         commit_obj = None
         entries = []
         for path, obj in self._revision_to_objects(rev, inv):
+            if (self._content_cache is not None and 
+                obj.type_name in self._content_cache_types):
+                self._content_cache.add(obj)
             if obj.type_name == "commit":
                 commit_obj = obj
             elif obj.type_name in ("blob", "tree"):
