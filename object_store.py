@@ -325,23 +325,24 @@ class BazaarObjectStore(BaseObjectStore):
         commit_obj = updater.finish()
         return commit_obj.id
 
-    def _get_blob(self, fileid, revision, expected_sha):
+    def _get_blobs(self, keys):
         """Return a Git Blob object from a fileid and revision stored in bzr.
 
         :param fileid: File id of the text
         :param revision: Revision of the text
         """
-        blob = Blob()
-        chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
-        blob.chunked = chunks
-        if blob.id != expected_sha:
-            # Perhaps it's a symlink ?
-            tree = self.tree_cache.revision_tree(revision)
-            entry = tree.inventory[fileid]
-            assert entry.kind == 'symlink'
-            blob = symlink_to_blob(entry)
-        _check_expected_sha(expected_sha, blob)
-        return blob
+        for (fileid, revision, expected_sha) in keys:
+            blob = Blob()
+            chunks = self.repository.iter_files_bytes([(fileid, revision, None)]).next()[1]
+            blob.chunked = chunks
+            if blob.id != expected_sha:
+                # Perhaps it's a symlink ?
+                tree = self.tree_cache.revision_tree(revision)
+                entry = tree.inventory[fileid]
+                assert entry.kind == 'symlink'
+                blob = symlink_to_blob(entry)
+            _check_expected_sha(expected_sha, blob)
+            yield blob
 
     def _get_tree(self, fileid, revid, inv, unusual_modes, expected_sha=None):
         """Return a Git Tree object from a file id and a revision stored in bzr.
@@ -361,7 +362,8 @@ class BazaarObjectStore(BaseObjectStore):
                     else:
                         return obj.id
             elif entry.kind in ("file", "symlink"):
-                return self._cache.idmap.lookup_blob_id(entry.file_id, entry.revision)
+                return self._cache.idmap.lookup_blob_id(entry.file_id,
+                    entry.revision)
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
         tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes)
@@ -443,7 +445,7 @@ class BazaarObjectStore(BaseObjectStore):
             return commit
         elif type == "blob":
             (fileid, revision) = type_data
-            return self._get_blob(fileid, revision, expected_sha=sha)
+            return self._get_blobs([(fileid, revision, sha)]).next()
         elif type == "tree":
             (fileid, revid) = type_data
             try:
