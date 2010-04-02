@@ -555,7 +555,6 @@ class IndexCacheUpdater(CacheUpdater):
 
     def __init__(self, cache, rev):
         self.cache = cache
-        self.db = cache.idmap.db
         self.revid = rev.revision_id
         self.parent_revids = rev.parent_ids
         self._commit = None
@@ -565,14 +564,17 @@ class IndexCacheUpdater(CacheUpdater):
         if obj.type_name == "commit":
             self._commit = obj
             assert ie is None
-            self._add_git_sha(obj.id, "commit", (self.revid, obj.tree))
-            self._add_node(("commit", self.revid, "X"),
+            self.cache.idmap._add_git_sha(obj.id, "commit",
+                (self.revid, obj.tree))
+            self.cache.idmap._add_node(("commit", self.revid, "X"),
                 " ".join((obj.id, obj.tree)))
         elif obj.type_name == "blob":
-            self._add_git_sha(obj.id, "blob", (ie.file_id, ie.revision))
-            self._add_node(("blob", ie.file_id, ie.revision), obj.id)
+            self.cache.idmap._add_git_sha(obj.id, "blob",
+                (ie.file_id, ie.revision))
+            self.cache.idmap._add_node(("blob", ie.file_id, ie.revision), obj.id)
         elif obj.type_name == "tree":
-            self._add_git_sha(obj.id, "tree", (ie.file_id, self.revid))
+            self.cache.idmap._add_git_sha(obj.id, "tree",
+                (ie.file_id, self.revid))
             self.cache.content_cache.add(obj)
         else:
             raise AssertionError
@@ -588,7 +590,8 @@ class IndexBzrGitCache(BzrGitCache):
         trees_store = knit.make_file_factory(True, mapper)(transport)
         super(IndexBzrGitCache, self).__init__(
                 IndexGitShaMap(transport.clone('index')),
-                VersionedFilesContentCache(trees_store))
+                VersionedFilesContentCache(trees_store),
+                IndexCacheUpdater)
 
 
 class IndexGitCacheFormat(BzrGitCacheFormat):
