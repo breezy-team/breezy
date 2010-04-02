@@ -25,9 +25,6 @@ from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
     )
-from bzrlib.repository import (
-    Repository,
-    )
 
 from bzrlib.plugins.git.fetch import (
     import_git_objects,
@@ -53,13 +50,14 @@ from dulwich.objects import (
     )
 
 class BzrBackend(Backend):
+    """A git serve backend that can use a Bazaar repository."""
 
     def __init__(self, transport):
         self.transport = transport
         self.mapping = default_mapping
 
     def get_refs(self):
-        """ return a dict of all tags and branches in repository (and shas) """
+        """Return a dict of all tags and branches in repository (and shas) """
         ret = {}
         repo_dir = BzrDir.open_from_transport(self.transport)
         repo = repo_dir.find_repository()
@@ -68,8 +66,10 @@ class BzrBackend(Backend):
             store = get_object_store(repo)
             branch = None
             for branch in repo.find_branches(using=True):
-                #FIXME: Look for 'master' or 'trunk' in here, and set HEAD accordingly...
-                #FIXME: Need to get branch path relative to its repository and use this instead of nick
+                #FIXME: Look for 'master' or 'trunk' in here, and set HEAD
+                # accordingly...
+                #FIXME: Need to get branch path relative to its repository and
+                # use this instead of nick
                 ret["refs/heads/"+branch.nick] = store._lookup_revision_sha1(branch.last_revision())
             if 'HEAD' not in ret and branch:
                 ret['HEAD'] = store._lookup_revision_sha1(branch.last_revision())
@@ -78,7 +78,7 @@ class BzrBackend(Backend):
         return ret
 
     def apply_pack(self, refs, read):
-        """apply pack from client to current repository"""
+        """Apply pack from client to current repository"""
 
         fd, path = tempfile.mkstemp(suffix=".pack")
         f = os.fdopen(fd, 'w')
