@@ -209,6 +209,7 @@ class DictCacheUpdater(CacheUpdater):
             self._commit = obj
             assert ie is None
             type_data = (self.revid, self._commit.tree)
+            self.cache.idmap._by_revid[self.revid] = obj.id
         elif obj.type_name in ("blob", "tree"):
             if obj.type_name == "blob":
                 revision = ie.revision
@@ -231,6 +232,7 @@ class DictGitShaMap(GitShaMap):
     def __init__(self):
         self._by_sha = {}
         self._by_fileid = {}
+        self._by_revid = {}
 
     def lookup_blob_id(self, fileid, revision):
         return self._by_fileid[revision][fileid]
@@ -240,6 +242,9 @@ class DictGitShaMap(GitShaMap):
 
     def lookup_tree_id(self, fileid, revision):
         return self._base._by_fileid[revision][fileid]
+
+    def lookup_commit(self, revid):
+        return self._by_revid[revid]
 
     def revids(self):
         for key, (type, type_data) in self._by_sha.iteritems():
@@ -403,7 +408,7 @@ class TdbCacheUpdater(CacheUpdater):
     def add_object(self, obj, ie):
         sha = obj.sha().digest()
         if obj.type_name == "commit":
-            self.db["commit\0" + self.revid] = "\0".join((obj.id, obj.tree))
+            self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
             type_data = (self.revid, obj.tree)
             self._commit = obj
             assert ie is None
@@ -414,8 +419,7 @@ class TdbCacheUpdater(CacheUpdater):
             type_data = (ie.file_id, self.revid)
         else:
             raise AssertionError
-        self.db["git\0" + sha] = "\0".join((obj.type_name,
-            type_data[0], type_data[1]))
+        self.db["git\0" + sha] = "\0".join((obj.type_name, ) + type_data)
 
     def finish(self):
         if self._commit is None:

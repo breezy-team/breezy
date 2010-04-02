@@ -71,6 +71,7 @@ class TestGitShaMap:
         self.assertEquals(
             ("commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba")),
             self.map.lookup_git_sha(c.id))
+        self.assertEquals(c.id, self.map.lookup_commit("myrevid"))
 
     def test_lookup_notfound(self):
         self.assertRaises(KeyError,
