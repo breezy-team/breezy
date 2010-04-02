@@ -224,10 +224,10 @@ class DictCacheUpdater(CacheUpdater):
             else:
                 revision = self.revid
             type_data = (ie.file_id, revision)
-            self._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
+            self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
         else:
             raise AssertionError
-        self._by_sha[obj.id] = (obj.type_name, type_data)
+        self.cache.idmap._by_sha[obj.id] = (obj.type_name, type_data)
 
     def finish(self):
         if self._commit is None:
@@ -263,6 +263,7 @@ class SqliteCacheUpdater(CacheUpdater):
 
     def __init__(self, cache, rev):
         self.cache = cache
+        self.db = self.cache.idmap.db
         self.revid = rev.revision_id
         self._commit = None
         self._trees = []
@@ -282,11 +283,15 @@ class SqliteCacheUpdater(CacheUpdater):
     def finish(self):
         if self._commit is None:
             raise AssertionError("No commit object added")
-        if self._trees:
-            self.db.executemany("replace into trees (sha1, fileid, revid) values (?, ?, ?)", self._trees)
-        if self._blobs:
-            self.db.executemany("replace into blobs (sha1, fileid, revid) values (?, ?, ?)", self._blobs)
-        self.db.execute("replace into commits (sha1, revid, tree_sha) values (?, ?, ?)", (self._commit.id, self.revid, self._commit.tree))
+        self.db.executemany(
+            "replace into trees (sha1, fileid, revid) values (?, ?, ?)",
+            self._trees)
+        self.db.executemany(
+            "replace into blobs (sha1, fileid, revid) values (?, ?, ?)",
+            self._blobs)
+        self.db.execute(
+            "replace into commits (sha1, revid, tree_sha) values (?, ?, ?)",
+            (self._commit.id, self.revid, self._commit.tree))
         return self._commit
 
 
@@ -440,7 +445,7 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
         except bzrlib.errors.NotLocalUrl:
             basepath = get_cache_dir()
         try:
-            return TdbBzrGitCache(os.path.join(base_path, "idmap.tdb"))
+            return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
         except ImportError:
             raise ImportError(
                 "Unable to open existing bzr-git cache because 'tdb' is not "
