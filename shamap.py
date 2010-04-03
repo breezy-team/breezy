@@ -155,6 +155,9 @@ class BzrGitCacheFormat(object):
     def from_repository(self, repository):
         repo_transport = getattr(repository, "_transport", None)
         if repo_transport is not None:
+            # Even if we don't write to this repo, we should be able 
+            # to update its cache.
+            repo_transport = remove_readonly_transport_decorator(repo_transport)
             try:
                 repo_transport.mkdir('git')
             except bzrlib.errors.FileExists:
@@ -555,10 +558,17 @@ def migrate_ancient_formats(repo_transport):
         repo_transport.rename("git.db", "git/idmap.db")
 
 
+def remove_readonly_transport_decorator(transport):
+    if transport.is_readonly():
+        return transport._decorated
+    return transport
+
+
 def from_repository(repository):
     repo_transport = getattr(repository, "_transport", None)
     if repo_transport is not None:
         # Migrate older cache formats
+        repo_transport = remove_readonly_transport_decorator(repo_transport)
         try:
             repo_transport.mkdir("git")
         except bzrlib.errors.FileExists:
