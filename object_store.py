@@ -18,6 +18,7 @@
 
 from dulwich.objects import (
     Blob,
+    Tree,
     sha_to_hex,
     )
 from dulwich.object_store import (
@@ -296,8 +297,11 @@ class BazaarObjectStore(BaseObjectStore):
                 tree_sha = obj.id
         if tree_sha is None:
             # Pointless commit - get the tree sha elsewhere
-            base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
-            tree_sha = self[base_sha1].tree
+            if not rev.parent_ids:
+                tree_sha = Tree().id
+            else:
+                base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
+                tree_sha = self[base_sha1].tree
         commit_obj = self._reconstruct_commit(rev, tree_sha)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
