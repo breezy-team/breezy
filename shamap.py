@@ -143,16 +143,42 @@ class ContentCache(object):
 class BzrGitCacheFormat(object):
 
     def get_format_string(self):
+        """Return a single-line unique format string for this cache format."""
         raise NotImplementedError(self.get_format_string)
 
     def open(self, transport):
+        """Open this format on a transport."""
         raise NotImplementedError(self.open)
 
     def initialize(self, transport):
         transport.put_bytes('format', self.get_format_string())
 
     @classmethod
-    def from_repository(self, repository):
+    def from_transport(self, transport):
+        """Open a cache file present on a transport, or initialize one.
+
+        :param transport: Transport to use
+        :return: A BzrGitCache instance
+        """
+        try:
+            format_name = transport.get_bytes('format')
+            format = formats.get(format_name)
+        except bzrlib.errors.NoSuchFile:
+            format = formats.get('default')
+            format.initialize(transport)
+        return format.open(transport)
+
+    @classmethod
+    def from_repository(cls, repository):
+        """Open a cache file for a repository.
+
+        This will use the repository's transport to store the cache file, or
+        use the users global cache directory if the repository has no 
+        transport associated with it.
+
+        :param repository: Repository to open the cache for
+        :return: A `BzrGitCache`
+        """
         repo_transport = getattr(repository, "_transport", None)
         if repo_transport is not None:
             # Even if we don't write to this repo, we should be able 
@@ -165,13 +191,7 @@ class BzrGitCacheFormat(object):
             transport = repo_transport.clone('git')
         else:
             transport = get_remote_cache_transport()
-        try:
-            format_name = transport.get_bytes('format')
-            format = formats.get(format_name)
-        except bzrlib.errors.NoSuchFile:
-            format = formats.get('default')
-            format.initialize(transport)
-        return format.open(transport)
+        return cls.from_transport(transport)
 
 
 class CacheUpdater(object):
@@ -550,12 +570,14 @@ else:
 
 
 def migrate_ancient_formats(repo_transport):
-    if repo_transport.has("git.tdb"):
-        TdbGitCacheFormat().initialize(repo_transport.clone("git"))
-        repo_transport.rename("git.tdb", "git/idmap.tdb")
-    elif repo_transport.has("git.db"):
+    # Prefer migrating git.db over git.tdb, since the latter may not 
+    # be openable on some platforms.
+    if repo_transport.has("git.db"):
         SqliteGitCacheFormat().initialize(repo_transport.clone("git"))
         repo_transport.rename("git.db", "git/idmap.db")
+    elif repo_transport.has("git.tdb"):
+        TdbGitCacheFormat().initialize(repo_transport.clone("git"))
+        repo_transport.rename("git.tdb", "git/idmap.tdb")
 
 
 def remove_readonly_transport_decorator(transport):
@@ -565,6 +587,14 @@ def remove_readonly_transport_decorator(transport):
 
 
 def from_repository(repository):
+    """Open a cache file for a repository.
+
+    If the repository is remote and there is no transport available from it
+    this will use a local file in the users cache directory
+    (typically ~/.cache/bazaar/git/)
+
+    :param repository: A repository object
+    """
     repo_transport = getattr(repository, "_transport", None)
     if repo_transport is not None:
         # Migrate older cache formats
