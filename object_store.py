@@ -128,23 +128,32 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
     except IndexError:
         base_tree = tree._repository.revision_tree(NULL_REVISION)
         other_parent_trees = []
+    def find_unchanged_parent_ie(ie, parent_trees):
+        assert ie.kind in ("symlink", "file")
+        for ptree in parent_trees:
+            try:
+                pie = ptree.inventory[ie.file_id]
+            except errors.NoSuchId:
+                pass
+            else:
+                if (pie.text_sha1 == ie.text_sha1 and 
+                    pie.kind == ie.kind and
+                    pie.symlink_target == ie.symlink_target):
+                    return pie
+        raise KeyError
     for (file_id, path, changed_content, versioned, parent, name, kind,
          executable) in tree.iter_changes(base_tree):
         if kind[1] == "file":
             ie = tree.inventory[file_id]
             if changed_content:
-                # Content changed, find the correct revision id to use
-                for ptree in other_parent_trees:
-                    try:
-                        pie = ptree.inventory[file_id]
-                    except errors.NoSuchId:
-                        pass
-                    else:
-                        if (pie.text_sha1 == ie.text_sha1 and 
-                            pie.kind == ie.kind):
-                            shamap[ie.file_id] = idmap.lookup_blob_id(
-                                pie.file_id, pie.revision)
-                            break
+                
+                try:
+                    pie = find_unchanged_parent_ie(ie, other_parent_trees)
+                except KeyError:
+                    pass
+                else:
+                    shamap[ie.file_id] = idmap.lookup_blob_id(
+                        pie.file_id, pie.revision)
             if not file_id in shamap:
                 new_blobs.append((path[1], ie))
             new_trees[urlutils.dirname(path[1])] = parent[1]
@@ -152,18 +161,11 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
             ie = tree.inventory[file_id]
             if changed_content:
                 blob = symlink_to_blob(ie)
-                for ptree in other_parent_trees:
-                    try:
-                        pie = ptree.inventory[file_id]
-                    except errors.NoSuchId:
-                        pass
-                    else:
-                        if (ie.kind == pie.kind and
-                            ie.symlink_target == pie.symlink_target):
-                            break
-            else:
-                yield path[1], blob, ie
-            shamap[file_id] = blob.id
+                shamap[file_id] = blob.id
+                try:
+                    find_unchanged_parent_ie(ie, other_parent_trees)
+                except KeyError:
+                    yield path[1], blob, ie
             new_trees[urlutils.dirname(path[1])] = parent[1]
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
@@ -200,7 +202,13 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
             return shamap[ie.file_id]
         except KeyError:
             if ie.kind in ("file", "symlink"):
-                return idmap.lookup_blob_id(ie.file_id, ie.revision)
+                try:
+                    return idmap.lookup_blob_id(ie.file_id, ie.revision)
+                except KeyError:
+                    # no-change merge ?
+                    blob = Blob()
+                    blob.data = tree.get_file_text(ie.file_id)
+                    return blob.id
             elif ie.kind == "directory":
                 # Not all cache backends store the tree information, 
                 # calculate again from scratch
@@ -335,12 +343,12 @@ class BazaarObjectStore(BaseObjectStore):
         for (fileid, revision, expected_sha), chunks in stream:
             blob = Blob()
             blob.chunked = chunks
-            if blob.id != expected_sha:
+            if blob.id != expected_sha and blob.data == "":
                 # Perhaps it's a symlink ?
                 tree = self.tree_cache.revision_tree(revision)
                 entry = tree.inventory[fileid]
-                assert entry.kind == 'symlink'
-                blob = symlink_to_blob(entry)
+                if entry.kind == 'symlink':
+                    blob = symlink_to_blob(entry)
             _check_expected_sha(expected_sha, blob)
             yield blob
 
@@ -364,8 +372,13 @@ class BazaarObjectStore(BaseObjectStore):
                     else:
                         return obj.id
             elif entry.kind in ("file", "symlink"):
-                return self._cache.idmap.lookup_blob_id(entry.file_id,
-                    entry.revision)
+                try:
+                    return self._cache.idmap.lookup_blob_id(entry.file_id,
+                        entry.revision)
+                except KeyError:
+                    # no-change merge?
+                    return self._reconstruct_blobs(
+                        [(entry.file_id, entry.revision, None)]).next().id
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
         tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes)
