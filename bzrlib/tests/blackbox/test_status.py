@@ -479,16 +479,31 @@ class BranchStatus(TestCaseWithTransport):
         """
         tree = self.make_branch_and_tree('.')
 
-        self.build_tree(['test.c', 'test.c~'])
+        self.build_tree(['test.c', 'test.c~', 'test2.c~'])
         result = self.run_bzr('status')[0]
         self.assertContainsRe(result, "unknown:\n  test.c\n")
+        short_result = self.run_bzr('status --short')[0]
+        self.assertContainsRe(short_result, "\?   test.c\n")
 
         result = self.run_bzr('status test.c')[0]
         self.assertContainsRe(result, "unknown:\n  test.c\n")
+        short_result = self.run_bzr('status --short test.c')[0]
+        self.assertContainsRe(short_result, "\?   test.c\n")
 
-        out, err = self.run_bzr('status test.c~')
-        self.assertEqual("File test.c~ is marked as ignored,"
-                         " see 'bzr help ignore'\n", err)
+        result = self.run_bzr('status test.c~')[0]
+        self.assertContainsRe(result, "ignored:\n  test.c~\n")
+        short_result = self.run_bzr('status --short test.c~')[0]
+        self.assertContainsRe(short_result, "I   test.c~\n")
+
+        result = self.run_bzr('status test.c~ test2.c~')[0]
+        self.assertContainsRe(result, "ignored:\n  test.c~\n  test2.c~\n")
+        short_result = self.run_bzr('status --short test.c~ test2.c~')[0]
+        self.assertContainsRe(short_result, "I   test.c~\nI   test2.c~\n")
+
+        result = self.run_bzr('status test.c test.c~ test2.c~')[0]
+        self.assertContainsRe(result, "unknown:\n  test.c\nignored:\n  test.c~\n  test2.c~\n")
+        short_result = self.run_bzr('status --short test.c~ test2.c~')[0]
+        self.assertContainsRe(short_result, "\?   test.c\nI   test.c~\nI   test2.c~\n")
 
     def test_status_write_lock(self):
         """Test that status works without fetching history and
