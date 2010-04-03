@@ -16,9 +16,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os
-import tempfile
-
 from dulwich.server import TCPGitServer
 
 from bzrlib.bzrdir import (
@@ -32,9 +29,6 @@ from bzrlib.plugins.git.branch import (
     branch_name_to_ref,
     ref_to_branch_name,
     )
-from bzrlib.plugins.git.fetch import (
-    import_git_objects,
-    )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     )
@@ -45,10 +39,6 @@ from bzrlib.plugins.git.object_store import (
 from dulwich.server import (
     Backend,
     BackendRepo,
-    )
-from dulwich.pack import (
-    PackData,
-    Pack,
     )
 
 class BzrBackend(Backend):
@@ -92,35 +82,7 @@ class BzrBackendRepo(BackendRepo):
             self.repo.unlock()
         return ret
 
-    def apply_pack(self, refs, read):
-        """Apply pack from client to current repository"""
-
-        fd, path = tempfile.mkstemp(suffix=".pack")
-        f = os.fdopen(fd, 'w')
-        f.write(read())
-        f.close()
-
-        pd = PackData(path)
-        pd.create_index_v2(path[:-5]+".idx", self.object_store.get_raw)
-
-        p = Pack(path[:-5])
-        heads = [k[1] for k in refs]
-
-        self.repo.lock_write()
-        try:
-            self.repo.start_write_group()
-            try:
-                import_git_objects(self.repo, self.mapping, 
-                    p.iterobjects(get_raw=self.object_store.get_raw),
-                    self.object_store, heads)
-            except:
-                self.repo.abort_write_group()
-                raise
-            else:
-                self.repo.commit_write_group()
-        finally:
-            self.repo.unlock()
-
+    def set_refs(self, refs):
         for oldsha, sha, ref in refs:
             try:
                 branch_name = ref_to_branch_name(ref)
@@ -142,13 +104,14 @@ class BzrBackendRepo(BackendRepo):
     def fetch_objects(self, determine_wants, graph_walker, progress,
         get_tagged=None):
         """ yield git objects to send to client """
+
         # If this is a Git repository, just use the existing fetch_objects implementation.
         if getattr(self.repo, "fetch_objects", None) is not None:
-            return self.repo.fetch_objects(determine_wants, graph_walker, None, progress)[0]
+            return self.repo.fetch_objects(determine_wants, graph_walker, progress,
+                get_tagged)
 
         wants = determine_wants(self.get_refs())
         graph_walker.reset()
-
         self.repo.lock_read()
         try:
             have = self.object_store.find_common_revisions(graph_walker)

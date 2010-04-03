@@ -524,3 +524,39 @@ class BazaarObjectStore(BaseObjectStore):
         finally:
             pb.finished()
         return ret
+
+    def add_thin_pack(self):
+        import tempfile
+        import os
+        fd, path = tempfile.mkstemp(suffix=".pack")
+        f = os.fdopen(fd, 'wb')
+        def commit():
+            from dulwich.pack import PackData, Pack
+            from bzrlib.plugins.git.fetch import import_git_objects
+            os.fsync(fd)
+            f.close()
+            if os.path.getsize(path) == 0:
+                return
+            pd = PackData(path)
+            pd.create_index_v2(path[:-5]+".idx", self.object_store.get_raw)
+
+            p = Pack(path[:-5])
+            self.repository.lock_write()
+            try:
+                self.repository.start_write_group()
+                try:
+                    import_git_objects(self.repository, self.mapping, 
+                        p.iterobjects(get_raw=self.get_raw),
+                        self.object_store)
+                except:
+                    self.repository.abort_write_group()
+                    raise
+                else:
+                    self.repository.commit_write_group()
+            finally:
+                self.repository.unlock()
+        return f, commit
+
+    # The pack isn't kept around anyway, so no point 
+    # in treating full packs different from thin packs
+    add_pack = add_thin_pack
