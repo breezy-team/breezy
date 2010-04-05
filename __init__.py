@@ -288,6 +288,14 @@ def get_rich_root_format(stacked=False):
 send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
                                    'send_git', 'Git am-style diff format')
 
+try:
+    from bzrlib.diff import format_registry as diff_format_registry
+except ImportError:
+    pass
+else:
+    diff_format_registry.register_lazy('git-am', 'bzrlib.plugins.git.send',
+        'GitDiffTree', 'Git am-style diff format')
+
 def test_suite():
     from bzrlib.plugins.git import tests
     return tests.test_suite()

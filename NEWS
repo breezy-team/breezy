@@ -13,6 +13,10 @@
   * Default to non-bare repositories when initializing a control directory.
     (Jelmer Vernooij)
 
+ FEATURES
+
+  * Support 'bzr diff --format=git'. (Jelmer Vernooij, #555994)
+
  PERFORMANCE
  
   * Avoid the use of InventoryDirectory.children. This speeds up 
