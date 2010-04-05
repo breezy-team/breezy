@@ -25,6 +25,10 @@ from bzrlib import (
     tests,
     workingtree,
     )
+from bzrlib.diff import (
+    DiffTree,
+    format_registry as diff_format_registry,
+    )
 
 
 def subst_dates(string):
@@ -300,6 +304,22 @@ class TestDiff(DiffBase):
         self.assertFalse(dir1.has_workingtree())
         output = self.run_bzr('diff -r 1.. branch1', retcode=1)
         self.assertContainsRe(output[0], '\n\\-original line\n\\+repo line\n')
+
+    def test_custom_format(self):
+        class BooDiffTree(DiffTree):
+
+            def show_diff(self, specific_files, extra_trees=None):
+                self.to_file.write("BOO!\n")
+                return super(BooDiffTree, self).show_diff(specific_files,
+                    extra_trees)
+
+        diff_format_registry.register("boo", BooDiffTree, 
+            "Scary diff format")
+        self.addCleanup(diff_format_registry.remove, "boo")
+        self.make_example_branch()
+        self.build_tree_contents([('hello', 'hello world!\n')])
+        output = self.run_bzr('diff --format=boo', retcode=1)
+        self.assertTrue("BOO!" in output[0])
 
 
 class TestCheckoutDiff(TestDiff):

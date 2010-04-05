@@ -882,7 +882,7 @@ class DiffTree(object):
     def show_diff(self, specific_files, extra_trees=None):
         """Write tree diff to self.to_file
 
-        :param sepecific_files: the specific files to compare (recursive)
+        :param specific_files: the specific files to compare (recursive)
         :param extra_trees: extra trees to use for mapping paths to file_ids
         """
         try:
