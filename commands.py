@@ -165,3 +165,37 @@ class cmd_git_object(Command):
                     self.outf.write("%s\n" % sha1)
         finally:
             repo.unlock()
+
+
+class cmd_git_refs(Command):
+    """Output all of the virtual refs for a repository.
+
+    """
+
+    hidden = True
+
+    takes_options = [Option('directory',
+        short_name='d',
+        help='Location of repository.', type=unicode)]
+
+    @display_command
+    def run(self, directory="."):
+        from bzrlib.bzrdir import (
+            BzrDir,
+            )
+        from bzrlib.plugins.git.refs import (
+            BazaarRefsContainer,
+            )
+        from bzrlib.plugins.git.object_store import (
+            get_object_store,
+            )
+        bzrdir, _ = BzrDir.open_containing(directory)
+        repo = bzrdir.find_repository()
+        repo.lock_read()
+        try:
+            object_store = get_object_store(repo)
+            refs = BazaarRefsContainer(bzrdir, object_store)
+            for k, v in refs.as_dict().iteritems():
+                self.outf.write("%s -> %s\n" % (k, v))
+        finally:
+            repo.unlock()

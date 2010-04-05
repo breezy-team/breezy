@@ -16,6 +16,15 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
+from dulwich.repo import (
+    RefsContainer,
+    )
+
+from bzrlib import (
+    errors,
+    )
+
+
 def extract_tags(refs):
     """Extract the tags from a refs dictionary.
 
@@ -59,3 +68,60 @@ def ref_to_branch_name(ref):
     raise ValueError("unable to map ref %s back to branch name")
 
 
+
+class BazaarRefsContainer(RefsContainer):
+
+    def __init__(self, dir, object_store):
+        self.dir = dir
+        self.object_store = object_store
+
+    def set_symbolic_ref(self, name, other):
+        if name == "HEAD":
+            pass # FIXME: Switch default branch
+        else:
+            raise NotImplementedError(
+                "Symbolic references not supported for anything other than "
+                "HEAD")
+
+    def read_loose_ref(self, ref):
+        branch_name = ref_to_branch_name(ref)
+        try:
+            branch = self.dir.open_branch(branch_name)
+        except errors.NoColocatedBranchSupport:
+            if ref != "refs/heads/master":
+                raise
+            branch = self.dir.open_branch()
+        return self.object_store._lookup_revision_sha1(
+            branch.last_revision())
+
+    def allkeys(self):
+        keys = set()
+        for branch in self.dir.list_branches():
+            ref = branch_name_to_ref(branch.name, "refs/heads/master")
+            keys.add(ref)
+        return keys
+
+    def __delitem__(self, ref):
+        try:
+            branch_name = ref_to_branch_name(ref)
+        except ValueError:
+            return # FIXME: Cope with tags!
+        self.dir.destroy_branch(branch_name)
+
+    def __setitem__(self, ref, sha):
+        try:
+            branch_name = ref_to_branch_name(ref)
+        except ValueError:
+            # FIXME: Cope with tags!
+            return
+        try:
+            target_branch = self.repo_dir.open_branch(branch_name)
+        except errors.NotBranchError:
+            target_branch = self.repo.create_branch(branch_name)
+
+        rev_id = self.mapping.revision_id_foreign_to_bzr(sha)
+        target_branch.lock_write()
+        try:
+            target_branch.generate_revision_history(rev_id)
+        finally:
+            target_branch.unlock()

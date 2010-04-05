@@ -32,8 +32,7 @@ from bzrlib.plugins.git.object_store import (
     get_object_store
     )
 from bzrlib.plugins.git.refs import (
-    branch_name_to_ref,
-    ref_to_branch_name,
+    BazaarRefsContainer,
     )
 
 from dulwich.server import (
@@ -62,52 +61,17 @@ class BzrBackendRepo(BackendRepo):
         self.repo_dir = BzrDir.open_from_transport(self.transport)
         self.repo = self.repo_dir.find_repository()
         self.object_store = get_object_store(self.repo)
+        self.refs = BazaarRefsContainer(self.repo_dir, self.object_store)
+
+    def get_refs(self):
+        return self.refs.as_dict()
 
     def get_peeled(self, name):
         return self.get_refs()[name]
 
-    def get_refs(self):
-        """Return a dict of all tags and branches in repository (and shas) """
-        ret = {}
-        self.repo.lock_read()
-        try:
-            for branch in self.repo_dir.list_branches():
-                ref = branch_name_to_ref(branch.name, "refs/heads/master")
-                ret[ref] = self.object_store._lookup_revision_sha1(
-                    branch.last_revision())
-                assert type(ref) == str and type(ret[ref]) == str, \
-                        "(%s) %r -> %r" % (branch.name, ref, ret[ref])
-        finally:
-            self.repo.unlock()
-        return ret
-
-    def set_refs(self, refs):
-        for oldsha, sha, ref in refs:
-            try:
-                branch_name = ref_to_branch_name(ref)
-            except ValueError:
-                # FIXME: Cope with tags!
-                continue
-            try:
-                target_branch = self.repo_dir.open_branch(branch_name)
-            except NotBranchError:
-                target_branch = self.repo.create_branch(branch_name)
-
-            rev_id = self.mapping.revision_id_foreign_to_bzr(sha)
-            target_branch.lock_write()
-            try:
-                target_branch.generate_revision_history(rev_id)
-            finally:
-                target_branch.unlock()
-
     def fetch_objects(self, determine_wants, graph_walker, progress,
         get_tagged=None):
         """ yield git objects to send to client """
-
-        # If this is a Git repository, just use the existing fetch_objects implementation.
-        if getattr(self.repo, "fetch_objects", None) is not None:
-            return self.repo.fetch_objects(determine_wants, graph_walker, progress,
-                get_tagged)
 
         wants = determine_wants(self.get_refs())
         self.repo.lock_read()

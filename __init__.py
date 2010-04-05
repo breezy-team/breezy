@@ -252,6 +252,7 @@ foreign_vcs_registry.register_lazy("git",
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"],
     "bzrlib.plugins.git.commands")
+plugin_cmds.register_lazy("cmd_git_refs", [], "bzrlib.plugins.git.commands")
 
 def update_stanza(rev, stanza):
     mapping = getattr(rev, "mapping", None)
