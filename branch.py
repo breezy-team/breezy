@@ -53,6 +53,7 @@ from bzrlib.plugins.git.errors import (
 from bzrlib.plugins.git.refs import (
     ref_to_branch_name,
     extract_tags,
+    tag_name_to_ref,
     )
 
 from bzrlib.foreign import ForeignBranch
@@ -102,7 +103,7 @@ class LocalGitTagDict(tag.BasicTags):
     def _set_tag_dict(self, to_dict):
         extra = set(self.repository._git.get_refs().keys())
         for k, revid in to_dict.iteritems():
-            name = "refs/tags/%s" % k
+            name = tag_name_to_ref(k)
             if name in extra:
                 extra.remove(name)
             self.set_tag(k, revid)
@@ -111,7 +112,7 @@ class LocalGitTagDict(tag.BasicTags):
                 del self.repository._git[name]
         
     def set_tag(self, name, revid):
-        self.repository._git.refs["refs/tags/%s" % name], _ = \
+        self.repository._git.refs[tag_name_to_ref(name)], _ = \
             self.branch.mapping.revision_id_bzr_to_foreign(revid)
 
 
@@ -506,7 +507,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
             refs = { self.target.ref: self.source.repository.lookup_bzr_revision_id(stop_revision)[0] }
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
-                refs["refs/tags/%s" % name] = sha
+                refs[tag_name_to_ref(name)] = sha
             return refs
         self.target.repository.send_pack(get_changed_refs,
             self.source.repository._git.object_store.generate_pack_contents)
@@ -593,7 +594,7 @@ class InterToGitBranch(branch.InterBranch):
         refs = { self.target.ref: stop_revision }
         for name, revid in self.source.tags.get_tag_dict().iteritems():
             if self.source.repository.has_revision(revid):
-                refs["refs/tags/%s" % name] = revid
+                refs[tag_name_to_ref(name)] = revid
         revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
             self.source.repository, refs)
         result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
