@@ -128,9 +128,12 @@ class BazaarRefsContainer(RefsContainer):
     def allkeys(self):
         keys = set()
         for branch in self.dir.list_branches():
-            keys.add(branch_name_to_ref(branch.name, "refs/heads/master"))
-            keys.update([tag_name_to_ref(tag) 
-                for tag in branch.tags.get_tag_dict().keys()])
+            repo = branch.repository
+            if repo.has_revision(branch.last_revision()):
+                keys.add(branch_name_to_ref(branch.name, "refs/heads/master"))
+            for tag_name, revid in branch.tags.get_tag_dict().iteritems():
+                if repo.has_revision(revid):
+                    keys.add(tag_name_to_ref(tag_name))
         return keys
 
     def __delitem__(self, ref):
