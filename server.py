@@ -111,11 +111,11 @@ class BzrBackendRepo(BackendRepo):
                 get_tagged)
 
         wants = determine_wants(self.get_refs())
-        graph_walker.reset()
         self.repo.lock_read()
         try:
             have = self.object_store.find_common_revisions(graph_walker)
-            return self.object_store.generate_pack_contents(have, wants)
+            return self.object_store.generate_pack_contents(have, wants, progress,
+                get_tagged)
         finally:
             self.repo.unlock()
 

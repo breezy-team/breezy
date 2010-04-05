@@ -478,7 +478,7 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise AssertionError("Unknown object type '%s'" % type)
 
-    def generate_pack_contents(self, have, want):
+    def generate_pack_contents(self, have, want, progress=None, get_tagged=None):
         """Iterate over the contents of a pack file.
 
         :param have: List of SHA1s of objects that should not be sent
