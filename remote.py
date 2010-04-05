@@ -40,7 +40,6 @@ lazy_check_versions()
 
 from bzrlib.plugins.git.branch import (
     GitBranch,
-    extract_tags,
     )
 from bzrlib.plugins.git.errors import (
     GitSmartRemoteNotSupported,
@@ -54,6 +53,10 @@ from bzrlib.plugins.git.mapping import (
     )
 from bzrlib.plugins.git.repository import (
     GitRepository,
+    )
+from bzrlib.plugins.git.refs import (
+    extract_tags,
+    branch_name_to_ref,
     )
 
 import dulwich as git
@@ -193,7 +196,6 @@ class RemoteGitDir(GitDir):
         self._mode_check_done = None
 
     def _branch_name_to_ref(self, name):
-        from bzrlib.plugins.git.branch import branch_name_to_ref
         return branch_name_to_ref(name, default="refs/heads/master")
 
     def open_repository(self):

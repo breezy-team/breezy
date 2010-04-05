@@ -25,15 +25,15 @@ from bzrlib.errors import (
     NotBranchError,
     )
 
-from bzrlib.plugins.git.branch import (
-    branch_name_to_ref,
-    ref_to_branch_name,
-    )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     )
 from bzrlib.plugins.git.object_store import (
     get_object_store
+    )
+from bzrlib.plugins.git.refs import (
+    branch_name_to_ref,
+    ref_to_branch_name,
     )
 
 from dulwich.server import (
@@ -77,7 +77,6 @@ class BzrBackendRepo(BackendRepo):
                     branch.last_revision())
                 assert type(ref) == str and type(ret[ref]) == str, \
                         "(%s) %r -> %r" % (branch.name, ref, ret[ref])
-
         finally:
             self.repo.unlock()
         return ret

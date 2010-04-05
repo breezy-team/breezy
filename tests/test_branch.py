@@ -246,23 +246,4 @@ class ForeignTestsBranchFactory(object):
     make_branch = make_empty_branch
 
 
-class BranchNameRefConversionTests(tests.TestCase):
-
-    def test_head(self):
-        self.assertEquals("HEAD", branch.ref_to_branch_name("HEAD"))
-        self.assertEquals("HEAD", branch.branch_name_to_ref("HEAD"))
-
-    def test_tag(self):
-        self.assertRaises(ValueError, branch.ref_to_branch_name, "refs/tags/FOO")
-
-    def test_branch(self):
-        self.assertEquals("frost", branch.ref_to_branch_name("refs/heads/frost"))
-        self.assertEquals("refs/heads/frost", branch.branch_name_to_ref("frost"))
-
-    def test_default(self):
-        self.assertEquals("mydefault",
-            branch.branch_name_to_ref(None, "mydefault"))
-        self.assertEquals(None,
-            branch.branch_name_to_ref(None))
-
 

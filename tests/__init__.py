@@ -246,6 +246,7 @@ def test_suite():
         'test_remote',
         'test_repository',
         'test_shamap',
+        'test_refs',
         'test_revspec',
         ]
     testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]

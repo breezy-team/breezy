@@ -113,7 +113,7 @@ class LocalGitDir(GitDir):
         self._mode_check_done = None
 
     def _branch_name_to_ref(self, name):
-        from bzrlib.plugins.git.branch import branch_name_to_ref
+        from bzrlib.plugins.git.refs import branch_name_to_ref
         if name in (None, "HEAD"):
             from dulwich.repo import SYMREF
             refcontents = self._git.refs.read_ref("HEAD")

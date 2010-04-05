@@ -50,51 +50,12 @@ from bzrlib.plugins.git.errors import (
     NoPushSupport,
     NoSuchRef,
     )
+from bzrlib.plugins.git.refs import (
+    ref_to_branch_name,
+    extract_tags,
+    )
 
 from bzrlib.foreign import ForeignBranch
-
-
-def extract_tags(refs):
-    """Extract the tags from a refs dictionary.
-
-    :param refs: Refs to extract the tags from.
-    :return: Dictionary mapping tag names to SHA1s.
-    """
-    ret = {}
-    for k,v in refs.iteritems():
-        if k.startswith("refs/tags/") and not k.endswith("^{}"):
-            v = refs.get(k+"^{}", v)
-            ret[k[len("refs/tags/"):]] = v
-    return ret
-
-
-def branch_name_to_ref(name, default=None):
-    """Map a branch name to a ref.
-
-    :param name: Branch name
-    :return: ref string
-    """
-    if name is None:
-        return default
-    if name == "HEAD":
-        return "HEAD"
-    if not name.startswith("refs/"):
-        return "refs/heads/%s" % name
-    else:
-        return name
-
-
-def ref_to_branch_name(ref):
-    """Map a ref to a branch name
-
-    :param ref: Ref
-    :return: A branch name
-    """
-    if ref == "HEAD":
-        return "HEAD"
-    if ref.startswith("refs/heads/"):
-        return ref[len("refs/heads/"):]
-    raise ValueError("unable to map ref %s back to branch name")
 
 
 class GitPullResult(branch.PullResult):
