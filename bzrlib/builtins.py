@@ -1986,6 +1986,10 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
+        if using is not None and format is not None:
+            raise errors.BzrCommandError('--using and --format are mutually '
+                'exclusive.')
+
         (old_tree, new_tree,
          old_branch, new_branch,
          specific_files, extra_trees) = get_trees_and_branches_to_diff(

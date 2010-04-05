@@ -132,6 +132,10 @@ class TestDiff(DiffBase):
         out, err = self.run_bzr('diff -r 1..23..123', retcode=3,
             error_regexes=('one or two revision specifiers',))
 
+    def test_diff_using_and_format(self):
+        out, err = self.run_bzr('diff --format=default --using=mydi', retcode=3,
+            error_regexes=('are mutually exclusive',))
+
     def test_diff_nonexistent_revision(self):
         out, err = self.run_bzr('diff -r 123', retcode=3,
             error_regexes=("Requested revision: '123' does not "
