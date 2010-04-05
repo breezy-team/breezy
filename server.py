@@ -21,9 +21,6 @@ from dulwich.server import TCPGitServer
 from bzrlib.bzrdir import (
     BzrDir,
     )
-from bzrlib.errors import (
-    NotBranchError,
-    )
 
 from bzrlib.plugins.git.mapping import (
     default_mapping,
@@ -62,9 +59,10 @@ class BzrBackendRepo(BackendRepo):
         self.repo = self.repo_dir.find_repository()
         self.object_store = get_object_store(self.repo)
         self.refs = BazaarRefsContainer(self.repo_dir, self.object_store)
+        self._refs = self.refs.as_dict() # Much faster for now..
 
     def get_refs(self):
-        return self.refs.as_dict()
+        return self._refs
 
     def get_peeled(self, name):
         return self.get_refs()[name]

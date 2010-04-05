@@ -55,6 +55,15 @@ def branch_name_to_ref(name, default=None):
         return name
 
 
+def tag_name_to_ref(name):
+    """Map a tag name to a ref.
+
+    :param name: Tag name
+    :return: ref string
+    """
+    return "refs/tags/%s" % name
+
+
 def ref_to_branch_name(ref):
     """Map a ref to a branch name
 
@@ -65,8 +74,13 @@ def ref_to_branch_name(ref):
         return "HEAD"
     if ref.startswith("refs/heads/"):
         return ref[len("refs/heads/"):]
-    raise ValueError("unable to map ref %s back to branch name")
+    raise ValueError("unable to map ref %s back to branch name" % ref)
 
+
+def ref_to_tag_name(ref):
+    if ref.startswith("refs/tags/"):
+        return ref[len('refs/tags/'):]
+    raise ValueError("unable to map ref %s back to branch name" % ref)
 
 
 class BazaarRefsContainer(RefsContainer):
@@ -83,22 +97,40 @@ class BazaarRefsContainer(RefsContainer):
                 "Symbolic references not supported for anything other than "
                 "HEAD")
 
-    def read_loose_ref(self, ref):
-        branch_name = ref_to_branch_name(ref)
+    def _get_revid_by_tag_name(self, tag_name):
+        for branch in self.dir.list_branches():
+            try:
+                # FIXME: This is ambiguous!
+                return branch.tags.lookup_tag(tag_name)
+            except errors.NoSuchTag:
+                pass
+        return None
+
+    def _get_revid_by_branch_name(self, branch_name):
         try:
             branch = self.dir.open_branch(branch_name)
         except errors.NoColocatedBranchSupport:
-            if ref != "refs/heads/master":
+            if branch_name != "master":
                 raise
             branch = self.dir.open_branch()
-        return self.object_store._lookup_revision_sha1(
-            branch.last_revision())
+        return branch.last_revision()
+
+    def read_loose_ref(self, ref):
+        try:
+            branch_name = ref_to_branch_name(ref)
+        except ValueError:
+            tag_name = ref_to_tag_name(ref)
+            revid = self._get_revid_by_tag_name(tag_name)
+        else:
+            revid = self._get_revid_by_branch_name(branch_name)
+        return self.object_store._lookup_revision_sha1(revid)
 
     def allkeys(self):
         keys = set()
         for branch in self.dir.list_branches():
-            ref = branch_name_to_ref(branch.name, "refs/heads/master")
-            keys.add(ref)
+            keys.add(branch_name_to_ref(branch.name, "refs/heads/master"))
+            keys.update([tag_name_to_ref(tag) 
+                for tag in branch.tags.get_tag_dict().keys()])
         return keys
 
     def __delitem__(self, ref):
