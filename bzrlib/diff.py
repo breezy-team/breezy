@@ -43,6 +43,9 @@ from bzrlib import (
 from bzrlib.workingtree import WorkingTree
 """)
 
+from bzrlib.registry import (
+    Registry,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_function,
     )
@@ -411,25 +414,22 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     old_label='a/', new_label='b/',
                     extra_trees=None,
                     path_encoding='utf8',
-                    using=None):
+                    using=None,
+                    format_cls=None):
     """Show in text form the changes from one tree to another.
 
-    to_file
-        The output stream.
-
-    specific_files
-        Include only changes to these files - None for all changes.
-
-    external_diff_options
-        If set, use an external GNU diff and pass these options.
-
-    extra_trees
-        If set, more Trees to use for looking up file ids
-
-    path_encoding
-        If set, the path will be encoded as specified, otherwise is supposed
-        to be utf8
+    :param to_file: The output stream.
+    :param specific_files:Include only changes to these files - None for all
+        changes.
+    :param external_diff_options: If set, use an external GNU diff and pass 
+        these options.
+    :param extra_trees: If set, more Trees to use for looking up file ids
+    :param path_encoding: If set, the path will be encoded as specified, 
+        otherwise is supposed to be utf8
+    :param format_cls: Formatter class (DiffTree subclass)
     """
+    if format_cls is None:
+        format_cls = DiffTree
     old_tree.lock_read()
     try:
         if extra_trees is not None:
@@ -437,10 +437,10 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                 tree.lock_read()
         new_tree.lock_read()
         try:
-            differ = DiffTree.from_trees_options(old_tree, new_tree, to_file,
-                                                 path_encoding,
-                                                 external_diff_options,
-                                                 old_label, new_label, using)
+            differ = format_cls.from_trees_options(old_tree, new_tree, to_file,
+                                                   path_encoding,
+                                                   external_diff_options,
+                                                   old_label, new_label, using)
             return differ.show_diff(specific_files, extra_trees)
         finally:
             new_tree.unlock()
@@ -978,3 +978,7 @@ class DiffTree(object):
             if error_path is None:
                 error_path = old_path
             raise errors.NoDiffFound(error_path)
+
+
+format_registry = Registry()
+format_registry.register('default', DiffTree)
