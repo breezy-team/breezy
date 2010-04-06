@@ -296,8 +296,8 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _this = None
     _other = None
 
-    @classmethod
-    def scenarios(klass):
+    @staticmethod
+    def scenarios():
         """Return the scenario list for the conflict type defined by the class.
 
         Each scenario is of the form:
@@ -400,8 +400,8 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
     _path = None
     _file_id = None
 
-    @classmethod
-    def scenarios(klass):
+    @staticmethod
+    def scenarios():
         base_scenarios = [
             # File modified/deleted
             (dict(_base_actions='create_file',
@@ -444,8 +444,8 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
     def do_nothing(self):
         return []
 
-    @classmethod
-    def scenarios(klass):
+    @staticmethod
+    def scenarios():
         # Each side dict additionally defines:
         # - path path involved (can be '<deleted>')
         # - file-id involved
@@ -573,8 +573,8 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
 
     _conflict_type = conflicts.DuplicateEntry,
 
-    @classmethod
-    def scenarios(klass):
+    @staticmethod
+    def scenarios():
         # Each side dict additionally defines:
         # - path involved
         # - file-id involved
@@ -794,8 +794,8 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
     _this_args = None
     _other_args = None
 
-    @classmethod
-    def scenarios(klass):
+    @staticmethod
+    def scenarios():
         # Each side dict additionally defines:
         # - dir_id: the directory being moved
         # - target_id: The target directory
