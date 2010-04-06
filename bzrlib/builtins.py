@@ -1954,14 +1954,19 @@ class cmd_diff(Command):
             help='Use this command to compare files.',
             type=unicode,
             ),
+        RegistryOption('format',
+            help='Diff format to use.',
+            lazy_registry=('bzrlib.diff', 'format_registry'),
+            value_switches=False, title='Diff format'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None, using=None):
-        from bzrlib.diff import get_trees_and_branches_to_diff, show_diff_trees
+            prefix=None, old=None, new=None, using=None, format=None):
+        from bzrlib.diff import (get_trees_and_branches_to_diff,
+            show_diff_trees)
 
         if (prefix is None) or (prefix == '0'):
             # diff -p0 format
@@ -1981,6 +1986,10 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
+        if using is not None and format is not None:
+            raise errors.BzrCommandError('--using and --format are mutually '
+                'exclusive.')
+
         (old_tree, new_tree,
          old_branch, new_branch,
          specific_files, extra_trees) = get_trees_and_branches_to_diff(
@@ -1989,7 +1998,8 @@ class cmd_diff(Command):
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
-                               extra_trees=extra_trees, using=using)
+                               extra_trees=extra_trees, using=using,
+                               format_cls=format)
 
 
 class cmd_deleted(Command):

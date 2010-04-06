@@ -16,6 +16,9 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr diff`` now supports a --format option, which can be used to 
+  select alternative diff formats. (Jelmer Vernooij, #555994)
+
 Bug Fixes
 *********
 
