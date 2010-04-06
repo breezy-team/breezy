@@ -40,6 +40,7 @@ from shutil import (
     rmtree,
     )
 import signal
+import socket
 import subprocess
 import tempfile
 from tempfile import (
@@ -50,11 +51,15 @@ import unicodedata
 from bzrlib import (
     cache_utf8,
     errors,
-    win32utils,
     trace,
+    win32utils,
     )
-
 """)
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 # sha and md5 modules are deprecated in python2.6 but hashlib is available as
 # of 2.5
@@ -1812,8 +1817,9 @@ def copy_ownership(dst, src=None):
     If src is None, the containing directory is used as source. If chown
     fails, the error is ignored and a warning is printed.
     """
-    has_chown = getattr(os, 'chown')
-    if has_chown is None: return
+    chown = getattr(os, 'chown', None)
+    if chown is None:
+        return
 
     if src == None:
         src = os.path.dirname(dst)
@@ -1822,7 +1828,7 @@ def copy_ownership(dst, src=None):
 
     try:
         s = os.stat(src)
-        os.chown(dst, s.st_uid, s.st_gid)
+        chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
         trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
 
@@ -1956,40 +1962,82 @@ def get_host_name():
         return socket.gethostname().decode(get_user_encoding())
 
 
-def recv_all(socket, bytes):
+# We must not read/write any more than 64k at a time from/to a socket so we
+# don't risk "no buffer space available" errors on some platforms.  Windows in
+# particular is likely to throw WSAECONNABORTED or WSAENOBUFS if given too much
+# data at once.
+MAX_SOCKET_CHUNK = 64 * 1024
+
+def read_bytes_from_socket(sock, report_activity=None,
+        max_read_size=MAX_SOCKET_CHUNK):
+    """Read up to max_read_size of bytes from sock and notify of progress.
+
+    Translates "Connection reset by peer" into file-like EOF (return an
+    empty string rather than raise an error), and repeats the recv if
+    interrupted by a signal.
+    """
+    while 1:
+        try:
+            bytes = sock.recv(max_read_size)
+        except socket.error, e:
+            eno = e.args[0]
+            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
+                # The connection was closed by the other side.  Callers expect
+                # an empty string to signal end-of-stream.
+                return ""
+            elif eno == errno.EINTR:
+                # Retry the interrupted recv.
+                continue
+            raise
+        else:
+            if report_activity is not None:
+                report_activity(len(bytes), 'read')
+            return bytes
+
+
+def recv_all(socket, count):
     """Receive an exact number of bytes.
 
     Regular Socket.recv() may return less than the requested number of bytes,
-    dependning on what's in the OS buffer.  MSG_WAITALL is not available
+    depending on what's in the OS buffer.  MSG_WAITALL is not available
     on all platforms, but this should work everywhere.  This will return
     less than the requested amount if the remote end closes.
 
     This isn't optimized and is intended mostly for use in testing.
     """
     b = ''
-    while len(b) < bytes:
-        new = until_no_eintr(socket.recv, bytes - len(b))
+    while len(b) < count:
+        new = read_bytes_from_socket(socket, None, count - len(b))
         if new == '':
             break # eof
         b += new
     return b
 
 
-def send_all(socket, bytes, report_activity=None):
+def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
+ 
+    Breaks large blocks in smaller chunks to avoid buffering limitations on
+    some platforms, and catches EINTR which may be thrown if the send is
+    interrupted by a signal.
 
-    Regular socket.sendall() can give socket error 10053 on Windows.  This
-    implementation sends no more than 64k at a time, which avoids this problem.
-
+    This is preferred to socket.sendall(), because it avoids portability bugs
+    and provides activity reporting.
+ 
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
     """
-    chunk_size = 2**16
-    for pos in xrange(0, len(bytes), chunk_size):
-        block = bytes[pos:pos+chunk_size]
-        if report_activity is not None:
-            report_activity(len(block), 'write')
-        until_no_eintr(socket.sendall, block)
+    sent_total = 0
+    byte_count = len(bytes)
+    while sent_total < byte_count:
+        try:
+            sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
+        except socket.error, e:
+            if e.args[0] != errno.EINTR:
+                raise
+        else:
+            sent_total += sent
+            report_activity(sent, 'write')
 
 
 def dereference_path(path):
@@ -2066,7 +2114,18 @@ def file_kind(f, _lstat=os.lstat):
 
 
 def until_no_eintr(f, *a, **kw):
-    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    """Run f(*a, **kw), retrying if an EINTR error occurs.
+    
+    WARNING: you must be certain that it is safe to retry the call repeatedly
+    if EINTR does occur.  This is typically only true for low-level operations
+    like os.read.  If in any doubt, don't use this.
+
+    Keep in mind that this is not a complete solution to EINTR.  There is
+    probably code in the Python standard library and other dependencies that
+    may encounter EINTR if a signal arrives (and there is signal handler for
+    that signal).  So this function can reduce the impact for IO that bzrlib
+    directly controls, but it is not a complete solution.
+    """
     # Borrowed from Twisted's twisted.python.util.untilConcludes function.
     while True:
         try:
@@ -2075,6 +2134,7 @@ def until_no_eintr(f, *a, **kw):
             if e.errno == errno.EINTR:
                 continue
             raise
+
 
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.

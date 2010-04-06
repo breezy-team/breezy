@@ -60,7 +60,11 @@ from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 """)
 
-from bzrlib.commands import Command, display_command
+from bzrlib.commands import (
+    Command,
+    builtin_command_registry,
+    display_command,
+    )
 from bzrlib.option import (
     ListOption,
     Option,
@@ -1428,8 +1432,9 @@ class cmd_update(Command):
             branch_location = tree.branch.base
         self.add_cleanup(tree.unlock)
         # get rid of the final '/' and be ready for display
-        branch_location = urlutils.unescape_for_display(branch_location[:-1],
-                                                        self.outf.encoding)
+        branch_location = urlutils.unescape_for_display(
+            branch_location.rstrip('/'),
+            self.outf.encoding)
         existing_pending_merges = tree.get_parent_ids()[1:]
         if master is None:
             old_tip = None
@@ -1949,14 +1954,19 @@ class cmd_diff(Command):
             help='Use this command to compare files.',
             type=unicode,
             ),
+        RegistryOption('format',
+            help='Diff format to use.',
+            lazy_registry=('bzrlib.diff', 'format_registry'),
+            value_switches=False, title='Diff format'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None, using=None):
-        from bzrlib.diff import get_trees_and_branches_to_diff, show_diff_trees
+            prefix=None, old=None, new=None, using=None, format=None):
+        from bzrlib.diff import (get_trees_and_branches_to_diff,
+            show_diff_trees)
 
         if (prefix is None) or (prefix == '0'):
             # diff -p0 format
@@ -1976,6 +1986,10 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
+        if using is not None and format is not None:
+            raise errors.BzrCommandError('--using and --format are mutually '
+                'exclusive.')
+
         (old_tree, new_tree,
          old_branch, new_branch,
          specific_files, extra_trees) = get_trees_and_branches_to_diff(
@@ -1984,7 +1998,8 @@ class cmd_diff(Command):
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
-                               extra_trees=extra_trees, using=using)
+                               extra_trees=extra_trees, using=using,
+                               format_cls=format)
 
 
 class cmd_deleted(Command):
@@ -4061,6 +4076,7 @@ class cmd_remerge(Command):
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
+        from bzrlib.conflicts import restore
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
         tree, file_list = tree_files(file_list)
@@ -5974,7 +5990,15 @@ class cmd_reference(Command):
             self.outf.write('%s %s\n' % (path, location))
 
 
-from bzrlib.cmd_version_info import cmd_version_info
-from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
-from bzrlib.foreign import cmd_dpush
-from bzrlib.sign_my_commits import cmd_sign_my_commits
+def _register_lazy_builtins():
+    # register lazy builtins from other modules; called at startup and should
+    # be only called once.
+    for (name, aliases, module_name) in [
+        ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
+        ('cmd_dpush', [], 'bzrlib.foreign'),
+        ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
+        ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
+        ('cmd_conflicts', [], 'bzrlib.conflicts'),
+        ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ]:
+        builtin_command_registry.register_lazy(name, aliases, module_name)
