@@ -869,7 +869,7 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertEqual('non-standard-dir/test_bar/__init__.py',
                          bzrlib.plugins.test_foo.test_bar.__file__)
 
-    def test_loading_from___init__(self):
+    def test_loading_from___init__only(self):
         # We rename the existing __init__.py file to ensure that we don't load
         # a random file
         init = 'non-standard-dir/__init__.py'

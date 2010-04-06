@@ -560,7 +560,6 @@ class _PluginImporter(object):
     def load_module(self, fullname):
         """Load a plugin from a specific directory."""
         # We are called only for specific paths
-        name = fullname[len('bzrlib.plugins.'):]
         plugin_path = self.specific_paths[fullname]
         loading_path = None
         package = False
