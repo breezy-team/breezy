@@ -312,6 +312,9 @@ Testing
   dependency regressions.
   (Martin Pool)
 
+* PQM will now run with subunit output. To analyze a PQM error use
+  tribunal, or cat log | subunit-filter | subunit2pyunit. (Robert Collins)
+
 * Stop sending apport crash files to ``.cache`` in the directory from
   which ``bzr selftest`` was run.  (Martin Pool, #422350)
 
