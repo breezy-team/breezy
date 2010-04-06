@@ -147,6 +147,12 @@ class ReportCommitToLog(NullCommitReporter):
 
     def completed(self, revno, rev_id):
         self._note('Committed revision %d.', revno)
+        # self._note goes to the console too; so while we want to log the
+        # rev_id, we can't trivially only log it. (See bug 526425). Long
+        # term we should rearrange the reporting structure, but for now
+        # we just mutter seperately. We mutter the revid and revno together
+        # so that concurrent bzr invocations won't lead to confusion.
+        mutter('Committed revid %s as revno %d.', rev_id, revno)
 
     def deleted(self, path):
         self._note('deleted %s', path)
