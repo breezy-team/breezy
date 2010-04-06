@@ -194,6 +194,10 @@ Bug Fixes
 * Fix ``log`` to better check ancestors even if merged revisions are involved.
   (Vincent Ladeuil, #476293)
 
+* Loading a plugin from a given path with ``BZR_PLUGINS_AT`` doesn't depend
+  on os.lisdir() order and is now reliable.
+  (Vincent Ladeuil, #552922).
+
 * Many IO operations that returned ``EINTR`` were retried even if it
   wasn't safe to do so via careless use of ``until_no_eintr``.  Bazaar now
   only retries operations that are safe to retry, and in some cases has

@@ -303,7 +303,7 @@ def _find_plugin_module(dir, name):
 
 
 def _load_plugin_module(name, dir):
-    """Load plugine name from dir.
+    """Load plugin name from dir.
 
     :param name: The plugin name in the bzrlib.plugins namespace.
     :param dir: The directory the plugin is loaded from for error messages.
@@ -560,32 +560,34 @@ class _PluginImporter(object):
     def load_module(self, fullname):
         """Load a plugin from a specific directory."""
         # We are called only for specific paths
-        plugin_dir = self.specific_paths[fullname]
-        candidate = None
-        maybe_package = False
-        for p in os.listdir(plugin_dir):
-            if os.path.isdir(osutils.pathjoin(plugin_dir, p)):
-                # We're searching for files only and don't want submodules to
-                # be recognized as plugins (they are submodules inside the
-                # plugin).
-                continue
-            name, path, (
-                suffix, mode, kind) = _find_plugin_module(plugin_dir, p)
-            if name is not None:
-                candidate = (name, path, suffix, mode, kind)
-                if kind == imp.PY_SOURCE:
-                    # We favour imp.PY_SOURCE (which will use the compiled
-                    # version if available) over imp.PY_COMPILED (which is used
-                    # only if the source is not available)
+        plugin_path = self.specific_paths[fullname]
+        loading_path = None
+        package = False
+        if os.path.isdir(plugin_path):
+            for suffix, mode, kind in imp.get_suffixes():
+                if kind not in (imp.PY_SOURCE, imp.PY_COMPILED):
+                    # We don't recognize compiled modules (.so, .dll, etc)
+                    continue
+                init_path = osutils.pathjoin(plugin_path, '__init__' + suffix)
+                if os.path.isfile(init_path):
+                    loading_path = init_path
+                    package = True
                     break
-        if candidate is None:
+        else:
+            for suffix, mode, kind in imp.get_suffixes():
+                if plugin_path.endswith(suffix):
+                    loading_path = plugin_path
+                    break
+        if loading_path is None:
             raise ImportError('%s cannot be loaded from %s'
-                              % (fullname, plugin_dir))
-        f = open(path, mode)
+                              % (fullname, plugin_path))
+        f = open(loading_path, mode)
         try:
-            mod = imp.load_module(fullname, f, path, (suffix, mode, kind))
-            # The plugin can contain modules, so be ready
-            mod.__path__ = [plugin_dir]
+            mod = imp.load_module(fullname, f, loading_path,
+                                  (suffix, mode, kind))
+            if package:
+                # The plugin can contain modules, so be ready
+                mod.__path__ = [plugin_path]
             mod.__package__ = fullname
             return mod
         finally:
