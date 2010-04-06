@@ -151,8 +151,8 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
-            ret = [(name, unusual_file_modes[name])
-                   for name in sorted(unusual_file_modes.keys())]
+            ret = [(path, unusual_file_modes[path])
+                   for path in sorted(unusual_file_modes.keys())]
             rev.properties['file-modes'] = bencode.bencode(ret)
 
     def export_unusual_file_modes(self, rev):

@@ -47,6 +47,8 @@ from bzrlib.plugins.git.shamap import (
     from_repository as cache_from_repository,
     )
 
+import posixpath
+
 
 def get_object_store(repo, mapping=None):
     git = getattr(repo, "_git", None)
@@ -156,7 +158,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
                         pie.file_id, pie.revision)
             if not file_id in shamap:
                 new_blobs.append((path[1], ie))
-            new_trees[urlutils.dirname(path[1])] = parent[1]
+            new_trees[posixpath.dirname(path[1])] = parent[1]
         elif kind[1] == "symlink":
             ie = tree.inventory[file_id]
             if changed_content:
@@ -166,11 +168,11 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
                     find_unchanged_parent_ie(ie, other_parent_trees)
                 except KeyError:
                     yield path[1], blob, ie
-            new_trees[urlutils.dirname(path[1])] = parent[1]
+            new_trees[posixpath.dirname(path[1])] = parent[1]
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
         if path[0] is not None:
-            new_trees[urlutils.dirname(path[0])] = parent[0]
+            new_trees[posixpath.dirname(path[0])] = parent[0]
     
     for (path, ie), chunks in tree.iter_files_bytes(
         [(ie.file_id, (path, ie)) for (path, ie) in new_blobs]):
@@ -180,7 +182,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
         shamap[ie.file_id] = obj.id
 
     for fid in unusual_modes:
-        new_trees[tree.id2path(fid)] = tree.inventory[fid].parent_id
+        new_trees[posixpath.dirname(tree.inventory.id2path(path))] = tree.inventory[fid].parent_id
     
     trees = {}
     while new_trees:

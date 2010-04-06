@@ -198,7 +198,7 @@ def remove_disappeared_children(base_inv, path, base_tree, existing_children,
 
 def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
         base_inv, parent_id, revision_id, parent_invs,
-    lookup_object, (base_mode, mode), store_updater, allow_submodules=False):
+        lookup_object, (base_mode, mode), store_updater, allow_submodules=False):
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
@@ -265,7 +265,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
         invdelta.extend(subinvdelta)
         if child_mode not in (stat.S_IFDIR, DEFAULT_FILE_MODE,
                         stat.S_IFLNK, DEFAULT_FILE_MODE|0111):
-            child_modes[child_path] = child_mode
+            child_modes[file_id] = child_mode
     # Remove any children that have disappeared
     if base_tree is not None and type(base_tree) is Tree:
         invdelta.extend(remove_disappeared_children(base_inv, old_path, 

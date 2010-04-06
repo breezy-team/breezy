@@ -300,10 +300,11 @@ class ImportObjects(TestCaseWithTransport):
     def test_import_tree_empty_root(self):
         base_inv = Inventory(root_id=None)
         tree = Tree()
-        ret, _ = import_git_tree(self._texts, self._mapping, "", "",
+        ret, child_modes = import_git_tree(self._texts, self._mapping, "", "",
                (None, tree.id), base_inv, 
                None, "somerevid", [], {tree.id: tree}.__getitem__,
                (None, stat.S_IFDIR), DummyStoreUpdater())
+        self.assertEquals(child_modes, {})
         self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -318,10 +319,11 @@ class ImportObjects(TestCaseWithTransport):
     def test_import_tree_empty(self):
         base_inv = Inventory()
         tree = Tree()
-        ret, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
+        ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
            (None, tree.id), base_inv, None, "somerevid", [], 
            { tree.id: tree }.__getitem__,
            (None, stat.S_IFDIR), DummyStoreUpdater())
+        self.assertEquals(child_modes, {})
         self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -337,11 +339,12 @@ class ImportObjects(TestCaseWithTransport):
         base_inv = Inventory()
         blob = Blob.from_string("bar1")
         tree = Tree()
-        tree.add(0100600, "foo", blob.id)
+        tree.add(stat.S_IFREG | 0644, "foo", blob.id)
         objects = { blob.id: blob, tree.id: tree }
-        ret, _ = import_git_tree(self._texts, self._mapping, "bla", "bla",
+        ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
                 (None, tree.id), base_inv, None, "somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater())
+        self.assertEquals(child_modes, {})
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("bla", ret[0][1])
@@ -356,15 +359,27 @@ class ImportObjects(TestCaseWithTransport):
         self.assertEquals(osutils.sha_strings(["bar1"]), ie.text_sha1)
         self.assertEquals(False, ie.executable)
 
+    def test_import_tree_with_unusual_mode_file(self):
+        base_inv = Inventory()
+        blob = Blob.from_string("bar1")
+        tree = Tree()
+        tree.add(stat.S_IFREG | 0664, "foo", blob.id)
+        objects = { blob.id: blob, tree.id: tree }
+        ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
+                (None, tree.id), base_inv, None, "somerevid", [],
+            objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater())
+        self.assertEquals(child_modes, { "bla": stat.S_IFREG | 0664 })
+
     def test_import_tree_with_file_exe(self):
         base_inv = Inventory(root_id=None)
         blob = Blob.from_string("bar")
         tree = Tree()
         tree.add(0100755, "foo", blob.id)
         objects = { blob.id: blob, tree.id: tree }
-        ret, _ = import_git_tree(self._texts, self._mapping, "", "",
+        ret, child_modes = import_git_tree(self._texts, self._mapping, "", "",
                 (None, tree.id), base_inv, None, "somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater())
+        self.assertEquals(child_modes, {})
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
         self.assertEquals("", ret[0][1])
