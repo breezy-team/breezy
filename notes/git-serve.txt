@@ -2,12 +2,15 @@ Git serve
 
 Todo:
 
- * Fix "bzr serve --git"
-
  * Fix the pack creation code in Dulwich. It doesn't generate deltas quite 
    well at the moment.
 
  * Switch to the new pack-based format once John's work on PackCollections 
-   is finished. This should give very nice performance improvements.
+   is finished. This should give very nice performance improvements, 
+   in particular the caching of Trees.
+
+ * Support using the cached trees in BazaarObjectStore.generate_pack_contents,
+   rather than calling out to _revision_to_objects as the latter is slow
+   (it uses inventories).
 
  * Support roundtripping
