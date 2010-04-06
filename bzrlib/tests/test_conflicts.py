@@ -222,10 +222,7 @@ def mirror_scenarios(base_scenarios):
     and 'other'
     """
     scenarios = []
-    common = [c for c, l, r in base_scenarios]
-    left = [l for c, l, r in base_scenarios]
-    right = [r for c, l, r in base_scenarios]
-    for common, (lname, ldict), (rname, rdict) in zip(common, left, right):
+    for common, (lname, ldict), (rname, rdict) in base_scenarios:
         a = tests.multiply_scenarios([(lname, dict(_this=ldict))],
                                      [(rname, dict(_other=rdict))])
         b = tests.multiply_scenarios([(rname, dict(_this=rdict))],
@@ -316,7 +313,7 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
         This is a class method so that load_tests can find it.
 
-        '_base_actions' in the commont dict, 'actions' and 'check' in the left
+        '_base_actions' in the common dict, 'actions' and 'check' in the left
         and right dicts use names that map to methods in the test classes. Some
         prefixes are added to these names to get the correspong methods (see
         _get_actions() and _get_check()). The motivation here is to avoid
