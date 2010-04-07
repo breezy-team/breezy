@@ -466,63 +466,6 @@ def extract_unusual_modes(rev):
         return mapping.export_unusual_file_modes(rev)
 
 
-def inventory_to_tree_and_blobs(inventory, texts, mapping, unusual_modes,
-                                cur=None):
-    """Convert a Bazaar tree to a Git tree.
-
-    :return: Yields tuples with object sha1, object and path
-    """
-    from dulwich.objects import Tree
-    import stat
-    stack = []
-    if cur is None:
-        cur = ""
-    tree = Tree()
-
-    # stack contains the set of trees that we haven't
-    # finished constructing
-    for path, entry in inventory.iter_entries():
-        while stack and not path.startswith(osutils.pathjoin(cur, "")):
-            # We've hit a file that's not a child of the previous path
-            sha = tree.id
-            yield sha, tree, cur.encode("utf-8")
-            mode = unusual_modes.get(cur.encode("utf-8"), stat.S_IFDIR)
-            t = (mode, urlutils.basename(cur).encode('UTF-8'), sha)
-            cur, tree = stack.pop()
-            tree.add(*t)
-
-        if entry.kind == "directory":
-            stack.append((cur, tree))
-            cur = path
-            tree = Tree()
-        else:
-            if entry.kind == "file":
-                from dulwich.objects import Blob
-                stream = texts.get_record_stream(
-                    [(entry.file_id, entry.revision)], 'unordered', True)
-                blob = Blob()
-                blob.chunked = stream.next().get_bytes_as('chunks')
-            elif entry.kind == "symlink":
-                blob = symlink_to_blob(entry)
-            else:
-                raise AssertionError("Unknown kind %s" % entry.kind)
-            sha = blob.id
-            yield sha, blob, path.encode("utf-8")
-            name = urlutils.basename(path).encode("utf-8")
-            mode = unusual_modes.get(path.encode("utf-8"), entry_mode(entry))
-            tree.add(mode, name, sha)
-
-    while len(stack) > 1:
-        sha = tree.id
-        yield sha, tree, cur.encode("utf-8")
-        mode = unusual_modes.get(cur.encode('utf-8'), stat.S_IFDIR)
-        t = (mode, urlutils.basename(cur).encode('UTF-8'), sha)
-        cur, tree = stack.pop()
-        tree.add(*t)
-
-    yield tree.id, tree, cur.encode("utf-8")
-
-
 def parse_git_svn_id(text):
     (head, uuid) = text.rsplit(" ", 1)
     (full_url, rev) = head.rsplit("@", 1)

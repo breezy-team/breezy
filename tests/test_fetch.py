@@ -368,7 +368,7 @@ class ImportObjects(TestCaseWithTransport):
         ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
                 (None, tree.id), base_inv, None, "somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater())
-        self.assertEquals(child_modes, { "bla": stat.S_IFREG | 0664 })
+        self.assertEquals(child_modes, { "bla/foo": stat.S_IFREG | 0664 })
 
     def test_import_tree_with_file_exe(self):
         base_inv = Inventory(root_id=None)
