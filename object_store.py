@@ -181,8 +181,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
         yield path, obj, ie
         shamap[ie.file_id] = obj.id
 
-    for fid in unusual_modes:
-        new_trees[posixpath.dirname(tree.inventory.id2path(path))] = tree.inventory[fid].parent_id
+    for path in unusual_modes:
+        parent_path = posixpath.dirname(path)
+        new_trees[parent_path] = tree.path2id(parent_path)
     
     trees = {}
     while new_trees:
