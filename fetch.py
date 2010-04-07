@@ -20,6 +20,9 @@ from dulwich.objects import (
     Tree,
     S_ISGITLINK,
     )
+from dulwich.object_store import (
+    tree_lookup_path,
+    )
 from itertools import (
     imap,
     )
@@ -70,6 +73,7 @@ from bzrlib.plugins.git.mapping import (
 from bzrlib.plugins.git.object_store import (
     BazaarObjectStore,
     LRUTreeCache,
+    _tree_to_objects,
     )
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
@@ -270,6 +274,42 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     return invdelta, child_modes
 
 
+def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
+    o, rev, ret_tree, parent_trees, mapping, unusual_modes):
+    new_unusual_modes = mapping.export_unusual_file_modes(rev)
+    if new_unusual_modes != unusual_modes:
+        raise AssertionError("unusual modes don't match: %r != %r" % (
+            unusual_modes, new_unusual_modes))
+    # Verify that we can reconstruct the commit properly
+    rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree)
+    if rec_o != o:
+        raise AssertionError("Reconstructed commit differs: %r != %r" % (
+            rec_o, o))
+    diff = []
+    new_objs = {}
+    for path, obj, ie in _tree_to_objects(ret_tree, parent_trees,
+        target_git_object_retriever._cache.idmap, unusual_modes):
+        old_obj_id = tree_lookup_path(lookup_object, o.tree, path)[1]
+        new_objs[path] = obj
+        if obj.id != old_obj_id:
+            diff.append((path, lookup_object(old_obj_id), obj))
+    for (path, old_obj, new_obj) in diff:
+        while (old_obj.type_name == "tree" and
+               new_obj.type_name == "tree" and
+               sorted(old_obj) == sorted(new_obj)):
+            for name in old_obj:
+                if old_obj[name][0] != new_obj[name][0]:
+                    raise AssertionError("Modes for %s differ: %o != %o" % (path, old_obj[name][0], new_obj[name][0]))
+                if old_obj[name][1] != new_obj[name][1]:
+                    # Found a differing child, delve deeper
+                    path = posixpath.join(path, name)
+                    old_obj = lookup_object(old_obj[name][1])
+                    new_obj = new_objs[path]
+                    break
+        raise AssertionError("objects differ for %s: %r != %r" % (path,
+            old_obj, new_obj))
+
+
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
     o = lookup_object(head)
@@ -306,18 +346,13 @@ def import_git_commit(repo, mapping, head, lookup_object,
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
               inv_delta, rev.revision_id, rev.parent_ids,
               base_inv)
-    trees_cache.add(RevisionTree(repo, inv, rev.revision_id))
+    ret_tree = RevisionTree(repo, inv, rev.revision_id)
+    trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
     if "verify" in debug.debug_flags:
-        new_unusual_modes = mapping.export_unusual_file_modes(rev)
-        if new_unusual_modes != unusual_modes:
-            raise AssertionError("unusual modes don't match: %r != %r" % (
-                unusual_modes, new_unusual_modes))
-        # Verify that we can reconstruct the commit properly
-        rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree)
-        if rec_o != o:
-            raise AssertionError("Reconstructed commit differs (%r != %r)" % (rec_o, o))
-
+        verify_commit_reconstruction(target_git_object_retriever, 
+            lookup_object, o, rev, ret_tree, parent_trees, mapping,
+            unusual_modes)
 
 
 def import_git_objects(repo, mapping, object_iter,
