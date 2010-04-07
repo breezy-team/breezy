@@ -156,10 +156,6 @@ def show_tree_status(wt, show_unchanged=None,
         try:
             specific_files, nonexistents \
                 = _filter_nonexistent(specific_files, old, new)
-            # If we request the status of one specific file when this file should be ignored,
-            # warn the user to avoid any confusion
-            if specific_files and len(specific_files) == 1 and new.is_ignored(specific_files[0]):
-                warning("File %s is marked as ignored, see 'bzr help ignore'" % specific_files[0])
             want_unversioned = not versioned
 
             # Reporter used for short outputs
@@ -169,6 +165,21 @@ def show_tree_status(wt, show_unchanged=None,
                            reporter, show_long_callback, 
                            short=short, want_unchanged=show_unchanged, 
                            want_unversioned=want_unversioned, show_ids=show_ids)
+
+            # show the ignored files among specific files (i.e. show the files
+            # identified from input that we choose to ignore). 
+            # XXX: push them into the delta and / or the change iteration
+            if specific_files is not None:
+                # Ignored files is sorted because specific_files is already sorted
+                ignored_files = [specific for specific in
+                    specific_files if new.is_ignored(specific)]
+                if len(ignored_files) > 0 and not short:
+                    to_file.write("ignored:\n")
+                    prefix = ' '
+                else:
+                    prefix = 'I  '
+                for ignored_file in ignored_files:
+                    to_file.write("%s %s\n" % (prefix, ignored_file))
 
             # show the new conflicts only for now. XXX: get them from the
             # delta.
