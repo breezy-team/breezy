@@ -693,6 +693,6 @@ altered in u2
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        out, err = self.run_bzr("commit tree/hello.txt")
+        out, err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('save me some typing\n', last_rev.message)

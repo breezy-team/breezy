@@ -3150,31 +3150,37 @@ class cmd_commit(Command):
                     '(use --file "%(f)s" to take commit message from that file)'
                     % { 'f': message })
                 ui.ui_factory.show_warning(warning_msg)
+            if '\r' in message:
+                message = message.replace('\r\n', '\n')
+                message = message.replace('\r', '\n')
+            if file:
+                raise errors.BzrCommandError(
+                    "please specify either --message or --file")
 
         def get_message(commit_obj):
             """Callback to get commit message"""
-            my_message = message
-            if my_message is not None and '\r' in my_message:
-                my_message = my_message.replace('\r\n', '\n')
-                my_message = my_message.replace('\r', '\n')
-            if my_message is None and not file:
-                # t is the status of the tree
-                t = make_commit_message_template_encoded(tree,
+            if file:
+                my_message = codecs.open(
+                    file, 'rt', osutils.get_user_encoding()).read()
+            elif message is not None:
+                my_message = message
+            else:
+                # No message supplied: make one up.
+                # text is the status of the tree
+                text = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
                         output_encoding=osutils.get_user_encoding())
                 # start_message is the template generated from hooks
+                # XXX: Warning - looks like hooks return unicode,
+                # make_commit_message_template_encoded returns user encoding.
+                # We probably want to be using edit_commit_message instead to
+                # avoid this.
                 start_message = generate_commit_message_template(commit_obj)
-                my_message = edit_commit_message_encoded(t,
+                my_message = edit_commit_message_encoded(text,
                     start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
-            elif my_message and file:
-                raise errors.BzrCommandError(
-                    "please specify either --message or --file")
-            if file:
-                my_message = codecs.open(file, 'rt',
-                                         osutils.get_user_encoding()).read()
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
@@ -3192,8 +3198,6 @@ class cmd_commit(Command):
                         timezone=offset,
                         exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
-            # FIXME: This should really happen before the file is read in;
-            # perhaps prepare the commit; get the message; then actually commit
             raise errors.BzrCommandError("No changes to commit."
                               " Use --unchanged to commit anyhow.")
         except ConflictsInTree:
