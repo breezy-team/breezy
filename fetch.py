@@ -313,6 +313,11 @@ def import_git_commit(repo, mapping, head, lookup_object,
         if new_unusual_modes != unusual_modes:
             raise AssertionError("unusual modes don't match: %r != %r" % (
                 unusual_modes, new_unusual_modes))
+        # Verify that we can reconstruct the commit properly
+        rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree)
+        if rec_o != o:
+            raise AssertionError("Reconstructed commit differs (%r != %r)" % (rec_o, o))
+
 
 
 def import_git_objects(repo, mapping, object_iter,
