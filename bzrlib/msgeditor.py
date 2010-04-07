@@ -152,6 +152,9 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         if edited_content == reference_content:
             if not ui.ui_factory.get_boolean(
                 "Commit message was not edited, use anyway"):
+                # Returning "" makes cmd_commit raise 'empty commit message
+                # specified' which is a reasonable error, given the user has
+                # rejected using the unedited template.
                 return ""
         started = False
         msg = []

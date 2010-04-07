@@ -675,7 +675,7 @@ altered in u2
         self.assertContainsRe(err,
             r'^bzr: ERROR: Cannot lock.*readonly transport')
 
-    def test_commit_hook_template(self):
+    def setup_editor(self):
         # Test that commit template hooks work
         if sys.platform == "win32":
             f = file('fed.bat', 'w')
@@ -688,11 +688,25 @@ altered in u2
             f.close()
             os.chmod('fed.sh', 0755)
             osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+
+    def setup_commit_with_template(self):
+        self.setup_editor()
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
+        return tree
+
+    def test_commit_hook_template_accepted(self):
+        tree = self.setup_commit_with_template()
         out, err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('save me some typing\n', last_rev.message)
+
+    def test_commit_hook_template_rejected(self):
+        tree = self.setup_commit_with_template()
+        expected = tree.last_revision()
+        out, err = self.run_bzr_error(["empty commit message"],
+            "commit tree/hello.txt", stdin="n\n")
+        self.assertEqual(expected, tree.last_revision())
