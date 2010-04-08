@@ -60,7 +60,11 @@ from bzrlib.smtp_connection import SMTPConnection
 from bzrlib.workingtree import WorkingTree
 """)
 
-from bzrlib.commands import Command, display_command
+from bzrlib.commands import (
+    Command,
+    builtin_command_registry,
+    display_command,
+    )
 from bzrlib.option import (
     ListOption,
     Option,
@@ -456,7 +460,12 @@ class cmd_dump_btree(Command):
         for node in bt.iter_all_entries():
             # Node is made up of:
             # (index, key, value, [references])
-            refs_as_tuples = static_tuple.as_tuples(node[3])
+            try:
+                refs = node[3]
+            except IndexError:
+                refs_as_tuples = None
+            else:
+                refs_as_tuples = static_tuple.as_tuples(refs)
             as_tuple = (tuple(node[1]), node[2], refs_as_tuples)
             self.outf.write('%s\n' % (as_tuple,))
 
@@ -1423,8 +1432,9 @@ class cmd_update(Command):
             branch_location = tree.branch.base
         self.add_cleanup(tree.unlock)
         # get rid of the final '/' and be ready for display
-        branch_location = urlutils.unescape_for_display(branch_location[:-1],
-                                                        self.outf.encoding)
+        branch_location = urlutils.unescape_for_display(
+            branch_location.rstrip('/'),
+            self.outf.encoding)
         existing_pending_merges = tree.get_parent_ids()[1:]
         if master is None:
             old_tip = None
@@ -1944,14 +1954,19 @@ class cmd_diff(Command):
             help='Use this command to compare files.',
             type=unicode,
             ),
+        RegistryOption('format',
+            help='Diff format to use.',
+            lazy_registry=('bzrlib.diff', 'format_registry'),
+            value_switches=False, title='Diff format'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
 
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
-            prefix=None, old=None, new=None, using=None):
-        from bzrlib.diff import get_trees_and_branches_to_diff, show_diff_trees
+            prefix=None, old=None, new=None, using=None, format=None):
+        from bzrlib.diff import (get_trees_and_branches_to_diff,
+            show_diff_trees)
 
         if (prefix is None) or (prefix == '0'):
             # diff -p0 format
@@ -1971,6 +1986,10 @@ class cmd_diff(Command):
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
                                          ' one or two revision specifiers')
 
+        if using is not None and format is not None:
+            raise errors.BzrCommandError('--using and --format are mutually '
+                'exclusive.')
+
         (old_tree, new_tree,
          old_branch, new_branch,
          specific_files, extra_trees) = get_trees_and_branches_to_diff(
@@ -1979,7 +1998,8 @@ class cmd_diff(Command):
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
-                               extra_trees=extra_trees, using=using)
+                               extra_trees=extra_trees, using=using,
+                               format_cls=format)
 
 
 class cmd_deleted(Command):
@@ -2433,7 +2453,11 @@ def _get_revision_range(revisionspec_list, branch, command_name):
             raise errors.BzrCommandError(
                 "bzr %s doesn't accept two revisions in different"
                 " branches." % command_name)
-        rev1 = start_spec.in_history(branch)
+        if start_spec.spec is None:
+            # Avoid loading all the history.
+            rev1 = RevisionInfo(branch, None, None)
+        else:
+            rev1 = start_spec.in_history(branch)
         # Avoid loading all of history when we know a missing
         # end of range means the last revision ...
         if end_spec.spec is None:
@@ -3126,29 +3150,37 @@ class cmd_commit(Command):
                     '(use --file "%(f)s" to take commit message from that file)'
                     % { 'f': message })
                 ui.ui_factory.show_warning(warning_msg)
+            if '\r' in message:
+                message = message.replace('\r\n', '\n')
+                message = message.replace('\r', '\n')
+            if file:
+                raise errors.BzrCommandError(
+                    "please specify either --message or --file")
 
         def get_message(commit_obj):
             """Callback to get commit message"""
-            my_message = message
-            if my_message is not None and '\r' in my_message:
-                my_message = my_message.replace('\r\n', '\n')
-                my_message = my_message.replace('\r', '\n')
-            if my_message is None and not file:
-                t = make_commit_message_template_encoded(tree,
+            if file:
+                my_message = codecs.open(
+                    file, 'rt', osutils.get_user_encoding()).read()
+            elif message is not None:
+                my_message = message
+            else:
+                # No message supplied: make one up.
+                # text is the status of the tree
+                text = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
                         output_encoding=osutils.get_user_encoding())
+                # start_message is the template generated from hooks
+                # XXX: Warning - looks like hooks return unicode,
+                # make_commit_message_template_encoded returns user encoding.
+                # We probably want to be using edit_commit_message instead to
+                # avoid this.
                 start_message = generate_commit_message_template(commit_obj)
-                my_message = edit_commit_message_encoded(t,
+                my_message = edit_commit_message_encoded(text,
                     start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
-            elif my_message and file:
-                raise errors.BzrCommandError(
-                    "please specify either --message or --file")
-            if file:
-                my_message = codecs.open(file, 'rt',
-                                         osutils.get_user_encoding()).read()
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
@@ -3166,8 +3198,6 @@ class cmd_commit(Command):
                         timezone=offset,
                         exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
-            # FIXME: This should really happen before the file is read in;
-            # perhaps prepare the commit; get the message; then actually commit
             raise errors.BzrCommandError("No changes to commit."
                               " Use --unchanged to commit anyhow.")
         except ConflictsInTree:
@@ -4052,6 +4082,7 @@ class cmd_remerge(Command):
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):
+        from bzrlib.conflicts import restore
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
         tree, file_list = tree_files(file_list)
@@ -5143,7 +5174,7 @@ class cmd_send(Command):
                short_name='f',
                type=unicode),
         Option('output', short_name='o',
-               help='Write merge directive to this file; '
+               help='Write merge directive to this file or directory; '
                     'use - for stdout.',
                type=unicode),
         Option('strict',
@@ -5259,10 +5290,15 @@ class cmd_tag(Command):
 
     To rename a tag (change the name but keep it on the same revsion), run ``bzr
     tag new-name -r tag:old-name`` and then ``bzr tag --delete oldname``.
+
+    If no tag name is specified it will be determined through the 
+    'automatic_tag_name' hook. This can e.g. be used to automatically tag
+    upstream releases by reading configure.ac. See ``bzr help hooks`` for
+    details.
     """
 
     _see_also = ['commit', 'tags']
-    takes_args = ['tag_name']
+    takes_args = ['tag_name?']
     takes_options = [
         Option('delete',
             help='Delete this tag rather than placing it.',
@@ -5278,7 +5314,7 @@ class cmd_tag(Command):
         'revision',
         ]
 
-    def run(self, tag_name,
+    def run(self, tag_name=None,
             delete=None,
             directory='.',
             force=None,
@@ -5288,6 +5324,8 @@ class cmd_tag(Command):
         branch.lock_write()
         self.add_cleanup(branch.unlock)
         if delete:
+            if tag_name is None:
+                raise errors.BzrCommandError("No tag specified to delete.")
             branch.tags.delete_tag(tag_name)
             self.outf.write('Deleted tag %s.\n' % tag_name)
         else:
@@ -5299,6 +5337,11 @@ class cmd_tag(Command):
                 revision_id = revision[0].as_revision_id(branch)
             else:
                 revision_id = branch.last_revision()
+            if tag_name is None:
+                tag_name = branch.automatic_tag_name(revision_id)
+                if tag_name is None:
+                    raise errors.BzrCommandError(
+                        "Please specify a tag name.")
             if (not force) and branch.tags.has_tag(tag_name):
                 raise errors.TagAlreadyExists(tag_name)
             branch.tags.set_tag(tag_name, revision_id)
@@ -5740,6 +5783,31 @@ class cmd_hooks(Command):
                     self.outf.write("    <no hooks installed>\n")
 
 
+class cmd_remove_branch(Command):
+    """Remove a branch.
+
+    This will remove the branch from the specified location but 
+    will keep any working tree or repository in place.
+
+    :Examples:
+
+      Remove the branch at repo/trunk::
+
+        bzr remove-branch repo/trunk
+
+    """
+
+    takes_args = ["location?"]
+
+    aliases = ["rmbranch"]
+
+    def run(self, location=None):
+        if location is None:
+            location = "."
+        branch = Branch.open_containing(location)[0]
+        branch.bzrdir.destroy_branch()
+        
+
 class cmd_shelve(Command):
     """Temporarily set aside some changes from the current tree.
 
@@ -5928,15 +5996,15 @@ class cmd_reference(Command):
             self.outf.write('%s %s\n' % (path, location))
 
 
-# these get imported and then picked up by the scan for cmd_*
-# TODO: Some more consistent way to split command definitions across files;
-# we do need to load at least some information about them to know of
-# aliases.  ideally we would avoid loading the implementation until the
-# details were needed.
-from bzrlib.cmd_version_info import cmd_version_info
-from bzrlib.conflicts import cmd_resolve, cmd_conflicts, restore
-from bzrlib.bundle.commands import (
-    cmd_bundle_info,
-    )
-from bzrlib.foreign import cmd_dpush
-from bzrlib.sign_my_commits import cmd_sign_my_commits
+def _register_lazy_builtins():
+    # register lazy builtins from other modules; called at startup and should
+    # be only called once.
+    for (name, aliases, module_name) in [
+        ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
+        ('cmd_dpush', [], 'bzrlib.foreign'),
+        ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
+        ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
+        ('cmd_conflicts', [], 'bzrlib.conflicts'),
+        ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ]:
+        builtin_command_registry.register_lazy(name, aliases, module_name)

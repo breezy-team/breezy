@@ -33,6 +33,7 @@ from bzrlib import (
     win32utils,
     )
 from bzrlib.tests import (
+    features,
     file_utils,
     test__walkdirs_win32,
     )
@@ -1975,3 +1976,43 @@ class TestTerminalWidth(tests.TestCase):
         del os.environ['COLUMNS']
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
+
+class TestCreationOps(tests.TestCaseInTempDir):
+    _test_needs_features = [features.chown_feature]
+
+    def setUp(self):
+        tests.TestCaseInTempDir.setUp(self)
+        self.overrideAttr(os, 'chown', self._dummy_chown)
+
+        # params set by call to _dummy_chown
+        self.path = self.uid = self.gid = None
+
+    def _dummy_chown(self, path, uid, gid):
+        self.path, self.uid, self.gid = path, uid, gid
+
+    def test_mkdir_with_ownership_chown(self):
+        """Ensure that osutils.mkdir_with_ownership chowns correctly with ownership_src.
+        """
+        ownsrc = '/'
+        osutils.mkdir_with_ownership('foo', ownsrc)
+
+        s = os.stat(ownsrc)
+        self.assertEquals(self.path, 'foo')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+
+    def test_open_with_ownership_chown(self):
+        """Ensure that osutils.open_with_ownership chowns correctly with ownership_src.
+        """
+        ownsrc = '/'
+        f = osutils.open_with_ownership('foo', 'w', ownership_src=ownsrc)
+
+        # do a test write and close
+        f.write('hello')
+        f.close()
+
+        s = os.stat(ownsrc)
+        self.assertEquals(self.path, 'foo')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+

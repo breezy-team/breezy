@@ -455,6 +455,9 @@ class Branch(object):
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,
             stop_revision_id, stop_rule)
+        # Make sure we don't return revisions that are not part of the
+        # start_revision_id ancestry.
+        filtered = self._filter_non_ancestors(filtered)
         if direction == 'reverse':
             return filtered
         if direction == 'forward':
@@ -524,6 +527,51 @@ class Branch(object):
                             revision_id_whitelist.extend(rev.parent_ids)
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
+
+    def _filter_non_ancestors(self, rev_iter):
+        # If we started from a dotted revno, we want to consider it as a tip
+        # and don't want to yield revisions that are not part of its
+        # ancestry. Given the order guaranteed by the merge sort, we will see
+        # uninteresting descendants of the first parent of our tip before the
+        # tip itself.
+        first = rev_iter.next()
+        (rev_id, merge_depth, revno, end_of_merge) = first
+        yield first
+        if not merge_depth:
+            # We start at a mainline revision so by definition, all others
+            # revisions in rev_iter are ancestors
+            for node in rev_iter:
+                yield node
+
+        clean = False
+        whitelist = set()
+        pmap = self.repository.get_parent_map([rev_id])
+        parents = pmap.get(rev_id, [])
+        if parents:
+            whitelist.update(parents)
+        else:
+            # If there is no parents, there is nothing of interest left
+
+            # FIXME: It's hard to test this scenario here as this code is never
+            # called in that case. -- vila 20100322
+            return
+
+        for (rev_id, merge_depth, revno, end_of_merge) in rev_iter:
+            if not clean:
+                if rev_id in whitelist:
+                    pmap = self.repository.get_parent_map([rev_id])
+                    parents = pmap.get(rev_id, [])
+                    whitelist.remove(rev_id)
+                    whitelist.update(parents)
+                    if merge_depth == 0:
+                        # We've reached the mainline, there is nothing left to
+                        # filter
+                        clean = True
+                else:
+                    # A revision that is not part of the ancestry of our
+                    # starting revision.
+                    continue
+            yield (rev_id, merge_depth, revno, end_of_merge)
 
     def leave_lock_in_place(self):
         """Tell this branch object not to release the physical lock when this
@@ -1366,6 +1414,18 @@ class Branch(object):
     def supports_tags(self):
         return self._format.supports_tags()
 
+    def automatic_tag_name(self, revision_id):
+        """Try to automatically find the tag name for a revision.
+
+        :param revision_id: Revision id of the revision.
+        :return: A tag name or None if no tag name could be determined.
+        """
+        for hook in Branch.hooks['automatic_tag_name']:
+            ret = hook(self, revision_id)
+            if ret is not None:
+                return ret
+        return None
+
     def _check_if_descendant_or_diverged(self, revision_a, revision_b, graph,
                                          other_branch):
         """Ensure that revision_b is a descendant of revision_a.
@@ -1685,6 +1745,13 @@ class BranchHooks(Hooks):
             "multiple hooks installed for transform_fallback_location, "
             "all are called with the url returned from the previous hook."
             "The order is however undefined.", (1, 9), None))
+        self.create_hook(HookPoint('automatic_tag_name',
+            "Called to determine an automatic tag name for a revision."
+            "automatic_tag_name is called with (branch, revision_id) and "
+            "should return a tag name or None if no tag name could be "
+            "determined. The first non-None tag name returned will be used.",
+            (2, 2), None))
+
 
 
 # install the default hooks into the Branch class.
@@ -1759,14 +1826,13 @@ class BzrBranchFormat4(BranchFormat):
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False):
         """See BranchFormat.open()."""
-        if name is not None:
-            raise errors.NoColocatedBranchSupport(a_bzrdir)
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
         return BzrBranch(_format=self,
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
+                         name=name,
                          _repository=a_bzrdir.open_repository())
 
     def __str__(self):
@@ -1800,6 +1866,7 @@ class BranchFormatMetadir(BranchFormat):
                                                          lockdir.LockDir)
             return self._branch_class()(_format=self,
                               _control_files=control_files,
+                              name=name,
                               a_bzrdir=a_bzrdir,
                               _repository=a_bzrdir.find_repository(),
                               ignore_fallbacks=ignore_fallbacks)
@@ -2100,17 +2167,20 @@ class BzrBranch(Branch, _RelockDebugMixin):
     :ivar repository: Repository for this branch.
     :ivar base: The url of the base directory for this branch; the one
         containing the .bzr directory.
+    :ivar name: Optional colocated branch name as it exists in the control
+        directory.
     """
 
     def __init__(self, _format=None,
-                 _control_files=None, a_bzrdir=None, _repository=None,
-                 ignore_fallbacks=False):
+                 _control_files=None, a_bzrdir=None, name=None,
+                 _repository=None, ignore_fallbacks=False):
         """Create new branch object at a particular location."""
         if a_bzrdir is None:
             raise ValueError('a_bzrdir must be supplied')
         else:
             self.bzrdir = a_bzrdir
         self._base = self.bzrdir.transport.clone('..').base
+        self.name = name
         # XXX: We should be able to just do
         #   self.base = self.bzrdir.root_transport.base
         # but this does not quite work yet -- mbp 20080522
@@ -2123,7 +2193,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
         Branch.__init__(self)
 
     def __str__(self):
-        return '%s(%r)' % (self.__class__.__name__, self.base)
+        if self.name is None:
+            return '%s(%r)' % (self.__class__.__name__, self.base)
+        else:
+            return '%s(%r,%r)' % (self.__class__.__name__, self.base, self.name)
 
     __repr__ = __str__
 

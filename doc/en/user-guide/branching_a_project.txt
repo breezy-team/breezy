@@ -30,6 +30,17 @@ protocols, see the ``urlspec`` online help topic or the
 `URL Identifiers <../user-reference/bzr_man.html#url-identifiers>`_
 section of the Bazaar User Reference.
 
+URLs are normally resolved relative to the root directory of the server,
+so ``ftp://example.com/repo/foo`` means the ``/repo/foo`` directory of
+that host.  (We say 'normally' because some server software like Apache
+can be configured to remap URLs arbitrarily, in which case you'll need to
+look at the server configuration to find out which URL corresponds to
+which directory.)
+
+To address a path relative to your home directory on the server, use a
+tilde like so: ``sftp://example.com/~/public_html`` should map to
+``public_html`` within your home directory.
+
 A reminder about shared repositories
 ------------------------------------
 

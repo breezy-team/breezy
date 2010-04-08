@@ -59,7 +59,7 @@ known_hooks.register_lazy(
     ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks'),
     'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilderHooks')
 known_hooks.register_lazy(
-    ('bzrlib.merge_directive', '_BaseMergeDirective.hooks'),
+    ('bzrlib.merge_directive', 'BaseMergeDirective.hooks'),
     'bzrlib.merge_directive', 'MergeDirectiveHooks')
 
 

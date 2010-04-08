@@ -470,6 +470,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
 
 def get_svn_py2exe_info(includes, excludes, packages):
     packages.append('subvertpy')
+    packages.append('sqlite3')
 
 
 if 'bdist_wininst' in sys.argv:
@@ -572,7 +573,7 @@ elif 'py2exe' in sys.argv:
     if sys.version.startswith('2.4'):
         # adding elementtree package
         additional_packages.add('elementtree')
-    elif sys.version.startswith('2.5'):
+    elif sys.version.startswith('2.6') or sys.version.startswith('2.5'):
         additional_packages.add('xml.etree')
     else:
         import warnings
