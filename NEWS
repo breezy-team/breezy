@@ -22,6 +22,11 @@ New Features
 Bug Fixes
 *********
 
+* Make sure the ``ExecutablePath`` and ``InterpreterPath`` are set in
+  Apport crash reports, to avoid "This problem report applies to a program
+  which is not installed any more" error.
+  (Martin Pool, James Westby, #528114)
+
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
   that are not part of the ancestry anymore.
   (Vincent Ladeuil, #474807)

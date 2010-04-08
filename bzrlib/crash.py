@@ -143,8 +143,9 @@ def _write_apport_report_to_file(exc_info):
     exc_type, exc_object, exc_tb = exc_info
 
     pr = Report()
-    # add_proc_info gets the executable and interpreter path, which is needed,
-    # plus some less useful stuff like the memory map
+    # add_proc_info gives you the memory map of the process, which is not so
+    # useful for Bazaar but does tell you what binary libraries are loaded.
+    # More importantly it sets the ExecutablePath, InterpreterPath, etc.
     pr.add_proc_info()
     pr.add_user_info()
 
@@ -164,6 +165,19 @@ def _write_apport_report_to_file(exc_info):
     pr['BzrPlugins'] = _format_plugin_list()
     pr['PythonLoadedModules'] = _format_module_list()
     pr['BzrDebugFlags'] = pprint.pformat(debug.debug_flags)
+
+    # actually we'd rather file directly against the upstream product, but
+    # apport does seem to count on there being one in there; we might need to
+    # redirect it elsewhere anyhow
+    pr['SourcePackage'] = 'bzr'
+    pr['Package'] = 'bzr'
+
+    # tell apport to file directly against the bzr package using 
+    # <https://bugs.edge.launchpad.net/bzr/+bug/391015>
+    #
+    # XXX: unfortunately apport may crash later if the crashdb definition
+    # file isn't present
+    pr['CrashDb'] = 'bzr'
 
     tb_file = StringIO()
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
