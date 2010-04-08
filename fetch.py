@@ -20,9 +20,6 @@ from dulwich.objects import (
     Tree,
     S_ISGITLINK,
     )
-from dulwich.object_store import (
-    tree_lookup_path,
-    )
 from itertools import (
     imap,
     )
