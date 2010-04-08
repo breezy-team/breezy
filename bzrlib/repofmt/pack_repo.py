@@ -587,26 +587,6 @@ class AggregateIndex(object):
                                              flush_func=flush_func)
         self.add_callback = None
 
-    def replace_indices(self, index_to_pack, indices):
-        """Replace the current mappings with fresh ones.
-
-        This should probably not be used eventually, rather incremental add and
-        removal of indices. It has been added during refactoring of existing
-        code.
-
-        :param index_to_pack: A mapping from index objects to
-            (transport, name) tuples for the pack file data.
-        :param indices: A list of indices.
-        """
-        # refresh the revision pack map dict without replacing the instance.
-        self.index_to_pack.clear()
-        self.index_to_pack.update(index_to_pack)
-        # XXX: API break - clearly a 'replace' method would be good?
-        self.combined_index._indices[:] = indices
-        # the current add nodes callback for the current writable index if
-        # there is one.
-        self.add_callback = None
-
     def add_index(self, index, pack):
         """Add index to the aggregate, which is an index for Pack pack.
 
@@ -619,7 +599,7 @@ class AggregateIndex(object):
         # expose it to the index map
         self.index_to_pack[index] = pack.access_tuple()
         # put it at the front of the linear index list
-        self.combined_index.insert_index(0, index)
+        self.combined_index.insert_index(0, index, pack.name)
 
     def add_writable_index(self, index, pack):
         """Add an index which is able to have data added to it.
@@ -645,6 +625,7 @@ class AggregateIndex(object):
         self.data_access.set_writer(None, None, (None, None))
         self.index_to_pack.clear()
         del self.combined_index._indices[:]
+        del self.combined_index._index_names[:]
         self.add_callback = None
 
     def remove_index(self, index):
@@ -653,7 +634,9 @@ class AggregateIndex(object):
         :param index: An index from the pack parameter.
         """
         del self.index_to_pack[index]
-        self.combined_index._indices.remove(index)
+        pos = self.combined_index._indices.index(index)
+        del self.combined_index._indices[pos]
+        del self.combined_index._index_names[pos]
         if (self.add_callback is not None and
             getattr(index, 'add_nodes', None) == self.add_callback):
             self.add_callback = None
@@ -1415,11 +1398,20 @@ class RepositoryPackCollection(object):
         self.inventory_index = AggregateIndex(self.reload_pack_names, flush)
         self.text_index = AggregateIndex(self.reload_pack_names, flush)
         self.signature_index = AggregateIndex(self.reload_pack_names, flush)
+        all_indices = [self.revision_index, self.inventory_index,
+                self.text_index, self.signature_index]
         if use_chk_index:
             self.chk_index = AggregateIndex(self.reload_pack_names, flush)
+            all_indices.append(self.chk_index)
         else:
             # used to determine if we're using a chk_index elsewhere.
             self.chk_index = None
+        # Tell all the CombinedGraphIndex objects about each other, so they can
+        # share hints about which pack names to search first.
+        all_combined = [agg_idx.combined_index for agg_idx in all_indices]
+        for combined_idx in all_combined:
+            combined_idx.set_sibling_indices(
+                set(all_combined).difference([combined_idx]))
         # resumed packs
         self._resumed_packs = []
 
