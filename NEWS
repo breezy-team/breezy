@@ -13,6 +13,8 @@
   * Default to non-bare repositories when initializing a control directory.
     (Jelmer Vernooij)
 
+  * Cope with -0000 as timezone in Git commits. (Jelmer Vernooij, #539978)
+
  FEATURES
 
   * Support 'bzr diff --format=git'. (Jelmer Vernooij, #555994)

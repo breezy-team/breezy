@@ -24,9 +24,7 @@ import stat
 from bzrlib import (
     errors,
     foreign,
-    osutils,
     trace,
-    urlutils,
     )
 try:
     from bzrlib import bencode
@@ -248,7 +246,9 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_time = long(rev.properties['author-timestamp'])
         else:
             commit.author_time = commit.commit_time
+        commit._commit_timezone_neg_utc = "commit-timezone-neg-utc" in rev.properties
         commit.commit_timezone = rev.timezone
+        commit._author_timezone_neg_utc = "author-timezone-neg-utc" in rev.properties
         if 'author-timezone' in rev.properties:
             commit.author_timezone = int(rev.properties['author-timezone'])
         else:
@@ -290,6 +290,10 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['author-timestamp'] = str(commit.author_time)
         if commit.commit_timezone != commit.author_timezone:
             rev.properties['author-timezone'] = "%d" % commit.author_timezone
+        if commit._author_timezone_neg_utc:
+            rev.properties['author-timezone-neg-utc'] = ""
+        if commit._commit_timezone_neg_utc:
+            rev.properties['commit-timezone-neg-utc'] = ""
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         return rev

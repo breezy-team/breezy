@@ -204,6 +204,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
         try:
             return shamap[ie.file_id]
         except KeyError:
+            # FIXME: Should be the same as in parent
             if ie.kind in ("file", "symlink"):
                 try:
                     return idmap.lookup_blob_id(ie.file_id, ie.revision)

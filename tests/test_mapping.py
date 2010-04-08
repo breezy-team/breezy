@@ -174,6 +174,19 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         c.author = "Author <author>"
         self.assertRoundtripCommit(c)
 
+    def test_commit_zero_utc_timezone(self):
+        c = Commit()
+        c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
+        c.message = "Some message"
+        c.committer = "Committer <Committer>"
+        c.commit_time = 4
+        c.commit_timezone = 0
+        c._commit_timezone_neg_utc = True
+        c.author_time = 5
+        c.author_timezone = 60 * 2
+        c.author = "Author <author>"
+        self.assertRoundtripCommit(c)
+
     def test_commit_encoding(self):
         c = Commit()
         c.tree = "cc9462f7f8263ef5adfbeff2fb936bb36b504cba"
