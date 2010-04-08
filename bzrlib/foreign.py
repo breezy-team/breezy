@@ -225,29 +225,6 @@ class ForeignRepository(Repository):
         """Get the default mapping for this repository."""
         raise NotImplementedError(self.get_default_mapping)
 
-    def get_inventory_xml(self, revision_id):
-        """See Repository.get_inventory_xml()."""
-        return self.serialise_inventory(self.get_inventory(revision_id))
-
-    def get_inventory_sha1(self, revision_id):
-        """Get the sha1 for the XML representation of an inventory.
-
-        :param revision_id: Revision id of the inventory for which to return
-         the SHA1.
-        :return: XML string
-        """
-
-        return osutils.sha_string(self.get_inventory_xml(revision_id))
-
-    def get_revision_xml(self, revision_id):
-        """Return the XML representation of a revision.
-
-        :param revision_id: Revision for which to return the XML.
-        :return: XML string
-        """
-        return self._serializer.write_revision_to_string(
-            self.get_revision(revision_id))
-
 
 class ForeignBranch(Branch):
     """Branch that exists in a foreign version control system."""

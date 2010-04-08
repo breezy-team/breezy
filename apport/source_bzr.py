@@ -32,7 +32,6 @@ def _add_log_tail(report):
 
 
 def add_info(report):
-
     _add_log_tail(report)
     if 'BzrPlugins' not in report:
         # may already be present in-process

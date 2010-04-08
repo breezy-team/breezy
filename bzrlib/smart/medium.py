@@ -24,15 +24,14 @@ over SSH), and pass them to and from the protocol logic.  See the overview in
 bzrlib/transport/smart/__init__.py.
 """
 
-import errno
 import os
-import socket
 import sys
 import urllib
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import atexit
+import socket
 import thread
 import weakref
 
@@ -47,14 +46,13 @@ from bzrlib import (
 from bzrlib.smart import client, protocol, request, vfs
 from bzrlib.transport import ssh
 """)
-#usually already imported, and getting IllegalScoperReplacer on it here.
 from bzrlib import osutils
 
-# We must not read any more than 64k at a time so we don't risk "no buffer
-# space available" errors on some platforms.  Windows in particular is likely
-# to give error 10053 or 10055 if we read more than 64k from a socket.
-_MAX_READ_SIZE = 64 * 1024
-
+# Throughout this module buffer size parameters are either limited to be at
+# most _MAX_READ_SIZE, or are ignored and _MAX_READ_SIZE is used instead.
+# For this module's purposes, MAX_SOCKET_CHUNK is a reasonable size for reads
+# from non-sockets as well.
+_MAX_READ_SIZE = osutils.MAX_SOCKET_CHUNK
 
 def _get_protocol_factory_for_bytes(bytes):
     """Determine the right protocol factory for 'bytes'.
@@ -276,9 +274,9 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
     def _serve_one_request_unguarded(self, protocol):
         while protocol.next_read_size():
             # We can safely try to read large chunks.  If there is less data
-            # than _MAX_READ_SIZE ready, the socket wil just return a short
-            # read immediately rather than block.
-            bytes = self.read_bytes(_MAX_READ_SIZE)
+            # than MAX_SOCKET_CHUNK ready, the socket will just return a
+            # short read immediately rather than block.
+            bytes = self.read_bytes(osutils.MAX_SOCKET_CHUNK)
             if bytes == '':
                 self.finished = True
                 return
@@ -287,13 +285,13 @@ class SmartServerSocketStreamMedium(SmartServerStreamMedium):
         self._push_back(protocol.unused_data)
 
     def _read_bytes(self, desired_count):
-        return _read_bytes_from_socket(
-            self.socket.recv, desired_count, self._report_activity)
+        return osutils.read_bytes_from_socket(
+            self.socket, self._report_activity)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
         # exists yet.  Andrew Bennetts 2006-09-29.
-        osutils.until_no_eintr(self.socket.close)
+        self.socket.close()
         self.finished = True
 
     def _write_out(self, bytes):
@@ -334,27 +332,27 @@ class SmartServerPipeStreamMedium(SmartServerStreamMedium):
             bytes_to_read = protocol.next_read_size()
             if bytes_to_read == 0:
                 # Finished serving this request.
-                osutils.until_no_eintr(self._out.flush)
+                self._out.flush()
                 return
             bytes = self.read_bytes(bytes_to_read)
             if bytes == '':
                 # Connection has been closed.
                 self.finished = True
-                osutils.until_no_eintr(self._out.flush)
+                self._out.flush()
                 return
             protocol.accept_bytes(bytes)
 
     def _read_bytes(self, desired_count):
-        return osutils.until_no_eintr(self._in.read, desired_count)
+        return self._in.read(desired_count)
 
     def terminate_due_to_error(self):
         # TODO: This should log to a server log file, but no such thing
         # exists yet.  Andrew Bennetts 2006-09-29.
-        osutils.until_no_eintr(self._out.close)
+        self._out.close()
         self.finished = True
 
     def _write_out(self, bytes):
-        osutils.until_no_eintr(self._out.write, bytes)
+        self._out.write(bytes)
 
 
 class SmartClientMediumRequest(object):
@@ -711,6 +709,10 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     """A client medium using simple pipes.
 
     This client does not manage the pipes: it assumes they will always be open.
+
+    Note that if readable_pipe.read might raise IOError or OSError with errno
+    of EINTR, it must be safe to retry the read.  Plain CPython fileobjects
+    (such as used for sys.stdin) are safe.
     """
 
     def __init__(self, readable_pipe, writeable_pipe, base):
@@ -720,12 +722,12 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
-        osutils.until_no_eintr(self._writeable_pipe.write, bytes)
+        self._writeable_pipe.write(bytes)
         self._report_activity(len(bytes), 'write')
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
-        osutils.until_no_eintr(self._writeable_pipe.flush)
+        self._writeable_pipe.flush()
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
@@ -777,15 +779,15 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
         self._ensure_connection()
-        osutils.until_no_eintr(self._write_to.write, bytes)
+        self._write_to.write(bytes)
         self._report_activity(len(bytes), 'write')
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
         if not self._connected:
             return
-        osutils.until_no_eintr(self._read_from.close)
-        osutils.until_no_eintr(self._write_to.close)
+        self._read_from.close()
+        self._write_to.close()
         self._ssh_connection.close()
         self._connected = False
 
@@ -814,7 +816,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         if not self._connected:
             raise errors.MediumNotConnected(self)
         bytes_to_read = min(count, _MAX_READ_SIZE)
-        bytes = osutils.until_no_eintr(self._read_from.read, bytes_to_read)
+        bytes = self._read_from.read(bytes_to_read)
         self._report_activity(len(bytes), 'read')
         return bytes
 
@@ -844,7 +846,7 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.disconnect()."""
         if not self._connected:
             return
-        osutils.until_no_eintr(self._socket.close)
+        self._socket.close()
         self._socket = None
         self._connected = False
 
@@ -898,8 +900,8 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         """See SmartClientMedium.read_bytes."""
         if not self._connected:
             raise errors.MediumNotConnected(self)
-        return _read_bytes_from_socket(
-            self._socket.recv, count, self._report_activity)
+        return osutils.read_bytes_from_socket(
+            self._socket, self._report_activity)
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
@@ -941,20 +943,4 @@ class SmartClientStreamMediumRequest(SmartClientMediumRequest):
         """
         self._medium._flush()
 
-
-def _read_bytes_from_socket(sock, desired_count, report_activity):
-    # We ignore the desired_count because on sockets it's more efficient to
-    # read large chunks (of _MAX_READ_SIZE bytes) at a time.
-    try:
-        bytes = osutils.until_no_eintr(sock, _MAX_READ_SIZE)
-    except socket.error, e:
-        if len(e.args) and e.args[0] in (errno.ECONNRESET, 10054):
-            # The connection was closed by the other side.  Callers expect an
-            # empty string to signal end-of-stream.
-            bytes = ''
-        else:
-            raise
-    else:
-        report_activity(len(bytes), 'read')
-    return bytes
 

@@ -831,11 +831,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def setUp(self):
         super(TestUpdateEntry, self).setUp()
-        orig = dirstate.update_entry
-        def cleanup():
-            dirstate.update_entry = orig
-        self.addCleanup(cleanup)
-        dirstate.update_entry = self.update_entry
+        self.overrideAttr(dirstate, 'update_entry', self.update_entry)
 
     def get_state_with_a(self):
         """Create a DirState tracking a single object named 'a'"""
@@ -1278,11 +1274,7 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
 
     def setUp(self):
         super(TestProcessEntry, self).setUp()
-        orig = dirstate._process_entry
-        def cleanup():
-            dirstate._process_entry = orig
-        self.addCleanup(cleanup)
-        dirstate._process_entry = self._process_entry
+        self.overrideAttr(dirstate, '_process_entry', self._process_entry)
 
     def assertChangedFileIds(self, expected, tree):
         tree.lock_read()
@@ -1297,8 +1289,6 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         # This is a direct test of bug #495023, it relies on osutils.is_inside
         # getting called in an inner function. Which makes it a bit brittle,
         # but at least it does reproduce the bug.
-        def is_inside_raises(*args, **kwargs):
-            raise RuntimeError('stop this')
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file', 'tree/dir/', 'tree/dir/sub',
                          'tree/dir2/', 'tree/dir2/sub2'])
@@ -1307,9 +1297,9 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         basis_tree = tree.basis_tree()
-        orig = osutils.is_inside
-        self.addCleanup(setattr, osutils, 'is_inside', orig)
-        osutils.is_inside = is_inside_raises
+        def is_inside_raises(*args, **kwargs):
+            raise RuntimeError('stop this')
+        self.overrideAttr(osutils, 'is_inside', is_inside_raises)
         self.assertListRaises(RuntimeError, tree.iter_changes, basis_tree)
 
     def test_simple_changes(self):

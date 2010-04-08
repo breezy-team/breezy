@@ -2620,6 +2620,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     repository_class = KnitPackRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
+    experimental = True
     supports_tree_reference = True
     @property
     def _serializer(self):
@@ -2893,6 +2894,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     repository_class = KnitPackRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
+    experimental = True
     supports_tree_reference = True
     supports_external_lookups = True
     # What index classes to use

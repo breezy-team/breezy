@@ -15,18 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-# TODO: probably should say which arguments are candidates for glob
-# expansion on windows and do that at the command level.
-
 # TODO: Define arguments by objects, rather than just using names.
 # Those objects can specify the expected type of the argument, which
 # would help with validation and shell completion.  They could also provide
 # help/explanation for that argument in a structured way.
 
 # TODO: Specific "examples" property on commands for consistent formatting.
-
-# TODO: "--profile=cum", to change sort order.  Is there any value in leaving
-# the profile output behind so it can be interactively examined?
 
 import os
 import sys
@@ -41,6 +35,7 @@ from warnings import warn
 import bzrlib
 from bzrlib import (
     cleanup,
+    cmdline,
     debug,
     errors,
     option,
@@ -54,12 +49,12 @@ from bzrlib import (
 from bzrlib.hooks import HookPoint, Hooks
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
+from bzrlib.plugin import disable_plugins, load_plugins
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
     deprecated_method,
-    suppress_deprecation_warnings,
     )
 
 
@@ -77,6 +72,22 @@ class CommandInfo(object):
 
 
 class CommandRegistry(registry.Registry):
+    """Special registry mapping command names to command classes.
+    
+    :ivar overridden_registry: Look in this registry for commands being
+        overridden by this registry.  This can be used to tell plugin commands
+        about the builtin they're decorating.
+    """
+
+    def __init__(self):
+        registry.Registry.__init__(self)
+        self.overridden_registry = None
+        # map from aliases to the real command that implements the name
+        self._alias_dict = {}
+
+    def get(self, command_name):
+        real_name = self._alias_dict.get(command_name, command_name)
+        return registry.Registry.get(self, real_name)
 
     @staticmethod
     def _get_name(command_name):
@@ -98,7 +109,12 @@ class CommandRegistry(registry.Registry):
         try:
             previous = self.get(k_unsquished)
         except KeyError:
-            previous = _builtin_commands().get(k_unsquished)
+            previous = None
+            if self.overridden_registry:
+                try:
+                    previous = self.overridden_registry.get(k_unsquished)
+                except KeyError:
+                    pass
         info = CommandInfo.from_command(cmd)
         try:
             registry.Registry.register(self, k_unsquished, cmd,
@@ -109,6 +125,8 @@ class CommandRegistry(registry.Registry):
                 sys.modules[cmd.__module__])
             trace.warning('Previously this command was registered from %r' %
                 sys.modules[previous.__module__])
+        for a in cmd.aliases:
+            self._alias_dict[a] = k_unsquished
         return previous
 
     def register_lazy(self, command_name, aliases, module_name):
@@ -121,12 +139,20 @@ class CommandRegistry(registry.Registry):
         key = self._get_name(command_name)
         registry.Registry.register_lazy(self, key, module_name, command_name,
                                         info=CommandInfo(aliases))
+        for a in aliases:
+            self._alias_dict[a] = key
 
 
 plugin_cmds = CommandRegistry()
+builtin_command_registry = CommandRegistry()
+plugin_cmds.overridden_registry = builtin_command_registry
 
 
 def register_command(cmd, decorate=False):
+    """Register a plugin command.
+
+    Should generally be avoided in favor of lazy registration. 
+    """
     global plugin_cmds
     return plugin_cmds.register(cmd, decorate)
 
@@ -139,9 +165,24 @@ def _unsquish_command_name(cmd):
     return cmd[4:].replace('_','-')
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def _builtin_commands():
+    """Return a dict of {name: cmd_class} for builtin commands.
+
+    :deprecated: Use the builtin_command_registry registry instead
+    """
+    # return dict(name: cmd_class)
+    return dict(builtin_command_registry.items())
+
+
+def _register_builtin_commands():
+    if builtin_command_registry.keys():
+        # only load once
+        return
     import bzrlib.builtins
-    return _scan_module_for_commands(bzrlib.builtins)
+    for cmd_class in _scan_module_for_commands(bzrlib.builtins).values():
+        builtin_command_registry.register(cmd_class)
+    bzrlib.builtins._register_lazy_builtins()
 
 
 def _scan_module_for_commands(module):
@@ -154,7 +195,10 @@ def _scan_module_for_commands(module):
 
 
 def _list_bzr_commands(names):
-    """Find commands from bzr's core and plugins."""
+    """Find commands from bzr's core and plugins.
+    
+    This is not the public interface, just the default hook called by all_command_names.
+    """
     # to eliminate duplicates
     names.update(builtin_command_names())
     names.update(plugin_command_names())
@@ -178,29 +222,12 @@ def builtin_command_names():
     Use of all_command_names() is encouraged rather than builtin_command_names
     and/or plugin_command_names.
     """
-    return _builtin_commands().keys()
+    return builtin_command_registry.keys()
 
 
 def plugin_command_names():
     """Returns command names from commands registered by plugins."""
     return plugin_cmds.keys()
-
-
-@deprecated_function(deprecated_in((1, 17, 0)))
-def get_all_cmds(plugins_override=False):
-    """Return canonical name and class for most commands.
-    
-    NB: This does not return all commands since the introduction of
-    command hooks, and returning the class is not sufficient to 
-    get correctly setup commands, which is why it is deprecated.
-
-    Use 'all_command_names' + 'get_cmd_object' instead.
-    """
-    d = _builtin_commands()
-    if plugins_override:
-        d.update(plugin_cmds.iteritems())
-    for k, v in d.iteritems():
-        yield k,v
 
 
 def get_cmd_object(cmd_name, plugins_override=True):
@@ -215,11 +242,13 @@ def get_cmd_object(cmd_name, plugins_override=True):
         raise errors.BzrCommandError('unknown command "%s"' % cmd_name)
 
 
-def _get_cmd_object(cmd_name, plugins_override=True):
+def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     """Get a command object.
 
     :param cmd_name: The name of the command.
     :param plugins_override: Allow plugins to override builtins.
+    :param check_missing: Look up commands not found in the regular index via
+        the get_missing_command hook.
     :return: A Command object instance
     :raises KeyError: If no command is found.
     """
@@ -235,7 +264,7 @@ def _get_cmd_object(cmd_name, plugins_override=True):
             # We've found a non-plugin command, don't permit it to be
             # overridden.
             break
-    if cmd is None:
+    if cmd is None and check_missing:
         for hook in Command.hooks['get_missing_command']:
             cmd = hook(cmd_name)
             if cmd is not None:
@@ -277,15 +306,12 @@ def probe_for_provider(cmd_name):
 
 def _get_bzr_command(cmd_or_None, cmd_name):
     """Get a command from bzr's core."""
-    cmds = _builtin_commands()
     try:
-        return cmds[cmd_name]()
+        cmd_class = builtin_command_registry.get(cmd_name)
     except KeyError:
         pass
-    # look for any command which claims this as an alias
-    for real_cmd_name, cmd_class in cmds.iteritems():
-        if cmd_name in cmd_class.aliases:
-            return cmd_class()
+    else:
+        return cmd_class()
     return cmd_or_None
 
 
@@ -386,7 +412,7 @@ class Command(object):
         # List of standard options directly supported
         self.supported_std_options = []
         self._operation = cleanup.OperationWithCleanups(self.run)
-    
+
     def add_cleanup(self, cleanup_func, *args, **kwargs):
         """Register a function to call after self.run returns or raises.
 
@@ -406,7 +432,7 @@ class Command(object):
         resources (such as writing results to self.outf).
         """
         self._operation.cleanup_now()
-        
+
     @deprecated_method(deprecated_in((2, 1, 0)))
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
@@ -624,10 +650,6 @@ class Command(object):
 
     def run_argv_aliases(self, argv, alias_argv=None):
         """Parse the command line and run with extra aliases in alias_argv."""
-        if argv is None:
-            warn("Passing None for [] is deprecated from bzrlib 0.10",
-                 DeprecationWarning, stacklevel=2)
-            argv = []
         args, opts = parse_args(self, argv, alias_argv)
 
         # Process the standard options
@@ -895,9 +917,9 @@ def apply_lsprofiled(filename, the_callable, *args, **kwargs):
     return ret
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def shlex_split_unicode(unsplit):
-    import shlex
-    return [u.decode('utf-8') for u in shlex.split(unsplit.encode('utf-8'))]
+    return cmdline.split(unsplit)
 
 
 def get_alias(cmd, config=None):
@@ -915,19 +937,25 @@ def get_alias(cmd, config=None):
         config = bzrlib.config.GlobalConfig()
     alias = config.get_alias(cmd)
     if (alias):
-        return shlex_split_unicode(alias)
+        return cmdline.split(alias)
     return None
 
 
-def run_bzr(argv):
+def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     """Execute a command.
 
-    argv
-       The command-line arguments, without the program name from argv[0]
-       These should already be decoded. All library/test code calling
-       run_bzr should be passing valid strings (don't need decoding).
-
-    Returns a command status or raises an exception.
+    :param argv: The command-line arguments, without the program name from
+        argv[0] These should already be decoded. All library/test code calling
+        run_bzr should be passing valid strings (don't need decoding).
+    :param load_plugins: What function to call when triggering plugin loading.
+        This function should take no arguments and cause all plugins to be
+        loaded.
+    :param disable_plugins: What function to call when disabling plugin
+        loading. This function should take no arguments and cause all plugin
+        loading to be prohibited (so that code paths in your application that
+        know about some plugins possibly being present will fail to import
+        those plugins even if they are installed.)
+    :return: Returns a command exit code or raises an exception.
 
     Special master options: these must come before the command because
     they control how the command is interpreted.
@@ -998,23 +1026,19 @@ def run_bzr(argv):
 
     debug.set_debug_flags_from_config()
 
+    if not opt_no_plugins:
+        load_plugins()
+    else:
+        disable_plugins()
+
     argv = argv_copy
     if (not argv):
-        from bzrlib.builtins import cmd_help
-        cmd_help().run_argv_aliases([])
+        get_cmd_object('help').run_argv_aliases([])
         return 0
 
     if argv[0] == '--version':
-        from bzrlib.builtins import cmd_version
-        cmd_version().run_argv_aliases([])
+        get_cmd_object('version').run_argv_aliases([])
         return 0
-
-    if not opt_no_plugins:
-        from bzrlib.plugin import load_plugins
-        load_plugins()
-    else:
-        from bzrlib.plugin import disable_plugins
-        disable_plugins()
 
     alias_argv = None
 
@@ -1099,25 +1123,12 @@ def install_bzr_command_hooks():
         "bzr plugin-provider-db check")
 
 
-def main(argv=None):
-    """Main entry point of command-line interface.
 
-    :param argv: list of unicode command-line arguments similar to sys.argv.
-        argv[0] is script name usually, it will be ignored.
-        Don't pass here sys.argv because this list contains plain strings
-        and not unicode; pass None instead.
-
-    :return: exit code of bzr command.
-    """
-    import bzrlib.ui
-    bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
-        sys.stdin, sys.stdout, sys.stderr)
-
-    # Is this a final release version? If so, we should suppress warnings
-    if bzrlib.version_info[3] == 'final':
-        suppress_deprecation_warnings(override=True)
+def _specified_or_unicode_argv(argv):
+    # For internal or testing use, argv can be passed.  Otherwise, get it from
+    # the process arguments in a unicode-safe way.
     if argv is None:
-        argv = osutils.get_unicode_argv()
+        return osutils.get_unicode_argv()
     else:
         new_argv = []
         try:
@@ -1129,12 +1140,27 @@ def main(argv=None):
                     new_argv.append(a.decode('ascii'))
         except UnicodeDecodeError:
             raise errors.BzrError("argv should be list of unicode strings.")
-        argv = new_argv
+        return new_argv
+
+
+def main(argv=None):
+    """Main entry point of command-line interface.
+
+    Typically `bzrlib.initialize` should be called first.
+
+    :param argv: list of unicode command-line arguments similar to sys.argv.
+        argv[0] is script name usually, it will be ignored.
+        Don't pass here sys.argv because this list contains plain strings
+        and not unicode; pass None instead.
+
+    :return: exit code of bzr command.
+    """
+    argv = _specified_or_unicode_argv(argv)
+    _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
     bzrlib.ui.ui_factory.log_transport_activity(
         display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
-    osutils.report_extension_load_failures()
     return ret
 
 
@@ -1144,6 +1170,7 @@ def run_bzr_catch_errors(argv):
     This function assumed that that UI layer is setup, that symbol deprecations
     are already applied, and that unicode decoding has already been performed on argv.
     """
+    # done here so that they're covered for every test run
     install_bzr_command_hooks()
     return exception_to_return_code(run_bzr, argv)
 
@@ -1154,6 +1181,7 @@ def run_bzr_catch_user_errors(argv):
     This is used for the test suite, and might be useful for other programs
     that want to wrap the commandline interface.
     """
+    # done here so that they're covered for every test run
     install_bzr_command_hooks()
     try:
         return run_bzr(argv)
@@ -1182,7 +1210,7 @@ class HelpCommandIndex(object):
         if topic and topic.startswith(self.prefix):
             topic = topic[len(self.prefix):]
         try:
-            cmd = _get_cmd_object(topic)
+            cmd = _get_cmd_object(topic, check_missing=False)
         except KeyError:
             return []
         else:
@@ -1209,7 +1237,3 @@ class ProvidersRegistry(registry.Registry):
             yield provider
 
 command_providers_registry = ProvidersRegistry()
-
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv))

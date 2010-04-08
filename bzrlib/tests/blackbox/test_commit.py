@@ -343,22 +343,31 @@ class TestCommit(ExternalBase):
         trunk = self.make_branch_and_tree('trunk')
 
         u1 = trunk.branch.create_checkout('u1')
-        self.build_tree_contents([('u1/hosts', 'initial contents')])
+        self.build_tree_contents([('u1/hosts', 'initial contents\n')])
         u1.add('hosts')
         self.run_bzr('commit -m add-hosts u1')
 
         u2 = trunk.branch.create_checkout('u2')
-        self.build_tree_contents([('u2/hosts', 'altered in u2')])
+        self.build_tree_contents([('u2/hosts', 'altered in u2\n')])
         self.run_bzr('commit -m checkin-from-u2 u2')
 
         # make an offline commits
-        self.build_tree_contents([('u1/hosts', 'first offline change in u1')])
+        self.build_tree_contents([('u1/hosts', 'first offline change in u1\n')])
         self.run_bzr('commit -m checkin-offline --local u1')
 
         # now try to pull in online work from u2, and then commit our offline
         # work as a merge
         # retcode 1 as we expect a text conflict
         self.run_bzr('update u1', retcode=1)
+        self.assertFileEqual('''\
+<<<<<<< TREE
+first offline change in u1
+=======
+altered in u2
+>>>>>>> MERGE-SOURCE
+''',
+                             'u1/hosts')
+
         self.run_bzr('resolved u1/hosts')
         # add a text change here to represent resolving the merge conflicts in
         # favour of a new version of the file not identical to either the u1
@@ -666,28 +675,38 @@ class TestCommit(ExternalBase):
         self.assertContainsRe(err,
             r'^bzr: ERROR: Cannot lock.*readonly transport')
 
-    def test_commit_hook_template(self):
+    def setup_editor(self):
         # Test that commit template hooks work
-        def restoreDefaults():
-            msgeditor.hooks['commit_message_template'] = []
-            osutils.set_or_unset_env('BZR_EDITOR', default_editor)
         if sys.platform == "win32":
             f = file('fed.bat', 'w')
             f.write('@rem dummy fed')
             f.close()
-            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+            osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
         else:
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
             os.chmod('fed.sh', 0755)
-            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
-        self.addCleanup(restoreDefaults)
+            osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+
+    def setup_commit_with_template(self):
+        self.setup_editor()
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        out, err = self.run_bzr("commit tree/hello.txt")
+        return tree
+
+    def test_commit_hook_template_accepted(self):
+        tree = self.setup_commit_with_template()
+        out, err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('save me some typing\n', last_rev.message)
+
+    def test_commit_hook_template_rejected(self):
+        tree = self.setup_commit_with_template()
+        expected = tree.last_revision()
+        out, err = self.run_bzr_error(["empty commit message"],
+            "commit tree/hello.txt", stdin="n\n")
+        self.assertEqual(expected, tree.last_revision())

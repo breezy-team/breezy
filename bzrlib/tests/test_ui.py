@@ -128,20 +128,6 @@ class TestTextUIFactory(tests.TestCase):
         finally:
             pb.finished()
 
-    def test_progress_nested(self):
-        # test factory based nested and popping.
-        ui = _mod_ui_text.TextUIFactory(None, None, None)
-        pb1 = ui.nested_progress_bar()
-        pb2 = ui.nested_progress_bar()
-        # You do get a warning if the outermost progress bar wasn't finished
-        # first - it's not clear if this is really useful or if it should just
-        # become orphaned -- mbp 20090120
-        warnings, _ = self.callCatchWarnings(pb1.finished)
-        if len(warnings) != 1:
-            self.fail("unexpected warnings: %r" % (warnings,))
-        pb2.finished()
-        pb1.finished()
-
     def test_text_ui_get_boolean(self):
         stdin = tests.StringIOWrapper("y\n" # True
                                       "n\n" # False

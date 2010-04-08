@@ -195,11 +195,11 @@ class UIFactory(object):
         if not self._task_stack:
             warnings.warn("%r finished but nothing is active"
                 % (task,))
-        elif task != self._task_stack[-1]:
-            warnings.warn("%r is not the active task %r"
-                % (task, self._task_stack[-1]))
+        if task in self._task_stack:
+            self._task_stack.remove(task)
         else:
-            del self._task_stack[-1]
+            warnings.warn("%r is not in active stack %r"
+                % (task, self._task_stack))
         if not self._task_stack:
             self._progress_all_finished()
 
@@ -343,6 +343,14 @@ class UIFactory(object):
         """
         self.show_user_warning('cross_format_fetch', from_format=from_format,
             to_format=to_format)
+
+    def warn_experimental_format_fetch(self, inter):
+        """Warn about fetching into experimental repository formats."""
+        if inter.target._format.experimental:
+            trace.warning("Fetching into experimental format %s.\n"
+                "This format may be unreliable or change in the future "
+                "without an upgrade path.\n" % (inter.target._format,))
+
 
 
 class SilentUIFactory(UIFactory):

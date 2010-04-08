@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -200,7 +200,7 @@ if have_fcntl:
 
             self._open(self.filename, 'rb+')
             # reserve a slot for this lock - even if the lockf call fails,
-            # at thisi point unlock() will be called, because self.f is set.
+            # at this point unlock() will be called, because self.f is set.
             # TODO: make this fully threadsafe, if we decide we care.
             _fcntl_WriteLock._open_locks.add(self.filename)
             try:

@@ -29,7 +29,6 @@ from bzrlib import (
     knit,
     osutils,
     pack,
-    remote,
     revision as _mod_revision,
     trace,
     ui,
@@ -882,7 +881,7 @@ class CHKInventoryRepository(KnitPackRepository):
             if basis_tree is not None:
                 basis_tree.unlock()
 
-    def deserialise_inventory(self, revision_id, bytes):
+    def _deserialise_inventory(self, revision_id, bytes):
         return inventory.CHKInventory.deserialise(self.chk_bytes, bytes,
             (revision_id,))
 
@@ -904,7 +903,7 @@ class CHKInventoryRepository(KnitPackRepository):
     def _iter_inventory_xmls(self, revision_ids, ordering):
         # Without a native 'xml' inventory, this method doesn't make sense.
         # However older working trees, and older bundles want it - so we supply
-        # it allowing get_inventory_xml to work. Bundles currently use the
+        # it allowing _get_inventory_xml to work. Bundles currently use the
         # serializer directly; this also isn't ideal, but there isn't an xml
         # iteration interface offered at all for repositories. We could make
         # _iter_inventory_xmls be part of the contract, even if kept private.

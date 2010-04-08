@@ -88,6 +88,10 @@ from bzrlib.osutils import (
     re_compile_checked,
     terminal_width,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 
 def find_touching_revisions(branch, file_id):
@@ -105,7 +109,7 @@ def find_touching_revisions(branch, file_id):
     last_path = None
     revno = 1
     for revision_id in branch.revision_history():
-        this_inv = branch.repository.get_revision_inventory(revision_id)
+        this_inv = branch.repository.get_inventory(revision_id)
         if file_id in this_inv:
             this_ie = this_inv[file_id]
             this_path = this_inv.id2path(file_id)
@@ -304,7 +308,7 @@ class LogGenerator(object):
 
 
 class Logger(object):
-    """An object the generates, formats and displays a log."""
+    """An object that generates, formats and displays a log."""
 
     def __init__(self, branch, rqst):
         """Create a Logger.
@@ -530,16 +534,35 @@ def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction):
 
 
 def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
-    delayed_graph_generation):
+                            delayed_graph_generation):
     # On large trees, generating the merge graph can take 30-60 seconds
     # so we delay doing it until a merge is detected, incrementally
     # returning initial (non-merge) revisions while we can.
+
+    # The above is only true for old formats (<= 0.92), for newer formats, a
+    # couple of seconds only should be needed to load the whole graph and the
+    # other graph operations needed are even faster than that -- vila 100201
     initial_revisions = []
     if delayed_graph_generation:
         try:
-            for rev_id, revno, depth in \
-                _linear_view_revisions(branch, start_rev_id, end_rev_id):
+            for rev_id, revno, depth in  _linear_view_revisions(
+                branch, start_rev_id, end_rev_id):
                 if _has_merges(branch, rev_id):
+                    # The end_rev_id can be nested down somewhere. We need an
+                    # explicit ancestry check. There is an ambiguity here as we
+                    # may not raise _StartNotLinearAncestor for a revision that
+                    # is an ancestor but not a *linear* one. But since we have
+                    # loaded the graph to do the check (or calculate a dotted
+                    # revno), we may as well accept to show the log...  We need
+                    # the check only if start_rev_id is not None as all
+                    # revisions have _mod_revision.NULL_REVISION as an ancestor
+                    # -- vila 20100319
+                    graph = branch.repository.get_graph()
+                    if (start_rev_id is not None
+                        and not graph.is_ancestor(start_rev_id, end_rev_id)):
+                        raise _StartNotLinearAncestor()
+                    # Since we collected the revisions so far, we need to
+                    # adjust end_rev_id.
                     end_rev_id = rev_id
                     break
                 else:
@@ -558,6 +581,9 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
             raise errors.BzrCommandError('Start revision not found in'
                 ' history of end revision.')
 
+    # We exit the loop above because we encounter a revision with merges, from
+    # this revision, we need to switch to _graph_view_revisions.
+
     # A log including nested merges is required. If the direction is reverse,
     # we rebase the initial merge depths so that the development line is
     # shown naturally, i.e. just like it is for linear logging. We can easily
@@ -565,7 +591,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
     # indented at the end seems slightly nicer in that case.
     view_revisions = chain(iter(initial_revisions),
         _graph_view_revisions(branch, start_rev_id, end_rev_id,
-        rebase_initial_depths=direction == 'reverse'))
+                              rebase_initial_depths=(direction == 'reverse')))
     if direction == 'reverse':
         return view_revisions
     elif direction == 'forward':
@@ -597,6 +623,8 @@ def _is_obvious_ancestor(branch, start_rev_id, end_rev_id):
         else:
             # not obvious
             return False
+    # if either start or end is not specified then we use either the first or
+    # the last revision and *they* are obvious ancestors.
     return True
 
 
@@ -635,7 +663,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
 
 
 def _graph_view_revisions(branch, start_rev_id, end_rev_id,
-    rebase_initial_depths=True):
+                          rebase_initial_depths=True):
     """Calculate revisions to view including merges, newest to oldest.
 
     :param branch: the branch
@@ -664,11 +692,16 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
                 depth_adjustment = merge_depth
             if depth_adjustment:
                 if merge_depth < depth_adjustment:
+                    # From now on we reduce the depth adjustement, this can be
+                    # surprising for users. The alternative requires two passes
+                    # which breaks the fast display of the first revision
+                    # though.
                     depth_adjustment = merge_depth
                 merge_depth -= depth_adjustment
             yield rev_id, '.'.join(map(str, revno)), merge_depth
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def calculate_view_revisions(branch, start_revision, end_revision, direction,
         specific_fileid, generate_merge_revisions):
     """Calculate the revisions to view.
@@ -676,9 +709,6 @@ def calculate_view_revisions(branch, start_revision, end_revision, direction,
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
              a list of the same tuples.
     """
-    # This method is no longer called by the main code path.
-    # It is retained for API compatibility and may be deprecated
-    # soon. IGC 20090116
     start_rev_id, end_rev_id = _get_revision_limits(branch, start_revision,
         end_revision)
     view_revisions = list(_calc_view_revisions(branch, start_rev_id, end_rev_id,
@@ -1034,6 +1064,7 @@ def _get_mainline_revs(branch, start_revision, end_revision):
     return mainline_revs, rev_nos, start_rev_id, end_rev_id
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
     """Filter view_revisions based on revision ranges.
 
@@ -1048,8 +1079,6 @@ def _filter_revision_range(view_revisions, start_rev_id, end_rev_id):
 
     :return: The filtered view_revisions.
     """
-    # This method is no longer called by the main code path.
-    # It may be removed soon. IGC 20090127
     if start_rev_id or end_rev_id:
         revision_ids = [r for r, n, d in view_revisions]
         if start_rev_id:
@@ -1161,15 +1190,13 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     return result
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def get_view_revisions(mainline_revs, rev_nos, branch, direction,
                        include_merges=True):
     """Produce an iterator of revisions to show
     :return: an iterator of (revision_id, revno, merge_depth)
     (if there is no revno for a revision, None is supplied)
     """
-    # This method is no longer called by the main code path.
-    # It is retained for API compatibility and may be deprecated
-    # soon. IGC 20090127
     if not include_merges:
         revision_ids = mainline_revs[1:]
         if direction == 'reverse':
@@ -1293,8 +1320,8 @@ class LogFormatter(object):
     preferred_levels = 0
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
-            delta_format=None, levels=None, show_advice=False,
-            to_exact_file=None):
+                 delta_format=None, levels=None, show_advice=False,
+                 to_exact_file=None):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
@@ -1405,7 +1432,8 @@ class LogFormatter(object):
         """
         # Revision comes directly from a foreign repository
         if isinstance(rev, foreign.ForeignRevision):
-            return self._format_properties(rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
+            return self._format_properties(
+                rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
         if not ":" in rev.revision_id:
@@ -1498,9 +1526,10 @@ class LongLogFormatter(LogFormatter):
         to_file = self.to_file
         to_file.write("%s%s\n" % (indent, ('\n' + indent).join(lines)))
         if revision.delta is not None:
-            # We don't respect delta_format for compatibility
-            revision.delta.show(to_file, self.show_ids, indent=indent,
-                                short_status=False)
+            # Use the standard status output to display changes
+            from bzrlib.delta import report_delta
+            report_delta(to_file, revision.delta, short_status=False, 
+                         show_ids=self.show_ids, indent=indent)
         if revision.diff is not None:
             to_file.write(indent + 'diff:\n')
             to_file.flush()
@@ -1569,8 +1598,11 @@ class ShortLogFormatter(LogFormatter):
                 to_file.write(indent + offset + '%s\n' % (l,))
 
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids, indent=indent + offset,
-                                short_status=self.delta_format==1)
+            # Use the standard status output to display changes
+            from bzrlib.delta import report_delta
+            report_delta(to_file, revision.delta, 
+                         short_status=self.delta_format==1, 
+                         show_ids=self.show_ids, indent=indent + offset)
         if revision.diff is not None:
             self.show_diff(self.to_exact_file, revision.diff, '      ')
         to_file.write('\n')
@@ -1651,7 +1683,7 @@ class GnuChangelogLogFormatter(LogFormatter):
                                self.show_timezone,
                                date_fmt='%Y-%m-%d',
                                show_offset=False)
-        committer_str = revision.rev.committer.replace (' <', '  <')
+        committer_str = revision.rev.get_apparent_authors()[0].replace (' <', '  <')
         to_file.write('%s  %s\n\n' % (date_str,committer_str))
 
         if revision.delta is not None and revision.delta.has_changed():
@@ -1987,7 +2019,7 @@ def _bugs_properties_handler(revision):
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if
                           len(row) > 1 and row[1] == 'fixed']
-        
+
         if fixed_bug_urls:
             return {'fixes bug(s)': ' '.join(fixed_bug_urls)}
     return {}

@@ -54,7 +54,7 @@ class TestDirectoryLookup(TestCase):
 
     def test_get_transport(self):
         directories.register('foo:', FooService, 'Map foo URLs to http urls')
-        self.addCleanup(lambda: directories.remove('foo:'))
+        self.addCleanup(directories.remove, 'foo:')
         self.assertEqual(FooService.base + 'bar/',
                          get_transport('foo:bar').base)
 

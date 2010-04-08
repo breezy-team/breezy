@@ -39,14 +39,14 @@ from bzrlib.trace import mutter
 from bzrlib.transport import LateReadError
 """)
 
-from bzrlib.transport import Transport, Server
+from bzrlib import transport
 
 
 _append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
 _put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
 
 
-class LocalTransport(Transport):
+class LocalTransport(transport.Transport):
     """This is the transport agent for local filesystem access."""
 
     def __init__(self, base):
@@ -481,7 +481,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            return os.stat(path)
+            return os.lstat(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
@@ -514,6 +514,33 @@ class LocalTransport(Transport):
             os.rmdir(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
+    if osutils.host_os_dereferences_symlinks():
+        def readlink(self, relpath):
+            """See Transport.readlink."""
+            return osutils.readlink(self._abspath(relpath))
+
+    if osutils.hardlinks_good():
+        def hardlink(self, source, link_name):
+            """See Transport.link."""
+            try:
+                os.link(self._abspath(source), self._abspath(link_name))
+            except (IOError, OSError), e:
+                self._translate_error(e, source)
+
+    if osutils.has_symlinks():
+        def symlink(self, source, link_name):
+            """See Transport.symlink."""
+            abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
+            source_rel = urlutils.file_relpath(
+                urlutils.strip_trailing_slash(abs_link_dirpath),
+                urlutils.strip_trailing_slash(self.abspath(source))
+            )
+
+            try:
+                os.symlink(source_rel, self._abspath(link_name))
+            except (IOError, OSError), e:
+                self._translate_error(e, source_rel)
 
     def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':
@@ -554,23 +581,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
             return EmulatedWin32LocalTransport(abspath)
 
 
-class LocalURLServer(Server):
-    """A pretend server for local transports, using file:// urls.
-
-    Of course no actual server is required to access the local filesystem, so
-    this just exists to tell the test code how to get to it.
-    """
-
-    def start_server(self):
-        pass
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return urlutils.local_path_to_url('')
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [
-            (LocalTransport, LocalURLServer),
-            ]
+    from bzrlib.tests import test_server
+    return [(LocalTransport, test_server.LocalURLServer),]

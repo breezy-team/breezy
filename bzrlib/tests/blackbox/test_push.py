@@ -35,6 +35,7 @@ from bzrlib.tests import (
     blackbox,
     http_server,
     test_foreign,
+    test_server,
     )
 from bzrlib.transport import memory
 

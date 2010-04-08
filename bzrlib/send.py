@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,12 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import os
 import time
 
 from bzrlib import (
     bzrdir,
     errors,
-    merge_directive,
     osutils,
     registry,
     trace,
@@ -135,21 +135,36 @@ def send(submit_branch, revision, public_branch, remember, format,
             directive.compose_merge_request(mail_client, mail_to, body,
                                             branch, tree)
         else:
-            if output == '-':
-                outfile = to_file
+            if directive.multiple_output_files:
+                if output == '-':
+                    raise errors.BzrCommandError('- not supported for '
+                        'merge directives that use more than one output file.')
+                if not os.path.exists(output):
+                    os.mkdir(output, 0755)
+                for (filename, lines) in directive.to_files():
+                    path = os.path.join(output, filename)
+                    outfile = open(path, 'wb')
+                    try:
+                        outfile.writelines(lines)
+                    finally:
+                        outfile.close()
             else:
-                outfile = open(output, 'wb')
-            try:
-                outfile.writelines(directive.to_lines())
-            finally:
-                if outfile is not to_file:
-                    outfile.close()
+                if output == '-':
+                    outfile = to_file
+                else:
+                    outfile = open(output, 'wb')
+                try:
+                    outfile.writelines(directive.to_lines())
+                finally:
+                    if outfile is not to_file:
+                        outfile.close()
     finally:
         branch.unlock()
 
 
 def _send_4(branch, revision_id, submit_branch, public_branch,
             no_patch, no_bundle, message, base_revision_id):
+    from bzrlib import merge_directive
     return merge_directive.MergeDirective2.from_objects(
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,
@@ -171,6 +186,7 @@ def _send_0_9(branch, revision_id, submit_branch, public_branch,
             patch_type = 'diff'
         else:
             patch_type = None
+    from bzrlib import merge_directive
     return merge_directive.MergeDirective.from_objects(
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,

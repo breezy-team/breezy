@@ -18,33 +18,57 @@
 from StringIO import StringIO
 import sys
 
+
+import os
+
+
 from bzrlib import (
+    config,
     crash,
+    osutils,
+    symbol_versioning,
     tests,
     )
 
 from bzrlib.tests import features
 
 
-class TestApportReporting(tests.TestCase):
+class TestApportReporting(tests.TestCaseInTempDir):
 
     _test_needs_features = [features.apport]
 
-    def test_apport_report_contents(self):
+    def test_apport_report(self):
+        crash_dir = osutils.joinpath((self.test_base_dir, 'crash'))
+        os.mkdir(crash_dir)
+        os.environ['APPORT_CRASH_DIR'] = crash_dir
+        self.assertEquals(crash_dir, config.crash_dir())
+
+        stderr = StringIO()
+
         try:
             raise AssertionError("my error")
         except AssertionError, e:
             pass
-        outf = StringIO()
-        crash._write_apport_report_to_file(sys.exc_info(), outf)
-        report = outf.getvalue()
 
-        self.assertContainsRe(report, '(?m)^BzrVersion:')
-        # should be in the traceback
+        crash_filename = crash.report_bug_to_apport(sys.exc_info(),
+            stderr)
+
+        # message explaining the crash
+        self.assertContainsRe(stderr.getvalue(),
+            "    apport-bug %s" % crash_filename)
+
+        crash_file = open(crash_filename)
+        try:
+            report = crash_file.read()
+        finally:
+            crash_file.close()
+
+        self.assertContainsRe(report,
+            '(?m)^BzrVersion:') # should be in the traceback
         self.assertContainsRe(report, 'my error')
         self.assertContainsRe(report, 'AssertionError')
         # see https://bugs.launchpad.net/bzr/+bug/528114
         self.assertContainsRe(report, 'ExecutablePath')
-        self.assertContainsRe(report, 'test_apport_report_contents')
+        self.assertContainsRe(report, 'test_apport_report')
         # should also be in there
         self.assertContainsRe(report, '(?m)^CommandLine:')

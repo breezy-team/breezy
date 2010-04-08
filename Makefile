@@ -39,7 +39,10 @@ extensions:
 check: docs check-nodocs
 
 check-nodocs: extensions
-	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
+	# Generate a stream for PQM to watch.
+	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	# Check that there were no errors reported.
+	subunit-stats < selftest.log
 
 # Run Python style checker (apt-get install pyflakes)
 #
@@ -406,7 +409,7 @@ clean-win32: clean-docs
 
 ### Packaging Targets ###
 
-.PHONY: dist dist-upload-escudero check-dist-tarball
+.PHONY: dist check-dist-tarball
 
 # build a distribution source tarball
 #
@@ -434,18 +437,3 @@ check-dist-tarball:
 	tar Cxz $$tmpdir -f $$tarball && \
 	$(MAKE) -C $$tmpdir/bzr-$$version check && \
 	rm -rf $$tmpdir
-
-
-# upload previously built tarball to the download directory on bazaar-vcs.org,
-# and verify that it can be downloaded ok.
-dist-upload-escudero:
-	version=`./bzr version --short` && \
-	tarball=../bzr-$$version.tar.gz && \
-	scp $$tarball $$tarball.sig \
-	    escudero.ubuntu.com:/srv/bazaar.canonical.com/www/releases/src \
-		&& \
-	echo verifying over http... && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz \
-		| diff -s - $$tarball && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz.sig \
-		| diff -s - $$tarball.sig 

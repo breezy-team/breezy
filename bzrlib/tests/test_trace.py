@@ -36,6 +36,7 @@ from bzrlib.trace import (
     pop_log_file,
     push_log_file,
     _rollover_trace_maybe,
+    show_error,
     )
 
 
@@ -215,6 +216,26 @@ class TestTrace(TestCase):
         # have to do a replaceent here as well.
         self.assertContainsRe(log, "ascii argument: \xb5".decode('utf8',
             'replace'))
+        
+    def test_show_error(self):
+        show_error('error1')
+        show_error(u'error2 \xb5 blah')
+        show_error('arg: %s', 'blah')
+        show_error('arg2: %(key)s', {'key':'stuff'})
+        try:
+            raise Exception("oops")
+        except:
+            show_error('kwarg', exc_info=True)
+        log = self.get_log()
+        self.assertContainsRe(log, 'error1')
+        self.assertContainsRe(log, u'error2 \xb5 blah')
+        self.assertContainsRe(log, 'arg: blah')
+        self.assertContainsRe(log, 'arg2: stuff')
+        self.assertContainsRe(log, 'kwarg')
+        self.assertContainsRe(log, 'Traceback \\(most recent call last\\):')
+        self.assertContainsRe(log, 'File ".*test_trace.py", line .*, in test_show_error')
+        self.assertContainsRe(log, 'raise Exception\\("oops"\\)')
+        self.assertContainsRe(log, 'Exception: oops')
 
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.
@@ -253,16 +274,17 @@ class TestTrace(TestCase):
         # If _open_bzr_log cannot open the file, then we should write the
         # warning to stderr. Since this is normally happening before logging is
         # set up.
-        self.addCleanup(setattr, sys, 'stderr', sys.stderr)
-        self.addCleanup(setattr, trace, '_bzr_log_filename',
-                        trace._bzr_log_filename)
-        sys.stderr = StringIO()
+        self.overrideAttr(sys, 'stderr', StringIO())
         # Set the log file to something that cannot exist
+        # FIXME: A bit dangerous: we are not in an isolated dir here -- vilajam
+        # 20100125
         os.environ['BZR_LOG'] = os.getcwd() + '/no-dir/bzr.log'
+        self.overrideAttr(trace, '_bzr_log_filename')
         logf = trace._open_bzr_log()
         self.assertIs(None, logf)
         self.assertContainsRe(sys.stderr.getvalue(),
                               'failed to open trace file: .*/no-dir/bzr.log')
+
 
 class TestVerbosityLevel(TestCase):
 
