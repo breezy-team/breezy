@@ -294,7 +294,7 @@ try:
 except ImportError:
     pass
 else:
-    diff_format_registry.register_lazy('git-am', 'bzrlib.plugins.git.send',
+    diff_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
         'GitDiffTree', 'Git am-style diff format')
 
 def test_suite():
