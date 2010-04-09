@@ -2104,15 +2104,6 @@ def _parse_levels(s):
         msg = "The levels argument must be an integer."
         raise errors.BzrCommandError(msg)
 
-def _parse_authors(s):
-    valid_authors = ['first', 'all', 'committer']
-    if s in valid_authors:
-        return s
-    else:
-        msg = ("The authors argument must be one of [%s]."
-               % ','.join(valid_authors))
-        raise errors.BzrCommandError(msg)
-
 
 class cmd_log(Command):
     """Show historical log for a branch or subset of a branch.
@@ -2282,9 +2273,13 @@ class cmd_log(Command):
                    help='Show just the specified revision.'
                    ' See also "help revisionspec".'),
             'log-format',
-            Option('authors',
-                   help='What names to list as authors - first, all or committer',
-                   type=_parse_authors),
+            RegistryOption.from_kwargs('authors',
+                'What names to list as authors.',
+                title='Authors',
+                first='The first author',
+                all='All authors',
+                committer='The committer',
+            ),
             Option('levels',
                    short_name='n',
                    help='Number of levels to display - 0 for all, 1 for flat.',
