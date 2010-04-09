@@ -2274,7 +2274,7 @@ class cmd_log(Command):
                    ' See also "help revisionspec".'),
             'log-format',
             RegistryOption('authors',
-                'What names to list as authors.',
+                'What names to list as authors - first, all or committer.',
                 title='Authors',
                 lazy_registry=('bzrlib.log', 'author_list_registry'),
             ),
