@@ -1397,19 +1397,10 @@ class LogFormatter(object):
 
     def authors(self, rev, who, short=False, sep=None):
         if self._authors is not None:
-            who = self._authors
-        if who == 'committer':
-            names = [rev.committer]
-        elif who == 'all':
-            names = rev.get_apparent_authors()[:]
-        elif who == 'first':
-            names = rev.get_apparent_authors()
-            try:
-                names = [names[0]]
-            except IndexError:
-                names = []
+            author_list_handler = self._authors
         else:
-            raise ValueError('Invalid author selection %r' % who)
+            author_list_handler = author_list_registry.get(who)
+        names = author_list_handler(rev)
         if short:
             for i in range(len(names)):
                 name, address = config.parse_username(names[i])
@@ -1774,6 +1765,29 @@ def log_formatter(name, *args, **kwargs):
     except KeyError:
         raise errors.BzrCommandError("unknown log formatter: %r" % name)
 
+def author_list_all(rev):
+    return rev.get_apparent_authors()[:]
+
+def author_list_first(rev):
+    lst = rev.get_apparent_authors()
+    try:
+        return [lst[0]]
+    except IndexError:
+        return []
+
+def author_list_committer(rev):
+    return [rev.committer]
+
+author_list_registry = registry.Registry()
+
+author_list_registry.register('all', author_list_all,
+                              'All authors')
+
+author_list_registry.register('first', author_list_first,
+                              'The first author')
+
+author_list_registry.register('committer', author_list_committer,
+                              'The committer')
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
     # deprecated; for compatibility
