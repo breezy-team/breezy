@@ -1321,7 +1321,7 @@ class LogFormatter(object):
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
                  delta_format=None, levels=None, show_advice=False,
-                 to_exact_file=None, authors=None):
+                 to_exact_file=None, author_list_handler=None):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
@@ -1335,6 +1335,8 @@ class LogFormatter(object):
           let the log formatter decide.
         :param show_advice: whether to show advice at the end of the
           log or not
+        :param author_list_handler: callable generating a list of
+          authors to display for a given revision
         """
         self.to_file = to_file
         # 'exact' stream used to show diff, it should print content 'as is'
@@ -1355,7 +1357,7 @@ class LogFormatter(object):
         self.levels = levels
         self._show_advice = show_advice
         self._merge_count = 0
-        self._authors = authors
+        self._author_list_handler = author_list_handler
 
     def get_levels(self):
         """Get the number of levels to display or 0 for all."""
@@ -1396,8 +1398,8 @@ class LogFormatter(object):
         return self.authors(rev, 'first', True, ', ')
 
     def authors(self, rev, who, short=False, sep=None):
-        if self._authors is not None:
-            author_list_handler = self._authors
+        if self._author_list_handler is not None:
+            author_list_handler = self._author_list_handler
         else:
             author_list_handler = author_list_registry.get(who)
         names = author_list_handler(rev)

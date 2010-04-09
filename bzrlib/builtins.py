@@ -2395,7 +2395,7 @@ class cmd_log(Command):
                         delta_format=get_verbosity_level(),
                         levels=levels,
                         show_advice=levels is None,
-                        authors=authors)
+                        author_list_handler=authors)
 
         # Choose the algorithm for doing the logging. It's annoying
         # having multiple code paths like this but necessary until

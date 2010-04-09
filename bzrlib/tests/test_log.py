@@ -1554,7 +1554,8 @@ class TestLogForAuthors(TestCaseForLogFormatter):
     def assertFormatterResult(self, formatter, who, result):
         formatter_kwargs = dict()
         if who is not None:
-            formatter_kwargs['authors'] = log.author_list_registry.get(who)
+            author_list_handler = log.author_list_registry.get(who)
+            formatter_kwargs['author_list_handler'] = author_list_handler
         TestCaseForLogFormatter.assertFormatterResult(self, result,
             self.wt.branch, formatter, formatter_kwargs=formatter_kwargs)
 
