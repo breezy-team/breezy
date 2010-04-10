@@ -22,6 +22,9 @@ New Features
 Bug Fixes
 *********
 
+* ``bzrlib.mutabletree.MutableTree.commit`` will now support a passed in
+  config as in previous versions of bzrlib. (Robert Collins)
+
 * Make sure the ``ExecutablePath`` and ``InterpreterPath`` are set in
   Apport crash reports, to avoid "This problem report applies to a program
   which is not installed any more" error.
