@@ -232,8 +232,26 @@ if __name__ == '__main__':
 
     import sys
     import locale
+    import optparse
+    from meta import __version__
+
+    parser = optparse.OptionParser(usage="%prog [-f NAME] [-o]",
+                                   version="%%prog %s" % __version__)
+    parser.add_option("--function-name", "-f", metavar="NAME",
+                      help="Name of the generated function (default: _bzr)")
+    parser.add_option("--function-only", "-o", action="store_true",
+                      help="Generate only the shell function, don't enable it")
+    parser.add_option("--debug", action="store_true",
+                      help=optparse.SUPPRESS_HELP)
+    (opts, args) = parser.parse_args()
+    if args:
+        parser.error("script does not take positional arguments")
+    kwargs = dict()
+    for name, value in opts.__dict__.iteritems():
+        if value is not None:
+            kwargs[name] = value
 
     locale.setlocale(locale.LC_ALL, '')
     plugin.load_plugins()
     commands.install_bzr_command_hooks()
-    bash_completion_function(sys.stdout)
+    bash_completion_function(sys.stdout, **kwargs)
