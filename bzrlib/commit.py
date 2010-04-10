@@ -243,6 +243,8 @@ class Commit(object):
         """
         operation = OperationWithCleanups(self._commit)
         self.revprops = revprops or {}
+        # XXX: Can be set on __init__ or passed in - this is a bit ugly.
+        self.config = config or self.config
         return operation.run(
                message=message,
                timestamp=timestamp,
@@ -256,7 +258,6 @@ class Commit(object):
                working_tree=working_tree,
                local=local,
                reporter=reporter,
-               config=config,
                message_callback=message_callback,
                recursive=recursive,
                exclude=exclude,
@@ -264,7 +265,7 @@ class Commit(object):
 
     def _commit(self, operation, message, timestamp, timezone, committer,
             specific_files, rev_id, allow_pointless, strict, verbose,
-            working_tree, local, reporter, config, message_callback, recursive,
+            working_tree, local, reporter, message_callback, recursive,
             exclude, possible_master_transports):
         mutter('preparing to commit')
 
