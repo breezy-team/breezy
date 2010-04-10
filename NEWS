@@ -287,6 +287,9 @@ API Changes
 * New method ``BzrDir.list_branches()`` that returns a sequence of branches 
   present in a control directory. (Jelmer Vernooij)
 
+* New method ``Repository.get_known_graph_ancestry()``. 
+  (Jelmer Vernooij, #495502)
+
 * New transport methods ``readlink``, ``symlink`` and ``hardlink``.
   (Neil Santos)
 
