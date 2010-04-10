@@ -45,6 +45,7 @@ fun="""\
 %(function_name)s ()
 {
 	local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
+	local curOpt optEnums
 
 	COMPREPLY=()
 	cur=${COMP_WORDS[COMP_CWORD]}
@@ -67,12 +68,22 @@ fun="""\
 	done
 
 	# complete command name if we are not already past the command
-	if [[ $COMP_CWORD -le cmdIdx ]] ; then
+	if [[ $COMP_CWORD -le cmdIdx ]]; then
 		COMPREPLY=( $( compgen -W "$cmds $globalOpts" -- $cur ) )
 		return 0
 	fi
 
+	# find the option for which we want to complete a value
+	curOpt=
+	if [[ $cur != -* ]] && [[ $COMP_CWORD -gt 1 ]]; then
+		curOpt=${COMP_WORDS[COMP_CWORD - 1]}
+		if [[ $curOpt == = ]]; then
+			curOpt=${COMP_WORDS[COMP_CWORD - 2]}
+		fi
+	fi
+
 	cmdOpts=
+	optEnums=
 	fixedWords=
 	case $cmd in
 %(cases)s\
@@ -84,11 +95,17 @@ fun="""\
 	# if not typing an option, and if we don't know all the
 	# possible non-option arguments for the current command,
 	# then fallback on ordinary filename expansion
-	if [[ -z $fixedWords ]] && [[ $cur != -* ]] ; then
+	if [[ -z $fixedWords ]] && [[ -z $optEnums ]] && [[ $cur != -* ]]; then
 		return 0
 	fi
 
-	COMPREPLY=( $( compgen -W "$cmdOpts $globalOpts $fixedWords" -- $cur ) )
+	if [[ $cur == = ]] && [[ -n $optEnums ]]; then
+		# complete directly after "--option=", list all enum values
+		COMPREPLY=( $optEnums )
+	else
+		fixedWords="$cmdOpts $globalOpts $optEnums $fixedWords"
+		COMPREPLY=( $( compgen -W "$fixedWords" -- $cur ) )
+	fi
 
 	return 0
 }
@@ -153,6 +170,7 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
             cases += "\t\t# plugin \"%s\"\n" % plugin
         opts = cmd.options()
         switches = []
+        enums = []
         fixedWords = None
         for optname in sorted(cmd.options()):
             opt = opts[optname]
@@ -161,6 +179,15 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
             parser = wrap_parser(optswitches, parser)
             optswitches[:] = []
             opt.add_option(parser, opt.short_name())
+            if isinstance(opt, option.RegistryOption) and opt.enum_switch:
+                enum_switch = '--%s' % optname
+                keys = opt.registry.keys()
+                if enum_switch in optswitches and keys:
+                    optswitches.remove(enum_switch)
+                    for key in keys:
+                        optswitches.append('%s=%s' % (enum_switch, key))
+                    enums.append("%s) optEnums='%s' ;;"
+                                 % (enum_switch, ' '.join(keys)))
             switches.extend(optswitches)
         if 'help' == cmdname or 'help' in cmd.aliases:
             fixedWords = " ".join(sorted(help_topics.topic_registry.keys()))
@@ -169,8 +196,12 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
         cases += "\t\tcmdOpts='" + " ".join(switches) + "'\n"
         if fixedWords:
             if isinstance(fixedWords, list):
-                fixedWords = "'" + join(fixedWords) + "'";
+                fixedWords = "'" + join(fixedWords) + "'"
             cases += "\t\tfixedWords=" + fixedWords + "\n"
+        if enums:
+            cases += "\t\tcase $curOpt in\n\t\t\t"
+            cases += "\n\t\t\t".join(enums)
+            cases += "\n\t\tesac\n"
         cases += "\t\t;;\n"
     if function_only:
         template = fun
