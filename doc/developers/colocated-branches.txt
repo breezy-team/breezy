@@ -54,7 +54,7 @@ An example URL would be:
  bzr://bazaar.launchpad.net/~jelmer/bzr/bzr.dev,colo-urls
 
 The segment after the comma will initially be interpreted as a colocated 
-branch name but we would like to keep the option option to allow 
+branch name but we would like to keep the option to allow 
 key=value style specifications in the future and DWIM for segments that 
 do not contain an =. 
 
