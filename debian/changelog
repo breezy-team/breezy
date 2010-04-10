@@ -18,7 +18,11 @@ bzr-builddeb (2.4) UNRELEASED; urgency=low
   * Make merge-upstream --v3 unpack .tar.bz2 with the correct arguments.
     (LP: #529900)
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sat, 13 Feb 2010 01:16:00 +0100
+  [ Jelmer Vernooij ]
+  * Support upstream/VERSION tags, for compatibility with git-
+    buildpackage. LP: #551362
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 10 Apr 2010 03:42:48 +0200
 
 bzr-builddeb (2.3) experimental; urgency=low
 

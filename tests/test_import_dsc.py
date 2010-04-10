@@ -1724,5 +1724,5 @@ class PossibleUpstreamTagNamesTests(BuilddebTestCase):
 
     def test_version(self):
         self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
-            'upstream-ubuntu-3.3'],
+            'upstream-ubuntu-3.3', 'upstream/3.3'],
             self.db.possible_upstream_tag_names("3.3"))

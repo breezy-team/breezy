@@ -460,7 +460,8 @@ class DistributionBranch(object):
     def possible_upstream_tag_names(self, version):
         tags = [self.upstream_tag_name(version),
                 self.upstream_tag_name(version, distro="debian"),
-                self.upstream_tag_name(version, distro="ubuntu")]
+                self.upstream_tag_name(version, distro="ubuntu"),
+                "upstream/%s" % self.tag_name(version)]
         return tags
 
     def tag_version(self, version):
