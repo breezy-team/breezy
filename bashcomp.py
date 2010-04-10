@@ -81,7 +81,7 @@ fun="""\
 			curOpt=${COMP_WORDS[COMP_CWORD - 2]}
 		fi
 	fi
-
+%(debug)s
 	cmdOpts=
 	optEnums=
 	fixedWords=
@@ -113,6 +113,18 @@ fun="""\
 tail="""\
 complete -F %(function_name)s -o default bzr
 """
+debug_output=r"""
+	# Debugging code enabled using the --debug command line switch.
+	# Will dump some variables to the top portion of the terminal.
+	echo -ne '\e[s\e[H'
+	for (( i=0; i < ${#COMP_WORDS[@]}; ++i)); do
+		echo "\$COMP_WORDS[$i]='${COMP_WORDS[i]}'"$'\e[K'
+	done
+	for i in COMP_CWORD COMP_LINE COMP_POINT COMP_TYPE COMP_KEY cur curOpt; do
+		echo "\$${i}=\"${!i}\""$'\e[K'
+	done
+	echo -ne '---\e[K\e[u'
+"""
 
 def wrap_container(list, parser):
     def tweaked_add_option(*opts, **attrs):
@@ -127,7 +139,8 @@ def wrap_parser(list, parser):
     parser.add_option_group = tweaked_add_option_group
     return wrap_container(list, parser)
 
-def bash_completion_function(out, function_name="_bzr", function_only=False):
+def bash_completion_function(out, function_name="_bzr", function_only=False,
+                             debug=False):
     cmds = []
     cases = ""
     reqarg = {}
@@ -212,6 +225,7 @@ def bash_completion_function(out, function_name="_bzr", function_only=False):
                           "function_name": function_name,
                           "version": __version__,
                           "global_options": global_options,
+                          "debug": debug_output if debug else "",
                           })
 
 if __name__ == '__main__':

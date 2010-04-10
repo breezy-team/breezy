@@ -43,6 +43,8 @@ class cmd_bash_completion(Command):
                help="Name of the generated function (default: _bzr)"),
         Option("function-only", short_name="o", type=None,
                help="Generate only the shell function, don't enable it"),
+        Option("debug", type=None, hidden=True,
+               help="Enable shell code useful for debugging"),
         ]
 
     def run(self, **kwargs):
