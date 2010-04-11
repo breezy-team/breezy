@@ -48,7 +48,11 @@ class TestColocatedBranchSupport(TestCaseWithBzrDir):
             # they may not be initializable.
             raise TestNotApplicable('Control dir format not supported')
         t = get_transport(self.get_url())
-        made_control = self.bzrdir_format.initialize(t.base)
+        try:
+            made_control = self.bzrdir_format.initialize(t.base)
+        except errors.UninitializableFormat:
+            raise TestNotApplicable('Control dir does not support creating '
+                'new branches.')
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch("colo")
         self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
