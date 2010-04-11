@@ -1329,9 +1329,9 @@ class DistributionBranch(object):
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
         if tarball_filename.endswith(".tar.bz2"):
-	    tar_args = 'xjf'
+            tar_args = 'xjf'
         else:
-	    tar_args = 'xzf'
+            tar_args = 'xzf'
         try:
             proc = subprocess.Popen(["tar", tar_args, tarball_filename, "-C",
                     tempdir, "--strip-components", "1"],
@@ -1365,6 +1365,26 @@ class DistributionBranch(object):
 
     _revid_of_upstream_version_from_branch = revid_of_upstream_version_from_branch
 
+    def _export_previous_upstream_tree(self, previous_version, tempdir, upstream_branch=None):
+        previous_upstream_revision = get_snapshot_revision(previous_version.upstream_version)
+        if self.has_upstream_version_in_packaging_branch(
+                previous_version.upstream_version):
+            upstream_tip = self.revid_of_upstream_version_from_branch(
+                    previous_version.upstream_version)
+            self.extract_upstream_tree(upstream_tip, tempdir)
+        elif (upstream_branch is not None and 
+              previous_upstream_revision is not None):
+            upstream_tip = RevisionSpec.from_string(previous_upstream_revision).as_revision_id(upstream_branch)
+            assert isinstance(upstream_tip, str)
+            self.extract_upstream_tree(upstream_tip, tempdir)
+        else:
+            raise BzrCommandError("Unable to find the tag for the "
+                    "previous upstream version, %s, in the branch: "
+                    "%s" % (
+                previous_version.upstream_version,
+                self.upstream_tag_name(
+                    previous_version.upstream_version)))
+
     def merge_upstream(self, tarball_filename, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None,
             force=False):
@@ -1373,24 +1393,8 @@ class DistributionBranch(object):
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
             if previous_version is not None:
-                previous_upstream_revision = get_snapshot_revision(previous_version.upstream_version)
-                if self.has_upstream_version_in_packaging_branch(
-                        previous_version.upstream_version):
-                    upstream_tip = self.revid_of_upstream_version_from_branch(
-                            previous_version.upstream_version)
-                    self.extract_upstream_tree(upstream_tip, tempdir)
-                elif (upstream_branch is not None and 
-                      previous_upstream_revision is not None):
-                    upstream_tip = RevisionSpec.from_string(previous_upstream_revision).as_revision_id(upstream_branch)
-                    assert isinstance(upstream_tip, str)
-                    self.extract_upstream_tree(upstream_tip, tempdir)
-                else:
-                    raise BzrCommandError("Unable to find the tag for the "
-                            "previous upstream version, %s, in the branch: "
-                            "%s" % (
-                        previous_version.upstream_version,
-                        self.upstream_tag_name(
-                            previous_version.upstream_version)))
+                self._export_previous_upstream_tree(previous_version, tempdir,
+                    upstream_branch) 
             else:
                 self._create_empty_upstream_tree(tempdir)
             if self.has_upstream_version_in_packaging_branch(version.upstream_version):
