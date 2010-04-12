@@ -15,10 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Repository implementation tests for CHK support.
+"""BzrDir implementation tests for colocated branch support.
 
-These tests check the conformance of the chk index some repositories support.
-All repository formats are tested - those that do not suppport chk indices
+These tests check the conformance of the colocated branches support.
+All bzrdir formats are tested - those that do not suppport colocated branches 
 have the test_unsupported tests run; the others have the test_supported tests
 run.
 """
