@@ -664,12 +664,17 @@ class TestPushStrictMixin(object):
     _default_pushed_revid = 'modified'
 
     def assertPushFails(self, args):
-        self.run_bzr_error(self._default_errors, self._default_command + args,
-                           working_dir=self._default_wd, retcode=3)
+        ret = self.run_bzr_error(self._default_errors,
+                                 self._default_command + args,
+                                 working_dir=self._default_wd, retcode=3)
 
-    def assertPushSucceeds(self, args, pushed_revid=None):
+    def assertPushSucceeds(self, args, pushed_revid=None, with_warning=False):
+        if with_warning:
+            error_regexes = self._default_errors
+        else:
+            error_regexes = []
         self.run_bzr(self._default_command + args,
-                     working_dir=self._default_wd)
+                     working_dir=self._default_wd, error_regexes=error_regexes)
         if pushed_revid is None:
             pushed_revid = self._default_pushed_revid
         tree_to = workingtree.WorkingTree.open('to')
@@ -745,7 +750,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self._default_pushed_revid = 'modified-in-local'
 
     def test_push_default(self):
-        self.assertPushFails([])
+        self.assertPushSucceeds([], with_warning=True)
 
     def test_push_with_revision(self):
         self.assertPushSucceeds(['-r', 'revid:added'], pushed_revid='added')
@@ -762,7 +767,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
 
     def test_push_bogus_config_var_ignored(self):
         self.set_config_push_strict("I don't want you to be strict")
-        self.assertPushFails([])
+        self.assertPushSucceeds([], with_warning=True)
 
     def test_push_no_strict_command_line_override_config(self):
         self.set_config_push_strict('yES')

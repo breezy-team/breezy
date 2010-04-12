@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -155,7 +155,11 @@ class TestDpushStrictMixin(object):
     _default_command = ['dpush', '../to']
     _default_pushed_revid = False # Doesn't aplly for dpush
 
-    def assertPushSucceeds(self, args, pushed_revid=None):
+    def assertPushSucceeds(self, args, pushed_revid=None, with_warning=False):
+        if with_warning:
+            error_regexes = self._default_errors
+        else:
+            error_regexes = []
         self.run_bzr(self._default_command + args,
                      working_dir=self._default_wd)
         if pushed_revid is None:
