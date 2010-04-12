@@ -56,7 +56,13 @@ An example URL would be:
 The segment after the comma will initially be interpreted as a colocated 
 branch name but we would like to keep the option to allow 
 key=value style specifications in the future and DWIM for segments that 
-do not contain an =. 
+do not contain an =. Following the RFC the comma would be interpreted within
+the scope of a path segment. In other words, in the URL:
+
+ git://git.debian.org/pkg-python-debian/python-debian.git,unstable/README
+
+unstable is interpreted as the colocated branch living in the python-debian.git
+control directory; README is a path inside of the branch.
 
 Control directories will also have the notion of an "active" branch. This is 
 the branch that is being used by a working tree, if present and the branch 
