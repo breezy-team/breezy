@@ -951,8 +951,10 @@ class BzrDir(object):
                 raise errors.NotBranchError(path=url)
             a_transport = new_t
 
-    def _get_tree_branch(self):
+    def _get_tree_branch(self, name=None):
         """Return the branch and tree, if any, for this bzrdir.
+
+        :param name: Name of colocated branch to open.
 
         Return None for tree if not present or inaccessible.
         Raise NotBranchError if no branch is present.
@@ -962,9 +964,12 @@ class BzrDir(object):
             tree = self.open_workingtree()
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             tree = None
-            branch = self.open_branch()
+            branch = self.open_branch(name=name)
         else:
-            branch = tree.branch
+            if name is not None:
+                branch = self.open_branch(name=name)
+            else:
+                branch = tree.branch
         return tree, branch
 
     @classmethod
@@ -1652,13 +1657,13 @@ class BzrDirMeta1(BzrDir):
     def destroy_workingtree_metadata(self):
         self.transport.delete_tree('checkout')
 
-    def find_branch_format(self):
+    def find_branch_format(self, name=None):
         """Find the branch 'format' for this bzrdir.
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
         from bzrlib.branch import BranchFormat
-        return BranchFormat.find_format(self)
+        return BranchFormat.find_format(self, name)
 
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
@@ -1770,7 +1775,7 @@ class BzrDirMeta1(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        format = self.find_branch_format()
+        format = self.find_branch_format(name)
         self._check_supported(format, unsupported)
         return format.open(self, name=name,
             _found=True, ignore_fallbacks=ignore_fallbacks)

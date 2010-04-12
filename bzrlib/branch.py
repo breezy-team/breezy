@@ -1335,6 +1335,8 @@ class Branch(object):
         """
         # XXX: Fix the bzrdir API to allow getting the branch back from the
         # clone call. Or something. 20090224 RBC/spiv.
+        # XXX: Should this perhaps clone colocated branches as well, 
+        # rather than just the default branch? 20100319 JRV
         if revision_id is None:
             revision_id = self.last_revision()
         dir_to = self.bzrdir.clone_on_transport(to_transport,
