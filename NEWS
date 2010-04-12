@@ -60,6 +60,12 @@ API Changes
 Internals
 *********
 
+* ``bzrlib.commands.Command.run_direct`` is no longer needed - the pre
+  2.1 method of calling run() to perform testing or direct use via the API
+  is now possible again. As part of this, the _operation attribute on
+  Command is now transient and only exists for the duration of ``run()``.
+  (Robert Collins)
+
 Testing
 *******
 
