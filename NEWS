@@ -22,6 +22,12 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr dpush``, ``bzr push`` and ``bzr send`` will now issue a warning
+  instead of failing when dirty trees are involved. The corresponding
+  ``dpush_strict``, ``push_strict`` and ``send_strict`` should be set to
+  True explicitely to get the previous behaviour.  
+  (Vincent Ladeuil, #519319)
+
 * ``bzrlib.mutabletree.MutableTree.commit`` will now support a passed in
   config as in previous versions of bzrlib. (Robert Collins)
 
