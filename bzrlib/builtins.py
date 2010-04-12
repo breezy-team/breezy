@@ -4346,6 +4346,9 @@ class cmd_missing(Command):
             restrict = 'remote'
 
         local_branch = Branch.open_containing(u".")[0]
+        local_branch.lock_read()
+        self.add_cleanup(local_branch.unlock)
+
         parent = local_branch.get_parent()
         if other_branch is None:
             other_branch = parent
@@ -4360,15 +4363,14 @@ class cmd_missing(Command):
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
+        else:
+            remote_branch.lock_read()
+            self.add_cleanup(remote_branch.unlock)
 
-        local_branch.lock_read()
-        self.add_cleanup(local_branch.unlock)
         local_revid_range = _revision_range_to_revid_range(
             _get_revision_range(my_revision, local_branch,
                 self.name()))
 
-        remote_branch.lock_read()
-        self.add_cleanup(remote_branch.unlock)
         remote_revid_range = _revision_range_to_revid_range(
             _get_revision_range(revision,
                 remote_branch, self.name()))
