@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,12 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for the urlutils wrapper."""
 
 import os
-import re
 import sys
 
 from bzrlib import osutils, urlutils, win32utils
@@ -26,7 +25,7 @@ from bzrlib.tests import TestCaseInTempDir, TestCase, TestSkipped
 
 
 class TestUrlToPath(TestCase):
-    
+
     def test_basename(self):
         # bzrlib.urlutils.basename
         # Test bzrlib.urlutils.split()
@@ -83,7 +82,7 @@ class TestUrlToPath(TestCase):
         try:
             u'uni/\xb5'.encode(osutils.get_user_encoding())
         except UnicodeError:
-            # locale cannot handle unicode 
+            # locale cannot handle unicode
             pass
         else:
             norm_file('uni/%C2%B5', u'uni/\xb5')
@@ -226,7 +225,7 @@ class TestUrlToPath(TestCase):
         test('file:///bar/foo', 'file:///bar/', 'foo')
         test('http://host/foo', 'http://host/', 'foo')
         test('http://host/', 'http://host', '')
-        
+
         # Invalid joinings
         # Cannot go above root
         # Implicitly at root:
@@ -264,7 +263,7 @@ class TestUrlToPath(TestCase):
 
         # Test joining to a path with a trailing slash
         test('foo/bar', 'foo/', 'bar')
-        
+
         # Invalid joinings
         # Cannot go above root
         self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '../baz')
@@ -300,8 +299,13 @@ class TestUrlToPath(TestCase):
             from_url('file:///path/to/r%C3%A4ksm%C3%B6rg%C3%A5s'))
         self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
+        self.assertEqual(u'/path/to/r\xe4ksm\xf6rg\xe5s',
+            from_url('file://localhost/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
 
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
+        self.assertRaises(
+            InvalidURL, from_url,
+            'file://remotehost/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s')
 
     def test_win32_local_path_to_url(self):
         to_url = urlutils._win32_local_path_to_url
@@ -315,7 +319,7 @@ class TestUrlToPath(TestCase):
         #     to_url('C:/path/to/foo '))
         self.assertEqual('file:///C:/path/to/f%20oo',
             to_url('C:/path/to/f oo'))
-        
+
         self.assertEqual('file:///', to_url('/'))
 
         try:
@@ -497,6 +501,9 @@ class TestUrlToPath(TestCase):
         self.assertEqual('%C3%A5', urlutils.escape(u'\xe5'))
         self.assertFalse(isinstance(urlutils.escape(u'\xe5'), unicode))
 
+    def test_escape_tildes(self):
+        self.assertEqual('~foo', urlutils.escape('~foo'))
+
     def test_unescape(self):
         self.assertEqual('%', urlutils.unescape('%25'))
         self.assertEqual(u'\xe5', urlutils.unescape('%C3%A5'))
@@ -513,7 +520,7 @@ class TestUrlToPath(TestCase):
         def test(expected, base, other):
             result = urlutils.relative_url(base, other)
             self.assertEqual(expected, result)
-            
+
         test('a', 'http://host/', 'http://host/a')
         test('http://entirely/different', 'sftp://host/branch',
                     'http://entirely/different')
@@ -528,7 +535,7 @@ class TestUrlToPath(TestCase):
                     'sftp://host/home/jelmer/branch/2b')
         test('../../branch/feature/%2b', 'http://host/home/jelmer/bar/%2b',
                     'http://host/home/jelmer/branch/feature/%2b')
-        test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b/', 
+        test('../../branch/feature/2b', 'http://host/home/jelmer/bar/2b/',
                     'http://host/home/jelmer/branch/feature/2b')
         # relative_url should preserve a trailing slash
         test('../../branch/feature/2b/', 'http://host/home/jelmer/bar/2b/',
@@ -592,9 +599,9 @@ class TestCwdToURL(TestCaseInTempDir):
 
         os.chdir(u'dod\xe9')
 
-        # On Mac OSX this directory is actually: 
+        # On Mac OSX this directory is actually:
         #   u'/dode\u0301' => '/dode\xcc\x81
-        # but we should normalize it back to 
+        # but we should normalize it back to
         #   u'/dod\xe9' => '/dod\xc3\xa9'
         url = urlutils.local_path_to_url('.')
         self.assertEndsWith(url, '/dod%C3%A9')
@@ -669,3 +676,14 @@ class TestRebaseURL(TestCase):
                          '/bar', '/bar/baz'))
         self.assertEqual('.', urlutils.determine_relative_path(
                          '/bar', '/bar'))
+
+
+class TestParseURL(TestCase):
+
+    def test_parse_url(self):
+        self.assertEqual(urlutils.parse_url('http://example.com:80/one'),
+            ('http', None, None, 'example.com', 80, '/one'))
+        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]/one'),
+                ('http', None, None, '1:2:3::40', None, '/one'))
+        self.assertEqual(urlutils.parse_url('http://[1:2:3::40]:80/one'),
+                ('http', None, None, '1:2:3::40', 80, '/one'))

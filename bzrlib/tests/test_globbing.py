@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -13,14 +13,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib.globbing import (
     Globster,
+    ExceptionGlobster,
     _OrderedGlobster,
+    normalize_pattern
     )
 from bzrlib.tests import (
-    TestCase, 
+    TestCase,
     TestCaseInTempDir,
     )
 
@@ -171,14 +173,14 @@ class TestGlobster(TestCase):
              [u'foo/x', u'foo/bax', u'foo/a.x', u'foo/.x', u'foo/.q.x'],
              [u'foo/bar/bax']),
             (u'*/*x',
-             [u'\u8336/x', u'foo/x', u'foo/bax', u'x/a.x', u'.foo/x', 
+             [u'\u8336/x', u'foo/x', u'foo/bax', u'x/a.x', u'.foo/x',
               u'\u8336/.x', u'foo/.q.x'],
              [u'foo/bar/bax']),
             (u'f*',
              [u'foo', u'foo.bar'],
              [u'.foo', u'foo/bar', u'foo/.bar']),
             (u'*bar',
-             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar', 
+             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar',
               u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
              []),
             ])
@@ -191,7 +193,7 @@ class TestGlobster(TestCase):
              [u'foox', u'foo/bax', u'foo/.x', u'foo/bar/bax']),
             (u'**/bar',
              [u'bar', u'foo/bar'],
-             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar', 
+             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar',
               u'.bar', u'foo/.bar']),
             # check that we ignore extra *s, so *** is treated like ** not *.
             (u'foo/***/x',
@@ -199,7 +201,7 @@ class TestGlobster(TestCase):
              [u'foox', u'foo/bax', u'foo/.x', u'foo/bar/bax']),
             (u'***/bar',
              [u'bar', u'foo/bar'],
-             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar', 
+             [u'foobar', u'foo.bar', u'foo/foobar', u'foo/f.bar',
               u'.bar', u'foo/.bar']),
             # the remaining tests check that ** is interpreted as *
             # unless it is a whole path component
@@ -216,7 +218,7 @@ class TestGlobster(TestCase):
              [u'foo', u'foo.bar'],
              [u'.foo', u'foo/bar', u'foo/.bar']),
             (u'**bar',
-             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar', 
+             [u'bar', u'foobar', ur'foo\nbar', u'foo.bar', u'foo/bar',
               u'foo/foobar', u'foo/f.bar', u'.bar', u'foo/.bar'],
              []),
             ])
@@ -257,7 +259,7 @@ class TestGlobster(TestCase):
     def test_leading_asterisk_dot(self):
         self.assertMatch([
             (u'*.x',
-             [u'foo/bar/baz.x', u'\u8336/Q.x', u'foo.y.x', u'.foo.x', 
+             [u'foo/bar/baz.x', u'\u8336/Q.x', u'foo.y.x', u'.foo.x',
               u'bar/.foo.x', u'.x',],
              [u'foo.x.y']),
             (u'foo/*.bar',
@@ -293,7 +295,7 @@ class TestGlobster(TestCase):
     def test_large_globset(self):
         """tests that the globster can handle a large set of patterns.
 
-        Large is defined as more than supported by python regex groups, 
+        Large is defined as more than supported by python regex groups,
         i.e. 99.
         This test assumes the globs are broken into regexs containing 99
         groups.
@@ -306,6 +308,30 @@ class TestGlobster(TestCase):
             self.assertEqual(patterns[x],globster.match(filename))
         self.assertEqual(None,globster.match('foobar.300'))
 
+class TestExceptionGlobster(TestCase):
+
+    def test_exclusion_patterns(self):
+        """test that exception patterns are not matched"""
+        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\.z.*',u'!!./.zcompdump' ]
+        globster = ExceptionGlobster(patterns)
+        self.assertEqual(u'*', globster.match('tmp/foo.txt'))
+        self.assertEqual(None, globster.match('local'))
+        self.assertEqual(None, globster.match('local/bin/wombat'))
+        self.assertEqual(None, globster.match('.zshrc'))
+        self.assertEqual(None, globster.match('.zfunctions/fiddle/flam'))
+        self.assertEqual(u'!!./.zcompdump', globster.match('.zcompdump'))
+
+    def test_exclusion_order(self):
+        """test that ordering of exclusion patterns does not matter"""
+        patterns = [ u'static/**/*.html', u'!static/**/versionable.html']
+        globster = ExceptionGlobster(patterns)
+        self.assertEqual(u'static/**/*.html', globster.match('static/foo.html'))
+        self.assertEqual(None, globster.match('static/versionable.html'))
+        self.assertEqual(None, globster.match('static/bar/versionable.html'))
+        globster = ExceptionGlobster(reversed(patterns))
+        self.assertEqual(u'static/**/*.html', globster.match('static/foo.html'))
+        self.assertEqual(None, globster.match('static/versionable.html'))
+        self.assertEqual(None, globster.match('static/bar/versionable.html'))
 
 class TestOrderedGlobster(TestCase):
 
@@ -318,3 +344,30 @@ class TestOrderedGlobster(TestCase):
         globster = _OrderedGlobster(reversed(patterns))
         self.assertEqual(u'bar.*', globster.match('bar.foo'))
         self.assertEqual(None, globster.match('foo.bar'))
+
+
+class TestNormalizePattern(TestCase):
+
+    def test_backslashes(self):
+        """tests that backslashes are converted to forward slashes, multiple
+        backslashes are collapsed to single forward slashes and trailing
+        backslashes are removed"""
+        self.assertEqual(u'/', normalize_pattern(u'\\'))
+        self.assertEqual(u'/', normalize_pattern(u'\\\\'))
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'\\foo\\bar'))
+        self.assertEqual(u'foo/bar', normalize_pattern(u'foo\\bar\\'))
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'\\\\foo\\\\bar\\\\'))
+
+    def test_forward_slashes(self):
+        """tests that multiple foward slashes are collapsed to single forward
+        slashes and trailing forward slashes are removed"""
+        self.assertEqual(u'/', normalize_pattern(u'/'))
+        self.assertEqual(u'/', normalize_pattern(u'//'))
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'/foo/bar'))
+        self.assertEqual(u'foo/bar', normalize_pattern(u'foo/bar/'))
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'//foo//bar//'))
+
+    def test_mixed_slashes(self):
+        """tests that multiple mixed slashes are collapsed to single forward
+        slashes and trailing mixed slashes are removed"""
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'\\/\\foo//\\///bar/\\\\/'))

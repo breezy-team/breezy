@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,31 +12,87 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests of the bzr serve command."""
 
 import os
+import os.path
 import signal
 import subprocess
 import sys
+import thread
 import threading
 
 from bzrlib import (
+    builtins,
+    debug,
     errors,
     osutils,
     revision as _mod_revision,
+    urlutils,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import ParamikoNotPresent
-from bzrlib.smart import medium
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.smart import client, medium
+from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
+from bzrlib.tests import (
+    TestCaseWithMemoryTransport,
+    TestCaseWithTransport,
+    TestSkipped,
+    )
+from bzrlib.trace import mutter
 from bzrlib.transport import get_transport, remote
 
 
-class TestBzrServe(TestCaseWithTransport):
+class TestBzrServeBase(TestCaseWithTransport):
+
+    def run_bzr_serve_then_func(self, serve_args, retcode=0, func=None,
+                                *func_args, **func_kwargs):
+        """Run 'bzr serve', and run the given func in a thread once the server
+        has started.
+        
+        When 'func' terminates, the server will be terminated too.
+        
+        Returns stdout and stderr.
+        """
+        # install hook
+        def on_server_start(backing_urls, tcp_server):
+            t = threading.Thread(
+                target=on_server_start_thread, args=(tcp_server,))
+            t.start()
+        def on_server_start_thread(tcp_server):
+            try:
+                # Run func if set
+                self.tcp_server = tcp_server
+                if not func is None:
+                    try:
+                        func(*func_args, **func_kwargs)
+                    except Exception, e:
+                        # Log errors to make some test failures a little less
+                        # mysterious.
+                        mutter('func broke: %r', e)
+            finally:
+                # Then stop the server
+                mutter('interrupting...')
+                thread.interrupt_main()
+        SmartTCPServer.hooks.install_named_hook(
+            'server_started_ex', on_server_start,
+            'run_bzr_serve_then_func hook')
+        # start a TCP server
+        try:
+            out, err = self.run_bzr(['serve'] + list(serve_args))
+        except KeyboardInterrupt, e:
+            out, err = e.args
+        return out, err
+
+
+class TestBzrServe(TestBzrServeBase):
+
+    def setUp(self):
+        super(TestBzrServe, self).setUp()
+        self.disable_missing_extensions_warning()
 
     def assertInetServerShutsdownCleanly(self, process):
         """Shutdown the server process looking for errors."""
@@ -48,7 +104,7 @@ class TestBzrServe(TestCaseWithTransport):
         result = self.finish_bzr_subprocess(process)
         self.assertEqual('', result[0])
         self.assertEqual('', result[1])
-    
+
     def assertServerFinishesCleanly(self, process):
         """Shutdown the bzr serve instance process looking for errors."""
         # Shutdown the server
@@ -75,12 +131,15 @@ class TestBzrServe(TestCaseWithTransport):
             finish_bzr_subprocess, a client for the server, and a transport.
         """
         # Serve from the current directory
-        process = self.start_bzr_subprocess(['serve', '--inet'])
+        args = ['serve', '--inet']
+        args.extend(extra_options)
+        process = self.start_bzr_subprocess(args)
 
         # Connect to the server
         # We use this url because while this is no valid URL to connect to this
         # server instance, the transport needs a URL.
         url = 'bzr://localhost/'
+        self.permit_url(url)
         client_medium = medium.SmartSimplePipesClientMedium(
             process.stdout, process.stdin, url)
         transport = remote.RemoteTransport(url, medium=client_medium)
@@ -97,11 +156,20 @@ class TestBzrServe(TestCaseWithTransport):
         args = ['serve', '--port', 'localhost:0']
         args.extend(extra_options)
         process = self.start_bzr_subprocess(args, skip_if_plan_to_signal=True)
-        port_line = process.stdout.readline()
+        port_line = process.stderr.readline()
         prefix = 'listening on port: '
         self.assertStartsWith(port_line, prefix)
         port = int(port_line[len(prefix):])
-        return process,'bzr://localhost:%d/' % port
+        url = 'bzr://localhost:%d/' % port
+        self.permit_url(url)
+        return process, url
+    
+    def test_bzr_serve_quiet(self):
+        self.make_branch('.')
+        args = ['--port', 'localhost:0', '--quiet']
+        out, err = self.run_bzr_serve_then_func(args, retcode=3)
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_bzr_serve_inet_readonly(self):
         """bzr server should provide a read only filesystem by default."""
@@ -115,9 +183,10 @@ class TestBzrServe(TestCaseWithTransport):
 
         process, transport = self.start_server_inet(['--allow-writes'])
 
-        # We get a working branch
+        # We get a working branch, and can create a directory
         branch = BzrDir.open_from_transport(transport).open_branch()
         self.make_read_requests(branch)
+        transport.mkdir('adir')
         self.assertInetServerShutsdownCleanly(process)
 
     def test_bzr_serve_port_readonly(self):
@@ -138,92 +207,130 @@ class TestBzrServe(TestCaseWithTransport):
         self.make_read_requests(branch)
         self.assertServerFinishesCleanly(process)
 
-    def test_bzr_connect_to_bzr_ssh(self):
-        """User acceptance that get_transport of a bzr+ssh:// behaves correctly.
-
-        bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
-        """
-        try:
-            from bzrlib.transport.sftp import SFTPServer
-        except ParamikoNotPresent:
-            raise TestSkipped('Paramiko not installed')
-        from bzrlib.tests.stub_sftp import StubServer
-        
+    def test_bzr_serve_supports_protocol(self):
         # Make a branch
-        self.make_branch('a_branch')
+        self.make_branch('.')
 
-        # Start an SSH server
-        self.command_executed = []
-        # XXX: This is horrible -- we define a really dumb SSH server that
-        # executes commands, and manage the hooking up of stdin/out/err to the
-        # SSH channel ourselves.  Surely this has already been implemented
-        # elsewhere?
-        class StubSSHServer(StubServer):
+        process, url = self.start_server_port(['--allow-writes',
+                                               '--protocol=bzr'])
 
-            test = self
+        # Connect to the server
+        branch = Branch.open(url)
+        self.make_read_requests(branch)
+        self.assertServerFinishesCleanly(process)
 
-            def check_channel_exec_request(self, channel, command):
-                self.test.command_executed.append(command)
-                proc = subprocess.Popen(
-                    command, shell=True, stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                
-                # XXX: horribly inefficient, not to mention ugly.
-                # Start a thread for each of stdin/out/err, and relay bytes from
-                # the subprocess to channel and vice versa.
-                def ferry_bytes(read, write, close):
-                    while True:
-                        bytes = read(1)
-                        if bytes == '':
-                            close()
-                            break
-                        write(bytes)
+    def test_bzr_serve_dhpss(self):
+        # This is a smoke test that the server doesn't crash when run with
+        # -Dhpss, and does drop some hpss logging to the file.
+        self.make_branch('.')
+        log_fname = os.getcwd() + '/server.log'
+        self._captureVar('BZR_LOG', log_fname)
+        process, transport = self.start_server_inet(['-Dhpss'])
+        branch = BzrDir.open_from_transport(transport).open_branch()
+        self.make_read_requests(branch)
+        self.assertInetServerShutsdownCleanly(process)
+        f = open(log_fname, 'rb')
+        content = f.read()
+        f.close()
+        self.assertContainsRe(content, r'hpss request: \[[0-9-]+\]')
 
-                file_functions = [
-                    (channel.recv, proc.stdin.write, proc.stdin.close),
-                    (proc.stdout.read, channel.sendall, channel.close),
-                    (proc.stderr.read, channel.sendall_stderr, channel.close)]
-                for read, write, close in file_functions:
-                    t = threading.Thread(
-                        target=ferry_bytes, args=(read, write, close))
-                    t.start()
 
-                return True
+class TestCmdServeChrooting(TestBzrServeBase):
 
-        ssh_server = SFTPServer(StubSSHServer)
-        # XXX: We *don't* want to override the default SSH vendor, so we set
-        # _vendor to what _get_ssh_vendor returns.
-        ssh_server.setUp()
-        self.addCleanup(ssh_server.tearDown)
-        port = ssh_server._listener.port
+    def test_serve_tcp(self):
+        """'bzr serve' wraps the given --directory in a ChrootServer.
 
-        # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
-        # variable is used to tell bzr what command to run on the remote end.
-        path_to_branch = osutils.abspath('a_branch')
-        
-        orig_bzr_remote_path = os.environ.get('BZR_REMOTE_PATH')
-        bzr_remote_path = self.get_bzr_path()
-        if sys.platform == 'win32':
-            bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
-        os.environ['BZR_REMOTE_PATH'] = bzr_remote_path
+        So requests that search up through the parent directories (like
+        find_repositoryV3) will give "not found" responses, rather than
+        InvalidURLJoin or jail break errors.
+        """
+        t = self.get_transport()
+        t.mkdir('server-root')
+        self.run_bzr_serve_then_func(
+            ['--port', '127.0.0.1:0',
+             '--directory', t.local_abspath('server-root'),
+             '--allow-writes'],
+            func=self.when_server_started)
+        # The when_server_started method issued a find_repositoryV3 that should
+        # fail with 'norepository' because there are no repositories inside the
+        # --directory.
+        self.assertEqual(('norepository',), self.client_resp)
+
+    def when_server_started(self):
+        # Connect to the TCP server and issue some requests and see what comes
+        # back.
+        client_medium = medium.SmartTCPClientMedium(
+            '127.0.0.1', self.tcp_server.port,
+            'bzr://localhost:%d/' % (self.tcp_server.port,))
+        smart_client = client._SmartClient(client_medium)
+        resp = smart_client.call('mkdir', 'foo', '')
+        resp = smart_client.call('BzrDirFormat.initialize', 'foo/')
         try:
-            if sys.platform == 'win32':
-                path_to_branch = os.path.splitdrive(path_to_branch)[1]
-            branch = Branch.open(
-                'bzr+ssh://fred:secret@localhost:%d%s' % (port, path_to_branch))
-            self.make_read_requests(branch)
-            # Check we can perform write operations
-            branch.bzrdir.root_transport.mkdir('foo')
-        finally:
-            # Restore the BZR_REMOTE_PATH environment variable back to its
-            # original state.
-            if orig_bzr_remote_path is None:
-                del os.environ['BZR_REMOTE_PATH']
-            else:
-                os.environ['BZR_REMOTE_PATH'] = orig_bzr_remote_path
+            resp = smart_client.call('BzrDir.find_repositoryV3', 'foo/')
+        except errors.ErrorFromSmartServer, e:
+            resp = e.error_tuple
+        self.client_resp = resp
+        client_medium.disconnect()
 
+
+class TestUserdirExpansion(TestCaseWithMemoryTransport):
+
+    def fake_expanduser(self, path):
+        """A simple, environment-independent, function for the duration of this
+        test.
+
+        Paths starting with a path segment of '~user' will expand to start with
+        '/home/user/'.  Every other path will be unchanged.
+        """
+        if path.split('/', 1)[0] == '~user':
+            return '/home/user' + path[len('~user'):]
+        return path
+
+    def make_test_server(self, base_path='/'):
+        """Make and start a BzrServerFactory, backed by a memory transport, and
+        creat '/home/user' in that transport.
+        """
+        bzr_server = BzrServerFactory(
+            self.fake_expanduser, lambda t: base_path)
+        mem_transport = self.get_transport()
+        mem_transport.mkdir_multi(['home', 'home/user'])
+        bzr_server.set_up(mem_transport, None, None, inet=True)
+        self.addCleanup(bzr_server.tear_down)
+        return bzr_server
+
+    def test_bzr_serve_expands_userdir(self):
+        bzr_server = self.make_test_server()
+        self.assertTrue(bzr_server.smart_server.backing_transport.has('~user'))
+
+    def test_bzr_serve_does_not_expand_userdir_outside_base(self):
+        bzr_server = self.make_test_server('/foo')
+        self.assertFalse(bzr_server.smart_server.backing_transport.has('~user'))
+
+    def test_get_base_path(self):
+        """cmd_serve will turn the --directory option into a LocalTransport
+        (optionally decorated with 'readonly+').  BzrServerFactory can
+        determine the original --directory from that transport.
+        """
+        # URLs always include the trailing slash, and get_base_path returns it
+        base_dir = osutils.abspath('/a/b/c') + '/'
+        base_url = urlutils.local_path_to_url(base_dir) + '/'
+        # Define a fake 'protocol' to capture the transport that cmd_serve
+        # passes to serve_bzr.
+        def capture_transport(transport, host, port, inet):
+            self.bzr_serve_transport = transport
+        cmd = builtins.cmd_serve()
+        # Read-only
+        cmd.run(directory=base_dir, protocol=capture_transport)
+        server_maker = BzrServerFactory()
         self.assertEqual(
-            ['%s serve --inet --directory=/ --allow-writes'
-             % bzr_remote_path],
-            self.command_executed)
-        
+            'readonly+%s' % base_url, self.bzr_serve_transport.base)
+        self.assertEqual(
+            base_dir, server_maker.get_base_path(self.bzr_serve_transport))
+        # Read-write
+        cmd.run(directory=base_dir, protocol=capture_transport,
+            allow_writes=True)
+        server_maker = BzrServerFactory()
+        self.assertEqual(base_url, self.bzr_serve_transport.base)
+        self.assertEqual(base_dir,
+            server_maker.get_base_path(self.bzr_serve_transport))
+

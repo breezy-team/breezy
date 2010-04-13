@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport implementation that adapts another transport to look like NFS.
 
@@ -28,10 +28,10 @@ from bzrlib import (
     errors,
     urlutils,
     )
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
-class FakeNFSTransportDecorator(TransportDecorator):
+class FakeNFSTransportDecorator(decorator.TransportDecorator):
     """A transport that behaves like NFS, for testing"""
 
     @classmethod
@@ -62,14 +62,7 @@ class FakeNFSTransportDecorator(TransportDecorator):
         return self._decorated.delete(relpath)
 
 
-class FakeNFSServer(DecoratorServer):
-    """Server for the FakeNFSTransportDecorator for testing with."""
-
-    def get_decorator_class(self):
-        return FakeNFSTransportDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(FakeNFSTransportDecorator, FakeNFSServer),
-            ]
+    from bzrlib.tests import test_server
+    return [(FakeNFSTransportDecorator, test_server.FakeNFSServer),]

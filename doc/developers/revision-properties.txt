@@ -28,9 +28,13 @@ Well-known properties
 At the moment, three standardized revision properties are recognized and used
 by bzrlib:
 
- * ``author`` - Author of the change. This value is in the same format as
-   the committer-id. This property can be set by passing keyword argument
-   ``author`` to function ``MutableTree.commit``.
+ * ``authors`` - Authors of the change. This value is a "\n" separated set
+   of values in the same format as the committer-id. This property can be
+   set by passing a list to the keyword argument ``authors`` of the function
+   ``MutableTree.commit``.
+ * ``author`` - Single author of the change. This property is deprecated in
+   favour of ``authors``. It should no longer be set by any code, but will
+   still be read. It is ignored if ``authors`` is set in the same revision.
  * ``branch-nick`` - Nickname of the branch. It's either the directory name
    or manually set by ``bzr nick``. The value is set automatically in
    ``MutableTree.commit``.
@@ -39,4 +43,4 @@ by bzrlib:
    '<URL> <status>'. Currently, bzrlib uses only status 'fixed'. See
    `Bug Trackers`_ for more details about using this feature.
 
-.. _Bug Trackers: ../bug_trackers.htm
+.. _Bug Trackers: ../en/user-guide/index.html#bug-trackers

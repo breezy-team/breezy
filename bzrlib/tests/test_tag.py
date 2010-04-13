@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,18 +12,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+"""Tests for bzrlib.tag."""
 
 
 from bzrlib import (
-    branch,
     bzrdir,
     errors,
-    tag,
     )
 from bzrlib.tag import (
     BasicTags,
-    _merge_tags_if_possible,
     DisabledTags,
     )
 from bzrlib.tests import (
@@ -37,7 +36,7 @@ class TestTagSerialization(TestCase):
 
     def test_tag_serialization(self):
         """Test the precise representation of tag dicts."""
-        # Don't change this after we commit to this format, as it checks 
+        # Don't change this after we commit to this format, as it checks
         # that the format is stable and compatible across releases.
         #
         # This release stores them in bencode as a dictionary from name to
@@ -48,6 +47,24 @@ class TestTagSerialization(TestCase):
         expected = r'd6:boring12:boring-revid6:stable12:stable-revide'
         self.assertEqualDiff(packed, expected)
         self.assertEqual(store._deserialize_tag_dict(packed), td)
+
+
+class TestTagRevisionRenames(TestCaseWithTransport):
+
+    def make_branch_supporting_tags(self, relpath):
+        return self.make_branch(relpath, format='dirstate-tags')
+
+    def test_simple(self):
+        store = self.make_branch_supporting_tags('a').tags
+        store.set_tag("foo", "myoldrevid")
+        store.rename_revisions({"myoldrevid": "mynewrevid"})
+        self.assertEquals({"foo": "mynewrevid"}, store.get_tag_dict())
+
+    def test_unknown_ignored(self):
+        store = self.make_branch_supporting_tags('a').tags
+        store.set_tag("foo", "myoldrevid")
+        store.rename_revisions({"anotherrevid": "mynewrevid"})
+        self.assertEquals({"foo": "myoldrevid"}, store.get_tag_dict())
 
 
 class TestTagMerging(TestCaseWithTransport):
@@ -117,7 +134,7 @@ class TestTagsInCheckouts(TestCaseWithTransport):
         child.tags.delete_tag('foo')
         self.assertRaises(errors.NoSuchTag,
             master.tags.lookup_tag, 'foo')
-    
+
     def test_tag_copied_by_initial_checkout(self):
         # https://bugs.launchpad.net/bzr/+bug/93860
         master = self.make_branch('master')
@@ -161,11 +178,11 @@ class DisabledTagsTests(TestCaseWithTransport):
         branch = self.make_branch('.')
         self.tags = DisabledTags(branch)
 
-    def test_supports_tags(self):
-        self.assertEqual(self.tags.supports_tags(), False)
-
     def test_set_tag(self):
         self.assertRaises(errors.TagsNotSupported, self.tags.set_tag)
 
     def test_get_reverse_tag_dict(self):
         self.assertEqual(self.tags.get_reverse_tag_dict(), {})
+
+
+

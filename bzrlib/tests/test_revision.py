@@ -12,22 +12,26 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os
 import warnings
 
 from bzrlib import (
+    bugtracker,
     revision,
     symbol_versioning,
     )
 from bzrlib.branch import Branch
-from bzrlib.errors import NoSuchRevision
+from bzrlib.errors import (
+    InvalidBugStatus,
+    InvalidLineInBugsProperty,
+    NoSuchRevision,
+    )
 from bzrlib.deprecated_graph import Graph
 from bzrlib.revision import (find_present_ancestors,
                              NULL_REVISION)
-from bzrlib.symbol_versioning import one_three
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
@@ -47,7 +51,7 @@ def make_branches(self, format=None):
 
     the object graph is
     B:     A:
-    a..0   a..0 
+    a..0   a..0
     a..1   a..1
     a..2   a..2
     b..3   a..3 merges b..4
@@ -60,30 +64,30 @@ def make_branches(self, format=None):
     """
     tree1 = self.make_branch_and_tree("branch1", format=format)
     br1 = tree1.branch
-    
+
     tree1.commit("Commit one", rev_id="a@u-0-0")
     tree1.commit("Commit two", rev_id="a@u-0-1")
     tree1.commit("Commit three", rev_id="a@u-0-2")
 
-    tree2 = tree1.bzrdir.clone("branch2").open_workingtree()
+    tree2 = tree1.bzrdir.sprout("branch2").open_workingtree()
     br2 = tree2.branch
     tree2.commit("Commit four", rev_id="b@u-0-3")
     tree2.commit("Commit five", rev_id="b@u-0-4")
     revisions_2 = br2.revision_history()
     self.assertEquals(revisions_2[-1], 'b@u-0-4')
-    
+
     tree1.merge_from_branch(br2)
     tree1.commit("Commit six", rev_id="a@u-0-3")
     tree1.commit("Commit seven", rev_id="a@u-0-4")
     tree2.commit("Commit eight", rev_id="b@u-0-5")
     self.assertEquals(br2.revision_history()[-1], 'b@u-0-5')
-    
+
     tree1.merge_from_branch(br2)
     tree1.commit("Commit nine", rev_id="a@u-0-5")
     # DO NOT MERGE HERE - we WANT a GHOST.
     tree2.add_parent_tree_id(br1.revision_history()[4])
     tree2.commit("Commit ten - ghost merge", rev_id="b@u-0-6")
-    
+
     return br1, br2
 
 
@@ -123,7 +127,7 @@ class TestIsAncestor(TestCaseWithTransport):
                        rev_id, branch.repository.get_ancestry(rev_id))
                 result = sorted(branch.repository.get_ancestry(rev_id))
                 self.assertEquals(result, [None] + sorted(anc))
-    
+
 
 class TestIntermediateRevisions(TestCaseWithTransport):
 
@@ -204,10 +208,77 @@ class TestRevisionMethods(TestCase):
         self.assertEqual('a', r.get_summary())
         r.message = '\na\nb'
         self.assertEqual('a', r.get_summary())
+        r.message = None
+        self.assertEqual('', r.get_summary())
 
     def test_get_apparent_author(self):
         r = revision.Revision('1')
         r.committer = 'A'
-        self.assertEqual('A', r.get_apparent_author())
+        author = self.applyDeprecated(
+                symbol_versioning.deprecated_in((1, 13, 0)),
+                r.get_apparent_author)
+        self.assertEqual('A', author)
         r.properties['author'] = 'B'
-        self.assertEqual('B', r.get_apparent_author())
+        author = self.applyDeprecated(
+                symbol_versioning.deprecated_in((1, 13, 0)),
+                r.get_apparent_author)
+        self.assertEqual('B', author)
+        r.properties['authors'] = 'C\nD'
+        author = self.applyDeprecated(
+                symbol_versioning.deprecated_in((1, 13, 0)),
+                r.get_apparent_author)
+        self.assertEqual('C', author)
+
+    def test_get_apparent_author_none(self):
+        r = revision.Revision('1')
+        author = self.applyDeprecated(
+                symbol_versioning.deprecated_in((1, 13, 0)),
+                r.get_apparent_author)
+        self.assertEqual(None, author)
+
+    def test_get_apparent_authors(self):
+        r = revision.Revision('1')
+        r.committer = 'A'
+        self.assertEqual(['A'], r.get_apparent_authors())
+        r.properties['author'] = 'B'
+        self.assertEqual(['B'], r.get_apparent_authors())
+        r.properties['authors'] = 'C\nD'
+        self.assertEqual(['C', 'D'], r.get_apparent_authors())
+
+    def test_get_apparent_authors_no_committer(self):
+        r = revision.Revision('1')
+        self.assertEqual([], r.get_apparent_authors())
+
+
+class TestRevisionBugs(TestCase):
+    """Tests for getting the bugs that a revision is linked to."""
+
+    def test_no_bugs(self):
+        r = revision.Revision('1')
+        self.assertEqual([], list(r.iter_bugs()))
+
+    def test_some_bugs(self):
+        r = revision.Revision(
+            '1', properties={
+                'bugs': bugtracker.encode_fixes_bug_urls(
+                    ['http://example.com/bugs/1',
+                     'http://launchpad.net/bugs/1234'])})
+        self.assertEqual(
+            [('http://example.com/bugs/1', bugtracker.FIXED),
+             ('http://launchpad.net/bugs/1234', bugtracker.FIXED)],
+            list(r.iter_bugs()))
+
+    def test_no_status(self):
+        r = revision.Revision(
+            '1', properties={'bugs': 'http://example.com/bugs/1'})
+        self.assertRaises(InvalidLineInBugsProperty, list, r.iter_bugs())
+
+    def test_too_much_information(self):
+        r = revision.Revision(
+            '1', properties={'bugs': 'http://example.com/bugs/1 fixed bar'})
+        self.assertRaises(InvalidLineInBugsProperty, list, r.iter_bugs())
+
+    def test_invalid_status(self):
+        r = revision.Revision(
+            '1', properties={'bugs': 'http://example.com/bugs/1 faxed'})
+        self.assertRaises(InvalidBugStatus, list, r.iter_bugs())

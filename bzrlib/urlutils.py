@@ -1,6 +1,4 @@
-# Bazaar -- distributed version control
-#
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A collection of function for handling URL operations."""
 
@@ -68,18 +66,18 @@ def escape(relpath):
         relpath = relpath.encode('utf-8')
     # After quoting and encoding, the path should be perfectly
     # safe as a plain ASCII string, str() just enforces this
-    return str(urllib.quote(relpath))
+    return str(urllib.quote(relpath, safe='/~'))
 
 
 def file_relpath(base, path):
     """Compute just the relative sub-portion of a url
-    
+
     This assumes that both paths are already fully specified file:// URLs.
     """
     if len(base) < MIN_ABS_FILEURL_LENGTH:
-        raise ValueError('Length of base must be equal or'
+        raise ValueError('Length of base (%r) must equal or'
             ' exceed the platform minimum url length (which is %d)' %
-            MIN_ABS_FILEURL_LENGTH)
+            (base, MIN_ABS_FILEURL_LENGTH))
     base = local_path_from_url(base)
     path = local_path_from_url(path)
     return escape(osutils.relpath(base, path))
@@ -185,7 +183,7 @@ def join(base, *args):
 
 def joinpath(base, *args):
     """Join URL path segments to a URL path segment.
-    
+
     This is somewhat like osutils.joinpath, but intended for URLs.
 
     XXX: this duplicates some normalisation logic, and also duplicates a lot of
@@ -219,10 +217,16 @@ def joinpath(base, *args):
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
-    if not url.startswith('file:///'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///')
+    file_localhost_prefix = 'file://localhost/'
+    if url.startswith(file_localhost_prefix):
+        path = url[len(file_localhost_prefix) - 1:]
+    elif not url.startswith('file:///'):
+        raise errors.InvalidURL(
+            url, 'local urls must start with file:/// or file://localhost/')
+    else:
+        path = url[len('file://'):]
     # We only strip off 2 slashes
-    return unescape(url[len('file://'):])
+    return unescape(path)
 
 
 def _posix_local_path_to_url(path):
@@ -230,7 +234,7 @@ def _posix_local_path_to_url(path):
 
     This also handles transforming escaping unicode characters, etc.
     """
-    # importing directly from posixpath allows us to test this 
+    # importing directly from posixpath allows us to test this
     # on non-posix platforms
     return 'file://' + escape(_posix_normpath(
         osutils._posix_abspath(path)))
@@ -254,7 +258,7 @@ def _win32_local_path_from_url(url):
     # allow empty paths so we can serve all roots
     if win32_url == '///':
         return '/'
-    
+
     # usual local path with drive letter
     if (win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
                              'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
@@ -270,7 +274,7 @@ def _win32_local_path_to_url(path):
 
     This also handles transforming escaping unicode characters, etc.
     """
-    # importing directly from ntpath allows us to test this 
+    # importing directly from ntpath allows us to test this
     # on non-win32 platform
     # FIXME: It turns out that on nt, ntpath.abspath uses nt._getfullpathname
     #       which actually strips trailing space characters.
@@ -305,7 +309,7 @@ _url_hex_escapes_re = re.compile(r'(%[0-9a-fA-F]{2})')
 
 def _unescape_safe_chars(matchobj):
     """re.sub callback to convert hex-escapes to plain characters (if safe).
-    
+
     e.g. '%7E' will be converted to '~'.
     """
     hex_digits = matchobj.group(0)[1:]
@@ -318,7 +322,7 @@ def _unescape_safe_chars(matchobj):
 
 def normalize_url(url):
     """Make sure that a path string is in fully normalized URL form.
-    
+
     This handles URLs which have unicode characters, spaces,
     special characters, etc.
 
@@ -370,7 +374,7 @@ def relative_url(base, other):
     dummy, base_first_slash = _find_scheme_and_separator(base)
     if base_first_slash is None:
         return other
-    
+
     dummy, other_first_slash = _find_scheme_and_separator(other)
     if other_first_slash is None:
         return other
@@ -418,7 +422,7 @@ def _win32_extract_drive_letter(url_base, path):
     # Strip off the drive letter
     # path is currently /C:/foo
     if len(path) < 3 or path[2] not in ':|' or path[3] != '/':
-        raise errors.InvalidURL(url_base + path, 
+        raise errors.InvalidURL(url_base + path,
             'win32 file:/// paths need a drive letter')
     url_base += path[0:3] # file:// + /C:
     path = path[3:] # /foo
@@ -432,7 +436,7 @@ def split(url, exclude_trailing_slash=True):
     :param exclude_trailing_slash: Strip off a final '/' if it is part
         of the path (but not if it is part of the protocol specification)
 
-    :return: (parent_url, child_dir).  child_dir may be the empty string if we're at 
+    :return: (parent_url, child_dir).  child_dir may be the empty string if we're at
         the root.
     """
     scheme_loc, first_path_slash = _find_scheme_and_separator(url)
@@ -542,7 +546,7 @@ def unescape(url):
 # These are characters that if escaped, should stay that way
 _no_decode_chars = ';/?:@&=+$,#'
 _no_decode_ords = [ord(c) for c in _no_decode_chars]
-_no_decode_hex = (['%02x' % o for o in _no_decode_ords] 
+_no_decode_hex = (['%02x' % o for o in _no_decode_ords]
                 + ['%02X' % o for o in _no_decode_ords])
 _hex_display_map = dict(([('%02x' % o, chr(o)) for o in range(256)]
                     + [('%02X' % o, chr(o)) for o in range(256)]))
@@ -574,13 +578,13 @@ def unescape_for_display(url, encoding):
     This will turn file:// urls into local paths, and try to decode
     any portions of a http:// style url that it can.
 
-    Any sections of the URL which can't be represented in the encoding or 
+    Any sections of the URL which can't be represented in the encoding or
     need to stay as escapes are left alone.
 
     :param url: A 7-bit ASCII URL
     :param encoding: The final output encoding
 
-    :return: A unicode string which can be safely encoded into the 
+    :return: A unicode string which can be safely encoded into the
          specified encoding.
     """
     if encoding is None:
@@ -687,3 +691,46 @@ def determine_relative_path(from_path, to_path):
     if len(segments) == 0:
         return '.'
     return osutils.pathjoin(*segments)
+
+
+
+def parse_url(url):
+    """Extract the server address, the credentials and the path from the url.
+
+    user, password, host and path should be quoted if they contain reserved
+    chars.
+
+    :param url: an quoted url
+
+    :return: (scheme, user, password, host, port, path) tuple, all fields
+        are unquoted.
+    """
+    if isinstance(url, unicode):
+        raise errors.InvalidURL('should be ascii:\n%r' % url)
+    url = url.encode('utf-8')
+    (scheme, netloc, path, params,
+     query, fragment) = urlparse.urlparse(url, allow_fragments=False)
+    user = password = host = port = None
+    if '@' in netloc:
+        user, host = netloc.rsplit('@', 1)
+        if ':' in user:
+            user, password = user.split(':', 1)
+            password = urllib.unquote(password)
+        user = urllib.unquote(user)
+    else:
+        host = netloc
+
+    if ':' in host and not (host[0] == '[' and host[-1] == ']'): #there *is* port
+        host, port = host.rsplit(':',1)
+        try:
+            port = int(port)
+        except ValueError:
+            raise errors.InvalidURL('invalid port number %s in url:\n%s' %
+                                    (port, url))
+    if host != "" and host[0] == '[' and host[-1] == ']': #IPv6
+        host = host[1:-1]
+
+    host = urllib.unquote(host)
+    path = urllib.unquote(path)
+
+    return (scheme, user, password, host, port, path)

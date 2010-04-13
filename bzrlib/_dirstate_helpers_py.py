@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Python implementations of Dirstate Helper functions."""
 
@@ -24,7 +24,7 @@ from bzrlib import errors
 from bzrlib.dirstate import DirState
 
 
-def _bisect_path_left_py(paths, path):
+def _bisect_path_left(paths, path):
     """Return the index where to insert path into paths.
 
     This uses the dirblock sorting. So all children in a directory come before
@@ -63,14 +63,14 @@ def _bisect_path_left_py(paths, path):
         mid = (lo + hi) // 2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
-        if _cmp_path_by_dirblock_py(cur, path) < 0:
+        if _cmp_path_by_dirblock(cur, path) < 0:
             lo = mid + 1
         else:
             hi = mid
     return lo
 
 
-def _bisect_path_right_py(paths, path):
+def _bisect_path_right(paths, path):
     """Return the index where to insert path into paths.
 
     This uses a path-wise comparison so we get::
@@ -94,14 +94,14 @@ def _bisect_path_right_py(paths, path):
         mid = (lo+hi)//2
         # Grab the dirname for the current dirblock
         cur = paths[mid]
-        if _cmp_path_by_dirblock_py(path, cur) < 0:
+        if _cmp_path_by_dirblock(path, cur) < 0:
             hi = mid
         else:
             lo = mid + 1
     return lo
 
 
-def bisect_dirblock_py(dirblocks, dirname, lo=0, hi=None, cache={}):
+def bisect_dirblock(dirblocks, dirname, lo=0, hi=None, cache={}):
     """Return the index where to insert dirname into the dirblocks.
 
     The return value idx is such that all directories blocks in dirblock[:idx]
@@ -132,7 +132,7 @@ def bisect_dirblock_py(dirblocks, dirname, lo=0, hi=None, cache={}):
     return lo
 
 
-def cmp_by_dirs_py(path1, path2):
+def cmp_by_dirs(path1, path2):
     """Compare two paths directory by directory.
 
     This is equivalent to doing::
@@ -158,7 +158,7 @@ def cmp_by_dirs_py(path1, path2):
     return cmp(path1.split('/'), path2.split('/'))
 
 
-def _cmp_path_by_dirblock_py(path1, path2):
+def _cmp_path_by_dirblock(path1, path2):
     """Compare two paths based on what directory they are in.
 
     This generates a sort order, such that all children of a directory are
@@ -184,7 +184,7 @@ def _cmp_path_by_dirblock_py(path1, path2):
     return cmp(key1, key2)
 
 
-def _read_dirblocks_py(state):
+def _read_dirblocks(state):
     """Read in the dirblocks for the given DirState object.
 
     This is tightly bound to the DirState internal representation. It should be

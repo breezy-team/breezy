@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for add_signature_text on a repository with external references."""
 
@@ -30,6 +30,8 @@ class TestAddSignatureText(TestCaseWithExternalReferenceRepository):
         tree = self.make_branch_and_tree('sample')
         revid = tree.commit('one')
         inv = tree.branch.repository.get_inventory(revid)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         base = self.make_repository('base')
         repo = self.make_referring('referring', 'base')
         repo.lock_write()
@@ -37,13 +39,13 @@ class TestAddSignatureText(TestCaseWithExternalReferenceRepository):
             repo.start_write_group()
             try:
                 rev = tree.branch.repository.get_revision(revid)
+                repo.texts.add_lines((inv.root.file_id, revid), [], [])
                 repo.add_revision(revid, rev, inv=inv)
                 repo.add_signature_text(revid, "text")
+                repo.commit_write_group()
             except:
                 repo.abort_write_group()
                 raise
-            else:
-                repo.commit_write_group()
         finally:
             repo.unlock()
         repo.get_signature_text(revid)

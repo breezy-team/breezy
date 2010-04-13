@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Auto-detect of CA bundle for SSL connections"""
 
@@ -36,13 +36,13 @@ def get_ca_path(use_cache=True):
     # from "Details on Server SSL Certificates"
     # http://curl.haxx.se/docs/sslcerts.html
     #
-    # 4. If you're using the curl command line tool, you can specify your own CA
-    #    cert path by setting the environment variable CURL_CA_BUNDLE to the path
-    #    of your choice.
+    # 4. If you're using the curl command line tool, you can specify your own
+    #    CA cert path by setting the environment variable CURL_CA_BUNDLE to the
+    #    path of your choice.
     #
-    #    If you're using the curl command line tool on Windows, curl will search
-    #    for a CA cert file named "curl-ca-bundle.crt" in these directories and in
-    #    this order:
+    #    If you're using the curl command line tool on Windows, curl will
+    #    search for a CA cert file named "curl-ca-bundle.crt" in these
+    #    directories and in this order:
     #      1. application's directory
     #      2. current working directory
     #      3. Windows System directory (e.g. C:\windows\system32)

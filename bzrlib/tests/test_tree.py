@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Tree and InterTree."""
 
@@ -42,7 +42,7 @@ class TestInterTree(TestCaseWithTransport):
         self.assertIsInstance(optimiser, InterTree)
 
     def test_working_tree_revision_tree(self):
-        # we should have an InterTree available for WorkingTree to 
+        # we should have an InterTree available for WorkingTree to
         # RevisionTree.
         tree = self.make_branch_and_tree('.')
         rev_id = tree.commit('first post')
@@ -53,7 +53,7 @@ class TestInterTree(TestCaseWithTransport):
         self.assertIsInstance(optimiser, InterTree)
 
     def test_working_tree_working_tree(self):
-        # we should have an InterTree available for WorkingTree to 
+        # we should have an InterTree available for WorkingTree to
         # WorkingTree.
         tree = self.make_branch_and_tree('1')
         tree2 = self.make_branch_and_tree('2')
@@ -72,10 +72,10 @@ class RecordingOptimiser(InterTree):
         want_unversioned=False):
         self.calls.append(
             ('compare', self.source, self.target, want_unchanged,
-             specific_files, extra_trees, require_versioned, 
+             specific_files, extra_trees, require_versioned,
              include_root, want_unversioned)
             )
-    
+
     @classmethod
     def is_compatible(klass, source, target):
         return True
@@ -96,7 +96,7 @@ class TestTree(TestCaseWithTransport):
             # trivial usage
             tree.changes_from(tree2)
             # pass in all optional arguments by position
-            tree.changes_from(tree2, 'unchanged', 'specific', 'extra', 
+            tree.changes_from(tree2, 'unchanged', 'specific', 'extra',
                               'require', True)
             # pass in all optional arguments by keyword
             tree.changes_from(tree2,
@@ -123,7 +123,7 @@ class TestTree(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         delta = wt.changes_from(wt.basis_tree())
         self.assertEqual(len(delta.added), 0)
-        delta = wt.changes_from(wt.basis_tree(), wt, include_root=True)
+        delta = wt.changes_from(wt.basis_tree(), include_root=True)
         self.assertEqual(len(delta.added), 1)
         self.assertEqual(delta.added[0][0], '')
 
@@ -139,7 +139,7 @@ class TestTree(TestCaseWithTransport):
 
         # we need to pass a known file with an unknown file to get this to
         # fail when expected.
-        delta = wt.changes_from(wt.basis_tree(), wt, 
+        delta = wt.changes_from(wt.basis_tree(),
             specific_files=['known_file', 'unknown_file'] ,
             require_versioned=False)
         self.assertEqual(len(delta.added), 1)
@@ -210,7 +210,7 @@ class TestMultiWalker(TestCaseWithTransport):
                 other_file_ids.append(None)
             else:
                 other_file_ids.append(ie.file_id)
-        
+
         exp_file_ids = []
         for path in exp_other_paths:
             if path is None:

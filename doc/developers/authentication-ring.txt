@@ -40,7 +40,7 @@ Any implementation of this specification should respect that behaviour.
 
 This specification also proposes a way to describe credentials so that several
 remote branches can use the same definition. This is particularily important
-for users handling a lot of passwords who need to update them on a regular
+for users handling a lot of passwords and who need to update them on a regular
 basis.
 
 Rationale
@@ -65,7 +65,8 @@ Note that ssh servers can be configured to use keys instead of (``user``,
 ``password``) and, when used with appropriate agents, provide the same kind of
 comfort this specification aims to provide for all other schemes. Since ssh
 agents provide a safer way to secure the passwords, this specification is
-restricted to providing ``user`` but does not provide ``password``.
+restricted to providing ``user`` but does not provide ``password`` when used
+for ssh.
 
 Authentication definitions
 --------------------------
@@ -87,9 +88,9 @@ to define several (``user, realm, password``) for a given ``host``. So what is
 really needed is (``user``, ``password``, ``host``, ``path``). The ``realm``
 can be ignored [#ignored_realm]_ as long as it is still presented to the user
 when prompting for the password (unless someone found a way to declare two
-different realms for the same path). 
+different realms for the same path).
 
-``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitely
+``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitly
 specifying the appropriate port.
 
 .. [#ignored_realm] The true purpose of realms is to allow the same credentials
@@ -112,10 +113,10 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
     same scheme), only numerical values are allowed, this should be used only
     when the server uses a port different than the scheme standard port,
 
-  * ``path``: can be empty (FTP or SFTP will never user it),
+  * ``path``: can be empty (FTP or SFTP will never use it),
 
   * ``user``: can be empty (``bzr`` will defaults to python's
-    ``getpass.get_user()`` and attempt another matching(see below)),
+    ``getpass.get_user()`` for FTP, SFTP and ssh),
 
   * ``password``: can be empty (for security reasons, a user may use the
     definitions without storing the passwords but want to be prompted ; or the
@@ -127,7 +128,8 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 
 Also note that an optional ``verify_certificates=no`` field will allow the
 connection to ``HTTPS`` hosts that provides a self certified certificate (the
-default should be to refuse the connection and inform the user).
+default should be to refuse the connection and inform the user). (Not
+implemented yet)
 
 Multiple definitions can be provided and, for a given URL, bzr will select a
 (``user`` [, ``password``]) based on the following rules :
@@ -156,10 +158,13 @@ future versions.
 
 Encoding passwords in ``base64``, while weak, provides protection against
 accidental reading (if an administrator have to look into the file, he will not
-see the passwords in clear).
+see the passwords in clear).(Not implemented yet).
 
-This specification intend to ease the authentication providing, not to secure
+This specification intends to ease the authentication providing, not to secure
 it in the best possible way.
+
+Plugins can provide additional password encodings. The provided
+``netrc_credential_store`` plugin can be used as an example implementation.
 
 Future versions of this specification may provide additional
 encodings [#password_encoding]_.
@@ -168,8 +173,8 @@ encodings [#password_encoding]_.
    that will rely on external means to store the password which, in these
    cases, will not appear anymore in the definition. It is assumed that
    additional password encodings will provide a storage outside of the file
-   described here. An encoding named ``netrc`` for example will provide
-   passwords by retrieving them in the ``.netrc`` file.
+   described here. The ``netrc`` encoding, for example, provides passwords by
+   retrieving them from the ``.netrc`` file.
 
 File format
 -----------
@@ -187,7 +192,7 @@ reasons:
     generally servers. The same authentification definition can even be used
     for several schemes for servers providing those schemes.
 
-``~/.bazaar/authentication.conf`` will use the same file format than
+``~/.bazaar/authentication.conf`` will use the same file format as
 ``~/.bazaar/bazaar.conf``.
 
 Each section describes an authentication definition.
@@ -206,7 +211,7 @@ Each section could define:
   * ``port``: the port the server is listening,
 
   * ``verify_certificates``: to control certificate verification (useful
-    for self certified hosts). This applies to HTTP[S] only. Accepted values
+    for self certified hosts). This applies to HTTPS only. Accepted values
     are yes and no, default to yes.
 
   * ``path``: the branch location,
@@ -255,7 +260,7 @@ The use cases described below use the file format defined above.
         host=r.hobby.net
         user=jim
         password=obvious1234
-        
+
         # Home server
         [home]
         scheme=https
@@ -264,11 +269,11 @@ The use cases described below use the file format defined above.
         password='c2VjcmV0LXBhc3M='
         password_encoding=base64
         verify_certificates=no # Still searching a free certificate provider
-        
+
         [DEFAULT]
         # Our local user is barbaz, on all remote sites we're known as foobar
         user=foobar
-        
+
   * an HTTP server and a proxy::
 
         # development branches on dev server
@@ -278,7 +283,7 @@ The use cases described below use the file format defined above.
         path=/dev
         user=user1
         password=pass1
-        
+
         # toy branches
         [localhost]
         scheme=http
@@ -286,7 +291,7 @@ The use cases described below use the file format defined above.
         path=/
         user=user2
         password=pass2
-        
+
         # proxy
         [proxy]
         scheme=http
@@ -324,7 +329,7 @@ different ways:
 3. No ``user`` given in the URL (and no ``password``).
 
   Get a user from ``~/.bazaar/authentication.conf`` or prompt for one if none is
-  found. Continue as 2.
+  found. Continue as 2. (Not implemented yet)
 
 Note: A user will be queried only if the server requires it for ``HTTP`` or
 ``HTTPS``, other protocols always require a user.
@@ -356,9 +361,10 @@ Implementation constraints
   a password.
 
 * As this specification proposes a matching between some credentials
-  definitions and real urls, the implementation should provide an optional UI
-  feedback about which credential definition is used. That will allow the user
-  to validate his definitions.
+  definitions and real urls, the implementation provides an optional UI
+  feedback about which credential definition is used. Using ``-Dauth`` will
+  output some traces in the ``.bzr.log`` file metionning the sections
+  used. This allows the user to validate his definitions.
 
 Questions and Answers
 ---------------------
@@ -372,15 +378,14 @@ Questions and Answers
 
   * What if a ``.netrc`` file exists ?
 
-    * It will be honored if the definition specifies
-      ``password_encoding=netrc`` once the appropriate plugin have been
-      written.
+    * It is honored if the definition specifies
+      ``password_encoding=netrc``.
 
   * What mode should the authentication file use ?
 
     * 600 read/write for owner only by default, if another mode (more
       permissive) is used, a warning will be issued to inform the users of the
-      potential risks.
+      potential risks.(Not implemented yet)
 
   * What about using ``seahorse`` on Ubuntu or ``KeyChain Access`` on Mac OS X ?
 
@@ -391,8 +396,9 @@ Questions and Answers
     ?
 
     * yes and if the user configure a ssh-agent it will not be queried for
-      pass-phrase every time we want to query the file for a password. But that
-      seems a bit extreme for a first version.
+      pass-phrase every time we want to query the file for a password. But
+      that seems a bit extreme for a first version.(Not implemented yet and
+      may be never)
 
   * Why can't bzr update the authentication file when it queried the user for a
     password ?

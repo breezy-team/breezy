@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,25 +12,31 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib.xml_serializer import ElementTree, SubElement, Element, Serializer
+from bzrlib.xml_serializer import (
+    Element,
+    ElementTree,
+    SubElement,
+    XMLSerializer,
+    escape_invalid_chars,
+    )
 from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
 import bzrlib.inventory as inventory
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
 
-class _Serializer_v4(Serializer):
+class _Serializer_v4(XMLSerializer):
     """Version 0.0.4 serializer
 
     You should use the serializer_v4 singleton.
-    
+
     v4 serialisation is no longer supported, only deserialisation.
     """
-    
+
     __slots__ = []
-    
+
     def _pack_entry(self, ie):
         """Convert InventoryEntry to XML element"""
         e = Element('entry')
@@ -57,7 +63,8 @@ class _Serializer_v4(Serializer):
         return e
 
 
-    def _unpack_inventory(self, elt, revision_id=None):
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
+                          return_from_cache=False):
         """Construct from XML Element
 
         :param revision_id: Ignored parameter used by xml5.
@@ -65,14 +72,15 @@ class _Serializer_v4(Serializer):
         root_id = elt.get('file_id') or ROOT_ID
         inv = Inventory(root_id)
         for e in elt:
-            ie = self._unpack_entry(e)
+            ie = self._unpack_entry(e, entry_cache=entry_cache,
+                                    return_from_cache=return_from_cache)
             if ie.parent_id == ROOT_ID:
                 ie.parent_id = root_id
             inv.add(ie)
         return inv
 
 
-    def _unpack_entry(self, elt):
+    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         ## original format inventories don't have a parent_id for
         ## nodes in the root directory, but it's cleaner to use one
         ## internally.
@@ -120,7 +128,7 @@ class _Serializer_v4(Serializer):
         root.text = '\n'
 
         msg = SubElement(root, 'message')
-        msg.text = rev.message
+        msg.text = escape_invalid_chars(rev.message)[0]
         msg.tail = '\n'
 
         if rev.parents:
@@ -134,10 +142,10 @@ class _Serializer_v4(Serializer):
                     p.set('revision_sha1', rev.parent_sha1s[i])
         return root
 
-    
+
     def _unpack_revision(self, elt):
         """XML Element -> Revision object"""
-        
+
         # <changeset> is deprecated...
         if elt.tag not in ('revision', 'changeset'):
             raise BzrError("unexpected tag in revision file: %r" % elt)

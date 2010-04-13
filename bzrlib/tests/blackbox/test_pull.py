@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr pull."""
@@ -20,13 +20,18 @@
 import os
 import sys
 
+from bzrlib import (
+    debug,
+    remote,
+    urlutils,
+    )
+
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
-from bzrlib import urlutils
 
 
 class TestPull(ExternalBase):
@@ -239,7 +244,8 @@ class TestPull(ExternalBase):
         out = self.run_bzr('pull ../branch_a', retcode=3)
         self.assertEqual(out,
                 ('','bzr: ERROR: These branches have diverged.'
-                    ' Use the merge command to reconcile them.\n'))
+                    ' Use the missing command to see how.\n'
+                    'Use the merge command to reconcile them.\n'))
         self.assertEqual(branch_b.get_parent(), parent)
         # test implicit --remember after resolving previous failure
         uncommit(branch=branch_b, tree=tree_b)
@@ -337,6 +343,113 @@ class TestPull(ExternalBase):
             def look_up(self, name, url):
                 return 'source'
         directories.register('foo:', FooService, 'Testing directory service')
-        self.addCleanup(lambda: directories.remove('foo:'))
+        self.addCleanup(directories.remove, 'foo:')
         self.run_bzr('pull foo:bar -d target')
         self.assertEqual(source_last, target.last_revision())
+
+    def test_pull_verbose_defaults_to_long(self):
+        tree = self.example_branch('source')
+        target = self.make_branch_and_tree('target')
+        out = self.run_bzr('pull -v source -d target')[0]
+        self.assertContainsRe(out,
+                              r'revno: 1\ncommitter: .*\nbranch nick: source')
+        self.assertNotContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
+
+    def test_pull_verbose_uses_default_log(self):
+        tree = self.example_branch('source')
+        target = self.make_branch_and_tree('target')
+        target_config = target.branch.get_config()
+        target_config.set_user_option('log_format', 'short')
+        out = self.run_bzr('pull -v source -d target')[0]
+        self.assertContainsRe(out, r'\n {4}1 .*\n {6}setup\n')
+        self.assertNotContainsRe(
+            out, r'revno: 1\ncommitter: .*\nbranch nick: source')
+
+    def test_pull_smart_stacked_streaming_acceptance(self):
+        """'bzr pull -r 123' works on stacked, smart branches, even when the
+        revision specified by the revno is only present in the fallback
+        repository.
+
+        See <https://launchpad.net/bugs/380314>
+        """
+        self.setup_smart_server_with_call_log()
+        # Make a stacked-on branch with two commits so that the
+        # revision-history can't be determined just by looking at the parent
+        # field in the revision in the stacked repo.
+        parent = self.make_branch_and_tree('parent', format='1.9')
+        parent.commit(message='first commit')
+        parent.commit(message='second commit')
+        local = parent.bzrdir.sprout('local').open_workingtree()
+        local.commit(message='local commit')
+        local.branch.create_clone_on_transport(
+            self.get_transport('stacked'), stacked_on=self.get_url('parent'))
+        empty = self.make_branch_and_tree('empty', format='1.9')
+        self.reset_smart_call_log()
+        self.run_bzr(['pull', '-r', '1', self.get_url('stacked')],
+            working_dir='empty')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(18, self.hpss_calls)
+        remote = Branch.open('stacked')
+        self.assertEndsWith(remote.get_stacked_on_url(), '/parent')
+    
+    def test_pull_cross_format_warning(self):
+        """You get a warning for probably slow cross-format pulls.
+        """
+        # this is assumed to be going through InterDifferingSerializer
+        from_tree = self.make_branch_and_tree('from', format='2a')
+        to_tree = self.make_branch_and_tree('to', format='1.14-rich-root')
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertContainsRe(err,
+            "(?m)Doing on-the-fly conversion")
+
+    def test_pull_cross_format_warning_no_IDS(self):
+        """You get a warning for probably slow cross-format pulls.
+        """
+        # this simulates what would happen across the network, where
+        # interdifferingserializer is not active
+
+        debug.debug_flags.add('IDS_never')
+        # TestCase take care of restoring them
+
+        from_tree = self.make_branch_and_tree('from', format='2a')
+        to_tree = self.make_branch_and_tree('to', format='1.14-rich-root')
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertContainsRe(err,
+            "(?m)Doing on-the-fly conversion")
+
+    def test_pull_cross_format_from_network(self):
+        self.setup_smart_server_with_call_log()
+        from_tree = self.make_branch_and_tree('from', format='2a')
+        to_tree = self.make_branch_and_tree('to', format='1.14-rich-root')
+        self.assertIsInstance(from_tree.branch, remote.RemoteBranch)
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to',
+            from_tree.branch.bzrdir.root_transport.base])
+        self.assertContainsRe(err,
+            "(?m)Doing on-the-fly conversion")
+
+    def test_pull_to_experimental_format_warning(self):
+        """You get a warning for pulling into experimental formats.
+        """
+        from_tree = self.make_branch_and_tree('from', format='development-subtree')
+        to_tree = self.make_branch_and_tree('to', format='development-subtree')
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertContainsRe(err,
+            "(?m)Fetching into experimental format")
+
+    def test_pull_cross_to_experimental_format_warning(self):
+        """You get a warning for pulling into experimental formats.
+        """
+        from_tree = self.make_branch_and_tree('from', format='2a')
+        to_tree = self.make_branch_and_tree('to', format='development-subtree')
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertContainsRe(err,
+            "(?m)Fetching into experimental format")

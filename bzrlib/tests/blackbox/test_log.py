@@ -1,5 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
-# -*- coding: utf-8 -*-
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,29 +12,38 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr log."""
 
+from itertools import izip
 import os
+import re
 
-from bzrlib import osutils
-from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.tests import TestCaseInTempDir, TestCaseWithTransport
-from bzrlib.tests.test_log import (
-    normalize_log,
+from bzrlib import (
+    branchbuilder,
+    errors,
+    log,
+    osutils,
+    tests,
     )
-from bzrlib.tests import test_log
+from bzrlib.tests import (
+    script,
+    test_log,
+    )
 
 
-class TestCaseWithoutPropsHandler(ExternalBase, test_log.TestCaseWithoutPropsHandler):
-    pass
+class TestLog(tests.TestCaseWithTransport, test_log.TestLogMixin):
 
+    def make_minimal_branch(self, path='.', format=None):
+        tree = self.make_branch_and_tree(path, format=format)
+        self.build_tree([path + '/hello.txt'])
+        tree.add('hello.txt')
+        tree.commit(message='message1')
+        return tree
 
-class TestLog(ExternalBase):
-
-    def _prepare(self, path='.', format=None):
+    def make_linear_branch(self, path='.', format=None):
         tree = self.make_branch_and_tree(path, format=format)
         self.build_tree(
             [path + '/hello.txt', path + '/goodbye.txt', path + '/meep.txt'])
@@ -45,133 +53,328 @@ class TestLog(ExternalBase):
         tree.commit(message='message2')
         tree.add('meep.txt')
         tree.commit(message='message3')
-        self.full_log = self.run_bzr(["log", path])[0]
         return tree
 
-    def test_log_null_end_revspec(self):
-        self._prepare()
-        self.assertTrue('revno: 1\n' in self.full_log)
-        self.assertTrue('revno: 2\n' in self.full_log)
-        self.assertTrue('revno: 3\n' in self.full_log)
-        self.assertTrue('message:\n  message1\n' in self.full_log)
-        self.assertTrue('message:\n  message2\n' in self.full_log)
-        self.assertTrue('message:\n  message3\n' in self.full_log)
+    def make_merged_branch(self, path='.', format=None):
+        tree = self.make_linear_branch(path, format)
+        tree2 = tree.bzrdir.sprout('tree2',
+            revision_id=tree.branch.get_rev_id(1)).open_workingtree()
+        tree2.commit(message='tree2 message2')
+        tree2.commit(message='tree2 message3')
+        tree.merge_from_branch(tree2.branch)
+        tree.commit(message='merge')
+        return tree
 
-        log = self.run_bzr("log -r 1..")[0]
-        self.assertEqualDiff(log, self.full_log)
+
+class TestLogWithLogCatcher(TestLog):
+
+    def setUp(self):
+        super(TestLogWithLogCatcher, self).setUp()
+        # Capture log formatter creations
+        class MyLogFormatter(test_log.LogCatcher):
+
+            def __new__(klass, *args, **kwargs):
+                self.log_catcher = test_log.LogCatcher(*args, **kwargs)
+                # Always return our own log formatter
+                return self.log_catcher
+
+        def getme(branch):
+                # Always return our own log formatter class hijacking the
+                # default behavior (which requires setting up a config
+                # variable)
+            return MyLogFormatter
+        self.overrideAttr(log.log_formatter_registry, 'get_default', getme)
+
+    def get_captured_revisions(self):
+        return self.log_catcher.revisions
+
+    def assertLogRevnos(self, args, expected_revnos, working_dir='.'):
+        self.run_bzr(['log'] + args, working_dir=working_dir)
+        self.assertEqual(expected_revnos,
+                         [r.revno for r in self.get_captured_revisions()])
+
+    def assertLogRevnosAndDepths(self, args, expected_revnos_and_depths,
+                                working_dir='.'):
+        self.run_bzr(['log'] + args, working_dir=working_dir)
+        self.assertEqual(expected_revnos_and_depths,
+                         [(r.revno, r.merge_depth)
+                           for r in self.get_captured_revisions()])
+
+
+class TestLogRevSpecs(TestLogWithLogCatcher):
+
+    def test_log_no_revspec(self):
+        self.make_linear_branch()
+        self.assertLogRevnos([], ['3', '2', '1'])
+
+    def test_log_null_end_revspec(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r1..'], ['3', '2', '1'])
 
     def test_log_null_begin_revspec(self):
-        self._prepare()
-        log = self.run_bzr("log -r ..3")[0]
-        self.assertEqualDiff(self.full_log, log)
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r..3'], ['3', '2', '1'])
 
     def test_log_null_both_revspecs(self):
-        self._prepare()
-        log = self.run_bzr("log -r ..")[0]
-        self.assertEqualDiff(self.full_log, log)
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r..'], ['3', '2', '1'])
+
+    def test_log_negative_begin_revspec_full_log(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r-3..'], ['3', '2', '1'])
+
+    def test_log_negative_both_revspec_full_log(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r-3..-1'], ['3', '2', '1'])
+
+    def test_log_negative_both_revspec_partial(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r-3..-2'], ['2', '1'])
+
+    def test_log_negative_begin_revspec(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r-2..'], ['3', '2'])
+
+    def test_log_positive_revspecs(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r1..3'], ['3', '2', '1'])
+
+    def test_log_dotted_revspecs(self):
+        self.make_merged_branch()
+        self.assertLogRevnos(['-n0', '-r1..1.1.1'], ['1.1.1', '1'])
+
+    def test_log_limit(self):
+        tree = self.make_branch_and_tree('.')
+        # We want more commits than our batch size starts at
+        for pos in range(10):
+            tree.commit("%s" % pos)
+        self.assertLogRevnos(['--limit', '2'], ['10', '9'])
+
+    def test_log_limit_short(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-l', '2'], ['3', '2'])
+
+    def test_log_change_revno(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-c1'], ['1'])
+
+
+class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
+
+    def setUp(self):
+        super(TestLogMergedLinearAncestry, self).setUp()
+        # FIXME: Using a MemoryTree would be even better here (but until we
+        # stop calling run_bzr, there is no point) --vila 100118.
+        builder = branchbuilder.BranchBuilder(self.get_transport())
+        builder.start_series()
+        # mainline
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('2', ['1'], [])
+        # branch
+        builder.build_snapshot('1.1.1', ['1'], [])
+        # merge branch into mainline
+        builder.build_snapshot('3', ['2', '1.1.1'], [])
+        # new commits in branch
+        builder.build_snapshot('1.1.2', ['1.1.1'], [])
+        builder.build_snapshot('1.1.3', ['1.1.2'], [])
+        # merge branch into mainline
+        builder.build_snapshot('4', ['3', '1.1.3'], [])
+        # merge mainline into branch
+        builder.build_snapshot('1.1.4', ['1.1.3', '4'], [])
+        # merge branch into mainline
+        builder.build_snapshot('5', ['4', '1.1.4'], [])
+        builder.finish_series()
+
+    def test_n0(self):
+        self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4'],
+                             ['1.1.4', '4', '1.1.3', '1.1.2', '3', '1.1.1'])
+    def test_n0_forward(self):
+        self.assertLogRevnos(['-n0', '-r1.1.1..1.1.4', '--forward'],
+                             ['3', '1.1.1', '4', '1.1.2', '1.1.3', '1.1.4'])
+
+    def test_n1(self):
+        # starting from 1.1.4 we follow the left-hand ancestry
+        self.assertLogRevnos(['-n1', '-r1.1.1..1.1.4'],
+                             ['1.1.4', '1.1.3', '1.1.2', '1.1.1'])
+
+    def test_n1_forward(self):
+        self.assertLogRevnos(['-n1', '-r1.1.1..1.1.4', '--forward'],
+                             ['1.1.1', '1.1.2', '1.1.3', '1.1.4'])
+
+
+class Test_GenerateAllRevisions(TestLogWithLogCatcher):
+
+    def setUp(self):
+        super(Test_GenerateAllRevisions, self).setUp()
+        builder = self.make_branch_with_many_merges()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        self.branch = b
+
+    def make_branch_with_many_merges(self, path='.', format=None):
+        builder = branchbuilder.BranchBuilder(self.get_transport())
+        builder.start_series()
+        # The graph below may look a bit complicated (and it may be but I've
+        # banged my head enough on it) but the bug requires at least dotted
+        # revnos *and* merged revisions below that.
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2.1.1', ['2'], [])
+        builder.build_snapshot('3', ['2', '1.1.1'], [])
+        builder.build_snapshot('2.1.2', ['2.1.1'], [])
+        builder.build_snapshot('2.2.1', ['2.1.1'], [])
+        builder.build_snapshot('2.1.3', ['2.1.2', '2.2.1'], [])
+        builder.build_snapshot('4', ['3', '2.1.3'], [])
+        builder.build_snapshot('5', ['4', '2.1.2'], [])
+        builder.finish_series()
+        return builder
+
+    def test_not_an_ancestor(self):
+        self.assertRaises(errors.BzrCommandError,
+                          log._generate_all_revisions,
+                          self.branch, '1.1.1', '2.1.3', 'reverse',
+                          delayed_graph_generation=True)
+
+    def test_wrong_order(self):
+        self.assertRaises(errors.BzrCommandError,
+                          log._generate_all_revisions,
+                          self.branch, '5', '2.1.3', 'reverse',
+                          delayed_graph_generation=True)
+
+    def test_no_start_rev_id_with_end_rev_id_being_a_merge(self):
+        revs = log._generate_all_revisions(
+            self.branch, None, '2.1.3',
+            'reverse', delayed_graph_generation=True)
+
+
+class TestLogRevSpecsWithPaths(TestLogWithLogCatcher):
+
+    def test_log_revno_n_path_wrong_namespace(self):
+        self.make_linear_branch('branch1')
+        self.make_linear_branch('branch2')
+        # There is no guarantee that a path exist between two arbitrary
+        # revisions.
+        self.run_bzr("log -r revno:2:branch1..revno:3:branch2", retcode=3)
+
+    def test_log_revno_n_path_correct_order(self):
+        self.make_linear_branch('branch2')
+        self.assertLogRevnos(['-rrevno:1:branch2..revno:3:branch2'],
+                             ['3', '2','1'])
+
+    def test_log_revno_n_path(self):
+        self.make_linear_branch('branch2')
+        self.assertLogRevnos(['-rrevno:1:branch2'],
+                             ['1'])
+        rev_props = self.log_catcher.revisions[0].rev.properties
+        self.assertEqual('branch2', rev_props['branch-nick'])
+
+
+class TestLogErrors(TestLog):
 
     def test_log_zero_revspec(self):
-        self._prepare()
-        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+        self.make_minimal_branch()
+        self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r0'])
 
     def test_log_zero_begin_revspec(self):
-        self._prepare()
-        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+        self.make_linear_branch()
+        self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r0..2'])
 
     def test_log_zero_end_revspec(self):
-        self._prepare()
-        self.run_bzr_error('bzr: ERROR: Logging revision 0 is invalid.',
+        self.make_linear_branch()
+        self.run_bzr_error(['bzr: ERROR: Logging revision 0 is invalid.'],
                            ['log', '-r-2..0'])
 
-    def test_log_unsupported_timezone(self):
-        self._prepare()
-        self.run_bzr_error('bzr: ERROR: Unsupported timezone format "foo", '
-                           'options are "utc", "original", "local".',
-                           ['log', '--timezone', 'foo'])
+    def test_log_nonexistent_revno(self):
+        self.make_minimal_branch()
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '1234' "
+                            "does not exist in branch:"],
+                           ['log', '-r1234'])
 
-    def test_log_negative_begin_revspec_full_log(self):
-        self._prepare()
-        log = self.run_bzr("log -r -3..")[0]
-        self.assertEqualDiff(self.full_log, log)
+    def test_log_nonexistent_dotted_revno(self):
+        self.make_minimal_branch()
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '123.123' "
+                            "does not exist in branch:"],
+                           ['log',  '-r123.123'])
 
-    def test_log_negative_both_revspec_full_log(self):
-        self._prepare()
-        log = self.run_bzr("log -r -3..-1")[0]
-        self.assertEqualDiff(self.full_log, log)
+    def test_log_change_nonexistent_revno(self):
+        self.make_minimal_branch()
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '1234' "
+                            "does not exist in branch:"],
+                           ['log',  '-c1234'])
 
-    def test_log_negative_both_revspec_partial(self):
-        self._prepare()
-        log = self.run_bzr("log -r -3..-2")[0]
-        self.assertTrue('revno: 1\n' in log)
-        self.assertTrue('revno: 2\n' in log)
-        self.assertTrue('revno: 3\n' not in log)
+    def test_log_change_nonexistent_dotted_revno(self):
+        self.make_minimal_branch()
+        self.run_bzr_error(["bzr: ERROR: Requested revision: '123.123' "
+                            "does not exist in branch:"],
+                           ['log', '-c123.123'])
 
-    def test_log_negative_begin_revspec(self):
-        self._prepare()
-        log = self.run_bzr("log -r -2..")[0]
-        self.assertTrue('revno: 1\n' not in log)
-        self.assertTrue('revno: 2\n' in log)
-        self.assertTrue('revno: 3\n' in log)
+    def test_log_change_single_revno_only(self):
+        self.make_minimal_branch()
+        self.run_bzr_error(['bzr: ERROR: Option --change does not'
+                           ' accept revision ranges'],
+                           ['log', '--change', '2..3'])
 
-    def test_log_positive_revspecs(self):
-        self._prepare()
-        log = self.run_bzr("log -r 1..3")[0]
-        self.assertEqualDiff(self.full_log, log)
+    def test_log_change_incompatible_with_revision(self):
+        self.run_bzr_error(['bzr: ERROR: --revision and --change'
+                           ' are mutually exclusive'],
+                           ['log', '--change', '2', '--revision', '3'])
+
+    def test_log_nonexistent_file(self):
+        self.make_minimal_branch()
+        # files that don't exist in either the basis tree or working tree
+        # should give an error
+        out, err = self.run_bzr('log does-not-exist', retcode=3)
+        self.assertContainsRe(err,
+                              'Path unknown at end or start of revision range: '
+                              'does-not-exist')
 
     def test_log_reversed_revspecs(self):
-        self._prepare()
+        self.make_linear_branch()
         self.run_bzr_error(('bzr: ERROR: Start revision must be older than '
                             'the end revision.\n',),
                            ['log', '-r3..1'])
 
-    def test_log_revno_n_path(self):
-        self._prepare(path='branch1')
-        self._prepare(path='branch2')
-        log = self.run_bzr("log -r revno:2:branch1..revno:3:branch2",
-                          retcode=3)[0]
-        log = self.run_bzr("log -r revno:1:branch2..revno:3:branch2")[0]
-        self.assertEqualDiff(self.full_log, log)
-        log = self.run_bzr("log -r revno:1:branch2")[0]
-        self.assertTrue('revno: 1\n' in log)
-        self.assertTrue('revno: 2\n' not in log)
-        self.assertTrue('branch nick: branch2\n' in log)
-        self.assertTrue('branch nick: branch1\n' not in log)
+    def test_log_reversed_dotted_revspecs(self):
+        self.make_merged_branch()
+        self.run_bzr_error(('bzr: ERROR: Start revision not found in '
+                            'left-hand history of end revision.\n',),
+                           "log -r 1.1.1..1")
 
-    def test_log_change_revno(self):
-        self._prepare()
-        expected_log = self.run_bzr("log -r 1")[0]
-        log = self.run_bzr("log -c 1")[0]
-        self.assertEqualDiff(expected_log, log)
+    def test_log_bad_message_re(self):
+        """Bad --message argument gives a sensible message
+        
+        See https://bugs.launchpad.net/bzr/+bug/251352
+        """
+        self.make_minimal_branch()
+        out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
+        self.assertEqual("bzr: ERROR: Invalid regular expression"
+            " in log message filter"
+            ": '*'"
+            ": nothing to repeat\n", err)
+        self.assertEqual('', out)
 
-    def test_log_change_single_revno(self):
-        self._prepare()
-        self.run_bzr_error('bzr: ERROR: Option --change does not'
-                           ' accept revision ranges',
-                           ['log', '--change', '2..3'])
+    def test_log_unsupported_timezone(self):
+        self.make_linear_branch()
+        self.run_bzr_error(['bzr: ERROR: Unsupported timezone format "foo", '
+                            'options are "utc", "original", "local".'],
+                           ['log', '--timezone', 'foo'])
 
-    def test_log_change_incompatible_with_revision(self):
-        self._prepare()
-        self.run_bzr_error('bzr: ERROR: --revision and --change'
-                           ' are mutually exclusive',
-                           ['log', '--change', '2', '--revision', '3'])
 
-    def test_log_nonexistent_file(self):
-        # files that don't exist in either the basis tree or working tree
-        # should give an error
-        wt = self.make_branch_and_tree('.')
-        out, err = self.run_bzr('log does-not-exist', retcode=3)
-        self.assertContainsRe(
-            err, 'Path does not have any revision history: does-not-exist')
+class TestLogTags(TestLog):
 
     def test_log_with_tags(self):
-        tree = self._prepare(format='dirstate-tags')
+        tree = self.make_linear_branch(format='dirstate-tags')
         branch = tree.branch
         branch.tags.set_tag('tag1', branch.get_rev_id(1))
         branch.tags.set_tag('tag1.1', branch.get_rev_id(1))
-        branch.tags.set_tag('tag3', branch.last_revision()) 
-        
+        branch.tags.set_tag('tag3', branch.last_revision())
+
         log = self.run_bzr("log -r-1")[0]
         self.assertTrue('tags: tag3' in log)
 
@@ -181,166 +384,254 @@ class TestLog(ExternalBase):
         self.assertContainsRe(log, r'tags: (tag1, tag1\.1|tag1\.1, tag1)')
 
     def test_merged_log_with_tags(self):
-        branch1_tree = self._prepare(path='branch1', format='dirstate-tags')
+        branch1_tree = self.make_linear_branch('branch1',
+                                               format='dirstate-tags')
         branch1 = branch1_tree.branch
         branch2_tree = branch1_tree.bzrdir.sprout('branch2').open_workingtree()
         branch1_tree.commit(message='foobar', allow_pointless=True)
         branch1.tags.set_tag('tag1', branch1.last_revision())
-        os.chdir('branch2')
-        self.run_bzr('merge ../branch1') # tags don't propagate otherwise
+        # tags don't propagate if we don't merge
+        self.run_bzr('merge ../branch1', working_dir='branch2')
         branch2_tree.commit(message='merge branch 1')
-        log = self.run_bzr("log -r-1")[0]
+        log = self.run_bzr("log -n0 -r-1", working_dir='branch2')[0]
         self.assertContainsRe(log, r'    tags: tag1')
-        log = self.run_bzr("log -r3.1.1")[0]
+        log = self.run_bzr("log -n0 -r3.1.1", working_dir='branch2')[0]
         self.assertContainsRe(log, r'tags: tag1')
 
-    def test_log_limit(self):
-        tree = self.make_branch_and_tree('.')
-        # We want more commits than our batch size starts at
-        for pos in range(10):
-            tree.commit("%s" % pos)
-        log = self.run_bzr("log --limit 2")[0]
-        self.assertNotContainsRe(log, r'revno: 1\n')
-        self.assertNotContainsRe(log, r'revno: 2\n')
-        self.assertNotContainsRe(log, r'revno: 3\n')
-        self.assertNotContainsRe(log, r'revno: 4\n')
-        self.assertNotContainsRe(log, r'revno: 5\n')
-        self.assertNotContainsRe(log, r'revno: 6\n')
-        self.assertNotContainsRe(log, r'revno: 7\n')
-        self.assertNotContainsRe(log, r'revno: 8\n')
-        self.assertContainsRe(log, r'revno: 9\n')
-        self.assertContainsRe(log, r'revno: 10\n')
 
-    def test_log_limit_short(self):
-        self._prepare()
-        log = self.run_bzr("log -l 2")[0]
-        self.assertNotContainsRe(log, r'revno: 1\n')
-        self.assertContainsRe(log, r'revno: 2\n')
-        self.assertContainsRe(log, r'revno: 3\n')
+class TestLogVerbose(TestLog):
+
+    def setUp(self):
+        super(TestLogVerbose, self).setUp()
+        self.make_minimal_branch()
+
+    def assertUseShortDeltaFormat(self, cmd):
+        log = self.run_bzr(cmd)[0]
+        # Check that we use the short status format
+        self.assertContainsRe(log, '(?m)^\s*A  hello.txt$')
+        self.assertNotContainsRe(log, '(?m)^\s*added:$')
+
+    def assertUseLongDeltaFormat(self, cmd):
+        log = self.run_bzr(cmd)[0]
+        # Check that we use the long status format
+        self.assertNotContainsRe(log, '(?m)^\s*A  hello.txt$')
+        self.assertContainsRe(log, '(?m)^\s*added:$')
+
+    def test_log_short_verbose(self):
+        self.assertUseShortDeltaFormat(['log', '--short', '-v'])
+
+    def test_log_short_verbose_verbose(self):
+        self.assertUseLongDeltaFormat(['log', '--short', '-vv'])
+
+    def test_log_long_verbose(self):
+        # Check that we use the long status format, ignoring the verbosity
+        # level
+        self.assertUseLongDeltaFormat(['log', '--long', '-v'])
+
+    def test_log_long_verbose_verbose(self):
+        # Check that we use the long status format, ignoring the verbosity
+        # level
+        self.assertUseLongDeltaFormat(['log', '--long', '-vv'])
 
 
-class TestLogMerges(TestCaseWithoutPropsHandler):
+class TestLogMerges(TestLogWithLogCatcher):
 
-    def _prepare(self):
-        parent_tree = self.make_branch_and_tree('parent')
-        parent_tree.commit(message='first post', allow_pointless=True)
-        child_tree = parent_tree.bzrdir.sprout('child').open_workingtree()
-        child_tree.commit(message='branch 1', allow_pointless=True)
-        smaller_tree = \
-                child_tree.bzrdir.sprout('smallerchild').open_workingtree()
-        smaller_tree.commit(message='branch 2', allow_pointless=True)
-        child_tree.merge_from_branch(smaller_tree.branch)
-        child_tree.commit(message='merge branch 2')
-        parent_tree.merge_from_branch(child_tree.branch)
-        parent_tree.commit(message='merge branch 1')
-        os.chdir('parent')
+    def setUp(self):
+        super(TestLogMerges, self).setUp()
+        self.make_branches_with_merges()
+
+    def make_branches_with_merges(self):
+        level0 = self.make_branch_and_tree('level0')
+        self.wt_commit(level0, 'in branch level0')
+        level1 = level0.bzrdir.sprout('level1').open_workingtree()
+        self.wt_commit(level1, 'in branch level1')
+        level2 = level1.bzrdir.sprout('level2').open_workingtree()
+        self.wt_commit(level2, 'in branch level2')
+        level1.merge_from_branch(level2.branch)
+        self.wt_commit(level1, 'merge branch level2')
+        level0.merge_from_branch(level1.branch)
+        self.wt_commit(level0, 'merge branch level1')
 
     def test_merges_are_indented_by_level(self):
-        self._prepare()
-        out,err = self.run_bzr('log')
-        self.assertEqual('', err)
-        log = normalize_log(out)
-        self.assertEqualDiff(log, """\
-------------------------------------------------------------
-revno: 2
-committer: Lorem Ipsum <test@example.com>
-branch nick: parent
-timestamp: Just now
-message:
-  merge branch 1
-    ------------------------------------------------------------
-    revno: 1.1.2
-    committer: Lorem Ipsum <test@example.com>
-    branch nick: child
-    timestamp: Just now
-    message:
-      merge branch 2
-        ------------------------------------------------------------
-        revno: 1.2.1
-        committer: Lorem Ipsum <test@example.com>
-        branch nick: smallerchild
-        timestamp: Just now
-        message:
-          branch 2
-    ------------------------------------------------------------
-    revno: 1.1.1
-    committer: Lorem Ipsum <test@example.com>
-    branch nick: child
-    timestamp: Just now
-    message:
-      branch 1
-------------------------------------------------------------
-revno: 1
-committer: Lorem Ipsum <test@example.com>
-branch nick: parent
-timestamp: Just now
-message:
-  first post
-""")
+        self.run_bzr(['log', '-n0'], working_dir='level0')
+        revnos_and_depth = [(r.revno, r.merge_depth)
+                            for r in self.get_captured_revisions()]
+        self.assertEqual([('2', 0), ('1.1.2', 1), ('1.2.1', 2), ('1.1.1', 1),
+                          ('1', 0)],
+                         [(r.revno, r.merge_depth)
+                            for r in self.get_captured_revisions()])
+
+    def test_force_merge_revisions_off(self):
+        self.assertLogRevnos(['-n1'], ['2', '1'], working_dir='level0')
+
+    def test_force_merge_revisions_on(self):
+        self.assertLogRevnos(['-n0'], ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
+                             working_dir='level0')
+
+    def test_include_merges(self):
+        # Confirm --include-merges gives the same output as -n0
+        self.assertLogRevnos(['--include-merges'],
+                             ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
+                             working_dir='level0')
+        self.assertLogRevnos(['--include-merges'],
+                             ['2', '1.1.2', '1.2.1', '1.1.1', '1'],
+                             working_dir='level0')
+        out_im, err_im = self.run_bzr('log --include-merges',
+                                      working_dir='level0')
+        out_n0, err_n0 = self.run_bzr('log -n0', working_dir='level0')
+        self.assertEqual('', err_im)
+        self.assertEqual('', err_n0)
+        self.assertEqual(out_im, out_n0)
+
+    def test_force_merge_revisions_N(self):
+        self.assertLogRevnos(['-n2'],
+                             ['2', '1.1.2', '1.1.1', '1'],
+                             working_dir='level0')
 
     def test_merges_single_merge_rev(self):
-        self._prepare()
-        out,err = self.run_bzr('log -r1.1.2')
-        self.assertEqual('', err)
-        log = normalize_log(out)
-        self.assertEqualDiff(log, """\
-------------------------------------------------------------
-revno: 1.1.2
-committer: Lorem Ipsum <test@example.com>
-branch nick: child
-timestamp: Just now
-message:
-  merge branch 2
-    ------------------------------------------------------------
-    revno: 1.2.1
-    committer: Lorem Ipsum <test@example.com>
-    branch nick: smallerchild
-    timestamp: Just now
-    message:
-      branch 2
-""")
+        self.assertLogRevnosAndDepths(['-n0', '-r1.1.2'],
+                                      [('1.1.2', 0), ('1.2.1', 1)],
+                                      working_dir='level0')
 
     def test_merges_partial_range(self):
-        self._prepare()
-        out,err = self.run_bzr('log -r1.1.1..1.1.2')
+        self.assertLogRevnosAndDepths(
+                ['-n0', '-r1.1.1..1.1.2'],
+                [('1.1.2', 0), ('1.2.1', 1), ('1.1.1', 0)],
+                working_dir='level0')
+
+    def test_merges_partial_range_ignore_before_lower_bound(self):
+        """Dont show revisions before the lower bound's merged revs"""
+        self.assertLogRevnosAndDepths(
+                ['-n0', '-r1.1.2..2'],
+                [('2', 0), ('1.1.2', 1), ('1.2.1', 2)],
+                working_dir='level0')
+
+
+class TestLogDiff(TestLogWithLogCatcher):
+
+    # FIXME: We need specific tests for each LogFormatter about how the diffs
+    # are displayed: --long indent them by depth, --short use a fixed
+    # indent and --line does't display them. -- vila 10019
+
+    def setUp(self):
+        super(TestLogDiff, self).setUp()
+        self.make_branch_with_diffs()
+
+    def make_branch_with_diffs(self):
+        level0 = self.make_branch_and_tree('level0')
+        self.build_tree(['level0/file1', 'level0/file2'])
+        level0.add('file1')
+        level0.add('file2')
+        self.wt_commit(level0, 'in branch level0')
+
+        level1 = level0.bzrdir.sprout('level1').open_workingtree()
+        self.build_tree_contents([('level1/file2', 'hello\n')])
+        self.wt_commit(level1, 'in branch level1')
+        level0.merge_from_branch(level1.branch)
+        self.wt_commit(level0, 'merge branch level1')
+
+    def _diff_file1_revno1(self):
+        return """=== added file 'file1'
+--- file1\t1970-01-01 00:00:00 +0000
++++ file1\t2005-11-22 00:00:00 +0000
+@@ -0,0 +1,1 @@
++contents of level0/file1
+
+"""
+
+    def _diff_file2_revno2(self):
+        return """=== modified file 'file2'
+--- file2\t2005-11-22 00:00:00 +0000
++++ file2\t2005-11-22 00:00:01 +0000
+@@ -1,1 +1,1 @@
+-contents of level0/file2
++hello
+
+"""
+
+    def _diff_file2_revno1_1_1(self):
+        return """=== modified file 'file2'
+--- file2\t2005-11-22 00:00:00 +0000
++++ file2\t2005-11-22 00:00:01 +0000
+@@ -1,1 +1,1 @@
+-contents of level0/file2
++hello
+
+"""
+
+    def _diff_file2_revno1(self):
+        return """=== added file 'file2'
+--- file2\t1970-01-01 00:00:00 +0000
++++ file2\t2005-11-22 00:00:00 +0000
+@@ -0,0 +1,1 @@
++contents of level0/file2
+
+"""
+
+    def assertLogRevnosAndDiff(self, args, expected,
+                            working_dir='.'):
+        self.run_bzr(['log', '-p'] + args, working_dir=working_dir)
+        expected_revnos_and_depths = [
+            (revno, depth) for revno, depth, diff in expected]
+        # Check the revnos and depths first to make debugging easier
+        self.assertEqual(expected_revnos_and_depths,
+                         [(r.revno, r.merge_depth)
+                           for r in self.get_captured_revisions()])
+        # Now check the diffs, adding the revno  in case of failure
+        fmt = 'In revno %s\n%s'
+        for expected_rev, actual_rev in izip(expected,
+                                             self.get_captured_revisions()):
+            revno, depth, expected_diff = expected_rev
+            actual_diff = actual_rev.diff
+            self.assertEqualDiff(fmt % (revno, expected_diff),
+                                 fmt % (revno, actual_diff))
+
+    def test_log_diff_with_merges(self):
+        self.assertLogRevnosAndDiff(
+            ['-n0'],
+            [('2', 0, self._diff_file2_revno2()),
+             ('1.1.1', 1, self._diff_file2_revno1_1_1()),
+             ('1', 0, self._diff_file1_revno1()
+              + self._diff_file2_revno1())],
+            working_dir='level0')
+
+
+    def test_log_diff_file1(self):
+        self.assertLogRevnosAndDiff(['-n0', 'file1'],
+                                    [('1', 0, self._diff_file1_revno1())],
+                                    working_dir='level0')
+
+    def test_log_diff_file2(self):
+        self.assertLogRevnosAndDiff(['-n1', 'file2'],
+                                    [('2', 0, self._diff_file2_revno2()),
+                                     ('1', 0, self._diff_file2_revno1())],
+                                    working_dir='level0')
+
+
+class TestLogUnicodeDiff(TestLog):
+
+    def test_log_show_diff_non_ascii(self):
+        # Smoke test for bug #328007 UnicodeDecodeError on 'log -p'
+        message = u'Message with \xb5'
+        body = 'Body with \xb5\n'
+        wt = self.make_branch_and_tree('.')
+        self.build_tree_contents([('foo', body)])
+        wt.add('foo')
+        wt.commit(message=message)
+        # check that command won't fail with unicode error
+        # don't care about exact output because we have other tests for this
+        out,err = self.run_bzr('log -p --long')
+        self.assertNotEqual('', out)
         self.assertEqual('', err)
-        log = normalize_log(out)
-        self.assertEqualDiff(log, """\
-------------------------------------------------------------
-revno: 1.1.2
-committer: Lorem Ipsum <test@example.com>
-branch nick: child
-timestamp: Just now
-message:
-  merge branch 2
-    ------------------------------------------------------------
-    revno: 1.2.1
-    committer: Lorem Ipsum <test@example.com>
-    branch nick: smallerchild
-    timestamp: Just now
-    message:
-      branch 2
-------------------------------------------------------------
-revno: 1.1.1
-committer: Lorem Ipsum <test@example.com>
-branch nick: child
-timestamp: Just now
-message:
-  branch 1
-""")
+        out,err = self.run_bzr('log -p --short')
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
+        out,err = self.run_bzr('log -p --line')
+        self.assertNotEqual('', out)
+        self.assertEqual('', err)
 
-    def test_merges_nonsupporting_formatter(self):
-        self._prepare()
-        err_msg = 'Selected log formatter only supports mainline revisions.'
-        # The single revision case is tested in the core tests
-        # since all standard formatters support single merge revisions.
-        out,err = self.run_bzr('log --short -r1..1.1.2', retcode=3)
-        self.assertContainsRe(err, err_msg)
-        out,err = self.run_bzr('log --short -r1.1.1..1.1.2', retcode=3)
-        self.assertContainsRe(err, err_msg)
 
- 
-class TestLogEncodings(TestCaseInTempDir):
+class TestLogEncodings(tests.TestCaseInTempDir):
 
     _mu = u'\xb5'
     _message = u'Message with \xb5'
@@ -351,7 +642,7 @@ class TestLogEncodings(TestCaseInTempDir):
         'latin-1',
         'iso-8859-1',
         'cp437', # Common windows encoding
-        'cp1251', # Alexander Belchenko's windows encoding
+        'cp1251', # Russian windows encoding
         'cp1258', # Common windows encoding
     ]
     # Encodings which cannot encode mu
@@ -362,17 +653,13 @@ class TestLogEncodings(TestCaseInTempDir):
     ]
 
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
-        self.user_encoding = osutils._cached_user_encoding
-
-    def tearDown(self):
-        osutils._cached_user_encoding = self.user_encoding
-        TestCaseInTempDir.tearDown(self)
+        super(TestLogEncodings, self).setUp()
+        self.overrideAttr(osutils, '_cached_user_encoding')
 
     def create_branch(self):
         bzr = self.run_bzr
         bzr('init')
-        open('a', 'wb').write('some stuff\n')
+        self.build_tree_contents([('a', 'some stuff\n')])
         bzr('add a')
         bzr(['commit', '-m', self._message])
 
@@ -441,7 +728,7 @@ class TestLogEncodings(TestCaseInTempDir):
         self.assertEquals(-1, stdout.find(test_in_cp1251))
 
 
-class TestLogFile(TestCaseWithTransport):
+class TestLogFile(TestLogWithLogCatcher):
 
     def test_log_local_branch_file(self):
         """We should be able to log files in local treeless branches"""
@@ -452,8 +739,8 @@ class TestLogFile(TestCaseWithTransport):
         tree.bzrdir.destroy_workingtree()
         self.run_bzr('log tree/file')
 
-    def test_log_file(self):
-        """The log for a particular file should only list revs for that file"""
+    def prepare_tree(self, complex=False):
+        # The complex configuration includes deletes and renames
         tree = self.make_branch_and_tree('parent')
         self.build_tree(['parent/file1', 'parent/file2', 'parent/file3'])
         tree.add('file1')
@@ -467,46 +754,130 @@ class TestLogFile(TestCaseWithTransport):
         child_tree.commit(message='branch 1')
         tree.merge_from_branch(child_tree.branch)
         tree.commit(message='merge child branch')
+        if complex:
+            tree.remove('file2')
+            tree.commit('remove file2')
+            tree.rename_one('file3', 'file4')
+            tree.commit('file3 is now called file4')
+            tree.remove('file1')
+            tree.commit('remove file1')
         os.chdir('parent')
-        log = self.run_bzr('log file1')[0]
-        self.assertContainsRe(log, 'revno: 1\n')
-        self.assertNotContainsRe(log, 'revno: 2\n')
-        self.assertNotContainsRe(log, 'revno: 3\n')
-        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log file2')[0]
-        self.assertNotContainsRe(log, 'revno: 1\n')
-        self.assertContainsRe(log, 'revno: 2\n')
-        self.assertNotContainsRe(log, 'revno: 3\n')
-        self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log file3')[0]
-        self.assertNotContainsRe(log, 'revno: 1\n')
-        self.assertNotContainsRe(log, 'revno: 2\n')
-        self.assertContainsRe(log, 'revno: 3\n')
-        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log -r3.1.1 file2')[0]
-        self.assertNotContainsRe(log, 'revno: 1\n')
-        self.assertNotContainsRe(log, 'revno: 2\n')
-        self.assertNotContainsRe(log, 'revno: 3\n')
-        self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log -r4 file2')[0]
-        self.assertNotContainsRe(log, 'revno: 1\n')
-        self.assertNotContainsRe(log, 'revno: 2\n')
-        self.assertNotContainsRe(log, 'revno: 3\n')
-        self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log -r3.. file2')[0]
-        self.assertNotContainsRe(log, 'revno: 1\n')
-        self.assertNotContainsRe(log, 'revno: 2\n')
-        self.assertNotContainsRe(log, 'revno: 3\n')
-        self.assertContainsRe(log, 'revno: 3.1.1\n')
-        self.assertContainsRe(log, 'revno: 4\n')
-        log = self.run_bzr('log -r..3 file2')[0]
-        self.assertNotContainsRe(log, 'revno: 1\n')
-        self.assertContainsRe(log, 'revno: 2\n')
-        self.assertNotContainsRe(log, 'revno: 3\n')
-        self.assertNotContainsRe(log, 'revno: 3.1.1\n')
-        self.assertNotContainsRe(log, 'revno: 4\n')
+
+    # FIXME: It would be good to parametrize the following tests against all
+    # formatters. But the revisions selection is not *currently* part of the
+    # LogFormatter contract, so using LogCatcher is sufficient -- vila 100118
+    def test_log_file1(self):
+        self.prepare_tree()
+        self.assertLogRevnos(['-n0', 'file1'], ['1'])
+
+    def test_log_file2(self):
+        self.prepare_tree()
+        # file2 full history
+        self.assertLogRevnos(['-n0', 'file2'], ['4', '3.1.1', '2'])
+        # file2 in a merge revision
+        self.assertLogRevnos(['-n0', '-r3.1.1', 'file2'], ['3.1.1'])
+        # file2 in a mainline revision
+        self.assertLogRevnos(['-n0', '-r4', 'file2'], ['4', '3.1.1'])
+        # file2 since a revision
+        self.assertLogRevnos(['-n0', '-r3..', 'file2'], ['4', '3.1.1'])
+        # file2 up to a revision
+        self.assertLogRevnos(['-n0', '-r..3', 'file2'], ['2'])
+
+    def test_log_file3(self):
+        self.prepare_tree()
+        self.assertLogRevnos(['-n0', 'file3'], ['3'])
+
+    def test_log_file_historical_missing(self):
+        # Check logging a deleted file gives an error if the
+        # file isn't found at the end or start of the revision range
+        self.prepare_tree(complex=True)
+        err_msg = "Path unknown at end or start of revision range: file2"
+        err = self.run_bzr('log file2', retcode=3)[1]
+        self.assertContainsRe(err, err_msg)
+
+    def test_log_file_historical_end(self):
+        # Check logging a deleted file is ok if the file existed
+        # at the end the revision range
+        self.prepare_tree(complex=True)
+        self.assertLogRevnos(['-n0', '-r..4', 'file2'], ['4', '3.1.1', '2'])
+
+    def test_log_file_historical_start(self):
+        # Check logging a deleted file is ok if the file existed
+        # at the start of the revision range
+        self.prepare_tree(complex=True)
+        self.assertLogRevnos(['file1'], ['1'])
+
+    def test_log_file_renamed(self):
+        """File matched against revision range, not current tree."""
+        self.prepare_tree(complex=True)
+
+        # Check logging a renamed file gives an error by default
+        err_msg = "Path unknown at end or start of revision range: file3"
+        err = self.run_bzr('log file3', retcode=3)[1]
+        self.assertContainsRe(err, err_msg)
+
+        # Check we can see a renamed file if we give the right end revision
+        self.assertLogRevnos(['-r..4', 'file3'], ['3'])
+
+
+class TestLogMultiple(TestLogWithLogCatcher):
+
+    def prepare_tree(self):
+        tree = self.make_branch_and_tree('parent')
+        self.build_tree([
+            'parent/file1',
+            'parent/file2',
+            'parent/dir1/',
+            'parent/dir1/file5',
+            'parent/dir1/dir2/',
+            'parent/dir1/dir2/file3',
+            'parent/file4'])
+        tree.add('file1')
+        tree.commit('add file1')
+        tree.add('file2')
+        tree.commit('add file2')
+        tree.add(['dir1', 'dir1/dir2', 'dir1/dir2/file3'])
+        tree.commit('add file3')
+        tree.add('file4')
+        tree.commit('add file4')
+        tree.add('dir1/file5')
+        tree.commit('add file5')
+        child_tree = tree.bzrdir.sprout('child').open_workingtree()
+        self.build_tree_contents([('child/file2', 'hello')])
+        child_tree.commit(message='branch 1')
+        tree.merge_from_branch(child_tree.branch)
+        tree.commit(message='merge child branch')
+        os.chdir('parent')
+
+    def test_log_files(self):
+        """The log for multiple file should only list revs for those files"""
+        self.prepare_tree()
+        self.assertLogRevnos(['file1', 'file2', 'dir1/dir2/file3'],
+                             ['6', '5.1.1', '3', '2', '1'])
+
+    def test_log_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        self.assertLogRevnos(['dir1'], ['5', '3'])
+
+    def test_log_nested_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        self.assertLogRevnos(['dir1/dir2'], ['3'])
+
+    def test_log_in_nested_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        os.chdir("dir1")
+        self.assertLogRevnos(['.'], ['5', '3'])
+
+    def test_log_files_and_directories(self):
+        """Logging files and directories together should be fine."""
+        self.prepare_tree()
+        self.assertLogRevnos(['file4', 'dir1/dir2'], ['4', '3'])
+
+    def test_log_files_and_dirs_in_nested_directory(self):
+        """The log for a directory should show all nested files."""
+        self.prepare_tree()
+        os.chdir("dir1")
+        self.assertLogRevnos(['dir2', 'file5'], ['5', '3'])

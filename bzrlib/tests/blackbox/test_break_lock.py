@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for lock-breaking user interface"""
 
@@ -60,7 +60,7 @@ class TestBreakLock(ExternalBase):
         local_branch.bind(self.master_branch)
         checkoutdir = bzrlib.bzrdir.BzrDir.create('checkout')
         bzrlib.branch.BranchReferenceFormat().initialize(
-            checkoutdir, local_branch)
+            checkoutdir, target_branch=local_branch)
         self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):
@@ -70,8 +70,8 @@ class TestBreakLock(ExternalBase):
 
     def test_break_lock_everything_locked(self):
         ### if everything is locked, we should be able to unlock the lot.
-        # however, we dont test breaking the working tree because we 
-        # cannot accurately do so right now: the dirstate lock is held 
+        # however, we dont test breaking the working tree because we
+        # cannot accurately do so right now: the dirstate lock is held
         # by an os lock, and we need to spawn a separate process to lock it
         # thne kill -9 it.
         # sketch of test:
@@ -85,7 +85,7 @@ class TestBreakLock(ExternalBase):
         branch = bzrlib.branch.Branch.open('checkout')
         branch.lock_write()
         branch.unlock()
-        # and a new instance of the master branch 
+        # and a new instance of the master branch
         mb = branch.get_master_branch()
         mb.lock_write()
         mb.unlock()

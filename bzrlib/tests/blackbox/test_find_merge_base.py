@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 import os
 
 from bzrlib.tests.blackbox import ExternalBase
@@ -30,7 +30,7 @@ class TestFindMergeBase(ExternalBase):
         b_tree.commit(message='baz', allow_pointless=True)
         r = self.run_bzr('find-merge-base b a')[0]
         self.assertEqual(q, r)
-        
+
     def test_find_null_merge_base(self):
         tree = self.make_branch_and_tree('foo')
         tree.commit('message')

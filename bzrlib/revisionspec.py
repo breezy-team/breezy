@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import re
@@ -26,6 +26,7 @@ import datetime
 from bzrlib import (
     errors,
     osutils,
+    registry,
     revision,
     symbol_versioning,
     trace,
@@ -112,9 +113,6 @@ class RevisionInfo(object):
         return RevisionInfo(branch, revno, revision_id)
 
 
-# classes in this list should have a "prefix" attribute, against which
-# string specs are matched
-SPEC_TYPES = []
 _revno_regex = None
 
 
@@ -123,10 +121,10 @@ class RevisionSpec(object):
 
     help_txt = """A parsed revision specification.
 
-    A revision specification can be an integer, in which case it is
-    assumed to be a revno (though this will translate negative values
-    into positive ones); or it can be a string, in which case it is
-    parsed for something like 'date:' or 'revid:' etc.
+    A revision specification is a string, which may be unambiguous about
+    what it represents by giving a prefix like 'date:' or 'revid:' etc,
+    or it may have no prefix, in which case it's tried against several
+    specifier types in sequence to determine what the user meant.
 
     Revision specs are an UI element, and they have been moved out
     of the branch class to leave "back-end" classes unaware of such
@@ -139,6 +137,14 @@ class RevisionSpec(object):
 
     prefix = None
     wants_revision_history = True
+    dwim_catchable_exceptions = (errors.InvalidRevisionSpec,)
+    """Exceptions that RevisionSpec_dwim._match_on will catch.
+
+    If the revspec is part of ``dwim_revspecs``, it may be tried with an
+    invalid revspec and raises some exception. The exceptions mentioned here
+    will not be reported to the user but simply ignored without stopping the
+    dwim processing.
+    """
 
     @staticmethod
     def from_string(spec):
@@ -153,23 +159,21 @@ class RevisionSpec(object):
 
         if spec is None:
             return RevisionSpec(None, _internal=True)
-        for spectype in SPEC_TYPES:
-            if spec.startswith(spectype.prefix):
-                trace.mutter('Returning RevisionSpec %s for %s',
-                             spectype.__name__, spec)
-                return spectype(spec, _internal=True)
+        match = revspec_registry.get_prefix(spec)
+        if match is not None:
+            spectype, specsuffix = match
+            trace.mutter('Returning RevisionSpec %s for %s',
+                         spectype.__name__, spec)
+            return spectype(spec, _internal=True)
         else:
-            # RevisionSpec_revno is special cased, because it is the only
-            # one that directly handles plain integers
-            # TODO: This should not be special cased rather it should be
-            # a method invocation on spectype.canparse()
-            global _revno_regex
-            if _revno_regex is None:
-                _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
-            if _revno_regex.match(spec) is not None:
-                return RevisionSpec_revno(spec, _internal=True)
-
-            raise errors.NoSuchRevisionSpec(spec)
+            for spectype in SPEC_TYPES:
+                if spec.startswith(spectype.prefix):
+                    trace.mutter('Returning RevisionSpec %s for %s',
+                                 spectype.__name__, spec)
+                    return spectype(spec, _internal=True)
+            # Otherwise treat it as a DWIM, build the RevisionSpec object and
+            # wait for _match_on to be called.
+            return RevisionSpec_dwim(spec, _internal=True)
 
     def __init__(self, spec, _internal=False):
         """Create a RevisionSpec referring to the Null revision.
@@ -179,7 +183,6 @@ class RevisionSpec(object):
             called directly. Only from RevisionSpec.from_string()
         """
         if not _internal:
-            # XXX: Update this after 0.10 is released
             symbol_versioning.warn('Creating a RevisionSpec directly has'
                                    ' been deprecated in version 0.11. Use'
                                    ' RevisionSpec.from_string()'
@@ -267,7 +270,7 @@ class RevisionSpec(object):
         # this is mostly for helping with testing
         return '<%s %s>' % (self.__class__.__name__,
                               self.user_spec)
-    
+
     def needs_branch(self):
         """Whether this revision spec needs a branch.
 
@@ -277,7 +280,7 @@ class RevisionSpec(object):
 
     def get_branch(self):
         """When the revision specifier contains a branch location, return it.
-        
+
         Otherwise, return None.
         """
         return None
@@ -285,16 +288,62 @@ class RevisionSpec(object):
 
 # private API
 
+class RevisionSpec_dwim(RevisionSpec):
+    """Provides a DWIMish revision specifier lookup.
+
+    Note that this does not go in the revspec_registry because by definition
+    there is no prefix to identify it.  It's solely called from
+    RevisionSpec.from_string() because the DWIMification happen when _match_on
+    is called so the string describing the revision is kept here until needed.
+    """
+
+    help_txt = None
+    # We don't need to build the revision history ourself, that's delegated to
+    # each revspec we try.
+    wants_revision_history = False
+
+    def _try_spectype(self, rstype, branch):
+        rs = rstype(self.spec, _internal=True)
+        # Hit in_history to find out if it exists, or we need to try the
+        # next type.
+        return rs.in_history(branch)
+
+    def _match_on(self, branch, revs):
+        """Run the lookup and see what we can get."""
+
+        # First, see if it's a revno
+        global _revno_regex
+        if _revno_regex is None:
+            _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
+        if _revno_regex.match(self.spec) is not None:
+            try:
+                return self._try_spectype(RevisionSpec_revno, branch)
+            except RevisionSpec_revno.dwim_catchable_exceptions:
+                pass
+
+        # Next see what has been registered
+        for rs_class in dwim_revspecs:
+            try:
+                return self._try_spectype(rs_class, branch)
+            except rs_class.dwim_catchable_exceptions:
+                pass
+
+        # Well, I dunno what it is. Note that we don't try to keep track of the
+        # first of last exception raised during the DWIM tries as none seems
+        # really relevant.
+        raise errors.InvalidRevisionSpec(self.spec, branch)
+
+
 class RevisionSpec_revno(RevisionSpec):
     """Selects a revision using a number."""
 
     help_txt = """Selects a revision using a number.
 
     Use an integer to specify a revision in the history of the branch.
-    Optionally a branch can be specified. The 'revno:' prefix is optional.
-    A negative number will count from the end of the branch (-1 is the
-    last revision, -2 the previous one). If the negative number is larger
-    than the branch's history, the first revision is returned.
+    Optionally a branch can be specified.  A negative number will count
+    from the end of the branch (-1 is the last revision, -2 the previous
+    one). If the negative number is larger than the branch's history, the
+    first revision is returned.
     Examples::
 
       revno:1                   -> return the first revision of this branch
@@ -334,7 +383,7 @@ class RevisionSpec_revno(RevisionSpec):
                 dotted = False
             except ValueError:
                 # dotted decimal. This arguably should not be here
-                # but the from_string method is a little primitive 
+                # but the from_string method is a little primitive
                 # right now - RBC 20060928
                 try:
                     match_revno = tuple((int(number) for number in revno_spec.split('.')))
@@ -352,20 +401,15 @@ class RevisionSpec_revno(RevisionSpec):
             revs_or_none = None
 
         if dotted:
-            branch.lock_read()
             try:
-                revision_id_to_revno = branch.get_revision_id_to_revno_map()
-                revisions = [revision_id for revision_id, revno
-                             in revision_id_to_revno.iteritems()
-                             if revno == match_revno]
-            finally:
-                branch.unlock()
-            if len(revisions) != 1:
-                return branch, None, None
+                revision_id = branch.dotted_revno_to_revision_id(match_revno,
+                    _cache_reverse=True)
+            except errors.NoSuchRevision:
+                raise errors.InvalidRevisionSpec(self.user_spec, branch)
             else:
                 # there is no traditional 'revno' for dotted-decimal revnos.
                 # so for  API compatability we return None.
-                return branch, None, revisions[0]
+                return branch, None, revision_id
         else:
             last_revno, last_revision_id = branch.last_revision_info()
             if revno < 0:
@@ -395,10 +439,9 @@ class RevisionSpec_revno(RevisionSpec):
         else:
             return self.spec[self.spec.find(':')+1:]
 
-# Old compatibility 
+# Old compatibility
 RevisionSpec_int = RevisionSpec_revno
 
-SPEC_TYPES.append(RevisionSpec_revno)
 
 
 class RevisionSpec_revid(RevisionSpec):
@@ -407,7 +450,7 @@ class RevisionSpec_revid(RevisionSpec):
     help_txt = """Selects a revision using the revision id.
 
     Supply a specific revision id, that can be used to specify any
-    revision id in the ancestry of the branch. 
+    revision id in the ancestry of the branch.
     Including merges, and pending merges.
     Examples::
 
@@ -426,7 +469,6 @@ class RevisionSpec_revid(RevisionSpec):
     def _as_revision_id(self, context_branch):
         return osutils.safe_revision_id(self.spec, warn=False)
 
-SPEC_TYPES.append(RevisionSpec_revid)
 
 
 class RevisionSpec_last(RevisionSpec):
@@ -478,7 +520,6 @@ class RevisionSpec_last(RevisionSpec):
         revno, revision_id = self._revno_and_revision_id(context_branch, None)
         return revision_id
 
-SPEC_TYPES.append(RevisionSpec_last)
 
 
 class RevisionSpec_before(RevisionSpec):
@@ -504,7 +545,7 @@ class RevisionSpec_before(RevisionSpec):
     """
 
     prefix = 'before:'
-    
+
     def _match_on(self, branch, revs):
         r = RevisionSpec.from_string(self.spec)._match_on(branch, revs)
         if r.revno == 0:
@@ -553,7 +594,6 @@ class RevisionSpec_before(RevisionSpec):
                 'No parents for revision.')
         return parents[0]
 
-SPEC_TYPES.append(RevisionSpec_before)
 
 
 class RevisionSpec_tag(RevisionSpec):
@@ -565,6 +605,7 @@ class RevisionSpec_tag(RevisionSpec):
     """
 
     prefix = 'tag:'
+    dwim_catchable_exceptions = (errors.NoSuchTag, errors.TagsNotSupported)
 
     def _match_on(self, branch, revs):
         # Can raise tags not supported, NoSuchTag, etc
@@ -575,7 +616,6 @@ class RevisionSpec_tag(RevisionSpec):
     def _as_revision_id(self, context_branch):
         return context_branch.tags.lookup_tag(self.spec)
 
-SPEC_TYPES.append(RevisionSpec_tag)
 
 
 class _RevListToTimestamps(object):
@@ -616,7 +656,7 @@ class RevisionSpec_date(RevisionSpec):
       date:yesterday            -> select the first revision since yesterday
       date:2006-08-14,17:10:14  -> select the first revision after
                                    August 14th, 2006 at 5:10pm.
-    """    
+    """
     prefix = 'date:'
     _date_re = re.compile(
             r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
@@ -682,7 +722,6 @@ class RevisionSpec_date(RevisionSpec):
         else:
             return RevisionInfo(branch, rev + 1)
 
-SPEC_TYPES.append(RevisionSpec_date)
 
 
 class RevisionSpec_ancestor(RevisionSpec):
@@ -733,6 +772,8 @@ class RevisionSpec_ancestor(RevisionSpec):
             revision_a = revision.ensure_null(branch.last_revision())
             if revision_a == revision.NULL_REVISION:
                 raise errors.NoCommits(branch)
+            if other_location == '':
+                other_location = branch.get_parent()
             other_branch = Branch.open(other_location)
             other_branch.lock_read()
             try:
@@ -750,7 +791,6 @@ class RevisionSpec_ancestor(RevisionSpec):
             branch.unlock()
 
 
-SPEC_TYPES.append(RevisionSpec_ancestor)
 
 
 class RevisionSpec_branch(RevisionSpec):
@@ -765,6 +805,7 @@ class RevisionSpec_branch(RevisionSpec):
       branch:/path/to/branch
     """
     prefix = 'branch:'
+    dwim_catchable_exceptions = (errors.NotBranchError,)
 
     def _match_on(self, branch, revs):
         from bzrlib.branch import Branch
@@ -799,7 +840,6 @@ class RevisionSpec_branch(RevisionSpec):
             raise errors.NoCommits(other_branch)
         return other_branch.repository.revision_tree(last_revision)
 
-SPEC_TYPES.append(RevisionSpec_branch)
 
 
 class RevisionSpec_submit(RevisionSpec_ancestor):
@@ -844,4 +884,32 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
             self._get_submit_location(context_branch))
 
 
-SPEC_TYPES.append(RevisionSpec_submit)
+# The order in which we want to DWIM a revision spec without any prefix.
+# revno is always tried first and isn't listed here, this is used by
+# RevisionSpec_dwim._match_on
+dwim_revspecs = [
+    RevisionSpec_tag, # Let's try for a tag
+    RevisionSpec_revid, # Maybe it's a revid?
+    RevisionSpec_date, # Perhaps a date?
+    RevisionSpec_branch, # OK, last try, maybe it's a branch
+    ]
+
+
+revspec_registry = registry.Registry()
+def _register_revspec(revspec):
+    revspec_registry.register(revspec.prefix, revspec)
+
+_register_revspec(RevisionSpec_revno)
+_register_revspec(RevisionSpec_revid)
+_register_revspec(RevisionSpec_last)
+_register_revspec(RevisionSpec_before)
+_register_revspec(RevisionSpec_tag)
+_register_revspec(RevisionSpec_date)
+_register_revspec(RevisionSpec_ancestor)
+_register_revspec(RevisionSpec_branch)
+_register_revspec(RevisionSpec_submit)
+
+# classes in this list should have a "prefix" attribute, against which
+# string specs are matched
+SPEC_TYPES = symbol_versioning.deprecated_list(
+    symbol_versioning.deprecated_in((1, 12, 0)), "SPEC_TYPES", [])

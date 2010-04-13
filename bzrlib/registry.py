@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Classes to provide name-to-object registry-like support."""
 
@@ -62,10 +62,15 @@ class _LazyObjectGetter(_ObjectGetter):
         return super(_LazyObjectGetter, self).get_obj()
 
     def _do_import(self):
-        obj = __import__(self._module_name, globals(), locals(),
-                         [self._member_name])
         if self._member_name:
-            obj = getattr(obj, self._member_name)
+            segments = self._member_name.split('.')
+            names = segments[0:1]
+        else:
+            names = [self._member_name]
+        obj = __import__(self._module_name, globals(), locals(), names)
+        if self._member_name:
+            for segment in segments:
+                obj = getattr(obj, segment)
         self._obj = obj
         self._imported = True
 
@@ -107,7 +112,7 @@ class Registry(object):
         :param obj: The object to register.
         :param help: Help text for this entry. This may be a string or
                 a callable. If it is a callable, it should take two
-                parameters (registry, key): this registry and the key that 
+                parameters (registry, key): this registry and the key that
                 the help was registered under.
         :param info: More information for this entry. Registry.get_info()
                 can be used to get this information. Registry treats this as an
@@ -128,11 +133,11 @@ class Registry(object):
         """Register a new object to be loaded on request.
 
         :param module_name: The python path to the module. Such as 'os.path'.
-        :param member_name: The member of the module to return.  If empty or 
+        :param member_name: The member of the module to return.  If empty or
                 None, get() will return the module itself.
         :param help: Help text for this entry. This may be a string or
                 a callable.
-        :param info: More information for this entry. Registry 
+        :param info: More information for this entry. Registry
         :param override_existing: If True, replace the existing object
                 with the new one. If False, if there is already something
                 registered with the same key, raise a KeyError
@@ -152,7 +157,7 @@ class Registry(object):
         """Return the object register()'ed to the given key.
 
         May raise ImportError if the object was registered lazily and
-        there are any problems, or AttributeError if the module does not 
+        there are any problems, or AttributeError if the module does not
         have the supplied member.
 
         :param key: The key to obtain the object for. If no object has been
@@ -174,9 +179,9 @@ class Registry(object):
         :return: a tuple of (object, remainder), where the remainder is the
             portion of the name that did not match the key.
         """
-        for key, value in self.iteritems():
+        for key in self.keys():
             if fullname.startswith(key):
-                return value, fullname[len(key):]
+                return self.get(key), fullname[len(key):]
 
     def _get_key_or_default(self, key=None):
         """Return either 'key' or the default key if key is None"""
@@ -216,6 +221,12 @@ class Registry(object):
         for key, getter in self._dict.iteritems():
             yield key, getter.get_obj()
 
+    def items(self):
+        # We should not use the iteritems() implementation below (see bug
+        # #430510)
+        return sorted([(key, getter.get_obj())
+                       for key, getter in self._dict.items()])
+
     def _set_default_key(self, key):
         if not self._dict.has_key(key):
             raise KeyError('No object registered under key %s.' % key)
@@ -228,3 +239,30 @@ class Registry(object):
     default_key = property(_get_default_key, _set_default_key,
                             doc="Current value of the default key."
                                 " Can be set to any existing key.")
+
+
+class FormatRegistry(Registry):
+    """Registry specialised for handling formats."""
+
+    def __init__(self, other_registry=None):
+        Registry.__init__(self)
+        self._other_registry = other_registry
+
+    def register_lazy(self, key, module_name, member_name,
+                      help=None, info=None,
+                      override_existing=False):
+        # Overridden to allow capturing registrations to two seperate
+        # registries in a single call.
+        Registry.register_lazy(self, key, module_name, member_name,
+                help=help, info=info, override_existing=override_existing)
+        if self._other_registry is not None:
+            self._other_registry.register_lazy(key, module_name, member_name,
+                help=help, info=info, override_existing=override_existing)
+
+    def get(self, format_string):
+        r = Registry.get(self, format_string)
+        if callable(r):
+            r = r()
+        return r
+
+

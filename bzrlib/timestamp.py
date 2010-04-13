@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import calendar
 import time
@@ -139,7 +139,7 @@ def format_patch_date(secs, offset=0):
     if offset % 60 != 0:
         raise ValueError(
         "can't represent timezone %s offset by fractional minutes" % offset)
-    # so that we don't need to do calculations on pre-epoch times, 
+    # so that we don't need to do calculations on pre-epoch times,
     # which doesn't work with win32 python gmtime, we always
     # give the epoch in utc
     if secs == 0:

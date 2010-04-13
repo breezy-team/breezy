@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Support for secure authentication using GSSAPI over FTP.
 
@@ -22,10 +22,10 @@ See RFC2228 for details.
 import base64, ftplib, getpass, socket
 
 from bzrlib import (
-    config, 
+    config,
     errors,
     )
-from bzrlib.trace import info, mutter
+from bzrlib.trace import mutter
 from bzrlib.transport.ftp import FtpTransport
 from bzrlib.transport import register_transport_proto, register_transport
 
@@ -36,7 +36,7 @@ except ImportError, e:
     raise errors.DependencyNotPresent('kerberos', e)
 
 if getattr(kerberos, "authGSSClientWrap", None) is None:
-    raise errors.DependencyNotPresent('kerberos', 
+    raise errors.DependencyNotPresent('kerberos',
         "missing encryption function authGSSClientWrap")
 
 
@@ -44,8 +44,7 @@ class GSSAPIFtp(ftplib.FTP):
     """Extended version of ftplib.FTP that can authenticate using GSSAPI."""
 
     def mic_putcmd(self, line):
-        rc = kerberos.authGSSClientWrap(self.vc, 
-            base64.b64encode(line), kerberos.authGSSClientUserName(self.vc))
+        rc = kerberos.authGSSClientWrap(self.vc, base64.b64encode(line))
         wrapped = kerberos.authGSSClientResponse(self.vc)
         ftplib.FTP.putcmd(self, "MIC " + wrapped)
 
@@ -61,13 +60,13 @@ class GSSAPIFtp(ftplib.FTP):
         # Try GSSAPI login first
 
         # Used FTP response codes:
-        # 235 [ADAT=base64data] - indicates that the security data exchange 
+        # 235 [ADAT=base64data] - indicates that the security data exchange
         #     completed successfully.
-        # 334 [ADAT=base64data] - indicates that the requested security 
-        #     mechanism is ok, and includes security data to be used by the 
+        # 334 [ADAT=base64data] - indicates that the requested security
+        #     mechanism is ok, and includes security data to be used by the
         #     client to construct the next command.
         # 335 [ADAT=base64data] - indicates that the security data is
-        #     acceptable, and more is required to complete the security 
+        #     acceptable, and more is required to complete the security
         #     data exchange.
 
         resp = self.sendcmd('AUTH GSSAPI')
@@ -79,10 +78,10 @@ class GSSAPIFtp(ftplib.FTP):
                     resp = self.sendcmd('ADAT ' + authdata)
                     if resp[:9] in ('235 ADAT=', '335 ADAT='):
                         rc = kerberos.authGSSClientStep(self.vc, resp[9:])
-                        if not ((resp.startswith('235 ') and rc == 1) or 
+                        if not ((resp.startswith('235 ') and rc == 1) or
                                 (resp.startswith('335 ') and rc == 0)):
                             raise ftplib.error_reply, resp
-            info("Authenticated as %s" % kerberos.authGSSClientUserName(
+            trace.note("Authenticated as %s" % kerberos.authGSSClientUserName(
                     self.vc))
 
             # Monkey patch ftplib
@@ -98,62 +97,28 @@ class GSSAPIFtpTransport(FtpTransport):
 
     """
 
-    def _create_connection(self, credentials=None):
-        """Create a new connection with the provided credentials.
+    connection_class = GSSAPIFtp
 
-        :param credentials: The credentials needed to establish the connection.
+    def _login(self, connection, auth, user, password):
+        """Login with GSSAPI Authentication.
 
-        :return: The created connection and its associated credentials.
+        The password is used if GSSAPI Authentication is not available.
 
-        The credentials are a tuple with the username and password. The 
-        password is used if GSSAPI Authentication is not available.
-
-        The username and password can both be None, in which case the 
-        credentials specified in the URL or provided by the 
+        The username and password can both be None, in which case the
+        credentials specified in the URL or provided by the
         AuthenticationConfig() are used.
         """
-        if credentials is None:
-            user, password = self._user, self._password
-        else:
-            user, password = credentials
-
-        auth = config.AuthenticationConfig()
-        if user is None:
-            user = auth.get_user('ftp', self._host, port=self._port)
-            if user is None:
-                # Default to local user
-                user = getpass.getuser()
-
-        mutter("Constructing FTP instance against %r" %
-               ((self._host, self._port, user, '********',
-                self.is_active),))
         try:
-            connection = GSSAPIFtp()
-            connection.connect(host=self._host, port=self._port)
-            try:
-                connection.gssapi_login(user=user)
-            except ftplib.error_perm, e:
-                if user and user != 'anonymous' and \
-                        password is None: # '' is a valid password
-                    password = auth.get_password('ftp', self._host, user,
-                                                 port=self._port)
-                connection.login(user=user, passwd=password)
-            connection.set_pasv(not self.is_active)
-        except socket.error, e:
-            raise errors.SocketConnectionError(self._host, self._port,
-                                               msg='Unable to connect to',
-                                               orig_error= e)
+            connection.gssapi_login(user=user)
         except ftplib.error_perm, e:
-            raise errors.TransportError(msg="Error setting up connection:"
-                                        " %s" % str(e), orig_error=e)
-        return connection, (user, password)
+            super(GSSAPIFtpTransport, self)._login(connection, auth,
+                                                   user, password)
 
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib import tests
-    if tests.FTPServerFeature.available():
-        from bzrlib.tests import ftp_server
-        return [(GSSAPIFtpTransport, ftp_server.FTPServer)]
+    from bzrlib.tests import ftp_server
+    if ftp_server.FTPServerFeature.available():
+        return [(GSSAPIFtpTransport, ftp_server.FTPTestServer)]
     else:
         return []

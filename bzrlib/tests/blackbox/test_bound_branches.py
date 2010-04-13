@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests of bound branches (binding, unbinding, commit, etc) command."""
@@ -22,18 +22,19 @@ from cStringIO import StringIO
 
 from bzrlib import (
     bzrdir,
-    errors
+    errors,
+    tests,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (BzrDir, BzrDirFormat, BzrDirMetaFormat1)
 from bzrlib.osutils import getcwd
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import script
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
-class TestLegacyFormats(TestCaseWithTransport):
-    
+class TestLegacyFormats(tests.TestCaseWithTransport):
+
     def setUp(self):
         super(TestLegacyFormats, self).setUp()
         self.build_tree(['master/', 'child/'])
@@ -41,7 +42,7 @@ class TestLegacyFormats(TestCaseWithTransport):
         self.make_branch_and_tree('child',
                         format=bzrdir.format_registry.make_bzrdir('weave'))
         os.chdir('child')
-    
+
     def test_bind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('bind ../master', retcode=3)
@@ -51,7 +52,7 @@ class TestLegacyFormats(TestCaseWithTransport):
         cwd = urlutils.local_path_to_url(getcwd())
         self.assertEqual('bzr: ERROR: To use this feature you must '
                          'upgrade your branch at %s/.\n' % cwd, err)
-    
+
     def test_unbind_format_6_bzrdir(self):
         # bind on a format 6 bzrdir should error
         out,err = self.run_bzr('unbind', retcode=3)
@@ -61,17 +62,16 @@ class TestLegacyFormats(TestCaseWithTransport):
                          'upgrade your branch at %s/.\n' % cwd, err)
 
 
-class TestBoundBranches(TestCaseWithTransport):
+class TestBoundBranches(tests.TestCaseWithTransport):
 
     def create_branches(self):
-        self.build_tree(['base/', 'base/a', 'base/b'])
-
-        branch = self.init_meta_branch('base')
-        base_tree = branch.bzrdir.open_workingtree()
+        base_tree = self.make_branch_and_tree('base')
         base_tree.lock_write()
+        self.build_tree(['base/a', 'base/b'])
         base_tree.add(['a', 'b'])
         base_tree.commit('init')
         base_tree.unlock()
+        branch = base_tree.branch
 
         child_tree = branch.create_checkout('child')
 
@@ -86,12 +86,11 @@ class TestBoundBranches(TestCaseWithTransport):
             val, len(BzrDir.open(loc).open_branch().revision_history()))
 
     def test_simple_binding(self):
-        self.build_tree(['base/', 'base/a', 'base/b'])
-
-        branch = self.init_meta_branch('base')
-        tree = branch.bzrdir.open_workingtree()
+        tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/a', 'base/b'])
         tree.add('a', 'b')
         tree.commit(message='init')
+        branch = tree.branch
 
         tree.bzrdir.sprout('child')
 
@@ -130,10 +129,6 @@ class TestBoundBranches(TestCaseWithTransport):
         os.chdir('branch2')
         error = self.run_bzr('bind', retcode=3)[1]
         self.assertContainsRe(error, 'old locations')
-
-    def init_meta_branch(self, path):
-        format = bzrdir.format_registry.make_bzrdir('default')
-        return BzrDir.create_branch_convenience(path, format=format)
 
     def test_bound_commit(self):
         child_tree = self.create_branches()[1]
@@ -228,6 +223,21 @@ class TestBoundBranches(TestCaseWithTransport):
 
         self.check_revno(2, '../base')
 
+    def test_pull_local_updates_local(self):
+        base_tree = self.create_branches()[0]
+        newchild_tree = base_tree.bzrdir.sprout('newchild').open_workingtree()
+        self.build_tree_contents([('newchild/b', 'newchild b contents\n')])
+        newchild_tree.commit(message='newchild')
+        self.check_revno(2, 'newchild')
+
+        os.chdir('child')
+        # The pull should succeed, and update
+        # the bound parent branch
+        self.run_bzr('pull ../newchild --local')
+        self.check_revno(2)
+
+        self.check_revno(1, '../base')
+
     def test_bind_diverged(self):
         base_tree, child_tree = self.create_branches()
         base_branch = base_tree.branch
@@ -284,7 +294,7 @@ class TestBoundBranches(TestCaseWithTransport):
         self.check_revno(1)
 
     def test_bind_child_ahead(self):
-        # test binding when the master branches history is a prefix of the 
+        # test binding when the master branches history is a prefix of the
         # childs - it should bind ok but the revision histories should not
         # be altered
         child_tree = self.create_branches()[1]
@@ -316,6 +326,33 @@ class TestBoundBranches(TestCaseWithTransport):
         self.run_bzr_error(['Not a branch.*no-such-branch/'], ['bind', '../no-such-branch'],
                             working_dir='tree_1')
         self.assertIs(None, tree.branch.get_bound_location())
+
+    def test_bind_nick(self):
+        """Bind should not update implicit nick."""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        self.assertEqual(child.branch.nick, 'child')
+        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
+            False)
+        self.run_bzr('bind ../base')
+        self.assertEqual(child.branch.nick, base.branch.nick)
+        self.assertEqual(child.branch.get_config().has_explicit_nickname(),
+            False)
+
+    def test_bind_explicit_nick(self):
+        """Bind should update explicit nick."""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        child.branch.nick = "explicit_nick"
+        self.assertEqual(child.branch.nick, "explicit_nick")
+        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
+            "explicit_nick")
+        self.run_bzr('bind ../base')
+        self.assertEqual(child.branch.nick, base.branch.nick)
+        self.assertEqual(child.branch.get_config()._get_explicit_nickname(),
+            base.branch.nick)
 
     def test_commit_after_merge(self):
         base_tree, child_tree = self.create_branches()
@@ -384,3 +421,24 @@ class TestBoundBranches(TestCaseWithTransport):
         # both the local and master should have been updated.
         self.check_revno(4)
         self.check_revno(4, '../base')
+
+
+class TestBind(script.TestCaseWithTransportAndScript):
+
+    def test_bind_when_bound(self):
+        self.run_script("""
+$ bzr init trunk
+$ bzr init copy
+$ cd copy
+$ bzr bind ../trunk
+$ bzr bind
+2>bzr: ERROR: Branch is already bound
+""")
+
+    def test_bind_before_bound(self):
+        self.run_script("""
+$ bzr init trunk
+$ cd trunk
+$ bzr bind
+2>bzr: ERROR: No location supplied and no previous location known
+""")

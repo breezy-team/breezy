@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 """\
 This is an attempt to take the internal delta object, and represent
 it as a single-file text-only changeset.
@@ -54,7 +54,7 @@ class cmd_bundle_info(Command):
         from bzrlib import osutils
         term_encoding = osutils.get_terminal_encoding()
         bundle_info = read_mergeable_from_url(location)
-        if isinstance(bundle_info, merge_directive._BaseMergeDirective):
+        if isinstance(bundle_info, merge_directive.BaseMergeDirective):
             bundle_file = StringIO(bundle_info.get_raw_bundle())
             bundle_info = read_bundle(bundle_file)
         else:

@@ -12,12 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for break_lock on a repository with external references."""
 
-import bzrlib.ui
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    ui,
+    )
 from bzrlib.tests.per_repository_reference import (
     TestCaseWithExternalReferenceRepository,
     )
@@ -39,12 +41,6 @@ class TestBreakLock(TestCaseWithExternalReferenceRepository):
             # 'lock_write' has not taken a physical mutex out.
             repo.unlock()
             return
-        # we want a UI factory that accepts canned input for the tests:
-        # while SilentUIFactory still accepts stdin, we need to customise
-        # ours
-        self.old_factory = bzrlib.ui.ui_factory
-        self.addCleanup(self.restoreFactory)
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        ui.ui_factory = ui.CannedInputUIFactory([True])
         unused_repo.break_lock()
         self.assertRaises(errors.LockBroken, repo.unlock)

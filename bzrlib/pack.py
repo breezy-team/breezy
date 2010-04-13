@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Container format for Bazaar data.
 
@@ -34,7 +34,7 @@ _whitespace_re = re.compile('[\t\n\x0b\x0c\r ]')
 
 def _check_name(name):
     """Do some basic checking of 'name'.
-    
+
     At the moment, this just checks that there are no whitespace characters in a
     name.
 
@@ -47,7 +47,7 @@ def _check_name(name):
 
 def _check_name_encoding(name):
     """Check that 'name' is valid UTF-8.
-    
+
     This is separate from _check_name because UTF-8 decoding is relatively
     expensive, and we usually want to avoid it.
 
@@ -61,7 +61,7 @@ def _check_name_encoding(name):
 
 class ContainerSerialiser(object):
     """A helper class for serialising containers.
-    
+
     It simply returns bytes from method calls to 'begin', 'end' and
     'bytes_record'.  You may find ContainerWriter to be a more convenient
     interface.
@@ -138,7 +138,7 @@ class ContainerWriter(object):
 
     def add_bytes_record(self, bytes, names):
         """Add a Bytes record with the given names.
-        
+
         :param bytes: The bytes to insert.
         :param names: The names to give the inserted bytes. Each name is
             a tuple of bytestrings. The bytestrings may not contain
@@ -159,17 +159,32 @@ class ContainerWriter(object):
 
 
 class ReadVFile(object):
-    """Adapt a readv result iterator to a file like protocol."""
+    """Adapt a readv result iterator to a file like protocol.
+    
+    The readv result must support the iterator protocol returning (offset,
+    data_bytes) pairs.
+    """
+
+    # XXX: This could be a generic transport class, as other code may want to
+    # gradually consume the readv result.
 
     def __init__(self, readv_result):
+        """Construct a new ReadVFile wrapper.
+
+        :seealso: make_readv_reader
+
+        :param readv_result: the most recent readv result - list or generator
+        """
+        # readv can return a sequence or an iterator, but we require an
+        # iterator to know how much has been consumed.
+        readv_result = iter(readv_result)
         self.readv_result = readv_result
-        # the most recent readv result block
         self._string = None
 
     def _next(self):
         if (self._string is None or
             self._string.tell() == self._string_length):
-            length, data = self.readv_result.next()
+            offset, data = self.readv_result.next()
             self._string_length = len(data)
             self._string = StringIO(data)
 
@@ -177,7 +192,9 @@ class ReadVFile(object):
         self._next()
         result = self._string.read(length)
         if len(result) < length:
-            raise errors.BzrError('request for too much data from a readv hunk.')
+            raise errors.BzrError('wanted %d bytes but next '
+                'hunk only contains %d: %r...' %
+                (length, len(result), result[:20]))
         return result
 
     def readline(self):
@@ -185,7 +202,8 @@ class ReadVFile(object):
         self._next()
         result = self._string.readline()
         if self._string.tell() == self._string_length and result[-1] != '\n':
-            raise errors.BzrError('short readline in the readvfile hunk.')
+            raise errors.BzrError('short readline in the readvfile hunk: %r'
+                % (result, ))
         return result
 
 
@@ -234,25 +252,25 @@ class ContainerReader(BaseReader):
         is a ``list`` and bytes is a function that takes one argument,
         ``max_length``.
 
-        You **must not** call the callable after advancing the interator to the
+        You **must not** call the callable after advancing the iterator to the
         next record.  That is, this code is invalid::
 
             record_iter = container.iter_records()
             names1, callable1 = record_iter.next()
             names2, callable2 = record_iter.next()
             bytes1 = callable1(None)
-        
+
         As it will give incorrect results and invalidate the state of the
         ContainerReader.
 
-        :raises ContainerError: if any sort of containter corruption is
+        :raises ContainerError: if any sort of container corruption is
             detected, e.g. UnknownContainerFormatError is the format of the
             container is unrecognised.
         :seealso: ContainerReader.read
         """
         self._read_format()
         return self._iter_records()
-    
+
     def iter_record_objects(self):
         """Iterate over the container, yielding each record as it is read.
 
@@ -260,14 +278,14 @@ class ContainerReader(BaseReader):
         methods.  Like with iter_records, it is not safe to use a record object
         after advancing the iterator to yield next record.
 
-        :raises ContainerError: if any sort of containter corruption is
+        :raises ContainerError: if any sort of container corruption is
             detected, e.g. UnknownContainerFormatError is the format of the
             container is unrecognised.
         :seealso: iter_records
         """
         self._read_format()
         return self._iter_record_objects()
-    
+
     def _iter_records(self):
         for record in self._iter_record_objects():
             yield record.read()
@@ -342,7 +360,7 @@ class BytesRecordReader(BaseReader):
         except ValueError:
             raise errors.InvalidRecordError(
                 "%r is not a valid length." % (length_line,))
-        
+
         # Read the list of names.
         names = []
         while True:
@@ -406,16 +424,24 @@ class ContainerPushParser(object):
         # the buffer.
         last_buffer_length = None
         cur_buffer_length = len(self._buffer)
-        while cur_buffer_length != last_buffer_length:
+        last_state_handler = None
+        while (cur_buffer_length != last_buffer_length
+               or last_state_handler != self._state_handler):
             last_buffer_length = cur_buffer_length
+            last_state_handler = self._state_handler
             self._state_handler()
             cur_buffer_length = len(self._buffer)
 
-    def read_pending_records(self):
-        records = self._parsed_records
-        self._parsed_records = []
-        return records
-    
+    def read_pending_records(self, max=None):
+        if max:
+            records = self._parsed_records[:max]
+            del self._parsed_records[:max]
+            return records
+        else:
+            records = self._parsed_records
+            self._parsed_records = []
+            return records
+
     def _consume_line(self):
         """Take a line out of the buffer, and return the line.
 
@@ -468,7 +494,7 @@ class ContainerPushParser(object):
             for name_part in name_parts:
                 _check_name(name_part)
             self._current_record_names.append(name_parts)
-            
+
     def _state_expecting_body(self):
         if len(self._buffer) >= self._current_record_length:
             body_bytes = self._buffer[:self._current_record_length]

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,28 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface. This doesn't actually run a new interpreter but 
+command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
-import sys
 
-from bzrlib.tests import (
-                          adapt_modules,
-                          TestCaseWithTransport,
-                          iter_suite_tests,
-                          )
-from bzrlib.tests.EncodingAdapter import EncodingTestAdapter
-from bzrlib.symbol_versioning import (
-    deprecated_method,
-    )
-import bzrlib.ui as ui
+from bzrlib.tests import TestCaseWithTransport
 
 
 def load_tests(basic_tests, module, loader):
@@ -57,13 +47,18 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_cat_revision',
                      'bzrlib.tests.blackbox.test_check',
                      'bzrlib.tests.blackbox.test_checkout',
+                     'bzrlib.tests.blackbox.test_clean_tree',
                      'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_conflicts',
                      'bzrlib.tests.blackbox.test_debug',
                      'bzrlib.tests.blackbox.test_diff',
+                     'bzrlib.tests.blackbox.test_dump_btree',
+                     'bzrlib.tests.blackbox.test_dpush',
                      'bzrlib.tests.blackbox.test_exceptions',
                      'bzrlib.tests.blackbox.test_export',
+                     'bzrlib.tests.blackbox.test_filesystem_cicp',
+                     'bzrlib.tests.blackbox.test_filtered_view_ops',
                      'bzrlib.tests.blackbox.test_find_merge_base',
                      'bzrlib.tests.blackbox.test_help',
                      'bzrlib.tests.blackbox.test_hooks',
@@ -84,12 +79,14 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_modified',
                      'bzrlib.tests.blackbox.test_mv',
                      'bzrlib.tests.blackbox.test_nick',
+                     'bzrlib.tests.blackbox.test_non_ascii',
                      'bzrlib.tests.blackbox.test_outside_wt',
                      'bzrlib.tests.blackbox.test_pack',
                      'bzrlib.tests.blackbox.test_pull',
                      'bzrlib.tests.blackbox.test_push',
                      'bzrlib.tests.blackbox.test_reconcile',
                      'bzrlib.tests.blackbox.test_reconfigure',
+                     'bzrlib.tests.blackbox.test_reference',
                      'bzrlib.tests.blackbox.test_remerge',
                      'bzrlib.tests.blackbox.test_remove',
                      'bzrlib.tests.blackbox.test_re_sign',
@@ -98,10 +95,12 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_history',
                      'bzrlib.tests.blackbox.test_revision_info',
+                     'bzrlib.tests.blackbox.test_rmbranch',
                      'bzrlib.tests.blackbox.test_selftest',
                      'bzrlib.tests.blackbox.test_send',
                      'bzrlib.tests.blackbox.test_serve',
                      'bzrlib.tests.blackbox.test_shared_repository',
+                     'bzrlib.tests.blackbox.test_shelve',
                      'bzrlib.tests.blackbox.test_sign_my_commits',
                      'bzrlib.tests.blackbox.test_split',
                      'bzrlib.tests.blackbox.test_status',
@@ -116,18 +115,11 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_version',
                      'bzrlib.tests.blackbox.test_version_info',
                      'bzrlib.tests.blackbox.test_versioning',
+                     'bzrlib.tests.blackbox.test_view',
                      'bzrlib.tests.blackbox.test_whoami',
                      ]
     # add the tests for the sub modules
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
-
-    test_encodings = [
-        'bzrlib.tests.blackbox.test_non_ascii',
-    ]
-
-    adapter = EncodingTestAdapter()
-    adapt_modules(test_encodings, adapter, loader, suite)
-
     return suite
 
 

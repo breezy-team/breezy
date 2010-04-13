@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for OS level locks."""
 
@@ -21,6 +21,7 @@ from bzrlib import (
     osutils,
     )
 
+from bzrlib.tests import UnicodeFilenameFeature
 from bzrlib.tests.per_lock import TestCaseWithLock
 
 
@@ -160,3 +161,18 @@ class TestLock(TestCaseWithLock):
                 b_lock.unlock()
             if c_lock is not None:
                 c_lock.unlock()
+
+
+class TestLockUnicodePath(TestCaseWithLock):
+
+    _test_needs_features = [UnicodeFilenameFeature]
+
+    def test_read_lock(self):
+        self.build_tree([u'\u1234'])
+        u_lock = self.read_lock(u'\u1234')
+        self.addCleanup(u_lock.unlock)
+
+    def test_write_lock(self):
+        self.build_tree([u'\u1234'])
+        u_lock = self.write_lock(u'\u1234')
+        self.addCleanup(u_lock.unlock)

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 from StringIO import StringIO
@@ -42,7 +42,7 @@ class TestStatus(TestCaseWithTransport):
             tree2.unlock()
         self.assertContainsRe(output.getvalue(), 'empty commit')
 
-    def test_multiple_pending(self):
+    def make_multiple_pending_tree(self):
         config.GlobalConfig().set_user_option('email', 'Joe Foo <joe@foo.com>')
         tree = self.make_branch_and_tree('a')
         tree.commit('commit 1', timestamp=1196796819, timezone=0)
@@ -53,11 +53,28 @@ class TestStatus(TestCaseWithTransport):
         tree2.commit('commit 3b', timestamp=1196796819, timezone=0)
         tree3.commit('commit 3c', timestamp=1196796819, timezone=0)
         tree.merge_from_branch(tree2.branch)
-        tree.merge_from_branch(tree3.branch)
+        tree.merge_from_branch(tree3.branch, force=True)
+        return tree
+
+    def test_multiple_pending(self):
+        tree = self.make_multiple_pending_tree()
         output = StringIO()
         tree.lock_read()
         self.addCleanup(tree.unlock)
         show_pending_merges(tree, output)
+        # 2b doesn't appear because it's an ancestor of 3b
+        self.assertEqualDiff(
+            'pending merge tips: (use -v to see all merge revisions)\n'
+            '  Joe Foo 2007-12-04 commit 3b\n'
+            '  Joe Foo 2007-12-04 commit 3c\n',
+            output.getvalue())
+
+    def test_multiple_pending_verbose(self):
+        tree = self.make_multiple_pending_tree()
+        output = StringIO()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        show_pending_merges(tree, output, verbose=True)
         # Even though 2b is in the ancestry of 3c, it should only be displayed
         # under the first merge parent.
         self.assertEqualDiff('pending merges:\n'
@@ -75,9 +92,10 @@ class TestStatus(TestCaseWithTransport):
         self.addCleanup(tree.unlock)
         output = StringIO()
         show_pending_merges(tree, output)
-        self.assertEqualDiff('pending merges:\n'
-                             '  (ghost) a-ghost-revision\n',
-                             output.getvalue())
+        self.assertEqualDiff(
+            'pending merge tips: (use -v to see all merge revisions)\n'
+            '  (ghost) a-ghost-revision\n',
+            output.getvalue())
 
     def test_pending_with_ghosts(self):
         """Test when a pending merge's ancestry includes ghosts."""
@@ -93,10 +111,10 @@ class TestStatus(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         output = StringIO()
-        show_pending_merges(tree, output)
+        show_pending_merges(tree, output, verbose=True)
         self.assertEqualDiff('pending merges:\n'
                              '  Joe Foo 2007-12-04 another non-ghost\n'
-                             '    Joe Foo 2007-12-04 commit with ghost\n'
+                             '    Joe Foo 2007-12-04 [merge] commit with ghost\n'
                              '    (ghost) a-ghost-revision\n'
                              '    Joe Foo 2007-12-04 a non-ghost\n',
                              output.getvalue())

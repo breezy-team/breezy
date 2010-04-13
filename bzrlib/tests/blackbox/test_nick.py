@@ -12,13 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for bzr nick."""
 
 import os
 
 import bzrlib
+from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -29,11 +30,11 @@ class TestNick(ExternalBase):
         self.make_branch_and_tree('me.dev')
         os.chdir('me.dev')
         nick = self.run_bzr('nick')[0]
-        self.assertEqual(nick, 'me.dev\n')
+        self.assertEqual('me.dev\n', nick)
         # set the nickname
         self.run_bzr("nick moo")
         nick = self.run_bzr('nick')[0]
-        self.assertEqual(nick, 'moo\n')
+        self.assertEqual('moo\n', nick)
 
     def test_autonick_urlencoded(self):
         # https://bugs.launchpad.net/bzr/+bug/66857 -- nick was printed
@@ -41,4 +42,39 @@ class TestNick(ExternalBase):
         self.make_branch_and_tree('!repo')
         os.chdir('!repo')
         nick = self.run_bzr('nick')[0]
-        self.assertEqual(nick, '!repo\n')
+        self.assertEqual('!repo\n', nick)
+
+    def test_bound_nick(self):
+        """Check that nick works well for checkouts."""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        self.assertEqual('child', self.run_bzr('nick')[0][:-1])
+        self.assertEqual(False,
+                         child.branch.get_config().has_explicit_nickname())
+        self.run_bzr('bind ../base')
+        self.assertEqual(base.branch.nick, self.run_bzr('nick')[0][:-1])
+        self.assertEqual(False,
+                         child.branch.get_config().has_explicit_nickname())
+
+        self.run_bzr('unbind')
+        self.run_bzr("nick explicit_nick")
+        self.assertEqual("explicit_nick", self.run_bzr('nick')[0][:-1])
+        self.assertEqual("explicit_nick",
+                         child.branch.get_config()._get_explicit_nickname())
+        self.run_bzr('bind ../base')
+        self.assertEqual(base.branch.nick, self.run_bzr('nick')[0][:-1])
+        self.assertEqual(base.branch.nick,
+                         child.branch.get_config()._get_explicit_nickname())
+
+    def test_boundless_nick(self):
+        """Nick defaults to implicit local nick when bound branch is AWOL"""
+        base = self.make_branch_and_tree('base')
+        child = self.make_branch_and_tree('child')
+        os.chdir('child')
+        self.run_bzr('bind ../base')
+        self.assertEqual(base.branch.nick, self.run_bzr('nick')[0][:-1])
+        self.assertEqual(False,
+                         child.branch.get_config().has_explicit_nickname())
+        osutils.rmtree('../base')
+        self.assertEqual('child', self.run_bzr('nick')[0][:-1])

@@ -12,12 +12,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A generator which creates a template-based output from the current
    tree info."""
 
 from bzrlib import errors
+from bzrlib.revision import (
+   NULL_REVISION,
+   )
 from bzrlib.lazy_regex import lazy_compile
 from bzrlib.version_info_formats import (
    create_date_str,
@@ -87,7 +90,7 @@ class CustomVersionInfoBuilder(VersionInfoBuilder):
         info.add('branch_nick', self._branch.nick)
 
         revision_id = self._get_revision_id()
-        if revision_id is None:
+        if revision_id == NULL_REVISION:
             info.add('revno', 0)
         else:
             info.add('revno', self._branch.revision_id_to_revno(revision_id))

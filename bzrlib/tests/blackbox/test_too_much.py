@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 # Mr. Smoketoomuch: I'm sorry?
 # Mr. Bounder: You'd better cut down a little then.
@@ -22,7 +22,7 @@
 """Black-box tests for bzr.
 
 These check that it behaves properly when it's invoked through the regular
-command-line interface. This doesn't actually run a new interpreter but 
+command-line interface. This doesn't actually run a new interpreter but
 rather starts again from the run_bzr function.
 """
 
@@ -44,11 +44,6 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
-from bzrlib.osutils import (
-    has_symlinks,
-    pathjoin,
-    terminal_width,
-    )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.blackbox import ExternalBase
@@ -87,7 +82,7 @@ class TestCommands(ExternalBase):
         os.rmdir('revertdir')
         self.run_bzr('revert')
 
-        if has_symlinks():
+        if osutils.has_symlinks():
             os.symlink('/unlikely/to/exist', 'symlink')
             self.run_bzr('add symlink')
             self.run_bzr('commit -m f')
@@ -101,7 +96,7 @@ class TestCommands(ExternalBase):
                              os.readlink('symlink'))
         else:
             self.log("skipping revert symlink tests")
-        
+
         file('hello', 'wt').write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')
@@ -111,19 +106,6 @@ class TestCommands(ExternalBase):
         os.chdir('revertdir')
         self.run_bzr('revert')
         os.chdir('..')
-
-    def test_main_version(self):
-        """Check output from version command and master option is reasonable"""
-        # output is intentionally passed through to stdout so that we
-        # can see the version being tested
-        output = self.run_bzr('version')[0]
-        self.log('bzr version output:')
-        self.log(output)
-        self.assert_(output.startswith('Bazaar (bzr) '))
-        self.assertNotEqual(output.index('Canonical'), -1)
-        # make sure --version is consistent
-        tmp_output = self.run_bzr('--version')[0]
-        self.assertEquals(output, tmp_output)
 
     def example_branch(test):
         test.run_bzr('init')
@@ -174,7 +156,7 @@ class TestCommands(ExternalBase):
         added_message = out.find('message:\n  foo')
         self.failIfEqual(added_message, -1)
         self.failUnless(added_loc < added_message)
-        
+
     def test_locations(self):
         """Using and remembering different locations"""
         os.mkdir('a')
@@ -202,7 +184,7 @@ class TestCommands(ExternalBase):
         self.run_bzr('pull', retcode=3)
         self.run_bzr('pull ../a --remember')
         self.run_bzr('pull')
-        
+
     def test_unknown_command(self):
         """Handling of unknown command."""
         out, err = self.run_bzr('fluffy-badger', retcode=3)
@@ -315,7 +297,7 @@ class TestCommands(ExternalBase):
         self.run_bzr('push --overwrite')
         # nothing missing
         self.run_bzr('missing ../output-branch')
-        
+
         # pushing to a new dir with no parent should fail
         self.run_bzr('push ../missing/new-branch', retcode=3)
         # unless we provide --create-prefix
@@ -326,10 +308,10 @@ class TestCommands(ExternalBase):
     def test_external_command(self):
         """Test that external commands can be run by setting the path
         """
-        # We don't at present run bzr in a subprocess for blackbox tests, and so 
+        # We don't at present run bzr in a subprocess for blackbox tests, and so
         # don't really capture stdout, only the internal python stream.
         # Therefore we don't use a subcommand that produces any output or does
-        # anything -- we just check that it can be run successfully.  
+        # anything -- we just check that it can be run successfully.
         cmd_name = 'test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
@@ -347,7 +329,7 @@ class TestCommands(ExternalBase):
             f.close()
             os.chmod(cmd_name, 0755)
 
-            # It should not find the command in the local 
+            # It should not find the command in the local
             # directory by default, since it is not in my path
             self.run_bzr(cmd_name, retcode=3)
 
@@ -387,7 +369,7 @@ class OldTests(ExternalBase):
         self.run_bzr('init')
 
         self.assertIsSameRealPath(self.run_bzr('root')[0].rstrip(),
-                                  pathjoin(self.test_dir, 'branch1'))
+                                  osutils.pathjoin(self.test_dir, 'branch1'))
 
         progress("status of new file")
 
@@ -433,7 +415,7 @@ class OldTests(ExternalBase):
         f.close()
 
         self.run_bzr("add hello.txt")
-        
+
         f = file('msg.tmp', 'wt')
         f.write('this is my new commit\nand it has multiple lines, for fun')
         f.close()
@@ -456,9 +438,10 @@ class OldTests(ExternalBase):
 
         log_out = self.run_bzr('log --line')[0]
         # determine the widest line we want
-        max_width = terminal_width() - 1
-        for line in log_out.splitlines():
-            self.assert_(len(line) <= max_width, len(line))
+        max_width = osutils.terminal_width()
+        if max_width is not None:
+            for line in log_out.splitlines():
+                self.assert_(len(line) <= max_width - 1, len(line))
         self.assert_("this is my new commit and" not in log_out)
         self.assert_("this is my new commit" in log_out)
 
@@ -475,7 +458,7 @@ class OldTests(ExternalBase):
 
         self.run_bzr('info')
 
-        if has_symlinks():
+        if osutils.has_symlinks():
             progress("symlinks")
             mkdir('symlinks')
             chdir('symlinks')
@@ -602,7 +585,7 @@ class RemoteTests(object):
         url = self.get_readonly_url('branch/file')
         output = self.run_bzr('log %s' % url)[0]
         self.assertEqual(8, len(output.split('\n')))
-        
+
     def test_check(self):
         self.build_tree(['branch/', 'branch/file'])
         self.run_bzr('init branch')[0]
@@ -610,7 +593,7 @@ class RemoteTests(object):
         self.run_bzr('commit -m foo branch')[0]
         url = self.get_readonly_url('branch/')
         self.run_bzr(['check', url])
-    
+
     def test_push(self):
         # create a source branch
         os.mkdir('my-branch')
@@ -623,15 +606,15 @@ class RemoteTests(object):
         # with an explicit target work
         self.run_bzr(['push', self.get_url('output-branch')])
 
-    
+
 class HTTPTests(TestCaseWithWebserver, RemoteTests):
     """Test various commands against a HTTP server."""
-    
-    
+
+
 class SFTPTestsAbsolute(TestCaseWithSFTPServer, RemoteTests):
     """Test various commands against a SFTP server using abs paths."""
 
-    
+
 class SFTPTestsAbsoluteSibling(TestCaseWithSFTPServer, RemoteTests):
     """Test various commands against a SFTP server using abs paths."""
 
@@ -639,7 +622,7 @@ class SFTPTestsAbsoluteSibling(TestCaseWithSFTPServer, RemoteTests):
         super(SFTPTestsAbsoluteSibling, self).setUp()
         self._override_home = '/dev/noone/runs/tests/here'
 
-    
+
 class SFTPTestsRelative(TestCaseWithSFTPServer, RemoteTests):
     """Test various commands against a SFTP server using homedir rel paths."""
 

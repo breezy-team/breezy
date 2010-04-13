@@ -5,7 +5,7 @@ bzr commit
 ----------
 
 When the working tree state is satisfactory, it can be **committed** to
-the branch, creating a new revision holding a snapshot of that state.  
+the branch, creating a new revision holding a snapshot of that state.
 
 The **commit** command takes a message describing the changes in the
 revision.  It also records your userid, the current time and timezone, and
@@ -59,4 +59,23 @@ By default bzr always commits all changes to the tree, even if run from a
 subdirectory.  To commit from only the current directory down, use::
 
     % bzr commit .
+
+Giving credit for a change
+--------------------------
+
+If you didn't actually write the changes that you are about to commit, for instance
+if you are applying a patch from someone else, you can use the ``--author`` commit
+option to give them credit for the change::
+
+    % bzr commit --author "Jane Rey <jrey@example.com>"
+
+The person that you specify there will be recorded as the "author" of the revision,
+and you will be recorded as the "committer" of the revision.
+
+If more than one person works on the changes for a revision, for instance if you
+are pair-programming, then you can record this by specifying ``--author`` multiple
+times::
+
+    % bzr commit --author "Jane Rey <jrey@example.com>" \
+        --author "John Doe <jdoe@example.com>"
 

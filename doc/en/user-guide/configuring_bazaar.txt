@@ -13,7 +13,7 @@ guess that Bazaar makes, then use the ``whoami`` command to set the
 identifier you want::
 
     % bzr whoami "Your Name <email@example.com>"
- 
+
 If ``whoami`` is used without an argument, the current value is displayed.
 
 Configuration files

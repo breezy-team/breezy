@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """http/https transport using pycurl"""
 
@@ -59,7 +59,7 @@ except ImportError, e:
 try:
     # see if we can actually initialize PyCurl - sometimes it will load but
     # fail to start up due to this bug:
-    #  
+    #
     #   32. (At least on Windows) If libcurl is built with c-ares and there's
     #   no DNS server configured in the system, the ares_init() call fails and
     #   thus curl_easy_init() fails as well. This causes weird effects for
@@ -86,13 +86,15 @@ def _get_pycurl_errcode(symbol, default):
     """
     return pycurl.__dict__.get(symbol, default)
 
-CURLE_SSL_CACERT_BADFILE = _get_pycurl_errcode('E_SSL_CACERT_BADFILE', 77)
 CURLE_COULDNT_CONNECT = _get_pycurl_errcode('E_COULDNT_CONNECT', 7)
 CURLE_COULDNT_RESOLVE_HOST = _get_pycurl_errcode('E_COULDNT_RESOLVE_HOST', 6)
 CURLE_COULDNT_RESOLVE_PROXY = _get_pycurl_errcode('E_COULDNT_RESOLVE_PROXY', 5)
 CURLE_GOT_NOTHING = _get_pycurl_errcode('E_GOT_NOTHING', 52)
 CURLE_PARTIAL_FILE = _get_pycurl_errcode('E_PARTIAL_FILE', 18)
 CURLE_SEND_ERROR = _get_pycurl_errcode('E_SEND_ERROR', 55)
+CURLE_RECV_ERROR = _get_pycurl_errcode('E_RECV_ERROR', 56)
+CURLE_SSL_CACERT = _get_pycurl_errcode('E_SSL_CACERT', 60)
+CURLE_SSL_CACERT_BADFILE = _get_pycurl_errcode('E_SSL_CACERT_BADFILE', 77)
 
 
 class PyCurlTransport(HttpTransportBase):
@@ -105,9 +107,9 @@ class PyCurlTransport(HttpTransportBase):
     """
 
     def __init__(self, base, _from_transport=None):
-        super(PyCurlTransport, self).__init__(base,
+        super(PyCurlTransport, self).__init__(base, 'pycurl',
                                               _from_transport=_from_transport)
-        if base.startswith('https'):
+        if self._unqualified_scheme == 'https':
             # Check availability of https into pycurl supported
             # protocols
             supported = pycurl.version_info()[8]
@@ -179,7 +181,7 @@ class PyCurlTransport(HttpTransportBase):
 
         :param curl: The curl object to place the request on
         :param relpath: The relative path that we want to get
-        :return: (abspath, data, header) 
+        :return: (abspath, data, header)
                  abspath: full url
                  data: file that will be filled with the body
                  header: file that will be filled with the headers
@@ -214,8 +216,8 @@ class PyCurlTransport(HttpTransportBase):
 
     # The parent class use 0 to minimize the requests, but since we can't
     # exploit the results as soon as they are received (pycurl limitation) we'd
-    # better issue more requests and provide a more responsive UI do the cost
-    # of more latency costs.
+    # better issue more requests and provide a more responsive UI incurring
+    # more latency costs.
     # If you modify this, think about modifying the comment in http/__init__.py
     # too.
     _get_max_size = 4 * 1024 * 1024
@@ -286,6 +288,7 @@ class PyCurlTransport(HttpTransportBase):
         msg = self._parse_headers(header)
         return code, response.handle_response(abspath, code, msg, data)
 
+
     def _raise_curl_http_error(self, curl, info=None):
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
@@ -303,15 +306,28 @@ class PyCurlTransport(HttpTransportBase):
             raise errors.InvalidHttpResponse(
                 url, 'Unable to handle http code %d%s' % (code,msg))
 
+    def _debug_cb(self, kind, text):
+        if kind in (pycurl.INFOTYPE_HEADER_IN, pycurl.INFOTYPE_DATA_IN,
+                    pycurl.INFOTYPE_SSL_DATA_IN):
+            self._report_activity(len(text), 'read')
+            if (kind == pycurl.INFOTYPE_HEADER_IN
+                and 'http' in debug.debug_flags):
+                mutter('< %s' % text)
+        elif kind in (pycurl.INFOTYPE_HEADER_OUT, pycurl.INFOTYPE_DATA_OUT,
+                      pycurl.INFOTYPE_SSL_DATA_OUT):
+            self._report_activity(len(text), 'write')
+            if (kind == pycurl.INFOTYPE_HEADER_OUT
+                and 'http' in debug.debug_flags):
+                mutter('> %s' % text)
+        elif kind == pycurl.INFOTYPE_TEXT and 'http' in debug.debug_flags:
+            mutter('* %s' % text)
+
     def _set_curl_options(self, curl):
         """Set options for all requests"""
-        if 'http' in debug.debug_flags:
-            curl.setopt(pycurl.VERBOSE, 1)
-            # pycurl doesn't implement the CURLOPT_STDERR option, so we can't
-            # do : curl.setopt(pycurl.STDERR, trace._trace_file)
-
         ua_str = 'bzr/%s (pycurl: %s)' % (bzrlib.__version__, pycurl.version)
         curl.setopt(pycurl.USERAGENT, ua_str)
+        curl.setopt(pycurl.VERBOSE, 1)
+        curl.setopt(pycurl.DEBUGFUNCTION, self._debug_cb)
         if self.cabundle:
             curl.setopt(pycurl.CAINFO, self.cabundle)
         # Set accepted auth methods
@@ -343,12 +359,17 @@ class PyCurlTransport(HttpTransportBase):
             url = curl.getinfo(pycurl.EFFECTIVE_URL)
             mutter('got pycurl error: %s, %s, %s, url: %s ',
                     e[0], e[1], e, url)
-            if e[0] in (CURLE_SSL_CACERT_BADFILE,
-                        CURLE_COULDNT_RESOLVE_HOST,
+            if e[0] in (CURLE_COULDNT_RESOLVE_HOST,
+                        CURLE_COULDNT_RESOLVE_PROXY,
                         CURLE_COULDNT_CONNECT,
                         CURLE_GOT_NOTHING,
-                        CURLE_COULDNT_RESOLVE_PROXY,):
+                        CURLE_SSL_CACERT,
+                        CURLE_SSL_CACERT_BADFILE,
+                        ):
                 raise errors.ConnectionError(
+                    'curl connection error (%s)\non %s' % (e[1], url))
+            elif e[0] == CURLE_RECV_ERROR:
+                raise errors.ConnectionReset(
                     'curl connection error (%s)\non %s' % (e[1], url))
             elif e[0] == CURLE_PARTIAL_FILE:
                 # Pycurl itself has detected a short read.  We do not have all
@@ -366,12 +387,27 @@ class PyCurlTransport(HttpTransportBase):
             redirected_to = msg.getheader('location')
             raise errors.RedirectRequested(url,
                                            redirected_to,
-                                           is_permanent=(code == 301),
-                                           qual_proto=self._scheme)
+                                           is_permanent=(code == 301))
 
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    from bzrlib.tests.http_server import HttpServer_PyCurl
-    return [(PyCurlTransport, HttpServer_PyCurl),
-            ]
+    from bzrlib import tests
+    from bzrlib.tests import http_server
+    permutations = [(PyCurlTransport, http_server.HttpServer_PyCurl),]
+    if tests.HTTPSServerFeature.available():
+        from bzrlib.tests import (
+            https_server,
+            ssl_certs,
+            )
+
+        class HTTPS_pycurl_transport(PyCurlTransport):
+
+            def __init__(self, base, _from_transport=None):
+                super(HTTPS_pycurl_transport, self).__init__(base,
+                                                             _from_transport)
+                self.cabundle = str(ssl_certs.build_path('ca.crt'))
+
+        permutations.append((HTTPS_pycurl_transport,
+                             https_server.HTTPSServer_PyCurl))
+    return permutations

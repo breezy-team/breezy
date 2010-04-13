@@ -1,0 +1,82 @@
+#! /bin/zsh -e
+
+# upload a release file to Launchpad 
+#
+# usage: lp-upload-release [--staging] bzr-1.2.3.tgz
+
+setopt extended_glob
+
+if [ "$1" = "--staging" ]
+then
+	shift
+	server="staging.launchpad.net"
+else
+	server="launchpad.net"
+fi
+
+if [ $# -ne 1 ]
+then
+	echo "usage: lp-upload-release VERSION FILENAME"
+	exit 2
+fi
+
+if [ -z "$EMAIL" ]
+then
+	echo "please set $EMAIL to an address registered with Launchpad"
+	exit 2
+fi
+
+upfile="$1"
+if [ \! -f "$1" ]
+then
+	echo "$upfile is not a file"
+	exit 2
+fi
+
+sigfile="$upfile.sig"
+if [ \! -f "$sigfile" ]
+then
+	echo "couldn't find gpg signature $sigfile"
+	exit 2
+fi
+
+# just in case
+gpg $sigfile
+
+# parse the product and release number out of a filename like
+# "bzr-foo-1.23rc1.tar.gz"
+
+# need to strip off the .tar too for .tar.gz files
+headpart=${${upfile:r}%.tar}
+filetype="${upfile#${headpart}}"
+basename="${${headpart:t}%%-[0-9].*}"
+version="${${headpart:t}##*-}"
+echo $basename $version $filetype
+
+# bzr puts just the first part of the version into the series, e.g. 1.8 from 1.8rc1
+series=${version%(rc|beta|alpha)*}
+
+for v in basename version filetype series
+do
+	echo "$v=${(P)v}"
+done
+
+curl -u "$EMAIL" \
+	https://$server/$basename/$series/$version/+adddownloadfile \
+ 	-F field.description="$basename $version source" \
+ 	-F field.filecontent="@${upfile}" \
+ 	-F field.contenttype=CODETARBALL \
+ 	-F field.actions.add=Upload
+
+reported_md5=$( curl https://$server/$basename/$series/$version/+download/$filetail/+md5 )
+expected_md5="$(md5sum "$upfile")"
+expected_md5=${${(z)expected_md5}[1]}
+
+for v in reported_md5 expected_md5
+do
+	echo "$v=${(P)v}"
+done
+
+[ $reported_md5 = $expected_md5 ]
+
+# vim: sw=4

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for rio serialization
 
@@ -54,7 +54,7 @@ class TestRio(TestCase):
         # these aren't enforced at construction time
         ## self.assertRaises(ValueError,
         ##        Stanza, complex=42 + 3j)
-        ## self.assertRaises(ValueError, 
+        ## self.assertRaises(ValueError,
         ##        Stanza, several=range(10))
 
     def test_empty_value(self):
@@ -123,7 +123,7 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
     def test_repeated_field(self):
         """Repeated field in rio"""
         s = Stanza()
-        for k, v in [('a', '10'), ('b', '20'), ('a', '100'), ('b', '200'), 
+        for k, v in [('a', '10'), ('b', '20'), ('a', '100'), ('b', '200'),
                      ('a', '1000'), ('b', '2000')]:
             s.add(k, v)
         s2 = read_stanza(s.to_lines())
@@ -141,10 +141,10 @@ committer: Martin Pool <mbp@test.sourcefrog.net>
     def test_blank_line(self):
         s = Stanza(none='', one='\n', two='\n\n')
         self.assertEqualDiff(s.to_string(), """\
-none: 
-one: 
+none:\x20
+one:\x20
 \t
-two: 
+two:\x20
 \t
 \t
 """)
@@ -154,10 +154,10 @@ two:
     def test_whitespace_value(self):
         s = Stanza(space=' ', tabs='\t\t\t', combo='\n\t\t\n')
         self.assertEqualDiff(s.to_string(), """\
-combo: 
+combo:\x20
 \t\t\t
 \t
-space:  
+space:\x20\x20
 tabs: \t\t\t
 """)
         s2 = read_stanza(s.to_lines())
@@ -166,12 +166,12 @@ tabs: \t\t\t
 
     def test_quoted(self):
         """rio quoted string cases"""
-        s = Stanza(q1='"hello"', 
-                   q2=' "for', 
+        s = Stanza(q1='"hello"',
+                   q2=' "for',
                    q3='\n\n"for"\n',
                    q4='for\n"\nfor',
                    q5='\n',
-                   q6='"', 
+                   q6='"',
                    q7='""',
                    q8='\\',
                    q9='\\"\\"',
@@ -187,7 +187,7 @@ tabs: \t\t\t
         s = read_stanza([])
         self.assertEqual(s, None)
         self.assertTrue(s is None)
-        
+
     def test_read_iter(self):
         """Read several stanzas from file"""
         tmpf = TemporaryFile()
@@ -204,7 +204,7 @@ val: 129319
         reader = read_stanzas(tmpf)
         read_iter = iter(reader)
         stuff = list(reader)
-        self.assertEqual(stuff, 
+        self.assertEqual(stuff,
                 [ Stanza(version_header='1'),
                   Stanza(name="foo", val='123'),
                   Stanza(name="bar", val='129319'), ])
@@ -259,7 +259,7 @@ val: 129319
         tmpf.write('''\
 s: "one"
 
-s: 
+s:\x20
 \t"one"
 \t
 
@@ -269,12 +269,12 @@ s: ""
 
 s: """
 
-s: 
+s:\x20
 \t
 
 s: \\
 
-s: 
+s:\x20
 \t\\
 \t\\\\
 \t

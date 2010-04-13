@@ -1,5 +1,5 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
-# 
+# Copyright (C) 2005-2010 Canonical Ltd
+#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -12,10 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 __all__ = ['show_bzrdir_info']
 
+from cStringIO import StringIO
 import os
 import time
 import sys
@@ -24,6 +25,7 @@ from bzrlib import (
     bzrdir,
     diff,
     errors,
+    hooks as _mod_hooks,
     osutils,
     urlutils,
     )
@@ -261,7 +263,7 @@ def _show_working_stats(working, outfile):
 
     dir_cnt = 0
     for file_id in work_inv:
-        if (work_inv.get_file_kind(file_id) == 'directory' and 
+        if (work_inv.get_file_kind(file_id) == 'directory' and
             not work_inv.is_root(file_id)):
             dir_cnt += 1
     outfile.write('  %8d versioned %s\n' % (dir_cnt,
@@ -299,16 +301,20 @@ def _show_repository_info(repository, outfile):
             'the repository.\n')
 
 
-def _show_repository_stats(stats, outfile):
+def _show_repository_stats(repository, stats, outfile):
     """Show statistics about a repository."""
-    if 'revisions' in stats or 'size' in stats:
-        outfile.write('\n')
-        outfile.write('Repository:\n')
+    f = StringIO()
     if 'revisions' in stats:
         revisions = stats['revisions']
-        outfile.write('  %8d revision%s\n' % (revisions, plural(revisions)))
+        f.write('  %8d revision%s\n' % (revisions, plural(revisions)))
     if 'size' in stats:
-        outfile.write('  %8d KiB\n' % (stats['size']/1024))
+        f.write('  %8d KiB\n' % (stats['size']/1024))
+    for hook in hooks['repository']:
+        hook(repository, stats, f)
+    if f.getvalue() != "":
+        outfile.write('\n')
+        outfile.write('Repository:\n')
+        outfile.write(f.getvalue())
 
 
 def show_bzrdir_info(a_bzrdir, verbose=False, outfile=None):
@@ -376,12 +382,13 @@ def show_component_info(control, repository, branch=None, working=None,
     elif branch is not None:
         _show_missing_revisions_branch(branch, outfile)
     if branch is not None:
-        stats = _show_branch_stats(branch, verbose==2, outfile)
+        show_committers = verbose >= 2
+        stats = _show_branch_stats(branch, show_committers, outfile)
     else:
         stats = repository.gather_stats()
     if branch is None and working is None:
         _show_repository_info(repository, outfile)
-    _show_repository_stats(stats, outfile)
+    _show_repository_stats(repository, stats, outfile)
 
 
 def describe_layout(repository=None, branch=None, tree=None):
@@ -471,3 +478,18 @@ def describe_format(control, repository, branch, tree):
         # do.
         candidates = new_candidates
     return ' or '.join(candidates)
+
+
+class InfoHooks(_mod_hooks.Hooks):
+    """Hooks for the info command."""
+
+    def __init__(self):
+        super(InfoHooks, self).__init__()
+        self.create_hook(_mod_hooks.HookPoint('repository',
+            "Invoked when displaying the statistics for a repository. "
+            "repository is called with a statistics dictionary as returned "
+            "by the repository and a file-like object to write to.", (1, 15), 
+            None))
+
+
+hooks = InfoHooks()

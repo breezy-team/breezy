@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """ChunkWriter: write compressed data out with a fixed upper bound."""
@@ -47,51 +47,53 @@ class ChunkWriter(object):
     #    In testing, some values for bzr.dev::
     #        repack  time  MB   max   full
     #         1       7.5  4.6  1140  0
-    #         2       8.4  4.2  1036  1          6.8
+    #         2       8.4  4.2  1036  1
     #         3       9.8  4.1  1012  278
     #         4      10.8  4.1  728   945
     #        20      11.1  4.1  0     1012
     #        repack = 0
-    #        zsync   time  MB    repack  max_z   time w/ add_node
-    #         0       6.7  24.7  0       6270    5.0
-    #         1       6.5  13.2  0       3342    4.3
-    #         2       6.6   9.6  0       2414    4.9
-    #         5       6.5   6.2  0       1549    4.8
-    #         6       6.5   5.8  1       1435    4.8
-    #         7       6.6   5.5  19      1337    4.8
-    #         8       6.7   5.3  81      1220    4.4
-    #        10       6.8   5.0  260     967     5.3
-    #        11       6.8   4.9  366     839     5.3
-    #        12       6.9   4.8  454     731     5.1
-    #        15       7.2   4.7  704     450     5.8
-    #        20       7.7   4.6  1133    7       5.8
+    #        zsync   time  MB    repack  stop_for_z
+    #         0       5.0  24.7  0       6270
+    #         1       4.3  13.2  0       3342
+    #         2       4.9   9.6  0       2414
+    #         5       4.8   6.2  0       1549
+    #         6       4.8   5.8  1       1435
+    #         7       4.8   5.5  19      1337
+    #         8       4.4   5.3  81      1220
+    #        10       5.3   5.0  260     967
+    #        11       5.3   4.9  366     839
+    #        12       5.1   4.8  454     731
+    #        15       5.8   4.7  704     450
+    #        20       5.8   4.6  1133    7
 
     #    In testing, some values for mysql-unpacked::
     #                next_bytes estim
-    #        repack  time  MB    hit_max full
-    #         1      51.7  15.4  3913  0
-    #         2      54.4  13.7  3467  0         35.4
-    #        20      67.0  13.4  0     3380      46.7
+    #        repack  time  MB    full    stop_for_repack
+    #         1            15.4  0       3913
+    #         2      35.4  13.7  0       346
+    #        20      46.7  13.4  3380    0
     #        repack=0
-    #        zsync                               time w/ add_node
-    #         0      47.7 116.5  0       29782   29.5
-    #         1      48.5  60.2  0       15356   27.8
-    #         2      48.1  42.4  0       10822   27.8
-    #         5      48.3  25.5  0       6491    26.8
-    #         6      48.0  23.2  13      5896    27.3
-    #         7      48.1  21.6  29      5451    27.5
-    #         8      48.1  20.3  52      5108    27.1
-    #        10      46.9  18.6  195     4526    29.4
-    #        11      48.8  18.0  421     4143    29.2
-    #        12      47.4  17.5  702     3738    28.0
-    #        15      49.6  16.5  1223    2969    28.9
-    #        20      48.9  15.7  2182    1810    29.6
-    #        30            15.4  3891    23      31.4
+    #        zsync                       stop_for_z
+    #         0      29.5 116.5  0       29782
+    #         1      27.8  60.2  0       15356
+    #         2      27.8  42.4  0       10822
+    #         5      26.8  25.5  0       6491
+    #         6      27.3  23.2  13      5896
+    #         7      27.5  21.6  29      5451
+    #         8      27.1  20.3  52      5108
+    #        10      29.4  18.6  195     4526
+    #        11      29.2  18.0  421     4143
+    #        12      28.0  17.5  702     3738
+    #        15      28.9  16.5  1223    2969
+    #        20      29.6  15.7  2182    1810
+    #        30      31.4  15.4  3891    23
 
-    _max_repack = 0
-    _max_zsync = 8
+    # Tuple of (num_repack_attempts, num_zsync_attempts)
+    # num_zsync_attempts only has meaning if num_repack_attempts is 0.
+    _repack_opts_for_speed = (0, 8)
+    _repack_opts_for_size = (20, 0)
 
-    def __init__(self, chunk_size, reserved=0):
+    def __init__(self, chunk_size, reserved=0, optimize_for_size=False):
         """Create a ChunkWriter to write chunk_size chunks.
 
         :param chunk_size: The total byte count to emit at the end of the
@@ -110,6 +112,8 @@ class ChunkWriter(object):
         self.num_zsync = 0
         self.unused_bytes = None
         self.reserved_size = reserved
+        # Default is to make building fast rather than compact
+        self.set_optimize(for_size=optimize_for_size)
 
     def finish(self):
         """Finish the chunk.
@@ -140,6 +144,19 @@ class ChunkWriter(object):
         if nulls_needed:
             self.bytes_list.append("\x00" * nulls_needed)
         return self.bytes_list, self.unused_bytes, nulls_needed
+
+    def set_optimize(self, for_size=True):
+        """Change how we optimize our writes.
+
+        :param for_size: If True, optimize for minimum space usage, otherwise
+            optimize for fastest writing speed.
+        :return: None
+        """
+        if for_size:
+            opts = ChunkWriter._repack_opts_for_size
+        else:
+            opts = ChunkWriter._repack_opts_for_speed
+        self._max_repack, self._max_zsync = opts
 
     def _recompress_all_bytes_in(self, extra_bytes=None):
         """Recompress the current bytes_in, and optionally more.

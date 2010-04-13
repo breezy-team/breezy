@@ -1,6 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
-# -*- coding: utf-8 -*-
-# vim: encoding=utf-8
+# Copyright (C) 2005, 2008 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for bzr missing."""
 
@@ -27,6 +25,28 @@ from bzrlib.tests import TestCaseWithTransport
 
 
 class TestMissing(TestCaseWithTransport):
+
+    def assertMessages(self, out, must_have=(), must_not_have=()):
+        """Check if commit messages are in or not in the output"""
+        for m in must_have:
+            self.assertContainsRe(out, r'\nmessage:\n  %s\n' % m)
+        for m in must_not_have:
+            self.assertNotContainsRe(out, r'\nmessage:\n  %s\n' % m)
+
+    def test_missing_quiet(self):
+        # <https://bugs.launchpad.net/bzr/+bug/284748>
+        # create a source branch
+        #
+        # XXX: This still needs a test that missing is quiet when there are
+        # missing revisions.
+        a_tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a', 'initial\n')])
+        a_tree.add('a')
+        a_tree.commit(message='initial')
+
+        out, err = self.run_bzr('missing -q .')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_missing(self):
         missing = "You are missing 1 revision(s):"
@@ -43,7 +63,7 @@ class TestMissing(TestCaseWithTransport):
         b_tree.commit(message='more')
 
         # run missing in a against b
-        # this should not require missing to take out a write lock on a 
+        # this should not require missing to take out a write lock on a
         # or b. So we take a write lock on both to test that at the same
         # time. This may let the test pass while the default branch is an
         # os-locking branch, but it will trigger failures with lockdir based
@@ -80,7 +100,7 @@ class TestMissing(TestCaseWithTransport):
         lines3 = self.run_bzr('missing ../b --theirs-only', retcode=0)[0]
         self.assertEqualDiff('Other branch is up to date.\n', lines3)
 
-        # relative to a, missing the 'merge' commit 
+        # relative to a, missing the 'merge' commit
         os.chdir('../b')
         lines = self.run_bzr('missing ../a', retcode=1)[0].splitlines()
         self.assertEqual(missing, lines[0])
@@ -123,6 +143,40 @@ class TestMissing(TestCaseWithTransport):
                              self.run_bzr('missing ../a --mine-only')[0])
         self.assertEqualDiff('Other branch is up to date.\n',
                              self.run_bzr('missing ../a --theirs-only')[0])
+
+    def test_missing_filtered(self):
+        # create a source branch
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/a', 'initial\n')])
+        a_tree.add('a')
+        a_tree.commit(message='r1')
+        # clone and add differing revisions
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+
+        for i in range(2, 6):
+            a_tree.commit(message='a%d' % i)
+            b_tree.commit(message='b%d' % i)
+
+        os.chdir('a')
+        # local
+        out,err = self.run_bzr('missing ../b --my-revision 3', retcode=1)
+        self.assertMessages(out, ('a3', 'b2', 'b3', 'b4', 'b5'), ('a2', 'a4'))
+
+        out,err = self.run_bzr('missing ../b --my-revision 3..4', retcode=1)
+        self.assertMessages(out, ('a3', 'a4'), ('a2', 'a5'))
+
+        #remote
+        out,err = self.run_bzr('missing ../b -r 3', retcode=1)
+        self.assertMessages(out, ('a2', 'a3', 'a4', 'a5', 'b3'), ('b2', 'b4'))
+
+        out,err = self.run_bzr('missing ../b -r 3..4', retcode=1)
+        self.assertMessages(out, ('b3', 'b4'), ('b2', 'b5'))
+
+        #both
+        out,err = self.run_bzr('missing ../b --my-revision 3..4 -r 3..4',
+            retcode=1)
+        self.assertMessages(out, ('a3', 'a4', 'b3', 'b4'),
+            ('a2', 'a5', 'b2', 'b5'))
 
     def test_missing_check_last_location(self):
         # check that last location shown as filepath not file URL

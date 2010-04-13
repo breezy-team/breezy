@@ -12,16 +12,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport implementation that disables listing to simulate HTTP cheaply."""
 
 import bzrlib.errors as errors
 from bzrlib.transport import Transport
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
-class UnlistableTransportDecorator(TransportDecorator):
+class UnlistableTransportDecorator(decorator.TransportDecorator):
     """A transport that disables file listing for testing."""
 
     @classmethod
@@ -39,14 +39,7 @@ class UnlistableTransportDecorator(TransportDecorator):
         Transport.list_dir(self, relpath)
 
 
-class UnlistableServer(DecoratorServer):
-    """Server for the UnlistableTransportDecorator for testing with."""
-
-    def get_decorator_class(self):
-        return UnlistableTransportDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(UnlistableTransportDecorator, UnlistableServer),
-            ]
+    from bzrlib.tests import test_server
+    return [(UnlistableTransportDecorator, test_server.UnlistableServer),]

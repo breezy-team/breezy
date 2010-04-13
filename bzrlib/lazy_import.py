@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Functionality to create lazy evaluation objects.
 
@@ -149,7 +149,7 @@ class ImportReplacer(ScopeReplacer):
 
         :param scope: The scope that objects should be imported into.
             Typically this is globals()
-        :param name: The variable name. Often this is the same as the 
+        :param name: The variable name. Often this is the same as the
             module_path. 'bzrlib'
         :param module_path: A list for the fully specified module path
             ['bzrlib', 'foo', 'bar']
@@ -157,7 +157,7 @@ class ImportReplacer(ScopeReplacer):
             None, indicating the module is being imported.
         :param children: Children entries to be imported later.
             This should be a map of children specifications.
-            {'foo':(['bzrlib', 'foo'], None, 
+            {'foo':(['bzrlib', 'foo'], None,
                 {'bar':(['bzrlib', 'foo', 'bar'], None {})})
             }
         Examples:

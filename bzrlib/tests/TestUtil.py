@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #       Author: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 import sys
@@ -47,7 +47,7 @@ def makeCollectingLogger():
 def visitTests(suite, visitor):
     """A foreign method for visiting the tests in a test suite."""
     for test in suite._tests:
-        #Abusing types to avoid monkey patching unittest.TestCase. 
+        #Abusing types to avoid monkey patching unittest.TestCase.
         # Maybe that would be better?
         try:
             test.visit(visitor)
@@ -59,7 +59,7 @@ def visitTests(suite, visitor):
                 visitTests(test, visitor)
             else:
                 print "unvisitable non-unittest.TestCase element %r (%r)" % (test, test.__class__)
-    
+
 
 class TestSuite(unittest.TestSuite):
     """I am an extended TestSuite with a visitor interface.
@@ -72,6 +72,18 @@ class TestSuite(unittest.TestSuite):
         visitor.visitSuite(self)
         visitTests(self, visitor)
 
+    def run(self, result):
+        """Run the tests in the suite, discarding references after running."""
+        tests = list(self)
+        tests.reverse()
+        self._tests = []
+        while tests:
+            if result.shouldStop:
+                self._tests = reversed(tests)
+                break
+            tests.pop().run(result)
+        return result
+
 
 class TestLoader(unittest.TestLoader):
     """Custom TestLoader to extend the stock python one."""
@@ -83,8 +95,8 @@ class TestLoader(unittest.TestLoader):
     def loadTestsFromModuleNames(self, names):
         """use a custom means to load tests from modules.
 
-        There is an undesirable glitch in the python TestLoader where a 
-        import error is ignore. We think this can be solved by ensuring the 
+        There is an undesirable glitch in the python TestLoader where a
+        import error is ignore. We think this can be solved by ensuring the
         requested name is resolvable, if its not raising the original error.
         """
         result = self.suiteClass()
@@ -107,7 +119,7 @@ class TestLoader(unittest.TestLoader):
         regular python loadTestsFromModule.
 
         If a load_tests attribute is found, it is called and the result is
-        returned. 
+        returned.
 
         load_tests should be defined like so:
         >>> def load_tests(standard_tests, module, loader):

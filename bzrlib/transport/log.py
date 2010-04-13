@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport decorator that logs transport operations to .bzr.log."""
 
@@ -26,24 +26,19 @@ import time
 import types
 
 from bzrlib.trace import mutter
-from bzrlib.transport.decorator import (
-    TransportDecorator,
-    )
-from bzrlib.transport.trace import (
-    DecoratorServer,
-    TransportTraceDecorator,
-    )
+from bzrlib.transport import decorator
 
 
-
-
-class TransportLogDecorator(TransportDecorator):
+class TransportLogDecorator(decorator.TransportDecorator):
     """Decorator for Transports that logs interesting operations to .bzr.log.
 
     In general we want to log things that usually take a network round trip
     and may be slow.
 
     Not all operations are logged yet.
+
+    See also TransportTraceDecorator, that records a machine-readable log in 
+    memory for eg testing.
     """
 
     def __init__(self, *args, **kw):
@@ -104,10 +99,15 @@ class TransportLogDecorator(TransportDecorator):
     def _show_result(self, before, methodname, result):
         result_len = None
         if isinstance(result, types.GeneratorType):
-            # eagerly pull in all the contents, so that we can measure how
-            # long it takes to get them.  this does make the behaviour a bit
-            # different, but we hope not noticably so
+            # We now consume everything from the generator so that we can show
+            # the results and the time it took to get them.  However, to keep
+            # compatibility with callers that may specifically expect a result
+            # (see <https://launchpad.net/bugs/340347>) we also return a new
+            # generator, reset to the starting position.
             result = list(result)
+            return_result = iter(result)
+        else:
+            return_result = result
         if isinstance(result, (cStringIO.OutputType, StringIO.StringIO)):
             val = repr(result.getvalue())
             result_len = len(val)
@@ -122,16 +122,19 @@ class TransportLogDecorator(TransportDecorator):
         else:
             shown_result = self._shorten(self._strip_tuple_parens(result))
         mutter("  --> %s" % shown_result)
-        # XXX: the time may be wrong when e.g. a generator object is returned from
-        # an http readv, if the object is returned before the bulk data
-        # is read.
-        elapsed = time.time() - before
-        if result_len and elapsed > 0:
-            # this is the rate of higher-level data, not the raw network speed
-            mutter("      %9.03fs %8dkB/s" % (elapsed, result_len/elapsed/1024))
-        else:
-            mutter("      %9.03fs" % (elapsed))
-        return result
+        # The log decorator no longer shows the elapsed time or transfer rate
+        # because they're available in the log prefixes and the transport
+        # activity display respectively.
+        if False:
+            elapsed = time.time() - before
+            if result_len and elapsed > 0:
+                # this is the rate of higher-level data, not the raw network
+                # speed using base-10 units (see HACKING.txt).
+                mutter("      %9.03fs %8dkB/s"
+                       % (elapsed, result_len/elapsed/1000))
+            else:
+                mutter("      %9.03fs" % (elapsed))
+        return return_result
 
     def _shorten(self, x):
         if len(x) > 70:
@@ -145,13 +148,7 @@ class TransportLogDecorator(TransportDecorator):
         return t
 
 
-class LogDecoratorServer(DecoratorServer):
-    """Server for testing."""
-
-    def get_decorator_class(self):
-        return TransportLogDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(TransportLogDecorator, LogDecoratorServer)]
+    from bzrlib.tests import test_server
+    return [(TransportLogDecorator, test_server.LogDecoratorServer)]

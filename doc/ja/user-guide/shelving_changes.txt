@@ -1,0 +1,109 @@
+Shelving Changes
+================
+
+ときどき、作業ツリーから一時的に変更点を取り除いて、あとで元に戻したいことが\
+あるかもしれません。
+たとえば何か作業中に小さいバグフィックスを見つけてコミットする場合などです。
+Bazaarは変更を ``shelf`` (書棚)に保存する機能を持っています。
+後で変更を元に戻したくなったときは、 ``unshelve`` を使って作業ツリーに戻す\
+ことができます。
+
+たとえば、一つか複数の変更がされた作業ツリーを考えて見ます...::
+
+  $ bzr diff
+  === modified file 'description.txt'
+  --- description.txt
+  +++ description.txt
+  @@ -2,7 +2,7 @@
+   ===============
+
+   These plugins
+  -by Michael Ellerman
+  +written by Michael Ellerman
+   provide a very
+   fine-grained 'undo'
+   facility
+  @@ -11,6 +11,6 @@
+   This allows you to
+   undo some of
+   your changes,
+  -commit, and get
+  +perform a commit, and get
+   back to where you
+   were before.
+
+``shelve`` コマンドはインタラクティブにどの変更を作業ツリーに保留して\
+おきたいのかを質問します。::
+
+  $ bzr shelve
+  --- description.txt
+  +++ description.txt
+  @@ -2,7 +2,7 @@
+   ===============
+
+   These plugins
+  -by Michael Ellerman
+  +written by Michael Ellerman
+   provide a very
+   fine-grained 'undo'
+   facility
+
+  Shelve? [yNfrq?]: y
+  --- description.txt
+  +++ description.txt
+  @@ -11,6 +11,6 @@
+   This allows you to
+   undo some of
+   your changes,
+  -commit, and get
+  +perform a commit, and get
+   back to where you
+   were before.
+
+  Shelve? [yNfrq?]: n
+  Shelve 2 change(s)? [yNfrq?]', 'y'
+  Selected changes:
+   M  description.txt
+  Changes shelved with id "1".
+
+もしたくさんの変更が作業ツリーにあるのであれば、 ``shelve`` コマンド\
+にファイルのリストを渡して、それらのファイルの変更だけについて質問\
+されるようにすることができます。
+変更を shelve した後に ``diff`` コマンドで作業ツリーに期待する変更だけが\
+残っていることを確認するとよいでしょう。::
+
+  $ bzr diff
+  === modified file 'description.txt'
+  --- description.txt
+  +++ description.txt
+  @@ -2,7 +2,7 @@
+   ===============
+
+   These plugins
+  -by Michael Ellerman
+  +written by Michael Ellerman
+   provide a very
+   fine-grained 'undo'
+   facility
+
+よし! - コミットする準備ができました::
+
+  $ bzr commit -m "improve first sentence"
+
+後になって、shelveした変更を作業ツリーに ``unshelve`` コマンドで\
+戻します::
+
+  $ bzr unshelve
+  Unshelving changes with id "1".
+   M  description.txt
+  All changes applied successfully.
+
+もし望むのであれば、複数のアイテムをshelfに置くことができます。
+通常 ``unshelve`` が実行されるたびに最も最近 shelve された変更が\
+元に戻されます。
+明示的にどの変更を戻すのかを指定することで別の順序で unshelve する\
+こともできます。
+
+Bazaarはshelveされた後に変更があっても、shelfの変更を作業ツリーに\
+マージするので、衝突が発生するかもしれません。
+その場合は通常のマージ後と同じように衝突を解決しなければなりません。

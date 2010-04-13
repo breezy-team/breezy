@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -14,7 +14,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Configuration that affects the behaviour of Bazaar.
 
@@ -37,7 +37,7 @@ setting.
 [/home/robertc/source]
 recurse=False|True(default)
 email= as above
-check_signatures= as above 
+check_signatures= as above
 create_signatures= as above.
 
 explanation of options
@@ -45,9 +45,9 @@ explanation of options
 editor - this option sets the pop up editor to use during commits.
 email - this option sets the user id bzr will use when committing.
 check_signatures - this option controls whether bzr will require good gpg
-                   signatures, ignore them, or check them if they are 
+                   signatures, ignore them, or check them if they are
                    present.
-create_signatures - this option controls whether bzr will always create 
+create_signatures - this option controls whether bzr will always create
                     gpg signatures, never create them, or create them if the
                     branch is configured to require them.
 log_format - this option sets the default log format.  Possible values are
@@ -78,6 +78,7 @@ from bzrlib import (
     errors,
     mail_client,
     osutils,
+    registry,
     symbol_versioning,
     trace,
     ui,
@@ -145,9 +146,21 @@ def ConfigObj(*args, **kwargs):
 class Config(object):
     """A configuration policy - what username, editor, gpg needs etc."""
 
+    def __init__(self):
+        super(Config, self).__init__()
+
     def get_editor(self):
         """Get the users pop up editor."""
         raise NotImplementedError
+
+    def get_change_editor(self, old_tree, new_tree):
+        from bzrlib import diff
+        cmd = self._get_change_editor()
+        if cmd is None:
+            return None
+        return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
+                                             sys.stdout)
+
 
     def get_mail_client(self):
         """Get a mail client to use"""
@@ -173,6 +186,27 @@ class Config(object):
         """Get a generic option - no special process, no default."""
         return self._get_user_option(option_name)
 
+    def get_user_option_as_bool(self, option_name):
+        """Get a generic option as a boolean - no special process, no default.
+
+        :return None if the option doesn't exist or its value can't be
+            interpreted as a boolean. Returns True or False otherwise.
+        """
+        s = self._get_user_option(option_name)
+        return ui.bool_from_string(s)
+
+    def get_user_option_as_list(self, option_name):
+        """Get a generic option as a list - no special process, no default.
+
+        :return None if the option doesn't exist. Returns the value as a list
+            otherwise.
+        """
+        l = self._get_user_option(option_name)
+        if isinstance(l, (str, unicode)):
+            # A single value, most probably the user forgot the final ','
+            l = [l]
+        return l
+
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
         result = self._gpg_signing_command()
@@ -195,9 +229,6 @@ class Config(object):
         """See log_format()."""
         return None
 
-    def __init__(self):
-        super(Config, self).__init__()
-
     def post_commit(self):
         """An ordered list of python functions to call.
 
@@ -215,16 +246,16 @@ class Config(object):
 
     def username(self):
         """Return email-style username.
-    
+
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
-        
+
         $BZR_EMAIL can be set to override this (as well as the
         deprecated $BZREMAIL), then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If none is found, a reasonable default is (hopefully)
         created.
-    
+
         TODO: Check it's reasonably well-formed.
         """
         v = os.environ.get('BZR_EMAIL')
@@ -294,9 +325,27 @@ class Config(object):
                 path = 'bzr'
             return path
 
+    def suppress_warning(self, warning):
+        """Should the warning be suppressed or emitted.
+
+        :param warning: The name of the warning being tested.
+
+        :returns: True if the warning should be suppressed, False otherwise.
+        """
+        warnings = self.get_user_option_as_list('suppress_warnings')
+        if warnings is None or warning not in warnings:
+            return False
+        else:
+            return True
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
+
+    def __init__(self, get_filename):
+        super(IniBasedConfig, self).__init__()
+        self._get_filename = get_filename
+        self._parser = None
 
     def _get_parser(self, file=None):
         if self._parser is not None:
@@ -330,6 +379,9 @@ class IniBasedConfig(Config):
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
         return POLICY_NONE
+
+    def _get_change_editor(self):
+        return self.get_user_option('change_editor')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -380,11 +432,6 @@ class IniBasedConfig(Config):
         """See Config.log_format."""
         return self._get_user_option('log_format')
 
-    def __init__(self, get_filename):
-        super(IniBasedConfig, self).__init__()
-        self._get_filename = get_filename
-        self._parser = None
-        
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_user_option('post_commit')
@@ -413,7 +460,7 @@ class IniBasedConfig(Config):
 
     def _get_alias(self, value):
         try:
-            return self._get_parser().get_value("ALIASES", 
+            return self._get_parser().get_value("ALIASES",
                                                 value)
         except KeyError:
             pass
@@ -463,7 +510,8 @@ class GlobalConfig(IniBasedConfig):
         self._write_config_file()
 
     def _write_config_file(self):
-        f = open(self._get_filename(), 'wb')
+        path = self._get_filename()
+        f = osutils.open_with_ownership(path, 'wb')
         self._get_parser().write(f)
         f.close()
 
@@ -641,7 +689,7 @@ class BranchConfig(Config):
 
     def _get_safe_value(self, option_name):
         """This variant of get_best_value never returns untrusted values.
-        
+
         It does not return values from the branch data, because the branch may
         not be controlled by the user.
 
@@ -656,7 +704,7 @@ class BranchConfig(Config):
 
     def _get_user_id(self):
         """Return the full user id for the branch.
-    
+
         e.g. "John Hacker <jhacker@example.com>"
         This is looked up in the email controlfile for the branch.
         """
@@ -666,8 +714,11 @@ class BranchConfig(Config):
                     .rstrip("\r\n"))
         except errors.NoSuchFile, e:
             pass
-        
+
         return self._get_best_value('_get_user_id')
+
+    def _get_change_editor(self):
+        return self._get_best_value('_get_change_editor')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -708,18 +759,17 @@ class BranchConfig(Config):
                         trace.warning('Value "%s" is masked by "%s" from'
                                       ' branch.conf', value, mask_value)
 
-
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
         return self._get_safe_value('_gpg_signing_command')
-        
+
     def __init__(self, branch):
         super(BranchConfig, self).__init__()
         self._location_config = None
         self._branch_data_config = None
         self._global_config = None
         self.branch = branch
-        self.option_sources = (self._get_location_config, 
+        self.option_sources = (self._get_location_config,
                                self._get_branch_data_config,
                                self._get_global_config)
 
@@ -760,14 +810,14 @@ def ensure_config_dir_exists(path=None):
                 trace.mutter('creating config parent directory: %r', parent_dir)
             os.mkdir(parent_dir)
         trace.mutter('creating config directory: %r', path)
-        os.mkdir(path)
+        osutils.mkdir_with_ownership(path)
 
 
 def config_dir():
     """Return per-user configuration directory.
 
     By default this is ~/.bazaar/
-    
+
     TODO: Global option --config-dir to override this.
     """
     base = os.environ.get('BZR_HOME', None)
@@ -812,6 +862,33 @@ def user_ignore_config_filename():
     return osutils.pathjoin(config_dir(), 'ignore')
 
 
+def crash_dir():
+    """Return the directory name to store crash files.
+
+    This doesn't implicitly create it.
+
+    On Windows it's in the config directory; elsewhere it's /var/crash
+    which may be monitored by apport.  It can be overridden by
+    $APPORT_CRASH_DIR.
+    """
+    if sys.platform == 'win32':
+        return osutils.pathjoin(config_dir(), 'Crash')
+    else:
+        # XXX: hardcoded in apport_python_hook.py; therefore here too -- mbp
+        # 2010-01-31
+        return os.environ.get('APPORT_CRASH_DIR', '/var/crash')
+
+
+def xdg_cache_dir():
+    # See http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html
+    # Possibly this should be different on Windows?
+    e = os.environ.get('XDG_CACHE_DIR', None)
+    if e:
+        return e
+    else:
+        return os.path.expanduser('~/.cache')
+
+
 def _auto_user_id():
     """Calculate automatic user identification.
 
@@ -839,7 +916,11 @@ def _auto_user_id():
     try:
         import pwd
         uid = os.getuid()
-        w = pwd.getpwuid(uid)
+        try:
+            w = pwd.getpwuid(uid)
+        except KeyError:
+            raise errors.BzrCommandError('Unable to determine your name.  '
+                'Please use "bzr whoami" to set it.')
 
         # we try utf-8 first, because on many variants (like Linux),
         # /etc/passwd "should" be in utf-8, and because it's unlikely to give
@@ -893,7 +974,7 @@ def parse_username(username):
 def extract_email_address(e):
     """Return just the address part of an email string.
 
-    That is just the user@domain part, nothing else. 
+    That is just the user@domain part, nothing else.
     This part is required to contain only ascii characters.
     If it can't be extracted, raises an error.
 
@@ -912,10 +993,7 @@ class TreeConfig(IniBasedConfig):
     # XXX: Really needs a better name, as this is not part of the tree! -- mbp 20080507
 
     def __init__(self, branch):
-        # XXX: Really this should be asking the branch for its configuration
-        # data, rather than relying on a Transport, so that it can work 
-        # more cleanly with a RemoteBranch that has no transport.
-        self._config = TransportConfig(branch._transport, 'branch.conf')
+        self._config = branch._get_config()
         self.branch = branch
 
     def _get_parser(self, file=None):
@@ -929,7 +1007,6 @@ class TreeConfig(IniBasedConfig):
             return self._config.get_option(name, section, default)
         finally:
             self.branch.unlock()
-        return result
 
     def set_option(self, value, name, section=None):
         """Set a per-branch configuration option"""
@@ -988,7 +1065,8 @@ class AuthenticationConfig(object):
         section[option_name] = value
         self._save()
 
-    def get_credentials(self, scheme, host, port=None, user=None, path=None):
+    def get_credentials(self, scheme, host, port=None, user=None, path=None, 
+                        realm=None):
         """Returns the matching credentials from authentication.conf file.
 
         :param scheme: protocol
@@ -1000,12 +1078,19 @@ class AuthenticationConfig(object):
         :param user: login (optional)
 
         :param path: the absolute path on the server (optional)
+        
+        :param realm: the http authentication realm (optional)
 
         :return: A dict containing the matching credentials or None.
            This includes:
            - name: the section name of the credentials in the
              authentication.conf file,
-           - user: can't de different from the provided user if any,
+           - user: can't be different from the provided user if any,
+           - scheme: the server protocol,
+           - host: the server address,
+           - port: the server port (can be None),
+           - path: the absolute server path (can be None),
+           - realm: the http specific authentication realm (can be None),
            - password: the decoded password, could be None if the credential
              defines only the user
            - verify_certificates: https specific, True if the server
@@ -1052,20 +1137,79 @@ class AuthenticationConfig(object):
             if a_user is None:
                 # Can't find a user
                 continue
+            # Prepare a credentials dictionary with additional keys
+            # for the credential providers
             credentials = dict(name=auth_def_name,
                                user=a_user,
+                               scheme=a_scheme,
+                               host=host,
+                               port=port,
+                               path=path,
+                               realm=realm,
                                password=auth_def.get('password', None),
                                verify_certificates=a_verify_certificates)
+            # Decode the password in the credentials (or get one)
             self.decode_password(credentials,
                                  auth_def.get('password_encoding', None))
             if 'auth' in debug.debug_flags:
                 trace.mutter("Using authentication section: %r", auth_def_name)
             break
 
+        if credentials is None:
+            # No credentials were found in authentication.conf, try the fallback
+            # credentials stores.
+            credentials = credential_store_registry.get_fallback_credentials(
+                scheme, host, port, user, path, realm)
+
         return credentials
 
-    def get_user(self, scheme, host, port=None,
-                 realm=None, path=None, prompt=None):
+    def set_credentials(self, name, host, user, scheme=None, password=None,
+                        port=None, path=None, verify_certificates=None,
+                        realm=None):
+        """Set authentication credentials for a host.
+
+        Any existing credentials with matching scheme, host, port and path
+        will be deleted, regardless of name.
+
+        :param name: An arbitrary name to describe this set of credentials.
+        :param host: Name of the host that accepts these credentials.
+        :param user: The username portion of these credentials.
+        :param scheme: The URL scheme (e.g. ssh, http) the credentials apply
+            to.
+        :param password: Password portion of these credentials.
+        :param port: The IP port on the host that these credentials apply to.
+        :param path: A filesystem path on the host that these credentials
+            apply to.
+        :param verify_certificates: On https, verify server certificates if
+            True.
+        :param realm: The http authentication realm (optional).
+        """
+        values = {'host': host, 'user': user}
+        if password is not None:
+            values['password'] = password
+        if scheme is not None:
+            values['scheme'] = scheme
+        if port is not None:
+            values['port'] = '%d' % port
+        if path is not None:
+            values['path'] = path
+        if verify_certificates is not None:
+            values['verify_certificates'] = str(verify_certificates)
+        if realm is not None:
+            values['realm'] = realm
+        config = self._get_config()
+        for_deletion = []
+        for section, existing_values in config.items():
+            for key in ('scheme', 'host', 'port', 'path', 'realm'):
+                if existing_values.get(key) != values.get(key):
+                    break
+            else:
+                del config[section]
+        config.update({name: values})
+        self._save()
+
+    def get_user(self, scheme, host, port=None, realm=None, path=None,
+                 prompt=None, ask=False, default=None):
         """Get a user from authentication file.
 
         :param scheme: protocol
@@ -1078,14 +1222,32 @@ class AuthenticationConfig(object):
 
         :param path: the absolute path on the server (optional)
 
+        :param ask: Ask the user if there is no explicitly configured username 
+                    (optional)
+
+        :param default: The username returned if none is defined (optional).
+
         :return: The found user.
         """
         credentials = self.get_credentials(scheme, host, port, user=None,
-                                           path=path)
+                                           path=path, realm=realm)
         if credentials is not None:
             user = credentials['user']
         else:
             user = None
+        if user is None:
+            if ask:
+                if prompt is None:
+                    # Create a default prompt suitable for most cases
+                    prompt = scheme.upper() + ' %(host)s username'
+                # Special handling for optional fields in the prompt
+                if port is not None:
+                    prompt_host = '%s:%d' % (host, port)
+                else:
+                    prompt_host = host
+                user = ui.ui_factory.get_username(prompt, host=prompt_host)
+            else:
+                user = default
         return user
 
     def get_password(self, scheme, host, user, port=None,
@@ -1106,7 +1268,8 @@ class AuthenticationConfig(object):
 
         :return: The found password or the one entered by the user.
         """
-        credentials = self.get_credentials(scheme, host, port, user, path)
+        credentials = self.get_credentials(scheme, host, port, user, path,
+                                           realm)
         if credentials is not None:
             password = credentials['password']
             if password is not None and scheme is 'ssh':
@@ -1131,13 +1294,136 @@ class AuthenticationConfig(object):
         return password
 
     def decode_password(self, credentials, encoding):
+        try:
+            cs = credential_store_registry.get_credential_store(encoding)
+        except KeyError:
+            raise ValueError('%r is not a known password_encoding' % encoding)
+        credentials['password'] = cs.decode_password(credentials)
         return credentials
+
+
+class CredentialStoreRegistry(registry.Registry):
+    """A class that registers credential stores.
+
+    A credential store provides access to credentials via the password_encoding
+    field in authentication.conf sections.
+
+    Except for stores provided by bzr itself, most stores are expected to be
+    provided by plugins that will therefore use
+    register_lazy(password_encoding, module_name, member_name, help=help,
+    fallback=fallback) to install themselves.
+
+    A fallback credential store is one that is queried if no credentials can be
+    found via authentication.conf.
+    """
+
+    def get_credential_store(self, encoding=None):
+        cs = self.get(encoding)
+        if callable(cs):
+            cs = cs()
+        return cs
+
+    def is_fallback(self, name):
+        """Check if the named credentials store should be used as fallback."""
+        return self.get_info(name)
+
+    def get_fallback_credentials(self, scheme, host, port=None, user=None,
+                                 path=None, realm=None):
+        """Request credentials from all fallback credentials stores.
+
+        The first credentials store that can provide credentials wins.
+        """
+        credentials = None
+        for name in self.keys():
+            if not self.is_fallback(name):
+                continue
+            cs = self.get_credential_store(name)
+            credentials = cs.get_credentials(scheme, host, port, user,
+                                             path, realm)
+            if credentials is not None:
+                # We found some credentials
+                break
+        return credentials
+
+    def register(self, key, obj, help=None, override_existing=False,
+                 fallback=False):
+        """Register a new object to a name.
+
+        :param key: This is the key to use to request the object later.
+        :param obj: The object to register.
+        :param help: Help text for this entry. This may be a string or
+                a callable. If it is a callable, it should take two
+                parameters (registry, key): this registry and the key that
+                the help was registered under.
+        :param override_existing: Raise KeyErorr if False and something has
+                already been registered for that key. If True, ignore if there
+                is an existing key (always register the new value).
+        :param fallback: Whether this credential store should be 
+                used as fallback.
+        """
+        return super(CredentialStoreRegistry,
+                     self).register(key, obj, help, info=fallback,
+                                    override_existing=override_existing)
+
+    def register_lazy(self, key, module_name, member_name,
+                      help=None, override_existing=False,
+                      fallback=False):
+        """Register a new credential store to be loaded on request.
+
+        :param module_name: The python path to the module. Such as 'os.path'.
+        :param member_name: The member of the module to return.  If empty or
+                None, get() will return the module itself.
+        :param help: Help text for this entry. This may be a string or
+                a callable.
+        :param override_existing: If True, replace the existing object
+                with the new one. If False, if there is already something
+                registered with the same key, raise a KeyError
+        :param fallback: Whether this credential store should be 
+                used as fallback.
+        """
+        return super(CredentialStoreRegistry, self).register_lazy(
+            key, module_name, member_name, help,
+            info=fallback, override_existing=override_existing)
+
+
+credential_store_registry = CredentialStoreRegistry()
+
+
+class CredentialStore(object):
+    """An abstract class to implement storage for credentials"""
+
+    def decode_password(self, credentials):
+        """Returns a clear text password for the provided credentials."""
+        raise NotImplementedError(self.decode_password)
+
+    def get_credentials(self, scheme, host, port=None, user=None, path=None,
+                        realm=None):
+        """Return the matching credentials from this credential store.
+
+        This method is only called on fallback credential stores.
+        """
+        raise NotImplementedError(self.get_credentials)
+
+
+
+class PlainTextCredentialStore(CredentialStore):
+    """Plain text credential store for the authentication.conf file."""
+
+    def decode_password(self, credentials):
+        """See CredentialStore.decode_password."""
+        return credentials['password']
+
+
+credential_store_registry.register('plain', PlainTextCredentialStore,
+                                   help=PlainTextCredentialStore.__doc__)
+credential_store_registry.default_key = 'plain'
 
 
 class BzrDirConfig(object):
 
-    def __init__(self, transport):
-        self._config = TransportConfig(transport, 'control.conf')
+    def __init__(self, bzrdir):
+        self._bzrdir = bzrdir
+        self._config = bzrdir._get_config()
 
     def set_default_stack_on(self, value):
         """Set the default stacking location.
@@ -1147,6 +1433,8 @@ class BzrDirConfig(object):
         This policy affects all branches contained by this bzrdir, except for
         those under repositories.
         """
+        if self._config is None:
+            raise errors.BzrError("Cannot set configuration in %s" % self._bzrdir)
         if value is None:
             self._config.set_option('', 'default_stack_on')
         else:
@@ -1160,6 +1448,8 @@ class BzrDirConfig(object):
         This policy affects all branches contained by this bzrdir, except for
         those under repositories.
         """
+        if self._config is None:
+            return None
         value = self._config.get_option('default_stack_on')
         if value == '':
             value = None
@@ -1210,12 +1500,14 @@ class TransportConfig(object):
             configobj.setdefault(section, {})[name] = value
         self._set_configobj(configobj)
 
-    def _get_configobj(self):
+    def _get_config_file(self):
         try:
-            return ConfigObj(self._transport.get(self._filename),
-                             encoding='utf-8')
+            return StringIO(self._transport.get_bytes(self._filename))
         except errors.NoSuchFile:
-            return ConfigObj(encoding='utf-8')
+            return StringIO()
+
+    def _get_configobj(self):
+        return ConfigObj(self._get_config_file(), encoding='utf-8')
 
     def _set_configobj(self, configobj):
         out_file = StringIO()

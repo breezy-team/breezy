@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Lists of ignore files, etc."""
 
@@ -24,6 +24,8 @@ from bzrlib import (
     config,
     globbing,
     )
+
+from trace import warning
 
 # This was the full ignore list for bzr 0.8
 # please keep these sorted (in C locale order) to aid merging
@@ -100,10 +102,34 @@ USER_DEFAULTS = [
 ]
 
 
+
 def parse_ignore_file(f):
-    """Read in all of the lines in the file and turn it into an ignore list"""
+    """Read in all of the lines in the file and turn it into an ignore list
+    
+    Continue in the case of utf8 decoding errors, and emit a warning when 
+    such and error is found. Optimise for the common case -- no decoding 
+    errors.
+    """
     ignored = set()
-    for line in f.read().decode('utf8').split('\n'):
+    ignore_file = f.read()
+    try:
+        # Try and parse whole ignore file at once.
+        unicode_lines = ignore_file.decode('utf8').split('\n')
+    except UnicodeDecodeError:
+        # Otherwise go though line by line and pick out the 'good'
+        # decodable lines
+        lines = ignore_file.split('\n')
+        unicode_lines = []    
+        for line_number, line in enumerate(lines):
+            try:
+                unicode_lines.append(line.decode('utf-8'))
+            except UnicodeDecodeError:
+                # report error about line (idx+1)
+                warning('.bzrignore: On Line #%d, malformed utf8 character. '
+                        'Ignoring line.' % (line_number+1))
+    
+    # Append each line to ignore list if it's not a comment line
+    for line in unicode_lines:
         line = line.rstrip('\r\n')
         if not line or line.startswith('#'):
             continue
@@ -213,7 +239,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     """Retrieve a list of ignores from the ignore file in a tree.
 
     :param tree: Tree to retrieve the ignore list from.
-    :return: 
+    :return:
     """
     ifn = tree.abspath(bzrlib.IGNORE_FILENAME)
     if tree.has_filename(ifn):

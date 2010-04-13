@@ -12,13 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib import (
     delta as _mod_delta,
+    revision as _mod_revision,
     tests,
     )
 
@@ -40,16 +41,32 @@ class TestReportChanges(tests.TestCase):
                      versioned_change='unchanged', renamed=False,
                      modified='unchanged', exe_change=False,
                      kind=('file', 'file'), old_path=None,
-                     unversioned_filter=None):
+                     unversioned_filter=None, view_info=None):
+        if expected is None:
+            expected_lines = None
+        else:
+            expected_lines = [expected]
+        self.assertReportLines(expected_lines, file_id, path,
+                     versioned_change, renamed,
+                     modified, exe_change,
+                     kind, old_path,
+                     unversioned_filter, view_info)
+
+    def assertReportLines(self, expected_lines, file_id='fid', path='path',
+                     versioned_change='unchanged', renamed=False,
+                     modified='unchanged', exe_change=False,
+                     kind=('file', 'file'), old_path=None,
+                     unversioned_filter=None, view_info=None):
         result = []
         def result_line(format, *args):
             result.append(format % args)
         reporter = _mod_delta._ChangeReporter(result_line,
-            unversioned_filter=unversioned_filter)
+            unversioned_filter=unversioned_filter, view_info=view_info)
         reporter.report(file_id, (old_path, path), versioned_change, renamed,
             modified, exe_change, kind)
-        if expected is not None:
-            self.assertEqualDiff(expected, result[0])
+        if expected_lines is not None:
+            for i in range(len(expected_lines)):
+                self.assertEqualDiff(expected_lines[i], result[i])
         else:
             self.assertEqual([], result)
 
@@ -99,12 +116,25 @@ class TestReportChanges(tests.TestCase):
             old_path=None, versioned_change='unversioned',
             renamed=False, modified='created', exe_change=False,
             kind=(None, 'file'))
-        # but we can choose to filter these. Probably that should be done 
+        # but we can choose to filter these. Probably that should be done
         # close to the tree, but this is a reasonable starting point.
         self.assertReport(None, file_id=None, path='subdir/foo~',
             old_path=None, versioned_change='unversioned',
             renamed=False, modified='created', exe_change=False,
             kind=(None, 'file'), unversioned_filter=lambda x:True)
+
+    def test_view_filtering(self):
+        # If a file in within the view, it should appear in the output
+        expected_lines = [
+            "Operating on whole tree but only reporting on 'my' view.",
+            " M  path"]
+        self.assertReportLines(expected_lines, modified='modified',
+            view_info=('my',['path']))
+        # If a file in outside the view, it should not appear in the output
+        expected_lines = [
+            "Operating on whole tree but only reporting on 'my' view."]
+        self.assertReportLines(expected_lines, modified='modified',
+            path="foo", view_info=('my',['path']))
 
     def assertChangesEqual(self,
                            file_id='fid',
@@ -187,11 +217,11 @@ class TestReportChanges(tests.TestCase):
                            exe_change=False)
 
 
-class TestChangesFrom (tests.TestCaseWithTransport):
+class TestChangesFrom(tests.TestCaseWithTransport):
 
     def show_string(self, delta, *args,  **kwargs):
         to_file = StringIO()
-        delta.show(to_file, *args, **kwargs)
+        _mod_delta.report_delta(to_file, delta, *args, **kwargs)
         return to_file.getvalue()
 
     def test_kind_change(self):
@@ -238,3 +268,83 @@ class TestChangesFrom (tests.TestCaseWithTransport):
                            True, False)], delta.renamed)
         self.assertTrue(delta.has_changed())
         self.assertTrue(delta.touches_file_id('file-id'))
+
+
+class TestDeltaShow(tests.TestCaseWithTransport):
+
+    def _get_delta(self):
+        # We build the delta from a real tree to avoid depending on internal
+        # implementation details.
+        wt = self.make_branch_and_tree('branch')
+        self.build_tree_contents([('branch/f1', '1\n'),
+                                  ('branch/f2', '2\n'),
+                                  ('branch/f3', '3\n'),
+                                  ('branch/f4', '4\n'),
+                                  ('branch/dir/',),
+                                 ])
+        wt.add(['f1', 'f2', 'f3', 'f4', 'dir'],
+               ['f1-id', 'f2-id', 'f3-id', 'f4-id', 'dir-id'])
+        wt.commit('commit one', rev_id='1')
+
+        long_status = """added:
+  dir/
+  f1
+  f2
+  f3
+  f4
+"""
+        short_status = """A  dir/
+A  f1
+A  f2
+A  f3
+A  f4
+"""
+
+        repo = wt.branch.repository
+        d = wt.changes_from(repo.revision_tree(_mod_revision.NULL_REVISION))
+        return d, long_status, short_status
+
+    def test_delta_show_short_status_no_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        _mod_delta.report_delta(out, d, short_status=True)
+        self.assertEquals(short_status, out.getvalue())
+
+    def test_delta_show_long_status_no_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        _mod_delta.report_delta(out, d, short_status=False)
+        self.assertEquals(long_status, out.getvalue())
+
+    def test_delta_show_no_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        def not_a_filter(path, file_id):
+            return True
+        _mod_delta.report_delta(out, d, short_status=True, filter=not_a_filter)
+        self.assertEquals(short_status, out.getvalue())
+
+    def test_delta_show_short_status_single_file_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        def only_f2(path, file_id):
+            return path == 'f2'
+        _mod_delta.report_delta(out, d, short_status=True, filter=only_f2)
+        self.assertEquals("A  f2\n", out.getvalue())
+
+    def test_delta_show_long_status_single_file_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        def only_f2(path, file_id):
+            return path == 'f2'
+        _mod_delta.report_delta(out, d, short_status=False, filter=only_f2)
+        self.assertEquals("added:\n  f2\n", out.getvalue())
+
+    def test_delta_show_short_status_single_file_id_filter(self):
+        d, long_status, short_status = self._get_delta()
+        out = StringIO()
+        def only_f2_id(path, file_id):
+            return file_id == 'f2-id'
+        _mod_delta.report_delta(out, d, short_status=True, filter=only_f2_id)
+        self.assertEquals("A  f2\n", out.getvalue())
+

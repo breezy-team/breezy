@@ -12,15 +12,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for selection of the right Launchpad service by environment"""
 
 import os
+import xmlrpclib
 
-from bzrlib.tests import TestCase
+from bzrlib import errors
 from bzrlib.plugins.launchpad.lp_registration import (
-    InvalidLaunchpadInstance, LaunchpadService)
+    InvalidLaunchpadInstance, LaunchpadService, NotLaunchpadBranch)
+from bzrlib.plugins.launchpad.test_lp_directory import FakeResolveFactory
+from bzrlib.tests import TestCase
 
 
 class LaunchpadServiceTests(TestCase):
@@ -58,7 +61,7 @@ class LaunchpadServiceTests(TestCase):
 
     def test_dev_service(self):
         service = LaunchpadService(lp_instance='dev')
-        self.assertEqual('http://xmlrpc.launchpad.dev/bazaar/',
+        self.assertEqual('https://xmlrpc.launchpad.dev/bazaar/',
                          service.service_url)
 
     def test_demo_service(self):
@@ -84,3 +87,107 @@ class LaunchpadServiceTests(TestCase):
         service = LaunchpadService(lp_instance='staging')
         self.assertEqual('http://example.com/',
                          service.service_url)
+
+
+class TestURLInference(TestCase):
+    """Test the way we infer Launchpad web pages from branch URLs."""
+
+    def test_default_bzr_ssh_url(self):
+        service = LaunchpadService()
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_product_bzr_ssh_url(self):
+        service = LaunchpadService(lp_instance='production')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_sftp_branch_url(self):
+        service = LaunchpadService(lp_instance='production')
+        web_url = service.get_web_url_from_branch_url(
+            'sftp://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_staging_branch_url(self):
+        service = LaunchpadService(lp_instance='production')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.staging.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_non_launchpad_url(self):
+        service = LaunchpadService()
+        error = self.assertRaises(
+            NotLaunchpadBranch, service.get_web_url_from_branch_url,
+            'bzr+ssh://example.com/~foo/bar/baz')
+        self.assertEqual(
+            'bzr+ssh://example.com/~foo/bar/baz is not registered on Launchpad.',
+            str(error))
+
+    def test_dodgy_launchpad_url(self):
+        service = LaunchpadService()
+        self.assertRaises(
+            NotLaunchpadBranch, service.get_web_url_from_branch_url,
+            'bzr+ssh://launchpad.net/~foo/bar/baz')
+
+    def test_lp_branch_url(self):
+        service = LaunchpadService(lp_instance='production')
+        factory = FakeResolveFactory(
+            self, '~foo/bar/baz',
+            dict(urls=['http://bazaar.launchpad.net/~foo/bar/baz']))
+        web_url = service.get_web_url_from_branch_url(
+            'lp:~foo/bar/baz', factory)
+        self.assertEqual(
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_lp_branch_shortcut(self):
+        service = LaunchpadService()
+        factory = FakeResolveFactory(
+            self, 'foo',
+            dict(urls=['http://bazaar.launchpad.net/~foo/bar/baz']))
+        web_url = service.get_web_url_from_branch_url('lp:foo', factory)
+        self.assertEqual(
+            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_lp_branch_fault(self):
+        service = LaunchpadService()
+        factory = FakeResolveFactory(self, 'foo', None)
+        def submit(service):
+            raise xmlrpclib.Fault(42, 'something went wrong')
+        factory.submit = submit
+        self.assertRaises(
+            errors.InvalidURL, service.get_web_url_from_branch_url, 'lp:foo',
+            factory)
+
+    def test_staging_url(self):
+        service = LaunchpadService(lp_instance='staging')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'https://code.staging.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_edge_url(self):
+        service = LaunchpadService(lp_instance='edge')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
+
+    def test_dev_url(self):
+        service = LaunchpadService(lp_instance='dev')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'https://code.launchpad.dev/~foo/bar/baz', web_url)
+
+    def test_demo_url(self):
+        service = LaunchpadService(lp_instance='demo')
+        web_url = service.get_web_url_from_branch_url(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.assertEqual(
+            'https://code.demo.launchpad.net/~foo/bar/baz', web_url)

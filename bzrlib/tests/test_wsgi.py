@@ -12,28 +12,23 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for WSGI application"""
 
 from cStringIO import StringIO
 
 from bzrlib import tests
-from bzrlib.smart import protocol
+from bzrlib.smart import medium, message, protocol
 from bzrlib.transport.http import wsgi
 from bzrlib.transport import chroot, memory
 
 
-class TestWSGI(tests.TestCase):
-
-    def setUp(self):
-        tests.TestCase.setUp(self)
-        self.status = None
-        self.headers = None
+class WSGITestMixin(object):
 
     def build_environ(self, updates=None):
         """Builds an environ dict with all fields required by PEP 333.
-        
+
         :param updates: a dict to that will be incorporated into the returned
             dict using dict.update(updates).
         """
@@ -58,7 +53,7 @@ class TestWSGI(tests.TestCase):
         if updates is not None:
             environ.update(updates)
         return environ
-        
+
     def read_response(self, iterable):
         response = ''
         for string in iterable:
@@ -68,6 +63,14 @@ class TestWSGI(tests.TestCase):
     def start_response(self, status, headers):
         self.status = status
         self.headers = headers
+
+
+class TestWSGI(tests.TestCase, WSGITestMixin):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self.status = None
+        self.headers = None
 
     def test_construct(self):
         app = wsgi.SmartWSGIApp(FakeTransport())
@@ -82,13 +85,13 @@ class TestWSGI(tests.TestCase):
         self.read_response(iterable)
         self.assertEqual('405 Method not allowed', self.status)
         self.assertTrue(('Allow', 'POST') in self.headers)
-        
+
     def _fake_make_request(self, transport, write_func, bytes, rcp):
         request = FakeRequest(transport, write_func)
         request.accept_bytes(bytes)
         self.request = request
         return request
-    
+
     def test_smart_wsgi_app_uses_given_relpath(self):
         # The SmartWSGIApp should use the "bzrlib.relpath" field from the
         # WSGI environ to clone from its backing transport to get a specific
@@ -138,7 +141,7 @@ class TestWSGI(tests.TestCase):
             fake_app, prefix='/abc/', path_var='FOO')
         wrapped_app({'FOO': '/abc/xyz/.bzr/smart'}, None)
         self.assertEqual(['xyz'], calls)
-       
+
     def test_relpath_setter_bad_path_prefix(self):
         # wsgi.RelpathSetter will reject paths with that don't match the prefix
         # with a 404.  This is probably a sign of misconfiguration; a server
@@ -151,7 +154,7 @@ class TestWSGI(tests.TestCase):
             {'FOO': 'AAA/abc/xyz/.bzr/smart'}, self.start_response)
         self.read_response(iterable)
         self.assertTrue(self.status.startswith('404'))
-        
+
     def test_relpath_setter_bad_path_suffix(self):
         # Similar to test_relpath_setter_bad_path_prefix: wsgi.RelpathSetter
         # will reject paths with that don't match the suffix '.bzr/smart' with a
@@ -165,7 +168,7 @@ class TestWSGI(tests.TestCase):
             {'FOO': '/abc/xyz/.bzr/AAA'}, self.start_response)
         self.read_response(iterable)
         self.assertTrue(self.status.startswith('404'))
-        
+
     def test_make_app(self):
         # The make_app helper constructs a SmartWSGIApp wrapped in a
         # RelpathSetter.
@@ -242,8 +245,53 @@ class TestWSGI(tests.TestCase):
             protocol.RESPONSE_VERSION_TWO + 'success\nok\x012\n', response)
 
 
+class TestWSGIJail(tests.TestCaseWithMemoryTransport, WSGITestMixin):
+
+    def make_hpss_wsgi_request(self, wsgi_relpath, *args):
+        write_buf = StringIO()
+        request_medium = medium.SmartSimplePipesClientMedium(
+            None, write_buf, 'fake:' + wsgi_relpath)
+        request_encoder = protocol.ProtocolThreeRequester(
+            request_medium.get_request())
+        request_encoder.call(*args)
+        write_buf.seek(0)
+        environ = self.build_environ({
+            'REQUEST_METHOD': 'POST',
+            'CONTENT_LENGTH': len(write_buf.getvalue()),
+            'wsgi.input': write_buf,
+            'bzrlib.relpath': wsgi_relpath,
+        })
+        return environ
+
+    def test_jail_root(self):
+        """The WSGI HPSS glue allows access to the whole WSGI backing
+        transport, regardless of which HTTP path the request was delivered
+        to.
+        """
+        # make a branch in a shared repo
+        self.make_repository('repo', shared=True)
+        branch = self.make_bzrdir('repo/branch').create_branch()
+        # serve the repo via bzr+http WSGI
+        wsgi_app = wsgi.SmartWSGIApp(self.get_transport())
+        # send a request to /repo/branch that will have to access /repo.
+        environ = self.make_hpss_wsgi_request(
+            '/repo/branch', 'BzrDir.open_branchV2', '.')
+        iterable = wsgi_app(environ, self.start_response)
+        response_bytes = self.read_response(iterable)
+        self.assertEqual('200 OK', self.status)
+        # expect a successful response, rather than a jail break error
+        from bzrlib.tests.test_smart_transport import LoggingMessageHandler
+        message_handler = LoggingMessageHandler()
+        decoder = protocol.ProtocolThreeDecoder(
+            message_handler, expect_version_marker=True)
+        decoder.accept_bytes(response_bytes)
+        self.assertTrue(
+            ('structure', ('branch', branch._format.network_name()))
+            in message_handler.event_log)
+
+
 class FakeRequest(object):
-    
+
     def __init__(self, transport, write_func):
         self.transport = transport
         self.write_func = write_func

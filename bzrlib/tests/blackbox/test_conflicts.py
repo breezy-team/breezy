@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,23 +12,24 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-import os
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
-    conflicts
+    conflicts,
+    tests,
+    workingtree,
     )
-from bzrlib.workingtree import WorkingTree
-from bzrlib.tests.blackbox import ExternalBase
 
 # FIXME: These don't really look at the output of the conflict commands, just
 # the number of lines - there should be more examination.
 
-class TestConflicts(ExternalBase):
+class TestConflictsBase(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(ExternalBase, self).setUp()
+        super(TestConflictsBase, self).setUp()
+        self.make_tree_with_conflicts()
+
+    def make_tree_with_conflicts(self):
         a_tree = self.make_branch_and_tree('a')
         self.build_tree_contents([
             ('a/myfile', 'contentsa\n'),
@@ -53,45 +54,48 @@ class TestConflicts(ExternalBase):
         a_tree.rename_one('mydir', 'mydir3')
         a_tree.commit(message='change')
         a_tree.merge_from_branch(b_tree.branch)
-        os.chdir('a')
+
+    def run_bzr(self, cmd, working_dir='a', **kwargs):
+        return super(TestConflictsBase, self).run_bzr(
+            cmd, working_dir=working_dir, **kwargs)
+
+
+class TestConflicts(TestConflictsBase):
 
     def test_conflicts(self):
-        conflicts, errs = self.run_bzr('conflicts')
-        self.assertEqual(3, len(conflicts.splitlines()))
+        out, err = self.run_bzr('conflicts')
+        self.assertEqual(3, len(out.splitlines()))
 
     def test_conflicts_text(self):
-        conflicts = self.run_bzr('conflicts --text')[0].splitlines()
-        self.assertEqual(['my_other_file', 'myfile'], conflicts)
+        out, err = self.run_bzr('conflicts --text')
+        self.assertEqual(['my_other_file', 'myfile'], out.splitlines())
+
+
+class TestResolve(TestConflictsBase):
 
     def test_resolve(self):
         self.run_bzr('resolve myfile')
-        conflicts, errs = self.run_bzr('conflicts')
-        self.assertEqual(2, len(conflicts.splitlines()))
+        out, err = self.run_bzr('conflicts')
+        self.assertEqual(2, len(out.splitlines()))
         self.run_bzr('resolve my_other_file')
         self.run_bzr('resolve mydir2')
-        conflicts, errs = self.run_bzr('conflicts')
-        self.assertEqual(len(conflicts.splitlines()), 0)
+        out, err = self.run_bzr('conflicts')
+        self.assertEqual(0, len(out.splitlines()))
 
     def test_resolve_all(self):
         self.run_bzr('resolve --all')
-        conflicts, errs = self.run_bzr('conflicts')
-        self.assertEqual(len(conflicts.splitlines()), 0)
+        out, err = self.run_bzr('conflicts')
+        self.assertEqual(0, len(out.splitlines()))
 
     def test_resolve_in_subdir(self):
         """resolve when run from subdirectory should handle relative paths"""
-        orig_dir = os.getcwdu()
-        try:
-            os.mkdir("subdir")
-            os.chdir("subdir")
-            self.run_bzr("resolve ../myfile")
-            os.chdir("../../b")
-            self.run_bzr("resolve ../a/myfile")
-            wt = WorkingTree.open_containing('.')[0]
-            conflicts = wt.conflicts()
-            if not conflicts.is_empty():
-                self.fail("tree still contains conflicts: %r" % conflicts)
-        finally:
-            os.chdir(orig_dir)
+        self.build_tree(["a/subdir/"])
+        self.run_bzr("resolve ../myfile", working_dir='a/subdir')
+        self.run_bzr("resolve ../a/myfile", working_dir='b')
+        wt = workingtree.WorkingTree.open_containing('b')[0]
+        conflicts = wt.conflicts()
+        self.assertEqual(True, conflicts.is_empty(),
+                         "tree still contains conflicts: %r" % conflicts)
 
     def test_auto_resolve(self):
         """Text conflicts can be resolved automatically"""
@@ -102,11 +106,10 @@ class TestConflicts(ExternalBase):
         self.assertEqual(tree.kind('file_id'), 'file')
         file_conflict = conflicts.TextConflict('file', file_id='file_id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
-        os.chdir('tree')
-        note = self.run_bzr('resolve', retcode=1)[1]
+        note = self.run_bzr('resolve', retcode=1, working_dir='tree')[1]
         self.assertContainsRe(note, '0 conflict\\(s\\) auto-resolved.')
         self.assertContainsRe(note,
             'Remaining conflicts:\nText conflict in file')
-        self.build_tree_contents([('file', 'a\n')])
-        note = self.run_bzr('resolve')[1]
+        self.build_tree_contents([('tree/file', 'a\n')])
+        note = self.run_bzr('resolve', working_dir='tree')[1]
         self.assertContainsRe(note, 'All conflicts resolved.')

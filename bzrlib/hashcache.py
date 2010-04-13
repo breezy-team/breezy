@@ -12,11 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-# TODO: Up-front, stat all files in order and remove those which are deleted or 
-# out-of-date.  Don't actually re-read them until they're needed.  That ought 
-# to bring all the inodes into core so that future stats to them are fast, and 
+# TODO: Up-front, stat all files in order and remove those which are deleted or
+# out-of-date.  Don't actually re-read them until they're needed.  That ought
+# to bring all the inodes into core so that future stats to them are fast, and
 # it preserves the nice property that any caller will always get up-to-date
 # data except in unavoidable cases.
 
@@ -29,12 +29,17 @@
 
 CACHE_HEADER = "### bzr hashcache v5\n"
 
-import os, stat, time
+import os
+import stat
+import time
 
-from bzrlib.osutils import sha_file, sha_string, pathjoin, safe_unicode
-from bzrlib.trace import mutter, warning
-from bzrlib.atomicfile import AtomicFile
-from bzrlib.errors import BzrError
+from bzrlib import (
+    atomicfile,
+    errors,
+    filters as _mod_filters,
+    osutils,
+    trace,
+    )
 
 
 FP_MTIME_COLUMN = 1
@@ -73,15 +78,22 @@ class HashCache(object):
     hit_count
         number of times files have been retrieved from the cache, avoiding a
         re-read
-        
+
     miss_count
         number of misses (times files have been completely re-read)
     """
     needs_write = False
 
-    def __init__(self, root, cache_file_name, mode=None):
-        """Create a hash cache in base dir, and set the file mode to mode."""
-        self.root = safe_unicode(root)
+    def __init__(self, root, cache_file_name, mode=None,
+            content_filter_stack_provider=None):
+        """Create a hash cache in base dir, and set the file mode to mode.
+
+        :param content_filter_stack_provider: a function that takes a
+            path (relative to the top of the tree) and a file-id as
+            parameters and returns a stack of ContentFilters.
+            If None, no content filtering is performed.
+        """
+        self.root = osutils.safe_unicode(root)
         self.root_utf8 = self.root.encode('utf8') # where is the filesystem encoding ?
         self.hit_count = 0
         self.miss_count = 0
@@ -91,7 +103,8 @@ class HashCache(object):
         self.update_count = 0
         self._cache = {}
         self._mode = mode
-        self._cache_file_name = safe_unicode(cache_file_name)
+        self._cache_file_name = osutils.safe_unicode(cache_file_name)
+        self._filter_provider = content_filter_stack_provider
 
     def cache_file_name(self):
         return self._cache_file_name
@@ -106,22 +119,22 @@ class HashCache(object):
 
     def scan(self):
         """Scan all files and remove entries where the cache entry is obsolete.
-        
+
         Obsolete entries are those where the file has been modified or deleted
-        since the entry was inserted.        
+        since the entry was inserted.
         """
         # FIXME optimisation opportunity, on linux [and check other oses]:
         # rather than iteritems order, stat in inode order.
         prep = [(ce[1][3], path, ce) for (path, ce) in self._cache.iteritems()]
         prep.sort()
-        
+
         for inum, path, cache_entry in prep:
-            abspath = pathjoin(self.root, path)
+            abspath = osutils.pathjoin(self.root, path)
             fp = self._fingerprint(abspath)
             self.stat_count += 1
-            
+
             cache_fp = cache_entry[1]
-    
+
             if (not fp) or (cache_fp != fp):
                 # not here or not a regular file anymore
                 self.removed_count += 1
@@ -132,19 +145,19 @@ class HashCache(object):
         """Return the sha1 of a file.
         """
         if path.__class__ is str:
-            abspath = pathjoin(self.root_utf8, path)
+            abspath = osutils.pathjoin(self.root_utf8, path)
         else:
-            abspath = pathjoin(self.root, path)
+            abspath = osutils.pathjoin(self.root, path)
         self.stat_count += 1
         file_fp = self._fingerprint(abspath, stat_value)
-        
+
         if not file_fp:
             # not a regular file or not existing
             if path in self._cache:
                 self.removed_count += 1
                 self.needs_write = True
                 del self._cache[path]
-            return None        
+            return None
 
         if path in self._cache:
             cache_sha1, cache_fp = self._cache[path]
@@ -156,16 +169,22 @@ class HashCache(object):
             ## mutter("now = %s", time.time())
             self.hit_count += 1
             return cache_sha1
-        
+
         self.miss_count += 1
 
         mode = file_fp[FP_MODE_COLUMN]
         if stat.S_ISREG(mode):
-            digest = self._really_sha1_file(abspath)
+            if self._filter_provider is None:
+                filters = []
+            else:
+                filters = self._filter_provider(path=path, file_id=None)
+            digest = self._really_sha1_file(abspath, filters)
         elif stat.S_ISLNK(mode):
-            digest = sha_string(os.readlink(abspath))
+            target = osutils.readlink(osutils.safe_unicode(abspath))
+            digest = osutils.sha_string(target.encode('UTF-8'))
         else:
-            raise BzrError("file %r: unknown file stat mode: %o"%(abspath,mode))
+            raise errors.BzrError("file %r: unknown file stat mode: %o"
+                                  % (abspath, mode))
 
         # window of 3 seconds to allow for 2s resolution on windows,
         # unsynchronized file servers, etc.
@@ -198,13 +217,14 @@ class HashCache(object):
             self._cache[path] = (digest, file_fp)
         return digest
 
-    def _really_sha1_file(self, abspath):
+    def _really_sha1_file(self, abspath, filters):
         """Calculate the SHA1 of a file by reading the full text"""
-        return sha_file(file(abspath, 'rb', buffering=65000))
-        
+        return _mod_filters.internal_size_sha_file_byname(abspath, filters)[1]
+
     def write(self):
         """Write contents of cache to file."""
-        outf = AtomicFile(self.cache_file_name(), 'wb', new_mode=self._mode)
+        outf = atomicfile.AtomicFile(self.cache_file_name(), 'wb',
+                                     new_mode=self._mode)
         try:
             outf.write(CACHE_HEADER)
 
@@ -227,7 +247,7 @@ class HashCache(object):
 
         Overwrites existing cache.
 
-        If the cache file has the wrong version marker, this just clears 
+        If the cache file has the wrong version marker, this just clears
         the cache."""
         self._cache = {}
 
@@ -235,15 +255,15 @@ class HashCache(object):
         try:
             inf = file(fn, 'rb', buffering=65000)
         except IOError, e:
-            mutter("failed to open %s: %s", fn, e)
+            trace.mutter("failed to open %s: %s", fn, e)
             # better write it now so it is valid
             self.needs_write = True
             return
 
         hdr = inf.readline()
         if hdr != CACHE_HEADER:
-            mutter('cache header marker not found at top of %s;'
-                   ' discarding cache', fn)
+            trace.mutter('cache header marker not found at top of %s;'
+                         ' discarding cache', fn)
             self.needs_write = True
             return
 
@@ -251,18 +271,18 @@ class HashCache(object):
             pos = l.index('// ')
             path = l[:pos].decode('utf-8')
             if path in self._cache:
-                warning('duplicated path %r in cache' % path)
+                trace.warning('duplicated path %r in cache' % path)
                 continue
 
             pos += 3
             fields = l[pos:].split(' ')
             if len(fields) != 7:
-                warning("bad line in hashcache: %r" % l)
+                trace.warning("bad line in hashcache: %r" % l)
                 continue
 
             sha1 = fields[0]
             if len(sha1) != 40:
-                warning("bad sha1 in hashcache: %r" % sha1)
+                trace.warning("bad sha1 in hashcache: %r" % sha1)
                 continue
 
             fp = tuple(map(long, fields[1:]))
@@ -278,7 +298,7 @@ class HashCache(object):
         undetectably modified and so can't be cached.
         """
         return int(time.time()) - 3
-           
+
     def _fingerprint(self, abspath, stat_value=None):
         if stat_value is None:
             try:
@@ -291,5 +311,5 @@ class HashCache(object):
         # we discard any high precision because it's not reliable; perhaps we
         # could do better on some systems?
         return (stat_value.st_size, long(stat_value.st_mtime),
-                long(stat_value.st_ctime), stat_value.st_ino, 
+                long(stat_value.st_ctime), stat_value.st_ino,
                 stat_value.st_dev, stat_value.st_mode)

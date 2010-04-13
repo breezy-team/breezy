@@ -8,12 +8,15 @@ Status
 :Date: 2007-06-26
 
 bzrlib has a rich API which is used both internally, and externally by
-plugins and scripts. To allow the API to change, specifically to allow
+plugins_ and scripts. To allow the API to change, specifically to allow
 support for features and methods to be removed, without causing hard to
 diagnose bugs in the clients of the API, bzrlib provides explicit API
 compatibility data, and a compact API to allow scripts and plugins to
 ascertain if the bzrlib they are using is compatible to the API they were
 written against.
+
+
+.. _plugins: plugin-api.html
 
 
 .. contents::
@@ -83,8 +86,8 @@ the API versioning API, you should compare ``bzrlib.version_info[0:3]``
 with ``(0, 18, 0)``.
 
 +------------+---------------+
-| API        | Covers        | 
-+============+===============+ 
+| API        | Covers        |
++============+===============+
 | bzrlib     | All of bzrlib |
 +------------+---------------+
 

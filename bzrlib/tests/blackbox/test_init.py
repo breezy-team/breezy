@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Test "bzr init"""
@@ -22,6 +22,8 @@ import re
 
 from bzrlib import (
     branch as _mod_branch,
+    osutils,
+    urlutils,
     )
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.tests import TestSkipped
@@ -31,6 +33,10 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestInit(ExternalBase):
+
+    def setUp(self):
+        ExternalBase.setUp(self)
+        self._default_label = '2a'
 
     def test_init_with_format(self):
         # Verify bzr init --format constructs something plausible
@@ -44,10 +50,15 @@ class TestInit(ExternalBase):
         # --format=weave should be accepted to allow interoperation with
         # old releases when desired.
         out, err = self.run_bzr('init --format=weave')
-        self.assertEqual("""Standalone tree (format: weave)
-Location:
-  branch root: .
-""", out)
+        self.assertEqual("""Created a standalone tree (format: weave)\n""",
+            out)
+        self.assertEqual('', err)
+
+    def test_init_format_2a(self):
+        """Smoke test for constructing a format 2a repoistory."""
+        out, err = self.run_bzr('init --format=2a')
+        self.assertEqual("""Created a standalone tree (format: 2a)\n""",
+            out)
         self.assertEqual('', err)
 
     def test_init_at_repository_root(self):
@@ -60,46 +71,38 @@ Location:
         repo = newdir.create_repository(shared=True)
         repo.set_make_working_trees(False)
         out, err = self.run_bzr('init repo')
-        self.assertEqual(
-"""Repository tree (format: pack-0.92)
-Location:
-  shared repository: repo
-  repository branch: repo
-""", out)
+        self.assertEqual("""Created a repository tree (format: %s)
+Using shared repository: %s
+""" % (self._default_label, urlutils.local_path_from_url(
+            repo.bzrdir.root_transport.external_url())), out)
+        cwd = osutils.getcwd()
+        self.assertEndsWith(out, cwd + '/repo/\n')
         self.assertEqual('', err)
         newdir.open_branch()
         newdir.open_workingtree()
-        
+
     def test_init_branch(self):
         out, err = self.run_bzr('init')
-        self.assertEqual(
-"""Standalone tree (format: pack-0.92)
-Location:
-  branch root: .
-""", out)
+        self.assertEqual("Created a standalone tree (format: %s)\n" % (
+            self._default_label,), out)
         self.assertEqual('', err)
 
         # Can it handle subdirectories of branches too ?
         out, err = self.run_bzr('init subdir1')
-        self.assertEqual(
-"""Standalone tree (format: pack-0.92)
-Location:
-  branch root: subdir1
-""", out)
+        self.assertEqual("Created a standalone tree (format: %s)\n" % (
+            self._default_label,), out)
         self.assertEqual('', err)
         WorkingTree.open('subdir1')
-        
+
         self.run_bzr_error(['Parent directory of subdir2/nothere does not exist'],
                             'init subdir2/nothere')
         out, err = self.run_bzr('init subdir2/nothere', retcode=3)
         self.assertEqual('', out)
-        
+
         os.mkdir('subdir2')
         out, err = self.run_bzr('init subdir2')
-        self.assertEqual("""Standalone tree (format: pack-0.92)
-Location:
-  branch root: subdir2
-""", out)
+        self.assertEqual("Created a standalone tree (format: %s)\n" % (
+            self._default_label,), out)
         self.assertEqual('', err)
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
@@ -165,12 +168,11 @@ class TestSFTPInit(TestCaseWithSFTPServer):
 
     def test_init(self):
         # init on a remote url should succeed.
-        out, err = self.run_bzr(['init', self.get_url()])
-        self.assertStartsWith(out, """Standalone branch (format: pack-0.92)
-Location:
-  branch root: """)
+        out, err = self.run_bzr(['init', '--pack-0.92', self.get_url()])
+        self.assertEqual(out,
+            """Created a standalone branch (format: pack-0.92)\n""")
         self.assertEqual('', err)
-    
+
     def test_init_existing_branch(self):
         # when there is already a branch present, make mention
         self.make_branch('.')

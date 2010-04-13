@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 
@@ -32,7 +32,7 @@ class TestRevert(tests.TestCaseWithTransport):
         source_tree.commit('added dir')
         target_tree.lock_write()
         self.addCleanup(target_tree.unlock)
-        merge.merge_inner(target_tree.branch, source_tree.basis_tree(), 
+        merge.merge_inner(target_tree.branch, source_tree.basis_tree(),
                           target_tree.basis_tree(), this_tree=target_tree)
         self.failUnlessExists('target/dir')
         self.failUnlessExists('target/dir/contents')
@@ -67,7 +67,7 @@ class TestRevert(tests.TestCaseWithTransport):
         tree.commit('add new_file')
         tree.revert(old_tree=basis_tree)
         self.failIfExists('tree/new_file')
-        
+
         # files should be deleted if their changes came from merges
         merge_target.merge_from_branch(tree.branch)
         self.failUnlessExists('merge_target/new_file')
@@ -157,3 +157,14 @@ class TestRevert(tests.TestCaseWithTransport):
         self.failUnlessExists('dir/file1')
         self.failIfExists('dir/file2')
         self.assertEqual('dir-id', tree.path2id('dir'))
+
+    def test_revert_root_id_change(self):
+        tree = self.make_branch_and_tree('.')
+        tree.set_root_id('initial-root-id')
+        self.build_tree(['file1'])
+        tree.add(['file1'])
+        tree.commit('first')
+        tree.set_root_id('temp-root-id')
+        self.assertEqual('temp-root-id', tree.get_root_id())
+        tree.revert()
+        self.assertEqual('initial-root-id', tree.get_root_id())
