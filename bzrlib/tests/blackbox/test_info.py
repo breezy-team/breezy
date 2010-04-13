@@ -1323,7 +1323,7 @@ Repository:
 
     def test_info_locking_oslocks(self):
         if sys.platform == "win32":
-            raise TestSkipped("don't use oslocks on win32 in unix manner")
+            self.skip("don't use oslocks on win32 in unix manner")
         # This test tests old (all-in-one, OS lock using) behaviour which
         # simply cannot work on windows (and is indeed why we changed our
         # design. As such, don't try to remove the thisFailsStrictLockCheck
