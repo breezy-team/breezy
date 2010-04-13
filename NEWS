@@ -44,6 +44,9 @@ Improvements
 * ``bzr missing`` read-locks the branches only once.
   (Andrew Bennetts)
   
+* ``bzr pull`` locks the branches and tree only once.
+  (Andrew Bennetts)
+  
 * Index lookups in pack repositories search recently hit pack files first.  
   In repositories with many pack files this can greatly reduce the
   number of files accessed, the number of bytes read, and the number of

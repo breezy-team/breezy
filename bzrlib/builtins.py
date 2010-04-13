@@ -988,10 +988,14 @@ class cmd_pull(Command):
         try:
             tree_to = WorkingTree.open_containing(directory)[0]
             branch_to = tree_to.branch
+            tree_to.lock_write()
+            self.add_cleanup(tree_to.unlock)
         except errors.NoWorkingTree:
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
-        
+            branch_to.lock_write()
+            self.add_cleanup(branch_to.unlock)
+
         if local and not branch_to.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
 
@@ -1027,18 +1031,15 @@ class cmd_pull(Command):
         else:
             branch_from = Branch.open(location,
                 possible_transports=possible_transports)
+            branch_from.lock_read()
+            self.add_cleanup(branch_from.unlock)
 
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
 
-        if branch_from is not branch_to:
-            branch_from.lock_read()
-            self.add_cleanup(branch_from.unlock)
         if revision is not None:
             revision_id = revision.as_revision_id(branch_from)
 
-        branch_to.lock_write()
-        self.add_cleanup(branch_to.unlock)
         if tree_to is not None:
             view_info = _get_view_info_for_change_reporter(tree_to)
             change_reporter = delta._ChangeReporter(
