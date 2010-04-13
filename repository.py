@@ -65,7 +65,7 @@ class GitRepository(ForeignRepository):
             repository.InterRepository.register_optimiser(optimiser)
 
     def is_shared(self):
-        return True
+        return False
 
     def supports_rich_root(self):
         return True
