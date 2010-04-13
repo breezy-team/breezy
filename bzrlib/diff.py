@@ -321,6 +321,7 @@ def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
     return op.run_simple(path_list, revision_specs, old_url, new_url,
             op.add_cleanup, apply_view=apply_view)
     
+
 def get_trees_and_branches_to_diff_locked(
     path_list, revision_specs, old_url, new_url, add_cleanup, apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
