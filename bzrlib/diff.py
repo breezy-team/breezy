@@ -49,6 +49,7 @@ from bzrlib.registry import (
     )
 from bzrlib.symbol_versioning import (
     deprecated_function,
+    deprecated_in,
     )
 from bzrlib.trace import mutter, note, warning
 
@@ -290,6 +291,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
                                    apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
