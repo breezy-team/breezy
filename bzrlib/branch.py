@@ -457,7 +457,7 @@ class Branch(object):
             stop_revision_id, stop_rule)
         # Make sure we don't return revisions that are not part of the
         # start_revision_id ancestry.
-        filtered = self._filter_non_ancestors(filtered)
+        filtered = self._filter_non_start_ancestors(filtered)
         if direction == 'reverse':
             return filtered
         if direction == 'forward':
@@ -500,6 +500,16 @@ class Branch(object):
                        node.end_of_merge)
                 if rev_id == stop_revision_id:
                     return
+        elif stop_rule == 'with-merges-without-common-ancestry':
+            # We want to exclude all revisions that are already part of the
+            # stop_revision_id ancestry.
+            graph = self.repository.get_graph()
+            for node in rev_iter:
+                rev_id = node.key[-1]
+                if graph.is_ancestor(rev_id, stop_revision_id):
+                    continue
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
         elif stop_rule == 'with-merges':
             stop_rev = self.repository.get_revision(stop_revision_id)
             if stop_rev.parent_ids:
@@ -528,7 +538,7 @@ class Branch(object):
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 
-    def _filter_non_ancestors(self, rev_iter):
+    def _filter_non_start_ancestors(self, rev_iter):
         # If we started from a dotted revno, we want to consider it as a tip
         # and don't want to yield revisions that are not part of its
         # ancestry. Given the order guaranteed by the merge sort, we will see
