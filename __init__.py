@@ -109,6 +109,8 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
 
     _lock_class = TransportLock
 
+    colocated_branches = True
+
     def is_supported(self):
         return True
 
