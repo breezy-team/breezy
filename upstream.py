@@ -115,12 +115,12 @@ class AptSource(UpstreamSource):
         except SystemError:
             raise PackageVersionNotPresent(package, upstream_version, self)
 
-        restart = getattr(sources, 'restart', getattr(sources, 'Restart'))
+        restart = getattr(sources, 'restart', getattr(sources, 'Restart', None))
         restart()
         note("Using apt to look for the upstream tarball.")
-        lookup = getattr(sources, 'lookup', getattr(sources, 'Lookup'))
+        lookup = getattr(sources, 'lookup', getattr(sources, 'Lookup', None))
         while lookup(package):
-            version = getattr(sources, 'version', getattr(sources, 'Version'))
+            version = getattr(sources, 'version', getattr(sources, 'Version', None))
             if upstream_version == Version(version).upstream_version:
                 if self._run_apt_source(package, version, target_dir):
                     return
