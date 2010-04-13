@@ -1126,26 +1126,15 @@ class cmd_push(Command):
         # Get the source branch
         (tree, br_from,
          _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
-        if strict is None:
-            strict = br_from.get_config().get_user_option_as_bool('push_strict')
-        if strict is None: strict = True # default value
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = None
-        if strict and tree is not None and revision_id is None:
-            if (tree.has_changes()):
-                raise errors.UncommittedChanges(
-                    tree, more='Use --no-strict to force the push.')
-            if tree.last_revision() != tree.branch.last_revision():
-                # The tree has lost sync with its branch, there is little
-                # chance that the user is aware of it but he can still force
-                # the push with --no-strict
-                raise errors.OutOfDateTree(
-                    tree, more='Use --no-strict to force the push.')
-
+        if tree is not None and revision_id is None:
+            tree.warn_if_changed_or_out_of_date(
+                strict, 'push_strict', 'Use --no-strict to force the push.')
         # Get the stacked_on branch, if any
         if stacked_on is not None:
             stacked_on = urlutils.normalize_url(stacked_on)
