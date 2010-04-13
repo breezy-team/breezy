@@ -161,7 +161,7 @@ class TestDpushStrictMixin(object):
         else:
             error_regexes = []
         self.run_bzr(self._default_command + args,
-                     working_dir=self._default_wd)
+                     working_dir=self._default_wd, error_regexes=error_regexes)
         if pushed_revid is None:
             # dpush change the revids, so we need to get back to it
             branch_from = branch.Branch.open(self._default_wd)
