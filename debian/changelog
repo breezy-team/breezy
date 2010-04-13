@@ -1,12 +1,12 @@
-bzr-builddeb (2.4.2) UNRELEASED; urgency=low
+bzr-builddeb (2.4.2) unstable; urgency=low
 
   [ Jelmer Vernooij ]
-  * Avoid AttributeError in the python-apt complatibility code.
+  * Avoid AttributeError in the python-apt compatibility code.
 
   [ James Westby ]
   * Add 'maverick' as an Ubuntu release.
 
- -- James Westby <james.westby@ubuntu.com>  Tue, 13 Apr 2010 10:27:00 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 13 Apr 2010 21:37:53 +0200
 
 bzr-builddeb (2.4.1) unstable; urgency=low
 
