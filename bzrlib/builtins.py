@@ -1993,7 +1993,7 @@ class cmd_diff(Command):
         (old_tree, new_tree,
          old_branch, new_branch,
          specific_files, extra_trees) = get_trees_and_branches_to_diff(
-            file_list, revision, old, new, apply_view=True)
+            file_list, revision, old, new, self.add_cleanup, apply_view=True)
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
