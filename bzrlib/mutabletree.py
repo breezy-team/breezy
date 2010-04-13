@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -256,6 +256,39 @@ class MutableTree(tree.Tree):
         except StopIteration:
             # No changes
             return False
+
+    @needs_read_lock
+    def warn_if_changed_or_out_of_date(self, strict, opt_name, more_msg):
+        """Check the tree for uncommitted changes and branch synchronization.
+
+        If strict is None and not set in the config files, a warning is issued.
+        If strict is True, an error is raised.
+        If strict is False, no checks are done and no warning is issued.
+
+        :param strict: True, False or None, searched in branch config if None.
+
+        :param opt_name: strict option name to search in config file.
+
+        :param more_msg: Details about how to avoid the warnings.
+        """
+        if strict is None:
+            strict = self.branch.get_config().get_user_option_as_bool(opt_name)
+        if strict is not False:
+            err = None
+            if (self.has_changes()):
+                err = errors.UncommittedChanges(self, more=more_msg)
+            elif self.last_revision() != self.branch.last_revision():
+                # The tree has lost sync with its branch, there is little
+                # chance that the user is aware of it but he can still force
+                # the action with --no-strict
+                err = errors.OutOfDateTree(self, more=more_msg)
+            if err is not None:
+                if strict is None:
+                    # We don't want to interrupt the user if he expressed no
+                    # preference about strict.
+                    trace.warning('%s', (err._format(),))
+                else:
+                    raise err
 
     @needs_read_lock
     def last_revision(self):
