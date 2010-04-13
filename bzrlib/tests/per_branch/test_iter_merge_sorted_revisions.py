@@ -229,6 +229,32 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         self.addCleanup(br.unlock)
         return br
 
+    def make_branch_with_alternate_ancestries(self, relpath='.'):
+        builder = self.make_branch_builder(relpath)
+        # 1
+        # |\
+        # | 1.1.1
+        # | /| \
+        # 2  |  |
+        # |  |  1.2.1
+        # |  | /
+        # |  1.1.2
+        # | /
+        # 3
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2', ['1', '1.1.1'], [])
+        builder.build_snapshot('1.2.1', ['1.1.1'], [])
+        builder.build_snapshot('1.1.2', ['1.1.1', '1.2.1'], [])
+        builder.build_snapshot('3', ['2', '1.1.2'], [])
+        builder.finish_series()
+        br = builder.get_branch()
+        br.lock_read()
+        self.addCleanup(br.unlock)
+        return br
+
     def assertIterRevids(self, expected, branch, *args, **kwargs):
         # We don't care about depths and revnos here, only about returning the
         # right revids.
@@ -259,3 +285,14 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         self.assertIterRevids(['2.2.1', '2.1.1', '2', '1'],
                               branch, start_revision_id='2.2.1',
                               stop_rule='with-merges')
+
+    def test_merge_sorted_exclude_ancestry(self):
+        branch = self.make_branch_with_alternate_ancestries()
+        self.assertIterRevids(['3', '1.1.2', '1.2.1', '2', '1.1.1', '1'],
+                              branch)
+        self.assertIterRevids(['1.1.2', '1.2.1'],
+                              branch,
+                              stop_rule='with-merges-without-common-ancestry',
+                              start_revision_id='1.1.2',
+                              stop_revision_id='1.1.1')
+
