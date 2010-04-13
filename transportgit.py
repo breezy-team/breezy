@@ -102,6 +102,9 @@ class TransportObjectStore(PackBasedObjectStore):
         super(TransportObjectStore, self).__init__()
         self.transport = transport
         self.pack_transport = self.transport.clone(PACKDIR)
+    
+    def _pack_cache_stale(self):
+        return False # FIXME
 
     def _load_packs(self):
         ret = []
