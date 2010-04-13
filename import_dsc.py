@@ -125,6 +125,53 @@ class DscComp(object):
     return -1
 
 
+
+def reconstruct_pristine_tar(dest, delta, dest_filename):
+    """Reconstruct a pristine tarball from a directory and a delta.
+
+    :param dest: Directory to pack
+    :param delta: pristine-tar delta
+    :param dest_filename: Destination filename
+    """
+    command = ["pristine-tar", "gentar", "-",
+               os.path.abspath(dest_filename)]
+    try:
+        proc = subprocess.Popen(command, stdin=subprocess.PIPE,
+                cwd=dest, preexec_fn=subprocess_setup,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            raise PristineTarError("pristine-tar is not installed")
+        else:
+            raise
+    (stdout, stderr) = proc.communicate(delta)
+    if proc.returncode != 0:
+        raise PristineTarError("Generating tar from delta failed: %s" % stdout)
+
+
+def make_pristine_tar_delta(dest, tarball_path):
+    """Create a pristine-tar delta for a tarball.
+
+    :param dest: Directory to generate pristine tar delta for
+    :param tarball_path: Path to the tarball
+    :return: pristine-tarball
+    """
+    command = ["pristine-tar", "gendelta", tarball_path, "-"]
+    try:
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE,
+                cwd=dest, preexec_fn=subprocess_setup,
+                stderr=subprocess.PIPE)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            raise PristineTarError("pristine-tar is not installed")
+        else:
+            raise
+    (stdout, stderr) = proc.communicate()
+    if proc.returncode != 0:
+        raise PristineTarError("Generating delta from tar failed: %s" % stderr)
+    return stdout
+
+
 class DistributionBranchSet(object):
     """A collection of DistributionBranches with an ordering.
 
@@ -1492,20 +1539,7 @@ class DistributionBranch(object):
             dest = os.path.join(tmpdir, "orig")
             export(tree, dest, format='dir')
             delta = self.pristine_tar_delta(revid)
-            command = ["pristine-tar", "gentar", "-",
-                       os.path.abspath(dest_filename)]
-            try:
-                proc = subprocess.Popen(command, stdin=subprocess.PIPE,
-                        cwd=dest, preexec_fn=subprocess_setup,
-                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-            except OSError, e:
-                if e.errno == errno.ENOENT:
-                    raise PristineTarError("pristine-tar is not installed")
-                else:
-                    raise
-            (stdout, stderr) = proc.communicate(delta)
-            if proc.returncode != 0:
-                raise PristineTarError("Generating tar from delta failed: %s" % stdout)
+            reconstruct_pristine_tar(dest, delta, dest_filename)
         finally:
             shutil.rmtree(tmpdir)
 
@@ -1520,20 +1554,7 @@ class DistributionBranch(object):
                 export(tree, dest, format='dir')
             finally:
                 tree.unlock()
-            command = ["pristine-tar", "gendelta", tarball_path, "-"]
-            try:
-                proc = subprocess.Popen(command, stdout=subprocess.PIPE,
-                        cwd=dest, preexec_fn=subprocess_setup,
-                        stderr=subprocess.PIPE)
-            except OSError, e:
-                if e.errno == errno.ENOENT:
-                    raise PristineTarError("pristine-tar is not installed")
-                else:
-                    raise
-            (stdout, stderr) = proc.communicate()
-            if proc.returncode != 0:
-                raise PristineTarError("Generating delta from tar failed: %s" % stderr)
-            return stdout
+            make_pristine_tar_delta(dest, tarball_path)
         finally:
             shutil.rmtree(tmpdir)
 
