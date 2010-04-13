@@ -244,7 +244,7 @@ def suite_to_distribution(suite):
     debian_targets = ('', '-security', '-proposed-updates', '-backports')
     ubuntu_releases = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
             'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic',
-            'lucid')
+            'lucid', 'maverick')
     ubuntu_targets = ('', '-proposed', '-updates', '-security', '-backports')
     all_debian = [r + t for r in debian_releases for t in debian_targets]
     all_ubuntu = [r + t for r in ubuntu_releases for t in ubuntu_targets]
