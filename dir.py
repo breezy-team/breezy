@@ -126,15 +126,26 @@ class LocalGitDir(GitDir):
     def is_control_filename(self, filename):
         return filename == '.git' or filename.startswith('.git/')
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name):
         if branch_format is None:
             return self.transport
         if isinstance(branch_format, LocalGitBzrDirFormat):
             return self.transport
         raise bzr_errors.IncompatibleFormat(branch_format, self._format)
 
-    get_repository_transport = get_branch_transport
-    get_workingtree_transport = get_branch_transport
+    def get_repository_transport(self, format):
+        if format is None:
+            return self.transport
+        if isinstance(format, LocalGitBzrDirFormat):
+            return self.transport
+        raise bzr_errors.IncompatibleFormat(format, self._format)
+
+    def get_workingtree_transport(self, format):
+        if format is None:
+            return self.transport
+        if isinstance(format, LocalGitBzrDirFormat):
+            return self.transport
+        raise bzr_errors.IncompatibleFormat(format, self._format)
 
     def _open_branch(self, name=None, ignore_fallbacks=None, unsupported=False):
         """'create' a branch for this dir."""
