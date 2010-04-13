@@ -64,12 +64,6 @@ Documentation
 API Changes
 ***********
 
-* ``bzrlib.diff.get_trees_and_branches_to_diff`` now returns read-locked
-  trees and branches.  It also requires an extra argument,
-  ``add_cleanup``, a callable it will use to to register cleanups to
-  unlock those trees and branches.
-  (Andrew Bennetts)
-
 Internals
 *********
 

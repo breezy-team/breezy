@@ -1965,7 +1965,7 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None):
-        from bzrlib.diff import (get_trees_and_branches_to_diff,
+        from bzrlib.diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
         if (prefix is None) or (prefix == '0'):
@@ -1992,7 +1992,7 @@ class cmd_diff(Command):
 
         (old_tree, new_tree,
          old_branch, new_branch,
-         specific_files, extra_trees) = get_trees_and_branches_to_diff(
+         specific_files, extra_trees) = get_trees_and_branches_to_diff_locked(
             file_list, revision, old, new, self.add_cleanup, apply_view=True)
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,

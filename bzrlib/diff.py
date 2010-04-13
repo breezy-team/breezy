@@ -32,6 +32,7 @@ from bzrlib import (
     branch as _mod_branch,
     bzrdir,
     cmdline,
+    cleanup,
     errors,
     osutils,
     patiencediff,
@@ -290,7 +291,38 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
 
 
 def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
-                                   add_cleanup, apply_view=True):
+                                   apply_view=True):
+    """Get the trees and specific files to diff given a list of paths.
+
+    This method works out the trees to be diff'ed and the files of
+    interest within those trees.
+
+    :param path_list:
+        the list of arguments passed to the diff command
+    :param revision_specs:
+        Zero, one or two RevisionSpecs from the diff command line,
+        saying what revisions to compare.
+    :param old_url:
+        The url of the old branch or tree. If None, the tree to use is
+        taken from the first path, if any, or the current working tree.
+    :param new_url:
+        The url of the new branch or tree. If None, the tree to use is
+        taken from the first path, if any, or the current working tree.
+    :param apply_view:
+        if True and a view is set, apply the view or check that the paths
+        are within it
+    :returns:
+        a tuple of (old_tree, new_tree, old_branch, new_branch,
+        specific_files, extra_trees) where extra_trees is a sequence of
+        additional trees to search in for file-ids.  The trees and branches
+        are not locked.
+    """
+    op = cleanup.OperationWithCleanups(get_trees_and_branches_to_diff_locked)
+    return op.run_simple(path_list, revision_specs, old_url, new_url,
+            op.add_cleanup, apply_view=apply_view)
+    
+def get_trees_and_branches_to_diff_locked(
+    path_list, revision_specs, old_url, new_url, add_cleanup, apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
 
     This method works out the trees to be diff'ed and the files of
