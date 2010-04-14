@@ -724,6 +724,25 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertTrue('ghost' not in parents)
         self.assertEqual(parents['rev2'], ('rev1', 'ghost'))
 
+    def test_get_known_graph_ancestry(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        # A
+        # |\
+        # | B
+        # |/
+        # C
+        tree.commit('initial commit', rev_id='A')
+        tree_other = tree.bzrdir.sprout('there').open_workingtree()
+        tree_other.commit('another', rev_id='B')
+        tree.merge_from_branch(tree_other.branch)
+        tree.commit('another', rev_id='C')
+        kg = tree.branch.repository.get_known_graph_ancestry(
+            ['C'])
+        self.assertEqual(['C'], list(kg.heads(['A', 'B', 'C'])))
+        self.assertEqual(['A', 'B', 'C'], list(kg.topo_sort()))
+
     def test_parent_map_type(self):
         tree = self.make_branch_and_tree('here')
         tree.lock_write()

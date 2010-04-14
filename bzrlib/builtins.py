@@ -988,10 +988,14 @@ class cmd_pull(Command):
         try:
             tree_to = WorkingTree.open_containing(directory)[0]
             branch_to = tree_to.branch
+            tree_to.lock_write()
+            self.add_cleanup(tree_to.unlock)
         except errors.NoWorkingTree:
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
-        
+            branch_to.lock_write()
+            self.add_cleanup(branch_to.unlock)
+
         if local and not branch_to.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
 
@@ -1027,18 +1031,15 @@ class cmd_pull(Command):
         else:
             branch_from = Branch.open(location,
                 possible_transports=possible_transports)
+            branch_from.lock_read()
+            self.add_cleanup(branch_from.unlock)
 
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
 
-        if branch_from is not branch_to:
-            branch_from.lock_read()
-            self.add_cleanup(branch_from.unlock)
         if revision is not None:
             revision_id = revision.as_revision_id(branch_from)
 
-        branch_to.lock_write()
-        self.add_cleanup(branch_to.unlock)
         if tree_to is not None:
             view_info = _get_view_info_for_change_reporter(tree_to)
             change_reporter = delta._ChangeReporter(
@@ -1126,26 +1127,15 @@ class cmd_push(Command):
         # Get the source branch
         (tree, br_from,
          _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
-        if strict is None:
-            strict = br_from.get_config().get_user_option_as_bool('push_strict')
-        if strict is None: strict = True # default value
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = None
-        if strict and tree is not None and revision_id is None:
-            if (tree.has_changes()):
-                raise errors.UncommittedChanges(
-                    tree, more='Use --no-strict to force the push.')
-            if tree.last_revision() != tree.branch.last_revision():
-                # The tree has lost sync with its branch, there is little
-                # chance that the user is aware of it but he can still force
-                # the push with --no-strict
-                raise errors.OutOfDateTree(
-                    tree, more='Use --no-strict to force the push.')
-
+        if tree is not None and revision_id is None:
+            tree.warn_if_changed_or_out_of_date(
+                strict, 'push_strict', 'Use --no-strict to force the push.')
         # Get the stacked_on branch, if any
         if stacked_on is not None:
             stacked_on = urlutils.normalize_url(stacked_on)
@@ -1448,9 +1438,9 @@ class cmd_update(Command):
         else:
             revision_id = branch.last_revision()
         if revision_id == _mod_revision.ensure_null(tree.last_revision()):
-            revno = branch.revision_id_to_revno(revision_id)
-            note("Tree is up to date at revision %d of branch %s" %
-                (revno, branch_location))
+            revno = branch.revision_id_to_dotted_revno(revision_id)
+            note("Tree is up to date at revision %s of branch %s" %
+                ('.'.join(map(str, revno)), branch_location))
             return 0
         view_info = _get_view_info_for_change_reporter(tree)
         change_reporter = delta._ChangeReporter(
@@ -1468,11 +1458,12 @@ class cmd_update(Command):
                                   "bzr update --revision only works"
                                   " for a revision in the branch history"
                                   % (e.revision))
-        revno = tree.branch.revision_id_to_revno(
+        revno = tree.branch.revision_id_to_dotted_revno(
             _mod_revision.ensure_null(tree.last_revision()))
-        note('Updated to revision %d of branch %s' %
-             (revno, branch_location))
-        if tree.get_parent_ids()[1:] != existing_pending_merges:
+        note('Updated to revision %s of branch %s' %
+             ('.'.join(map(str, revno)), branch_location))
+        parent_ids = tree.get_parent_ids()
+        if parent_ids[1:] and parent_ids[1:] != existing_pending_merges:
             note('Your local commits will now show as pending merges with '
                  "'bzr status', and can be committed with 'bzr commit'.")
         if conflicts != 0:
@@ -1965,7 +1956,7 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None):
-        from bzrlib.diff import (get_trees_and_branches_to_diff,
+        from bzrlib.diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
         if (prefix is None) or (prefix == '0'):
@@ -1992,8 +1983,8 @@ class cmd_diff(Command):
 
         (old_tree, new_tree,
          old_branch, new_branch,
-         specific_files, extra_trees) = get_trees_and_branches_to_diff(
-            file_list, revision, old, new, apply_view=True)
+         specific_files, extra_trees) = get_trees_and_branches_to_diff_locked(
+            file_list, revision, old, new, self.add_cleanup, apply_view=True)
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
@@ -3150,29 +3141,37 @@ class cmd_commit(Command):
                     '(use --file "%(f)s" to take commit message from that file)'
                     % { 'f': message })
                 ui.ui_factory.show_warning(warning_msg)
+            if '\r' in message:
+                message = message.replace('\r\n', '\n')
+                message = message.replace('\r', '\n')
+            if file:
+                raise errors.BzrCommandError(
+                    "please specify either --message or --file")
 
         def get_message(commit_obj):
             """Callback to get commit message"""
-            my_message = message
-            if my_message is not None and '\r' in my_message:
-                my_message = my_message.replace('\r\n', '\n')
-                my_message = my_message.replace('\r', '\n')
-            if my_message is None and not file:
-                t = make_commit_message_template_encoded(tree,
+            if file:
+                my_message = codecs.open(
+                    file, 'rt', osutils.get_user_encoding()).read()
+            elif message is not None:
+                my_message = message
+            else:
+                # No message supplied: make one up.
+                # text is the status of the tree
+                text = make_commit_message_template_encoded(tree,
                         selected_list, diff=show_diff,
                         output_encoding=osutils.get_user_encoding())
+                # start_message is the template generated from hooks
+                # XXX: Warning - looks like hooks return unicode,
+                # make_commit_message_template_encoded returns user encoding.
+                # We probably want to be using edit_commit_message instead to
+                # avoid this.
                 start_message = generate_commit_message_template(commit_obj)
-                my_message = edit_commit_message_encoded(t,
+                my_message = edit_commit_message_encoded(text,
                     start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
-            elif my_message and file:
-                raise errors.BzrCommandError(
-                    "please specify either --message or --file")
-            if file:
-                my_message = codecs.open(file, 'rt',
-                                         osutils.get_user_encoding()).read()
             if my_message == "":
                 raise errors.BzrCommandError("empty commit message specified")
             return my_message
@@ -3190,8 +3189,6 @@ class cmd_commit(Command):
                         timezone=offset,
                         exclude=safe_relpath_files(tree, exclude))
         except PointlessCommit:
-            # FIXME: This should really happen before the file is read in;
-            # perhaps prepare the commit; get the message; then actually commit
             raise errors.BzrCommandError("No changes to commit."
                               " Use --unchanged to commit anyhow.")
         except ConflictsInTree:
@@ -4340,6 +4337,9 @@ class cmd_missing(Command):
             restrict = 'remote'
 
         local_branch = Branch.open_containing(u".")[0]
+        local_branch.lock_read()
+        self.add_cleanup(local_branch.unlock)
+
         parent = local_branch.get_parent()
         if other_branch is None:
             other_branch = parent
@@ -4354,15 +4354,14 @@ class cmd_missing(Command):
         remote_branch = Branch.open(other_branch)
         if remote_branch.base == local_branch.base:
             remote_branch = local_branch
+        else:
+            remote_branch.lock_read()
+            self.add_cleanup(remote_branch.unlock)
 
-        local_branch.lock_read()
-        self.add_cleanup(local_branch.unlock)
         local_revid_range = _revision_range_to_revid_range(
             _get_revision_range(my_revision, local_branch,
                 self.name()))
 
-        remote_branch.lock_read()
-        self.add_cleanup(remote_branch.unlock)
         remote_revid_range = _revision_range_to_revid_range(
             _get_revision_range(revision,
                 remote_branch, self.name()))

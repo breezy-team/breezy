@@ -447,11 +447,10 @@ class Branch(object):
         # start_revision_id.
         if self._merge_sorted_revisions_cache is None:
             last_revision = self.last_revision()
-            last_key = (last_revision,)
-            known_graph = self.repository.revisions.get_known_graph_ancestry(
-                [last_key])
+            known_graph = self.repository.get_known_graph_ancestry(
+                [last_revision])
             self._merge_sorted_revisions_cache = known_graph.merge_sort(
-                last_key)
+                last_revision)
         filtered = self._filter_merge_sorted_revisions(
             self._merge_sorted_revisions_cache, start_revision_id,
             stop_revision_id, stop_rule)
