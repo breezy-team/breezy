@@ -360,6 +360,18 @@ class TestLogErrors(TestLog):
                             'options are "utc", "original", "local".'],
                            ['log', '--timezone', 'foo'])
 
+    def test_log_exclude_ancestry_no_range(self):
+        self.make_linear_branch()
+        self.run_bzr_error(['bzr: ERROR: --exclude-common-ancestry'
+                            ' requires -r with two revisions'],
+                           ['log', '--exclude-common-ancestry'])
+
+    def test_log_exclude_ancestry_single_revision(self):
+        self.make_merged_branch()
+        self.run_bzr_error(['bzr: ERROR: --exclude-common-ancestry'
+                            ' requires two different revisions'],
+                           ['log', '--exclude-common-ancestry',
+                            '-r1.1.1..1.1.1'])
 
 class TestLogTags(TestLog):
 

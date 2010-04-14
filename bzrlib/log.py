@@ -476,6 +476,7 @@ class _DefaultLogGenerator(LogGenerator):
             file_ids=rqst.get('specific_fileids'),
             direction=rqst.get('direction'))
 
+    # FIXME: need test for exclude_common_ancestry
     def _log_revision_iterator_using_per_file_graph(self):
         # Get the base revisions, filtering by the revision range.
         # Note that we always generate the merge revisions because
@@ -504,16 +505,19 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
              a list of the same tuples.
     """
+    if (exclude_common_ancestry and start_rev_id == end_rev_id):
+        raise errors.BzrCommandError(
+            '--exclude-common-ancestry requires two different revisions')
     if direction not in ('reverse', 'forward'):
         raise ValueError('invalid direction %r' % direction)
     br_revno, br_rev_id = branch.last_revision_info()
     if br_revno == 0:
         return []
 
-    # If a single revision is requested, check we can handle it
     if (end_rev_id and start_rev_id == end_rev_id
         and  (not generate_merge_revisions
               or not _has_merges(branch, end_rev_id))):
+        # If a single revision is requested, check we can handle it
         iter_revs = _generate_one_revision(branch, end_rev_id, br_rev_id,
                                            br_revno)
     elif not generate_merge_revisions:
@@ -526,8 +530,6 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
         iter_revs = _generate_all_revisions(branch, start_rev_id, end_rev_id,
                                             direction, delayed_graph_generation,
                                             exclude_common_ancestry)
-        if exclude_common_ancestry:
-            graph = branch.repository.get_graph()
         if direction == 'forward':
             iter_revs = _rebase_merge_depth(reverse_by_depth(list(iter_revs)))
     return iter_revs
