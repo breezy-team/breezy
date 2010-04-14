@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -95,6 +95,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_revno',
                      'bzrlib.tests.blackbox.test_revision_history',
                      'bzrlib.tests.blackbox.test_revision_info',
+                     'bzrlib.tests.blackbox.test_rmbranch',
                      'bzrlib.tests.blackbox.test_selftest',
                      'bzrlib.tests.blackbox.test_send',
                      'bzrlib.tests.blackbox.test_serve',

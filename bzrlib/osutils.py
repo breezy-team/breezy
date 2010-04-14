@@ -21,11 +21,11 @@ from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
                   S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import sys
 import time
+import codecs
 import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 from datetime import datetime
 import errno
 from ntpath import (abspath as _nt_abspath,
@@ -40,6 +40,7 @@ from shutil import (
     rmtree,
     )
 import signal
+import socket
 import subprocess
 import tempfile
 from tempfile import (
@@ -50,9 +51,15 @@ import unicodedata
 from bzrlib import (
     cache_utf8,
     errors,
+    trace,
     win32utils,
     )
 """)
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 # sha and md5 modules are deprecated in python2.6 but hashlib is available as
 # of 2.5
@@ -85,8 +92,11 @@ if sys.platform == 'win32':
 # be opened in binary mode, rather than text mode.
 # On other platforms, O_BINARY doesn't exist, because
 # they always open in binary mode, so it is okay to
-# OR with 0 on those platforms
+# OR with 0 on those platforms.
+# O_NOINHERIT and O_TEXT exists only on win32 too.
 O_BINARY = getattr(os, 'O_BINARY', 0)
+O_TEXT = getattr(os, 'O_TEXT', 0)
+O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 
 
 def get_unicode_argv():
@@ -663,7 +673,7 @@ def size_sha_file(f):
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha()
-    f = os.open(fname, os.O_RDONLY | O_BINARY)
+    f = os.open(fname, os.O_RDONLY | O_BINARY | O_NOINHERIT)
     try:
         while True:
             b = os.read(f, 1<<16)
@@ -1346,6 +1356,27 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
+def set_signal_handler(signum, handler, restart_syscall=True):
+    """A wrapper for signal.signal that also calls siginterrupt(signum, False)
+    on platforms that support that.
+
+    :param restart_syscall: if set, allow syscalls interrupted by a signal to
+        automatically restart (by calling `signal.siginterrupt(signum,
+        False)`).  May be ignored if the feature is not available on this
+        platform or Python version.
+    """
+    old_handler = signal.signal(signum, handler)
+    if restart_syscall:
+        try:
+            siginterrupt = signal.siginterrupt
+        except AttributeError: # siginterrupt doesn't exist on this platform, or for this version of
+            # Python.
+            pass
+        else:
+            siginterrupt(signum, False)
+    return old_handler
+
+
 default_terminal_width = 80
 """The default terminal width for ttys.
 
@@ -1440,12 +1471,21 @@ def _terminal_size_changed(signum, frame):
     if width is not None:
         os.environ['COLUMNS'] = str(width)
 
-if sys.platform == 'win32':
-    # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from ReadConsoleInput but
-    # I've no idea how to plug that in the current design -- vila 20091216
-    pass
-else:
-    signal.signal(signal.SIGWINCH, _terminal_size_changed)
+
+_registered_sigwinch = False
+
+def watch_sigwinch():
+    """Register for SIGWINCH, once and only once."""
+    global _registered_sigwinch
+    if not _registered_sigwinch:
+        if sys.platform == 'win32':
+            # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from
+            # ReadConsoleInput but I've no idea how to plug that in
+            # the current design -- vila 20091216
+            pass
+        else:
+            set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
+        _registered_sigwinch = True
 
 
 def supports_executable():
@@ -1771,6 +1811,52 @@ def copy_tree(from_path, to_path, handlers={}):
             real_handlers[kind](abspath, relpath)
 
 
+def copy_ownership(dst, src=None):
+    """Copy usr/grp ownership from src file/dir to dst file/dir.
+
+    If src is None, the containing directory is used as source. If chown
+    fails, the error is ignored and a warning is printed.
+    """
+    chown = getattr(os, 'chown', None)
+    if chown is None:
+        return
+
+    if src == None:
+        src = os.path.dirname(dst)
+        if src == '':
+            src = '.'
+
+    try:
+        s = os.stat(src)
+        chown(dst, s.st_uid, s.st_gid)
+    except OSError, e:
+        trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
+
+
+def mkdir_with_ownership(path, ownership_src=None):
+    """Create the directory 'path' with specified ownership.
+
+    If ownership_src is given, copies (chown) usr/grp ownership
+    from 'ownership_src' to 'path'. If ownership_src is None, use the
+    containing dir ownership.
+    """
+    os.mkdir(path)
+    copy_ownership(path, ownership_src)
+
+
+def open_with_ownership(filename, mode='r', bufsize=-1, ownership_src=None):
+    """Open the file 'filename' with the specified ownership.
+
+    If ownership_src is specified, copy usr/grp ownership from ownership_src
+    to filename. If ownership_src is None, copy ownership from containing
+    directory.
+    Returns the opened file object.
+    """
+    f = open(filename, mode, bufsize)
+    copy_ownership(filename, ownership_src)
+    return f
+
+
 def path_prefix_key(path):
     """Generate a prefix-order path key for path.
 
@@ -1876,40 +1962,82 @@ def get_host_name():
         return socket.gethostname().decode(get_user_encoding())
 
 
-def recv_all(socket, bytes):
+# We must not read/write any more than 64k at a time from/to a socket so we
+# don't risk "no buffer space available" errors on some platforms.  Windows in
+# particular is likely to throw WSAECONNABORTED or WSAENOBUFS if given too much
+# data at once.
+MAX_SOCKET_CHUNK = 64 * 1024
+
+def read_bytes_from_socket(sock, report_activity=None,
+        max_read_size=MAX_SOCKET_CHUNK):
+    """Read up to max_read_size of bytes from sock and notify of progress.
+
+    Translates "Connection reset by peer" into file-like EOF (return an
+    empty string rather than raise an error), and repeats the recv if
+    interrupted by a signal.
+    """
+    while 1:
+        try:
+            bytes = sock.recv(max_read_size)
+        except socket.error, e:
+            eno = e.args[0]
+            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
+                # The connection was closed by the other side.  Callers expect
+                # an empty string to signal end-of-stream.
+                return ""
+            elif eno == errno.EINTR:
+                # Retry the interrupted recv.
+                continue
+            raise
+        else:
+            if report_activity is not None:
+                report_activity(len(bytes), 'read')
+            return bytes
+
+
+def recv_all(socket, count):
     """Receive an exact number of bytes.
 
     Regular Socket.recv() may return less than the requested number of bytes,
-    dependning on what's in the OS buffer.  MSG_WAITALL is not available
+    depending on what's in the OS buffer.  MSG_WAITALL is not available
     on all platforms, but this should work everywhere.  This will return
     less than the requested amount if the remote end closes.
 
     This isn't optimized and is intended mostly for use in testing.
     """
     b = ''
-    while len(b) < bytes:
-        new = until_no_eintr(socket.recv, bytes - len(b))
+    while len(b) < count:
+        new = read_bytes_from_socket(socket, None, count - len(b))
         if new == '':
             break # eof
         b += new
     return b
 
 
-def send_all(socket, bytes, report_activity=None):
+def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
+ 
+    Breaks large blocks in smaller chunks to avoid buffering limitations on
+    some platforms, and catches EINTR which may be thrown if the send is
+    interrupted by a signal.
 
-    Regular socket.sendall() can give socket error 10053 on Windows.  This
-    implementation sends no more than 64k at a time, which avoids this problem.
-
+    This is preferred to socket.sendall(), because it avoids portability bugs
+    and provides activity reporting.
+ 
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
     """
-    chunk_size = 2**16
-    for pos in xrange(0, len(bytes), chunk_size):
-        block = bytes[pos:pos+chunk_size]
-        if report_activity is not None:
-            report_activity(len(block), 'write')
-        until_no_eintr(socket.sendall, block)
+    sent_total = 0
+    byte_count = len(bytes)
+    while sent_total < byte_count:
+        try:
+            sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
+        except socket.error, e:
+            if e.args[0] != errno.EINTR:
+                raise
+        else:
+            sent_total += sent
+            report_activity(sent, 'write')
 
 
 def dereference_path(path):
@@ -1986,7 +2114,18 @@ def file_kind(f, _lstat=os.lstat):
 
 
 def until_no_eintr(f, *a, **kw):
-    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    """Run f(*a, **kw), retrying if an EINTR error occurs.
+    
+    WARNING: you must be certain that it is safe to retry the call repeatedly
+    if EINTR does occur.  This is typically only true for low-level operations
+    like os.read.  If in any doubt, don't use this.
+
+    Keep in mind that this is not a complete solution to EINTR.  There is
+    probably code in the Python standard library and other dependencies that
+    may encounter EINTR if a signal arrives (and there is signal handler for
+    that signal).  So this function can reduce the impact for IO that bzrlib
+    directly controls, but it is not a complete solution.
+    """
     # Borrowed from Twisted's twisted.python.util.untilConcludes function.
     while True:
         try:
@@ -1995,6 +2134,7 @@ def until_no_eintr(f, *a, **kw):
             if e.errno == errno.EINTR:
                 continue
             raise
+
 
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
@@ -2108,3 +2248,46 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
         else:
             data, _ = self.encode(object, self.errors)
             self.stream.write(data)
+
+if sys.platform == 'win32':
+    def open_file(filename, mode='r', bufsize=-1):
+        """This function is used to override the ``open`` builtin.
+        
+        But it uses O_NOINHERIT flag so the file handle is not inherited by
+        child processes.  Deleting or renaming a closed file opened with this
+        function is not blocking child processes.
+        """
+        writing = 'w' in mode
+        appending = 'a' in mode
+        updating = '+' in mode
+        binary = 'b' in mode
+
+        flags = O_NOINHERIT
+        # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
+        # for flags for each modes.
+        if binary:
+            flags |= O_BINARY
+        else:
+            flags |= O_TEXT
+
+        if writing:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_TRUNC
+        elif appending:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_APPEND
+        else: #reading
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_RDONLY
+
+        return os.fdopen(os.open(filename, flags), mode, bufsize)
+else:
+    open_file = open

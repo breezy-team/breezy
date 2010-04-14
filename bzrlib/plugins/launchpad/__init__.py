@@ -1,4 +1,4 @@
-# Copyright (C) 2006 - 2010 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 """Launchpad.net integration plugin for Bazaar."""
 
 # The XMLRPC server address can be overridden by setting the environment
-# variable $BZR_LP_XMLRPL_URL
+# variable $BZR_LP_XMLRPC_URL
 
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 

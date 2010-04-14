@@ -37,6 +37,8 @@ from bzrlib import (
 
 """)
 
+from bzrlib.osutils import watch_sigwinch
+
 from bzrlib.ui import (
     UIFactory,
     NullProgressView,
@@ -60,7 +62,9 @@ class TextUIFactory(UIFactory):
         self.stderr = stderr
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
-        
+        # hook up the signals to watch for terminal size changes
+        watch_sigwinch()
+
     def be_quiet(self, state):
         if state and not self._quiet:
             self.clear_term()
@@ -248,6 +252,18 @@ class TextUIFactory(UIFactory):
 
     def _progress_all_finished(self):
         self._progress_view.clear()
+
+    def show_user_warning(self, warning_id, **message_args):
+        """Show a text message to the user.
+
+        Explicitly not for warnings about bzr apis, deprecations or internals.
+        """
+        # eventually trace.warning should migrate here, to avoid logging and
+        # be easier to test; that has a lot of test fallout so for now just
+        # new code can call this
+        if warning_id not in self.suppressed_warnings:
+            self.stderr.write(self.format_user_warning(warning_id, message_args) +
+                '\n')
 
 
 class TextProgressView(object):

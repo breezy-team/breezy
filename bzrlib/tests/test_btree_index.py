@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -611,6 +611,21 @@ class TestBTreeIndex(BTreeTestCase):
         size = trans.put_file('index', stream)
         return btree_index.BTreeGraphIndex(trans, 'index', size)
 
+    def make_index_with_offset(self, ref_lists=1, key_elements=1, nodes=[],
+                               offset=0):
+        builder = btree_index.BTreeBuilder(key_elements=key_elements,
+                                           reference_lists=ref_lists)
+        builder.add_nodes(nodes)
+        transport = self.get_transport('')
+        # NamedTemporaryFile dies on builder.finish().read(). weird.
+        temp_file = builder.finish()
+        content = temp_file.read()
+        del temp_file
+        size = len(content)
+        transport.put_bytes('index', (' '*offset)+content)
+        return btree_index.BTreeGraphIndex(transport, 'index', size=size,
+                                           offset=offset)
+
     def test_clear_cache(self):
         nodes = self.make_nodes(160, 2, 2)
         index = self.make_index(ref_lists=2, key_elements=2, nodes=nodes)
@@ -685,6 +700,25 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
             transport._activity)
         self.assertEqual(1173, size)
+
+    def test_with_offset_no_size(self):
+        index = self.make_index_with_offset(key_elements=1, ref_lists=1,
+                                            offset=1234,
+                                            nodes=self.make_nodes(200, 1, 1))
+        index._size = None # throw away the size info
+        self.assertEqual(200, index.key_count())
+
+    def test_with_small_offset(self):
+        index = self.make_index_with_offset(key_elements=1, ref_lists=1,
+                                            offset=1234,
+                                            nodes=self.make_nodes(200, 1, 1))
+        self.assertEqual(200, index.key_count())
+
+    def test_with_large_offset(self):
+        index = self.make_index_with_offset(key_elements=1, ref_lists=1,
+                                            offset=123456,
+                                            nodes=self.make_nodes(200, 1, 1))
+        self.assertEqual(200, index.key_count())
 
     def test__read_nodes_no_size_one_page_reads_once(self):
         self.make_index(nodes=[(('key',), 'value', ())])

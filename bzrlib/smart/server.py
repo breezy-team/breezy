@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -138,6 +138,8 @@ class SmartTCPServer(object):
                         if e.args[0] != errno.EBADF:
                             trace.warning("listening socket error: %s", e)
                     else:
+                        if self._should_terminate:
+                            break
                         self.serve_conn(conn, thread_name_suffix)
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.

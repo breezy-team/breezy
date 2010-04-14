@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -252,7 +252,7 @@ class LockDir(lock.Lock):
         if info is None:
             raise LockFailed(self, "lock was renamed into place, but "
                 "now is missing!")
-        if info['nonce'] != self.nonce:
+        if info.get('nonce') != self.nonce:
             self._trace("rename succeeded, "
                 "but lock is still held by someone else")
             raise LockContention(self)
@@ -430,7 +430,7 @@ class LockDir(lock.Lock):
     def peek(self):
         """Check if the lock is held by anyone.
 
-        If it is held, this returns the lock info structure as a rio Stanza,
+        If it is held, this returns the lock info structure as a dict
         which contains some information about the current lock holder.
         Otherwise returns None.
         """
@@ -459,8 +459,14 @@ class LockDir(lock.Lock):
         return s.to_string()
 
     def _parse_info(self, info_bytes):
-        # TODO: Handle if info_bytes is empty
-        return rio.read_stanza(osutils.split_lines(info_bytes)).as_dict()
+        stanza = rio.read_stanza(osutils.split_lines(info_bytes))
+        if stanza is None:
+            # see bug 185013; we fairly often end up with the info file being
+            # empty after an interruption; we could log a message here but
+            # there may not be much we can say
+            return {}
+        else:
+            return stanza.as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -611,11 +617,16 @@ class LockDir(lock.Lock):
     def _format_lock_info(self, info):
         """Turn the contents of peek() into something for the user"""
         lock_url = self.transport.abspath(self.path)
-        delta = time.time() - int(info['start_time'])
+        start_time = info.get('start_time')
+        if start_time is None:
+            time_ago = '(unknown)'
+        else:
+            time_ago = format_delta(time.time() - int(info['start_time']))
         return [
             'lock %s' % (lock_url,),
-            'held by %(user)s on host %(hostname)s [process #%(pid)s]' % info,
-            'locked %s' % (format_delta(delta),),
+            'held by %s on host %s [process #%s]' %
+                tuple([info.get(x, '<unknown>') for x in ['user', 'hostname', 'pid']]),
+            'locked %s' % (time_ago,),
             ]
 
     def validate_token(self, token):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1060,7 +1060,12 @@ class Transport(object):
         """
         source = self.clone(from_relpath)
         target = self.clone(to_relpath)
-        target.mkdir('.')
+
+        # create target directory with the same rwx bits as source.
+        # use mask to ensure that bits other than rwx are ignored.
+        stat = self.stat(from_relpath)
+        target.mkdir('.', stat.st_mode & 0777)
+
         source.copy_tree_to_transport(target)
 
     def copy_tree_to_transport(self, to_transport):
@@ -1201,6 +1206,18 @@ class Transport(object):
 
         count = self._iterate_over(relpaths, gather, pb, 'stat', expand=False)
         return stats
+
+    def readlink(self, relpath):
+        """Return a string representing the path to which the symbolic link points."""
+        raise errors.TransportNotPossible("Dereferencing symlinks is not supported on %s" % self)
+
+    def hardlink(self, source, link_name):
+        """Create a hardlink pointing to source named link_name."""
+        raise errors.TransportNotPossible("Hard links are not supported on %s" % self)
+
+    def symlink(self, source, link_name):
+        """Create a symlink pointing to source named link_name."""
+        raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
 
     def listable(self):
         """Return True if this store supports listing."""
@@ -1831,6 +1848,6 @@ register_lazy_transport('ssh:', 'bzrlib.transport.remote',
 
 
 transport_server_registry = registry.Registry()
-transport_server_registry.register_lazy('bzr', 'bzrlib.smart.server', 
+transport_server_registry.register_lazy('bzr', 'bzrlib.smart.server',
     'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
 transport_server_registry.default_key = 'bzr'

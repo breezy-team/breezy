@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,6 +50,18 @@ class TestParseIgnoreFile(TestCase):
     def test_parse_empty(self):
         ignored = ignores.parse_ignore_file(StringIO(''))
         self.assertEqual(set([]), ignored)
+        
+    def test_parse_non_utf8(self):
+        """Lines with non utf 8 characters should be discarded."""
+        ignored = ignores.parse_ignore_file(StringIO(
+                'utf8filename_a\n'
+                'invalid utf8\x80\n'
+                'utf8filename_b\n'
+                ))
+        self.assertEqual(set([
+                        'utf8filename_a',
+                        'utf8filename_b',
+                       ]), ignored)
 
 
 class TestUserIgnores(TestCaseInTempDir):

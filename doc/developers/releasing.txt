@@ -55,6 +55,10 @@ To start a new release cycle:
    ``bzrlib/__init__.py`` file. Make sure there is always a corresponding
    milestone when you change that version number.
 
+#. Add a new section at the top of ``NEWS`` about the new release,
+   including its version number and the headings from
+   ``NEWS-template.txt``.
+
 #. Send mail to the list with the key dates, who will be the release
    manager, and the main themes or targeted bugs.  Ask people to nominate
    objectives, or point out any high-risk things that are best done early,

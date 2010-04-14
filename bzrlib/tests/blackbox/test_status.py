@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -498,7 +498,8 @@ class CheckoutStatus(BranchStatus):
     def make_branch_and_tree(self, relpath):
         source = self.make_branch(pathjoin('..', relpath))
         checkout = bzrdir.BzrDirMetaFormat1().initialize(relpath)
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
+        bzrlib.branch.BranchReferenceFormat().initialize(checkout,
+            target_branch=source)
         return checkout.create_workingtree()
 
 
@@ -595,10 +596,27 @@ class TestStatus(TestCaseWithTransport):
         result2 = self.run_bzr("status -SV -r 0..")[0]
         self.assertEquals(result2, result)
 
-    def assertStatusContains(self, pattern):
+    def assertStatusContains(self, pattern, short=False):
         """Run status, and assert it contains the given pattern"""
-        result = self.run_bzr("status --short")[0]
+        if short:
+            result = self.run_bzr("status --short")[0]
+        else:
+            result = self.run_bzr("status")[0]
         self.assertContainsRe(result, pattern)
+
+    def test_kind_change_plain(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        tree.add('file')
+        tree.commit('added file')
+        unlink('file')
+        self.build_tree(['file/'])
+        self.assertStatusContains('kind changed:\n  file \(file => directory\)')
+        tree.rename_one('file', 'directory')
+        self.assertStatusContains('renamed:\n  file/ => directory/\n' \
+                                  'modified:\n  directory/\n')
+        rmdir('directory')
+        self.assertStatusContains('removed:\n  file\n')
 
     def test_kind_change_short(self):
         tree = self.make_branch_and_tree('.')
@@ -607,11 +625,14 @@ class TestStatus(TestCaseWithTransport):
         tree.commit('added file')
         unlink('file')
         self.build_tree(['file/'])
-        self.assertStatusContains('K  file => file/')
+        self.assertStatusContains('K  file => file/',
+                                   short=True)
         tree.rename_one('file', 'directory')
-        self.assertStatusContains('RK  file => directory/')
+        self.assertStatusContains('RK  file => directory/',
+                                   short=True)
         rmdir('directory')
-        self.assertStatusContains('RD  file => directory')
+        self.assertStatusContains('RD  file => directory',
+                                   short=True)
 
     def test_status_illegal_revision_specifiers(self):
         out, err = self.run_bzr('status -r 1..23..123', retcode=3)

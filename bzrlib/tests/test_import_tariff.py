@@ -36,6 +36,14 @@ class TestImportTariffs(TestCaseWithTransport):
     """
 
     def run_command_check_imports(self, args, forbidden_imports):
+        """Run bzr ARGS in a subprocess and check its imports.
+
+        This is fairly expensive because we start a subprocess, so we aim to
+        cover representative rather than exhaustive cases.
+
+        :param forbidden_imports: List of fully-qualified Python module names
+            that should not be loaded while running this command.
+        """
         # We use PYTHON_VERBOSE rather than --profile-importts because in
         # experimentation the profile-imports output seems to not always show
         # the modules you'd expect; this can be debugged but python -v seems
@@ -82,8 +90,16 @@ class TestImportTariffs(TestCaseWithTransport):
         # 'st' in a working tree shouldn't need many modules
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
+            'bzrlib.bundle.commands',
+            'bzrlib.cmd_version_info',
+            'bzrlib.foreign',
             'bzrlib.remote',
+            'bzrlib.sign_my_commits',
             'bzrlib.smart',
             'smtplib',
             'tarfile',
             ])
+        # TODO: similar test for repository-only operations, checking we avoid
+        # loading wt-specific stuff
+        #
+        # See https://bugs.edge.launchpad.net/bzr/+bug/553017

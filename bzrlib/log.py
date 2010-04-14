@@ -553,11 +553,16 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
                     # may not raise _StartNotLinearAncestor for a revision that
                     # is an ancestor but not a *linear* one. But since we have
                     # loaded the graph to do the check (or calculate a dotted
-                    # revno), we may as well accept to show the log... 
-                    # -- vila 100201
+                    # revno), we may as well accept to show the log...  We need
+                    # the check only if start_rev_id is not None as all
+                    # revisions have _mod_revision.NULL_REVISION as an ancestor
+                    # -- vila 20100319
                     graph = branch.repository.get_graph()
-                    if not graph.is_ancestor(start_rev_id, end_rev_id):
+                    if (start_rev_id is not None
+                        and not graph.is_ancestor(start_rev_id, end_rev_id)):
                         raise _StartNotLinearAncestor()
+                    # Since we collected the revisions so far, we need to
+                    # adjust end_rev_id.
                     end_rev_id = rev_id
                     break
                 else:
@@ -576,6 +581,9 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
             raise errors.BzrCommandError('Start revision not found in'
                 ' history of end revision.')
 
+    # We exit the loop above because we encounter a revision with merges, from
+    # this revision, we need to switch to _graph_view_revisions.
+
     # A log including nested merges is required. If the direction is reverse,
     # we rebase the initial merge depths so that the development line is
     # shown naturally, i.e. just like it is for linear logging. We can easily
@@ -583,7 +591,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
     # indented at the end seems slightly nicer in that case.
     view_revisions = chain(iter(initial_revisions),
         _graph_view_revisions(branch, start_rev_id, end_rev_id,
-        rebase_initial_depths=direction == 'reverse'))
+                              rebase_initial_depths=(direction == 'reverse')))
     if direction == 'reverse':
         return view_revisions
     elif direction == 'forward':
@@ -655,7 +663,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
 
 
 def _graph_view_revisions(branch, start_rev_id, end_rev_id,
-    rebase_initial_depths=True):
+                          rebase_initial_depths=True):
     """Calculate revisions to view including merges, newest to oldest.
 
     :param branch: the branch
@@ -1424,7 +1432,8 @@ class LogFormatter(object):
         """
         # Revision comes directly from a foreign repository
         if isinstance(rev, foreign.ForeignRevision):
-            return self._format_properties(rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
+            return self._format_properties(
+                rev.mapping.vcs.show_foreign_revid(rev.foreign_revid))
 
         # Imported foreign revision revision ids always contain :
         if not ":" in rev.revision_id:
@@ -1517,9 +1526,10 @@ class LongLogFormatter(LogFormatter):
         to_file = self.to_file
         to_file.write("%s%s\n" % (indent, ('\n' + indent).join(lines)))
         if revision.delta is not None:
-            # We don't respect delta_format for compatibility
-            revision.delta.show(to_file, self.show_ids, indent=indent,
-                                short_status=False)
+            # Use the standard status output to display changes
+            from bzrlib.delta import report_delta
+            report_delta(to_file, revision.delta, short_status=False, 
+                         show_ids=self.show_ids, indent=indent)
         if revision.diff is not None:
             to_file.write(indent + 'diff:\n')
             to_file.flush()
@@ -1588,8 +1598,11 @@ class ShortLogFormatter(LogFormatter):
                 to_file.write(indent + offset + '%s\n' % (l,))
 
         if revision.delta is not None:
-            revision.delta.show(to_file, self.show_ids, indent=indent + offset,
-                                short_status=self.delta_format==1)
+            # Use the standard status output to display changes
+            from bzrlib.delta import report_delta
+            report_delta(to_file, revision.delta, 
+                         short_status=self.delta_format==1, 
+                         show_ids=self.show_ids, indent=indent + offset)
         if revision.diff is not None:
             self.show_diff(self.to_exact_file, revision.diff, '      ')
         to_file.write('\n')
@@ -1670,7 +1683,7 @@ class GnuChangelogLogFormatter(LogFormatter):
                                self.show_timezone,
                                date_fmt='%Y-%m-%d',
                                show_offset=False)
-        committer_str = revision.rev.committer.replace (' <', '  <')
+        committer_str = revision.rev.get_apparent_authors()[0].replace (' <', '  <')
         to_file.write('%s  %s\n\n' % (date_str,committer_str))
 
         if revision.delta is not None and revision.delta.has_changed():
@@ -2006,7 +2019,7 @@ def _bugs_properties_handler(revision):
         bug_rows = [line.split(' ', 1) for line in bug_lines]
         fixed_bug_urls = [row[0] for row in bug_rows if
                           len(row) > 1 and row[1] == 'fixed']
-        
+
         if fixed_bug_urls:
             return {'fixes bug(s)': ' '.join(fixed_bug_urls)}
     return {}

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1372,6 +1372,7 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
 
 
 class DirStateWorkingTreeFormat(WorkingTreeFormat3):
+
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
@@ -1832,7 +1833,8 @@ class DirStateRevisionTree(Tree):
         entry = self._get_entry(file_id=file_id)[1]
         if entry is None:
             raise errors.NoSuchId(tree=self, file_id=file_id)
-        return dirstate.DirState._minikind_to_kind[entry[1][0]]
+        parent_index = self._get_parent_index()
+        return dirstate.DirState._minikind_to_kind[entry[parent_index][0]]
 
     def stored_kind(self, file_id):
         """See Tree.stored_kind"""

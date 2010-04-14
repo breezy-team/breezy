@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1082,6 +1082,52 @@ class TransportTests(TestTransportImplementation):
         subdir = t.clone('subdir')
         subdir.stat('./file')
         subdir.stat('.')
+
+    def test_hardlink(self):
+        from stat import ST_NLINK
+
+        t = self.get_transport()
+
+        source_name = "original_target"
+        link_name = "target_link"
+
+        self.build_tree([source_name], transport=t)
+
+        try:
+            t.hardlink(source_name, link_name)
+
+            self.failUnless(t.has(source_name))
+            self.failUnless(t.has(link_name))
+
+            st = t.stat(link_name)
+            self.failUnlessEqual(st[ST_NLINK], 2)
+        except TransportNotPossible:
+            raise TestSkipped("Transport %s does not support hardlinks." %
+                              self._server.__class__)
+
+    def test_symlink(self):
+        from stat import S_ISLNK
+
+        t = self.get_transport()
+
+        source_name = "original_target"
+        link_name = "target_link"
+
+        self.build_tree([source_name], transport=t)
+
+        try:
+            t.symlink(source_name, link_name)
+
+            self.failUnless(t.has(source_name))
+            self.failUnless(t.has(link_name))
+
+            st = t.stat(link_name)
+            self.failUnless(S_ISLNK(st.st_mode))
+        except TransportNotPossible:
+            raise TestSkipped("Transport %s does not support symlinks." %
+                              self._server.__class__)
+        except IOError:
+            raise tests.KnownFailure("Paramiko fails to create symlinks during tests")
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,11 +23,15 @@ cached data, but we don't require that all WorkingTrees have such a cache,
 so these tests are testing that when there is a cache, it performs correctly.
 """
 
-from bzrlib import errors
-from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrlib import (
+    branchbuilder,
+    errors,
+    tests,
+    )
+from bzrlib.tests import per_workingtree
 
 
-class TestRevisionTree(TestCaseWithWorkingTree):
+class TestRevisionTree(per_workingtree.TestCaseWithWorkingTree):
 
     def test_get_zeroth_basis_tree_via_revision_tree(self):
         tree = self.make_branch_and_tree('.')
@@ -83,3 +87,50 @@ class TestRevisionTree(TestCaseWithWorkingTree):
             return
         repository_revision_tree = tree.branch.repository.revision_tree(rev1)
         self.assertTreesEqual(repository_revision_tree, cached_revision_tree)
+
+
+class TestRevisionTreeKind(per_workingtree.TestCaseWithWorkingTree):
+
+    def make_branch_with_merged_deletions(self, relpath='tree'):
+        tree = self.make_branch_and_tree(relpath)
+        files = ['a', 'b/', 'b/c']
+        self.build_tree(files, line_endings='binary',
+                        transport=tree.bzrdir.root_transport)
+        tree.set_root_id('root-id')
+        tree.add(files, ['a-id', 'b-id', 'c-id'])
+        tree.commit('a, b and b/c', rev_id='base')
+        tree2 = tree.bzrdir.sprout(relpath + '2').open_workingtree()
+        # Delete 'a' in tree
+        tree.remove('a', keep_files=False)
+        tree.commit('remove a', rev_id='this')
+        # Delete 'c' in tree2
+        tree2.remove('b/c', keep_files=False)
+        tree2.remove('b', keep_files=False)
+        tree2.commit('remove b/c', rev_id='other')
+        # Merge tree2 into tree
+        tree.merge_from_branch(tree2.branch)
+        return tree
+
+    def test_kind_parent_tree(self):
+        tree = self.make_branch_with_merged_deletions()
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        parents = tree.get_parent_ids()
+        self.assertEqual(['this', 'other'], parents)
+        basis = tree.revision_tree(parents[0])
+        basis.lock_read()
+        self.addCleanup(basis.unlock)
+        self.assertRaises(errors.NoSuchId, basis.kind, 'a-id')
+        self.assertEqual(['directory', 'file'],
+                         [basis.kind('b-id'), basis.kind('c-id')])
+        try:
+            other = tree.revision_tree(parents[1])
+        except errors.NoSuchRevisionInTree:
+            raise tests.TestNotApplicable(
+                'Tree type %s caches only the basis revision tree.'
+                % type(tree))
+        other.lock_read()
+        self.addCleanup(other.unlock)
+        self.assertRaises(errors.NoSuchId, other.kind, 'b-id')
+        self.assertRaises(errors.NoSuchId, other.kind, 'c-id')
+        self.assertEqual('file', other.kind('a-id'))

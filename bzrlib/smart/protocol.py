@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -62,7 +62,13 @@ def _decode_tuple(req_line):
 
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
-    return '\x01'.join(args) + '\n'
+    joined = '\x01'.join(args) + '\n'
+    if type(joined) is unicode:
+        # XXX: We should fix things so this never happens!  -AJB, 20100304
+        mutter('response args contain unicode, should be only bytes: %r',
+               joined)
+        joined = joined.encode('ascii')
+    return joined
 
 
 class Requester(object):

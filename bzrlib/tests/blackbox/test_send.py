@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -317,12 +317,19 @@ class TestSendStrictMixin(TestSendMixin):
     def assertSendFails(self, args):
         self.run_send(args, rc=3, err_re=self._default_errors)
 
-    def assertSendSucceeds(self, args, revs=None):
+    def assertSendSucceeds(self, args, revs=None, with_warning=False):
+        if with_warning:
+            err_re = self._default_errors
+        else:
+            err_re = []
         if revs is None:
             revs = self._default_sent_revs
-        out, err = self.run_send(args)
-        self.assertEquals(
-            'Bundling %d revision(s).\n' % len(revs), err)
+        out, err = self.run_send(args, err_re=err_re)
+        bundling_revs = 'Bundling %d revision(s).\n' % len(revs)
+        if with_warning:
+            self.assertEndsWith(err, bundling_revs)
+        else:
+            self.assertEquals(bundling_revs, err)
         md = merge_directive.MergeDirective.from_lines(StringIO(out))
         self.assertEqual('parent', md.base_revision_id)
         br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
@@ -396,7 +403,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self._default_sent_revs = ['modified-in-local', 'local']
 
     def test_send_default(self):
-        self.assertSendFails([])
+        self.assertSendSucceeds([], with_warning=True)
 
     def test_send_with_revision(self):
         self.assertSendSucceeds(['-r', 'revid:local'], revs=['local'])
@@ -412,11 +419,9 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.assertSendFails([])
         self.assertSendSucceeds(['--no-strict'])
 
-
     def test_send_bogus_config_var_ignored(self):
         self.set_config_send_strict("I'm unsure")
-        self.assertSendFails([])
-
+        self.assertSendSucceeds([], with_warning=True)
 
     def test_send_no_strict_command_line_override_config(self):
         self.set_config_send_strict('true')

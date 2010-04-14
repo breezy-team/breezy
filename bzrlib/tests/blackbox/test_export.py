@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -293,3 +293,13 @@ class TestExport(ExternalBase):
         tree.commit('more setup')
         out, err = self.run_bzr('export exported branch/subdir')
         self.assertEqual(['foo.txt'], os.listdir('exported'))
+
+    def test_dir_export_per_file_timestamps(self):
+        tree = self.example_branch()
+        self.build_tree_contents([('branch/har', 'foo')])
+        tree.add('har')
+        tree.commit('setup', timestamp=42)
+        self.run_bzr('export --per-file-timestamps t branch')
+        har_st = os.stat('t/har')
+        self.assertEquals(42, har_st.st_mtime)
+

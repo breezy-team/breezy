@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ from bzrlib.trace import (
     pop_log_file,
     push_log_file,
     _rollover_trace_maybe,
+    show_error,
     )
 
 
@@ -215,6 +216,26 @@ class TestTrace(TestCase):
         # have to do a replaceent here as well.
         self.assertContainsRe(log, "ascii argument: \xb5".decode('utf8',
             'replace'))
+        
+    def test_show_error(self):
+        show_error('error1')
+        show_error(u'error2 \xb5 blah')
+        show_error('arg: %s', 'blah')
+        show_error('arg2: %(key)s', {'key':'stuff'})
+        try:
+            raise Exception("oops")
+        except:
+            show_error('kwarg', exc_info=True)
+        log = self.get_log()
+        self.assertContainsRe(log, 'error1')
+        self.assertContainsRe(log, u'error2 \xb5 blah')
+        self.assertContainsRe(log, 'arg: blah')
+        self.assertContainsRe(log, 'arg2: stuff')
+        self.assertContainsRe(log, 'kwarg')
+        self.assertContainsRe(log, 'Traceback \\(most recent call last\\):')
+        self.assertContainsRe(log, 'File ".*test_trace.py", line .*, in test_show_error')
+        self.assertContainsRe(log, 'raise Exception\\("oops"\\)')
+        self.assertContainsRe(log, 'Exception: oops')
 
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.

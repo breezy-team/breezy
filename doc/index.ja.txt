@@ -2,7 +2,7 @@
 Bazaarのメインドキュメント
 ===========================
 
-これらのドキュメントの最新版はBazaarのドキュメントのサイト、 http://doc.bazaar-vcs.org/ から入手可能で、
+これらのドキュメントの最新版はBazaarのドキュメントのサイト、 http://doc.bazaar.canonical.com/ から入手可能で、
 詳しい情報は http://bazaar-vcs.org/Documentation のページからリンクされています。
 
 
