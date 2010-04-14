@@ -1462,7 +1462,8 @@ class cmd_update(Command):
             _mod_revision.ensure_null(tree.last_revision()))
         note('Updated to revision %s of branch %s' %
              ('.'.join(map(str, revno)), branch_location))
-        if tree.get_parent_ids()[1:] != existing_pending_merges:
+        parent_ids = tree.get_parent_ids()
+        if parent_ids[1:] and parent_ids[1:] != existing_pending_merges:
             note('Your local commits will now show as pending merges with '
                  "'bzr status', and can be committed with 'bzr commit'.")
         if conflicts != 0:
