@@ -156,16 +156,19 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def export_unusual_file_modes(self, rev):
         try:
-            return dict([(self.generate_file_id(path), mode) for (path, mode) in bencode.bdecode(rev.properties['file-modes'].encode("utf-8"))])
+            file_modes = rev.properties['file-modes']
         except KeyError:
             return {}
+        else:
+            return dict([(self.generate_file_id(path), mode) for (path, mode) in bencode.bdecode(file_modes.encode("utf-8"))])
 
     def _generate_git_svn_metadata(self, rev, encoding):
         try:
-            return "\ngit-svn-id: %s\n" % rev.properties["git-svn-id"].encode(
-                encoding)
+            git_svn_id = rev.properties["git-svn-id"]
         except KeyError:
             return ""
+        else:
+            return "\ngit-svn-id: %s\n" % git_svn_id.encode(encoding)
 
     def _generate_hg_message_tail(self, rev):
         extra = {}
