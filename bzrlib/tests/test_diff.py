@@ -1366,7 +1366,8 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.build_tree_contents([('tree/oldname2', 'oldcontent2')])
         tree.add('oldname', 'file-id')
         tree.add('oldname2', 'file2-id')
-        tree.commit('old tree', timestamp=0)
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('old tree', timestamp=315532800)
         tree.rename_one('oldname', 'newname')
         tree.rename_one('oldname2', 'newname2')
         self.build_tree_contents([('tree/newname', 'newcontent')])
@@ -1384,7 +1385,7 @@ class TestDiffFromTool(TestCaseWithTransport):
         old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
                                                      'newname')
         self.assertContainsRe(old_path, 'old/oldname$')
-        self.assertEqual(0, os.stat(old_path).st_mtime)
+        self.assertEqual(315532800, os.stat(old_path).st_mtime)
         self.assertContainsRe(new_path, 'tree/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
