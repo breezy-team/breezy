@@ -44,6 +44,12 @@ Bug Fixes
   which is not installed any more" error.
   (Martin Pool, James Westby, #528114)
 
+* Reset ``siginterrupt`` flag to False every time we handle a signal
+  installed with ``set_signal_handler(..., restart_syscall=True)`` (from
+  ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
+  errors after two window resizes.
+  (Andrew Bennetts)
+
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
   that are not part of the ancestry anymore.
   (Vincent Ladeuil, #474807)
