@@ -1374,7 +1374,8 @@ def set_signal_handler(signum, handler, restart_syscall=True):
     if restart_syscall:
         def sig_handler(*args):
             # Python resets the siginterrupt flag when a signal is
-            # received.  Set it back the way we want it.
+            # received.  <http://bugs.python.org/issue8354>
+            # As a workaround for some cases, set it back the way we want it.
             siginterrupt(signum, False)
             # Now run the handler function passed to set_signal_handler.
             handler(*args)
