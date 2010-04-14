@@ -48,7 +48,14 @@ def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
     else:
         if root is None:
             root = export.get_root_name(dest)
-        ball = tarfile.open(dest, 'w:' + compression)
+
+        # tarfile.open goes on to do 'os.getcwd() + dest' for opening
+        # the tar file. With dest being unicode we need to encode before
+        # passing it on. Using os.getcwdu() is probably the 'correct' fix
+        # to avoid UnicodeDecodeError.
+        # See bug #413406 for discussion.
+        ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:' + compression)
+
     for dp, ie in _export_iter_entries(tree, subdir):
         filename = osutils.pathjoin(root, dp).encode('utf8')
         item = tarfile.TarInfo(filename)

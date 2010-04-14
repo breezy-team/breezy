@@ -28,6 +28,9 @@ Bug Fixes
   True explicitly to get the previous behaviour.  
   (Vincent Ladeuil, #519319)
 
+* ``bzr export`` to tar file does not fail if any parent directory
+  contains unicode characters. (Parth Malwankar, #413406)
+
 * ``bzrlib.mutabletree.MutableTree.commit`` will now support a passed in
   config as in previous versions of bzrlib. (Robert Collins)
 
