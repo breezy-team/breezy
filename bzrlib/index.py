@@ -1431,6 +1431,7 @@ class CombinedGraphIndex(object):
         
         Returns a list of names corresponding to the hit_indices param.
         """
+        indices_info = zip(self._index_names, self._indices)
         if 'index' in debug.debug_flags:
             mutter('CombinedGraphIndex reordering: currently %r, promoting %r',
                    indices_info, hit_indices)
@@ -1439,8 +1440,7 @@ class CombinedGraphIndex(object):
         new_hit_indices = []
         unhit_indices = []
 
-        for offset, (name, idx) in enumerate(zip(self._index_names,
-                                                 self._indices)):
+        for offset, (name, idx) in enumerate(indices_info):
             if idx in hit_indices:
                 new_hit_indices.append(idx)
                 hit_names.append(name)
