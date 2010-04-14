@@ -457,7 +457,7 @@ class Branch(object):
             stop_revision_id, stop_rule)
         # Make sure we don't return revisions that are not part of the
         # start_revision_id ancestry.
-        filtered = self._filter_non_start_ancestors(filtered)
+        filtered = self._filter_start_non_ancestors(filtered)
         if direction == 'reverse':
             return filtered
         if direction == 'forward':
@@ -538,7 +538,7 @@ class Branch(object):
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 
-    def _filter_non_start_ancestors(self, rev_iter):
+    def _filter_start_non_ancestors(self, rev_iter):
         # If we started from a dotted revno, we want to consider it as a tip
         # and don't want to yield revisions that are not part of its
         # ancestry. Given the order guaranteed by the merge sort, we will see

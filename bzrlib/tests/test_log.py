@@ -18,6 +18,7 @@ import os
 from cStringIO import StringIO
 
 from bzrlib import (
+    branchbuilder,
     errors,
     log,
     registry,
@@ -1504,3 +1505,52 @@ message:
 
     def test_bugs_handler_present(self):
         self.properties_handler_registry.get('bugs_properties_handler')
+
+class TestLogExcludeAncestry(tests.TestCaseWithTransport):
+
+    def make_branch_with_alternate_ancestries(self, relpath='.'):
+        builder = branchbuilder.BranchBuilder(self.get_transport(relpath))
+        # 1
+        # |\
+        # | 1.1.1
+        # | /| \
+        # 2  |  |
+        # |  |  1.2.1
+        # |  | /
+        # |  1.1.2
+        # | /
+        # 3
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2', ['1', '1.1.1'], [])
+        builder.build_snapshot('1.2.1', ['1.1.1'], [])
+        builder.build_snapshot('1.1.2', ['1.1.1', '1.2.1'], [])
+        builder.build_snapshot('3', ['2', '1.1.2'], [])
+        builder.finish_series()
+        br = builder.get_branch()
+        br.lock_read()
+        self.addCleanup(br.unlock)
+        return br
+
+    def assertLogRevnos(self, expected_revnos, b, start, end,
+                        exclude_common_ancestry):
+        # FIXME: the layering in log makes it hard to test intermediate levels,
+        # I wish adding filters with their parameters were easier...
+        # -- vila 20100413
+        iter_revs = log._calc_view_revisions(
+            b, start, end, direction='reverse',
+            generate_merge_revisions=True,
+            exclude_common_ancestry=exclude_common_ancestry)
+        self.assertEqual(expected_revnos,
+                         [revid for revid, revno, depth in iter_revs])
+
+    def test_merge_sorted_exclude_ancestry(self):
+        b = self.make_branch_with_alternate_ancestries()
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '2', '1.1.1', '1'],
+                             b, '1', '3', False)
+        self.assertLogRevnos(['1.1.2', '1.2.1'],
+                             b, '1.1.1', '1.1.2', True)
+
+

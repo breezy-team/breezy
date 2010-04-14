@@ -220,14 +220,18 @@ _DEFAULT_REQUEST_PARAMS = {
     'direction': 'reverse',
     'levels': 1,
     'generate_tags': True,
+    'exclude_common_ancestry': False,
     '_match_using_deltas': True,
     }
 
 
 def make_log_request_dict(direction='reverse', specific_fileids=None,
-    start_revision=None, end_revision=None, limit=None,
-    message_search=None, levels=1, generate_tags=True, delta_type=None,
-    diff_type=None, _match_using_deltas=True):
+                          start_revision=None, end_revision=None, limit=None,
+                          message_search=None, levels=1, generate_tags=True,
+                          delta_type=None,
+                          diff_type=None, _match_using_deltas=True,
+                          exclude_common_ancestry=False,
+                          ):
     """Convenience function for making a logging request dictionary.
 
     Using this function may make code slightly safer by ensuring
@@ -271,6 +275,9 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
       algorithm used for matching specific_fileids. This parameter
       may be removed in the future so bzrlib client code should NOT
       use it.
+
+    :param exclude_common_ancestry: Whether -rX..Y should be interpreted as a
+      range operator or as a graph difference.
     """
     return {
         'direction': direction,
@@ -283,6 +290,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
         'generate_tags': generate_tags,
         'delta_type': delta_type,
         'diff_type': diff_type,
+        'exclude_common_ancestry': exclude_common_ancestry,
         # Add 'private' attributes for features that may be deprecated
         '_match_using_deltas': _match_using_deltas,
     }
@@ -455,9 +463,12 @@ class _DefaultLogGenerator(LogGenerator):
         generate_merge_revisions = rqst.get('levels') != 1
         delayed_graph_generation = not rqst.get('specific_fileids') and (
                 rqst.get('limit') or self.start_rev_id or self.end_rev_id)
-        view_revisions = _calc_view_revisions(self.branch, self.start_rev_id,
-            self.end_rev_id, rqst.get('direction'), generate_merge_revisions,
-            delayed_graph_generation=delayed_graph_generation)
+        view_revisions = _calc_view_revisions(
+            self.branch, self.start_rev_id, self.end_rev_id,
+            rqst.get('direction'),
+            generate_merge_revisions=generate_merge_revisions,
+            delayed_graph_generation=delayed_graph_generation,
+            exclude_common_ancestry=rqst.get('exclude_common_ancestry'))
 
         # Apply the other filters
         return make_log_rev_iterator(self.branch, view_revisions,
@@ -470,8 +481,10 @@ class _DefaultLogGenerator(LogGenerator):
         # Note that we always generate the merge revisions because
         # filter_revisions_touching_file_id() requires them ...
         rqst = self.rqst
-        view_revisions = _calc_view_revisions(self.branch, self.start_rev_id,
-            self.end_rev_id, rqst.get('direction'), True)
+        view_revisions = _calc_view_revisions(
+            self.branch, self.start_rev_id, self.end_rev_id,
+            rqst.get('direction'), generate_merge_revisions=True,
+            exclude_common_ancestry=rqst.get('exclude_common_ancestry'))
         if not isinstance(view_revisions, list):
             view_revisions = list(view_revisions)
         view_revisions = _filter_revisions_touching_file_id(self.branch,
@@ -482,29 +495,42 @@ class _DefaultLogGenerator(LogGenerator):
 
 
 def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
-    generate_merge_revisions, delayed_graph_generation=False):
+                         generate_merge_revisions,
+                         delayed_graph_generation=False,
+                         exclude_common_ancestry=False,
+                         ):
     """Calculate the revisions to view.
 
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples OR
              a list of the same tuples.
     """
+    if direction not in ('reverse', 'forward'):
+        raise ValueError('invalid direction %r' % direction)
     br_revno, br_rev_id = branch.last_revision_info()
     if br_revno == 0:
         return []
 
     # If a single revision is requested, check we can handle it
-    generate_single_revision = (end_rev_id and start_rev_id == end_rev_id and
-        (not generate_merge_revisions or not _has_merges(branch, end_rev_id)))
-    if generate_single_revision:
-        return _generate_one_revision(branch, end_rev_id, br_rev_id, br_revno)
-
-    # If we only want to see linear revisions, we can iterate ...
-    if not generate_merge_revisions:
-        return _generate_flat_revisions(branch, start_rev_id, end_rev_id,
-            direction)
+    if (end_rev_id and start_rev_id == end_rev_id
+        and  (not generate_merge_revisions
+              or not _has_merges(branch, end_rev_id))):
+        iter_revs = _generate_one_revision(branch, end_rev_id, br_rev_id,
+                                           br_revno)
+    elif not generate_merge_revisions:
+        # If we only want to see linear revisions, we can iterate ...
+        iter_revs = _generate_flat_revisions(branch, start_rev_id, end_rev_id,
+                                             direction)
+        if direction == 'forward':
+            iter_revs = reversed(iter_revs)
     else:
-        return _generate_all_revisions(branch, start_rev_id, end_rev_id,
-            direction, delayed_graph_generation)
+        iter_revs = _generate_all_revisions(branch, start_rev_id, end_rev_id,
+                                            direction, delayed_graph_generation,
+                                            exclude_common_ancestry)
+        if exclude_common_ancestry:
+            graph = branch.repository.get_graph()
+        if direction == 'forward':
+            iter_revs = _rebase_merge_depth(reverse_by_depth(list(iter_revs)))
+    return iter_revs
 
 
 def _generate_one_revision(branch, rev_id, br_rev_id, br_revno):
@@ -528,13 +554,12 @@ def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction):
         except _StartNotLinearAncestor:
             raise errors.BzrCommandError('Start revision not found in'
                 ' left-hand history of end revision.')
-    if direction == 'forward':
-        result = reversed(result)
     return result
 
 
 def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
-                            delayed_graph_generation):
+                            delayed_graph_generation,
+                            exclude_common_ancestry=False):
     # On large trees, generating the merge graph can take 30-60 seconds
     # so we delay doing it until a merge is detected, incrementally
     # returning initial (non-merge) revisions while we can.
@@ -566,12 +591,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
                     initial_revisions.append((rev_id, revno, depth))
             else:
                 # No merged revisions found
-                if direction == 'reverse':
-                    return initial_revisions
-                elif direction == 'forward':
-                    return reversed(initial_revisions)
-                else:
-                    raise ValueError('invalid direction %r' % direction)
+                return initial_revisions
         except _StartNotLinearAncestor:
             # A merge was never detected so the lower revision limit can't
             # be nested down somewhere
@@ -588,15 +608,9 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
     # indented at the end seems slightly nicer in that case.
     view_revisions = chain(iter(initial_revisions),
         _graph_view_revisions(branch, start_rev_id, end_rev_id,
-                              rebase_initial_depths=(direction == 'reverse')))
-    if direction == 'reverse':
-        return view_revisions
-    elif direction == 'forward':
-        # Forward means oldest first, adjusting for depth.
-        view_revisions = reverse_by_depth(list(view_revisions))
-        return _rebase_merge_depth(view_revisions)
-    else:
-        raise ValueError('invalid direction %r' % direction)
+                              rebase_initial_depths=(direction == 'reverse'),
+                              exclude_common_ancestry=exclude_common_ancestry))
+    return view_revisions
 
 
 def _has_merges(branch, rev_id):
@@ -660,7 +674,8 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
 
 
 def _graph_view_revisions(branch, start_rev_id, end_rev_id,
-                          rebase_initial_depths=True):
+                          rebase_initial_depths=True,
+                          exclude_common_ancestry=False):
     """Calculate revisions to view including merges, newest to oldest.
 
     :param branch: the branch
@@ -670,9 +685,13 @@ def _graph_view_revisions(branch, start_rev_id, end_rev_id,
       revision is found?
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
     """
+    if exclude_common_ancestry:
+        stop_rule = 'with-merges-without-common-ancestry'
+    else:
+        stop_rule = 'with-merges'
     view_revisions = branch.iter_merge_sorted_revisions(
         start_revision_id=end_rev_id, stop_revision_id=start_rev_id,
-        stop_rule="with-merges")
+        stop_rule=stop_rule)
     if not rebase_initial_depths:
         for (rev_id, merge_depth, revno, end_of_merge
              ) in view_revisions:
