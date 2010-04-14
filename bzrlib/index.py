@@ -1431,23 +1431,31 @@ class CombinedGraphIndex(object):
         
         Returns a list of names corresponding to the hit_indices param.
         """
-        indices_info = zip(self._index_names, self._indices)
         if 'index' in debug.debug_flags:
             mutter('CombinedGraphIndex reordering: currently %r, promoting %r',
                    indices_info, hit_indices)
-        hit_indices_info = []
         hit_names = []
-        unhit_indices_info = []
-        for name, idx in indices_info:
+        unhit_names = []
+        new_hit_indices = []
+        unhit_indices = []
+
+        for offset, (name, idx) in enumerate(zip(self._index_names,
+                                                 self._indices)):
             if idx in hit_indices:
-                info = hit_indices_info
+                new_hit_indices.append(idx)
                 hit_names.append(name)
+                if len(new_hit_indices) == len(hit_indices):
+                    # We've found all of the hit entries, everything else is
+                    # unhit
+                    unhit_names.extend(self._index_names[offset+1:])
+                    unhit_indices.extend(self._indices[offset+1:])
+                    break
             else:
-                info = unhit_indices_info
-            info.append((name, idx))
-        final_info = hit_indices_info + unhit_indices_info
-        self._indices = [idx for (name, idx) in final_info]
-        self._index_names = [name for (name, idx) in final_info]
+                unhit_names.append(name)
+                unhit_indices.append(idx)
+
+        self._indices = new_hit_indices + unhit_indices
+        self._index_names = hit_names + unhit_names
         if 'index' in debug.debug_flags:
             mutter('CombinedGraphIndex reordered: %r', self._indices)
         return hit_names
