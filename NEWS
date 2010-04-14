@@ -31,6 +31,10 @@ Bug Fixes
 * ``bzr export`` to tar file does not fail if any parent directory
   contains unicode characters. (Parth Malwankar, #413406)
 
+* ``bzr update`` when a pending merge in the working tree has been merged
+  into the master branch will no longer claim that old commits have become
+  pending merges. (Robert Collins, #562079)
+
 * ``bzrlib.mutabletree.MutableTree.commit`` will now support a passed in
   config as in previous versions of bzrlib. (Robert Collins)
 
