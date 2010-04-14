@@ -71,7 +71,12 @@ class RevisionSpec_git(RevisionSpec):
         raise InvalidRevisionSpec(self.user_spec, branch)
 
     def _history(self, branch, revid):
-        history = list(branch.repository.iter_reverse_revision_history(revid))
+        branch.lock_read()
+        try:
+            history = list(branch.repository.iter_reverse_revision_history(
+                revid))
+        finally:
+            branch.unlock()
         history.reverse()
         return history
 
