@@ -17,7 +17,6 @@
 import os
 import os.path
 from cStringIO import StringIO
-import errno
 import subprocess
 import sys
 from tempfile import TemporaryFile
@@ -33,6 +32,7 @@ from bzrlib.diff import (
     internal_diff,
     show_diff_trees,
     get_trees_and_branches_to_diff,
+    get_trees_and_branches_to_diff_locked,
     )
 from bzrlib.errors import BinaryFile, NoDiff, ExecutableMissing
 import bzrlib.osutils as osutils
@@ -44,6 +44,7 @@ from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib.symbol_versioning import deprecated_in
 
 from bzrlib.tests.test_win32utils import BackslashDirSeparatorFeature
 
@@ -1394,17 +1395,23 @@ class TestDiffFromTool(TestCaseWithTransport):
         diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
 
 
-class TestGetTreesAndBranchesToDiff(TestCaseWithTransport):
+class TestGetTreesAndBranchesToDiffLocked(TestCaseWithTransport):
+
+    def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
+        """Call get_trees_and_branches_to_diff_locked.  Overridden by
+        TestGetTreesAndBranchesToDiff.
+        """
+        return get_trees_and_branches_to_diff_locked(
+            path_list, revision_specs, old_url, new_url, self.addCleanup)
 
     def test_basic(self):
         tree = self.make_branch_and_tree('tree')
         (old_tree, new_tree,
          old_branch, new_branch,
-         specific_files, extra_trees) = \
-            get_trees_and_branches_to_diff(['tree'], None, None, None)
+         specific_files, extra_trees) = self.call_gtabtd(
+             ['tree'], None, None, None)
 
         self.assertIsInstance(old_tree, RevisionTree)
-        #print dir (old_tree)
         self.assertEqual(_mod_revision.NULL_REVISION, old_tree.get_revision_id())
         self.assertEqual(tree.basedir, new_tree.basedir)
         self.assertEqual(tree.branch.base, old_branch.base)
@@ -1424,8 +1431,8 @@ class TestGetTreesAndBranchesToDiff(TestCaseWithTransport):
                      RevisionSpec.from_string('2')]
         (old_tree, new_tree,
          old_branch, new_branch,
-         specific_files, extra_trees) = \
-            get_trees_and_branches_to_diff(['tree'], revisions, None, None)
+         specific_files, extra_trees) = self.call_gtabtd(
+            ['tree'], revisions, None, None)
 
         self.assertIsInstance(old_tree, RevisionTree)
         self.assertEqual("old-id", old_tree.get_revision_id())
@@ -1435,3 +1442,15 @@ class TestGetTreesAndBranchesToDiff(TestCaseWithTransport):
         self.assertEqual(tree.branch.base, new_branch.base)
         self.assertIs(None, specific_files)
         self.assertEqual(tree.basedir, extra_trees[0].basedir)
+
+
+class TestGetTreesAndBranchesToDiff(TestGetTreesAndBranchesToDiffLocked):
+    """Apply the tests for get_trees_and_branches_to_diff_locked to the
+    deprecated get_trees_and_branches_to_diff function.
+    """
+
+    def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
+        return self.applyDeprecated(
+            deprecated_in((2, 2, 0)), get_trees_and_branches_to_diff,
+            path_list, revision_specs, old_url, new_url)
+
