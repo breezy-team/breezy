@@ -1418,6 +1418,10 @@ class CombinedGraphIndex(object):
         _move_to_front propagates to all objects in self._sibling_indices by
         calling _move_to_front_by_name.
         """
+        if self._indices[:len(hit_indices)] == hit_indices:
+            # The 'hit_indices' are already at the front (and in the same
+            # order), no need to re-order
+            return
         hit_names = self._move_to_front_by_index(hit_indices)
         for sibling_idx in self._sibling_indices:
             sibling_idx._move_to_front_by_name(hit_names)
@@ -1431,19 +1435,27 @@ class CombinedGraphIndex(object):
         if 'index' in debug.debug_flags:
             mutter('CombinedGraphIndex reordering: currently %r, promoting %r',
                    indices_info, hit_indices)
-        hit_indices_info = []
         hit_names = []
-        unhit_indices_info = []
-        for name, idx in indices_info:
+        unhit_names = []
+        new_hit_indices = []
+        unhit_indices = []
+
+        for offset, (name, idx) in enumerate(indices_info):
             if idx in hit_indices:
-                info = hit_indices_info
                 hit_names.append(name)
+                new_hit_indices.append(idx)
+                if len(new_hit_indices) == len(hit_indices):
+                    # We've found all of the hit entries, everything else is
+                    # unhit
+                    unhit_names.extend(self._index_names[offset+1:])
+                    unhit_indices.extend(self._indices[offset+1:])
+                    break
             else:
-                info = unhit_indices_info
-            info.append((name, idx))
-        final_info = hit_indices_info + unhit_indices_info
-        self._indices = [idx for (name, idx) in final_info]
-        self._index_names = [name for (name, idx) in final_info]
+                unhit_names.append(name)
+                unhit_indices.append(idx)
+
+        self._indices = new_hit_indices + unhit_indices
+        self._index_names = hit_names + unhit_names
         if 'index' in debug.debug_flags:
             mutter('CombinedGraphIndex reordered: %r', self._indices)
         return hit_names

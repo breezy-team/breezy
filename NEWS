@@ -82,6 +82,10 @@ Improvements
   read calls.  An incremental pull via plain HTTP takes half the time and
   bytes for a moderately large repository.  (Andrew Bennetts)
 
+* Index lookups only re-order the indexes when the hit files aren't
+  already first. Reduces the cost of reordering
+  (John Arbash Meinel, #562429)
+
 * Less code is loaded at startup.  (Cold-cache start time is about 10-20%
   less.)
   (Martin Pool, #553017)
