@@ -476,7 +476,6 @@ class _DefaultLogGenerator(LogGenerator):
             file_ids=rqst.get('specific_fileids'),
             direction=rqst.get('direction'))
 
-    # FIXME: need test for exclude_common_ancestry
     def _log_revision_iterator_using_per_file_graph(self):
         # Get the base revisions, filtering by the revision range.
         # Note that we always generate the merge revisions because
@@ -515,8 +514,8 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
         return []
 
     if (end_rev_id and start_rev_id == end_rev_id
-        and  (not generate_merge_revisions
-              or not _has_merges(branch, end_rev_id))):
+        and (not generate_merge_revisions
+             or not _has_merges(branch, end_rev_id))):
         # If a single revision is requested, check we can handle it
         iter_revs = _generate_one_revision(branch, end_rev_id, br_rev_id,
                                            br_revno)

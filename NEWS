@@ -5,6 +5,41 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.2b2
+#########
+
+:2.2b2: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* ``bzr log --exclude-common-ancestry -r X..Y`` displays the revisions that
+  are part of Y ancestry but not part of X ancestry (aka the graph
+  difference).
+  (Vincent Ladeuil, #320119)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 bzr 2.2.0b1
 ###########
 
