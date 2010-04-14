@@ -1418,6 +1418,10 @@ class CombinedGraphIndex(object):
         _move_to_front propagates to all objects in self._sibling_indices by
         calling _move_to_front_by_name.
         """
+        if self._indices[:len(hit_indices)] == hit_indices:
+            # The 'hit_indices' are already at the front (and in the same
+            # order), no need to re-order
+            return
         hit_names = self._move_to_front_by_index(hit_indices)
         for sibling_idx in self._sibling_indices:
             sibling_idx._move_to_front_by_name(hit_names)
