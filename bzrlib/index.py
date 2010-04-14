@@ -1442,8 +1442,8 @@ class CombinedGraphIndex(object):
 
         for offset, (name, idx) in enumerate(indices_info):
             if idx in hit_indices:
-                new_hit_indices.append(idx)
                 hit_names.append(name)
+                new_hit_indices.append(idx)
                 if len(new_hit_indices) == len(hit_indices):
                     # We've found all of the hit entries, everything else is
                     # unhit
