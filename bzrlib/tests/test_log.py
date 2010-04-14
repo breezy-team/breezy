@@ -1549,9 +1549,10 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         builder = branchbuilder.BranchBuilder(self.get_transport(relpath))
         # 1
         # |\
-        # | 1.1.1
-        # | /| \
-        # 2  |  |
+        # 2 \
+        # |  |
+        # |  1.1.1
+        # |  | \
         # |  |  1.2.1
         # |  | /
         # |  1.1.2
@@ -1561,7 +1562,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         builder.build_snapshot('1', None, [
             ('add', ('', 'TREE_ROOT', 'directory', '')),])
         builder.build_snapshot('1.1.1', ['1'], [])
-        builder.build_snapshot('2', ['1', '1.1.1'], [])
+        builder.build_snapshot('2', ['1'], [])
         builder.build_snapshot('1.2.1', ['1.1.1'], [])
         builder.build_snapshot('1.1.2', ['1.1.1', '1.2.1'], [])
         builder.build_snapshot('3', ['2', '1.1.2'], [])
@@ -1585,9 +1586,9 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
 
     def test_merge_sorted_exclude_ancestry(self):
         b = self.make_branch_with_alternate_ancestries()
-        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '2', '1.1.1', '1'],
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2', '1'],
                              b, '1', '3', False)
-        self.assertLogRevnos(['1.1.2', '1.2.1'],
-                             b, '1.1.1', '1.1.2', True)
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '2'],
+                             b, '1.1.1', '3', True)
 
 

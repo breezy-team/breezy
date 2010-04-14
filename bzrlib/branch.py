@@ -503,9 +503,11 @@ class Branch(object):
             # We want to exclude all revisions that are already part of the
             # stop_revision_id ancestry.
             graph = self.repository.get_graph()
+            ancestors = graph.find_unique_ancestors(start_revision_id,
+                                                    [stop_revision_id])
             for node in rev_iter:
                 rev_id = node.key[-1]
-                if graph.is_ancestor(rev_id, stop_revision_id):
+                if rev_id not in ancestors:
                     continue
                 yield (rev_id, node.merge_depth, node.revno,
                        node.end_of_merge)
