@@ -496,6 +496,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite=False, stop_revision=None):
+        from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -503,7 +504,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
         def get_changed_refs(old_refs):
-            result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(old_refs.get(self.target.ref, "0" * 40))
+            result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(old_refs.get(self.target.ref, ZERO_SHA))
             refs = { self.target.ref: self.source.repository.lookup_bzr_revision_id(stop_revision)[0] }
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
@@ -585,6 +586,7 @@ class InterToGitBranch(branch.InterBranch):
         raise NoPushSupport()
 
     def lossy_push(self, stop_revision=None):
+        from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -598,7 +600,7 @@ class InterToGitBranch(branch.InterBranch):
         revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
             self.source.repository, refs)
         result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
-            old_refs.get(self.target.ref, "0" * 40))
+            old_refs.get(self.target.ref, ZERO_SHA))
         result.new_revid = self.target.mapping.revision_id_foreign_to_bzr(
             new_refs[self.target.ref])
         result.revidmap = revidmap

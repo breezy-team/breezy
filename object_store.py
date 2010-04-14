@@ -399,8 +399,9 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _lookup_revision_sha1(self, revid):
         """Return the SHA1 matching a Bazaar revision."""
+        from dulwich.protocol import ZERO_SHA
         if revid == NULL_REVISION:
-            return "0" * 40
+            return ZERO_SHA
         try:
             return self._cache.idmap.lookup_commit(revid)
         except KeyError:

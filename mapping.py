@@ -124,7 +124,8 @@ class BzrGitMapping(foreign.VcsMapping):
     @classmethod
     def revision_id_foreign_to_bzr(cls, git_rev_id):
         """Convert a git revision id handle to a Bazaar revision id."""
-        if git_rev_id == "0" * 40:
+        from dulwich.protocol import ZERO_SHA
+        if git_rev_id == ZERO_SHA:
             return NULL_REVISION
         return "%s:%s" % (cls.revid_prefix, git_rev_id)
 
@@ -332,8 +333,9 @@ class GitMappingRegistry(VcsMappingRegistry):
     """Registry with available git mappings."""
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
+        from dulwich.protocol import ZERO_SHA
         if bzr_revid == NULL_REVISION:
-            return "0" * 20, None
+            return ZERO_SHA, None
         if not bzr_revid.startswith("git-"):
             raise errors.InvalidRevisionId(bzr_revid, None)
         (mapping_version, git_sha) = bzr_revid.split(":", 1)
