@@ -333,8 +333,8 @@ class GitMappingRegistry(VcsMappingRegistry):
     """Registry with available git mappings."""
 
     def revision_id_bzr_to_foreign(self, bzr_revid):
-        from dulwich.protocol import ZERO_SHA
         if bzr_revid == NULL_REVISION:
+            from dulwich.protocol import ZERO_SHA
             return ZERO_SHA, None
         if not bzr_revid.startswith("git-"):
             raise errors.InvalidRevisionId(bzr_revid, None)
