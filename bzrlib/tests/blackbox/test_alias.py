@@ -41,6 +41,12 @@ class TestAlias(ExternalBase):
         out, err = self.run_bzr('alias commit')
         self.assertEquals('bzr alias commit="commit --strict"\n', out)
 
+    def test_unicode_alias(self):
+        """Unicode aliases should work (Bug #529930)"""
+        alias_cmd = u'alias uls="ls \N{euro sign}"'
+        self.run_bzr(['alias', u'uls="ls \N{euro sign}"'])
+        out, err = self.run_bzr('uls')
+
     def test_alias_listing_alphabetical(self):
         self.run_bzr('alias commit="commit --strict"')
         self.run_bzr('alias ll="log --short"')
