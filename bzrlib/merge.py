@@ -1058,7 +1058,7 @@ class Merge3Merger(object):
         try:
             self.tt.final_kind(other_root)
             other_root_is_present = True
-        except NoSuchFile:
+        except errors.NoSuchFile:
             # other_root doesn't have a physical representation. We still need
             # to move any references to the actual root of the tree.
             other_root_is_present = False

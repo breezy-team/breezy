@@ -46,6 +46,12 @@ class TestRevert(TestCaseInTempDir):
         # but locks are acquired either way.)
         revert = builtins.cmd_revert()
         revert.run()
+        # FIXME: the following is automated in trunk so the following line
+        # should not be present in trunk, the laternative is to call
+        # run_argv_aliases which will call run_direct which will call
+        # _operation.run_simple which will, finally, call the cleanups. Way too
+        # complicated for a temporary fix -- vila 20100415
+        revert.cleanup_now()
 
         # make sure that only one lock is acquired and released.
         self.assertLength(1, locks_acquired)
