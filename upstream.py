@@ -142,30 +142,38 @@ class AptSource(UpstreamSource):
 
 
 class UpstreamBranchSource(UpstreamSource):
-    """Upstream source that uses the upstream branch."""
+    """Upstream source that uses the upstream branch.
+    
+    :ivar upstream_branch: Branch with upstream sources
+    :ivar upstream_version_map: Map from version strings to revids
+    """
 
-    def __init__(self, upstream_branch, upstream_revision=None, 
+    def __init__(self, upstream_branch, upstream_revision_map=None, 
                  fallback_revspec=None):
         self.upstream_branch = upstream_branch
-        self.upstream_revision = upstream_revision
+        if upstream_revision_map is None:
+            self.upstream_revision_map = {}
+        else:
+            self.upstream_revision_map = upstream_revision_map
         self.fallback_revspec = fallback_revspec
 
     def _get_revision_id(self, version):
-        if self.upstream_revision is not None:
-            # Explicit revision id to use set
-            return self.upstream_revision
+        if version in self.upstream_revision_map:
+             return self.upstream_revision_map[version]
         revspec = get_snapshot_revision(version)
         if revspec is None:
             revspec = self.fallback_revspec
         if revspec is not None:
             return RevisionSpec.from_string(
                 revspec).as_revision_id(self.upstream_branch)
-        return self.upstream_branch.last_revision()
+        return None
 
     def get_specific_version(self, package, version, target_dir):
         self.upstream_branch.lock_read()
         try:
             revid = self._get_revision_id(version)
+            if revid is None:
+                raise PackageVersionNotPresent(package, version, self)
             note("Exporting upstream branch revision %s to create the tarball",
                  revid)
             target_filename = self._tarball_path(package, version, target_dir)
@@ -340,7 +348,7 @@ class StackedUpstreamSource(UpstreamSource):
 
 
 def get_upstream_sources(tree, branch, larstiq=False, upstream_branch=None,
-                         upstream_revision=None, allow_split=False):
+                         upstream_revision_map=None, allow_split=False):
     """Get the list of upstream sources to retrieve upstream versions from.
 
     :param tree: The tree that is being built from.
@@ -348,8 +356,8 @@ def get_upstream_sources(tree, branch, larstiq=False, upstream_branch=None,
     :param larstiq: Whether the tree versions the root of ./debian.
     :param upstream_branch: An upstream branch that can be exported
         if needed.
-    :param upstream_revision: The revision to use of the upstream branch
-        if it is used.
+    :param upstream_revision_map: Map mapping upstream version strings
+        to revision ids.
     :param allow_split: Whether the provider can provide the tarball
         by exporting the branch and removing the "debian" dir.
 
@@ -360,7 +368,7 @@ def get_upstream_sources(tree, branch, larstiq=False, upstream_branch=None,
         ]
     if upstream_branch is not None:
         sources.append(
-            UpstreamBranchSource(upstream_branch, upstream_revision))
+            UpstreamBranchSource(upstream_branch, upstream_revision_map))
     sources.extend([
         GetOrigSourceSource(tree, larstiq), 
         UScanSource(tree, larstiq),
