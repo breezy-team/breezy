@@ -1485,29 +1485,26 @@ class DistributionBranch(object):
         finally:
             shutil.rmtree(tempdir)
 
-    def has_pristine_tar_delta(self, revid):
-        rev = self.branch.repository.get_revision(revid)
+    def has_pristine_tar_delta(self, rev):
         return ('deb-pristine-delta' in rev.properties
                 or 'deb-pristine-delta-bz2' in rev.properties)
 
-    def pristine_tar_format(self, revid):
-        rev = self.branch.repository.get_revision(revid)
+    def pristine_tar_format(self, rev):
         if 'deb-pristine-delta' in rev.properties:
             return 'gz'
         elif 'deb-pristine-delta-bz2' in rev.properties:
             return 'bz2'
-        assert self.has_pristine_tar_delta(revid)
+        assert self.has_pristine_tar_delta(rev)
         raise AssertionError("Not handled new delta type in "
                 "pristine_tar_format")
 
-    def pristine_tar_delta(self, revid):
-        rev = self.branch.repository.get_revision(revid)
+    def pristine_tar_delta(self, rev):
         if 'deb-pristine-delta' in rev.properties:
             uuencoded = rev.properties['deb-pristine-delta']
         elif 'deb-pristine-delta-bz2' in rev.properties:
             uuencoded = rev.properties['deb-pristine-delta-bz2']
         else:
-            assert self.has_pristine_tar_delta(revid)
+            assert self.has_pristine_tar_delta(rev)
             raise AssertionError("Not handled new delta type in "
                     "pristine_tar_delta")
         delta = standard_b64decode(uuencoded)
@@ -1521,7 +1518,8 @@ class DistributionBranch(object):
         try:
             dest = os.path.join(tmpdir, "orig")
             export(tree, dest, format='dir')
-            delta = self.pristine_tar_delta(revid)
+            rev = self.branch.repository.get_revision(revid)
+            delta = self.pristine_tar_delta(rev)
             reconstruct_pristine_tar(dest, delta, dest_filename)
         finally:
             shutil.rmtree(tmpdir)
