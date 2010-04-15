@@ -40,6 +40,9 @@ Bug Fixes
 * ``bzrlib.mutabletree.MutableTree.commit`` will now support a passed in
   config as in previous versions of bzrlib. (Robert Collins)
 
+* ``bzr selftest`` should not use ui.note() since it's not unicode safe.
+  (Vincent Ladeuil, #563997)
+
 * Fix glitch in the warning about unclean trees display.
   (Vincent Ladeuil, #562665)
 

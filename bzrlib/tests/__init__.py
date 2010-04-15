@@ -489,13 +489,13 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.ui.note('ERROR: %s\n    %s\n' % (
+        self.stream.write('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
 
     def report_failure(self, test, err):
-        self.ui.note('FAIL: %s\n    %s\n' % (
+        self.stream.write('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
