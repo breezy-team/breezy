@@ -1029,9 +1029,7 @@ class Merge3Merger(object):
 
 
     def fix_root(self):
-        try:
-            self.tt.final_kind(self.tt.root)
-        except errors.NoSuchFile:
+        if self.tt.final_kind(self.tt.root) is None:
             self.tt.cancel_deletion(self.tt.root)
         if self.tt.final_file_id(self.tt.root) is None:
             self.tt.version_file(self.tt.tree_file_id(self.tt.root),
@@ -1042,9 +1040,7 @@ class Merge3Merger(object):
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
-        try:
-            self.tt.final_kind(other_root)
-        except errors.NoSuchFile:
+        if self.tt.final_kind(other_root) is None:
             return
         if self.this_tree.has_id(self.other_tree.inventory.root.file_id):
             # the other tree's root is a non-root in the current tree
@@ -1513,10 +1509,7 @@ class Merge3Merger(object):
         if winner == 'this' and file_status != "modified":
             return
         trans_id = self.tt.trans_id_file_id(file_id)
-        try:
-            if self.tt.final_kind(trans_id) != "file":
-                return
-        except errors.NoSuchFile:
+        if self.tt.final_kind(trans_id) != "file":
             return
         if winner == "this":
             executability = this_executable

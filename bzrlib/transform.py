@@ -396,16 +396,22 @@ class TreeTransformBase(object):
     def final_kind(self, trans_id):
         """Determine the final file kind, after any changes applied.
 
-        Raises NoSuchFile if the file does not exist/has no contents.
-        (It is conceivable that a path would be created without the
-        corresponding contents insertion command)
+        :return: None if the file does not exist/has no contents.  (It is
+            conceivable that a path would be created without the corresponding
+            contents insertion command)
         """
         if trans_id in self._new_contents:
             return self._new_contents[trans_id]
         elif trans_id in self._removed_contents:
-            raise NoSuchFile(None)
+            return None
         else:
-            return self.tree_kind(trans_id)
+            # FIXME?: One step forward, one step backwards, tree_kind raise
+            # NoSuchFile instead of returning None -- vila 20100415
+            try:
+                kind = self.tree_kind(trans_id)
+            except errors.NoSuchFile:
+                kind = None
+            return kind
 
     def tree_file_id(self, trans_id):
         """Determine the file id associated with the trans_id in the tree"""
@@ -595,9 +601,8 @@ class TreeTransformBase(object):
         """
         conflicts = []
         for trans_id in self._new_id.iterkeys():
-            try:
-                kind = self.final_kind(trans_id)
-            except NoSuchFile:
+            kind = self.final_kind(trans_id)
+            if kind is None:
                 conflicts.append(('versioning no contents', trans_id))
                 continue
             if not InventoryEntry.versionable_kind(kind):
@@ -617,11 +622,7 @@ class TreeTransformBase(object):
             if self.final_file_id(trans_id) is None:
                 conflicts.append(('unversioned executability', trans_id))
             else:
-                try:
-                    non_file = self.final_kind(trans_id) != "file"
-                except NoSuchFile:
-                    non_file = True
-                if non_file is True:
+                if self.final_kind(trans_id) != "file":
                     conflicts.append(('non-file executability', trans_id))
         return conflicts
 
@@ -651,10 +652,7 @@ class TreeTransformBase(object):
             last_name = None
             last_trans_id = None
             for name, trans_id in name_ids:
-                try:
-                    kind = self.final_kind(trans_id)
-                except NoSuchFile:
-                    kind = None
+                kind = self.final_kind(trans_id)
                 file_id = self.final_file_id(trans_id)
                 if kind is None and file_id is None:
                     continue
@@ -687,14 +685,9 @@ class TreeTransformBase(object):
             if not self._any_contents(children):
                 continue
             for child in children:
-                try:
-                    self.final_kind(child)
-                except NoSuchFile:
+                if self.final_kind(child) is None:
                     continue
-            try:
-                kind = self.final_kind(parent_id)
-            except NoSuchFile:
-                kind = None
+            kind = self.final_kind(parent_id)
             if kind is None:
                 conflicts.append(('missing parent', parent_id))
             elif kind != "directory":
@@ -704,9 +697,7 @@ class TreeTransformBase(object):
     def _any_contents(self, trans_ids):
         """Return true if any of the trans_ids, will have contents."""
         for trans_id in trans_ids:
-            try:
-                kind = self.final_kind(trans_id)
-            except NoSuchFile:
+            if self.final_kind(trans_id) is None:
                 continue
             return True
         return False
@@ -844,10 +835,7 @@ class TreeTransformBase(object):
         Return a (name, parent, kind, executable) tuple
         """
         to_name = self.final_name(to_trans_id)
-        try:
-            to_kind = self.final_kind(to_trans_id)
-        except NoSuchFile:
-            to_kind = None
+        to_kind = self.final_kind(to_trans_id)
         to_parent = self.final_file_id(self.final_parent(to_trans_id))
         if to_trans_id in self._new_executability:
             to_executable = self._new_executability[to_trans_id]
@@ -1583,9 +1571,8 @@ class TreeTransform(DiskTreeTransform):
                 if file_id is None:
                     continue
                 needs_entry = False
-                try:
-                    kind = self.final_kind(trans_id)
-                except NoSuchFile:
+                kind = self.final_kind(trans_id)
+                if kind is None:
                     kind = self._tree.stored_kind(file_id)
                 parent_trans_id = self.final_parent(trans_id)
                 parent_file_id = new_path_file_ids.get(parent_trans_id)
@@ -1904,9 +1891,8 @@ class _PreviewTree(tree.Tree):
             if (specific_file_ids is not None
                 and file_id not in specific_file_ids):
                 continue
-            try:
-                kind = self._transform.final_kind(trans_id)
-            except NoSuchFile:
+            kind = self._transform.final_kind(trans_id)
+            if kind is None:
                 kind = self._transform._tree.stored_kind(file_id)
             new_entry = inventory.make_entry(
                 kind,
@@ -2144,10 +2130,10 @@ class _PreviewTree(tree.Tree):
                 path_from_root = self._final_paths.get_path(child_id)
                 basename = self._transform.final_name(child_id)
                 file_id = self._transform.final_file_id(child_id)
-                try:
-                    kind = self._transform.final_kind(child_id)
+                kind  = self._transform.final_kind(child_id)
+                if kind is not None:
                     versioned_kind = kind
-                except NoSuchFile:
+                else:
                     kind = 'unknown'
                     versioned_kind = self._transform._tree.stored_kind(file_id)
                 if versioned_kind == 'directory':

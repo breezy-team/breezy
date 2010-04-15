@@ -99,6 +99,10 @@ API Changes
 * ``bzrlib.diff.get_trees_and_branches_to_diff`` is deprecated.  Use
   ``get_trees_and_branches_to_diff_locked`` instead.
   (Andrew Bennetts)
+
+* ``bzrlib.transform.TreeTransformBase.final_kind`` now returns None
+  instead of raising NoSuchFile.
+  (Vincent Ladeuil)
   
 Internals
 *********
