@@ -168,7 +168,6 @@ def show_tree_status(wt, show_unchanged=None,
 
             # show the ignored files among specific files (i.e. show the files
             # identified from input that we choose to ignore). 
-            # XXX: push them into the delta and / or the change iteration
             if specific_files is not None:
                 # Ignored files is sorted because specific_files is already sorted
                 ignored_files = [specific for specific in
