@@ -1517,10 +1517,14 @@ class DistributionBranch(object):
         tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
         try:
             dest = os.path.join(tmpdir, "orig")
-            export(tree, dest, format='dir')
             rev = self.branch.repository.get_revision(revid)
-            delta = self.pristine_tar_delta(rev)
-            reconstruct_pristine_tar(dest, delta, dest_filename)
+            if self.has_pristine_tar_delta(rev):
+                export(tree, dest, format='dir')
+                delta = self.pristine_tar_delta(rev)
+                reconstruct_pristine_tar(dest, delta, dest_filename)
+            else:
+                export(tree, dest, format='dir',
+                       require_per_file_timestamps=True)
         finally:
             shutil.rmtree(tmpdir)
 
@@ -1535,7 +1539,7 @@ class DistributionBranch(object):
                 export(tree, dest, format='dir')
             finally:
                 tree.unlock()
-            make_pristine_tar_delta(dest, tarball_path)
+            return make_pristine_tar_delta(dest, tarball_path)
         finally:
             shutil.rmtree(tmpdir)
 

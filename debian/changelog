@@ -12,8 +12,9 @@ bzr-builddeb (2.5) UNRELEASED; urgency=low
     will tag based on the version in debian/changelog.
   * Support upstream/VERSION tags, for compatibility with git-
     buildpackage. LP: #551362
+  * Support upstream tarballs without a pristine tar delta.
 
- -- James Westby <james.westby@ubuntu.com>  Thu, 18 Mar 2010 14:19:53 -0400
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 15 Apr 2010 19:28:25 +0200
 
 bzr-builddeb (2.4.2) UNRELEASED; urgency=low
 
