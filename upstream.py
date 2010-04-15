@@ -148,21 +148,17 @@ class UpstreamBranchSource(UpstreamSource):
     :ivar upstream_version_map: Map from version strings to revids
     """
 
-    def __init__(self, upstream_branch, upstream_revision_map=None, 
-                 fallback_revspec=None):
+    def __init__(self, upstream_branch, upstream_revision_map=None):
         self.upstream_branch = upstream_branch
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
         else:
             self.upstream_revision_map = upstream_revision_map
-        self.fallback_revspec = fallback_revspec
 
     def _get_revision_id(self, version):
         if version in self.upstream_revision_map:
              return self.upstream_revision_map[version]
         revspec = get_snapshot_revision(version)
-        if revspec is None:
-            revspec = self.fallback_revspec
         if revspec is not None:
             return RevisionSpec.from_string(
                 revspec).as_revision_id(self.upstream_branch)
@@ -345,37 +341,6 @@ class StackedUpstreamSource(UpstreamSource):
             except NotImplementedError:
                 pass
         return None
-
-
-def get_upstream_sources(tree, branch, larstiq=False, upstream_branch=None,
-                         upstream_revision_map=None, allow_split=False):
-    """Get the list of upstream sources to retrieve upstream versions from.
-
-    :param tree: The tree that is being built from.
-    :param branch: The branch that is being built from.
-    :param larstiq: Whether the tree versions the root of ./debian.
-    :param upstream_branch: An upstream branch that can be exported
-        if needed.
-    :param upstream_revision_map: Map mapping upstream version strings
-        to revision ids.
-    :param allow_split: Whether the provider can provide the tarball
-        by exporting the branch and removing the "debian" dir.
-
-    """
-    sources = [
-        PristineTarSource(tree, branch), 
-        AptSource(),
-        ]
-    if upstream_branch is not None:
-        sources.append(
-            UpstreamBranchSource(upstream_branch, upstream_revision_map))
-    sources.extend([
-        GetOrigSourceSource(tree, larstiq), 
-        UScanSource(tree, larstiq),
-        ])
-    if allow_split:
-        sources.append(SelfSplitSource(tree))
-    return sources
 
 
 class UpstreamProvider(object):
