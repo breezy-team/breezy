@@ -300,9 +300,6 @@ class cmd_builddeb(Command):
                 try:
                     if export_upstream_revision is None:
                         export_upstream_revision = \
-                               config.export_upstream_revision
-                    if export_upstream_revision is None:
-                        export_upstream_revision = \
                                     get_export_upstream_revision(config,
                                             version=version)
                     if export_upstream_revision is None:

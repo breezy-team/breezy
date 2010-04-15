@@ -27,6 +27,7 @@ import shutil
 
 from debian_bundle.changelog import Changelog, Version
 
+from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
                 AddChangelogError,
                 )
@@ -39,6 +40,7 @@ from bzrlib.plugins.builddeb.util import (
                   find_extra_authors,
                   find_last_distribution,
                   find_thanks,
+                  get_export_upstream_revision,
                   get_commit_info_from_changelog,
                   get_snapshot_revision,
                   lookup_distribution,
@@ -698,3 +700,28 @@ class FindLastDistributionTests(TestCase):
         changelog = self.create_changelog("UNRELEASED")
         self.assertEquals(None, find_last_distribution(changelog))
 
+
+class GetExportUpstreamRevisionTests(TestCase):
+
+    def test_snapshot_rev(self):
+        config = DebBuildConfig([])
+        self.assertEquals("34", 
+            get_export_upstream_revision(config, Version("0.1+bzr34-1")))
+
+    def test_export_upstream_rev(self):
+        config = DebBuildConfig([
+            ({"BUILDDEB": {"export-upstream-revision": "tag:foobar"}}, True)])
+        self.assertEquals("tag:foobar", 
+            get_export_upstream_revision(config, Version("0.1-1")))
+
+    def test_export_upstream_rev_var(self):
+        config = DebBuildConfig([({"BUILDDEB": 
+            {"export-upstream-revision": "tag:foobar-$UPSTREAM_VERSION"}},
+            True)])
+        self.assertEquals("tag:foobar-0.1", 
+            get_export_upstream_revision(config, Version("0.1-1")))
+
+    def test_export_upstream_rev_not_set(self):
+        config = DebBuildConfig([])
+        self.assertEquals(None, 
+            get_export_upstream_revision(config, Version("0.1-1")))
