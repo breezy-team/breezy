@@ -199,3 +199,37 @@ class cmd_git_refs(Command):
                 self.outf.write("%s -> %s\n" % (k, v))
         finally:
             repo.unlock()
+
+
+class cmd_git_apply(Command):
+    """Apply a series of git-am style patches.
+
+    This command will in the future probably be integrated into 
+    "bzr pull".
+    """
+
+    takes_args = ["patches*"]
+
+    def _apply_patch(self, wt, f):
+        from dulwich.patch import git_am_patch_split
+        (c, diff, version) = git_am_patch_split(f)
+        # FIXME: Process diff
+        wt.commit(committer=c.committer,
+                  message=c.message)
+
+    def run(self, patches_list=None):
+        from bzrlib.workingtree import WorkingTree
+        if patches_list is None:
+            patches_list = []
+        
+        tree, _ = WorkingTree.open_containing(".")
+        tree.lock_write()
+        try:
+            for patch in patches_list:
+                f = open(patch, 'r')
+                try:
+                    self._apply_patch(tree, f)
+                finally:
+                    f.close()
+        finally:
+            tree.unlock()
