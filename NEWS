@@ -34,7 +34,8 @@ Bug Fixes
   (Parth Malwankar, #413406)
 
 * ``bzr rm dir`` where the directory contains a changed file that has been
-  moved out of there didn't want to delete it. (Marius Kruger, #129880)
+  moved out of there didn't want to delete it. (Marius Kruger, Daniel Watkins,
+  #129880)
 
 * ``bzr update`` when a pending merge in the working tree has been merged
   into the master branch will no longer claim that old commits have become
