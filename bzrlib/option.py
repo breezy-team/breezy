@@ -364,7 +364,7 @@ class RegistryOption(Option):
         as values for the option, and their value is treated as the help.
         """
         reg = _mod_registry.Registry()
-        for name, switch_help in kwargs.iteritems():
+        for name, switch_help in sorted(kwargs.items()):
             name = name.replace('_', '-')
             reg.register(name, name, help=switch_help)
             if not value_switches:

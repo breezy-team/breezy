@@ -988,10 +988,14 @@ class cmd_pull(Command):
         try:
             tree_to = WorkingTree.open_containing(directory)[0]
             branch_to = tree_to.branch
+            tree_to.lock_write()
+            self.add_cleanup(tree_to.unlock)
         except errors.NoWorkingTree:
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
-        
+            branch_to.lock_write()
+            self.add_cleanup(branch_to.unlock)
+
         if local and not branch_to.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
 
@@ -1027,18 +1031,15 @@ class cmd_pull(Command):
         else:
             branch_from = Branch.open(location,
                 possible_transports=possible_transports)
+            branch_from.lock_read()
+            self.add_cleanup(branch_from.unlock)
 
             if branch_to.get_parent() is None or remember:
                 branch_to.set_parent(branch_from.base)
 
-        if branch_from is not branch_to:
-            branch_from.lock_read()
-            self.add_cleanup(branch_from.unlock)
         if revision is not None:
             revision_id = revision.as_revision_id(branch_from)
 
-        branch_to.lock_write()
-        self.add_cleanup(branch_to.unlock)
         if tree_to is not None:
             view_info = _get_view_info_for_change_reporter(tree_to)
             change_reporter = delta._ChangeReporter(
@@ -1126,26 +1127,15 @@ class cmd_push(Command):
         # Get the source branch
         (tree, br_from,
          _unused) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
-        if strict is None:
-            strict = br_from.get_config().get_user_option_as_bool('push_strict')
-        if strict is None: strict = True # default value
         # Get the tip's revision_id
         revision = _get_one_revision('push', revision)
         if revision is not None:
             revision_id = revision.in_history(br_from).rev_id
         else:
             revision_id = None
-        if strict and tree is not None and revision_id is None:
-            if (tree.has_changes()):
-                raise errors.UncommittedChanges(
-                    tree, more='Use --no-strict to force the push.')
-            if tree.last_revision() != tree.branch.last_revision():
-                # The tree has lost sync with its branch, there is little
-                # chance that the user is aware of it but he can still force
-                # the push with --no-strict
-                raise errors.OutOfDateTree(
-                    tree, more='Use --no-strict to force the push.')
-
+        if tree is not None and revision_id is None:
+            tree.warn_if_changed_or_out_of_date(
+                strict, 'push_strict', 'Use --no-strict to force the push.')
         # Get the stacked_on branch, if any
         if stacked_on is not None:
             stacked_on = urlutils.normalize_url(stacked_on)
@@ -1472,7 +1462,8 @@ class cmd_update(Command):
             _mod_revision.ensure_null(tree.last_revision()))
         note('Updated to revision %s of branch %s' %
              ('.'.join(map(str, revno)), branch_location))
-        if tree.get_parent_ids()[1:] != existing_pending_merges:
+        parent_ids = tree.get_parent_ids()
+        if parent_ids[1:] and parent_ids[1:] != existing_pending_merges:
             note('Your local commits will now show as pending merges with '
                  "'bzr status', and can be committed with 'bzr commit'.")
         if conflicts != 0:
@@ -1965,7 +1956,7 @@ class cmd_diff(Command):
     @display_command
     def run(self, revision=None, file_list=None, diff_options=None,
             prefix=None, old=None, new=None, using=None, format=None):
-        from bzrlib.diff import (get_trees_and_branches_to_diff,
+        from bzrlib.diff import (get_trees_and_branches_to_diff_locked,
             show_diff_trees)
 
         if (prefix is None) or (prefix == '0'):
@@ -1992,8 +1983,8 @@ class cmd_diff(Command):
 
         (old_tree, new_tree,
          old_branch, new_branch,
-         specific_files, extra_trees) = get_trees_and_branches_to_diff(
-            file_list, revision, old, new, apply_view=True)
+         specific_files, extra_trees) = get_trees_and_branches_to_diff_locked(
+            file_list, revision, old, new, self.add_cleanup, apply_view=True)
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
@@ -4203,7 +4194,7 @@ class cmd_revert(Command):
     def run(self, revision=None, no_backup=False, file_list=None,
             forget_merges=None):
         tree, file_list = tree_files(file_list)
-        tree.lock_write()
+        tree.lock_tree_write()
         self.add_cleanup(tree.unlock)
         if forget_merges:
             tree.set_parent_ids(tree.get_parent_ids()[:1])
