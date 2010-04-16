@@ -44,7 +44,7 @@ __copyright__ = "Copyright 2005-2010 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (2, 2, 0, 'dev', 1)
+version_info = (2, 2, 0, 'beta', 2)
 
 # API compatibility version
 api_minimum_version = (2, 2, 0)
@@ -68,7 +68,7 @@ def _format_version_tuple(version_info):
     >>> print _format_version_tuple((1, 1, 1, 'candidate', 2))
     1.1.1rc2
     >>> print bzrlib._format_version_tuple((2, 1, 0, 'beta', 1))
-    2.1.0b1
+    2.1b1
     >>> print _format_version_tuple((1, 4, 0))
     1.4.0
     >>> print _format_version_tuple((1, 4))
@@ -100,6 +100,8 @@ def _format_version_tuple(version_info):
     elif release_type == 'dev':
         sub_string = 'dev' + str(sub)
     elif release_type in ('alpha', 'beta'):
+        if version_info[2] == 0:
+            main_version = '%d.%d' % version_info[:2]
         sub_string = release_type[0] + str(sub)
     elif release_type == 'candidate':
         sub_string = 'rc' + str(sub)

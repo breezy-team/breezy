@@ -241,6 +241,47 @@ Updated to revision 2 of branch %s
         tree.commit('empty commit')
         self.run_bzr('update checkout')
 
+    def test_update_with_merge_merged_to_master(self):
+        # Test that 'bzr update' works correctly when you have
+        # an update in the master tree, and a [lightweight or otherwise]
+        # checkout which has merge a revision merged to master already.
+        master = self.make_branch_and_tree('master')
+        self.build_tree(['master/file'])
+        master.add(['file'])
+        master.commit('one', rev_id='m1')
+
+        self.build_tree(['checkout1/'])
+        checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
+        branch.BranchReferenceFormat().initialize(checkout_dir,
+            target_branch=master.branch)
+        checkout1 = checkout_dir.create_workingtree('m1')
+
+        # Create a second branch, with an extra commit
+        other = master.bzrdir.sprout('other').open_workingtree()
+        self.build_tree(['other/file2'])
+        other.add(['file2'])
+        other.commit('other2', rev_id='o2')
+
+        # Merge the other branch into checkout -  'start reviewing a patch'
+        checkout1.merge_from_branch(other.branch)
+        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+
+        # Create a new commit in the master branch - 'someone else lands its'
+        master.merge_from_branch(other.branch)
+        master.commit('f3', rev_id='m2')
+
+        # This should not report about local commits being pending
+        # merges, because they were real merges (but are now gone).
+        # It should perhaps report on them.
+        out, err = self.run_bzr('update', working_dir='checkout1')
+        self.assertEqual('', out)
+        self.assertEqualDiff('''All changes applied successfully.
+Updated to revision 2 of branch %s
+''' % osutils.pathjoin(self.test_dir, 'master',),
+                         err)
+        # The pending merges should still be there
+        self.assertEqual([], checkout1.get_parent_ids()[1:])
+
     def test_update_dash_r(self):
         master = self.make_branch_and_tree('master')
         os.chdir('master')
