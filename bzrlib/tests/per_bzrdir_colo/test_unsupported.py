@@ -64,3 +64,8 @@ class TestNoColocatedSupport(TestCaseWithBzrDir):
         made_control = self.make_bzrdir_with_repo()
         self.assertRaises(errors.NoColocatedBranchSupport,
             made_control.get_branch_transport, None, "colo")
+
+    def test_get_branch_reference(self):
+        made_control = self.make_bzrdir_with_repo()
+        self.assertRaises(errors.NoColocatedBranchSupport,
+            made_control.get_branch_reference, "colo")

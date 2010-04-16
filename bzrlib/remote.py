@@ -276,11 +276,14 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
-        b = self.open_branch(name)
+        b = self.open_branch(name=name)
         return b._format
 
-    def get_branch_reference(self):
+    def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
+        if name is not None:
+            # XXX JRV20100304: Support opening colocated branches
+            raise errors.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
         if response[0] == 'ref':
             return response[1]
