@@ -85,6 +85,15 @@ class TestExport(ExternalBase):
         self.assertEqual(['test/' + fname.encode('utf8')],
                          sorted(ball.getnames()))
 
+    def test_tar_export_unicode_basedir(self):
+        """Test for bug #413406"""
+        basedir = u'\N{euro sign}'
+        os.mkdir(basedir)
+        os.chdir(basedir)
+        self.run_bzr(['init', 'branch'])
+        os.chdir('branch')
+        self.run_bzr(['export', '--format', 'tgz', u'test.tar.gz'])
+
     def test_zip_export(self):
         tree = self.make_branch_and_tree('zip')
         self.build_tree(['zip/a'])
