@@ -39,6 +39,11 @@ API Changes
 Internals
 *********
 
+* Allow bzr to run under ``python -OO`` which reduces the size of bytecode
+  files loaded from disk. To ensure docstrings needed for help are never
+  stripped, the prefix ``__doc__ =`` should now be used.
+  (Martin <gzlist@googlemail.com>)
+
 Testing
 *******
 
