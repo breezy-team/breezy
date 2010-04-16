@@ -86,7 +86,10 @@ class PristineTarSource(UpstreamSource):
         revid = db.revid_of_upstream_version_from_branch(version)
         rev = self.branch.repository.get_revision(revid)
         note("Using pristine-tar to reconstruct the needed tarball.")
-        format = db.pristine_tar_format(rev)
+        if db.has_pristine_tar_delta(rev):
+            format = db.pristine_tar_format(rev)
+        else:
+            format = 'gz'
         target_filename = self._tarball_path(package, version,
                                              target_dir, format=format)
         try:

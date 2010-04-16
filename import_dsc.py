@@ -1523,8 +1523,7 @@ class DistributionBranch(object):
                 delta = self.pristine_tar_delta(rev)
                 reconstruct_pristine_tar(dest, delta, dest_filename)
             else:
-                export(tree, dest, format='dir',
-                       require_per_file_timestamps=True)
+                export(tree, dest_filename, require_per_file_timestamps=True)
         finally:
             shutil.rmtree(tmpdir)
 
