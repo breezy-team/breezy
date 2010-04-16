@@ -278,6 +278,20 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertRemovedAndDeleted(files)
         tree._validate()
 
+    def test_remove_directory_with_changed_emigrated_file(self):
+        # As per bug #129880
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('somedir/',               ),
+            ('somedir/file', 'contents')])
+        tree.add(['somedir', 'somedir/file'])
+        tree.commit(message="first")
+        self.build_tree_contents([('somedir/file', 'changed')])
+        tree.rename_one('somedir/file', 'moved-file')
+        tree.remove('somedir', keep_files=False)
+        self.assertNotInWorkingTree('somedir')
+        self.failIfExists('somedir')
+
     def test_remove_directory_with_renames(self):
         """Delete directory with renames in or out."""
 
