@@ -359,12 +359,13 @@ class cmd_builddeb(Command):
                     self._get_upstream_branch(merge, export_upstream,
                             export_upstream_revision, config,
                             changelog.version)
-
             upstream_provider = UpstreamProvider(
                     changelog.package, changelog.version,
                     orig_dir, get_upstream_sources(tree, branch,
                     larstiq=larstiq, upstream_branch=upstream_branch,
-                    upstream_revision=upstream_revision, allow_split=split))
+                    upstream_revision_map={
+                        changelog.version.upstream_version:upstream_revision
+                    }, allow_split=split))
 
             if merge:
                 distiller_cls = MergeModeDistiller
@@ -574,7 +575,7 @@ class cmd_merge_upstream(Command):
                 dest_name = tarball_name(package, version.upstream_version)
                 tarball_filename = os.path.join(orig_dir, dest_name)
                 upstream = UpstreamBranchSource(upstream_branch,
-                        upstream_revision)
+                        {version.upstream_version: upstream_revision})
                 upstream.get_specific_version(package,
                         version.upstream_version, orig_dir)
             else:

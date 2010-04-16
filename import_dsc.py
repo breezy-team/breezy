@@ -563,7 +563,6 @@ class DistributionBranch(object):
                 tree.unlock()
         return config
 
-
     def _is_tree_native(self, tree):
         config = self._default_config_for_tree(tree)
         if config is not None:
@@ -710,7 +709,7 @@ class DistributionBranch(object):
         """Return the list of parents for a specific version.
 
         This method returns the list of revision ids that should be parents
-        for importing a specifc package version. The specific package version
+        for importing a specific package version. The specific package version
         is the first element of the list of versions passed.
 
         The parents are determined by looking at the other versions in the
@@ -1537,7 +1536,7 @@ class DistributionBranch(object):
                 export(tree, dest, format='dir')
             finally:
                 tree.unlock()
-            make_pristine_tar_delta(dest, tarball_path)
+            return make_pristine_tar_delta(dest, tarball_path)
         finally:
             shutil.rmtree(tmpdir)
 
