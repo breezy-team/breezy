@@ -751,10 +751,9 @@ class DiffFromTool(DiffPath):
         try:
             mtime = tree.get_file_mtime(file_id)
         except errors.FileTimestampUnavailable:
-            # GZ 2010-04-13: Zero is a bad 'unavailable' time as it predates
-            #                the earliest allowable date on FAT filesystems
-            mtime = 0
-        os.utime(full_path, (mtime, mtime))
+            pass
+        else:
+            os.utime(full_path, (mtime, mtime))
         if not allow_write:
             osutils.make_readonly(full_path)
         return full_path
