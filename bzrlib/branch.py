@@ -1512,7 +1512,7 @@ class BranchFormat(object):
         """Return the current default format."""
         return klass._default_format
 
-    def get_reference(self, a_bzrdir):
+    def get_reference(self, a_bzrdir, branch_name=None):
         """Get the target reference of the branch in a_bzrdir.
 
         format probing must have been completed before calling
@@ -1520,12 +1520,13 @@ class BranchFormat(object):
         in a_bzrdir is correct.
 
         :param a_bzrdir: The bzrdir to get the branch data from.
+        :param branch_name: Name of the colocated branch to fetch
         :return: None if the branch is not a reference branch.
         """
         return None
 
     @classmethod
-    def set_reference(self, a_bzrdir, to_branch):
+    def set_reference(self, a_bzrdir, branch_name, to_branch):
         """Set the target reference of the branch in a_bzrdir.
 
         format probing must have been completed before calling
@@ -1533,6 +1534,7 @@ class BranchFormat(object):
         in a_bzrdir is correct.
 
         :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param branch_name: Name of colocated branch to set, None for default
         :param to_branch: branch that the checkout is to reference
         """
         raise NotImplementedError(self.set_reference)
@@ -2050,14 +2052,14 @@ class BranchReferenceFormat(BranchFormat):
         """See BranchFormat.get_format_description()."""
         return "Checkout reference format 1"
 
-    def get_reference(self, a_bzrdir):
+    def get_reference(self, a_bzrdir, branch_name=None):
         """See BranchFormat.get_reference()."""
-        transport = a_bzrdir.get_branch_transport(None)
+        transport = a_bzrdir.get_branch_transport(branch_name)
         return transport.get_bytes('location')
 
-    def set_reference(self, a_bzrdir, to_branch):
+    def set_reference(self, a_bzrdir, branch_name, to_branch):
         """See BranchFormat.set_reference()."""
-        transport = a_bzrdir.get_branch_transport(None)
+        transport = a_bzrdir.get_branch_transport(branch_name)
         location = transport.put_bytes('location', to_branch.base)
 
     def initialize(self, a_bzrdir, name=None, target_branch=None):
@@ -2112,7 +2114,7 @@ class BranchReferenceFormat(BranchFormat):
                 raise AssertionError("wrong format %r found for %r" %
                     (format, self))
         if location is None:
-            location = self.get_reference(a_bzrdir)
+            location = self.get_reference(a_bzrdir, name)
         real_bzrdir = bzrdir.BzrDir.open(
             location, possible_transports=possible_transports)
         result = real_bzrdir.open_branch(name=name, 

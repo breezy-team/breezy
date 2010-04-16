@@ -70,7 +70,7 @@ def _set_branch_location(control, to_branch, force=False):
     branch_format = control.find_branch_format()
     if branch_format.get_reference(control) is not None:
         # Lightweight checkout: update the branch reference
-        branch_format.set_reference(control, to_branch)
+        branch_format.set_reference(control, None, to_branch)
     else:
         b = control.open_branch()
         bound_branch = b.get_bound_location()
