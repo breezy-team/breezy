@@ -87,7 +87,8 @@ from bzrlib.plugins.git.repository import (
 
 def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha), 
         base_inv, parent_id, revision_id,
-        parent_invs, lookup_object, (base_mode, mode), store_updater):
+        parent_invs, lookup_object, (base_mode, mode), store_updater,
+        lookup_file_id):
     """Import a git blob object into a bzr repository.
 
     :param texts: VersionedFiles to add to
@@ -98,7 +99,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
         return []
-    file_id = mapping.generate_file_id(path)
+    file_id = lookup_file_id(path)
     if stat.S_ISLNK(mode):
         cls = InventoryLink
     else:
@@ -166,10 +167,10 @@ class SubmodulesRequireSubtrees(BzrError):
 
 def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
     base_inv, parent_id, revision_id, parent_invs, lookup_object,
-    (base_mode, mode), store_updater):
+    (base_mode, mode), store_updater, lookup_file_id):
     if base_hexsha == hexsha and base_mode == mode:
         return [], {}
-    file_id = mapping.generate_file_id(path)
+    file_id = lookup_file_id(path)
     ie = TreeReference(file_id, name.decode("utf-8"), parent_id)
     ie.revision = revision_id
     if base_hexsha is None:
@@ -198,7 +199,8 @@ def remove_disappeared_children(base_inv, path, base_tree, existing_children,
 
 def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
         base_inv, parent_id, revision_id, parent_invs,
-        lookup_object, (base_mode, mode), store_updater, allow_submodules=False):
+        lookup_object, (base_mode, mode), store_updater,
+        lookup_file_id, allow_submodules=False):
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
@@ -211,7 +213,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
         # If nothing has changed since the base revision, we're done
         return [], {}
     invdelta = []
-    file_id = mapping.generate_file_id(path)
+    file_id = lookup_file_id(path)
     # We just have to hope this is indeed utf-8:
     ie = InventoryDirectory(file_id, name.decode("utf-8"), parent_id)
     tree = lookup_object(hexsha)
@@ -245,8 +247,8 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
                     texts, mapping, child_path, name,
                     (child_base_hexsha, child_hexsha),
                     base_inv, file_id, revision_id, parent_invs, lookup_object,
-                    (child_base_mode, child_mode), store_updater,
-                    allow_submodules=allow_submodules)
+                    (child_base_mode, child_mode), store_updater, 
+                    lookup_file_id, allow_submodules=allow_submodules)
         elif S_ISGITLINK(child_mode): # submodule
             if not allow_submodules:
                 raise SubmodulesRequireSubtrees()
@@ -254,12 +256,14 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
                     texts, mapping, child_path, name,
                     (child_base_hexsha, child_hexsha),
                     base_inv, file_id, revision_id, parent_invs, lookup_object,
-                    (child_base_mode, child_mode), store_updater)
+                    (child_base_mode, child_mode), store_updater,
+                    lookup_file_id)
         else:
             subinvdelta = import_git_blob(texts, mapping,
                     child_path, name, (child_base_hexsha, child_hexsha),
                     base_inv, file_id, revision_id, parent_invs, lookup_object,
-                    (child_base_mode, child_mode), store_updater)
+                    (child_base_mode, child_mode), store_updater,
+                    lookup_file_id)
             grandchildmodes = {}
         child_modes.update(grandchildmodes)
         invdelta.extend(subinvdelta)
@@ -332,6 +336,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
             mapping, "", u"", (base_tree, o.tree), base_inv, 
             None, rev.revision_id, [p.inventory for p in parent_trees],
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
+            mapping.generate_file_id,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
     store_updater.finish()
     if unusual_modes != {}:

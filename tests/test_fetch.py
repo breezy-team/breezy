@@ -284,7 +284,8 @@ class ImportObjects(TestCaseWithTransport):
         ret = import_git_blob(self._texts, self._mapping, "bla", "bla",
             (None, "blobname"), 
             base_inv, None, "somerevid", [], objs.__getitem__, 
-            (None, DEFAULT_FILE_MODE), DummyStoreUpdater())
+            (None, DEFAULT_FILE_MODE), DummyStoreUpdater(),
+            self._mapping.generate_file_id)
         self.assertEquals(set([('bla', 'somerevid')]), self._texts.keys())
         self.assertEquals(self._texts.get_record_stream([('bla', 'somerevid')],
             "unordered", True).next().get_bytes_as("fulltext"), "bar")
@@ -303,7 +304,8 @@ class ImportObjects(TestCaseWithTransport):
         ret, child_modes = import_git_tree(self._texts, self._mapping, "", "",
                (None, tree.id), base_inv, 
                None, "somerevid", [], {tree.id: tree}.__getitem__,
-               (None, stat.S_IFDIR), DummyStoreUpdater())
+               (None, stat.S_IFDIR), DummyStoreUpdater(),
+               self._mapping.generate_file_id)
         self.assertEquals(child_modes, {})
         self.assertEquals(set([("TREE_ROOT", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
@@ -322,7 +324,8 @@ class ImportObjects(TestCaseWithTransport):
         ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
            (None, tree.id), base_inv, None, "somerevid", [], 
            { tree.id: tree }.__getitem__,
-           (None, stat.S_IFDIR), DummyStoreUpdater())
+           (None, stat.S_IFDIR), DummyStoreUpdater(),
+           self._mapping.generate_file_id)
         self.assertEquals(child_modes, {})
         self.assertEquals(set([("bla", 'somerevid')]), self._texts.keys())
         self.assertEquals(1, len(ret))
@@ -343,7 +346,8 @@ class ImportObjects(TestCaseWithTransport):
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
                 (None, tree.id), base_inv, None, "somerevid", [],
-            objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater())
+            objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
+            self._mapping.generate_file_id)
         self.assertEquals(child_modes, {})
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
@@ -367,7 +371,8 @@ class ImportObjects(TestCaseWithTransport):
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
                 (None, tree.id), base_inv, None, "somerevid", [],
-            objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater())
+            objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
+            self._mapping.generate_file_id)
         self.assertEquals(child_modes, { "bla/foo": stat.S_IFREG | 0664 })
 
     def test_import_tree_with_file_exe(self):
@@ -378,7 +383,8 @@ class ImportObjects(TestCaseWithTransport):
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping, "", "",
                 (None, tree.id), base_inv, None, "somerevid", [],
-            objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater())
+            objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
+            self._mapping.generate_file_id)
         self.assertEquals(child_modes, {})
         self.assertEquals(2, len(ret))
         self.assertEquals(None, ret[0][0])
