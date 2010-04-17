@@ -482,6 +482,19 @@ def split_subsegments(url):
     return (join(parent_url, subsegments[0]), subsegments[1:])
 
 
+def join_subsegments(base, *subsegments):
+    """Create a new URL by adding subsegments to an existing one.
+
+    """
+    if not subsegments:
+        return base
+    for subsegment in subsegments:
+        if "," in subsegment:
+            raise errors.InvalidURLJoin(", exists in subsegments",
+                                        base, subsegments)
+    return ",".join((base,) + subsegments)
+
+
 def _win32_strip_local_trailing_slash(url):
     """Strip slashes after the drive letter"""
     if len(url) > WIN32_MIN_ABS_FILEURL_LENGTH:

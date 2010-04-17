@@ -270,6 +270,17 @@ class TestUrlToPath(TestCase):
         self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '..')
         self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '/..')
 
+    def test_join_subsegments(self):
+        join_subsegments = urlutils.join_subsegments
+        self.assertEquals("/somedir/path", 
+            join_subsegments("/somedir/path"))
+        self.assertEquals("/somedir/path,brrr", 
+            join_subsegments("/somedir/path", "brrr"))
+        self.assertRaises(InvalidURLJoin,
+            join_subsegments, "/somedir/path", "brr,brr,brr")
+        self.assertEquals("/somedir/path,bla,bar",
+            join_subsegments("/somedir/path", "bla", "bar"))
+
     def test_function_type(self):
         if sys.platform == 'win32':
             self.assertEqual(urlutils._win32_local_path_to_url, urlutils.local_path_to_url)
