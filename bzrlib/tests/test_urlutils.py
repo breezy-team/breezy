@@ -412,6 +412,19 @@ class TestUrlToPath(TestCase):
         self.assertEqual(('path/..', 'foo'), split('path/../foo'))
         self.assertEqual(('../path', 'foo'), split('../path/foo'))
 
+    def test_split_subsegments(self):
+        split_subsegments = urlutils.split_subsegments
+        self.assertEquals(("/some/path", []),
+            split_subsegments("/some/path"))
+        self.assertEquals(("/some/path", ["tip"]),
+            split_subsegments("/some/path,tip"))
+        self.assertEquals(("/some,dir/path", ["tip"]),
+            split_subsegments("/some,dir/path,tip"))
+        self.assertEquals(("/somedir/path", ["heads%2Ftip"]),
+            split_subsegments("/somedir/path,heads%2Ftip"))
+        self.assertEquals(("/somedir/path", ["heads%2Ftip", "bar"]),
+            split_subsegments("/somedir/path,heads%2Ftip,bar"))
+
     def test_win32_strip_local_trailing_slash(self):
         strip = urlutils._win32_strip_local_trailing_slash
         self.assertEqual('file://', strip('file://'))

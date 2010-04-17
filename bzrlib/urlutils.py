@@ -469,6 +469,19 @@ def split(url, exclude_trailing_slash=True):
     return url_base + head, tail
 
 
+def split_subsegments(url):
+    """Split the subsegment of the last segment of a URL.
+
+    :param url: A relative or absolute URL
+    :return: (url, subsegments)
+    """
+    (parent_url, child_dir) = split(url)
+    subsegments = child_dir.split(",")
+    if len(subsegments) == 1:
+        return (url, [])
+    return (join(parent_url, subsegments[0]), subsegments[1:])
+
+
 def _win32_strip_local_trailing_slash(url):
     """Strip slashes after the drive letter"""
     if len(url) > WIN32_MIN_ABS_FILEURL_LENGTH:
