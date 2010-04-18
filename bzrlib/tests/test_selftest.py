@@ -1946,7 +1946,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_transport_sftp(self):
         self.requireFeature(features.paramiko)
-        import stub_sftp
+        from bzrlib.tests import stub_sftp
         self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
