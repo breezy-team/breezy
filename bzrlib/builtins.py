@@ -4413,7 +4413,7 @@ class cmd_missing(Command):
 class cmd_pack(Command):
     """Compress the data within a repository.
 
-    This opration compresses the data within a bazaar repository. As
+    This operation compresses the data within a bazaar repository. As
     bazaar supports automatic packing of repository, this operation is
     normally not required to be done manually.
 
