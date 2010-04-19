@@ -1245,10 +1245,15 @@ class CombinedGraphIndex(object):
     static data.
 
     Queries against the combined index will be made against the first index,
-    and then the second and so on. The order of index's can thus influence
+    and then the second and so on. The order of indices can thus influence
     performance significantly. For example, if one index is on local disk and a
     second on a remote server, the local disk index should be before the other
     in the index list.
+    
+    Also, queries tend to need results from the same indices as previous
+    queries.  So the indices will be reordered after every query to put the
+    indices that had the result(s) of that query first (while otherwise
+    preserving the relative ordering).
     """
 
     def __init__(self, indices, reload_func=None):
@@ -1261,6 +1266,13 @@ class CombinedGraphIndex(object):
         """
         self._indices = indices
         self._reload_func = reload_func
+        # Sibling indices are other CombinedGraphIndex that we should call
+        # _move_to_front_by_name on when we auto-reorder ourself.
+        self._sibling_indices = []
+        # A list of names that corresponds to the instances in self._indices,
+        # so _index_names[0] is always the name for _indices[0], etc.  Sibling
+        # indices must all use the same set of names as each other.
+        self._index_names = [None] * len(self._indices)
 
     def __repr__(self):
         return "%s(%s)" % (
@@ -1289,13 +1301,17 @@ class CombinedGraphIndex(object):
 
     has_key = _has_key_from_parent_map
 
-    def insert_index(self, pos, index):
+    def insert_index(self, pos, index, name=None):
         """Insert a new index in the list of indices to query.
 
         :param pos: The position to insert the index.
         :param index: The index to insert.
+        :param name: a name for this index, e.g. a pack name.  These names can
+            be used to reflect index reorderings to related CombinedGraphIndex
+            instances that use the same names.  (see set_sibling_indices)
         """
         self._indices.insert(pos, index)
+        self._index_names.insert(pos, name)
 
     def iter_all_entries(self):
         """Iterate over all keys within the index
@@ -1326,22 +1342,28 @@ class CombinedGraphIndex(object):
         value and are only reported once.
 
         :param keys: An iterable providing the keys to be retrieved.
-        :return: An iterable of (index, key, reference_lists, value). There is no
-            defined order for the result iteration - it will be in the most
+        :return: An iterable of (index, key, reference_lists, value). There is
+            no defined order for the result iteration - it will be in the most
             efficient order for the index.
         """
         keys = set(keys)
+        hit_indices = []
         while True:
             try:
                 for index in self._indices:
                     if not keys:
-                        return
+                        break
+                    index_hit = False
                     for node in index.iter_entries(keys):
                         keys.remove(node[1])
                         yield node
-                return
+                        index_hit = True
+                    if index_hit:
+                        hit_indices.append(index)
+                break
             except errors.NoSuchFile:
                 self._reload_or_raise()
+        self._move_to_front(hit_indices)
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -1367,17 +1389,89 @@ class CombinedGraphIndex(object):
         if not keys:
             return
         seen_keys = set()
+        hit_indices = []
         while True:
             try:
                 for index in self._indices:
+                    index_hit = False
                     for node in index.iter_entries_prefix(keys):
                         if node[1] in seen_keys:
                             continue
                         seen_keys.add(node[1])
                         yield node
-                return
+                        index_hit = True
+                    if index_hit:
+                        hit_indices.append(index)
+                break
             except errors.NoSuchFile:
                 self._reload_or_raise()
+        self._move_to_front(hit_indices)
+
+    def _move_to_front(self, hit_indices):
+        """Rearrange self._indices so that hit_indices are first.
+
+        Order is maintained as much as possible, e.g. the first unhit index
+        will be the first index in _indices after the hit_indices, and the
+        hit_indices will be present in exactly the order they are passed to
+        _move_to_front.
+
+        _move_to_front propagates to all objects in self._sibling_indices by
+        calling _move_to_front_by_name.
+        """
+        if self._indices[:len(hit_indices)] == hit_indices:
+            # The 'hit_indices' are already at the front (and in the same
+            # order), no need to re-order
+            return
+        hit_names = self._move_to_front_by_index(hit_indices)
+        for sibling_idx in self._sibling_indices:
+            sibling_idx._move_to_front_by_name(hit_names)
+
+    def _move_to_front_by_index(self, hit_indices):
+        """Core logic for _move_to_front.
+        
+        Returns a list of names corresponding to the hit_indices param.
+        """
+        indices_info = zip(self._index_names, self._indices)
+        if 'index' in debug.debug_flags:
+            mutter('CombinedGraphIndex reordering: currently %r, promoting %r',
+                   indices_info, hit_indices)
+        hit_names = []
+        unhit_names = []
+        new_hit_indices = []
+        unhit_indices = []
+
+        for offset, (name, idx) in enumerate(indices_info):
+            if idx in hit_indices:
+                hit_names.append(name)
+                new_hit_indices.append(idx)
+                if len(new_hit_indices) == len(hit_indices):
+                    # We've found all of the hit entries, everything else is
+                    # unhit
+                    unhit_names.extend(self._index_names[offset+1:])
+                    unhit_indices.extend(self._indices[offset+1:])
+                    break
+            else:
+                unhit_names.append(name)
+                unhit_indices.append(idx)
+
+        self._indices = new_hit_indices + unhit_indices
+        self._index_names = hit_names + unhit_names
+        if 'index' in debug.debug_flags:
+            mutter('CombinedGraphIndex reordered: %r', self._indices)
+        return hit_names
+
+    def _move_to_front_by_name(self, hit_names):
+        """Moves indices named by 'hit_names' to front of the search order, as
+        described in _move_to_front.
+        """
+        # Translate names to index instances, and then call
+        # _move_to_front_by_index.
+        indices_info = zip(self._index_names, self._indices)
+        hit_indices = []
+        for name, idx in indices_info:
+            if name in hit_names:
+                hit_indices.append(idx)
+        self._move_to_front_by_index(hit_indices)
 
     def find_ancestry(self, keys, ref_list_num):
         """Find the complete ancestry for the given set of keys.
@@ -1390,6 +1484,7 @@ class CombinedGraphIndex(object):
             we care about.
         :return: (parent_map, missing_keys)
         """
+        # XXX: make this call _move_to_front?
         missing_keys = set()
         parent_map = {}
         keys_to_lookup = set(keys)
@@ -1474,6 +1569,11 @@ class CombinedGraphIndex(object):
             trace.mutter('_reload_func indicated nothing has changed.'
                          ' Raising original exception.')
             raise exc_type, exc_value, exc_traceback
+
+    def set_sibling_indices(self, sibling_combined_graph_indices):
+        """Set the CombinedGraphIndex objects to reorder after reordering self.
+        """
+        self._sibling_indices = sibling_combined_graph_indices
 
     def validate(self):
         """Validate that everything in the index can be accessed."""

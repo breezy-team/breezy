@@ -1015,7 +1015,6 @@ class Merge3Merger(object):
                         continue
                 else:
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
-                # XXX: We need to handle kind == 'symlink'
 
             # If we have gotten this far, that means something has changed
             result.append((file_id, content_changed,
@@ -1043,21 +1042,38 @@ class Merge3Merger(object):
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
+        if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
+            # the other tree's root is a non-root in the current tree (as when
+            # a previously unrelated branch is merged into another)
+            return
         try:
             self.tt.final_kind(other_root)
+            other_root_is_present = True
         except errors.NoSuchFile:
-            return
-        if self.this_tree.has_id(self.other_tree.inventory.root.file_id):
-            # the other tree's root is a non-root in the current tree
-            return
-        self.reparent_children(self.other_tree.inventory.root, self.tt.root)
-        self.tt.cancel_creation(other_root)
-        self.tt.cancel_versioning(other_root)
-
-    def reparent_children(self, ie, target):
-        for thing, child in ie.children.iteritems():
+            # other_root doesn't have a physical representation. We still need
+            # to move any references to the actual root of the tree.
+            other_root_is_present = False
+        # 'other_tree.inventory.root' is not present in this tree. We are
+        # calling adjust_path for children which *want* to be present with a
+        # correct place to go.
+        for thing, child in self.other_tree.inventory.root.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
-            self.tt.adjust_path(self.tt.final_name(trans_id), target, trans_id)
+            if not other_root_is_present:
+                # FIXME: Make final_kind returns None instead of raising
+                # NoSuchFile to avoid the ugly construct below -- vila 20100402
+                try:
+                    self.tt.final_kind(trans_id)
+                    # The item exist in the final tree and has a defined place
+                    # to go already.
+                    continue
+                except errors.NoSuchFile, e:
+                    pass
+            # Move the item into the root
+            self.tt.adjust_path(self.tt.final_name(trans_id),
+                                self.tt.root, trans_id)
+        if other_root_is_present:
+            self.tt.cancel_creation(other_root)
+            self.tt.cancel_versioning(other_root)
 
     def write_modified(self, results):
         modified_hashes = {}
@@ -1110,16 +1126,18 @@ class Merge3Merger(object):
 
     @staticmethod
     def _three_way(base, other, this):
-        #if base == other, either they all agree, or only THIS has changed.
         if base == other:
+            # if 'base == other', either they all agree, or only 'this' has
+            # changed.
             return 'this'
         elif this not in (base, other):
+            # 'this' is neither 'base' nor 'other', so both sides changed
             return 'conflict'
-        # "Ambiguous clean merge" -- both sides have made the same change.
         elif this == other:
+            # "Ambiguous clean merge" -- both sides have made the same change.
             return "this"
-        # this == base: only other has changed.
         else:
+            # this == base: only other has changed.
             return "other"
 
     @staticmethod
@@ -1169,7 +1187,7 @@ class Merge3Merger(object):
                 # only has an lca value
                 return 'other'
 
-        # At this point, the lcas disagree, and the tips disagree
+        # At this point, the lcas disagree, and the tip disagree
         return 'conflict'
 
     @staticmethod

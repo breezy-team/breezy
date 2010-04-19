@@ -288,6 +288,23 @@ class TestPackRepository(TestCaseWithTransport):
         repo._pack_collection._clear_obsolete_packs()
         self.assertTrue(repo_transport.has('obsolete_packs/.nfsblahblah'))
 
+    def test_pack_collection_sets_sibling_indices(self):
+        """The CombinedGraphIndex objects in the pack collection are all
+        siblings of each other, so that search-order reorderings will be copied
+        to each other.
+        """
+        repo = self.make_repository('repo')
+        pack_coll = repo._pack_collection
+        indices = set([pack_coll.revision_index, pack_coll.inventory_index,
+                pack_coll.text_index, pack_coll.signature_index])
+        if pack_coll.chk_index is not None:
+            indices.add(pack_coll.chk_index)
+        combined_indices = set(idx.combined_index for idx in indices)
+        for combined_index in combined_indices:
+            self.assertEqual(
+                combined_indices.difference([combined_index]),
+                combined_index._sibling_indices)
+
     def test_pack_after_two_commits_packs_everything(self):
         format = self.get_format()
         tree = self.make_branch_and_tree('.', format=format)

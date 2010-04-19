@@ -25,43 +25,52 @@ from bzrlib import (
 from bzrlib.tests import per_branch
 
 
-class TestIterMergeSortedRevisions(per_branch.TestCaseWithBranch):
+class TestIterMergeSortedRevisionsSimpleGraph(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        super(TestIterMergeSortedRevisions, self).setUp()
-        self.branch = self.make_branch_with_merges('.')
+        super(TestIterMergeSortedRevisionsSimpleGraph, self).setUp()
+        builder = self.make_builder_with_merges('.')
+        self.branch = builder.get_branch()
+        self.branch.lock_read()
+        self.addCleanup(self.branch.unlock)
 
-    def make_branch_with_merges(self, relpath):
+    def make_builder_with_merges(self, relpath):
         try:
             builder = self.make_branch_builder(relpath)
         except (errors.TransportNotPossible, errors.UninitializableFormat):
             raise tests.TestNotApplicable('format not directly constructable')
         builder.start_series()
+        # 1
+        # |\
+        # 2 |
+        # | |
+        # | 1.1.1
+        # |/
+        # 3
         builder.build_snapshot('1', None, [
             ('add', ('', 'TREE_ROOT', 'directory', '')),])
         builder.build_snapshot('1.1.1', ['1'], [])
         builder.build_snapshot('2', ['1'], [])
         builder.build_snapshot('3', ['2', '1.1.1'], [])
         builder.finish_series()
-        return builder.get_branch()
-
+        return builder
 
     def assertIterRevids(self, expected, *args, **kwargs):
         # We don't care about depths and revnos here, only about returning the
         # right revids.
-        revids = [ revid for (revid, depth, revno, eom) in
-                   self.branch.iter_merge_sorted_revisions(*args, **kwargs)]
+        revids = [revid for (revid, depth, revno, eom) in
+                  self.branch.iter_merge_sorted_revisions(*args, **kwargs)]
         self.assertEqual(expected, revids)
 
     def test_merge_sorted(self):
         self.assertIterRevids(['3', '1.1.1', '2', '1'])
 
     def test_merge_sorted_range(self):
-        self.assertIterRevids(['1.1.1', '2'],
+        self.assertIterRevids(['1.1.1'],
                               start_revision_id='1.1.1', stop_revision_id='1')
 
     def test_merge_sorted_range_start_only(self):
-        self.assertIterRevids(['1.1.1', '2', '1'],
+        self.assertIterRevids(['1.1.1', '1'],
                               start_revision_id='1.1.1')
 
     def test_merge_sorted_range_stop_exclude(self):
@@ -105,12 +114,12 @@ class TestIterMergeSortedRevisions(per_branch.TestCaseWithBranch):
         self.assertIterRevids(['1', '2', '1.1.1', '3'], direction='forward')
 
     def test_merge_sorted_range_forward(self):
-        self.assertIterRevids(['2', '1.1.1'],
+        self.assertIterRevids(['1.1.1'],
                               start_revision_id='1.1.1', stop_revision_id='1',
                               direction='forward')
 
     def test_merge_sorted_range_start_only_forward(self):
-        self.assertIterRevids(['1', '2', '1.1.1'],
+        self.assertIterRevids(['1', '1.1.1'],
                               start_revision_id='1.1.1', direction='forward')
 
     def test_merge_sorted_range_stop_exclude_forward(self):
@@ -126,3 +135,127 @@ class TestIterMergeSortedRevisions(per_branch.TestCaseWithBranch):
         self.assertIterRevids(['1.1.1', '3'],
                               stop_revision_id='3', stop_rule='with-merges',
                               direction='forward')
+
+
+class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
+
+    def make_branch_builder(self, relpath):
+        try:
+            builder = super(TestIterMergeSortedRevisionsBushyGraph,
+                            self).make_branch_builder(relpath)
+        except (errors.TransportNotPossible, errors.UninitializableFormat):
+            raise tests.TestNotApplicable('format not directly constructable')
+        return builder
+
+    def make_branch_with_embedded_merges(self, relpath='.'):
+        builder = self.make_branch_builder(relpath)
+        # 1
+        # |\
+        # | 1.1.1
+        # | /
+        # 2
+        # | \
+        # 3 |
+        # | |
+        # | 2.1.1
+        # | |    \
+        # | 2.1.2 |
+        # | |     |
+        # | |   2.2.1
+        # | |  /
+        # | 2.1.3
+        # |/
+        # 4
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2', ['1', '1.1.1'], [])
+        builder.build_snapshot('2.1.1', ['2'], [])
+        builder.build_snapshot('2.1.2', ['2.1.1'], [])
+        builder.build_snapshot('2.2.1', ['2.1.1'], [])
+        builder.build_snapshot('2.1.3', ['2.1.2', '2.2.1'], [])
+        builder.build_snapshot('3', ['2'], [])
+        builder.build_snapshot('4', ['3', '2.1.3'], [])
+        builder.finish_series()
+        br = builder.get_branch()
+        br.lock_read()
+        self.addCleanup(br.unlock)
+        return br
+
+    def make_branch_with_different_depths_merges(self, relpath='.'):
+        builder = self.make_branch_builder(relpath)
+        # 1
+        # |\
+        # | 1.1.1
+        # | /
+        # 2
+        # | \
+        # 3 |
+        # | |
+        # | 2.1.1
+        # | |    \
+        # | 2.1.2 |
+        # | |     |
+        # | |     2.2.1
+        # | |    /
+        # | 2.1.3
+        # |/
+        # 4
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),])
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('1.1.2', ['1.1.1'], [])
+        builder.build_snapshot('1.2.1', ['1.1.1'], [])
+        builder.build_snapshot('1.2.2', ['1.2.1'], [])
+        builder.build_snapshot('1.3.1', ['1.2.1'], [])
+        builder.build_snapshot('1.3.2', ['1.3.1'], [])
+        builder.build_snapshot('1.4.1', ['1.3.1'], [])
+        builder.build_snapshot('1.3.3', ['1.3.2', '1.4.11'], [])
+        builder.build_snapshot('1.2.3', ['1.2.2', '1.3.3'], [])
+        builder.build_snapshot('2.1.1', ['2'], [])
+        builder.build_snapshot('2.1.2', ['2.1.1'], [])
+        builder.build_snapshot('2.2.1', ['2.1.1'], [])
+        builder.build_snapshot('2.1.3', ['2.1.2', '2.2.1'], [])
+        builder.build_snapshot('3', ['2',  '1.2.3'], [])
+        # .. to bring them all and ... bind them
+        builder.build_snapshot('4', ['3', '2.1.3'],
+                               [])
+        builder.finish_series()
+        br = builder.get_branch()
+        br.lock_read()
+        self.addCleanup(br.unlock)
+        return br
+
+    def assertIterRevids(self, expected, branch, *args, **kwargs):
+        # We don't care about depths and revnos here, only about returning the
+        # right revids.
+        revs = list(branch.iter_merge_sorted_revisions(*args, **kwargs))
+        revids = [revid for (revid, depth, revno, eom) in revs]
+        self.assertEqual(expected, revids)
+
+    def test_merge_sorted_starting_at_embedded_merge(self):
+        branch = self.make_branch_with_embedded_merges()
+        self.assertIterRevids(['4', '2.1.3', '2.2.1', '2.1.2', '2.1.1',
+                               '3', '2', '1.1.1', '1'],
+                              branch)
+        # 3 and 2.1.2 are not part of 2.2.1 ancestry and should not appear
+        self.assertIterRevids(['2.2.1', '2.1.1', '2', '1.1.1', '1'],
+                              branch, start_revision_id='2.2.1',
+                              stop_rule='with-merges')
+
+    def test_merge_sorted_with_different_depths_merge(self):
+        branch = self.make_branch_with_different_depths_merges()
+        self.assertIterRevids(['4', '2.1.3', '2.2.1', '2.1.2', '2.1.1',
+                               '3',
+                               '1.2.3', '1.3.3', '1.3.2', '1.3.1',
+                               '1.2.2', '1.2.1', '1.1.1',
+                               '2', '1'],
+                              branch)
+        # 3 (and its descendants) and 2.1.2 are not part of 2.2.1 ancestry and
+        # should not appear
+        self.assertIterRevids(['2.2.1', '2.1.1', '2', '1'],
+                              branch, start_revision_id='2.2.1',
+                              stop_rule='with-merges')

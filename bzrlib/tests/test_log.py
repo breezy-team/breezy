@@ -877,6 +877,43 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
             formatter_kwargs=dict(levels=0))
 
 
+class TestGnuChangelogFormatter(TestCaseForLogFormatter):
+
+    def test_gnu_changelog(self):
+        wt = self.make_standard_commit('nicky', authors=[])
+        self.assertFormatterResult('''\
+2005-11-22  Lorem Ipsum  <test@example.com>
+
+\tadd a
+
+''',
+            wt.branch, log.GnuChangelogLogFormatter)
+
+    def test_with_authors(self):
+        wt = self.make_standard_commit('nicky',
+            authors=['Fooa Fooz <foo@example.com>',
+                     'Bari Baro <bar@example.com>'])
+        self.assertFormatterResult('''\
+2005-11-22  Fooa Fooz  <foo@example.com>
+
+\tadd a
+
+''',
+            wt.branch, log.GnuChangelogLogFormatter)
+
+    def test_verbose(self):
+        wt = self.make_standard_commit('nicky')
+        self.assertFormatterResult('''\
+2005-11-22  John Doe  <jdoe@example.com>
+
+\t* a:
+
+\tadd a
+
+''',
+            wt.branch, log.GnuChangelogLogFormatter,
+            show_log_kwargs=dict(verbose=True))
+
 class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
 
     def _get_view_revisions(self, *args, **kwargs):

@@ -810,21 +810,23 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.overrideAttr(plugin, '_loaded', False)
         # Create the same plugin in two directories
         self.create_plugin_package('test_foo', dir='non-standard-dir')
-        self.create_plugin_package('test_foo', dir='b/test_foo')
+        # The "normal" directory, we use 'standard' instead of 'plugins' to
+        # avoid depending on the precise naming.
+        self.create_plugin_package('test_foo', dir='standard/test_foo')
 
-    def assertTestFooLoadedFrom(self, dir):
+    def assertTestFooLoadedFrom(self, path):
         self.assertPluginKnown('test_foo')
         self.assertEqual('This is the doc for test_foo',
                          bzrlib.plugins.test_foo.__doc__)
-        self.assertEqual(dir, bzrlib.plugins.test_foo.dir_source)
+        self.assertEqual(path, bzrlib.plugins.test_foo.dir_source)
 
     def test_regular_load(self):
-        plugin.load_plugins(['b'])
-        self.assertTestFooLoadedFrom('b/test_foo')
+        plugin.load_plugins(['standard'])
+        self.assertTestFooLoadedFrom('standard/test_foo')
 
     def test_import(self):
         osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
-        plugin.set_plugins_path(['b'])
+        plugin.set_plugins_path(['standard'])
         try:
             import bzrlib.plugins.test_foo
         except ImportError:
@@ -833,12 +835,12 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
 
     def test_loading(self):
         osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
-        plugin.load_plugins(['b'])
+        plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom('non-standard-dir')
 
     def test_compiled_loaded(self):
         osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
-        plugin.load_plugins(['b'])
+        plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom('non-standard-dir')
         self.assertEqual('non-standard-dir/__init__.py',
                          bzrlib.plugins.test_foo.__file__)
@@ -846,7 +848,7 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         # Try importing again now that the source has been compiled
         self._unregister_plugin('test_foo')
         plugin._loaded = False
-        plugin.load_plugins(['b'])
+        plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom('non-standard-dir')
         if __debug__:
             suffix = 'pyc'
@@ -859,10 +861,35 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         # We create an additional directory under the one for test_foo
         self.create_plugin_package('test_bar', dir='non-standard-dir/test_bar')
         osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
-        plugin.set_plugins_path(['b'])
+        plugin.set_plugins_path(['standard'])
         import bzrlib.plugins.test_foo
         self.assertEqual('bzrlib.plugins.test_foo',
                          bzrlib.plugins.test_foo.__package__)
         import bzrlib.plugins.test_foo.test_bar
         self.assertEqual('non-standard-dir/test_bar/__init__.py',
                          bzrlib.plugins.test_foo.test_bar.__file__)
+
+    def test_loading_from___init__only(self):
+        # We rename the existing __init__.py file to ensure that we don't load
+        # a random file
+        init = 'non-standard-dir/__init__.py'
+        random = 'non-standard-dir/setup.py'
+        os.rename(init, random)
+        self.addCleanup(os.rename, random, init)
+        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        plugin.load_plugins(['standard'])
+        self.assertPluginUnknown('test_foo')
+
+    def test_loading_from_specific_file(self):
+        plugin_dir = 'non-standard-dir'
+        plugin_file_name = 'iamtestfoo.py'
+        plugin_path = osutils.pathjoin(plugin_dir, plugin_file_name)
+        source = '''\
+"""This is the doc for %s"""
+dir_source = '%s'
+''' % ('test_foo', plugin_path)
+        self.create_plugin('test_foo', source=source,
+                           dir=plugin_dir, file_name=plugin_file_name)
+        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@%s' % plugin_path)
+        plugin.load_plugins(['standard'])
+        self.assertTestFooLoadedFrom(plugin_path)

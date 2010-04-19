@@ -1139,7 +1139,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         This does not include files that have been deleted in this
         tree. Skips the control directory.
 
-        :param include_root: if True, do not return an entry for the root
+        :param include_root: if True, return an entry for the root
         :param from_dir: start from this directory or None for the root
         :param recursive: whether to recurse into subdirectories or not
         """
@@ -2258,9 +2258,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             last_rev = _mod_revision.NULL_REVISION
         if revision is None:
             revision = self.branch.last_revision()
-        else:
-            if revision not in self.branch.revision_history():
-                raise errors.NoSuchRevision(self.branch, revision)
 
         old_tip = old_tip or _mod_revision.NULL_REVISION
 

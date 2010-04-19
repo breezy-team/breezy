@@ -458,25 +458,40 @@ Some things to check:
 Testing locking behaviour
 -------------------------
 
-You may want to write tests that particular objects are or aren't locked
-during particular operations: see for example `bug 498409`__.  
+In order to test the locking behaviour of commands, it is possible to install
+a hook that is called when a write lock is: acquired, released or broken.
+(Read locks also exist, they cannot be discovered in this way.)
 
- __ https://launchpad.net/bugs/498409
+A hook can be installed by calling bzrlib.lock.Lock.hooks.install_named_hook.
+The three valid hooks are: `lock_acquired`, `lock_released` and `lock_broken`.
 
-The `TestCase` base class registers hooks that record lock actions into 
-``._lock_actions`` in this format::
+Example::
 
-  [
-    ('acquired', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch-lockc4au55ppz8wdym11z1aq)),
-    ('released', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch-lockc4au55ppz8wdym11z1aq)),
-    ('acquired', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/repository/lockyxb3rn4sw1oyx1jzkt45)),
-    ('released', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/repository/lockyxb3rn4sw1oyx1jzkt45)),
-    ('acquired', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch/lockh8c6t28rcjdkgxtndbje)),
-    ('released', LockResult(file:///tmp/testbzr-J2pcy2.tmp/.bzr/branch/lockh8c6t28rcjdkgxtndbje)),
-    ...
+    locks_acquired = []
+    locks_released = []
 
-Alternatively you can register your own hooks to make custom assertions:
-see `TestCase._check_locks` for an example.
+    lock.Lock.hooks.install_named_hook('lock_acquired',
+        locks_acquired.append, None)
+    lock.Lock.hooks.install_named_hook('lock_released',
+        locks_released.append, None)
+
+`locks_acquired` will now receive a LockResult instance for all locks acquired
+since the time the hook is installed.
+
+The last part of the `lock_url` allows you to identify the type of object that is locked.
+
+- BzrDir: `/branch-lock`
+- Working tree: `/checkout/lock`
+- Branch: `/branch/lock`
+- Repository: `/repository/lock`
+
+To test if a lock is a write lock on a working tree, one can do the following::
+
+    self.assertEndsWith(locks_acquired[0].lock_url, "/checkout/lock")
+
+See bzrlib/tests/commands/test_revert.py for an example of how to use this for
+testing locks.
+
 
 Skipping tests
 --------------
