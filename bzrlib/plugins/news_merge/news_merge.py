@@ -17,7 +17,7 @@
 """Merge logic for news_merge plugin."""
 
 
-from bzrlib.plugins.news_merge.parser import simple_parse
+from bzrlib.plugins.news_merge.parser import simple_parse_lines
 from bzrlib import merge, merge3
 
 
@@ -39,13 +39,12 @@ class NewsMerger(merge.ConfigurableFileMerger):
         # Transform the different versions of the NEWS file into a bunch of
         # text lines where each line matches one part of the overall
         # structure, e.g. a heading or bullet.
-        def munge(lines):
-            return list(blocks_to_fakelines(simple_parse(''.join(lines))))
-        this_lines = munge(params.this_lines)
-        other_lines = munge(params.other_lines)
-        base_lines = munge(params.base_lines)
-        m3 = merge3.Merge3(base_lines, this_lines, other_lines)
-        result_lines = []
+        this_lines = list(simple_parse_lines(params.this_lines))
+        other_lines = list(simple_parse_lines(params.other_lines))
+        base_lines = list(simple_parse_lines(params.base_lines))
+        m3 = merge3.Merge3(base_lines, this_lines, other_lines,
+            allow_objects=True)
+        result_chunks = []
         for group in m3.merge_groups():
             if group[0] == 'conflict':
                 _, base, a, b = group
@@ -53,7 +52,7 @@ class NewsMerger(merge.ConfigurableFileMerger):
                 # this.
                 for line_set in [base, a, b]:
                     for line in line_set:
-                        if not line.startswith('bullet'):
+                        if line[0] != 'bullet':
                             # Something else :(
                             # Maybe the default merge can cope.
                             return 'not_applicable', None
@@ -68,27 +67,13 @@ class NewsMerger(merge.ConfigurableFileMerger):
                     deleted_in_b)
                 # Sort, and emit.
                 final = sorted(final, key=sort_key)
-                result_lines.extend(final)
+                result_chunks.extend(final)
             else:
-                result_lines.extend(group[1])
+                result_chunks.extend(group[1])
         # Transform the merged elements back into real blocks of lines.
-        return 'success', list(fakelines_to_blocks(result_lines))
+        result_lines = '\n\n'.join(chunk[1] for chunk in result_chunks)
+        return 'success', result_lines
 
 
-def blocks_to_fakelines(blocks):
-    for kind, text in blocks:
-        yield '%s%s%s' % (kind, magic_marker, text)
-
-
-def fakelines_to_blocks(fakelines):
-    fakelines = list(fakelines)
-    # Strip out the magic_marker, and reinstate the \n\n between blocks
-    for fakeline in fakelines[:-1]:
-        yield fakeline.split(magic_marker, 1)[1] + '\n\n'
-    # The final block doesn't have a trailing \n\n.
-    for fakeline in fakelines[-1:]:
-        yield fakeline.split(magic_marker, 1)[1]
-
-
-def sort_key(s):
-    return s.replace('`', '').lower()
+def sort_key(chunk):
+    return chunk[1].replace('`', '').lower()
