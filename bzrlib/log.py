@@ -1767,8 +1767,10 @@ def log_formatter(name, *args, **kwargs):
     except KeyError:
         raise errors.BzrCommandError("unknown log formatter: %r" % name)
 
+
 def author_list_all(rev):
     return rev.get_apparent_authors()[:]
+
 
 def author_list_first(rev):
     lst = rev.get_apparent_authors()
@@ -1777,8 +1779,10 @@ def author_list_first(rev):
     except IndexError:
         return []
 
+
 def author_list_committer(rev):
     return [rev.committer]
+
 
 author_list_registry = registry.Registry()
 
@@ -1790,6 +1794,7 @@ author_list_registry.register('first', author_list_first,
 
 author_list_registry.register('committer', author_list_committer,
                               'The committer')
+
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
     # deprecated; for compatibility
