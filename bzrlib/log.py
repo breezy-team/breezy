@@ -1398,9 +1398,26 @@ class LogFormatter(object):
         return self.authors(rev, 'first', True, ', ')
 
     def authors(self, rev, who, short=False, sep=None):
+        """Generate list of authors, taking --authors option into account.
+
+        The caller has to specify the name of a author list handler,
+        as provided by the author list registry, using the ``who``
+        argument.  That name only sets a default, though: when the
+        user selected a different author list generation using the
+        ``--authors`` command line switch, as represented by the
+        ``author_list_handler`` constructor argument, that value takes
+        precedence.
+
+        :param rev: The revision for which to generate the list of authors.
+        :param who: Name of the default handler.
+        :param short: Whether to shorten names to either name or address.
+        :param sep: What separator to use for automatic concatenation.
+        """
         if self._author_list_handler is not None:
+            # The user did specify --authors, which overrides the default
             author_list_handler = self._author_list_handler
         else:
+            # The user didn't specify --authors, so we use the caller's default
             author_list_handler = author_list_registry.get(who)
         names = author_list_handler(rev)
         if short:
