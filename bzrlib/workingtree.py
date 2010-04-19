@@ -1985,11 +1985,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         if not keep_files and not force:
             has_changed_files = len(unknown_nested_files) > 0
             if not has_changed_files:
-                def isStillInDirToBeRemoved(new_path):
-                    for f in files:
-                        if osutils.is_inside(f, path[1]):
-                            return True
-                    return False
                 for (file_id, path, content_change, versioned, parent_id, name,
                      kind, executable) in self.iter_changes(self.basis_tree(),
                          include_unchanged=True, require_versioned=False,
@@ -2001,8 +1996,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                             has_changed_files = True
                             break
                     elif (content_change and (kind[1] is not None) and
-                            isStillInDirToBeRemoved(path[1])):
-                        # Versioned and changed, but not deleted
+                            osutils.is_inside_any(files, path[1])):
+                        # Versioned and changed, but not deleted, and still
+                        # in one of the dirs to be deleted.
                         has_changed_files = True
                         break
 
