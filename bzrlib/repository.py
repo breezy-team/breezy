@@ -40,6 +40,7 @@ from bzrlib import (
     lru_cache,
     osutils,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
     trace,
     tsort,
@@ -2629,6 +2630,15 @@ class Repository(_RelockDebugMixin):
     def _make_parents_provider(self):
         return self
 
+    @needs_read_lock
+    def get_known_graph_ancestry(self, revision_ids):
+        """Return the known graph for a set of revision ids and their ancestors.
+        """
+        st = static_tuple.StaticTuple
+        revision_keys = [st(r_id).intern() for r_id in revision_ids]
+        known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
+        return graph.GraphThunkIdsToKeys(known_graph)
+
     def get_graph(self, other_repository=None):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()
@@ -3036,8 +3046,8 @@ class RepositoryFormat(object):
     # Is the format experimental ?
     experimental = False
 
-    def __str__(self):
-        return "<%s>" % self.__class__.__name__
+    def __repr__(self):
+        return "%s()" % self.__class__.__name__
 
     def __eq__(self, other):
         # format objects are generally stateless
@@ -3375,7 +3385,13 @@ class InterRepository(InterObject):
         :return: None.
         """
         ui.ui_factory.warn_experimental_format_fetch(self)
-        f = _mod_fetch.RepoFetcher(to_repository=self.target,
+        from bzrlib.fetch import RepoFetcher
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        if self.source._format.network_name() != self.target._format.network_name():
+            ui.ui_factory.show_user_warning('cross_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
+        f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                fetch_spec=fetch_spec,
@@ -3959,12 +3975,6 @@ class InterDifferingSerializer(InterRepository):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             raise AssertionError("Not implemented yet...")
-        # See <https://launchpad.net/bugs/456077> asking for a warning here
-        #
-        # nb this is only active for local-local fetches; other things using
-        # streaming.
-        ui.ui_factory.warn_cross_format_fetch(self.source._format,
-            self.target._format)
         ui.ui_factory.warn_experimental_format_fetch(self)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
@@ -3972,6 +3982,11 @@ class InterDifferingSerializer(InterRepository):
             self._revision_id_to_root_id = {}
         else:
             self._converting_to_rich_root = False
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        if self.source._format.network_name() != self.target._format.network_name():
+            ui.ui_factory.show_user_warning('cross_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
@@ -4260,8 +4275,6 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
-                ui.ui_factory.warn_cross_format_fetch(src_format,
-                    self.target_repo._format)
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':

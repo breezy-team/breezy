@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -211,14 +211,13 @@ class TestExtendCommandHook(tests.TestCase):
         commands.Command.hooks.install_named_hook(
             "extend_command", hook_calls.append, None)
         # create a command, should not fire
-        class ACommand(commands.Command):
+        class cmd_test_extend_command_hook(commands.Command):
             """A sample command."""
-        cmd = ACommand()
         self.assertEqual([], hook_calls)
         # -- as a builtin
         # register the command class, should not fire
         try:
-            builtins.cmd_test_extend_command_hook = ACommand
+            commands.builtin_command_registry.register(cmd_test_extend_command_hook)
             self.assertEqual([], hook_calls)
             # and ask for the object, should fire
             cmd = commands.get_cmd_object('test-extend-command-hook')
@@ -228,7 +227,7 @@ class TestExtendCommandHook(tests.TestCase):
             self.assertSubset([cmd], hook_calls)
             del hook_calls[:]
         finally:
-            del builtins.cmd_test_extend_command_hook
+            commands.builtin_command_registry.remove('test-extend-command-hook')
         # -- as a plugin lazy registration
         try:
             # register the command class, should not fire

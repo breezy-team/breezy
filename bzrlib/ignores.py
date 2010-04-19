@@ -25,6 +25,8 @@ from bzrlib import (
     globbing,
     )
 
+from trace import warning
+
 # This was the full ignore list for bzr 0.8
 # please keep these sorted (in C locale order) to aid merging
 OLD_DEFAULTS = [
@@ -100,10 +102,34 @@ USER_DEFAULTS = [
 ]
 
 
+
 def parse_ignore_file(f):
-    """Read in all of the lines in the file and turn it into an ignore list"""
+    """Read in all of the lines in the file and turn it into an ignore list
+    
+    Continue in the case of utf8 decoding errors, and emit a warning when 
+    such and error is found. Optimise for the common case -- no decoding 
+    errors.
+    """
     ignored = set()
-    for line in f.read().decode('utf8').split('\n'):
+    ignore_file = f.read()
+    try:
+        # Try and parse whole ignore file at once.
+        unicode_lines = ignore_file.decode('utf8').split('\n')
+    except UnicodeDecodeError:
+        # Otherwise go though line by line and pick out the 'good'
+        # decodable lines
+        lines = ignore_file.split('\n')
+        unicode_lines = []    
+        for line_number, line in enumerate(lines):
+            try:
+                unicode_lines.append(line.decode('utf-8'))
+            except UnicodeDecodeError:
+                # report error about line (idx+1)
+                warning('.bzrignore: On Line #%d, malformed utf8 character. '
+                        'Ignoring line.' % (line_number+1))
+    
+    # Append each line to ignore list if it's not a comment line
+    for line in unicode_lines:
         line = line.rstrip('\r\n')
         if not line or line.startswith('#'):
             continue

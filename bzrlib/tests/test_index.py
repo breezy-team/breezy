@@ -388,6 +388,17 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         size = trans.put_file('index', stream)
         return GraphIndex(trans, 'index', size)
 
+    def make_index_with_offset(self, ref_lists=0, key_elements=1, nodes=[],
+                               offset=0):
+        builder = GraphIndexBuilder(ref_lists, key_elements=key_elements)
+        for key, value, references in nodes:
+            builder.add_node(key, value, references)
+        content = builder.finish().read()
+        size = len(content)
+        trans = self.get_transport()
+        trans.put_bytes('index', (' '*offset) + content)
+        return GraphIndex(trans, 'index', size, offset=offset)
+
     def test_clear_cache(self):
         index = self.make_index()
         # For now, we just want to make sure the api is available. As this is
@@ -398,6 +409,26 @@ class TestGraphIndex(TestCaseWithMemoryTransport):
         trans = self.get_transport()
         trans.put_bytes('name', "not an index\n")
         index = GraphIndex(trans, 'name', 13)
+
+    def test_with_offset(self):
+        nodes = self.make_nodes(200)
+        index = self.make_index_with_offset(offset=1234567, nodes=nodes)
+        self.assertEqual(200, index.key_count())
+
+    def test_buffer_all_with_offset(self):
+        nodes = self.make_nodes(200)
+        index = self.make_index_with_offset(offset=1234567, nodes=nodes)
+        index._buffer_all()
+        self.assertEqual(200, index.key_count())
+
+    def test_side_effect_buffering_with_offset(self):
+        nodes = self.make_nodes(20)
+        index = self.make_index_with_offset(offset=1234567, nodes=nodes)
+        index._transport.recommended_page_size = lambda:64*1024
+        subset_nodes = [nodes[0][0], nodes[10][0], nodes[19][0]]
+        entries = [n[1] for n in index.iter_entries(subset_nodes)]
+        self.assertEqual(sorted(subset_nodes), sorted(entries))
+        self.assertEqual(20, index.key_count())
 
     def test_open_sets_parsed_map_empty(self):
         index = self.make_index()
@@ -1348,6 +1379,50 @@ class TestCombinedGraphIndex(TestCaseWithMemoryTransport):
                                     ['1', '2', '3'])
         self.assertListRaises(errors.NoSuchFile, index.iter_entries_prefix,
                                                  [('1',)])
+
+
+    def make_index_with_simple_nodes(self, name, num_nodes=1):
+        """Make an index named after 'name', with keys named after 'name' too.
+
+        Nodes will have a value of '' and no references.
+        """
+        nodes = [
+            (('index-%s-key-%s' % (name, n),), '', ())
+            for n in range(1, num_nodes+1)]
+        return self.make_index('index-%s' % name, 0, nodes=nodes)
+
+    def test_reorder_after_iter_entries(self):
+        # Four indices: [key1] in index1, [key2,key3] in index2, [] in index3,
+        # [key4] in index4.
+        index = CombinedGraphIndex([])
+        index.insert_index(0, self.make_index_with_simple_nodes('1'), '1')
+        index.insert_index(1, self.make_index_with_simple_nodes('2'), '2')
+        index.insert_index(2, self.make_index_with_simple_nodes('3'), '3')
+        index.insert_index(3, self.make_index_with_simple_nodes('4'), '4')
+        index1, index2, index3, index4 = index._indices
+        # Query a key from index4 and index2.
+        self.assertLength(2, list(index.iter_entries(
+            [('index-4-key-1',), ('index-2-key-1',)])))
+        # Now index2 and index4 should be moved to the front (and index1 should
+        # still be before index3).
+        self.assertEqual([index2, index4, index1, index3], index._indices)
+        self.assertEqual(['2', '4', '1', '3'], index._index_names)
+
+    def test_reorder_propagates_to_siblings(self):
+        # Two CombinedGraphIndex objects, with the same number of indicies with
+        # matching names.
+        cgi1 = CombinedGraphIndex([])
+        cgi2 = CombinedGraphIndex([])
+        cgi1.insert_index(0, self.make_index_with_simple_nodes('1-1'), 'one')
+        cgi1.insert_index(1, self.make_index_with_simple_nodes('1-2'), 'two')
+        cgi2.insert_index(0, self.make_index_with_simple_nodes('2-1'), 'one')
+        cgi2.insert_index(1, self.make_index_with_simple_nodes('2-2'), 'two')
+        index2_1, index2_2 = cgi2._indices
+        cgi1.set_sibling_indices([cgi2])
+        # Trigger a reordering in cgi1.  cgi2 will be reordered as well.
+        list(cgi1.iter_entries([('index-1-2-key-1',)]))
+        self.assertEqual([index2_2, index2_1], cgi2._indices)
+        self.assertEqual(['two', 'one'], cgi2._index_names)
 
     def test_validate_reloads(self):
         index, reload_counter = self.make_combined_index_with_missing()

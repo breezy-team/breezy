@@ -29,6 +29,7 @@ from bzrlib import (
     repository,
     revision,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
 )
 from bzrlib.branch import BranchReferenceFormat
@@ -902,6 +903,15 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         """Return the graph for this repository format"""
         parents_provider = self._make_parents_provider(other_repository)
         return graph.Graph(parents_provider)
+
+    @needs_read_lock
+    def get_known_graph_ancestry(self, revision_ids):
+        """Return the known graph for a set of revision ids and their ancestors.
+        """
+        st = static_tuple.StaticTuple
+        revision_keys = [st(r_id).intern() for r_id in revision_ids]
+        known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
+        return graph.GraphThunkIdsToKeys(known_graph)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""

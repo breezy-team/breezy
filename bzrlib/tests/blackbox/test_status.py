@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -471,6 +471,39 @@ class BranchStatus(TestCaseWithTransport):
         out, err = self.run_bzr('status')
         self.assertEqual("working tree is out of date, run 'bzr update'\n",
                          err)
+
+    def test_status_on_ignored(self):
+        """Tests branch status on an unversioned file which is considered ignored.
+
+        See https://bugs.launchpad.net/bzr/+bug/40103
+        """
+        tree = self.make_branch_and_tree('.')
+
+        self.build_tree(['test1.c', 'test1.c~', 'test2.c~'])
+        result = self.run_bzr('status')[0]
+        self.assertContainsRe(result, "unknown:\n  test1.c\n")
+        short_result = self.run_bzr('status --short')[0]
+        self.assertContainsRe(short_result, "\?   test1.c\n")
+
+        result = self.run_bzr('status test1.c')[0]
+        self.assertContainsRe(result, "unknown:\n  test1.c\n")
+        short_result = self.run_bzr('status --short test1.c')[0]
+        self.assertContainsRe(short_result, "\?   test1.c\n")
+
+        result = self.run_bzr('status test1.c~')[0]
+        self.assertContainsRe(result, "ignored:\n  test1.c~\n")
+        short_result = self.run_bzr('status --short test1.c~')[0]
+        self.assertContainsRe(short_result, "I   test1.c~\n")
+
+        result = self.run_bzr('status test1.c~ test2.c~')[0]
+        self.assertContainsRe(result, "ignored:\n  test1.c~\n  test2.c~\n")
+        short_result = self.run_bzr('status --short test1.c~ test2.c~')[0]
+        self.assertContainsRe(short_result, "I   test1.c~\nI   test2.c~\n")
+
+        result = self.run_bzr('status test1.c test1.c~ test2.c~')[0]
+        self.assertContainsRe(result, "unknown:\n  test1.c\nignored:\n  test1.c~\n  test2.c~\n")
+        short_result = self.run_bzr('status --short test1.c test1.c~ test2.c~')[0]
+        self.assertContainsRe(short_result, "\?   test1.c\nI   test1.c~\nI   test2.c~\n")
 
     def test_status_write_lock(self):
         """Test that status works without fetching history and
