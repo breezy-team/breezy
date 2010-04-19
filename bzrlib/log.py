@@ -1395,7 +1395,7 @@ class LogFormatter(object):
         return address
 
     def short_author(self, rev):
-        return self.authors(rev, 'first', True, ', ')
+        return self.authors(rev, 'first', short=True, sep=', ')
 
     def authors(self, rev, who, short=False, sep=None):
         """Generate list of authors, taking --authors option into account.
