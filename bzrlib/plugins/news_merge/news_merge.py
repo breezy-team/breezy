@@ -21,9 +21,6 @@ from bzrlib.plugins.news_merge.parser import simple_parse_lines
 from bzrlib import merge, merge3
 
 
-magic_marker = '|NEWS-MERGE-MAGIC-MARKER|'
-
-
 class NewsMerger(merge.ConfigurableFileMerger):
     """Merge bzr NEWS files."""
 
