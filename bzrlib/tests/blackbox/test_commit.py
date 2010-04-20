@@ -18,6 +18,7 @@
 """Tests for the commit CLI of bzr."""
 
 import os
+import re
 import sys
 
 from bzrlib import (
@@ -106,6 +107,21 @@ class TestCommit(ExternalBase):
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
+
+    def test_unicode_commit_message(self):
+        """Unicode commit message same as a filename (Bug #563646).
+        """
+        file_name = u'\N{euro sign}'
+        self.run_bzr(['init'])
+        open(file_name, 'w').write('hello world')
+        self.run_bzr(['add'])
+        out, err = self.run_bzr(['commit', '-m', file_name])
+
+        reflags = re.MULTILINE|re.DOTALL|re.UNICODE
+        ue = osutils.get_user_encoding()
+        self.assertContainsRe(err.decode(ue),
+            u'The commit message is a file name: "\N{euro sign}"',
+            flags=reflags)
 
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught"""
