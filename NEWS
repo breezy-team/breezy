@@ -118,6 +118,8 @@ Internals
 Testing
 *******
 
+* ``bzr selftest --parallel=subprocess`` now works correctly on win32.
+  (Gordon Tyler, #551332)
 
 bzr 2.2.0b1
 ###########
