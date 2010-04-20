@@ -23,6 +23,8 @@ import tempfile
 from bzrlib import (
     errors,
     osutils,
+    patiencediff,
+    _patiencediff_py,
     revision as _mod_revision,
     revisionspec,
     revisiontree,
@@ -41,11 +43,8 @@ from bzrlib.diff import (
     get_trees_and_branches_to_diff,
     get_trees_and_branches_to_diff_locked,
     )
-import bzrlib.patiencediff
-import bzrlib._patiencediff_py
 from bzrlib.symbol_versioning import deprecated_in
-
-from bzrlib.tests.test_win32utils import BackslashDirSeparatorFeature
+from bzrlib.tests import test_win32utils
 
 
 class _AttribFeature(tests.Feature):
@@ -761,10 +760,10 @@ class TestPatienceDiffLib(tests.TestCase):
 
     def setUp(self):
         super(TestPatienceDiffLib, self).setUp()
-        self._unique_lcs = bzrlib._patiencediff_py.unique_lcs_py
-        self._recurse_matches = bzrlib._patiencediff_py.recurse_matches_py
+        self._unique_lcs = _patiencediff_py.unique_lcs_py
+        self._recurse_matches = _patiencediff_py.recurse_matches_py
         self._PatienceSequenceMatcher = \
-            bzrlib._patiencediff_py.PatienceSequenceMatcher_py
+            _patiencediff_py.PatienceSequenceMatcher_py
 
     def test_diff_unicode_string(self):
         a = ''.join([unichr(i) for i in range(4000, 4500, 3)])
@@ -1077,7 +1076,7 @@ pynff pzq_zxqve(Pbzznaq):
                  'how are you today?\n']
         txt_b = ['hello there\n',
                  'how are you today?\n']
-        unified_diff = bzrlib.patiencediff.unified_diff
+        unified_diff = patiencediff.unified_diff
         psm = self._PatienceSequenceMatcher
         self.assertEquals(['--- \n',
                            '+++ \n',
@@ -1131,7 +1130,7 @@ pynff pzq_zxqve(Pbzznaq):
                  'how are you today?\n']
         txt_b = ['hello there\n',
                  'how are you today?\n']
-        unified_diff = bzrlib.patiencediff.unified_diff
+        unified_diff = patiencediff.unified_diff
         psm = self._PatienceSequenceMatcher
         self.assertEquals(['--- a\t2008-08-08\n',
                            '+++ b\t2008-09-09\n',
@@ -1153,11 +1152,11 @@ class TestPatienceDiffLib_c(TestPatienceDiffLib):
 
     def setUp(self):
         super(TestPatienceDiffLib_c, self).setUp()
-        import bzrlib._patiencediff_c
-        self._unique_lcs = bzrlib._patiencediff_c.unique_lcs_c
-        self._recurse_matches = bzrlib._patiencediff_c.recurse_matches_c
+        from bzrlib import _patiencediff_c
+        self._unique_lcs = _patiencediff_c.unique_lcs_c
+        self._recurse_matches = _patiencediff_c.recurse_matches_c
         self._PatienceSequenceMatcher = \
-            bzrlib._patiencediff_c.PatienceSequenceMatcher_c
+            _patiencediff_c.PatienceSequenceMatcher_c
 
     def test_unhashable(self):
         """We should get a proper exception here."""
@@ -1178,7 +1177,7 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
     def setUp(self):
         super(TestPatienceDiffLibFiles, self).setUp()
         self._PatienceSequenceMatcher = \
-            bzrlib._patiencediff_py.PatienceSequenceMatcher_py
+            _patiencediff_py.PatienceSequenceMatcher_py
 
     def test_patience_unified_diff_files(self):
         txt_a = ['hello there\n',
@@ -1189,7 +1188,7 @@ class TestPatienceDiffLibFiles(tests.TestCaseInTempDir):
         open('a1', 'wb').writelines(txt_a)
         open('b1', 'wb').writelines(txt_b)
 
-        unified_diff_files = bzrlib.patiencediff.unified_diff_files
+        unified_diff_files = patiencediff.unified_diff_files
         psm = self._PatienceSequenceMatcher
         self.assertEquals(['--- a1\n',
                            '+++ b1\n',
@@ -1249,9 +1248,9 @@ class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 
     def setUp(self):
         super(TestPatienceDiffLibFiles_c, self).setUp()
-        import bzrlib._patiencediff_c
+        from bzrlib import _patiencediff_c
         self._PatienceSequenceMatcher = \
-            bzrlib._patiencediff_c.PatienceSequenceMatcher_c
+            _patiencediff_c.PatienceSequenceMatcher_c
 
 
 class TestUsingCompiledIfAvailable(tests.TestCase):
@@ -1260,31 +1259,31 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
         if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import PatienceSequenceMatcher_c
             self.assertIs(PatienceSequenceMatcher_c,
-                          bzrlib.patiencediff.PatienceSequenceMatcher)
+                          patiencediff.PatienceSequenceMatcher)
         else:
             from bzrlib._patiencediff_py import PatienceSequenceMatcher_py
             self.assertIs(PatienceSequenceMatcher_py,
-                          bzrlib.patiencediff.PatienceSequenceMatcher)
+                          patiencediff.PatienceSequenceMatcher)
 
     def test_unique_lcs(self):
         if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import unique_lcs_c
             self.assertIs(unique_lcs_c,
-                          bzrlib.patiencediff.unique_lcs)
+                          patiencediff.unique_lcs)
         else:
             from bzrlib._patiencediff_py import unique_lcs_py
             self.assertIs(unique_lcs_py,
-                          bzrlib.patiencediff.unique_lcs)
+                          patiencediff.unique_lcs)
 
     def test_recurse_matches(self):
         if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import recurse_matches_c
             self.assertIs(recurse_matches_c,
-                          bzrlib.patiencediff.recurse_matches)
+                          patiencediff.recurse_matches)
         else:
             from bzrlib._patiencediff_py import recurse_matches_py
             self.assertIs(recurse_matches_py,
-                          bzrlib.patiencediff.recurse_matches)
+                          patiencediff.recurse_matches)
 
 
 class TestDiffFromTool(tests.TestCaseWithTransport):
@@ -1304,7 +1303,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                          diff_obj._get_command('old-path', 'new-path'))
 
     def test_from_string_path_with_backslashes(self):
-        self.requireFeature(BackslashDirSeparatorFeature)
+        self.requireFeature(test_win32utils.BackslashDirSeparatorFeature)
         tool = 'C:\\Tools\\Diff.exe'
         diff_obj = DiffFromTool.from_string(tool, None, None, None)
         self.addCleanup(diff_obj.finish)
