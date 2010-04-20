@@ -60,6 +60,12 @@ Bug Fixes
   which is not installed any more" error.
   (Martin Pool, James Westby, #528114)
 
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
+
 * Reset ``siginterrupt`` flag to False every time we handle a signal
   installed with ``set_signal_handler(..., restart_syscall=True)`` (from
   ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
