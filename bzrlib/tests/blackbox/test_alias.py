@@ -47,9 +47,11 @@ class TestAlias(ExternalBase):
 
     def test_unicode_alias(self):
         """Unicode aliases should work (Bug #529930)"""
+        user_enc = osutils.get_user_encoding()
         dir_name = u'\N{euro sign}'
         file_name = u'\N{euro sign}'
         file_path = os.path.join(dir_name, file_name)
+
         self.run_bzr(['init'])
         self.run_bzr(['mkdir', dir_name])
         open(file_path,'w').write('hello world!\n')
@@ -60,11 +62,11 @@ class TestAlias(ExternalBase):
         CONFIG=(u'[ALIASES]\n'
                 u'uls=ls \N{euro sign}\n')
 
-        codecs.open(config_filename(),'wb', 'utf-8').write(CONFIG)
+        codecs.open(config_filename(),'wb', user_enc).write(CONFIG)
 
         out, err = self.run_bzr('uls')
         self.assertEquals(err, '')
-        self.assertEquals(out.rstrip(), file_path.encode('utf-8'))
+        self.assertEquals(out.rstrip(), file_path.encode(user_enc))
 
     def test_alias_listing_alphabetical(self):
         self.run_bzr('alias commit="commit --strict"')
