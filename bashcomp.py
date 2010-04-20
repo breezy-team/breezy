@@ -25,6 +25,7 @@ from bzrlib import (
     option,
     plugin,
 )
+import bzrlib
 import re
 
 head="""\
@@ -38,6 +39,8 @@ head="""\
 
 # Generated using the bzr-bash-completion plugin version %(version)s.
 # See https://launchpad.net/bzr-bash-completion for details.
+
+# Commands and options of bzr %(bzr_version)s
 
 shopt -s progcomp
 """
@@ -144,6 +147,7 @@ def bash_completion_function(out, function_name="_bzr", function_only=False,
     cmds = []
     cases = ""
     reqarg = {}
+    plugins = set()
 
     re_switch = re.compile(r'\n(--[A-Za-z0-9-_]+)(?:, (-\S))?\s')
     help_text = help_topics.topic_registry.get_detail('global-options')
@@ -180,6 +184,7 @@ def bash_completion_function(out, function_name="_bzr", function_only=False,
         cmds.extend(aliases)
         plugin = cmd.plugin_name()
         if plugin is not None:
+            plugins.add(plugin)
             cases += "\t\t# plugin \"%s\"\n" % plugin
         opts = cmd.options()
         switches = []
@@ -216,6 +221,20 @@ def bash_completion_function(out, function_name="_bzr", function_only=False,
             cases += "\n\t\t\t".join(enums)
             cases += "\n\t\tesac\n"
         cases += "\t\t;;\n"
+
+    bzr_version = bzrlib.version_string
+    if not plugins:
+        bzr_version += "."
+    else:
+        bzr_version += " and the following plugins:"
+        for plugin in sorted(plugins):
+            pv = bzrlib.plugin.plugins()[plugin].__version__
+            if pv == 'unknown':
+                pv = ''
+            else:
+                pv = ' ' + pv
+                bzr_version += "\n# %s%s" % (plugin, pv)
+
     if function_only:
         template = fun
     else:
@@ -226,6 +245,7 @@ def bash_completion_function(out, function_name="_bzr", function_only=False,
                           "version": __version__,
                           "global_options": global_options,
                           "debug": debug_output if debug else "",
+                          "bzr_version": bzr_version,
                           })
 
 if __name__ == '__main__':
