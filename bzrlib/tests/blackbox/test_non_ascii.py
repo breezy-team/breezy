@@ -24,11 +24,12 @@ from bzrlib import (
     tests,
     urlutils,
     )
+from bzrlib.tests import EncodingAdapter
 
 
 def load_tests(standard_tests, module, loader):
     return tests.multiply_tests(standard_tests,
-                                tests.EncodingAdapter.encoding_scenarios,
+                                EncodingAdapter.encoding_scenarios,
                                 loader.suiteClass())
 
 
