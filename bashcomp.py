@@ -143,7 +143,7 @@ def wrap_parser(list, parser):
     return wrap_container(list, parser)
 
 def bash_completion_function(out, function_name="_bzr", function_only=False,
-                             debug=False):
+                             debug=False, no_plugins=False):
     cmds = []
     cases = ""
     reqarg = {}
@@ -263,6 +263,8 @@ if __name__ == '__main__':
                       help="Generate only the shell function, don't enable it")
     parser.add_option("--debug", action="store_true",
                       help=optparse.SUPPRESS_HELP)
+    parser.add_option("--no-plugins", action="store_true",
+                      help="Don't load any bzr plugins")
     (opts, args) = parser.parse_args()
     if args:
         parser.error("script does not take positional arguments")
@@ -272,6 +274,7 @@ if __name__ == '__main__':
             kwargs[name] = value
 
     locale.setlocale(locale.LC_ALL, '')
-    plugin.load_plugins()
+    if not kwargs.get('no_plugins', False):
+        plugin.load_plugins()
     commands.install_bzr_command_hooks()
     bash_completion_function(sys.stdout, **kwargs)
