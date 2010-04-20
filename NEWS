@@ -72,6 +72,11 @@ Bug Fixes
   errors after two window resizes.
   (Andrew Bennetts)
 
+* Unicode commit messages that are the same as a file name no longer cause
+  UnicodeEncodeError. ``ui.text.show_warning`` now handles unicode
+  messages.
+  (Parth Malwankar, #563646)
+
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
   that are not part of the ancestry anymore.
   (Vincent Ladeuil, #474807)
