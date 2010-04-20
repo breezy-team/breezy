@@ -272,7 +272,7 @@ class ListOption(Option):
         parser.add_option(action='callback',
                           callback=self._optparse_callback,
                           type='string', metavar=self.argname.upper(),
-                          help=self.help, default=[],
+                          help=self.help, dest=self._param_name, default=[],
                           *option_strings)
 
     def _optparse_callback(self, option, opt, value, parser):

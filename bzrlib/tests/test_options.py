@@ -305,6 +305,13 @@ class TestListOptions(TestCase):
         self.assertEqual('hello', name)
         self.assertEqual([], value)
 
+    def test_list_option_param_name(self):
+        """Test list options can have their param_name set."""
+        options = [option.ListOption('hello', type=str, param_name='greeting')]
+        opts, args = self.parse(
+            options, ['--hello=world', '--hello=sailor'])
+        self.assertEqual(['world', 'sailor'], opts.greeting)
+
 
 class TestOptionDefinitions(TestCase):
     """Tests for options in the Bazaar codebase."""
