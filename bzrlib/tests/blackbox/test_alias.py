@@ -63,8 +63,8 @@ class TestAlias(ExternalBase):
         codecs.open(config_filename(),'wb', 'utf-8').write(CONFIG)
 
         out, err = self.run_bzr('uls')
-        #self.assertEquals(err, 'x')
-        #self.assertEquals(out, 'x')
+        self.assertEquals(err, '')
+        self.assertEquals(out.rstrip(), file_path.encode('utf-8'))
 
     def test_alias_listing_alphabetical(self):
         self.run_bzr('alias commit="commit --strict"')

@@ -1078,7 +1078,12 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         alias_argv = get_alias(argv[0])
         if alias_argv:
             user_encoding = osutils.get_user_encoding()
-            alias_argv = [a.decode(user_encoding) for a in alias_argv]
+            decoded_args = []
+            for a in alias_argv:
+                if isinstance(a, str):
+                    a = a.decode(user_encoding)
+                decoded_args.append(a)
+            alias_argv = decoded_args
             argv[0] = alias_argv.pop(0)
 
     cmd = argv.pop(0)
