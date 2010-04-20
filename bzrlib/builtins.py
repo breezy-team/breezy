@@ -2695,20 +2695,28 @@ class cmd_ignore(Command):
     _see_also = ['status', 'ignored', 'patterns']
     takes_args = ['name_pattern*']
     takes_options = [
+        Option('default-rules',
+               help='Display the default ignore rules that bzr uses.'),
         Option('old-default-rules',
                help='Write out the ignore rules bzr < 0.9 always used.')
         ]
 
-    def run(self, name_pattern_list=None, old_default_rules=None):
+    def run(self, name_pattern_list=None, default_rules=None,
+            old_default_rules=None):
         from bzrlib import ignores
-        if old_default_rules is not None:
-            # dump the rules and exit
-            for pattern in ignores.OLD_DEFAULTS:
-                self.outf.write("%s\n" % pattern)
+        if default_rules or old_default_rules:
+            if default_rules is not None:
+                # dump the default rules and exit
+                for pattern in ignores.USER_DEFAULTS:
+                    self.outf.write("%s\n" % pattern)
+            if old_default_rules is not None:
+                # dump the rules and exit
+                for pattern in ignores.OLD_DEFAULTS:
+                    self.outf.write("%s\n" % pattern)
             return
         if not name_pattern_list:
             raise errors.BzrCommandError("ignore requires at least one "
-                                  "NAME_PATTERN or --old-default-rules")
+                "NAME_PATTERN, --default-rules or --old-default-rules")
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
         for name_pattern in name_pattern_list:
