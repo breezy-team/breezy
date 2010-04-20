@@ -1595,13 +1595,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         return self._real_repository.inventories
 
     @needs_write_lock
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This is not currently implemented within the smart server.
         """
         self._ensure_real()
-        return self._real_repository.pack(hint=hint)
+        return self._real_repository.pack(hint=hint, clean_obsolete_packs=clean_obsolete_packs)
 
     @property
     def revisions(self):
