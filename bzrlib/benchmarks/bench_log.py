@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for tree transform performance"""
 
@@ -101,12 +101,12 @@ class LogBenchmark(Benchmark):
         self.time(log_screenful)
 
     def test_cmd_log(self):
-        """Test execution of the log command.""" 
+        """Test execution of the log command."""
         tree = self.make_many_commit_tree(hardlink=True)
         self.time(self.run_bzr, ['log', '-r', '-4..'])
 
     def test_cmd_log_subprocess(self):
-        """Text startup and execution of the log command.""" 
+        """Text startup and execution of the log command."""
         tree = self.make_many_commit_tree(hardlink=True)
         self.time(self.run_bzr_subprocess, 'log', '-r', '-4..')
 

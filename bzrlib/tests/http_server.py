@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import errno
 import httplib
@@ -31,11 +31,8 @@ import urllib
 import urlparse
 
 from bzrlib import transport
+from bzrlib.tests import test_server
 from bzrlib.transport import local
-
-
-class WebserverNotAvailable(Exception):
-    pass
 
 
 class BadWebserverPath(ValueError):
@@ -141,7 +138,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             # common)
             self.send_response(301)
             self.send_header("Location", self.path + "/")
-            # Indicates that the body is empty for HTTP/1.1 clients 
+            # Indicates that the body is empty for HTTP/1.1 clients
             self.send_header('Content-Length', '0')
             self.end_headers()
             return None
@@ -181,7 +178,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             content_length += self._header_line_length(
                 'Content-Range', 'bytes %d-%d/%d' % (start, end, file_size))
             content_length += len('\r\n') # end headers
-            content_length += end - start # + 1
+            content_length += end - start + 1
         content_length += len(boundary_line)
         self.send_header('Content-length', content_length)
         self.end_headers()
@@ -322,9 +319,9 @@ class TestingHTTPServerMixin:
         self.test_case_server = test_case_server
         self._home_dir = test_case_server._home_dir
 
-    def tearDown(self):
+    def stop_server(self):
          """Called to clean-up the server.
- 
+
          Since the server may be (surely is, even) in a blocking listen, we
          shutdown its socket before closing it.
          """
@@ -347,7 +344,12 @@ class TestingHTTPServerMixin:
              # WSAENOTCONN (10057) 'Socket is not connected' is harmless on
              # windows (occurs before the first connection attempt
              # vila--20071230)
-             if not len(e.args) or e.args[0] != 10057:
+
+             # 'Socket is not connected' can also occur on OSX, with a
+             # "regular" ENOTCONN (when something went wrong during test case
+             # setup leading to self.setUp() *not* being called but
+             # self.stop_server() still being called -- vila20081106
+             if not len(e.args) or e.args[0] not in (errno.ENOTCONN, 10057):
                  raise
          # Let the server properly close the socket
          self.server_close()
@@ -380,6 +382,23 @@ class TestingThreadingHTTPServer(SocketServer.ThreadingTCPServer,
         # process. This is prophylactic as we should not leave the threads
         # lying around.
         self.daemon_threads = True
+
+    def process_request_thread(self, request, client_address):
+        SocketServer.ThreadingTCPServer.process_request_thread(
+            self, request, client_address)
+        # Under some circumstances (as in bug #383920), we need to force the
+        # shutdown as python delays it until gc occur otherwise and the client
+        # may hang.
+        try:
+            # The request process has been completed, the thread is about to
+            # die, let's shutdown the socket if we can.
+            request.shutdown(socket.SHUT_RDWR)
+        except (socket.error, select.error), e:
+            if e[0] in (errno.EBADF, errno.ENOTCONN):
+                # Right, the socket is already down
+                pass
+            else:
+                raise
 
 
 class HttpServer(transport.Server):
@@ -419,6 +438,9 @@ class HttpServer(transport.Server):
         # Allows tests to verify number of GET requests issued
         self.GET_request_nb = 0
 
+    def create_httpd(self, serv_cls, rhandler_cls):
+        return serv_cls((self.host, self.port), self.request_handler, self)
+
     def __repr__(self):
         return "%s(%s:%s)" % \
             (self.__class__.__name__, self.host, self.port)
@@ -440,8 +462,8 @@ class HttpServer(transport.Server):
             if serv_cls is None:
                 raise httplib.UnknownProtocol(proto_vers)
             else:
-                self._httpd = serv_cls((self.host, self.port), rhandler, self)
-            host, self.port = self._httpd.socket.getsockname()
+                self._httpd = self.create_httpd(serv_cls, rhandler)
+            self.host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
     def _http_start(self):
@@ -473,13 +495,16 @@ class HttpServer(transport.Server):
             except socket.timeout:
                 pass
             except (socket.error, select.error), e:
-               if e[0] == errno.EBADF:
-                   # Starting with python-2.6, handle_request may raise socket
-                   # or select exceptions when the server is shut down (as we
-                   # do).
-                   pass
-               else:
-                   raise
+                if (e[0] == errno.EBADF
+                    or (sys.platform == 'win32' and e[0] == 10038)):
+                    # Starting with python-2.6, handle_request may raise socket
+                    # or select exceptions when the server is shut down (as we
+                    # do).
+                    # 10038 = WSAENOTSOCK
+                    # http://msdn.microsoft.com/en-us/library/ms740668%28VS.85%29.aspx
+                    pass
+                else:
+                    raise
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)
@@ -497,17 +522,18 @@ class HttpServer(transport.Server):
         """Capture Server log output."""
         self.logs.append(format % args)
 
-    def setUp(self, backing_transport_server=None):
-        """See bzrlib.transport.Server.setUp.
-        
+    def start_server(self, backing_transport_server=None):
+        """See bzrlib.transport.Server.start_server.
+
         :param backing_transport_server: The transport that requests over this
             protocol should be forwarded to. Note that this is currently not
             supported for HTTP.
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        if not (backing_transport_server is None or \
-                isinstance(backing_transport_server, local.LocalURLServer)):
+        if not (backing_transport_server is None
+                or isinstance(backing_transport_server,
+                              test_server.LocalURLServer)):
             raise AssertionError(
                 "HTTPServer currently assumes local transport, got %s" % \
                 backing_transport_server)
@@ -533,9 +559,8 @@ class HttpServer(transport.Server):
         self._http_starting.release()
         self.logs = []
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        self._httpd.tearDown()
+    def stop_server(self):
+        self._httpd.stop_server()
         self._http_running = False
         # We don't need to 'self._http_thread.join()' here since the thread is
         # a daemonic one and will be garbage collected anyway. Joining just

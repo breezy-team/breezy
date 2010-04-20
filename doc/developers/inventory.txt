@@ -49,7 +49,7 @@ Overall efficiency and scaling is constrained by the bottom level structure
 that an inventory is stored as. We have a number of goals we want to achieve:
 
  1. Allow commit to write less than the full tree's data in to the repository
-    in the general case. 
+    in the general case.
  2. Allow the data that is written to be calculated without examining every
     versioned path in the tree.
  3. Generate the exact same representation for a given inventory regardless of
@@ -83,7 +83,7 @@ Current situation
 -----------------
 
 The xml based implementation we use today layers the inventory as a bytestring
-which is stored under a single key; the bytestring is then compressed as a 
+which is stored under a single key; the bytestring is then compressed as a
 delta against the bytestring of its left hand parent by the knit code.
 
 Gap analysis:
@@ -140,8 +140,8 @@ Design elements to achieve the goals in a future inventory implementation
 -------------------------------------------------------------------------
 
  * Split up the logical document into smaller serialised fragements. For
-   instance hash buckets or nodes in a tree of some sort. By serialising in 
-   smaller units, we can increase the number of smaller units rather than 
+   instance hash buckets or nodes in a tree of some sort. By serialising in
+   smaller units, we can increase the number of smaller units rather than
    their size as the tree grows; as long as two similar trees have similar
    serialised forms, the amount of different content should be quite high.
 
@@ -166,7 +166,7 @@ Design elements to achieve the goals in a future inventory implementation
 
  * Working tree to arbitrary history revision deltas/comparisons can be scaled
    up by doing a two-step (fixed at two!) delta combining - delta(tree, basis)
-   and then combine that with delta(basis, arbitrary_revision) using the 
+   and then combine that with delta(basis, arbitrary_revision) using the
    repositories ability to get a delta cheaply.
 
  * The key primitives we need seem to be:
@@ -263,7 +263,7 @@ For content maps, VALUE::
 
 The path and content maps are populated simply by serialising every inventory
 entry and inserting them into both the path map and the content map. The maps
-start with just a single leaf node with an empty prefix. 
+start with just a single leaf node with an empty prefix.
 
 
 Apply
@@ -439,15 +439,175 @@ Insertion
    formerly linked. (This will normally bubble down due to keeping densely
    packed nodes).
    To shrink the prefix of a leaf node, create an internal node with the same
-   prefix, then choose a width for the internal node such that the contents 
+   prefix, then choose a width for the internal node such that the contents
    of the leaf all fit into new leaves obeying the min_size and max_size rules.
    The largest prefix possible should be chosen, to obey the
-   higher-nodes-are-denser rule. That rule also gives room in leaf nodes for 
+   higher-nodes-are-denser rule. That rule also gives room in leaf nodes for
    growth without affecting the parent node packing.
 #. Update the CHK pointers - serialise every altered node to generate a CHK,
    and update the CHK placeholder in the nodes parent; then reserialise the
-   parent. CHK pointer propogation can be done lazily when many updates are
+   parent. CHK pointer propagation can be done lazily when many updates are
    expected.
 
 Multiple versions of nodes for the same PREFIX and internal prefix width should
 compress well for the same tree.
+
+
+Inventory deltas
+================
+
+An inventory is a serialization of the in-memory inventory delta.  To serialize
+an inventory delta, one takes an existing inventory delta and the revision_id
+of the revision it was created it against and the revision id of the inventory
+which should result by applying the delta to the parent.  We then serialize
+every item in the delta in a simple format:
+
+'format: bzr inventory delta v1 (1.14)' NL
+'parent:' SP BASIS_INVENTORY NL
+'version:' SP NULL_OR_REVISION NL
+'versioned_root:' SP BOOL NL
+'tree_references:' SP BOOL NL
+DELTA_LINES
+
+DELTA_LINES ::= (DELTA_LINE NL)*
+DELTA_LINE ::= OLDPATH NULL NEWPATH NULL file-id NULL PARENT_ID NULL LAST_MODIFIED NULL CONTENT
+SP ::= ' '
+BOOL ::= 'true' | 'false'
+NULL ::= \x00
+OLDPATH ::= NONE | PATH
+NEWPATH ::= NONE | PATH
+NONE ::= 'None'
+PATH ::= path
+PARENT_ID ::= FILE_ID | ''
+CONTENT ::= DELETED_CONTENT | FILE_CONTENT | DIR_CONTENT | TREE_CONTENT | LINK_CONTENT
+DELETED_CONTENT ::= 'deleted'
+FILE_CONTENT ::= 'file' NULL text_size NULL EXEC NULL text_sha1
+DIR_CONTENT ::= 'dir'
+TREE_CONTENT ::= 'tree' NULL tree-revision
+LINK_CONTENT ::= 'link' NULL link-target
+BASIS_INVENTORY ::= NULL_OR_REVISION
+LAST_MODIFIED ::= NULL_OR_REVISION
+NULL_OR_REVISION ::= 'null:' | REVISION
+REVISION ::= revision-id-in-utf8-no-whitespace
+EXEC ::= '' | 'Y'
+
+DELTA_LINES is lexicographically sorted.
+
+Some explanation is in order. When NEWPATH is 'None' a delete has been
+recorded, and because this inventory delta is not attempting to be a reversible
+delta, the only other valid fields are OLDPATH and 'file-id'. PARENT_ID is ''
+when a delete has been recorded or when recording a new root entry.
+
+
+Delta consistency
+=================
+
+Inventory deltas and more broadly changes between trees are a significant part
+of bzr's core operations: they are key components in status, diff, commit,
+and merge (although merge uses tree transform, deltas contain the changes that
+are applied to the transform). Our ability to perform a given operation depends
+on us creating consistent deltas between trees. Inconsistent deltas lead to
+errors and bugs, or even just unexpected conflicts.
+
+An inventory delta is a transform to change an inventory A into another
+inventory B (in patch terms its a perfect patch). Sometimes, for instance in a
+regular commit, inventory B is known at the time we create the delta. Other
+times, B is not known because the user is requesting that some parts of the
+second inventory they have are masked out from consideration. When this happens
+we create a delta that when applied to A creates a B we haven't seen in total
+before. In this situation we need to ensure that B will be internally
+consistent. Deltas are unidirectional, a delta(A, B) creates B from A, but
+cannot be used to create A from B.
+
+Deltas are expressed as a list of (oldpath, newpath, fileid, entry) tuples. The
+fileid, entry elements are normative; the old and new paths are strong hints
+but not currently guaranteed to be accurate. (This is a shame and something we
+should tighten up). Deltas are required to list all removals explicitly -
+removing the parent of an entry doesn't remove the entry.
+
+Applying a delta to an inventory consists of:
+ - removing all fileids for which entry is None
+ - adding or replacing all other fileids
+ - detecting consistency errors
+
+An interesting aspect of delta inconsistencies is when we notice them:
+ - Silent errors which our application logic misses
+ - Visible errors we catch during application, so bad data isn't stored in
+   the system.
+
+The minimum safe level for our application logic would be to catch all errors
+during application. Making generation never generate inconsistent deltas is
+a seperate but necessary condition for robust code.
+
+An inconsistent delta is one which:
+ - after application to an inventory the inventory is an impossible state.
+ - has the same fileid, or oldpath(not-None), or newpath(not-None) multiple
+   times.
+ - has a fileid field different to the entry.fileid in the same item in the
+   delta.
+ - has an entry that is in an impossible state (e.g. a directory with a text
+   size)
+
+Forms of inventory inconsistency deltas can carry/cause:
+ - An entry newly introduced to a path without also removing or relocating any
+   existing entry at that path. (Duplicate paths)
+ - An entry whose parent id isn't present in the tree. (Missing parent).
+ - Having oldpath or newpath not be actual original path or resulting path.
+   (Wrong path)
+ - An entry whose parent is not a directory. (Under non-directory).
+ - An entry that is internally inconsistent.
+ - An entry that is already present in the tree (Duplicate id)
+
+Known causes of inconsistency:
+ - A 'new' entry which the inventory already has - when this is a directory
+   even arbitrary file ids under the 'new' entry are more likely to collide on
+   paths.
+ - Removing a directory without recursively removing its children - causes
+   Missing parent.
+ - Recording a change to an entry without including all changed entries found
+   following its parents up to and includin the root - can cause duplicate
+   paths, missing parents, wrong path, under non-directory.
+
+Avoiding inconsistent deltas
+----------------------------
+
+The simplest thing is to never create partial deltas, as it is trivial to
+be consistent when all data is examined every time. However users sometimes
+want to specify a subset of the changes in their tree when they do an operation
+which needs to create a delta - such as commit.
+
+We have a choice about handling user requests that can generate inconsistent
+deltas. We can alter or interpret the request in such a way that the delta will
+be consistent, but perhaps larger than the user had intended. Or we can
+identify problematic situations and abort, specifying to the user why we have
+aborted and likely things they can do to make their request generate a
+consistent delta.
+
+Currently we attempt to expand/interpret the request so that the user is not
+required to understand all the internal constraints of the system: if they
+request 'foo/bar' we automatically include foo. This works but can surprise
+the user sometimes when things they didn't explicitly request are committed.
+
+Different trees can use different algorithms to expand the request as long as
+they produce consistent deltas. As part of getting a consistent UI we require
+that all trees expand the paths requested downwards. Beyond that as long as
+the delta is consistent it is up to the tree.
+
+Given two trees, source and target, and a set of selected file ids to check for
+changes and if changed in a delta between them, we have to expand that set by
+the following rules, to get consistent deltas. The test for consistency is that
+if the resulting delta is applied to source, to create a third tree 'output',
+and the paths in the delta match the paths in source and output, only one file
+id is at each path in output, and no file ids are missing parents, then the
+delta is consistent.
+
+Firstly, the parent ids to the root for all of the file ids that have actually
+changed must be considered. Unless they are all examined the paths in the delta
+may be wrong.
+
+Secondly, when an item included in the delta has a new path which is the same
+as a path in source, the fileid of that path in source must be included.
+Failing to do this leads to multiple ids tryin to share a path in output.
+
+Thirdly, when an item changes its kind from 'directory' to anything else in the
+delta, all of the direct children of the directory in source must be included.

@@ -1,5 +1,4 @@
-# Copyright (C) 2004 - 2008 Aaron Bentley, Canonical Ltd
-# <aaron.bentley@utoronto.ca>
+# Copyright (C) 2005-2010 Aaron Bentley, Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 import os.path
@@ -21,27 +20,47 @@ import os.path
 from bzrlib.tests import TestCase
 
 from bzrlib.iterablefile import IterableFile
-from bzrlib.patches import (MalformedLine, 
-                            MalformedHunkHeader, 
-                            MalformedPatchHeader, 
-                            ContextLine, 
+from bzrlib.patches import (MalformedLine,
+                            MalformedHunkHeader,
+                            MalformedPatchHeader,
+                            BinaryPatch,
+                            BinaryFiles,
+                            Patch,
+                            ContextLine,
                             InsertLine,
-                            RemoveLine, 
-                            difference_index, 
+                            RemoveLine,
+                            difference_index,
                             get_patch_names,
-                            hunk_from_header, 
-                            iter_patched, 
+                            hunk_from_header,
+                            iter_patched,
+                            iter_patched_from_hunks,
                             parse_line,
                             parse_patch,
-                            parse_patches)
+                            parse_patches,
+                            NO_NL)
 
 
 class PatchesTester(TestCase):
 
     def datafile(self, filename):
-        data_path = os.path.join(os.path.dirname(__file__), 
+        data_path = os.path.join(os.path.dirname(__file__),
                                  "test_patches_data", filename)
         return file(data_path, "rb")
+
+    def data_lines(self, filename):
+        datafile = self.datafile(filename)
+        try:
+            return datafile.readlines()
+        finally:
+            datafile.close()
+
+    def test_parse_patches_leading_noise(self):
+        # https://bugs.edge.launchpad.net/bzr/+bug/502076
+        # https://code.edge.launchpad.net/~toshio/bzr/allow-dirty-patches/+merge/18854
+        lines = ["diff -pruN commands.py",
+            "--- orig/commands.py",
+            "+++ mod/dommands.py"]
+        bits = parse_patches(iter(lines), allow_dirty=True)
 
     def testValidPatchHeader(self):
         """Parse a valid patch header"""
@@ -111,11 +130,15 @@ class PatchesTester(TestCase):
         self.lineThing(" hello\n", ContextLine)
         self.lineThing("+hello\n", InsertLine)
         self.lineThing("-hello\n", RemoveLine)
-    
+
     def testMalformedLine(self):
         """Parse invalid valid hunk lines"""
         self.makeMalformedLine("hello\n")
-    
+
+    def testMalformedLineNO_NL(self):
+        """Parse invalid '\ No newline at end of file' in hunk lines"""
+        self.makeMalformedLine(NO_NL)
+
     def compare_parsed(self, patchtext):
         lines = patchtext.splitlines(True)
         patch = parse_patch(lines.__iter__())
@@ -129,6 +152,30 @@ class PatchesTester(TestCase):
         """Test parsing a whole patch"""
         patchtext = self.datafile("patchtext.patch").read()
         self.compare_parsed(patchtext)
+
+    def test_parse_binary(self):
+        """Test parsing a whole patch"""
+        patches = parse_patches(self.data_lines("binary.patch"))
+        self.assertIs(BinaryPatch, patches[0].__class__)
+        self.assertIs(Patch, patches[1].__class__)
+        self.assertContainsRe(patches[0].oldname, '^bar\t')
+        self.assertContainsRe(patches[0].newname, '^qux\t')
+        self.assertContainsRe(str(patches[0]),
+                                  'Binary files bar\t.* and qux\t.* differ\n')
+
+    def test_parse_binary_after_normal(self):
+        patches = parse_patches(self.data_lines("binary-after-normal.patch"))
+        self.assertIs(BinaryPatch, patches[1].__class__)
+        self.assertIs(Patch, patches[0].__class__)
+        self.assertContainsRe(patches[1].oldname, '^bar\t')
+        self.assertContainsRe(patches[1].newname, '^qux\t')
+        self.assertContainsRe(str(patches[1]),
+                                  'Binary files bar\t.* and qux\t.* differ\n')
+
+    def test_roundtrip_binary(self):
+        patchtext = ''.join(self.data_lines("binary.patch"))
+        patches = parse_patches(patchtext.splitlines(True))
+        self.assertEqual(patchtext, ''.join(str(p) for p in patches))
 
     def testInit(self):
         """Handle patches missing half the position, range tuple"""
@@ -173,6 +220,7 @@ class PatchesTester(TestCase):
             ('diff-4', 'orig-4', 'mod-4'),
             ('diff-5', 'orig-5', 'mod-5'),
             ('diff-6', 'orig-6', 'mod-6'),
+            ('diff-7', 'orig-7', 'mod-7'),
         ]
         for diff, orig, mod in files:
             patch = self.datafile(diff)
@@ -180,6 +228,34 @@ class PatchesTester(TestCase):
             mod_lines = list(self.datafile(mod))
 
             patched_file = IterableFile(iter_patched(orig_lines, patch))
+            lines = []
+            count = 0
+            for patch_line in patched_file:
+                self.assertEqual(patch_line, mod_lines[count])
+                count += 1
+            self.assertEqual(count, len(mod_lines))
+
+    def test_iter_patched_binary(self):
+        binary_lines = self.data_lines('binary.patch')
+        e = self.assertRaises(BinaryFiles, iter_patched, [], binary_lines)
+
+
+    def test_iter_patched_from_hunks(self):
+        """Test a few patch files, and make sure they work."""
+        files = [
+            ('diff-2', 'orig-2', 'mod-2'),
+            ('diff-3', 'orig-3', 'mod-3'),
+            ('diff-4', 'orig-4', 'mod-4'),
+            ('diff-5', 'orig-5', 'mod-5'),
+            ('diff-6', 'orig-6', 'mod-6'),
+            ('diff-7', 'orig-7', 'mod-7'),
+        ]
+        for diff, orig, mod in files:
+            parsed = parse_patch(self.datafile(diff))
+            orig_lines = list(self.datafile(orig))
+            mod_lines = list(self.datafile(mod))
+            iter_patched = iter_patched_from_hunks(orig_lines, parsed.hunks)
+            patched_file = IterableFile(iter_patched)
             lines = []
             count = 0
             for patch_line in patched_file:
@@ -227,3 +303,8 @@ class PatchesTester(TestCase):
         for patch in patches:
             patch_files.append((patch.oldname, patch.newname))
         self.assertEqual(patch_files, filenames)
+
+    def testStatsValues(self):
+        """Test the added, removed and hunks values for stats_values."""
+        patch = parse_patch(self.datafile("diff"))
+        self.assertEqual((299, 407, 48), patch.stats_values())

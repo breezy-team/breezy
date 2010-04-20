@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 from bzrlib import (
@@ -53,8 +53,19 @@ class TestCommitWithBoundBranch(
         # commit do not provide a directory parameter, we have to change dir
         # manually
         os.chdir('local')
-        # cmd_commit translates BoundBranchOutOfDate into BzrCommandError
-        self.assertRaises(errors.BzrCommandError, commit.run,
+        self.assertRaises(errors.BoundBranchOutOfDate, commit.run,
                           message=u'empty commit', unchanged=True)
         self.assertEquals(1, len(self.connections))
 
+    def test_commit_local(self):
+        """Commits with --local should not connect to the master!"""
+        self.start_logging_connections()
+
+        commit = builtins.cmd_commit()
+        # commit do not provide a directory parameter, we have to change dir
+        # manually
+        os.chdir('local')
+        commit.run(message=u'empty commit', unchanged=True, local=True)
+
+        #it shouldn't open any connections
+        self.assertEquals(0, len(self.connections))

@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,9 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
-import textwrap
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import registry, help_topics
 from bzrlib.lazy_import import lazy_import
@@ -41,16 +39,38 @@ of converting bug IDs into URLs.
 
 _bugs_help = \
 """When making a commit, metadata about bugs fixed by that change can be
-recorded by using the --fixes option. For each bug marked as fixed, an
+recorded by using the ``--fixes`` option. For each bug marked as fixed, an
 entry is included in the 'bugs' revision property stating '<url> <status>'.
 (The only ``status`` value currently supported is ``fixed.``)
-Support for Launchpad's central bug tracker is built in. For other bug
-trackers, configuration is required in advance so that the correct URL
-can be recorded.
 
-In addition to Launchpad, Bazaar directly supports the generation of
-URLs appropriate for Bugzilla and Trac. If your project uses a different
-bug tracker, it is easy to add support for it.
+The ``--fixes`` option allows you to specify a bug tracker and a bug identifier
+rather than a full URL. This looks like::
+
+    bzr commit --fixes <tracker>:<id>
+
+where "<tracker>" is an identifier for the bug tracker, and "<id>" is the
+identifier for that bug within the bugtracker, usually the bug number.
+
+Bazaar knows about a few bug trackers that have many users. If
+you use one of these bug trackers then there is no setup required to
+use this feature, you just need to know the tracker identifier to use.
+These are the bugtrackers that are built in:
+
+  ============================ ============ ============
+  URL                          Abbreviation Example
+  ============================ ============ ============
+  https://bugs.launchpad.net/  lp           lp:12345
+  http://bugs.debian.org/      deb          deb:12345
+  http://bugzilla.gnome.org/   gnome        gnome:12345
+  ============================ ============ ============
+
+For the bug trackers not listed above configuration is required.
+Support for generating the URLs for any project using Bugzilla or Trac
+is built in, along with a template mechanism for other bugtrackers with
+simple URL schemes. If your bug tracker can't be described by one
+of the schemes described below then you can write a plugin to support
+it.
+
 If you use Bugzilla or Trac, then you only need to set a configuration
 variable which contains the base URL of the bug tracker. These options
 can go into ``bazaar.conf``, ``branch.conf`` or into a branch-specific
@@ -60,11 +80,16 @@ for each of the projects you work on.
 Note: As you provide a short name for each tracker, you can specify one or
 more bugs in one or more trackers at commit time if you wish.
 
-bugzilla_<tracker_abbreviation>_url
------------------------------------
+Launchpad
+---------
+
+Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2.
+
+bugzilla_<tracker>_url
+----------------------
 
 If present, the location of the Bugzilla bug tracker referred to by
-<tracker_abbreviation>. This option can then be used together with ``bzr commit
+<tracker>. This option can then be used together with ``bzr commit
 --fixes`` to mark bugs in that tracker as being fixed by that commit. For
 example::
 
@@ -73,11 +98,11 @@ example::
 would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
 fixed.
 
-trac_<tracker_abbrevation>_url
-------------------------------
+trac_<tracker>_url
+------------------
 
 If present, the location of the Trac instance referred to by
-<tracker_abbreviation>. This option can then be used together with ``bzr commit
+<tracker>. This option can then be used together with ``bzr commit
 --fixes`` to mark bugs in that tracker as being fixed by that commit. For
 example::
 
@@ -86,11 +111,11 @@ example::
 would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
 fixed.
 
-bugtracker_<tracker_abbrevation>_url
-------------------------------------
+bugtracker_<tracker>_url
+------------------------
 
 If present, the location of a generic bug tracker instance referred to by
-<tracker_abbreviation>. The location must contain an ``{id}`` placeholder,
+<tracker>. The location must contain an ``{id}`` placeholder,
 which will be replaced by a specific bug ID. This option can then be used
 together with ``bzr commit --fixes`` to mark bugs in that tracker as being
 fixed by that commit. For example::
@@ -258,3 +283,19 @@ class GenericBugTracker(URLParametrizedIntegerBugTracker):
 
 
 tracker_registry.register('generic', GenericBugTracker())
+
+
+FIXED = 'fixed'
+
+ALLOWED_BUG_STATUSES = set([FIXED])
+
+
+def encode_fixes_bug_urls(bug_urls):
+    """Get the revision property value for a commit that fixes bugs.
+
+    :param bug_urls: An iterable of escaped URLs to bugs. These normally
+        come from `get_bug_url`.
+    :return: A string that will be set as the 'bugs' property of a revision
+        as part of a commit.
+    """
+    return '\n'.join(('%s %s' % (url, FIXED)) for url in bug_urls)

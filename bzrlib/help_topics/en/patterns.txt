@@ -23,3 +23,6 @@ Patterns may also be Python regular expressions. Regular expression
 patterns are identified by a 'RE:' prefix followed by the regular
 expression.  Regular expression patterns may not include named or
 numbered groups.
+
+Ignore patterns may be prefixed with '!', which means that a filename
+matched by that pattern will not be ignored.

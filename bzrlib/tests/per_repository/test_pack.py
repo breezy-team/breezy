@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for repository packing."""
 
@@ -24,3 +24,14 @@ class TestPack(TestCaseWithRepository):
     def test_pack_empty_does_not_error(self):
         repo = self.make_repository('.')
         repo.pack()
+
+    def test_pack_accepts_opaque_hint(self):
+        # For requesting packs of a repository where some data is known to be
+        # unoptimal we permit packing just some data via a hint. If the hint is
+        # illegible it is ignored.
+        tree = self.make_branch_and_tree('tree')
+        rev1 = tree.commit('1')
+        rev2 = tree.commit('2')
+        rev3 = tree.commit('3')
+        rev4 = tree.commit('4')
+        tree.branch.repository.pack(hint=[rev3, rev4])

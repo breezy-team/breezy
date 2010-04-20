@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,25 +12,75 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Reconfigure a bzrdir into a new tree/branch/repository layout"""
+"""Reconfigure a bzrdir into a new tree/branch/repository layout.
+
+Various types of reconfiguration operation are available either by
+constructing a class or using a factory method on Reconfigure.
+"""
+
 
 from bzrlib import (
     branch,
     bzrdir,
     errors,
+    trace,
+    ui,
+    urlutils,
     )
+
+
+# TODO: common base class for all reconfigure operations, making no
+# assumptions about what kind of change will be done.
+
+
+class ReconfigureStackedOn(object):
+    """Reconfigures a branch to be stacked on another branch."""
+
+    def apply(self, bzrdir, stacked_on_url):
+        branch = bzrdir.open_branch()
+        # it may be a path relative to the cwd or a url; the branch wants
+        # a path relative to itself...
+        on_url = urlutils.relative_url(branch.base,
+            urlutils.normalize_url(stacked_on_url))
+        branch.lock_write()
+        try:
+            branch.set_stacked_on_url(on_url)
+            if not trace.is_quiet():
+                ui.ui_factory.note(
+                    "%s is now stacked on %s\n"
+                    % (branch.base, branch.get_stacked_on_url()))
+        finally:
+            branch.unlock()
+
+
+class ReconfigureUnstacked(object):
+
+    def apply(self, bzrdir):
+        branch = bzrdir.open_branch()
+        branch.lock_write()
+        try:
+            branch.set_stacked_on_url(None)
+            if not trace.is_quiet():
+                ui.ui_factory.note(
+                    "%s is now not stacked\n"
+                    % (branch.base,))
+        finally:
+            branch.unlock()
+
 
 class Reconfigure(object):
 
     def __init__(self, bzrdir, new_bound_location=None):
         self.bzrdir = bzrdir
         self.new_bound_location = new_bound_location
+        self.local_repository = None
         try:
             self.repository = self.bzrdir.find_repository()
         except errors.NoRepositoryPresent:
             self.repository = None
+            self.local_repository = None
         else:
             if (self.repository.bzrdir.root_transport.base ==
                 self.bzrdir.root_transport.base):
@@ -62,6 +112,7 @@ class Reconfigure(object):
         self._create_tree = False
         self._create_repository = False
         self._destroy_repository = False
+        self._repository_trees = None
 
     @staticmethod
     def to_branch(bzrdir):
@@ -140,6 +191,21 @@ class Reconfigure(object):
             raise errors.AlreadyStandalone(bzrdir)
         return reconfiguration
 
+    @classmethod
+    def set_repository_trees(klass, bzrdir, with_trees):
+        """Adjust a repository's working tree presence default"""
+        reconfiguration = klass(bzrdir)
+        if not reconfiguration.repository.is_shared():
+            raise errors.ReconfigurationNotSupported(reconfiguration.bzrdir)
+        if with_trees and reconfiguration.repository.make_working_trees():
+            raise errors.AlreadyWithTrees(bzrdir)
+        elif (not with_trees
+              and not reconfiguration.repository.make_working_trees()):
+            raise errors.AlreadyWithNoTrees(bzrdir)
+        else:
+            reconfiguration._repository_trees = with_trees
+        return reconfiguration
+
     def _plan_changes(self, want_tree, want_branch, want_bound,
                       want_reference):
         """Determine which changes are needed to assume the configuration"""
@@ -199,9 +265,7 @@ class Reconfigure(object):
 
     def _check(self):
         """Raise if reconfiguration would destroy local changes"""
-        if self._destroy_tree:
-            changes = self.tree.changes_from(self.tree.basis_tree())
-            if changes.has_changed():
+        if self._destroy_tree and self.tree.has_changes():
                 raise errors.UncommittedChanges(self.tree)
         if self._create_reference and self.local_branch is not None:
             reference_branch = branch.Branch.open(self._select_bind_location())
@@ -252,7 +316,20 @@ class Reconfigure(object):
         if not force:
             self._check()
         if self._create_repository:
-            repo = self.bzrdir.create_repository()
+            if self.local_branch and not self._destroy_branch:
+                old_repo = self.local_branch.repository
+            elif self._create_branch and self.referenced_branch is not None:
+                old_repo = self.referenced_branch.repository
+            else:
+                old_repo = None
+            if old_repo is not None:
+                repository_format = old_repo._format
+            else:
+                repository_format = None
+            if repository_format is not None:
+                repo = repository_format.initialize(self.bzrdir)
+            else:
+                repo = self.bzrdir.create_repository()
             if self.local_branch and not self._destroy_branch:
                 repo.fetch(self.local_branch.repository,
                            self.local_branch.last_revision())
@@ -286,11 +363,12 @@ class Reconfigure(object):
                 local_branch.set_last_revision_info(*last_revision_info)
             if self._destroy_reference:
                 self.referenced_branch.tags.merge_to(local_branch.tags)
+                self.referenced_branch.update_references(local_branch)
         else:
             local_branch = self.local_branch
         if self._create_reference:
             format = branch.BranchReferenceFormat().initialize(self.bzrdir,
-                reference_branch)
+                target_branch=reference_branch)
         if self._destroy_tree:
             self.bzrdir.destroy_workingtree()
         if self._create_tree:
@@ -302,3 +380,5 @@ class Reconfigure(object):
             local_branch.bind(branch.Branch.open(bind_location))
         if self._destroy_repository:
             self.bzrdir.destroy_repository()
+        if self._repository_trees is not None:
+            repo.set_make_working_trees(self._repository_trees)

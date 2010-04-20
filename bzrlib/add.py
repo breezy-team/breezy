@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Helper functions for adding files to working trees."""
 
@@ -35,7 +35,7 @@ class AddAction(object):
 
         :param to_file: The stream to write into. This is expected to take
             Unicode paths. If not supplied, it will default to ``sys.stdout``.
-        :param should_print: If False, printing will be supressed.
+        :param should_print: If False, printing will be suppressed.
         """
         self._to_file = to_file
         if to_file is None:
@@ -54,7 +54,7 @@ class AddAction(object):
         :param kind: The kind of the object being added.
         """
         if self.should_print:
-            self._to_file.write('added %s\n' % _quote(path.raw_path))
+            self._to_file.write('adding %s\n' % _quote(path.raw_path))
         return None
 
 
@@ -73,7 +73,7 @@ class AddFromBaseAction(AddAction):
         file_id, base_path = self._get_base_file_id(path, parent_ie)
         if file_id is not None:
             if self.should_print:
-                self._to_file.write('added %s w/ file id from %s\n'
+                self._to_file.write('adding %s w/ file id from %s\n'
                                     % (path.raw_path, base_path))
         else:
             # we aren't doing anything special, so let the default

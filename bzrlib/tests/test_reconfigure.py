@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,10 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     branch as _mod_branch,
+    bzrdir,
     errors,
     reconfigure,
     repository,
@@ -37,6 +38,19 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
         tree.add('file')
+        reconfiguration = reconfigure.Reconfigure.to_branch(tree.bzrdir)
+        self.assertRaises(errors.UncommittedChanges, reconfiguration.apply)
+        reconfiguration.apply(force=True)
+        self.assertRaises(errors.NoWorkingTree, workingtree.WorkingTree.open,
+                          'tree')
+
+    def test_tree_with_pending_merge_to_branch(self):
+        tree = self.make_branch_and_tree('tree')
+        other_tree = tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree(['other/file'])
+        other_tree.add('file')
+        other_tree.commit('file added')
+        tree.merge_from_branch(other_tree.branch)
         reconfiguration = reconfigure.Reconfigure.to_branch(tree.bzrdir)
         self.assertRaises(errors.UncommittedChanges, reconfiguration.apply)
         reconfiguration.apply(force=True)
@@ -377,3 +391,55 @@ class TestReconfigure(tests.TestCaseWithTransport):
     def test_unsynced_branch_to_lightweight_checkout_forced(self):
         reconfiguration = self.make_unsynced_branch_reconfiguration()
         reconfiguration.apply(force=True)
+
+    def make_repository_with_without_trees(self, with_trees):
+        repo = self.make_repository('repo', shared=True)
+        repo.set_make_working_trees(with_trees)
+        return repo
+
+    def test_make_with_trees(self):
+        repo = self.make_repository_with_without_trees(False)
+        reconfiguration = reconfigure.Reconfigure.set_repository_trees(
+            repo.bzrdir, True)
+        reconfiguration.apply()
+        self.assertIs(True, repo.make_working_trees())
+
+    def test_make_without_trees(self):
+        repo = self.make_repository_with_without_trees(True)
+        reconfiguration = reconfigure.Reconfigure.set_repository_trees(
+            repo.bzrdir, False)
+        reconfiguration.apply()
+        self.assertIs(False, repo.make_working_trees())
+
+    def test_make_with_trees_already_with_trees(self):
+        repo = self.make_repository_with_without_trees(True)
+        e = self.assertRaises(errors.AlreadyWithTrees,
+           reconfigure.Reconfigure.set_repository_trees, repo.bzrdir, True)
+        self.assertContainsRe(str(e),
+            r"Shared repository '.*' already creates working trees.")
+
+    def test_make_without_trees_already_no_trees(self):
+        repo = self.make_repository_with_without_trees(False)
+        e = self.assertRaises(errors.AlreadyWithNoTrees,
+            reconfigure.Reconfigure.set_repository_trees, repo.bzrdir, False)
+        self.assertContainsRe(str(e),
+            r"Shared repository '.*' already doesn't create working trees.")
+
+    def test_repository_tree_reconfiguration_not_supported(self):
+        tree = self.make_branch_and_tree('tree')
+        e = self.assertRaises(errors.ReconfigurationNotSupported,
+            reconfigure.Reconfigure.set_repository_trees, tree.bzrdir, None)
+        self.assertContainsRe(str(e),
+            r"Requested reconfiguration of '.*' is not supported.")
+
+    def test_lightweight_checkout_to_tree_preserves_reference_locations(self):
+        format = bzrdir.format_registry.make_bzrdir('1.9')
+        format.set_branch_format(_mod_branch.BzrBranchFormat8())
+        tree = self.make_branch_and_tree('tree', format=format)
+        tree.branch.set_reference_info('file_id', 'path', '../location')
+        checkout = tree.branch.create_checkout('checkout', lightweight=True)
+        reconfiguration = reconfigure.Reconfigure.to_tree(checkout.bzrdir)
+        reconfiguration.apply()
+        checkout_branch = checkout.bzrdir.open_branch()
+        self.assertEqual(('path', '../location'),
+                         checkout_branch.get_reference_info('file_id'))

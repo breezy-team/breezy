@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport for the local filesystem.
 
@@ -39,14 +39,14 @@ from bzrlib.trace import mutter
 from bzrlib.transport import LateReadError
 """)
 
-from bzrlib.transport import Transport, Server
+from bzrlib import transport
 
 
-_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
-_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY
+_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
+_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
 
 
-class LocalTransport(Transport):
+class LocalTransport(transport.Transport):
     """This is the transport agent for local filesystem access."""
 
     def __init__(self, base):
@@ -71,13 +71,13 @@ class LocalTransport(Transport):
             self._local_base = ''
             super(LocalTransport, self).__init__(base)
             return
-            
+
         super(LocalTransport, self).__init__(base)
         self._local_base = urlutils.local_path_from_url(base)
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
-        Because the local filesystem does not require a connection, 
+        Because the local filesystem does not require a connection,
         we can just return a new object.
         """
         if offset is None:
@@ -160,7 +160,7 @@ class LocalTransport(Transport):
             transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
-            return open(path, 'rb')
+            return osutils.open_file(path, 'rb')
         except (IOError, OSError),e:
             if e.errno == errno.EISDIR:
                 return LateReadError(relpath)
@@ -171,7 +171,7 @@ class LocalTransport(Transport):
 
         :param relpath: Location to put the contents, relative to base.
         :param f:       File-like object.
-        :param mode: The mode for the newly created file, 
+        :param mode: The mode for the newly created file,
                      None means just use the default
         """
 
@@ -204,7 +204,8 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
         try:
-            fp.write(bytes)
+            if bytes:
+                fp.write(bytes)
             fp.commit()
         finally:
             fp.close()
@@ -285,7 +286,8 @@ class LocalTransport(Transport):
     def put_bytes_non_atomic(self, relpath, bytes, mode=None,
                              create_parent_dir=False, dir_mode=None):
         def writer(fd):
-            os.write(fd, bytes)
+            if bytes:
+                os.write(fd, bytes)
         self._put_non_atomic_helper(relpath, writer, mode=mode,
                                     create_parent_dir=create_parent_dir,
                                     dir_mode=dir_mode)
@@ -327,7 +329,7 @@ class LocalTransport(Transport):
         # initialise the file
         self.put_bytes_non_atomic(relpath, "", mode=mode)
         abspath = self._abspath(relpath)
-        handle = open(abspath, 'wb')
+        handle = osutils.open_file(abspath, 'wb')
         if mode is not None:
             self._check_mode_and_size(abspath, handle.fileno(), mode)
         transport._file_streams[self.abspath(relpath)] = handle
@@ -370,7 +372,8 @@ class LocalTransport(Transport):
         file_abspath, fd = self._get_append_file(relpath, mode=mode)
         try:
             result = self._check_mode_and_size(file_abspath, fd, mode=mode)
-            os.write(fd, bytes)
+            if bytes:
+                os.write(fd, bytes)
         finally:
             os.close(fd)
         return result
@@ -397,7 +400,7 @@ class LocalTransport(Transport):
     def rename(self, rel_from, rel_to):
         path_from = self._abspath(rel_from)
         try:
-            # *don't* call bzrlib.osutils.rename, because we want to 
+            # *don't* call bzrlib.osutils.rename, because we want to
             # detect errors on rename
             os.rename(path_from, self._abspath(rel_to))
         except (IOError, OSError),e:
@@ -478,7 +481,7 @@ class LocalTransport(Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            return os.stat(path)
+            return os.lstat(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
@@ -512,6 +515,33 @@ class LocalTransport(Transport):
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
+    if osutils.host_os_dereferences_symlinks():
+        def readlink(self, relpath):
+            """See Transport.readlink."""
+            return osutils.readlink(self._abspath(relpath))
+
+    if osutils.hardlinks_good():
+        def hardlink(self, source, link_name):
+            """See Transport.link."""
+            try:
+                os.link(self._abspath(source), self._abspath(link_name))
+            except (IOError, OSError), e:
+                self._translate_error(e, source)
+
+    if osutils.has_symlinks():
+        def symlink(self, source, link_name):
+            """See Transport.symlink."""
+            abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
+            source_rel = urlutils.file_relpath(
+                urlutils.strip_trailing_slash(abs_link_dirpath),
+                urlutils.strip_trailing_slash(self.abspath(source))
+            )
+
+            try:
+                os.symlink(source_rel, self._abspath(link_name))
+            except (IOError, OSError), e:
+                self._translate_error(e, source_rel)
+
     def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':
             # anyone else?
@@ -536,7 +566,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
 
     def clone(self, offset=None):
         """Return a new LocalTransport with root at self.base + offset
-        Because the local filesystem does not require a connection, 
+        Because the local filesystem does not require a connection,
         we can just return a new object.
         """
         if offset is None:
@@ -551,26 +581,7 @@ class EmulatedWin32LocalTransport(LocalTransport):
             return EmulatedWin32LocalTransport(abspath)
 
 
-class LocalURLServer(Server):
-    """A pretend server for local transports, using file:// urls.
-    
-    Of course no actual server is required to access the local filesystem, so
-    this just exists to tell the test code how to get to it.
-    """
-
-    def setUp(self):
-        """Setup the server to service requests.
-        
-        :param decorated_transport: ignored by this implementation.
-        """
-
-    def get_url(self):
-        """See Transport.Server.get_url."""
-        return urlutils.local_path_to_url('')
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [
-            (LocalTransport, LocalURLServer),
-            ]
+    from bzrlib.tests import test_server
+    return [(LocalTransport, test_server.LocalURLServer),]

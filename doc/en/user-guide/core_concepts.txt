@@ -50,9 +50,10 @@ are generated on the fly when commands are executing, because they
 depend on which revision is the tip (i.e. most recent revision)
 in the branch.
 
-See `Specifying revisions`_ in the appendices for a closer look at
-the numerous ways that revisions and ranges of revisions can be specified
-in Bazaar, and `Understanding Revision Numbers`_ for a more detailed
+See `Specifying revisions <specifying_revisions.html>`_ in the appendices
+for a closer look at the numerous ways that revisions and ranges of
+revisions can be specified in Bazaar, and `Understanding Revision Numbers
+<zen.html#understanding-revision-numbers>`_ for a more detailed
 description of revision numbering.
 
 .. *TODO: add diagram*
@@ -108,11 +109,15 @@ should become easier to understand. The simplest way of using Bazaar is
 to use a *standalone tree*, which has a working tree, branch, and repository
 all in a single location. Other common scenarios include:
 
-* *Shared repositories* - working tree and branch are colocated, but the
-  repository is in a higher level directory.
+* `Shared repositories <branching_a_project.html#a-reminder-about-shared-repositories>`_
+  - working tree and branch are colocated, but the repository is in a higher level
+  directory.
 
-* *Lightweight checkouts* - branch is stored is a different location
-  to the working tree.
+* `Stacked branches <stacked.html>`_ - branch stores just its
+  unique revisions, using its parent's repository for common revisions.
+
+* `Lightweight checkouts <using_checkouts.html#getting-a-lightweight-checkout>`_
+  - branch is stored in a different location to the working tree.
 
 The best way to use Bazaar, however, depends on your needs. Let's take a
 look at some common workflows next.

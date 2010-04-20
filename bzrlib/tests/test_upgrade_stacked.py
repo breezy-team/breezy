@@ -12,13 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Tests for upgrades of various stacking situations."""
 
 from bzrlib import (
     bzrdir,
+    check,
     errors,
     tests,
     )
@@ -32,9 +33,9 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
 
     def test_stack_upgrade(self):
         """Correct checks when stacked-on repository is upgraded.
-        
-        We initially stack on a repo with the same rich root support, 
-        we then upgrade it and should fail, we then upgrade the overlaid 
+
+        We initially stack on a repo with the same rich root support,
+        we then upgrade it and should fail, we then upgrade the overlaid
         repository.
         """
         base = self.make_branch_and_tree('base',
@@ -56,16 +57,17 @@ class TestStackUpgrade(tests.TestCaseWithTransport):
             self.assertRaises(errors.IncompatibleRepositories,
                 stacked.open_branch)
         else:
-            stacked.open_branch().check()
+            check.check_dwim('stacked', False, True, True)
         stacked = bzrdir.BzrDir.open('stacked')
         # but we can upgrade the stacked repository
         upgrade('stacked', new_format)
-        # and now it's ok
+        # and now it opens ok
         stacked = bzrdir.BzrDir.open('stacked')
-        stacked.open_branch().check()
+        # And passes check.
+        check.check_dwim('stacked', False, True, True)
 
 
-def load_tests(basic_tests, module, test_loader):
+def load_tests(basic_tests, module, loader):
     """Generate dynamic scenario tests.
 
     Called by the bzrlib test framework.
@@ -83,8 +85,5 @@ def load_tests(basic_tests, module, test_loader):
             dict(scenario_old_format=old_name,
                 scenario_new_format=new_name,
                 scenario_model_change=model_change)))
-    adapter = tests.TestScenarioApplier()
-    adapter.scenarios = scenarios
-    suite = tests.TestSuite()
-    tests.adapt_tests(basic_tests, adapter, suite)
-    return suite
+    suite = loader.suiteClass()
+    return tests.multiply_tests(basic_tests, scenarios, suite)

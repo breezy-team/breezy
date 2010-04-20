@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Rule-based definition of preferences for selected files in selected branches.
 
@@ -21,6 +21,7 @@ See ``bzr help rules`` for details.
 
 from bzrlib import (
     config,
+    cmdline,
     errors,
     globbing,
     osutils,
@@ -34,6 +35,9 @@ RULES_TREE_FILENAME = ".bzrrules"
 # Namespace prefix for per file preferences
 FILE_PREFS_PREFIX = 'name '
 FILE_PREFS_PREFIX_LEN = len(FILE_PREFS_PREFIX)
+
+# The object providing default rules
+_per_user_searcher = None
 
 
 class _RulesSearcher(object):
@@ -73,8 +77,14 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         options = {'encoding': 'utf-8'}
         self._cfg = configobj.ConfigObj(inifile, options=options)
         sections = self._cfg.keys()
-        patterns = [s[FILE_PREFS_PREFIX_LEN:] for s in sections
-            if s.startswith(FILE_PREFS_PREFIX)]
+        patterns = []
+        self.pattern_to_section = {}
+        for s in sections:
+            if s.startswith(FILE_PREFS_PREFIX):
+                file_patterns = cmdline.split(s[FILE_PREFS_PREFIX_LEN:])
+                patterns.extend(file_patterns)
+                for fp in file_patterns:
+                    self.pattern_to_section[fp] = s
         if len(patterns) < len(sections):
             unknowns = [s for s in sections
                 if not s.startswith(FILE_PREFS_PREFIX)]
@@ -92,7 +102,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         if pat is None:
             return ()
         else:
-            all = self._cfg[FILE_PREFS_PREFIX + pat]
+            all = self._cfg[self.pattern_to_section[pat]]
             return tuple(all.items())
 
     def get_selected_items(self, path, names):
@@ -103,7 +113,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         if pat is None:
             return ()
         else:
-            all = self._cfg[FILE_PREFS_PREFIX + pat]
+            all = self._cfg[self.pattern_to_section[pat]]
             return tuple((k, all.get(k)) for k in names)
 
 
@@ -138,5 +148,8 @@ def rules_filename():
     return osutils.pathjoin(config.config_dir(), 'rules')
 
 
-# The object providing default rules
-_per_user_searcher = _IniBasedRulesSearcher(rules_filename())
+def reset_rules():
+    global _per_user_searcher
+    _per_user_searcher = _IniBasedRulesSearcher(rules_filename())
+
+reset_rules()

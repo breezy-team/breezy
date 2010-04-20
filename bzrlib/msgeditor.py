@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
 """Commit message editor support."""
@@ -23,47 +23,56 @@ import os
 from subprocess import call
 import sys
 
-import bzrlib
-import bzrlib.config as config
-from bzrlib import osutils
+from bzrlib import (
+    config,
+    osutils,
+    trace,
+    transport,
+    ui,
+    )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
-from bzrlib.trace import warning, mutter
+from bzrlib.hooks import HookPoint, Hooks
 
 
 def _get_editor():
     """Return a sequence of possible editor binaries for the current platform"""
     try:
-        yield os.environ["BZR_EDITOR"]
+        yield os.environ["BZR_EDITOR"], '$BZR_EDITOR'
     except KeyError:
         pass
 
     e = config.GlobalConfig().get_editor()
     if e is not None:
-        yield e
-        
+        yield e, config.config_filename()
+
     for varname in 'VISUAL', 'EDITOR':
         if varname in os.environ:
-            yield os.environ[varname]
+            yield os.environ[varname], '$' + varname
 
     if sys.platform == 'win32':
         for editor in 'wordpad.exe', 'notepad.exe':
-            yield editor
+            yield editor, None
     else:
         for editor in ['/usr/bin/editor', 'vi', 'pico', 'nano', 'joe']:
-            yield editor
+            yield editor, None
 
 
 def _run_editor(filename):
     """Try to execute an editor to edit the commit message."""
-    for e in _get_editor():
-        edargs = e.split(' ')
+    for candidate, candidate_source in _get_editor():
+        edargs = candidate.split(' ')
         try:
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError, e:
-            # We're searching for an editor, so catch safe errors and continue
-            if e.errno in (errno.ENOENT, ):
-                continue
+            if candidate_source is not None:
+                # We tried this editor because some user configuration (an
+                # environment variable or config file) said to try it.  Let
+                # the user know their configuration is broken.
+                trace.warning(
+                    'Could not start editor "%s" (specified by %s): %s\n'
+                    % (candidate, candidate_source, str(e)))
+            continue
             raise
         if x == 0:
             return True
@@ -102,8 +111,8 @@ def edit_commit_message(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     """
 
     if not start_message is None:
-        start_message = start_message.encode(bzrlib.user_encoding)
-    infotext = infotext.encode(bzrlib.user_encoding, 'replace')
+        start_message = start_message.encode(osutils.get_user_encoding())
+    infotext = infotext.encode(osutils.get_user_encoding(), 'replace')
     return edit_commit_message_encoded(infotext, ignoreline, start_message)
 
 
@@ -132,10 +141,21 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     try:
         msgfilename, hasinfo = _create_temp_file_with_commit_template(
                                     infotext, ignoreline, start_message)
-
-        if not msgfilename or not _run_editor(msgfilename):
+        if not msgfilename:
             return None
-        
+        basename = osutils.basename(msgfilename)
+        msg_transport = transport.get_transport(osutils.dirname(msgfilename))
+        reference_content = msg_transport.get_bytes(basename)
+        if not _run_editor(msgfilename):
+            return None
+        edited_content = msg_transport.get_bytes(basename)
+        if edited_content == reference_content:
+            if not ui.ui_factory.get_boolean(
+                "Commit message was not edited, use anyway"):
+                # Returning "" makes cmd_commit raise 'empty commit message
+                # specified' which is a reasonable error, given the user has
+                # rejected using the unedited template.
+                return ""
         started = False
         msg = []
         lastline, nlines = 0, 0
@@ -144,7 +164,7 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
         f = file(msgfilename, 'rU')
         try:
             try:
-                for line in codecs.getreader(bzrlib.user_encoding)(f):
+                for line in codecs.getreader(osutils.get_user_encoding())(f):
                     stripped_line = line.strip()
                     # strip empty line before the log message starts
                     if not started:
@@ -181,7 +201,8 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
             try:
                 os.unlink(msgfilename)
             except IOError, e:
-                warning("failed to unlink %s: %s; ignored", msgfilename, e)
+                trace.warning(
+                    "failed to unlink %s: %s; ignored", msgfilename, e)
 
 
 def _create_temp_file_with_commit_template(infotext,
@@ -237,8 +258,8 @@ def make_commit_message_template(working_tree, specific_files):
     from StringIO import StringIO       # must be unicode-safe
     from bzrlib.status import show_tree_status
     status_tmp = StringIO()
-    show_tree_status(working_tree, specific_files=specific_files, 
-                     to_file=status_tmp)
+    show_tree_status(working_tree, specific_files=specific_files,
+                     to_file=status_tmp, verbose=True)
     return status_tmp.getvalue()
 
 
@@ -267,3 +288,44 @@ def make_commit_message_template_encoded(working_tree, specific_files,
         template = template + '\n' + stream.getvalue()
 
     return template
+
+
+class MessageEditorHooks(Hooks):
+    """A dictionary mapping hook name to a list of callables for message editor
+    hooks.
+
+    e.g. ['commit_message_template'] is the list of items to be called to
+    generate a commit message template
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially.
+        """
+        Hooks.__init__(self)
+        self.create_hook(HookPoint('commit_message_template',
+            "Called when a commit message is being generated. "
+            "commit_message_template is called with the bzrlib.commit.Commit "
+            "object and the message that is known so far. "
+            "commit_message_template must return a new message to use (which "
+            "could be the same as it was given. When there are multiple "
+            "hooks registered for commit_message_template, they are chained "
+            "with the result from the first passed into the second, and so "
+            "on.", (1, 10), None))
+
+
+hooks = MessageEditorHooks()
+
+
+def generate_commit_message_template(commit, start_message=None):
+    """Generate a commit message template.
+
+    :param commit: Commit object for the active commit.
+    :param start_message: Message to start with.
+    :return: A start commit message or None for an empty start commit message.
+    """
+    start_message = None
+    for hook in hooks['commit_message_template']:
+        start_message = hook(commit, start_message)
+    return start_message

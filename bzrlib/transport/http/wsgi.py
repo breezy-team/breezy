@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """WSGI application for bzr HTTP smart server.
 
@@ -25,12 +25,12 @@ from cStringIO import StringIO
 from bzrlib.smart import protocol, medium
 from bzrlib.transport import chroot, get_transport
 from bzrlib.urlutils import local_path_to_url
-    
+
 
 def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
     load_plugins=True, enable_logging=True):
     """Convenience function to construct a WSGI bzr smart server.
-    
+
     :param root: a local path that requests will be relative to.
     :param prefix: See RelpathSetter.
     :param path_var: See RelpathSetter.
@@ -53,7 +53,7 @@ def make_app(root, prefix, path_var='REQUEST_URI', readonly=True,
 
 class RelpathSetter(object):
     """WSGI middleware to set 'bzrlib.relpath' in the environ.
-    
+
     Different servers can invoke a SmartWSGIApp in different ways.  This
     middleware allows an adminstrator to configure how to the SmartWSGIApp will
     determine what path it should be serving for a given request for many common
@@ -65,7 +65,7 @@ class RelpathSetter(object):
     prefix="/some/prefix/" and path_var="REQUEST_URI" will set that request's
     'bzrlib.relpath' variable to "repo/branch".
     """
-    
+
     def __init__(self, app, prefix='', path_var='REQUEST_URI'):
         """Constructor.
 
@@ -106,15 +106,15 @@ class SmartWSGIApp(object):
         # e.g. consider a smart server request for "get /etc/passwd" or
         # something.
         self.chroot_server = chroot.ChrootServer(backing_transport)
-        self.chroot_server.setUp()
+        self.chroot_server.start_server()
         self.backing_transport = get_transport(self.chroot_server.get_url())
         self.root_client_path = root_client_path
         # While the chroot server can technically be torn down at this point,
-        # as all it does is remove the scheme registration from transport's 
-        # protocol dictionary, we don't *just in case* there are parts of 
+        # as all it does is remove the scheme registration from transport's
+        # protocol dictionary, we don't *just in case* there are parts of
         # bzrlib that will invoke 'get_transport' on urls rather than cloning
         # around the existing transport.
-        #self.chroot_server.tearDown()
+        #self.chroot_server.stop_server()
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""
@@ -176,6 +176,7 @@ class SmartWSGIApp(object):
     def make_request(self, transport, write_func, request_bytes, rcp):
         protocol_factory, unused_bytes = medium._get_protocol_factory_for_bytes(
             request_bytes)
-        server_protocol = protocol_factory(transport, write_func, rcp)
+        server_protocol = protocol_factory(
+            transport, write_func, rcp, self.backing_transport)
         server_protocol.accept_bytes(unused_bytes)
         return server_protocol

@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for fetch between repositories of the same type."""
 
@@ -20,8 +20,12 @@ from bzrlib import (
     bzrdir,
     errors,
     gpg,
+    graph,
+    remote,
     repository,
+    tests,
     )
+from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_repository import TestCaseWithRepository
 from bzrlib.transport import get_transport
@@ -31,7 +35,7 @@ class TestFetchSameRepository(TestCaseWithRepository):
 
     def test_fetch(self):
         # smoke test fetch to ensure that the convenience function works.
-        # it is defined as a convenience function with the underlying 
+        # it is defined as a convenience function with the underlying
         # functionality provided by an InterRepository
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
@@ -44,9 +48,19 @@ class TestFetchSameRepository(TestCaseWithRepository):
             raise TestSkipped('Cannot fetch from model2 to model1')
         repo.fetch(tree_a.branch.repository,
                    revision_id=None)
-                   ## pb=bzrlib.progress.DummyProgress())
 
-    def test_fetch_knit3(self):
+    def test_fetch_fails_in_write_group(self):
+        # fetch() manages a write group itself, fetching within one isn't safe.
+        repo = self.make_repository('a')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        # Don't need a specific class - not expecting flow control based on
+        # this.
+        self.assertRaises(errors.BzrError, repo.fetch, repo)
+
+    def test_fetch_to_knit3(self):
         # create a repository of the sort we are testing.
         tree_a = self.make_branch_and_tree('a')
         self.build_tree(['a/foo'])
@@ -80,11 +94,144 @@ class TestFetchSameRepository(TestCaseWithRepository):
         try:
             tree_b = b_bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            raise TestSkipped("cannot make working tree with transport %r"
+            try:
+                tree_b = b_branch.create_checkout('b', lightweight=True)
+            except errors.NotLocalUrl:
+                raise TestSkipped("cannot make working tree with transport %r"
                               % b_bzrdir.transport)
         tree_b.commit('no change', rev_id='rev2')
         rev2_tree = knit3_repo.revision_tree('rev2')
         self.assertEqual('rev1', rev2_tree.inventory.root.revision)
+
+    def do_test_fetch_to_rich_root_sets_parents_correctly(self, result,
+        snapshots, root_id=ROOT_ID, allow_lefthand_ghost=False):
+        """Assert that result is the parents of 'tip' after fetching snapshots.
+
+        This helper constructs a 1.9 format source, and a test-format target
+        and fetches the result of building snapshots in the source, then
+        asserts that the parents of tip are result.
+
+        :param result: A parents list for the inventories.get_parent_map call.
+        :param snapshots: An iterable of snapshot parameters for
+            BranchBuilder.build_snapshot.
+        '"""
+        # This overlaps slightly with the tests for commit builder about graph
+        # consistency.
+        # Cases:
+        repo = self.make_repository('target')
+        remote_format = isinstance(repo, remote.RemoteRepository)
+        if not repo._format.rich_root_data and not remote_format:
+            return # not relevant
+        builder = self.make_branch_builder('source', format='1.9')
+        builder.start_series()
+        for revision_id, parent_ids, actions in snapshots:
+            builder.build_snapshot(revision_id, parent_ids, actions,
+            allow_leftmost_as_ghost=allow_lefthand_ghost)
+        builder.finish_series()
+        source = builder.get_branch()
+        if remote_format and not repo._format.rich_root_data:
+            # use a manual rich root format to ensure the code path is tested.
+            repo = self.make_repository('remote-target',
+                format='1.9-rich-root')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.fetch(source.repository)
+        self.assertEqual(result,
+            repo.texts.get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])
+
+    def test_fetch_to_rich_root_set_parent_no_parents(self):
+        # No parents rev -> No parents
+        self.do_test_fetch_to_rich_root_sets_parents_correctly((),
+            [('tip', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+            ])
+
+    def test_fetch_to_rich_root_set_parent_1_parent(self):
+        # 1 parent rev -> 1 parent
+        self.do_test_fetch_to_rich_root_sets_parents_correctly(
+            ((ROOT_ID, 'base'),),
+            [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+             ('tip', None, []),
+            ])
+
+    def test_fetch_to_rich_root_set_parent_1_ghost_parent(self):
+        # 1 ghost parent -> No parents
+        self.do_test_fetch_to_rich_root_sets_parents_correctly((),
+            [('tip', ['ghost'], [('add', ('', ROOT_ID, 'directory', ''))]),
+            ], allow_lefthand_ghost=True)
+
+    def test_fetch_to_rich_root_set_parent_2_head_parents(self):
+        # 2 parents both heads -> 2 parents
+        self.do_test_fetch_to_rich_root_sets_parents_correctly(
+            ((ROOT_ID, 'left'), (ROOT_ID, 'right')),
+            [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+             ('left', None, []),
+             ('right', ['base'], []),
+             ('tip', ['left', 'right'], []),
+            ])
+
+    def test_fetch_to_rich_root_set_parent_2_parents_1_head(self):
+        # 2 parents one head -> 1 parent
+        self.do_test_fetch_to_rich_root_sets_parents_correctly(
+            ((ROOT_ID, 'right'),),
+            [('left', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+             ('right', None, []),
+             ('tip', ['left', 'right'], []),
+            ])
+
+    def test_fetch_to_rich_root_set_parent_1_parent_different_id_gone(self):
+        # 1 parent different fileid, ours missing -> no parents
+        self.do_test_fetch_to_rich_root_sets_parents_correctly(
+            (),
+            [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+             ('tip', None, [('unversion', ROOT_ID),
+                            ('add', ('', 'my-root', 'directory', '')),
+                            ]),
+            ], root_id='my-root')
+
+    def test_fetch_to_rich_root_set_parent_1_parent_different_id_moved(self):
+        # 1 parent different fileid, ours moved -> 1 parent
+        # (and that parent honours the changing revid of the other location)
+        self.do_test_fetch_to_rich_root_sets_parents_correctly(
+            (('my-root', 'origin'),),
+            [('origin', None, [('add', ('', ROOT_ID, 'directory', '')),
+                             ('add', ('child', 'my-root', 'directory', ''))]),
+             ('base', None, []),
+             ('tip', None, [('unversion', 'my-root'),
+                            ('unversion', ROOT_ID),
+                            ('add', ('', 'my-root', 'directory', '')),
+                            ]),
+            ], root_id='my-root')
+
+    def test_fetch_to_rich_root_set_parent_2_parent_1_different_id_gone(self):
+        # 2 parents, 1 different fileid, our second missing -> 1 parent
+        self.do_test_fetch_to_rich_root_sets_parents_correctly(
+            (('my-root', 'right'),),
+            [('base', None, [('add', ('', ROOT_ID, 'directory', ''))]),
+             ('right', None, [('unversion', ROOT_ID),
+                              ('add', ('', 'my-root', 'directory', ''))]),
+             ('tip', ['base', 'right'], [('unversion', ROOT_ID),
+                            ('add', ('', 'my-root', 'directory', '')),
+                            ]),
+            ], root_id='my-root')
+
+    def test_fetch_to_rich_root_set_parent_2_parent_2_different_id_moved(self):
+        # 2 parents, 1 different fileid, our second moved -> 2 parent
+        # (and that parent honours the changing revid of the other location)
+        self.do_test_fetch_to_rich_root_sets_parents_correctly(
+            (('my-root', 'right'),),
+            # 'my-root' at 'child'.
+            [('origin', None, [('add', ('', ROOT_ID, 'directory', '')),
+                             ('add', ('child', 'my-root', 'directory', ''))]),
+             ('base', None, []),
+            # 'my-root' at root
+             ('right', None, [('unversion', 'my-root'),
+                              ('unversion', ROOT_ID),
+                              ('add', ('', 'my-root', 'directory', ''))]),
+             ('tip', ['base', 'right'], [('unversion', 'my-root'),
+                            ('unversion', ROOT_ID),
+                            ('add', ('', 'my-root', 'directory', '')),
+                            ]),
+            ], root_id='my-root')
 
     def test_fetch_all_from_self(self):
         tree = self.make_branch_and_tree('.')
@@ -153,3 +300,79 @@ class TestFetchSameRepository(TestCaseWithRepository):
         revision_id = tree.commit('test')
         repo.fetch(tree.branch.repository)
         repo.fetch(tree.branch.repository)
+
+    def make_simple_branch_with_ghost(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        builder.build_snapshot('A-id', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
+        builder.finish_series()
+        source_b = builder.get_branch()
+        source_b.lock_read()
+        self.addCleanup(source_b.unlock)
+        return source_b
+
+    def test_fetch_with_ghost(self):
+        source_b = self.make_simple_branch_with_ghost()
+        target = self.make_repository('target')
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        target.fetch(source_b.repository, revision_id='B-id')
+
+    def test_fetch_into_smart_with_ghost(self):
+        trans = self.make_smart_server('target')
+        source_b = self.make_simple_branch_with_ghost()
+        target = self.make_repository('target')
+        # Re-open the repository over the smart protocol
+        target = repository.Repository.open(trans.base)
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        try:
+            target.fetch(source_b.repository, revision_id='B-id')
+        except errors.TokenLockingNotSupported:
+            # The code inside fetch() that tries to lock and then fails, also
+            # causes weird problems with 'lock_not_held' later on...
+            target.lock_read()
+            raise tests.KnownFailure('some repositories fail to fetch'
+                ' via the smart server because of locking issues.')
+
+    def test_fetch_from_smart_with_ghost(self):
+        trans = self.make_smart_server('source')
+        source_b = self.make_simple_branch_with_ghost()
+        target = self.make_repository('target')
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        # Re-open the repository over the smart protocol
+        source = repository.Repository.open(trans.base)
+        source.lock_read()
+        self.addCleanup(source.unlock)
+        target.fetch(source, revision_id='B-id')
+
+
+class TestSource(TestCaseWithRepository):
+    """Tests for/about the results of Repository._get_source."""
+
+    def test_no_absent_records_in_stream_with_ghosts(self):
+        # XXX: Arguably should be in per_interrepository but
+        # doesn't actually gain coverage there; need a specific set of
+        # permutations to cover it.
+        # bug lp:376255 was reported about this.
+        builder = self.make_branch_builder('repo')
+        builder.start_series()
+        builder.build_snapshot('tip', ['ghost'],
+            [('add', ('', 'ROOT_ID', 'directory', ''))],
+            allow_leftmost_as_ghost=True)
+        builder.finish_series()
+        b = builder.get_branch()
+        b.lock_read()
+        self.addCleanup(b.unlock)
+        repo = b.repository
+        source = repo._get_source(repo._format)
+        search = graph.PendingAncestryResult(['tip'], repo)
+        stream = source.get_stream(search)
+        for substream_type, substream in stream:
+            for record in substream:
+                self.assertNotEqual('absent', record.storage_kind,
+                    "Absent record for %s" % (((substream_type,) + record.key),))

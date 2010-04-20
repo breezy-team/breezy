@@ -12,32 +12,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black box tests for the reconcile command."""
 
 
-import bzrlib
-import bzrlib.bzrdir as bzrdir
-from bzrlib.inventory import Inventory
-import bzrlib.repository as repository
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests import TestUIFactory
-from bzrlib.transport import get_transport
-import bzrlib.ui as ui
+from bzrlib import (
+    bzrdir,
+    inventory,
+    repository,
+    tests,
+    )
 
 
-class TrivialTest(TestCaseWithTransport):
-
-    def setUp(self):
-        super(TrivialTest, self).setUp()
-        self.old_format = bzrdir.BzrDirFormat.get_default_format()
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
-        ui.ui_factory = TestUIFactory()
-
-    def restoreDefaults(self):
-        ui.ui_factory = self.old_ui_factory
+class TrivialTest(tests.TestCaseWithTransport):
 
     def test_trivial_reconcile(self):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
@@ -60,7 +48,7 @@ class TrivialTest(TestCaseWithTransport):
         t = bzrdir.BzrDir.create_standalone_workingtree('.')
         # an empty inventory with no revision will trigger reconciliation.
         repo = t.branch.repository
-        inv = Inventory(revision_id='missing')
+        inv = inventory.Inventory(revision_id='missing')
         inv.root.revision='missing'
         repo.lock_write()
         repo.start_write_group()

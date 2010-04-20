@@ -13,7 +13,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Bzrlib specific gzip tunings. We plan to feed these to the upstream gzip."""
 
@@ -52,6 +52,18 @@ def bytes_to_gzip(bytes, factory=zlib.compressobj,
     width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
     crc32=zlib.crc32):
     """Create a gzip file containing bytes and return its content."""
+    return chunks_to_gzip([bytes])
+
+
+def chunks_to_gzip(chunks, factory=zlib.compressobj,
+    level=zlib.Z_DEFAULT_COMPRESSION, method=zlib.DEFLATED,
+    width=-zlib.MAX_WBITS, mem=zlib.DEF_MEM_LEVEL,
+    crc32=zlib.crc32):
+    """Create a gzip file containing chunks and return its content.
+
+    :param chunks: An iterable of strings. Each string can have arbitrary
+        layout.
+    """
     result = [
         '\037\213'  # self.fileobj.write('\037\213')  # magic header
         '\010'      # self.fileobj.write('\010')      # compression method
@@ -69,11 +81,17 @@ def bytes_to_gzip(bytes, factory=zlib.compressobj,
     # using a compressobj avoids a small header and trailer that the compress()
     # utility function adds.
     compress = factory(level, method, width, mem, 0)
-    result.append(compress.compress(bytes))
+    crc = 0
+    total_len = 0
+    for chunk in chunks:
+        crc = crc32(chunk, crc)
+        total_len += len(chunk)
+        zbytes = compress.compress(chunk)
+        if zbytes:
+            result.append(zbytes)
     result.append(compress.flush())
-    result.append(struct.pack("<L", LOWU32(crc32(bytes))))
     # size may exceed 2GB, or even 4GB
-    result.append(struct.pack("<L", LOWU32(len(bytes))))
+    result.append(struct.pack("<LL", LOWU32(crc), LOWU32(total_len)))
     return ''.join(result)
 
 
@@ -114,7 +132,7 @@ class GzipFile(gzip.GzipFile):
         """A tuned version of gzip._write_gzip_header
 
         We have some extra constrains that plain Gzip does not.
-        1) We want to write the whole blob at once. rather than multiple 
+        1) We want to write the whole blob at once. rather than multiple
            calls to fileobj.write().
         2) We never have a filename
         3) We don't care about the time
@@ -136,7 +154,7 @@ class GzipFile(gzip.GzipFile):
 
     def _read(self, size=1024):
         # various optimisations:
-        # reduces lsprof count from 2500 to 
+        # reduces lsprof count from 2500 to
         # 8337 calls in 1272, 365 internal
         if self.fileobj is None:
             raise EOFError, "Reached EOF"
@@ -207,11 +225,11 @@ class GzipFile(gzip.GzipFile):
         """tuned to reduce function calls and eliminate file seeking:
         pass 1:
         reduces lsprof count from 800 to 288
-        4168 in 296 
+        4168 in 296
         avoid U32 call by using struct format L
         4168 in 200
         """
-        # We've read to the end of the file, so we should have 8 bytes of 
+        # We've read to the end of the file, so we should have 8 bytes of
         # unused data in the decompressor. If we don't, there is a corrupt file.
         # We use these 8 bytes to calculate the CRC and the recorded file size.
         # We then check the that the computed CRC and size of the
@@ -228,7 +246,7 @@ class GzipFile(gzip.GzipFile):
 
     def _read_gzip_header(self, bytes=None):
         """Supply bytes if the minimum header size is already read.
-        
+
         :param bytes: 10 bytes of header data.
         """
         """starting cost: 300 in 3998
@@ -271,7 +289,7 @@ class GzipFile(gzip.GzipFile):
 
     def readline(self, size=-1):
         """Tuned to remove buffer length calls in _unread and...
-        
+
         also removes multiple len(c) calls, inlines _unread,
         total savings - lsprof 5800 to 5300
         phase 2:
@@ -281,7 +299,7 @@ class GzipFile(gzip.GzipFile):
         leading to a drop to:
         4168 calls in 1977
         4168 call to read() in 1646
-        - i.e. just reduced the function call overhead. May be worth 
+        - i.e. just reduced the function call overhead. May be worth
           keeping.
         """
         if size < 0: size = sys.maxint
@@ -329,7 +347,7 @@ class GzipFile(gzip.GzipFile):
         # to :
         # 4168 calls in 417.
         # Negative numbers result in reading all the lines
-        
+
         # python's gzip routine uses sizehint. This is a more efficient way
         # than python uses to honor it. But it is even more efficient to
         # just read the entire thing and use cStringIO to split into lines.
@@ -342,12 +360,12 @@ class GzipFile(gzip.GzipFile):
 
     def _unread(self, buf, len_buf=None):
         """tuned to remove unneeded len calls.
-        
+
         because this is such an inner routine in readline, and readline is
         in many inner loops, this has been inlined into readline().
 
         The len_buf parameter combined with the reduction in len calls dropped
-        the lsprof ms count for this routine on my test data from 800 to 200 - 
+        the lsprof ms count for this routine on my test data from 800 to 200 -
         a 75% saving.
         """
         if len_buf is None:
@@ -371,7 +389,7 @@ class GzipFile(gzip.GzipFile):
             self.offset += data_len
 
     def writelines(self, lines):
-        # profiling indicated a significant overhead 
+        # profiling indicated a significant overhead
         # calling write for each line.
         # this batch call is a lot faster :).
         # (4 seconds to 1 seconds for the sample upgrades I was testing).

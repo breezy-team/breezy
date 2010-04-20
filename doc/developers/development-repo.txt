@@ -28,7 +28,7 @@ renamed to e.g. 'development0', 'development1' etc.
 
 When a release of bzr is done, all the older numbered development
 formats will be removed from 'bzr.dev', so we will not be carrying the
-code for them around indefinately. 
+code for them around indefinately.
 
 Support for upgrade and migration
 ---------------------------------
@@ -40,7 +40,7 @@ test out development formats (though we cannot guarantee bugs of course
  - users of a given development format can always get back onto regular
    formats by switching to the next bzr released version which is
    guaranteed to be able to upgrade from that development format.
- - users that routinely use bzr.dev should upgrade to the most recent 
+ - users that routinely use bzr.dev should upgrade to the most recent
    development version available before pulling in bzr.dev changes
    around release time, as that is when old format cleanups will occur.
 
@@ -203,18 +203,36 @@ How to create a new development format
    ``bzrlib.repofmt``. You probably want to reproduce the current
    development format from ``bzrlib.repofmt.pack_repo`` with just new
    disk format strings, ``_get_matching_bzrdir`` and help.
-4. Alter any other things that do class based tests. The easiest way
+4. Register your development format with the various registries. At the
+   moment you need to update:
+
+    1. ``bzrlib/bzrdir.py`` to register the WT/Branch/Repository
+       collection.
+
+    2. ``bzrlib/workingtree.py``, ``bzrlib/branch.py``,
+       ``bzrlib/repository.py``, each one maintains a direct list of
+       their respective formats.
+
+    3. For repositories, you also need to update the InterKnit1and2
+       class. This is responsible for converting between rich-root and
+       non-rich-root repositories.
+
+    4. For repositories based on KnitPackRepository, you need to update
+       ``bzrlib/tests/test_pack_repository.py`` to add the class to the
+       tested permutations.
+
+5. Alter any other things that do class based tests. The easiest way
    to find these is a grep for Development in bzrlib - and please
    refactor as you find these to reduce the relevance this step has,
    as it should not need to exist.
-5. Now subclass/create from scratch/whatever the live object code you
+6. Now subclass/create from scratch/whatever the live object code you
    need to change to introduce your new format. Keep in mind that
    eventually it will become the default format, so please don't keep
    subclassing the last releases code, rather consider making the last
    releases code a subclass of your new code (if there is a lot in
    common) so that we can eventually remove that format once it becomes
    ancient (or relegate it to a plugin).
-6. Once you have made the changes that required a new disk format, you
+7. Once you have made the changes that required a new disk format, you
    should submit the resulting branch to be merged. Other changes - to
    take advantage of whatever new feature you have added - should be
    sent in separately, because the disk level changes are a contention
@@ -226,18 +244,33 @@ Format Details
 development
 -----------
 
-Currently an alias for Development2
+Not currently available, as our development formats are all rich root or
+subtrees now.
+
+development-rich-root
+---------------------
+
+Currently an alias for Development6Subtree
 
 development-subtree
 -------------------
 
-Currently an alias for Development2Subtree
+Currently an alias for Development6Subtree
 
-Development2[Subtree]
----------------------
+Development6RichRoot[Subtree]
+-----------------------------
 
-These formats use B+Tree indices which are considerably faster than
-the earlier indices in bzr.
+These formats use the new groupcompress delta compress and a CHK(Content
+Hash Key) based inventory store which is much faster at incremental
+operations than the prior XML based store.
+*Note* Converting from a non-rich-root to a rich-root format is a
+one-way upgrade, and you cannot merge back afterwards: using this format
+for everyday use is likely to cause all developers of a project to
+upgrade to a rich-root format themselves. This is fine, as bzr is moving
+to make rich-root formats the default and to get all users to upgrade,
+but we have not finalised the migration process, and until we do do not
+recomment that casual users upgrade. Users of bzr-svn are already using
+rich-root formats and can test with this with impunity.
 
 
 ..

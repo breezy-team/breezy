@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A store that keeps the full text of every version.
 
@@ -44,10 +44,10 @@ class TextStore(bzrlib.store.TransportStore):
     def _add_compressed(self, fn, f):
         from cStringIO import StringIO
         from bzrlib.osutils import pumpfile
-        
+
         if isinstance(f, basestring):
             f = StringIO(f)
-            
+
         sio = StringIO()
         gf = gzip.GzipFile(mode='wb', fileobj=sio)
         # if pumpfile handles files that don't fit in ram,

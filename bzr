@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,15 +14,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Bazaar -- a free distributed version-control tool"""
 
 import os
 import sys
+import warnings
 
 # update this on each release
-_script_version = (1, 8, 0)
+_script_version = (2, 2, 0)
 
 if __doc__ is None:
     print "bzr does not support python -OO."
@@ -34,7 +35,7 @@ except AttributeError:
 
 REINVOKE = "__BZR_REINVOKE"
 NEED_VERS = (2, 4)
-KNOWN_PYTHONS = ('python2.4', 'python2.5')
+KNOWN_PYTHONS = ('python2.4', 'python2.5', 'python2.6')
 
 if version_info < NEED_VERS:
     if not os.environ.has_key(REINVOKE):
@@ -62,11 +63,11 @@ if '--profile-imports' in sys.argv:
 if sys.platform == 'darwin':
     # jameinel says this hack is to force python to honor the LANG setting,
     # even on Darwin.  Otherwise it is apparently hardcoded to Mac-Roman,
-    # which is incorrect for the normal Terminal.app which wants UTF-8.  
+    # which is incorrect for the normal Terminal.app which wants UTF-8.
     #
     # "It might be that I should be setting the "system locale" somewhere else
     # on the system, rather than setting LANG=en_US.UTF-8 in .bashrc.
-    # Switching to 'posix' and setting LANG worked for me." 
+    # Switching to 'posix' and setting LANG worked for me."
     #
     # So we can remove this if someone works out the right way to tell Mac
     # Python which encoding to use.  -- mbp 20080703
@@ -77,6 +78,17 @@ if sys.platform == 'darwin':
         sys.platform = 'darwin'
 else:
     import locale
+
+
+# The python2.6 release includes some libraries that have deprecation warnings
+# against the interpreter - see https://bugs.launchpad.net/bzr/+bug/387139
+warnings.filterwarnings('ignore',
+    r"(struct integer overflow masking is deprecated|"
+    r"'L' format requires 0 <= number <= 4294967295)",
+    DeprecationWarning,
+    'gzip',
+    )
+
 
 try:
     locale.setlocale(locale.LC_ALL, '')
@@ -89,6 +101,8 @@ except locale.Error, e:
                      '  of the locale(1p) tool available on POSIX systems.\n'
                      % e)
 
+# instruct bzrlib/__init__.py to install lazy_regex
+sys._bzr_lazy_regex = True
 try:
     import bzrlib
 except ImportError, e:
@@ -107,11 +121,8 @@ if bzrlib.version_info[:3] != _script_version:
 import bzrlib.inspect_for_copy
 bzrlib.inspect_for_copy.import_copy_with_hacked_inspect()
 
-import bzrlib.lazy_regex
-bzrlib.lazy_regex.install_lazy_compile()
-
 import bzrlib.breakin
-bzrlib.breakin.hook_sigquit()
+bzrlib.breakin.hook_debugger_to_signal()
 
 import bzrlib.decorators
 if ('--lsprof' in sys.argv
@@ -127,15 +138,11 @@ import bzrlib.trace
 
 
 if __name__ == '__main__':
-    bzrlib.trace.enable_default_logging()
-    exit_val = bzrlib.commands.main(sys.argv)
+    bzrlib.initialize()
+    exit_val = bzrlib.commands.main()
 
     if profiling:
         profile_imports.log_stack_info(sys.stderr)
-
-    # run anything registered by atexit, because it won't be run in the normal
-    # way
-    sys.exitfunc()
 
     # By this point we really have completed everything we want to do, and
     # there's no point doing any additional cleanup.  Abruptly exiting here
@@ -144,18 +151,7 @@ if __name__ == '__main__':
     # are just about to be discarded anyhow.  This does mean that atexit hooks
     # won't run but we don't use them.  Also file buffers won't be flushed,
     # but our policy is to always close files from a finally block. -- mbp 20070215
-    try:
-        sys.stdout.flush()
-        sys.stderr.flush()
-    except IOError, e:
-        import errno
-        if e.errno in [errno.EINVAL, errno.EPIPE]:
-            pass
-        else:
-            raise
-    if bzrlib.trace._trace_file:
-        # this is also _bzr_log
-        bzrlib.trace._trace_file.flush()
+    sys.exitfunc()
     os._exit(exit_val)
 else:
     raise ImportError("The bzr script cannot be imported.")

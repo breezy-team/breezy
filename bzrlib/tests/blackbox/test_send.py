@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -13,247 +13,427 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import os
 import sys
-from StringIO import StringIO
+from cStringIO import StringIO
 
 from bzrlib import (
-    branch as _mod_branch,
+    branch,
+    bzrdir,
     merge_directive,
+    tests,
     )
 from bzrlib.bundle import serializer
-from bzrlib.bzrdir import BzrDir
-from bzrlib import tests
+from bzrlib.transport import memory
 
 
-def read_bundle(fileobj):
-    md = merge_directive.MergeDirective.from_lines(fileobj.readlines())
-    return serializer.read_bundle(StringIO(md.get_raw_bundle()))
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for the send command."""
+    result = loader.suiteClass()
+
+    # one for each king of change
+    changes_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestSendStrictWithChanges,
+                )))
+    changes_scenarios = [
+        ('uncommitted',
+         dict(_changes_type='_uncommitted_changes')),
+        ('pending_merges',
+         dict(_changes_type='_pending_merges')),
+        ('out-of-sync-trees',
+         dict(_changes_type='_out_of_sync_trees')),
+        ]
+    tests.multiply_tests(changes_tests, changes_scenarios, result)
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
+    return result
 
 
-class TestSend(tests.TestCaseWithTransport):
+class TestSendMixin(object):
 
-    def make_trees(self):
-        grandparent_tree = BzrDir.create_standalone_workingtree('grandparent')
+    _default_command = ['send', '-o-']
+    _default_wd = 'branch'
+
+    def run_send(self, args, cmd=None, rc=0, wd=None, err_re=None):
+        if cmd is None: cmd = self._default_command
+        if wd is None: wd = self._default_wd
+        if err_re is None: err_re = []
+        return self.run_bzr(cmd + args, retcode=rc,
+                            working_dir=wd,
+                            error_regexes=err_re)
+
+    def get_MD(self, args, cmd=None, wd='branch'):
+        out = StringIO(self.run_send(args, cmd=cmd, wd=wd)[0])
+        return merge_directive.MergeDirective.from_lines(out)
+
+    def assertBundleContains(self, revs, args, cmd=None, wd='branch'):
+        md = self.get_MD(args, cmd=cmd, wd=wd)
+        br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
+        self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
+
+
+class TestSend(tests.TestCaseWithTransport, TestSendMixin):
+
+    def setUp(self):
+        super(TestSend, self).setUp()
+        grandparent_tree = bzrdir.BzrDir.create_standalone_workingtree(
+            'grandparent')
         self.build_tree_contents([('grandparent/file1', 'grandparent')])
         grandparent_tree.add('file1')
-        grandparent_tree.commit('initial commit', rev_id='revision1')
+        grandparent_tree.commit('initial commit', rev_id='rev1')
+
         parent_bzrdir = grandparent_tree.bzrdir.sprout('parent')
         parent_tree = parent_bzrdir.open_workingtree()
-        parent_tree.commit('next commit', rev_id='revision2')
+        parent_tree.commit('next commit', rev_id='rev2')
+
         branch_tree = parent_tree.bzrdir.sprout('branch').open_workingtree()
         self.build_tree_contents([('branch/file1', 'branch')])
-        branch_tree.commit('last commit', rev_id='revision3')
+        branch_tree.commit('last commit', rev_id='rev3')
+
+    def assertFormatIs(self, fmt_string, md):
+        self.assertEqual(fmt_string, md.get_raw_bundle().splitlines()[0])
 
     def test_uses_parent(self):
         """Parent location is used as a basis by default"""
-        self.make_trees()
-        os.chdir('grandparent')
-        errmsg = self.run_bzr('send -o-', retcode=3)[1]
+        errmsg = self.run_send([], rc=3, wd='grandparent')[1]
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
-        os.chdir('../branch')
-        stdout, stderr = self.run_bzr('send -o-')
+        stdout, stderr = self.run_send([])
         self.assertEqual(stderr.count('Using saved parent location'), 1)
-        br = read_bundle(StringIO(stdout))
-        self.assertRevisions(br, ['revision3'])
+        self.assertBundleContains(['rev3'], [])
 
     def test_bundle(self):
         """Bundle works like send, except -o is not required"""
-        self.make_trees()
-        os.chdir('grandparent')
-        errmsg = self.run_bzr('bundle', retcode=3)[1]
+        errmsg = self.run_send([], cmd=['bundle'], rc=3, wd='grandparent')[1]
         self.assertContainsRe(errmsg, 'No submit branch known or specified')
-        os.chdir('../branch')
-        stdout, stderr = self.run_bzr('bundle')
+        stdout, stderr = self.run_send([], cmd=['bundle'])
         self.assertEqual(stderr.count('Using saved parent location'), 1)
-        br = read_bundle(StringIO(stdout))
-        self.assertRevisions(br, ['revision3'])
-
-    def assertRevisions(self, bi, expected):
-        self.assertEqual(set(r.revision_id for r in bi.revisions),
-            set(expected))
+        self.assertBundleContains(['rev3'], [], cmd=['bundle'])
 
     def test_uses_submit(self):
         """Submit location can be used and set"""
-        self.make_trees()
-        os.chdir('branch')
-        br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
-        self.assertRevisions(br, ['revision3'])
-        br = read_bundle(StringIO(self.run_bzr('send ../grandparent -o-')[0]))
-        self.assertRevisions(br, ['revision3', 'revision2'])
+        self.assertBundleContains(['rev3'], [])
+        self.assertBundleContains(['rev3', 'rev2'], ['../grandparent'])
         # submit location should be auto-remembered
-        br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
-        self.assertRevisions(br, ['revision3', 'revision2'])
-        self.run_bzr('send ../parent -o-')
-        br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
-        self.assertRevisions(br, ['revision3', 'revision2'])
-        self.run_bzr('send ../parent --remember -o-')
-        br = read_bundle(StringIO(self.run_bzr('send -o-')[0]))
-        self.assertRevisions(br, ['revision3'])
-        err = self.run_bzr('send --remember -o-', retcode=3)[1]
-        self.assertContainsRe(err, 
+        self.assertBundleContains(['rev3', 'rev2'], [])
+
+        self.run_send(['../parent'])
+        # We still point to ../grandparent
+        self.assertBundleContains(['rev3', 'rev2'], [])
+        # Remember parent now
+        self.run_send(['../parent', '--remember'])
+        # Now we point to parent
+        self.assertBundleContains(['rev3'], [])
+
+        err = self.run_send(['--remember'], rc=3)[1]
+        self.assertContainsRe(err,
                               '--remember requires a branch to be specified.')
 
     def test_revision_branch_interaction(self):
-        self.make_trees()
-        os.chdir('branch')
-        bi = read_bundle(StringIO(self.run_bzr('send ../grandparent -o-')[0]))
-        self.assertRevisions(bi, ['revision3', 'revision2'])
-        out = StringIO(self.run_bzr('send ../grandparent -r -2 -o-')[0])
-        bi = read_bundle(out)
-        self.assertRevisions(bi, ['revision2'])
-        sio = StringIO(self.run_bzr('send -r -2..-1 -o-')[0])
-        md = merge_directive.MergeDirective.from_lines(sio.readlines())
-        self.assertEqual('revision2', md.base_revision_id)
-        self.assertEqual('revision3', md.revision_id)
-        sio.seek(0)
-        bi = read_bundle(sio)
-        self.assertRevisions(bi, ['revision2', 'revision3'])
-        self.run_bzr('send ../grandparent -r -2..-1 -o-')
+        self.assertBundleContains(['rev3', 'rev2'], ['../grandparent'])
+        self.assertBundleContains(['rev2'], ['../grandparent', '-r-2'])
+        self.assertBundleContains(['rev3', 'rev2'],
+                                  ['../grandparent', '-r-2..-1'])
+        md = self.get_MD(['-r-2..-1'])
+        self.assertEqual('rev2', md.base_revision_id)
+        self.assertEqual('rev3', md.revision_id)
 
     def test_output(self):
         # check output for consistency
         # win32 stdout converts LF to CRLF,
         # which would break patch-based bundles
-        self.make_trees()        
-        os.chdir('branch')
-        stdout = self.run_bzr_subprocess('send -o-')[0]
-        br = read_bundle(StringIO(stdout))
-        self.assertRevisions(br, ['revision3'])
+        self.assertBundleContains(['rev3'], [])
 
     def test_no_common_ancestor(self):
         foo = self.make_branch_and_tree('foo')
         foo.commit('rev a')
         bar = self.make_branch_and_tree('bar')
         bar.commit('rev b')
-        os.chdir('foo')
-        self.run_bzr('send ../bar -o-')
-
-    def send_directive(self, args):
-        sio = StringIO(self.run_bzr(['send', '-o-'] + args)[0])
-        return merge_directive.MergeDirective.from_lines(sio.readlines())
+        self.run_send(['--from', 'foo', '../bar'], wd='foo')
 
     def test_content_options(self):
         """--no-patch and --no-bundle should work and be independant"""
-        self.make_trees()
-        os.chdir('branch')
-        md = self.send_directive([])
+        md = self.get_MD([])
         self.assertIsNot(None, md.bundle)
         self.assertIsNot(None, md.patch)
 
-        md = self.send_directive(['--format=0.9'])
+        md = self.get_MD(['--format=0.9'])
         self.assertIsNot(None, md.bundle)
         self.assertIsNot(None, md.patch)
 
-        md = self.send_directive(['--no-patch'])
+        md = self.get_MD(['--no-patch'])
         self.assertIsNot(None, md.bundle)
         self.assertIs(None, md.patch)
         self.run_bzr_error(['Format 0.9 does not permit bundle with no patch'],
-                      'send --no-patch --format=0.9 -o-')
-
-        md = self.send_directive(['--no-bundle', '.', '.'])
+                           ['send', '--no-patch', '--format=0.9', '-o-'],
+                           working_dir='branch')
+        md = self.get_MD(['--no-bundle', '.', '.'])
         self.assertIs(None, md.bundle)
         self.assertIsNot(None, md.patch)
 
-        md = self.send_directive(['--no-bundle', '--format=0.9', '../parent',
+        md = self.get_MD(['--no-bundle', '--format=0.9', '../parent',
                                   '.'])
         self.assertIs(None, md.bundle)
         self.assertIsNot(None, md.patch)
 
-        md = self.send_directive(['--no-bundle', '--no-patch', '.', '.'])
+        md = self.get_MD(['--no-bundle', '--no-patch', '.', '.'])
         self.assertIs(None, md.bundle)
         self.assertIs(None, md.patch)
 
-        md = self.send_directive(['--no-bundle', '--no-patch', '--format=0.9',
-                                  '../parent', '.'])
+        md = self.get_MD(['--no-bundle', '--no-patch', '--format=0.9',
+                          '../parent', '.'])
         self.assertIs(None, md.bundle)
         self.assertIs(None, md.patch)
 
     def test_from_option(self):
-        self.make_trees()
         self.run_bzr('send', retcode=3)
-        md = self.send_directive(['--from', 'branch'])
-        self.assertEqual('revision3', md.revision_id)
-        md = self.send_directive(['-f', 'branch'])
-        self.assertEqual('revision3', md.revision_id)
+        md = self.get_MD(['--from', 'branch'])
+        self.assertEqual('rev3', md.revision_id)
+        md = self.get_MD(['-f', 'branch'])
+        self.assertEqual('rev3', md.revision_id)
 
     def test_output_option(self):
-        self.make_trees()
         stdout = self.run_bzr('send -f branch --output file1')[0]
         self.assertEqual('', stdout)
         md_file = open('file1', 'rb')
         self.addCleanup(md_file.close)
-        self.assertContainsRe(md_file.read(), 'revision3')
+        self.assertContainsRe(md_file.read(), 'rev3')
         stdout = self.run_bzr('send -f branch --output -')[0]
-        self.assertContainsRe(stdout, 'revision3')
+        self.assertContainsRe(stdout, 'rev3')
+
+    def test_note_revisions(self):
+        stderr = self.run_send([])[1]
+        self.assertEndsWith(stderr, '\nBundling 1 revision(s).\n')
 
     def test_mailto_option(self):
-        self.make_trees()
-        branch = _mod_branch.Branch.open('branch')
-        branch.get_config().set_user_option('mail_client', 'editor')
-        self.run_bzr_error(('No mail-to address specified',), 'send -f branch')
-        branch.get_config().set_user_option('mail_client', 'bogus')
-        self.run_bzr('send -f branch -o-')
+        b = branch.Branch.open('branch')
+        b.get_config().set_user_option('mail_client', 'editor')
+        self.run_bzr_error(
+            ('No mail-to address \\(--mail-to\\) or output \\(-o\\) specified',
+            ), 'send -f branch')
+        b.get_config().set_user_option('mail_client', 'bogus')
+        self.run_send([])
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch --mail-to jrandom@example.org')
-        branch.get_config().set_user_option('submit_to', 'jrandom@example.org')
+        b.get_config().set_user_option('submit_to', 'jrandom@example.org')
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch')
 
     def test_mailto_child_option(self):
         """Make sure that child_submit_to is used."""
-        self.make_trees()
-        branch = _mod_branch.Branch.open('branch')
-        branch.get_config().set_user_option('mail_client', 'bogus')
-        parent = _mod_branch.Branch.open('parent')
-        parent.get_config().set_user_option('child_submit_to', 
+        b = branch.Branch.open('branch')
+        b.get_config().set_user_option('mail_client', 'bogus')
+        parent = branch.Branch.open('parent')
+        parent.get_config().set_user_option('child_submit_to',
                            'somebody@example.org')
         self.run_bzr_error(('Unknown mail client: bogus',),
                            'send -f branch')
 
     def test_format(self):
-        self.make_trees()
-        s = StringIO(self.run_bzr('send -f branch -o- --format=4')[0])
-        md = merge_directive.MergeDirective.from_lines(s.readlines())
+        md = self.get_MD(['--format=4'])
         self.assertIs(merge_directive.MergeDirective2, md.__class__)
-        s = StringIO(self.run_bzr('send -f branch -o- --format=0.9')[0])
-        md = merge_directive.MergeDirective.from_lines(s.readlines())
-        self.assertContainsRe(md.get_raw_bundle().splitlines()[0],
-            '# Bazaar revision bundle v0.9')
-        s = StringIO(self.run_bzr('bundle -f branch -o- --format=0.9')[0])
-        md = merge_directive.MergeDirective.from_lines(s.readlines())
-        self.assertContainsRe(md.get_raw_bundle().splitlines()[0],
-            '# Bazaar revision bundle v0.9')
+        self.assertFormatIs('# Bazaar revision bundle v4', md)
+
+        md = self.get_MD(['--format=0.9'])
+        self.assertFormatIs('# Bazaar revision bundle v0.9', md)
+
+        md = self.get_MD(['--format=0.9'], cmd=['bundle'])
+        self.assertFormatIs('# Bazaar revision bundle v0.9', md)
         self.assertIs(merge_directive.MergeDirective, md.__class__)
+
         self.run_bzr_error(['Bad value .* for option .format.'],
                             'send -f branch -o- --format=0.999')[0]
 
+    def test_format_child_option(self):
+        parent_config = branch.Branch.open('parent').get_config()
+        parent_config.set_user_option('child_submit_format', '4')
+        md = self.get_MD([])
+        self.assertIs(merge_directive.MergeDirective2, md.__class__)
+
+        parent_config.set_user_option('child_submit_format', '0.9')
+        md = self.get_MD([])
+        self.assertFormatIs('# Bazaar revision bundle v0.9', md)
+
+        md = self.get_MD([], cmd=['bundle'])
+        self.assertFormatIs('# Bazaar revision bundle v0.9', md)
+        self.assertIs(merge_directive.MergeDirective, md.__class__)
+
+        parent_config.set_user_option('child_submit_format', '0.999')
+        self.run_bzr_error(["No such send format '0.999'"],
+                            'send -f branch -o-')[0]
+
     def test_message_option(self):
-        self.make_trees()
         self.run_bzr('send', retcode=3)
-        md = self.send_directive(['--from', 'branch'])
+        md = self.get_MD([])
         self.assertIs(None, md.message)
-        md = self.send_directive(['--from', 'branch', '-m', 'my message'])
+        md = self.get_MD(['-m', 'my message'])
         self.assertEqual('my message', md.message)
 
     def test_omitted_revision(self):
-        self.make_trees()
-        md = self.send_directive(['-r-2..', '--from', 'branch'])
-        self.assertEqual('revision2', md.base_revision_id)
-        self.assertEqual('revision3', md.revision_id)
-        md = self.send_directive(['-r..3', '--from', 'branch',
-                                 'grandparent'])
-        self.assertEqual('revision1', md.base_revision_id)
-        self.assertEqual('revision3', md.revision_id)
+        md = self.get_MD(['-r-2..'])
+        self.assertEqual('rev2', md.base_revision_id)
+        self.assertEqual('rev3', md.revision_id)
+        md = self.get_MD(['-r..3', '--from', 'branch', 'grandparent'], wd='.')
+        self.assertEqual('rev1', md.base_revision_id)
+        self.assertEqual('rev3', md.revision_id)
 
     def test_nonexistant_branch(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist/"
-        else:
-            location = "/i/do/not/exist/"
+        self.vfs_transport_factory = memory.MemoryServer
+        location = self.get_url('absentdir/')
         out, err = self.run_bzr(["send", "--from", location], retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
+
+
+class TestSendStrictMixin(TestSendMixin):
+
+    def make_parent_and_local_branches(self):
+        # Create a 'parent' branch as the base
+        self.parent_tree = bzrdir.BzrDir.create_standalone_workingtree('parent')
+        self.build_tree_contents([('parent/file', 'parent')])
+        self.parent_tree.add('file')
+        self.parent_tree.commit('first commit', rev_id='parent')
+        # Branch 'local' from parent and do a change
+        local_bzrdir = self.parent_tree.bzrdir.sprout('local')
+        self.local_tree = local_bzrdir.open_workingtree()
+        self.build_tree_contents([('local/file', 'local')])
+        self.local_tree.commit('second commit', rev_id='local')
+
+    _default_command = ['send', '-o-', '../parent']
+    _default_wd = 'local'
+    _default_sent_revs = ['local']
+    _default_errors = ['Working tree ".*/local/" has uncommitted '
+                       'changes \(See bzr status\)\.',]
+
+    def set_config_send_strict(self, value):
+        # set config var (any of bazaar.conf, locations.conf, branch.conf
+        # should do)
+        conf = self.local_tree.branch.get_config()
+        conf.set_user_option('send_strict', value)
+
+    def assertSendFails(self, args):
+        self.run_send(args, rc=3, err_re=self._default_errors)
+
+    def assertSendSucceeds(self, args, revs=None, with_warning=False):
+        if with_warning:
+            err_re = self._default_errors
+        else:
+            err_re = []
+        if revs is None:
+            revs = self._default_sent_revs
+        out, err = self.run_send(args, err_re=err_re)
+        bundling_revs = 'Bundling %d revision(s).\n' % len(revs)
+        if with_warning:
+            self.assertEndsWith(err, bundling_revs)
+        else:
+            self.assertEquals(bundling_revs, err)
+        md = merge_directive.MergeDirective.from_lines(StringIO(out))
+        self.assertEqual('parent', md.base_revision_id)
+        br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
+        self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
+
+
+class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
+                                   TestSendStrictMixin):
+
+    def setUp(self):
+        super(TestSendStrictWithoutChanges, self).setUp()
+        self.make_parent_and_local_branches()
+
+    def test_send_default(self):
+        self.assertSendSucceeds([])
+
+    def test_send_strict(self):
+        self.assertSendSucceeds(['--strict'])
+
+    def test_send_no_strict(self):
+        self.assertSendSucceeds(['--no-strict'])
+
+    def test_send_config_var_strict(self):
+        self.set_config_send_strict('true')
+        self.assertSendSucceeds([])
+
+    def test_send_config_var_no_strict(self):
+        self.set_config_send_strict('false')
+        self.assertSendSucceeds([])
+
+
+class TestSendStrictWithChanges(tests.TestCaseWithTransport,
+                                   TestSendStrictMixin):
+
+    _changes_type = None # Set by load_tests
+
+    def setUp(self):
+        super(TestSendStrictWithChanges, self).setUp()
+        # load tests set _changes_types to the name of the method we want to
+        # call now
+        do_changes_func = getattr(self, self._changes_type)
+        do_changes_func()
+
+    def _uncommitted_changes(self):
+        self.make_parent_and_local_branches()
+        # Make a change without committing it
+        self.build_tree_contents([('local/file', 'modified')])
+
+    def _pending_merges(self):
+        self.make_parent_and_local_branches()
+        # Create 'other' branch containing a new file
+        other_bzrdir = self.parent_tree.bzrdir.sprout('other')
+        other_tree = other_bzrdir.open_workingtree()
+        self.build_tree_contents([('other/other-file', 'other')])
+        other_tree.add('other-file')
+        other_tree.commit('other commit', rev_id='other')
+        # Merge and revert, leaving a pending merge
+        self.local_tree.merge_from_branch(other_tree.branch)
+        self.local_tree.revert(filenames=['other-file'], backups=False)
+
+    def _out_of_sync_trees(self):
+        self.make_parent_and_local_branches()
+        self.run_bzr(['checkout', '--lightweight', 'local', 'checkout'])
+        # Make a change and commit it
+        self.build_tree_contents([('local/file', 'modified in local')])
+        self.local_tree.commit('modify file', rev_id='modified-in-local')
+        # Exercise commands from the checkout directory
+        self._default_wd = 'checkout'
+        self._default_errors = ["Working tree is out of date, please run"
+                                " 'bzr update'\.",]
+        self._default_sent_revs = ['modified-in-local', 'local']
+
+    def test_send_default(self):
+        self.assertSendSucceeds([], with_warning=True)
+
+    def test_send_with_revision(self):
+        self.assertSendSucceeds(['-r', 'revid:local'], revs=['local'])
+
+    def test_send_no_strict(self):
+        self.assertSendSucceeds(['--no-strict'])
+
+    def test_send_strict_with_changes(self):
+        self.assertSendFails(['--strict'])
+
+    def test_send_respect_config_var_strict(self):
+        self.set_config_send_strict('true')
+        self.assertSendFails([])
+        self.assertSendSucceeds(['--no-strict'])
+
+    def test_send_bogus_config_var_ignored(self):
+        self.set_config_send_strict("I'm unsure")
+        self.assertSendSucceeds([], with_warning=True)
+
+    def test_send_no_strict_command_line_override_config(self):
+        self.set_config_send_strict('true')
+        self.assertSendFails([])
+        self.assertSendSucceeds(['--no-strict'])
+
+    def test_send_strict_command_line_override_config(self):
+        self.set_config_send_strict('false')
+        self.assertSendSucceeds([])
+        self.assertSendFails(['--strict'])
+
+
+class TestBundleStrictWithoutChanges(TestSendStrictWithoutChanges):
+
+    _default_command = ['bundle-revisions', '../parent']

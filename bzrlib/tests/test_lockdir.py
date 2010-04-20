@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for LockDir"""
 
@@ -126,7 +126,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1.attempt_lock()
         lf2 = LockDir(t, 'test_lock')
         try:
-            # locking is between LockDir instances; aliases within 
+            # locking is between LockDir instances; aliases within
             # a single process are not detected
             lf2.attempt_lock()
             self.fail('Failed to detect lock collision')
@@ -142,6 +142,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
         lf1.attempt_lock()
+        self.addCleanup(lf1.unlock)
         # lock is held, should get some info on it
         info1 = lf1.peek()
         self.assertEqual(set(info1.keys()),
@@ -161,13 +162,14 @@ class TestLockDir(TestCaseWithTransport):
         lf2 = LockDir(self.get_readonly_transport(), 'test_lock')
         self.assertEqual(lf2.peek(), None)
         lf1.attempt_lock()
+        self.addCleanup(lf1.unlock)
         info2 = lf2.peek()
         self.assertTrue(info2)
         self.assertEqual(info2['nonce'], lf1.nonce)
 
     def test_30_lock_wait_fail(self):
         """Wait on a lock, then fail
-        
+
         We ask to wait up to 400ms; this should fail within at most one
         second.  (Longer times are more realistic but we don't want the test
         suite to take too long, and this should do for now.)
@@ -185,7 +187,7 @@ class TestLockDir(TestCaseWithTransport):
             after = time.time()
             # it should only take about 0.4 seconds, but we allow more time in
             # case the machine is heavily loaded
-            self.assertTrue(after - before <= 8.0, 
+            self.assertTrue(after - before <= 8.0,
                     "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
@@ -195,9 +197,8 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
                          'Will continue to try until %s, unless '
-                         'you press Ctrl-C\n'
-                         'If you\'re sure that it\'s not being '
-                         'modified, use bzr break-lock %s',
+                         'you press Ctrl-C.\n'
+                         'See "bzr help break-lock" for more.',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -226,7 +227,7 @@ class TestLockDir(TestCaseWithTransport):
     def test_32_lock_wait_succeed(self):
         """Succeed when trying to acquire a lock that gets released
 
-        One thread holds on a lock and then releases it; another 
+        One thread holds on a lock and then releases it; another
         tries to lock it.
         """
         # This test sometimes fails like this:
@@ -277,7 +278,7 @@ class TestLockDir(TestCaseWithTransport):
         self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
 
     def test_34_lock_write_waits(self):
-        """LockDir.lock_write() will wait for the lock.""" 
+        """LockDir.lock_write() will wait for the lock."""
         # the test suite sets the default to 0 to make deadlocks fail fast.
         # change it for this test, as we want to try a manual deadlock.
         raise tests.TestSkipped('Timing-sensitive test')
@@ -320,19 +321,19 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_35_wait_lock_changing(self):
         """LockDir.wait_lock() will report if the lock changes underneath.
-        
+
         This is the stages we want to happen:
 
         0) Synchronization locks are created and locked.
         1) Lock1 obtains the lockdir, and releases the 'check' lock.
         2) Lock2 grabs the 'check' lock, and checks the lockdir.
-           It sees the lockdir is already acquired, reports the fact, 
+           It sees the lockdir is already acquired, reports the fact,
            and unsets the 'checked' lock.
         3) Thread1 blocks on acquiring the 'checked' lock, and then tells
            Lock1 to release and acquire the lockdir. This resets the 'check'
            lock.
         4) Lock2 acquires the 'check' lock, and checks again. It notices
-           that the holder of the lock has changed, and so reports a new 
+           that the holder of the lock has changed, and so reports a new
            lock holder.
         5) Thread1 blocks on the 'checked' lock, this time, it completely
            unlocks the lockdir, allowing Lock2 to acquire the lock.
@@ -418,9 +419,8 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
                          'Will continue to try until %s, unless '
-                         'you press Ctrl-C\n'
-                         'If you\'re sure that it\'s not being '
-                         'modified, use bzr break-lock %s',
+                         'you press Ctrl-C.\n'
+                         'See "bzr help break-lock" for more.',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -433,9 +433,8 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
                          'Will continue to try until %s, unless '
-                         'you press Ctrl-C\n'
-                         'If you\'re sure that it\'s not being '
-                         'modified, use bzr break-lock %s',
+                         'you press Ctrl-C.\n'
+                         'See "bzr help break-lock" for more.',
                          self._logged_reports[1][0])
         args = self._logged_reports[1][1]
         self.assertEqual('Lock owner changed for', args[0])
@@ -451,6 +450,7 @@ class TestLockDir(TestCaseWithTransport):
         lf1 = LockDir(t, 'test_lock')
         lf1.create()
         lf1.attempt_lock()
+        self.addCleanup(lf1.unlock)
         lf1.confirm()
 
     def test_41_confirm_not_held(self):
@@ -468,6 +468,9 @@ class TestLockDir(TestCaseWithTransport):
         lf1.attempt_lock()
         t.move('test_lock', 'lock_gone_now')
         self.assertRaises(LockBroken, lf1.confirm)
+        # Clean up
+        t.move('lock_gone_now', 'test_lock')
+        lf1.unlock()
 
     def test_43_break(self):
         """Break a lock whose caller has forgotten it"""
@@ -484,6 +487,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2.force_break(holder_info)
         # now we should be able to take it
         lf2.attempt_lock()
+        self.addCleanup(lf2.unlock)
         lf2.confirm()
 
     def test_44_break_already_released(self):
@@ -501,6 +505,7 @@ class TestLockDir(TestCaseWithTransport):
         lf2.force_break(holder_info)
         # now we should be able to take it
         lf2.attempt_lock()
+        self.addCleanup(lf2.unlock)
         lf2.confirm()
 
     def test_45_break_mismatch(self):
@@ -532,7 +537,7 @@ class TestLockDir(TestCaseWithTransport):
         """Check the on-disk representation of LockDirs is as expected.
 
         There should always be a top-level directory named by the lock.
-        When the lock is held, there should be a lockname/held directory 
+        When the lock is held, there should be a lockname/held directory
         containing an info file.
         """
         t = self.get_transport()
@@ -553,9 +558,7 @@ class TestLockDir(TestCaseWithTransport):
         # do this without IO redirection to ensure it doesn't prompt.
         self.assertRaises(AssertionError, ld1.break_lock)
         orig_factory = bzrlib.ui.ui_factory
-        # silent ui - no need for stdout
-        bzrlib.ui.ui_factory = bzrlib.ui.SilentUIFactory()
-        bzrlib.ui.ui_factory.stdin = StringIO("y\n")
+        bzrlib.ui.ui_factory = bzrlib.ui.CannedInputUIFactory([True])
         try:
             ld2.break_lock()
             self.assertRaises(LockBroken, ld1.unlock)
@@ -621,9 +624,11 @@ class TestLockDir(TestCaseWithTransport):
     def test_lock_by_token(self):
         ld1 = self.get_lock()
         token = ld1.lock_write()
+        self.addCleanup(ld1.unlock)
         self.assertNotEqual(None, token)
         ld2 = self.get_lock()
         t2 = ld2.lock_write(token)
+        self.addCleanup(ld2.unlock)
         self.assertEqual(token, t2)
 
     def test_lock_with_buggy_rename(self):
@@ -654,29 +659,49 @@ class TestLockDir(TestCaseWithTransport):
         check_dir([])
         # when held, that's all we see
         ld1.attempt_lock()
+        self.addCleanup(ld1.unlock)
         check_dir(['held'])
         # second guy should fail
         self.assertRaises(errors.LockContention, ld2.attempt_lock)
         # no kibble
         check_dir(['held'])
 
+    def test_no_lockdir_info(self):
+        """We can cope with empty info files."""
+        # This seems like a fairly common failure case - see
+        # <https://bugs.edge.launchpad.net/bzr/+bug/185103> and all its dupes.
+        # Processes are often interrupted after opening the file
+        # before the actual contents are committed.
+        t = self.get_transport()
+        t.mkdir('test_lock')
+        t.mkdir('test_lock/held')
+        t.put_bytes('test_lock/held/info', '')
+        lf = LockDir(t, 'test_lock')
+        info = lf.peek()
+        formatted_info = lf._format_lock_info(info)
+        self.assertEquals(
+            ['lock %s' % t.abspath('test_lock'),
+             'held by <unknown> on host <unknown> [process #<unknown>]',
+             'locked (unknown)'],
+            formatted_info)
+
+
+class TestLockDirHooks(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestLockDirHooks, self).setUp()
+        self._calls = []
+
+    def get_lock(self):
+        return LockDir(self.get_transport(), 'test_lock')
+
     def record_hook(self, result):
         self._calls.append(result)
 
-    def reset_hooks(self):
-        self._old_hooks = lock.Lock.hooks
-        self.addCleanup(self.restore_hooks)
-        lock.Lock.hooks = lock.LockHooks()
-
-    def restore_hooks(self):
-        lock.Lock.hooks = self._old_hooks
-
     def test_LockDir_acquired_success(self):
         # the LockDir.lock_acquired hook fires when a lock is acquired.
-        self._calls = []
-        self.reset_hooks()
         LockDir.hooks.install_named_hook('lock_acquired',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
@@ -688,15 +713,13 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_LockDir_acquired_fail(self):
         # the LockDir.lock_acquired hook does not fire on failure.
-        self._calls = []
-        self.reset_hooks()
         ld = self.get_lock()
         ld.create()
         ld2 = self.get_lock()
         ld2.attempt_lock()
         # install a lock hook now, when the disk lock is locked
         LockDir.hooks.install_named_hook('lock_acquired',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         self.assertRaises(errors.LockContention, ld.attempt_lock)
         self.assertEqual([], self._calls)
         ld2.unlock()
@@ -704,10 +727,8 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_LockDir_released_success(self):
         # the LockDir.lock_released hook fires when a lock is acquired.
-        self._calls = []
-        self.reset_hooks()
         LockDir.hooks.install_named_hook('lock_released',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         ld = self.get_lock()
         ld.create()
         self.assertEqual([], self._calls)
@@ -719,14 +740,39 @@ class TestLockDir(TestCaseWithTransport):
 
     def test_LockDir_released_fail(self):
         # the LockDir.lock_released hook does not fire on failure.
-        self._calls = []
-        self.reset_hooks()
         ld = self.get_lock()
         ld.create()
         ld2 = self.get_lock()
         ld.attempt_lock()
         ld2.force_break(ld2.peek())
         LockDir.hooks.install_named_hook('lock_released',
-            self.record_hook, 'record_hook')
+                                         self.record_hook, 'record_hook')
         self.assertRaises(LockBroken, ld.unlock)
+        self.assertEqual([], self._calls)
+
+    def test_LockDir_broken_success(self):
+        # the LockDir.lock_broken hook fires when a lock is broken.
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        result = ld.attempt_lock()
+        LockDir.hooks.install_named_hook('lock_broken',
+                                         self.record_hook, 'record_hook')
+        ld2.force_break(ld2.peek())
+        lock_path = ld.transport.abspath(ld.path)
+        self.assertEqual([lock.LockResult(lock_path, result)], self._calls)
+
+    def test_LockDir_broken_failure(self):
+        # the LockDir.lock_broken hook does not fires when a lock is already
+        # released.
+        ld = self.get_lock()
+        ld.create()
+        ld2 = self.get_lock()
+        result = ld.attempt_lock()
+        holder_info = ld2.peek()
+        ld.unlock()
+        LockDir.hooks.install_named_hook('lock_broken',
+                                         self.record_hook, 'record_hook')
+        ld2.force_break(holder_info)
+        lock_path = ld.transport.abspath(ld.path)
         self.assertEqual([], self._calls)

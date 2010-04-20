@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2006, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,10 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for versioning of bzrlib."""
+
+from cStringIO import StringIO
+import os
+import re
 
 from bzrlib import version, workingtree
 from bzrlib.tests import TestCase, TestSkipped
@@ -24,6 +27,7 @@ class TestBzrlibVersioning(TestCase):
 
     def test_get_bzr_source_tree(self):
         """Get tree for bzr source, if any."""
+        self.permit_source_tree_branch_repo()
         # We don't know if these tests are being run from a checkout or branch
         # of bzr, from an installed copy, or from source unpacked from a
         # tarball.  We don't construct a branch just for testing this, so we
@@ -34,3 +38,13 @@ class TestBzrlibVersioning(TestCase):
         else:
             # ensure that what we got was in fact a working tree instance.
             self.assertIsInstance(src_tree, workingtree.WorkingTree)
+
+    def test_python_binary_path(self):
+        self.permit_source_tree_branch_repo()
+        sio = StringIO()
+        version.show_version(show_config=False, show_copyright=False,
+            to_file=sio)
+        out = sio.getvalue()
+        m = re.search(r"Python interpreter: (.*) [0-9]", out)
+        self.assertIsNot(m, None)
+        self.failUnlessExists(m.group(1))

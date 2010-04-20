@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
     errors,
@@ -26,7 +26,7 @@ from bzrlib.symbol_versioning import deprecated_function
 class TreeDelta(object):
     """Describes changes from one tree to another.
 
-    Contains four lists:
+    Contains seven lists:
 
     added
         (path, id, kind)
@@ -34,18 +34,20 @@ class TreeDelta(object):
         (path, id, kind)
     renamed
         (oldpath, newpath, id, kind, text_modified, meta_modified)
+    kind_changed
+        (path, id, old_kind, new_kind)
     modified
         (path, id, kind, text_modified, meta_modified)
     unchanged
         (path, id, kind)
     unversioned
-        (path, kind)
+        (path, None, kind)
 
     Each id is listed only once.
 
     Files that are both modified and renamed are listed only in
     renamed, with the text_modified flag true. The text_modified
-    applies either to the the content of the file or the target of the
+    applies either to the content of the file or the target of the
     symbolic link, depending of the kind of file.
 
     Files are only considered renamed if their name has changed or
@@ -104,102 +106,12 @@ class TreeDelta(object):
             if v[1] == file_id:
                 return True
         return False
-            
-
-    def show(self, to_file, show_ids=False, show_unchanged=False,
-             short_status=False, indent=''):
-        """output this delta in status-like form to to_file."""
-        def show_list(files, short_status_letter=''):
-            for item in files:
-                path, fid, kind = item[:3]
-
-                if kind == 'directory':
-                    path += '/'
-                elif kind == 'symlink':
-                    path += '@'
-
-                if len(item) == 5 and item[4]:
-                    path += '*'
-
-                if show_ids:
-                    to_file.write(indent + '%s  %-30s %s\n' % (short_status_letter,
-                        path, fid))
-                else:
-                    to_file.write(indent + '%s  %s\n' % (short_status_letter, path))
-            
-        if self.removed:
-            if not short_status:
-                to_file.write(indent + 'removed:\n')
-                show_list(self.removed)
-            else:
-                show_list(self.removed, 'D')
-                
-        if self.added:
-            if not short_status:
-                to_file.write(indent + 'added:\n')
-                show_list(self.added)
-            else:
-                show_list(self.added, 'A')
-
-        extra_modified = []
-
-        if self.renamed:
-            short_status_letter = 'R'
-            if not short_status:
-                to_file.write(indent + 'renamed:\n')
-                short_status_letter = ''
-            for (oldpath, newpath, fid, kind,
-                 text_modified, meta_modified) in self.renamed:
-                if text_modified or meta_modified:
-                    extra_modified.append((newpath, fid, kind,
-                                           text_modified, meta_modified))
-                if meta_modified:
-                    newpath += '*'
-                if show_ids:
-                    to_file.write(indent + '%s  %s => %s %s\n' % (
-                        short_status_letter, oldpath, newpath, fid))
-                else:
-                    to_file.write(indent + '%s  %s => %s\n' % (
-                        short_status_letter, oldpath, newpath))
-
-        if self.kind_changed:
-            if short_status:
-                short_status_letter = 'K'
-            else:
-                to_file.write(indent + 'kind changed:\n')
-                short_status_letter = ''
-            for (path, fid, old_kind, new_kind) in self.kind_changed:
-                if show_ids:
-                    suffix = ' '+fid
-                else:
-                    suffix = ''
-                to_file.write(indent + '%s  %s (%s => %s)%s\n' % (
-                    short_status_letter, path, old_kind, new_kind, suffix))
-
-        if self.modified or extra_modified:
-            short_status_letter = 'M'
-            if not short_status:
-                to_file.write(indent + 'modified:\n')
-                short_status_letter = ''
-            show_list(self.modified, short_status_letter)
-            show_list(extra_modified, short_status_letter)
-            
-        if show_unchanged and self.unchanged:
-            if not short_status:
-                to_file.write(indent + 'unchanged:\n')
-                show_list(self.unchanged)
-            else:
-                show_list(self.unchanged, 'S')
-
-        if self.unversioned:
-            to_file.write(indent + 'unknown:\n')
-            show_list(self.unversioned)
 
     def get_changes_as_text(self, show_ids=False, show_unchanged=False,
-             short_status=False):
+                            short_status=False):
         import StringIO
         output = StringIO.StringIO()
-        self.show(output, show_ids, show_unchanged, short_status)
+        report_delta(output, self, short_status, show_ids, show_unchanged)
         return output.getvalue()
 
 
@@ -263,7 +175,7 @@ class _ChangeReporter(object):
     """Report changes between two trees"""
 
     def __init__(self, output=None, suppress_root_add=True,
-                 output_file=None, unversioned_filter=None):
+                 output_file=None, unversioned_filter=None, view_info=None):
         """Constructor
 
         :param output: a function with the signature of trace.note, i.e.
@@ -272,9 +184,12 @@ class _ChangeReporter(object):
             (i.e. when a tree has just been initted)
         :param output_file: If supplied, a file-like object to write to.
             Only one of output and output_file may be supplied.
-        :param unversioned_filter: A filter function to be called on 
+        :param unversioned_filter: A filter function to be called on
             unversioned files. This should return True to ignore a path.
             By default, no filtering takes place.
+        :param view_info: A tuple of view_name,view_files if only
+            items inside a view are to be reported on, or None for
+            no view filtering.
         """
         if output_file is not None:
             if output is not None:
@@ -297,6 +212,14 @@ class _ChangeReporter(object):
                               'unversioned': '?', # versioned in neither
                               }
         self.unversioned_filter = unversioned_filter
+        if view_info is None:
+            self.view_name = None
+            self.view_files = []
+        else:
+            self.view_name = view_info[0]
+            self.view_files = view_info[1]
+            self.output("Operating on whole tree but only reporting on "
+                        "'%s' view." % (self.view_name,))
 
     def report(self, file_id, paths, versioned, renamed, modified, exe_change,
                kind):
@@ -316,6 +239,9 @@ class _ChangeReporter(object):
         if is_quiet():
             return
         if paths[1] == '' and versioned == 'added' and self.suppress_root_add:
+            return
+        if self.view_files and not osutils.is_inside_any(self.view_files,
+            paths[1]):
             return
         if versioned == 'unversioned':
             # skip ignored unversioned files if needed.
@@ -366,7 +292,6 @@ class _ChangeReporter(object):
         self.output("%s%s%s %s%s", rename, self.modified_map[modified], exe,
                     old_path, path)
 
-
 def report_changes(change_iterator, reporter):
     """Report the changes from a change iterator.
 
@@ -410,3 +335,105 @@ def report_changes(change_iterator, reporter):
         versioned_change = versioned_change_map[versioned]
         reporter.report(file_id, path, versioned_change, renamed, modified,
                         exe_change, kind)
+
+def report_delta(to_file, delta, short_status=False, show_ids=False, 
+         show_unchanged=False, indent='', filter=None):
+    """Output this delta in status-like form to to_file.
+
+    :param to_file: A file-like object where the output is displayed.
+
+    :param delta: A TreeDelta containing the changes to be displayed
+
+    :param short_status: Single-line status if True.
+
+    :param show_ids: Output the file ids if True.
+
+    :param show_unchanged: Output the unchanged files if True.
+
+    :param indent: Added at the beginning of all output lines (for merged
+        revisions).
+
+    :param filter: A callable receiving a path and a file id and
+        returning True if the path should be displayed.
+    """
+
+    def decorate_path(path, kind, meta_modified=None):
+        if kind == 'directory':
+            path += '/'
+        elif kind == 'symlink':
+            path += '@'
+        if meta_modified:
+            path += '*'
+        return path
+
+    def show_more_renamed(item):
+        (oldpath, file_id, kind,
+         text_modified, meta_modified, newpath) = item
+        dec_new_path = decorate_path(newpath, kind, meta_modified)
+        to_file.write(' => %s' % dec_new_path)
+        if text_modified or meta_modified:
+            extra_modified.append((newpath, file_id, kind,
+                                   text_modified, meta_modified))
+
+    def show_more_kind_changed(item):
+        (path, file_id, old_kind, new_kind) = item
+        to_file.write(' (%s => %s)' % (old_kind, new_kind))
+
+    def show_path(path, file_id, kind, meta_modified,
+                  default_format, with_file_id_format):
+        dec_path = decorate_path(path, kind, meta_modified)
+        if show_ids:
+            to_file.write(with_file_id_format % dec_path)
+        else:
+            to_file.write(default_format % dec_path)
+
+    def show_list(files, long_status_name, short_status_letter,
+                  default_format='%s', with_file_id_format='%-30s',
+                  show_more=None):
+        if files:
+            header_shown = False
+            if short_status:
+                prefix = short_status_letter
+            else:
+                prefix = ''
+            prefix = indent + prefix + '  '
+
+            for item in files:
+                path, file_id, kind = item[:3]
+                if (filter is not None and not filter(path, file_id)):
+                    continue
+                if not header_shown and not short_status:
+                    to_file.write(indent + long_status_name + ':\n')
+                    header_shown = True
+                meta_modified = None
+                if len(item) == 5:
+                    meta_modified = item[4]
+
+                to_file.write(prefix)
+                show_path(path, file_id, kind, meta_modified,
+                          default_format, with_file_id_format)
+                if show_more is not None:
+                    show_more(item)
+                if show_ids:
+                    to_file.write(' %s' % file_id)
+                to_file.write('\n')
+
+    show_list(delta.removed, 'removed', 'D')
+    show_list(delta.added, 'added', 'A')
+    extra_modified = []
+    # Reorder delta.renamed tuples so that all lists share the same
+    # order for their 3 first fields and that they also begin like
+    # the delta.modified tuples
+    renamed = [(p, i, k, tm, mm, np)
+               for  p, np, i, k, tm, mm  in delta.renamed]
+    show_list(renamed, 'renamed', 'R', with_file_id_format='%s',
+              show_more=show_more_renamed)
+    show_list(delta.kind_changed, 'kind changed', 'K',
+              with_file_id_format='%s',
+              show_more=show_more_kind_changed)
+    show_list(delta.modified + extra_modified, 'modified', 'M')
+    if show_unchanged:
+        show_list(delta.unchanged, 'unchanged', 'S')
+
+    show_list(delta.unversioned, 'unknown', ' ')
+

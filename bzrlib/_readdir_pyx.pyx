@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Wrapper for readdir which returns files ordered by inode."""
 
@@ -25,16 +25,19 @@ cdef extern from "python-compat.h":
     pass
 
 
-# the opaque C library DIR type.
 cdef extern from 'errno.h':
     int ENOENT
     int ENOTDIR
     int EAGAIN
-    int errno
+    int EINTR
     char *strerror(int errno)
+    # not necessarily a real variable, but this should be close enough
+    int errno
 
 cdef extern from 'unistd.h':
     int chdir(char *path)
+    int close(int fd)
+    int fchdir(int fd)
     char *getcwd(char *, int size)
 
 cdef extern from 'stdlib.h':
@@ -48,6 +51,7 @@ cdef extern from 'sys/types.h':
     ctypedef long time_t
     ctypedef unsigned long ino_t
     ctypedef unsigned long long off_t
+    ctypedef int mode_t
 
 
 cdef extern from 'sys/stat.h':
@@ -68,7 +72,13 @@ cdef extern from 'sys/stat.h':
     int S_ISSOCK(int mode)
 
 
+cdef extern from 'fcntl.h':
+    int O_RDONLY
+    int open(char *pathname, int flags, mode_t mode)
+
+
 cdef extern from 'Python.h':
+    int PyErr_CheckSignals() except -1
     char * PyString_AS_STRING(object)
     ctypedef int Py_ssize_t # Required for older pyrex versions
     ctypedef struct PyObject:
@@ -89,6 +99,7 @@ cdef extern from 'dirent.h':
     ctypedef struct dirent:
         char d_name[256]
         ino_t d_ino
+    # the opaque C library DIR type.
     ctypedef struct DIR
     # should be DIR *, pyrex barfs.
     DIR * opendir(char * name)
@@ -145,7 +156,7 @@ cdef class _Stat:
         (mode, ino, dev, nlink, uid, gid, size, None(atime), mtime, ctime)
         """
         return repr((self.st_mode, 0, 0, 0, 0, 0, self.st_size, None,
-                     self._mtime, self._ctime))
+                     self.st_mtime, self.st_ctime))
 
 
 from bzrlib import osutils
@@ -261,6 +272,12 @@ cdef class UTF8DirReader:
         return result
 
 
+cdef raise_os_error(int errnum, char *msg_prefix, path):
+    if errnum == EINTR:
+        PyErr_CheckSignals()
+    raise OSError(errnum, msg_prefix + strerror(errnum), path)
+
+
 cdef _read_dir(path):
     """Like os.listdir, this reads the contents of a directory.
 
@@ -277,62 +294,89 @@ cdef _read_dir(path):
     cdef char *name
     cdef int stat_result
     cdef _Stat statvalue
-    cdef char *cwd
+    global errno
+    cdef int orig_dir_fd
 
-    cwd = getcwd(NULL, 0)
-    if -1 == chdir(path):
-        raise OSError(errno, strerror(errno))
-    the_dir = opendir(".")
-    if NULL == the_dir:
-        raise OSError(errno, strerror(errno))
-    result = []
+    # Avoid chdir('') because it causes problems on Sun OS, and avoid this if
+    # staying in .
+    if path != "" and path != '.':
+        # we change into the requested directory before reading, and back at the
+        # end, because that turns out to make the stat calls measurably faster than
+        # passing full paths every time.
+        orig_dir_fd = open(".", O_RDONLY, 0)
+        if orig_dir_fd == -1:
+            raise_os_error(errno, "open: ", ".")
+        if -1 == chdir(path):
+            raise_os_error(errno, "chdir: ", path)
+    else:
+        orig_dir_fd = -1
+
     try:
-        entry = &sentinel
-        while entry != NULL:
-            entry = readdir(the_dir)
-            if entry == NULL:
-                if errno == EAGAIN:
-                    # try again
-                    continue
-                elif errno != ENOTDIR and errno != ENOENT and errno != 0:
-                    # We see ENOTDIR at the end of a normal directory.
-                    # As ENOTDIR for read_dir(file) is triggered on opendir,
-                    # we consider ENOTDIR to be 'no error'.
-                    # ENOENT is listed as 'invalid position in the dir stream' for
-                    # readdir. We swallow this for now and just keep reading.
-                    raise OSError(errno, strerror(errno))
-                else:
-                    # done
-                    continue
-            name = entry.d_name
-            if not (name[0] == c"." and (
-                (name[1] == 0) or 
-                (name[1] == c"." and name[2] == 0))
-                ):
-                statvalue = _Stat()
-                stat_result = lstat(entry.d_name, &statvalue._st)
-                if stat_result != 0:
-                    if errno != ENOENT:
-                        raise OSError(errno, strerror(errno))
+        the_dir = opendir(".")
+        if NULL == the_dir:
+            raise_os_error(errno, "opendir: ", path)
+        try:
+            result = []
+            entry = &sentinel
+            while entry != NULL:
+                # Unlike most libc functions, readdir needs errno set to 0
+                # beforehand so that eof can be distinguished from errors.  See
+                # <https://bugs.launchpad.net/bzr/+bug/279381>
+                while True:
+                    errno = 0
+                    entry = readdir(the_dir)
+                    if entry == NULL and (errno == EAGAIN or errno == EINTR):
+                        if errno == EINTR:
+                            PyErr_CheckSignals()
+                        # try again
+                        continue
                     else:
-                        kind = _missing
-                        statvalue = None
-                # We append a 5-tuple that can be modified in-place by the C
-                # api:
-                # inode to sort on (to replace with top_path)
-                # name (to keep)
-                # kind (None, to set)
-                # statvalue (to keep)
-                # abspath (None, to set)
-                PyList_Append(result, (entry.d_ino, entry.d_name, None,
-                    statvalue, None))
+                        break
+                if entry == NULL:
+                    if errno == ENOTDIR or errno == 0:
+                        # We see ENOTDIR at the end of a normal directory.
+                        # As ENOTDIR for read_dir(file) is triggered on opendir,
+                        # we consider ENOTDIR to be 'no error'.
+                        continue
+                    else:
+                        raise_os_error(errno, "readdir: ", path)
+                name = entry.d_name
+                if not (name[0] == c"." and (
+                    (name[1] == 0) or 
+                    (name[1] == c"." and name[2] == 0))
+                    ):
+                    statvalue = _Stat()
+                    stat_result = lstat(entry.d_name, &statvalue._st)
+                    if stat_result != 0:
+                        if errno != ENOENT:
+                            raise_os_error(errno, "lstat: ",
+                                path + "/" + entry.d_name)
+                        else:
+                            # the file seems to have disappeared after being
+                            # seen by readdir - perhaps a transient temporary
+                            # file.  there's no point returning it.
+                            continue
+                    # We append a 5-tuple that can be modified in-place by the C
+                    # api:
+                    # inode to sort on (to replace with top_path)
+                    # name (to keep)
+                    # kind (None, to set)
+                    # statvalue (to keep)
+                    # abspath (None, to set)
+                    PyList_Append(result, (entry.d_ino, entry.d_name, None,
+                        statvalue, None))
+        finally:
+            if -1 == closedir(the_dir):
+                raise_os_error(errno, "closedir: ", path)
     finally:
-        if -1 == chdir(cwd):
-            free(cwd)
-            raise OSError(errno, strerror(errno))
-        free(cwd)
-        if -1 == closedir(the_dir):
-            raise OSError(errno, strerror(errno))
+        if -1 != orig_dir_fd:
+            failed = False
+            if -1 == fchdir(orig_dir_fd):
+                # try to close the original directory anyhow
+                failed = True
+            if -1 == close(orig_dir_fd) or failed:
+                raise_os_error(errno, "return to orig_dir: ", "")
+
     return result
 
 

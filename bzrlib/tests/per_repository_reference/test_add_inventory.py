@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for add_inventory on a repository with external references."""
 
@@ -30,6 +30,8 @@ class TestAddInventory(TestCaseWithExternalReferenceRepository):
         tree = self.make_branch_and_tree('sample')
         revid = tree.commit('one')
         inv = tree.branch.repository.get_inventory(revid)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
         base = self.make_repository('base')
         repo = self.make_referring('referring', 'base')
         repo.lock_write()
@@ -44,6 +46,10 @@ class TestAddInventory(TestCaseWithExternalReferenceRepository):
                 repo.commit_write_group()
         finally:
             repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
         inv2 = repo.get_inventory(revid)
-        self.assertEqual(inv._byid, inv2._byid)
+        content1 = dict((file_id, inv[file_id]) for file_id in inv)
+        content2 = dict((file_id, inv[file_id]) for file_id in inv2)
+        self.assertEqual(content1, content2)
         self.assertRaises(errors.NoSuchRevision, base.get_inventory, revid)

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,65 +12,213 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
-import errno
-from itertools import chain
-import os
 import warnings
 
 from bzrlib import (
+    branch as _mod_branch,
+    conflicts as _mod_conflicts,
     debug,
+    decorators,
     errors,
     graph as _mod_graph,
+    hooks,
+    merge3,
     osutils,
     patiencediff,
-    registry,
     revision as _mod_revision,
+    textfile,
+    trace,
+    transform,
     tree as _mod_tree,
     tsort,
+    ui,
+    versionedfile
     )
-from bzrlib.branch import Branch
-from bzrlib.conflicts import ConflictList, Conflict
-from bzrlib.errors import (BzrCommandError,
-                           BzrError,
-                           NoCommonAncestor,
-                           NoCommits,
-                           NoSuchRevision,
-                           NoSuchFile,
-                           NotBranchError,
-                           NotVersionedError,
-                           UnrelatedBranches,
-                           UnsupportedOperation,
-                           WorkingTreeNotRevision,
-                           BinaryFile,
-                           )
-from bzrlib.graph import Graph
-from bzrlib.merge3 import Merge3
-from bzrlib.osutils import rename, pathjoin
-from progress import DummyProgress, ProgressPhase
-from bzrlib.revision import (NULL_REVISION, ensure_null)
-from bzrlib.textfile import check_text_lines
-from bzrlib.trace import mutter, warning, note, is_quiet
-from bzrlib.transform import (TransformPreview, TreeTransform,
-                              resolve_conflicts, cook_conflicts,
-                              conflict_pass, FinalPaths, create_by_entry,
-                              unique_add, ROOT_PARENT)
-from bzrlib.versionedfile import PlanWeaveMerge
-from bzrlib import ui
-
+from bzrlib.cleanup import OperationWithCleanups
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 # TODO: Report back as changes are merged in
 
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
-    merge_inner(from_tree.branch, to_tree, from_tree, ignore_zero=True,
-                interesting_ids=interesting_ids, this_tree=from_tree)
+    from_tree.lock_tree_write()
+    operation = OperationWithCleanups(merge_inner)
+    operation.add_cleanup(from_tree.unlock)
+    operation.run_simple(from_tree.branch, to_tree, from_tree,
+        ignore_zero=True, interesting_ids=interesting_ids, this_tree=from_tree)
+
+
+class MergeHooks(hooks.Hooks):
+
+    def __init__(self):
+        hooks.Hooks.__init__(self)
+        self.create_hook(hooks.HookPoint('merge_file_content',
+            "Called with a bzrlib.merge.Merger object to create a per file "
+            "merge object when starting a merge. "
+            "Should return either None or a subclass of "
+            "``bzrlib.merge.AbstractPerFileMerger``. "
+            "Such objects will then be called per file "
+            "that needs to be merged (including when one "
+            "side has deleted the file and the other has changed it). "
+            "See the AbstractPerFileMerger API docs for details on how it is "
+            "used by merge.",
+            (2, 1), None))
+
+
+class AbstractPerFileMerger(object):
+    """PerFileMerger objects are used by plugins extending merge for bzrlib.
+
+    See ``bzrlib.plugins.news_merge.news_merge`` for an example concrete class.
+    
+    :ivar merger: The Merge3Merger performing the merge.
+    """
+
+    def __init__(self, merger):
+        """Create a PerFileMerger for use with merger."""
+        self.merger = merger
+
+    def merge_contents(self, merge_params):
+        """Attempt to merge the contents of a single file.
+        
+        :param merge_params: A bzrlib.merge.MergeHookParams
+        :return : A tuple of (status, chunks), where status is one of
+            'not_applicable', 'success', 'conflicted', or 'delete'.  If status
+            is 'success' or 'conflicted', then chunks should be an iterable of
+            strings for the new file contents.
+        """
+        return ('not applicable', None)
+
+
+class ConfigurableFileMerger(AbstractPerFileMerger):
+    """Merge individual files when configured via a .conf file.
+
+    This is a base class for concrete custom file merging logic. Concrete
+    classes should implement ``merge_text``.
+
+    See ``bzrlib.plugins.news_merge.news_merge`` for an example concrete class.
+    
+    :ivar affected_files: The configured file paths to merge.
+
+    :cvar name_prefix: The prefix to use when looking up configuration
+        details. <name_prefix>_merge_files describes the files targeted by the
+        hook for example.
+        
+    :cvar default_files: The default file paths to merge when no configuration
+        is present.
+    """
+
+    name_prefix = None
+    default_files = None
+
+    def __init__(self, merger):
+        super(ConfigurableFileMerger, self).__init__(merger)
+        self.affected_files = None
+        self.default_files = self.__class__.default_files or []
+        self.name_prefix = self.__class__.name_prefix
+        if self.name_prefix is None:
+            raise ValueError("name_prefix must be set.")
+
+    def filename_matches_config(self, params):
+        """Check whether the file should call the merge hook.
+
+        <name_prefix>_merge_files configuration variable is a list of files
+        that should use the hook.
+        """
+        affected_files = self.affected_files
+        if affected_files is None:
+            config = self.merger.this_branch.get_config()
+            # Until bzr provides a better policy for caching the config, we
+            # just add the part we're interested in to the params to avoid
+            # reading the config files repeatedly (bazaar.conf, location.conf,
+            # branch.conf).
+            config_key = self.name_prefix + '_merge_files'
+            affected_files = config.get_user_option_as_list(config_key)
+            if affected_files is None:
+                # If nothing was specified in the config, use the default.
+                affected_files = self.default_files
+            self.affected_files = affected_files
+        if affected_files:
+            filename = self.merger.this_tree.id2path(params.file_id)
+            if filename in affected_files:
+                return True
+        return False
+
+    def merge_contents(self, params):
+        """Merge the contents of a single file."""
+        # First, check whether this custom merge logic should be used.  We
+        # expect most files should not be merged by this handler.
+        if (
+            # OTHER is a straight winner, rely on default merge.
+            params.winner == 'other' or
+            # THIS and OTHER aren't both files.
+            not params.is_file_merge() or
+            # The filename isn't listed in the 'NAME_merge_files' config
+            # option.
+            not self.filename_matches_config(params)):
+            return 'not_applicable', None
+        return self.merge_text(params)
+
+    def merge_text(self, params):
+        """Merge the byte contents of a single file.
+
+        This is called after checking that the merge should be performed in
+        merge_contents, and it should behave as per
+        ``bzrlib.merge.AbstractPerFileMerger.merge_contents``.
+        """
+        raise NotImplementedError(self.merge_text)
+
+
+class MergeHookParams(object):
+    """Object holding parameters passed to merge_file_content hooks.
+
+    There are some fields hooks can access:
+
+    :ivar file_id: the file ID of the file being merged
+    :ivar trans_id: the transform ID for the merge of this file
+    :ivar this_kind: kind of file_id in 'this' tree
+    :ivar other_kind: kind of file_id in 'other' tree
+    :ivar winner: one of 'this', 'other', 'conflict'
+    """
+
+    def __init__(self, merger, file_id, trans_id, this_kind, other_kind,
+            winner):
+        self._merger = merger
+        self.file_id = file_id
+        self.trans_id = trans_id
+        self.this_kind = this_kind
+        self.other_kind = other_kind
+        self.winner = winner
+
+    def is_file_merge(self):
+        """True if this_kind and other_kind are both 'file'."""
+        return self.this_kind == 'file' and self.other_kind == 'file'
+
+    @decorators.cachedproperty
+    def base_lines(self):
+        """The lines of the 'base' version of the file."""
+        return self._merger.get_lines(self._merger.base_tree, self.file_id)
+
+    @decorators.cachedproperty
+    def this_lines(self):
+        """The lines of the 'this' version of the file."""
+        return self._merger.get_lines(self._merger.this_tree, self.file_id)
+
+    @decorators.cachedproperty
+    def other_lines(self):
+        """The lines of the 'other' version of the file."""
+        return self._merger.get_lines(self._merger.other_tree, self.file_id)
 
 
 class Merger(object):
+
+    hooks = MergeHooks()
+
     def __init__(self, this_branch, other_tree=None, base_tree=None,
-                 this_tree=None, pb=DummyProgress(), change_reporter=None,
+                 this_tree=None, pb=None, change_reporter=None,
                  recurse='down', revision_graph=None):
         object.__init__(self)
         self.this_branch = this_branch
@@ -89,7 +237,8 @@ class Merger(object):
         self.interesting_files = None
         self.show_base = False
         self.reprocess = False
-        self._pb = pb
+        if pb is not None:
+            warnings.warn("pb parameter to Merger() is deprecated and ignored")
         self.pp = None
         self.recurse = recurse
         self.change_reporter = change_reporter
@@ -99,6 +248,17 @@ class Merger(object):
         self._base_is_other_ancestor = None
         self._is_criss_cross = None
         self._lca_trees = None
+
+    def cache_trees_with_revision_ids(self, trees):
+        """Cache any tree in trees if it has a revision_id."""
+        for maybe_tree in trees:
+            if maybe_tree is None:
+                continue
+            try:
+                rev_id = maybe_tree.get_revision_id()
+            except AttributeError:
+                continue
+            self._cached_trees[rev_id] = maybe_tree
 
     @property
     def revision_graph(self):
@@ -132,15 +292,18 @@ class Merger(object):
                                       _set_base_is_other_ancestor)
 
     @staticmethod
-    def from_uncommitted(tree, other_tree, pb):
+    def from_uncommitted(tree, other_tree, pb=None, base_tree=None):
         """Return a Merger for uncommitted changes in other_tree.
 
         :param tree: The tree to merge into
         :param other_tree: The tree to get uncommitted changes from
         :param pb: A progress indicator
+        :param base_tree: The basis to use for the merge.  If unspecified,
+            other_tree.basis_tree() will be used.
         """
-        merger = Merger(tree.branch, other_tree, other_tree.basis_tree(), tree,
-                        pb)
+        if base_tree is None:
+            base_tree = other_tree.basis_tree()
+        merger = Merger(tree.branch, other_tree, base_tree, tree, pb)
         merger.base_rev_id = merger.base_tree.get_revision_id()
         merger.other_rev_id = None
         merger.other_basis = merger.base_rev_id
@@ -164,7 +327,7 @@ class Merger(object):
                 base_revision_id, tree.branch.last_revision())):
                 base_revision_id = None
             else:
-                warning('Performing cherrypick')
+                trace.warning('Performing cherrypick')
         merger = klass.from_revision_ids(pb, tree, other_revision_id,
                                          base_revision_id, revision_graph=
                                          revision_graph)
@@ -172,9 +335,11 @@ class Merger(object):
 
     @staticmethod
     def from_revision_ids(pb, tree, other, base=None, other_branch=None,
-                          base_branch=None, revision_graph=None):
+                          base_branch=None, revision_graph=None,
+                          tree_branch=None):
         """Return a Merger for revision-ids.
 
+        :param pb: A progress indicator
         :param tree: The tree to merge changes into
         :param other: The revision-id to use as OTHER
         :param base: The revision-id to use as BASE.  If not specified, will
@@ -185,9 +350,12 @@ class Merger(object):
             not supplied, other_branch or tree.branch will be used.
         :param revision_graph: If you have a revision_graph precomputed, pass
             it in, otherwise it will be created for you.
-        :param pb: A progress indicator
+        :param tree_branch: The branch associated with tree.  If not supplied,
+            tree.branch will be used.
         """
-        merger = Merger(tree.branch, this_tree=tree, pb=pb,
+        if tree_branch is None:
+            tree_branch = tree.branch
+        merger = Merger(tree_branch, this_tree=tree, pb=pb,
                         revision_graph=revision_graph)
         if other_branch is None:
             other_branch = tree.branch
@@ -217,14 +385,16 @@ class Merger(object):
         if revno is None:
             tree = workingtree.WorkingTree.open_containing(location)[0]
             return tree.branch, tree
-        branch = Branch.open_containing(location, possible_transports)[0]
+        branch = _mod_branch.Branch.open_containing(
+            location, possible_transports)[0]
         if revno == -1:
             revision_id = branch.last_revision()
         else:
             revision_id = branch.get_rev_id(revno)
-        revision_id = ensure_null(revision_id)
+        revision_id = _mod_revision.ensure_null(revision_id)
         return branch, self.revision_tree(revision_id, branch)
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def ensure_revision_trees(self):
         if self.this_revision_tree is None:
             self.this_basis_tree = self.revision_tree(self.this_basis)
@@ -233,12 +403,12 @@ class Merger(object):
 
         if self.other_rev_id is None:
             other_basis_tree = self.revision_tree(self.other_basis)
-            changes = other_basis_tree.changes_from(self.other_tree)
-            if changes.has_changed():
-                raise WorkingTreeNotRevision(self.this_tree)
+            if other_basis_tree.has_changes(self.other_tree):
+                raise errors.WorkingTreeNotRevision(self.this_tree)
             other_rev_id = self.other_basis
             self.other_tree = other_basis_tree
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def file_revisions(self, file_id):
         self.ensure_revision_trees()
         def get_id(tree, file_id):
@@ -247,40 +417,44 @@ class Merger(object):
         if self.this_rev_id is None:
             if self.this_basis_tree.get_file_sha1(file_id) != \
                 self.this_tree.get_file_sha1(file_id):
-                raise WorkingTreeNotRevision(self.this_tree)
+                raise errors.WorkingTreeNotRevision(self.this_tree)
 
         trees = (self.this_basis_tree, self.other_tree)
         return [get_id(tree, file_id) for tree in trees]
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def check_basis(self, check_clean, require_commits=True):
         if self.this_basis is None and require_commits is True:
-            raise BzrCommandError("This branch has no commits."
-                                  " (perhaps you would prefer 'bzr pull')")
+            raise errors.BzrCommandError(
+                "This branch has no commits."
+                " (perhaps you would prefer 'bzr pull')")
         if check_clean:
             self.compare_basis()
             if self.this_basis != self.this_rev_id:
                 raise errors.UncommittedChanges(self.this_tree)
 
+    @deprecated_method(deprecated_in((2, 1, 0)))
     def compare_basis(self):
         try:
             basis_tree = self.revision_tree(self.this_tree.last_revision())
         except errors.NoSuchRevision:
             basis_tree = self.this_tree.basis_tree()
-        changes = self.this_tree.changes_from(basis_tree)
-        if not changes.has_changed():
+        if not self.this_tree.has_changes(basis_tree):
             self.this_rev_id = self.this_basis
 
     def set_interesting_files(self, file_list):
         self.interesting_files = file_list
 
     def set_pending(self):
-        if not self.base_is_ancestor or not self.base_is_other_ancestor or self.other_rev_id is None:
+        if (not self.base_is_ancestor or not self.base_is_other_ancestor
+            or self.other_rev_id is None):
             return
         self._add_parent()
 
     def _add_parent(self):
         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
         new_parent_trees = []
+        operation = OperationWithCleanups(self.this_tree.set_parent_trees)
         for revision_id in new_parents:
             try:
                 tree = self.revision_tree(revision_id)
@@ -288,14 +462,9 @@ class Merger(object):
                 tree = None
             else:
                 tree.lock_read()
+                operation.add_cleanup(tree.unlock)
             new_parent_trees.append((revision_id, tree))
-        try:
-            self.this_tree.set_parent_trees(new_parent_trees,
-                                            allow_leftmost_as_ghost=True)
-        finally:
-            for _revision_id, tree in new_parent_trees:
-                if tree is not None:
-                    tree.unlock()
+        operation.run_simple(new_parent_trees, allow_leftmost_as_ghost=True)
 
     def set_other(self, other_revision, possible_transports=None):
         """Set the revision and tree to merge from.
@@ -310,7 +479,7 @@ class Merger(object):
             self.other_rev_id = _mod_revision.ensure_null(
                 self.other_branch.last_revision())
             if _mod_revision.is_null(self.other_rev_id):
-                raise NoCommits(self.other_branch)
+                raise errors.NoCommits(self.other_branch)
             self.other_basis = self.other_rev_id
         elif other_revision[1] is not None:
             self.other_rev_id = self.other_branch.get_rev_id(other_revision[1])
@@ -319,7 +488,7 @@ class Merger(object):
             self.other_rev_id = None
             self.other_basis = self.other_branch.last_revision()
             if self.other_basis is None:
-                raise NoCommits(self.other_branch)
+                raise errors.NoCommits(self.other_branch)
         if self.other_rev_id is not None:
             self._cached_trees[self.other_rev_id] = self.other_tree
         self._maybe_fetch(self.other_branch,self.this_branch, self.other_basis)
@@ -352,17 +521,17 @@ class Merger(object):
             target.fetch(source, revision_id)
 
     def find_base(self):
-        revisions = [ensure_null(self.this_basis),
-                     ensure_null(self.other_basis)]
-        if NULL_REVISION in revisions:
-            self.base_rev_id = NULL_REVISION
+        revisions = [_mod_revision.ensure_null(self.this_basis),
+                     _mod_revision.ensure_null(self.other_basis)]
+        if _mod_revision.NULL_REVISION in revisions:
+            self.base_rev_id = _mod_revision.NULL_REVISION
             self.base_tree = self.revision_tree(self.base_rev_id)
             self._is_criss_cross = False
         else:
             lcas = self.revision_graph.find_lca(revisions[0], revisions[1])
             self._is_criss_cross = False
             if len(lcas) == 0:
-                self.base_rev_id = NULL_REVISION
+                self.base_rev_id = _mod_revision.NULL_REVISION
             elif len(lcas) == 1:
                 self.base_rev_id = list(lcas)[0]
             else: # len(lcas) > 1
@@ -377,11 +546,12 @@ class Merger(object):
                     self.base_rev_id = self.revision_graph.find_unique_lca(
                                             *lcas)
                 self._is_criss_cross = True
-            if self.base_rev_id == NULL_REVISION:
-                raise UnrelatedBranches()
+            if self.base_rev_id == _mod_revision.NULL_REVISION:
+                raise errors.UnrelatedBranches()
             if self._is_criss_cross:
-                warning('Warning: criss-cross merge encountered.  See bzr'
-                        ' help criss-cross.')
+                trace.warning('Warning: criss-cross merge encountered.  See bzr'
+                              ' help criss-cross.')
+                trace.mutter('Criss-cross lcas: %r' % lcas)
                 interesting_revision_ids = [self.base_rev_id]
                 interesting_revision_ids.extend(lcas)
                 interesting_trees = dict((t.get_revision_id(), t)
@@ -397,13 +567,14 @@ class Merger(object):
                 self.base_tree = self.revision_tree(self.base_rev_id)
         self.base_is_ancestor = True
         self.base_is_other_ancestor = True
+        trace.mutter('Base revid: %r' % self.base_rev_id)
 
     def set_base(self, base_revision):
         """Set the base revision to use for the merge.
 
         :param base_revision: A 2-list containing a path and revision number.
         """
-        mutter("doing merge() with no base_revision specified")
+        trace.mutter("doing merge() with no base_revision specified")
         if base_revision == [None, None]:
             self.find_base()
         else:
@@ -422,20 +593,21 @@ class Merger(object):
                   'other_tree': self.other_tree,
                   'interesting_ids': self.interesting_ids,
                   'interesting_files': self.interesting_files,
-                  'pp': self.pp,
+                  'this_branch': self.this_branch,
                   'do_merge': False}
         if self.merge_type.requires_base:
             kwargs['base_tree'] = self.base_tree
         if self.merge_type.supports_reprocess:
             kwargs['reprocess'] = self.reprocess
         elif self.reprocess:
-            raise BzrError("Conflict reduction is not supported for merge"
-                                  " type %s." % self.merge_type)
+            raise errors.BzrError(
+                "Conflict reduction is not supported for merge"
+                " type %s." % self.merge_type)
         if self.merge_type.supports_show_base:
             kwargs['show_base'] = self.show_base
         elif self.show_base:
-            raise BzrError("Showing base is not supported for this"
-                           " merge type. %s" % self.merge_type)
+            raise errors.BzrError("Showing base is not supported for this"
+                                  " merge type. %s" % self.merge_type)
         if (not getattr(self.merge_type, 'supports_reverse_cherrypick', True)
             and not self.base_is_other_ancestor):
             raise errors.CannotReverseCherrypick()
@@ -445,11 +617,14 @@ class Merger(object):
         if self._is_criss_cross and getattr(self.merge_type,
                                             'supports_lca_trees', False):
             kwargs['lca_trees'] = self._lca_trees
-        return self.merge_type(pb=self._pb,
+        return self.merge_type(pb=None,
                                change_reporter=self.change_reporter,
                                **kwargs)
 
-    def _do_merge_to(self, merge):
+    def _do_merge_to(self):
+        merge = self.make_merger()
+        if self.other_branch is not None:
+            self.other_branch.update_references(self.this_branch)
         merge.do_merge()
         if self.recurse == 'down':
             for relpath, file_id in self.this_tree.iter_references():
@@ -467,31 +642,25 @@ class Merger(object):
                     sub_tree.branch.repository.revision_tree(base_revision)
                 sub_merge.base_rev_id = base_revision
                 sub_merge.do_merge()
-        
+        return merge
+
     def do_merge(self):
+        operation = OperationWithCleanups(self._do_merge_to)
         self.this_tree.lock_tree_write()
-        try:
-            if self.base_tree is not None:
-                self.base_tree.lock_read()
-            try:
-                if self.other_tree is not None:
-                    self.other_tree.lock_read()
-                try:
-                    merge = self.make_merger()
-                    self._do_merge_to(merge)
-                finally:
-                    if self.other_tree is not None:
-                        self.other_tree.unlock()
-            finally:
-                if self.base_tree is not None:
-                    self.base_tree.unlock()
-        finally:
-            self.this_tree.unlock()
+        operation.add_cleanup(self.this_tree.unlock)
+        if self.base_tree is not None:
+            self.base_tree.lock_read()
+            operation.add_cleanup(self.base_tree.unlock)
+        if self.other_tree is not None:
+            self.other_tree.lock_read()
+            operation.add_cleanup(self.other_tree.unlock)
+        merge = operation.run_simple()
         if len(merge.cooked_conflicts) == 0:
-            if not self.ignore_zero and not is_quiet():
-                note("All changes applied successfully.")
+            if not self.ignore_zero and not trace.is_quiet():
+                trace.note("All changes applied successfully.")
         else:
-            note("%d conflicts encountered." % len(merge.cooked_conflicts))
+            trace.note("%d conflicts encountered."
+                       % len(merge.cooked_conflicts))
 
         return len(merge.cooked_conflicts)
 
@@ -524,24 +693,25 @@ class Merge3Merger(object):
     winner_idx = {"this": 2, "other": 1, "conflict": 1}
     supports_lca_trees = True
 
-    def __init__(self, working_tree, this_tree, base_tree, other_tree, 
+    def __init__(self, working_tree, this_tree, base_tree, other_tree,
                  interesting_ids=None, reprocess=False, show_base=False,
-                 pb=DummyProgress(), pp=None, change_reporter=None,
+                 pb=None, pp=None, change_reporter=None,
                  interesting_files=None, do_merge=True,
-                 cherrypick=False, lca_trees=None):
+                 cherrypick=False, lca_trees=None, this_branch=None):
         """Initialize the merger object and perform the merge.
 
         :param working_tree: The working tree to apply the merge to
         :param this_tree: The local tree in the merge operation
         :param base_tree: The common tree in the merge operation
-        :param other_tree: The other other tree to merge changes from
+        :param other_tree: The other tree to merge changes from
+        :param this_branch: The branch associated with this_tree
         :param interesting_ids: The file_ids of files that should be
             participate in the merge.  May not be combined with
             interesting_files.
         :param: reprocess If True, perform conflict-reduction processing.
         :param show_base: If True, show the base revision in text conflicts.
             (incompatible with reprocess)
-        :param pb: A Progress bar
+        :param pb: ignored
         :param pp: A ProgressPhase object
         :param change_reporter: An object that should report changes made
         :param interesting_files: The tree-relative paths of files that should
@@ -563,6 +733,7 @@ class Merge3Merger(object):
         self.this_tree = working_tree
         self.base_tree = base_tree
         self.other_tree = other_tree
+        self.this_branch = this_branch
         self._raw_conflicts = []
         self.cooked_conflicts = []
         self.reprocess = reprocess
@@ -573,49 +744,47 @@ class Merge3Merger(object):
         # making sure we haven't missed any corner cases.
         # if lca_trees is None:
         #     self._lca_trees = [self.base_tree]
-        self.pb = pb
-        self.pp = pp
         self.change_reporter = change_reporter
         self.cherrypick = cherrypick
-        if self.pp is None:
-            self.pp = ProgressPhase("Merge phase", 3, self.pb)
         if do_merge:
             self.do_merge()
+        if pp is not None:
+            warnings.warn("pp argument to Merge3Merger is deprecated")
+        if pb is not None:
+            warnings.warn("pb argument to Merge3Merger is deprecated")
 
     def do_merge(self):
+        operation = OperationWithCleanups(self._do_merge)
         self.this_tree.lock_tree_write()
+        operation.add_cleanup(self.this_tree.unlock)
         self.base_tree.lock_read()
+        operation.add_cleanup(self.base_tree.unlock)
         self.other_tree.lock_read()
-        self.tt = TreeTransform(self.this_tree, self.pb)
+        operation.add_cleanup(self.other_tree.unlock)
+        operation.run()
+
+    def _do_merge(self, operation):
+        self.tt = transform.TreeTransform(self.this_tree, None)
+        operation.add_cleanup(self.tt.finalize)
+        self._compute_transform()
+        results = self.tt.apply(no_conflicts=True)
+        self.write_modified(results)
         try:
-            self.pp.next_phase()
-            self._compute_transform()
-            self.pp.next_phase()
-            results = self.tt.apply(no_conflicts=True)
-            self.write_modified(results)
-            try:
-                self.this_tree.add_conflicts(self.cooked_conflicts)
-            except UnsupportedOperation:
-                pass
-        finally:
-            self.tt.finalize()
-            self.other_tree.unlock()
-            self.base_tree.unlock()
-            self.this_tree.unlock()
-            self.pb.clear()
+            self.this_tree.add_conflicts(self.cooked_conflicts)
+        except errors.UnsupportedOperation:
+            pass
 
     def make_preview_transform(self):
+        operation = OperationWithCleanups(self._make_preview_transform)
         self.base_tree.lock_read()
+        operation.add_cleanup(self.base_tree.unlock)
         self.other_tree.lock_read()
-        self.tt = TransformPreview(self.this_tree)
-        try:
-            self.pp.next_phase()
-            self._compute_transform()
-            self.pp.next_phase()
-        finally:
-            self.other_tree.unlock()
-            self.base_tree.unlock()
-            self.pb.clear()
+        operation.add_cleanup(self.other_tree.unlock)
+        return operation.run_simple()
+
+    def _make_preview_transform(self):
+        self.tt = transform.TransformPreview(self.this_tree)
+        self._compute_transform()
         return self.tt
 
     def _compute_transform(self):
@@ -627,12 +796,15 @@ class Merge3Merger(object):
             resolver = self._lca_multi_way
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
+            factories = Merger.hooks['merge_file_content']
+            hooks = [factory(self) for factory in factories] + [self]
+            self.active_hooks = [hook for hook in hooks if hook is not None]
             for num, (file_id, changed, parents3, names3,
                       executable3) in enumerate(entries):
                 child_pb.update('Preparing file merge', num, len(entries))
                 self._merge_names(file_id, parents3, names3, resolver=resolver)
                 if changed:
-                    file_status = self.merge_contents(file_id)
+                    file_status = self._do_merge_contents(file_id)
                 else:
                     file_status = 'unmodified'
                 self._merge_executable(file_id,
@@ -640,11 +812,10 @@ class Merge3Merger(object):
         finally:
             child_pb.finished()
         self.fix_root()
-        self.pp.next_phase()
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
-            fs_conflicts = resolve_conflicts(self.tt, child_pb,
-                lambda t, c: conflict_pass(t, c, self.other_tree))
+            fs_conflicts = transform.resolve_conflicts(self.tt, child_pb,
+                lambda t, c: transform.conflict_pass(t, c, self.other_tree))
         finally:
             child_pb.finished()
         if self.change_reporter is not None:
@@ -653,7 +824,7 @@ class Merge3Merger(object):
                 self.tt.iter_changes(), self.change_reporter)
         self.cook_conflicts(fs_conflicts)
         for conflict in self.cooked_conflicts:
-            warning(conflict)
+            trace.warning(conflict)
 
     def _entries3(self):
         """Gather data about files modified between three trees.
@@ -668,13 +839,16 @@ class Merge3Merger(object):
         iterator = self.other_tree.iter_changes(self.base_tree,
                 include_unchanged=True, specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
+        this_entries = dict((e.file_id, e) for p, e in
+                            self.this_tree.iter_entries_by_dir(
+                            self.interesting_ids))
         for (file_id, paths, changed, versioned, parents, names, kind,
              executable) in iterator:
             if (self.interesting_ids is not None and
                 file_id not in self.interesting_ids):
                 continue
-            if file_id in self.this_tree.inventory:
-                entry = self.this_tree.inventory[file_id]
+            entry = this_entries.get(file_id)
+            if entry is not None:
                 this_name = entry.name
                 this_parent = entry.parent_id
                 this_executable = entry.executable
@@ -783,16 +957,12 @@ class Merge3Merger(object):
             content_changed = True
             if kind_winner == 'this':
                 # No kind change in OTHER, see if there are *any* changes
-                if other_ie.kind == None:
-                    # No content and 'this' wins the kind, so skip this?
-                    # continue
-                    pass
-                elif other_ie.kind == 'directory':
+                if other_ie.kind == 'directory':
                     if parent_id_winner == 'this' and name_winner == 'this':
                         # No change for this directory in OTHER, skip
                         continue
                     content_changed = False
-                elif other_ie.kind == 'file':
+                elif other_ie.kind is None or other_ie.kind == 'file':
                     def get_sha1(ie, tree):
                         if ie.kind != 'file':
                             return None
@@ -845,7 +1015,6 @@ class Merge3Merger(object):
                         continue
                 else:
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
-                # XXX: We need to handle kind == 'symlink'
 
             # If we have gotten this far, that means something has changed
             result.append((file_id, content_changed,
@@ -862,32 +1031,49 @@ class Merge3Merger(object):
     def fix_root(self):
         try:
             self.tt.final_kind(self.tt.root)
-        except NoSuchFile:
+        except errors.NoSuchFile:
             self.tt.cancel_deletion(self.tt.root)
         if self.tt.final_file_id(self.tt.root) is None:
-            self.tt.version_file(self.tt.tree_file_id(self.tt.root), 
+            self.tt.version_file(self.tt.tree_file_id(self.tt.root),
                                  self.tt.root)
-        if self.other_tree.inventory.root is None:
-            return
         other_root_file_id = self.other_tree.get_root_id()
+        if other_root_file_id is None:
+            return
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
+        if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
+            # the other tree's root is a non-root in the current tree (as when
+            # a previously unrelated branch is merged into another)
+            return
         try:
             self.tt.final_kind(other_root)
-        except NoSuchFile:
-            return
-        if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
-            # the other tree's root is a non-root in the current tree
-            return
-        self.reparent_children(self.other_tree.inventory.root, self.tt.root)
-        self.tt.cancel_creation(other_root)
-        self.tt.cancel_versioning(other_root)
-
-    def reparent_children(self, ie, target):
-        for thing, child in ie.children.iteritems():
+            other_root_is_present = True
+        except errors.NoSuchFile:
+            # other_root doesn't have a physical representation. We still need
+            # to move any references to the actual root of the tree.
+            other_root_is_present = False
+        # 'other_tree.inventory.root' is not present in this tree. We are
+        # calling adjust_path for children which *want* to be present with a
+        # correct place to go.
+        for thing, child in self.other_tree.inventory.root.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
-            self.tt.adjust_path(self.tt.final_name(trans_id), target, trans_id)
+            if not other_root_is_present:
+                # FIXME: Make final_kind returns None instead of raising
+                # NoSuchFile to avoid the ugly construct below -- vila 20100402
+                try:
+                    self.tt.final_kind(trans_id)
+                    # The item exist in the final tree and has a defined place
+                    # to go already.
+                    continue
+                except errors.NoSuchFile, e:
+                    pass
+            # Move the item into the root
+            self.tt.adjust_path(self.tt.final_name(trans_id),
+                                self.tt.root, trans_id)
+        if other_root_is_present:
+            self.tt.cancel_creation(other_root)
+            self.tt.cancel_versioning(other_root)
 
     def write_modified(self, results):
         modified_hashes = {}
@@ -914,7 +1100,7 @@ class Merge3Merger(object):
         if entry is None:
             return None
         return entry.name
-    
+
     @staticmethod
     def contents_sha1(tree, file_id):
         """Determine the sha1 of the file contents (used as a key method)."""
@@ -925,7 +1111,7 @@ class Merge3Merger(object):
     @staticmethod
     def executable(tree, file_id):
         """Determine the executability of a file-id (used as a key method)."""
-        if file_id not in tree:
+        if not tree.has_id(file_id):
             return None
         if tree.kind(file_id) != "file":
             return False
@@ -934,22 +1120,24 @@ class Merge3Merger(object):
     @staticmethod
     def kind(tree, file_id):
         """Determine the kind of a file-id (used as a key method)."""
-        if file_id not in tree:
+        if not tree.has_id(file_id):
             return None
         return tree.kind(file_id)
 
     @staticmethod
     def _three_way(base, other, this):
-        #if base == other, either they all agree, or only THIS has changed.
         if base == other:
+            # if 'base == other', either they all agree, or only 'this' has
+            # changed.
             return 'this'
         elif this not in (base, other):
+            # 'this' is neither 'base' nor 'other', so both sides changed
             return 'conflict'
-        # "Ambiguous clean merge" -- both sides have made the same change.
         elif this == other:
+            # "Ambiguous clean merge" -- both sides have made the same change.
             return "this"
-        # this == base: only other has changed.
         else:
+            # this == base: only other has changed.
             return "other"
 
     @staticmethod
@@ -968,7 +1156,7 @@ class Merge3Merger(object):
         :return: 'this', 'other', or 'conflict' depending on whether an entry
             changed or not.
         """
-        # See doc/developers/lca_merge_resolution.txt for details about this
+        # See doc/developers/lca_tree_merging.txt for details about this
         # algorithm.
         if other == this:
             # Either Ambiguously clean, or nothing was actually changed. We
@@ -999,10 +1187,11 @@ class Merge3Merger(object):
                 # only has an lca value
                 return 'other'
 
-        # At this point, the lcas disagree, and the tips disagree
+        # At this point, the lcas disagree, and the tip disagree
         return 'conflict'
 
     @staticmethod
+    @deprecated_method(deprecated_in((2, 2, 0)))
     def scalar_three_way(this_tree, base_tree, other_tree, file_id, key):
         """Do a three-way test on a scalar.
         Return "this", "other" or "conflict", depending whether a value wins.
@@ -1023,7 +1212,7 @@ class Merge3Merger(object):
 
     def merge_names(self, file_id):
         def get_entry(tree):
-            if file_id in tree.inventory:
+            if tree.has_id(file_id):
                 return tree.inventory[file_id]
             else:
                 return None
@@ -1058,28 +1247,28 @@ class Merge3Merger(object):
                 parent_id_winner = "other"
         if name_winner == "this" and parent_id_winner == "this":
             return
-        if name_winner == "conflict":
+        if name_winner == 'conflict' or parent_id_winner == 'conflict':
+            # Creating helpers (.OTHER or .THIS) here cause problems down the
+            # road if a ContentConflict needs to be created so we should not do
+            # that
             trans_id = self.tt.trans_id_file_id(file_id)
-            self._raw_conflicts.append(('name conflict', trans_id, 
-                                        this_name, other_name))
-        if parent_id_winner == "conflict":
-            trans_id = self.tt.trans_id_file_id(file_id)
-            self._raw_conflicts.append(('parent conflict', trans_id, 
-                                        this_parent, other_parent))
+            self._raw_conflicts.append(('path conflict', trans_id, file_id,
+                                        this_parent, this_name,
+                                        other_parent, other_name))
         if other_name is None:
-            # it doesn't matter whether the result was 'other' or 
+            # it doesn't matter whether the result was 'other' or
             # 'conflict'-- if there's no 'other', we leave it alone.
             return
-        # if we get here, name_winner and parent_winner are set to safe values.
-        trans_id = self.tt.trans_id_file_id(file_id)
         parent_id = parents[self.winner_idx[parent_id_winner]]
         if parent_id is not None:
-            parent_trans_id = self.tt.trans_id_file_id(parent_id)
+            # if we get here, name_winner and parent_winner are set to safe
+            # values.
             self.tt.adjust_path(names[self.winner_idx[name_winner]],
-                                parent_trans_id, trans_id)
+                                self.tt.trans_id_file_id(parent_id),
+                                self.tt.trans_id_file_id(file_id))
 
-    def merge_contents(self, file_id):
-        """Performa a merge on file_id contents."""
+    def _do_merge_contents(self, file_id):
+        """Performs a merge on file_id contents."""
         def contents_pair(tree):
             if file_id not in tree:
                 return (None, None)
@@ -1092,73 +1281,136 @@ class Merge3Merger(object):
                 contents = None
             return kind, contents
 
-        def contents_conflict():
-            trans_id = self.tt.trans_id_file_id(file_id)
-            name = self.tt.final_name(trans_id)
-            parent_id = self.tt.final_parent(trans_id)
-            if file_id in self.this_tree.inventory:
-                self.tt.unversion_file(trans_id)
-                if file_id in self.this_tree:
-                    self.tt.delete_contents(trans_id)
-            file_group = self._dump_conflicts(name, parent_id, file_id, 
-                                              set_version=True)
-            self._raw_conflicts.append(('contents conflict', file_group))
-
         # See SPOT run.  run, SPOT, run.
         # So we're not QUITE repeating ourselves; we do tricky things with
         # file kind...
         base_pair = contents_pair(self.base_tree)
         other_pair = contents_pair(self.other_tree)
-        if base_pair == other_pair:
-            # OTHER introduced no changes
-            return "unmodified"
-        this_pair = contents_pair(self.this_tree)
-        if this_pair == other_pair:
-            # THIS and OTHER introduced the same changes
-            return "unmodified"
+        if self._lca_trees:
+            this_pair = contents_pair(self.this_tree)
+            lca_pairs = [contents_pair(tree) for tree in self._lca_trees]
+            winner = self._lca_multi_way((base_pair, lca_pairs), other_pair,
+                                         this_pair, allow_overriding_lca=False)
         else:
-            trans_id = self.tt.trans_id_file_id(file_id)
-            if this_pair == base_pair:
-                # only OTHER introduced changes
-                if file_id in self.this_tree:
-                    # Remove any existing contents
-                    self.tt.delete_contents(trans_id)
-                if file_id in self.other_tree:
-                    # OTHER changed the file
-                    create_by_entry(self.tt, 
-                                    self.other_tree.inventory[file_id], 
-                                    self.other_tree, trans_id)
-                    if file_id not in self.this_tree.inventory:
-                        self.tt.version_file(file_id, trans_id)
-                    return "modified"
-                elif file_id in self.this_tree.inventory:
-                    # OTHER deleted the file
-                    self.tt.unversion_file(trans_id)
-                    return "deleted"
-            #BOTH THIS and OTHER introduced changes; scalar conflict
-            elif this_pair[0] == "file" and other_pair[0] == "file":
-                # THIS and OTHER are both files, so text merge.  Either
-                # BASE is a file, or both converted to files, so at least we
-                # have agreement that output should be a file.
-                try:
-                    self.text_merge(file_id, trans_id)
-                except BinaryFile:
-                    return contents_conflict()
-                if file_id not in self.this_tree.inventory:
-                    self.tt.version_file(file_id, trans_id)
-                try:
-                    self.tt.tree_kind(trans_id)
-                    self.tt.delete_contents(trans_id)
-                except NoSuchFile:
-                    pass
-                return "modified"
+            if base_pair == other_pair:
+                winner = 'this'
             else:
-                # Scalar conflict, can't text merge.  Dump conflicts
-                return contents_conflict()
+                # We delayed evaluating this_pair as long as we can to avoid
+                # unnecessary sha1 calculation
+                this_pair = contents_pair(self.this_tree)
+                winner = self._three_way(base_pair, other_pair, this_pair)
+        if winner == 'this':
+            # No interesting changes introduced by OTHER
+            return "unmodified"
+        # We have a hypothetical conflict, but if we have files, then we
+        # can try to merge the content
+        trans_id = self.tt.trans_id_file_id(file_id)
+        params = MergeHookParams(self, file_id, trans_id, this_pair[0],
+            other_pair[0], winner)
+        hooks = self.active_hooks
+        hook_status = 'not_applicable'
+        for hook in hooks:
+            hook_status, lines = hook.merge_contents(params)
+            if hook_status != 'not_applicable':
+                # Don't try any more hooks, this one applies.
+                break
+        result = "modified"
+        if hook_status == 'not_applicable':
+            # This is a contents conflict, because none of the available
+            # functions could merge it.
+            result = None
+            name = self.tt.final_name(trans_id)
+            parent_id = self.tt.final_parent(trans_id)
+            if self.this_tree.has_id(file_id):
+                self.tt.unversion_file(trans_id)
+            file_group = self._dump_conflicts(name, parent_id, file_id,
+                                              set_version=True)
+            self._raw_conflicts.append(('contents conflict', file_group))
+        elif hook_status == 'success':
+            self.tt.create_file(lines, trans_id)
+        elif hook_status == 'conflicted':
+            # XXX: perhaps the hook should be able to provide
+            # the BASE/THIS/OTHER files?
+            self.tt.create_file(lines, trans_id)
+            self._raw_conflicts.append(('text conflict', trans_id))
+            name = self.tt.final_name(trans_id)
+            parent_id = self.tt.final_parent(trans_id)
+            self._dump_conflicts(name, parent_id, file_id)
+        elif hook_status == 'delete':
+            self.tt.unversion_file(trans_id)
+            result = "deleted"
+        elif hook_status == 'done':
+            # The hook function did whatever it needs to do directly, no
+            # further action needed here.
+            pass
+        else:
+            raise AssertionError('unknown hook_status: %r' % (hook_status,))
+        if not self.this_tree.has_id(file_id) and result == "modified":
+            self.tt.version_file(file_id, trans_id)
+        # The merge has been performed, so the old contents should not be
+        # retained.
+        try:
+            self.tt.delete_contents(trans_id)
+        except errors.NoSuchFile:
+            pass
+        return result
+
+    def _default_other_winner_merge(self, merge_hook_params):
+        """Replace this contents with other."""
+        file_id = merge_hook_params.file_id
+        trans_id = merge_hook_params.trans_id
+        file_in_this = self.this_tree.has_id(file_id)
+        if self.other_tree.has_id(file_id):
+            # OTHER changed the file
+            wt = self.this_tree
+            if wt.supports_content_filtering():
+                # We get the path from the working tree if it exists.
+                # That fails though when OTHER is adding a file, so
+                # we fall back to the other tree to find the path if
+                # it doesn't exist locally.
+                try:
+                    filter_tree_path = wt.id2path(file_id)
+                except errors.NoSuchId:
+                    filter_tree_path = self.other_tree.id2path(file_id)
+            else:
+                # Skip the id2path lookup for older formats
+                filter_tree_path = None
+            transform.create_from_tree(self.tt, trans_id,
+                             self.other_tree, file_id,
+                             filter_tree_path=filter_tree_path)
+            return 'done', None
+        elif file_in_this:
+            # OTHER deleted the file
+            return 'delete', None
+        else:
+            raise AssertionError(
+                'winner is OTHER, but file_id %r not in THIS or OTHER tree'
+                % (file_id,))
+
+    def merge_contents(self, merge_hook_params):
+        """Fallback merge logic after user installed hooks."""
+        # This function is used in merge hooks as the fallback instance.
+        # Perhaps making this function and the functions it calls be a 
+        # a separate class would be better.
+        if merge_hook_params.winner == 'other':
+            # OTHER is a straight winner, so replace this contents with other
+            return self._default_other_winner_merge(merge_hook_params)
+        elif merge_hook_params.is_file_merge():
+            # THIS and OTHER are both files, so text merge.  Either
+            # BASE is a file, or both converted to files, so at least we
+            # have agreement that output should be a file.
+            try:
+                self.text_merge(merge_hook_params.file_id,
+                    merge_hook_params.trans_id)
+            except errors.BinaryFile:
+                return 'not_applicable', None
+            return 'done', None
+        else:
+            return 'not_applicable', None
 
     def get_lines(self, tree, file_id):
         """Return the lines in a file, or an empty list."""
-        if file_id in tree:
+        if tree.has_id(file_id):
             return tree.get_file(file_id).readlines()
         else:
             return []
@@ -1167,15 +1419,15 @@ class Merge3Merger(object):
         """Perform a three-way text merge on a file_id"""
         # it's possible that we got here with base as a different type.
         # if so, we just want two-way text conflicts.
-        if file_id in self.base_tree and \
+        if self.base_tree.has_id(file_id) and \
             self.base_tree.kind(file_id) == "file":
             base_lines = self.get_lines(self.base_tree, file_id)
         else:
             base_lines = []
         other_lines = self.get_lines(self.other_tree, file_id)
         this_lines = self.get_lines(self.this_tree, file_id)
-        m3 = Merge3(base_lines, this_lines, other_lines,
-                    is_cherrypick=self.cherrypick)
+        m3 = merge3.Merge3(base_lines, this_lines, other_lines,
+                           is_cherrypick=self.cherrypick)
         start_marker = "!START OF MERGE CONFLICT!" + "I HOPE THIS IS UNIQUE"
         if self.show_base is True:
             base_marker = '|' * 7
@@ -1184,10 +1436,10 @@ class Merge3Merger(object):
 
         def iter_merge3(retval):
             retval["text_conflicts"] = False
-            for line in m3.merge_lines(name_a = "TREE", 
-                                       name_b = "MERGE-SOURCE", 
+            for line in m3.merge_lines(name_a = "TREE",
+                                       name_b = "MERGE-SOURCE",
                                        name_base = "BASE-REVISION",
-                                       start_marker=start_marker, 
+                                       start_marker=start_marker,
                                        base_marker=base_marker,
                                        reprocess=self.reprocess):
                 if line.startswith(start_marker):
@@ -1202,12 +1454,12 @@ class Merge3Merger(object):
             self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            file_group = self._dump_conflicts(name, parent_id, file_id, 
+            file_group = self._dump_conflicts(name, parent_id, file_id,
                                               this_lines, base_lines,
                                               other_lines)
             file_group.append(trans_id)
 
-    def _dump_conflicts(self, name, parent_id, file_id, this_lines=None, 
+    def _dump_conflicts(self, name, parent_id, file_id, this_lines=None,
                         base_lines=None, other_lines=None, set_version=False,
                         no_base=False):
         """Emit conflict files.
@@ -1215,29 +1467,43 @@ class Merge3Merger(object):
         determined automatically.  If set_version is true, the .OTHER, .THIS
         or .BASE (in that order) will be created as versioned files.
         """
-        data = [('OTHER', self.other_tree, other_lines), 
+        data = [('OTHER', self.other_tree, other_lines),
                 ('THIS', self.this_tree, this_lines)]
         if not no_base:
             data.append(('BASE', self.base_tree, base_lines))
+
+        # We need to use the actual path in the working tree of the file here,
+        # ignoring the conflict suffixes
+        wt = self.this_tree
+        if wt.supports_content_filtering():
+            try:
+                filter_tree_path = wt.id2path(file_id)
+            except errors.NoSuchId:
+                # file has been deleted
+                filter_tree_path = None
+        else:
+            # Skip the id2path lookup for older formats
+            filter_tree_path = None
+
         versioned = False
         file_group = []
         for suffix, tree, lines in data:
-            if file_id in tree:
+            if tree.has_id(file_id):
                 trans_id = self._conflict_file(name, parent_id, tree, file_id,
-                                               suffix, lines)
+                                               suffix, lines, filter_tree_path)
                 file_group.append(trans_id)
                 if set_version and not versioned:
                     self.tt.version_file(file_id, trans_id)
                     versioned = True
         return file_group
-           
-    def _conflict_file(self, name, parent_id, tree, file_id, suffix, 
-                       lines=None):
+
+    def _conflict_file(self, name, parent_id, tree, file_id, suffix,
+                       lines=None, filter_tree_path=None):
         """Emit a single conflict file."""
         name = name + '.' + suffix
         trans_id = self.tt.create_path(name, parent_id)
-        entry = tree.inventory[file_id]
-        create_by_entry(self.tt, entry, tree, trans_id, lines)
+        transform.create_from_tree(self.tt, trans_id, tree, file_id, lines,
+            filter_tree_path)
         return trans_id
 
     def merge_executable(self, file_id, file_status):
@@ -1267,16 +1533,16 @@ class Merge3Merger(object):
         try:
             if self.tt.final_kind(trans_id) != "file":
                 return
-        except NoSuchFile:
+        except errors.NoSuchFile:
             return
         if winner == "this":
             executability = this_executable
         else:
-            if file_id in self.other_tree:
+            if self.other_tree.has_id(file_id):
                 executability = other_executable
-            elif file_id in self.this_tree:
+            elif self.this_tree.has_id(file_id):
                 executability = this_executable
-            elif file_id in self.base_tree:
+            elif self.base_tree_has_id(file_id):
                 executability = base_executable
         if executability is not None:
             trans_id = self.tt.trans_id_file_id(file_id)
@@ -1284,20 +1550,32 @@ class Merge3Merger(object):
 
     def cook_conflicts(self, fs_conflicts):
         """Convert all conflicts into a form that doesn't depend on trans_id"""
-        from conflicts import Conflict
-        name_conflicts = {}
-        self.cooked_conflicts.extend(cook_conflicts(fs_conflicts, self.tt))
-        fp = FinalPaths(self.tt)
+        self.cooked_conflicts.extend(transform.cook_conflicts(
+                fs_conflicts, self.tt))
+        fp = transform.FinalPaths(self.tt)
         for conflict in self._raw_conflicts:
             conflict_type = conflict[0]
-            if conflict_type in ('name conflict', 'parent conflict'):
-                trans_id = conflict[1]
-                conflict_args = conflict[2:]
-                if trans_id not in name_conflicts:
-                    name_conflicts[trans_id] = {}
-                unique_add(name_conflicts[trans_id], conflict_type, 
-                           conflict_args)
-            if conflict_type == 'contents conflict':
+            if conflict_type == 'path conflict':
+                (trans_id, file_id,
+                this_parent, this_name,
+                other_parent, other_name) = conflict[1:]
+                if this_parent is None or this_name is None:
+                    this_path = '<deleted>'
+                else:
+                    parent_path =  fp.get_path(
+                        self.tt.trans_id_file_id(this_parent))
+                    this_path = osutils.pathjoin(parent_path, this_name)
+                if other_parent is None or other_name is None:
+                    other_path = '<deleted>'
+                else:
+                    parent_path =  fp.get_path(
+                        self.tt.trans_id_file_id(other_parent))
+                    other_path = osutils.pathjoin(parent_path, other_name)
+                c = _mod_conflicts.Conflict.factory(
+                    'path conflict', path=this_path,
+                    conflict_path=other_path,
+                    file_id=file_id)
+            elif conflict_type == 'contents conflict':
                 for trans_id in conflict[1]:
                     file_id = self.tt.final_file_id(trans_id)
                     if file_id is not None:
@@ -1307,41 +1585,18 @@ class Merge3Merger(object):
                     if path.endswith(suffix):
                         path = path[:-len(suffix)]
                         break
-                c = Conflict.factory(conflict_type, path=path, file_id=file_id)
-                self.cooked_conflicts.append(c)
-            if conflict_type == 'text conflict':
+                c = _mod_conflicts.Conflict.factory(conflict_type,
+                                                    path=path, file_id=file_id)
+            elif conflict_type == 'text conflict':
                 trans_id = conflict[1]
                 path = fp.get_path(trans_id)
                 file_id = self.tt.final_file_id(trans_id)
-                c = Conflict.factory(conflict_type, path=path, file_id=file_id)
-                self.cooked_conflicts.append(c)
-
-        for trans_id, conflicts in name_conflicts.iteritems():
-            try:
-                this_parent, other_parent = conflicts['parent conflict']
-                if this_parent == other_parent:
-                    raise AssertionError()
-            except KeyError:
-                this_parent = other_parent = \
-                    self.tt.final_file_id(self.tt.final_parent(trans_id))
-            try:
-                this_name, other_name = conflicts['name conflict']
-                if this_name == other_name:
-                    raise AssertionError()
-            except KeyError:
-                this_name = other_name = self.tt.final_name(trans_id)
-            other_path = fp.get_path(trans_id)
-            if this_parent is not None and this_name is not None:
-                this_parent_path = \
-                    fp.get_path(self.tt.trans_id_file_id(this_parent))
-                this_path = pathjoin(this_parent_path, this_name)
+                c = _mod_conflicts.Conflict.factory(conflict_type,
+                                                    path=path, file_id=file_id)
             else:
-                this_path = "<deleted>"
-            file_id = self.tt.final_file_id(trans_id)
-            c = Conflict.factory('path conflict', path=this_path,
-                                 conflict_path=other_path, file_id=file_id)
+                raise AssertionError('bad conflict type: %r' % (conflict,))
             self.cooked_conflicts.append(c)
-        self.cooked_conflicts.sort(key=Conflict.sort_key)
+        self.cooked_conflicts.sort(key=_mod_conflicts.Conflict.sort_key)
 
 
 class WeaveMerger(Merge3Merger):
@@ -1351,6 +1606,10 @@ class WeaveMerger(Merge3Merger):
     supports_reverse_cherrypick = False
     history_based = True
 
+    def _generate_merge_plan(self, file_id, base):
+        return self.this_tree.plan_file_merge(file_id, self.other_tree,
+                                              base=base)
+
     def _merged_lines(self, file_id):
         """Generate the merged lines.
         There is no distinction between lines that are meant to contain <<<<<<<
@@ -1360,67 +1619,55 @@ class WeaveMerger(Merge3Merger):
             base = self.base_tree
         else:
             base = None
-        plan = self.this_tree.plan_file_merge(file_id, self.other_tree,
-                                              base=base)
+        plan = self._generate_merge_plan(file_id, base)
         if 'merge' in debug.debug_flags:
             plan = list(plan)
             trans_id = self.tt.trans_id_file_id(file_id)
             name = self.tt.final_name(trans_id) + '.plan'
-            contents = ('%10s|%s' % l for l in plan)
+            contents = ('%11s|%s' % l for l in plan)
             self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
-        textmerge = PlanWeaveMerge(plan, '<<<<<<< TREE\n',
-            '>>>>>>> MERGE-SOURCE\n')
-        return textmerge.merge_lines(self.reprocess)
+        textmerge = versionedfile.PlanWeaveMerge(plan, '<<<<<<< TREE\n',
+                                                 '>>>>>>> MERGE-SOURCE\n')
+        lines, conflicts = textmerge.merge_lines(self.reprocess)
+        if conflicts:
+            base_lines = textmerge.base_from_plan()
+        else:
+            base_lines = None
+        return lines, base_lines
 
     def text_merge(self, file_id, trans_id):
         """Perform a (weave) text merge for a given file and file-id.
         If conflicts are encountered, .THIS and .OTHER files will be emitted,
         and a conflict will be noted.
         """
-        lines, conflicts = self._merged_lines(file_id)
+        lines, base_lines = self._merged_lines(file_id)
         lines = list(lines)
-        # Note we're checking whether the OUTPUT is binary in this case, 
+        # Note we're checking whether the OUTPUT is binary in this case,
         # because we don't want to get into weave merge guts.
-        check_text_lines(lines)
+        textfile.check_text_lines(lines)
         self.tt.create_file(lines, trans_id)
-        if conflicts:
+        if base_lines is not None:
+            # Conflict
             self._raw_conflicts.append(('text conflict', trans_id))
             name = self.tt.final_name(trans_id)
             parent_id = self.tt.final_parent(trans_id)
-            file_group = self._dump_conflicts(name, parent_id, file_id, 
-                                              no_base=True)
+            file_group = self._dump_conflicts(name, parent_id, file_id,
+                                              no_base=False,
+                                              base_lines=base_lines)
             file_group.append(trans_id)
 
 
 class LCAMerger(WeaveMerger):
 
-    def _merged_lines(self, file_id):
-        """Generate the merged lines.
-        There is no distinction between lines that are meant to contain <<<<<<<
-        and conflicts.
-        """
-        if self.cherrypick:
-            base = self.base_tree
-        else:
-            base = None
-        plan = self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
+    def _generate_merge_plan(self, file_id, base):
+        return self.this_tree.plan_file_lca_merge(file_id, self.other_tree,
                                                   base=base)
-        if 'merge' in debug.debug_flags:
-            plan = list(plan)
-            trans_id = self.tt.trans_id_file_id(file_id)
-            name = self.tt.final_name(trans_id) + '.plan'
-            contents = ('%10s|%s' % l for l in plan)
-            self.tt.new_file(name, self.tt.final_parent(trans_id), contents)
-        textmerge = PlanWeaveMerge(plan, '<<<<<<< TREE\n',
-            '>>>>>>> MERGE-SOURCE\n')
-        return textmerge.merge_lines(self.reprocess)
-
 
 class Diff3Merger(Merge3Merger):
     """Three-way merger using external diff3 for text merging"""
 
     def dump_file(self, temp_dir, name, tree, file_id):
-        out_path = pathjoin(temp_dir, name)
+        out_path = osutils.pathjoin(temp_dir, name)
         out_file = open(out_path, "wb")
         try:
             in_file = tree.get_file(file_id)
@@ -1438,13 +1685,13 @@ class Diff3Merger(Merge3Merger):
         import bzrlib.patch
         temp_dir = osutils.mkdtemp(prefix="bzr-")
         try:
-            new_file = pathjoin(temp_dir, "new")
+            new_file = osutils.pathjoin(temp_dir, "new")
             this = self.dump_file(temp_dir, "this", self.this_tree, file_id)
             base = self.dump_file(temp_dir, "base", self.base_tree, file_id)
             other = self.dump_file(temp_dir, "other", self.other_tree, file_id)
             status = bzrlib.patch.diff3(new_file, this, base, other)
             if status not in (0, 1):
-                raise BzrError("Unhandled diff3 exit code")
+                raise errors.BzrError("Unhandled diff3 exit code")
             f = open(new_file, 'rb')
             try:
                 self.tt.create_file(f, trans_id)
@@ -1468,17 +1715,17 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 other_rev_id=None,
                 interesting_files=None,
                 this_tree=None,
-                pb=DummyProgress(),
+                pb=None,
                 change_reporter=None):
-    """Primary interface for merging. 
+    """Primary interface for merging.
 
-        typical use is probably 
+        typical use is probably
         'merge_inner(branch, branch.get_revision_tree(other_revision),
                      branch.get_revision_tree(base_revision))'
         """
     if this_tree is None:
-        raise BzrError("bzrlib.merge.merge_inner requires a this_tree "
-            "parameter as of bzrlib version 0.8.")
+        raise errors.BzrError("bzrlib.merge.merge_inner requires a this_tree "
+                              "parameter as of bzrlib version 0.8.")
     merger = Merger(this_branch, other_tree, base_tree, this_tree=this_tree,
                     pb=pb, change_reporter=change_reporter)
     merger.backup_files = backup_files
@@ -1497,6 +1744,7 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
     get_revision_id = getattr(base_tree, 'get_revision_id', None)
     if get_revision_id is None:
         get_revision_id = base_tree.last_revision
+    merger.cache_trees_with_revision_ids([other_tree, base_tree, this_tree])
     merger.set_base_revision(get_revision_id(), this_branch)
     return merger.do_merge()
 
@@ -1570,7 +1818,7 @@ class _PlanMergeBase(object):
 
     def get_lines(self, revisions):
         """Get lines for revisions from the backing VersionedFiles.
-        
+
         :raises RevisionNotPresent: on absent texts.
         """
         keys = [(self._key_prefix + (rev,)) for rev in revisions]
@@ -1578,8 +1826,8 @@ class _PlanMergeBase(object):
         for record in self.vf.get_record_stream(keys, 'unordered', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self.vf)
-            result[record.key[-1]] = osutils.split_lines(
-                record.get_bytes_as('fulltext'))
+            result[record.key[-1]] = osutils.chunks_to_lines(
+                record.get_bytes_as('chunked'))
         return result
 
     def plan_merge(self):
@@ -1701,7 +1949,7 @@ class _PlanMerge(_PlanMergeBase):
         super(_PlanMerge, self).__init__(a_rev, b_rev, vf, key_prefix)
         self.a_key = self._key_prefix + (self.a_rev,)
         self.b_key = self._key_prefix + (self.b_rev,)
-        self.graph = Graph(self.vf)
+        self.graph = _mod_graph.Graph(self.vf)
         heads = self.graph.heads((self.a_key, self.b_key))
         if len(heads) == 1:
             # one side dominates, so we can just return its values, yay for
@@ -1712,8 +1960,8 @@ class _PlanMerge(_PlanMergeBase):
                 other = b_rev
             else:
                 other = a_rev
-            mutter('found dominating revision for %s\n%s > %s', self.vf,
-                   self._head_key[-1], other)
+            trace.mutter('found dominating revision for %s\n%s > %s', self.vf,
+                         self._head_key[-1], other)
             self._weave = None
         else:
             self._head_key = None
@@ -1733,7 +1981,7 @@ class _PlanMerge(_PlanMergeBase):
         while True:
             next_lcas = self.graph.find_lca(*cur_ancestors)
             # Map a plain NULL_REVISION to a simple no-ancestors
-            if next_lcas == set([NULL_REVISION]):
+            if next_lcas == set([_mod_revision.NULL_REVISION]):
                 next_lcas = ()
             # Order the lca's based on when they were merged into the tip
             # While the actual merge portion of weave merge uses a set() of
@@ -1751,8 +1999,9 @@ class _PlanMerge(_PlanMergeBase):
             elif len(next_lcas) > 2:
                 # More than 2 lca's, fall back to grabbing all nodes between
                 # this and the unique lca.
-                mutter('More than 2 LCAs, falling back to all nodes for:'
-                       ' %s, %s\n=> %s', self.a_key, self.b_key, cur_ancestors)
+                trace.mutter('More than 2 LCAs, falling back to all nodes for:'
+                             ' %s, %s\n=> %s',
+                             self.a_key, self.b_key, cur_ancestors)
                 cur_lcas = next_lcas
                 while len(cur_lcas) > 1:
                     cur_lcas = self.graph.find_lca(*cur_lcas)
@@ -1761,7 +2010,7 @@ class _PlanMerge(_PlanMergeBase):
                     unique_lca = None
                 else:
                     unique_lca = list(cur_lcas)[0]
-                    if unique_lca == NULL_REVISION:
+                    if unique_lca == _mod_revision.NULL_REVISION:
                         # find_lca will return a plain 'NULL_REVISION' rather
                         # than a key tuple when there is no common ancestor, we
                         # prefer to just use None, because it doesn't confuse
@@ -1775,7 +2024,7 @@ class _PlanMerge(_PlanMergeBase):
 
     def _find_unique_parents(self, tip_keys, base_key):
         """Find ancestors of tip that aren't ancestors of base.
-        
+
         :param tip_keys: Nodes that are interesting
         :param base_key: Cull all ancestors of this node
         :return: The parent map for all revisions between tip_keys and
@@ -1790,8 +2039,8 @@ class _PlanMerge(_PlanMergeBase):
             # We remove NULL_REVISION because it isn't a proper tuple key, and
             # thus confuses things like _get_interesting_texts, and our logic
             # to add the texts into the memory weave.
-            if NULL_REVISION in parent_map:
-                parent_map.pop(NULL_REVISION)
+            if _mod_revision.NULL_REVISION in parent_map:
+                parent_map.pop(_mod_revision.NULL_REVISION)
         else:
             interesting = set()
             for tip in tip_keys:
@@ -1841,7 +2090,7 @@ class _PlanMerge(_PlanMergeBase):
     @staticmethod
     def _prune_tails(parent_map, child_map, tails_to_remove):
         """Remove tails from the parent map.
-        
+
         This will remove the supplied revisions until no more children have 0
         parents.
 
@@ -1949,7 +2198,7 @@ class _PlanLCAMerge(_PlanMergeBase):
         lcas = graph.find_lca(key_prefix + (a_rev,), key_prefix + (b_rev,))
         self.lcas = set()
         for lca in lcas:
-            if lca == NULL_REVISION:
+            if lca == _mod_revision.NULL_REVISION:
                 self.lcas.add(lca)
             else:
                 self.lcas.add(lca[-1])

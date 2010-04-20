@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,14 +12,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Export functionality, which can take a Tree and create a different representation.
 
 Such as non-controlled directories, tarfiles, zipfiles, etc.
 """
 
-from bzrlib.trace import mutter
 import os
 import bzrlib.errors as errors
 
@@ -32,7 +31,7 @@ def register_exporter(format, extensions, func, override=False):
     """Register an exporter.
 
     :param format: This is the name of the format, such as 'tgz' or 'zip'
-    :param extensions: Extensions which should be used in the case that a 
+    :param extensions: Extensions which should be used in the case that a
                        format was not explicitly specified.
     :type extensions: List
     :param func: The function. It will be called with (tree, dest, root)
@@ -55,14 +54,16 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root, subdir):
+    def _loader(tree, dest, root, subdir, filtered, per_file_timestamps):
         mod = __import__(module, globals(), locals(), [funcname])
         func = getattr(mod, funcname)
-        return func(tree, dest, root, subdir)
+        return func(tree, dest, root, subdir, filtered=filtered,
+                    per_file_timestamps=per_file_timestamps)
     register_exporter(scheme, extensions, _loader)
 
 
-def export(tree, dest, format=None, root=None, subdir=None):
+def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
+           per_file_timestamps=False):
     """Export the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
@@ -70,7 +71,7 @@ def export(tree, dest, format=None, root=None, subdir=None):
     :param format: The format (dir, zip, etc), if None, it will check the
                    extension on dest, looking for a match
     :param root: The root location inside the format.
-                 It is common practise to have zipfiles and tarballs 
+                 It is common practise to have zipfiles and tarballs
                  extract into a subdirectory, rather than into the
                  current working directory.
                  If root is None, the default root will be
@@ -79,6 +80,11 @@ def export(tree, dest, format=None, root=None, subdir=None):
     :param subdir: A starting directory within the tree. None means to export
         the entire tree, and anything else should specify the relative path to
         a directory to start exporting from.
+    :param filtered: If True, content filtering is applied to the
+                     files exported.
+    :param per_file_timestamps: Whether to use the timestamp stored in the 
+        tree rather than now(). This will do a revision lookup 
+        for every file so will be significantly slower.
     """
     global _exporters, _exporter_extensions
 
@@ -97,7 +103,8 @@ def export(tree, dest, format=None, root=None, subdir=None):
         raise errors.NoSuchExportFormat(format)
     tree.lock_read()
     try:
-        return _exporters[format](tree, dest, root, subdir)
+        return _exporters[format](tree, dest, root, subdir, filtered=filtered,
+                                  per_file_timestamps=per_file_timestamps)
     finally:
         tree.unlock()
 
@@ -136,14 +143,23 @@ def _export_iter_entries(tree, subdir):
     """Iter the entries for tree suitable for exporting.
 
     :param tree: A tree object.
-    :param subdir: None or the path of a directory to start exporting from.
+    :param subdir: None or the path of an entry to start exporting from.
     """
     inv = tree.inventory
     if subdir is None:
-        subdir_id = None
+        subdir_object = None
     else:
         subdir_id = inv.path2id(subdir)
-    entries = inv.iter_entries(subdir_id)
+        if subdir_id is not None:
+            subdir_object = inv[subdir_id]
+        # XXX: subdir is path not an id, so NoSuchId isn't proper error
+        else:
+            raise errors.NoSuchId(tree, subdir)
+    if subdir_object is not None and subdir_object.kind != 'directory':
+        yield subdir_object.name, subdir_object
+        return
+    else:
+        entries = inv.iter_entries(subdir_object)
     if subdir is None:
         entries.next() # skip root
     for entry in entries:
@@ -151,6 +167,12 @@ def _export_iter_entries(tree, subdir):
         # .bzrignore and .bzrrules - do not export these
         if entry[0].startswith(".bzr"):
             continue
+        if subdir is None:
+            if not tree.has_filename(entry[0]):
+                continue
+        else:
+            if not tree.has_filename(os.path.join(subdir, entry[0])):
+                continue
         yield entry
 
 

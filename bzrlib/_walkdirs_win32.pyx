@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Helper functions for Walkdirs on win32."""
 
@@ -81,7 +81,14 @@ cdef class _Win32Stat:
     cdef readonly double st_ctime
     cdef readonly double st_mtime
     cdef readonly double st_atime
-    cdef readonly __int64 st_size
+    # We can't just declare this as 'readonly' because python2.4 doesn't define
+    # T_LONGLONG as a structure member. So instead we just use a property that
+    # will convert it correctly anyway.
+    cdef __int64 _st_size
+
+    property st_size:
+        def __get__(self):
+            return self._st_size
 
     # os.stat always returns 0, so we hard code it here
     cdef readonly int st_dev
@@ -102,7 +109,7 @@ cdef object _get_name(WIN32_FIND_DATAW *data):
                                  wcslen(data.cFileName))
 
 
-cdef int _get_mode_bits(WIN32_FIND_DATAW *data):
+cdef int _get_mode_bits(WIN32_FIND_DATAW *data): # cannot_raise
     cdef int mode_bits
 
     mode_bits = 0100666 # writeable file, the most common
@@ -114,13 +121,13 @@ cdef int _get_mode_bits(WIN32_FIND_DATAW *data):
     return mode_bits
 
 
-cdef __int64 _get_size(WIN32_FIND_DATAW *data):
+cdef __int64 _get_size(WIN32_FIND_DATAW *data): # cannot_raise
     # Pyrex casts a DWORD into a PyLong anyway, so it is safe to do << 32
     # on a DWORD
     return ((<__int64>data.nFileSizeHigh) << 32) + data.nFileSizeLow
 
 
-cdef double _ftime_to_timestamp(FILETIME *ft):
+cdef double _ftime_to_timestamp(FILETIME *ft): # cannot_raise
     """Convert from a FILETIME struct into a floating point timestamp.
 
     The fields of a FILETIME structure are the hi and lo part
@@ -140,7 +147,7 @@ cdef double _ftime_to_timestamp(FILETIME *ft):
     return (val * 1.0e-7) - 11644473600.0
 
 
-cdef int _should_skip(WIN32_FIND_DATAW *data):
+cdef int _should_skip(WIN32_FIND_DATAW *data): # cannot_raise
     """Is this '.' or '..' so we should skip it?"""
     if (data.cFileName[0] != c'.'):
         return 0
@@ -180,7 +187,7 @@ cdef class Win32ReadDir:
         statvalue.st_ctime = _ftime_to_timestamp(&data.ftCreationTime)
         statvalue.st_mtime = _ftime_to_timestamp(&data.ftLastWriteTime)
         statvalue.st_atime = _ftime_to_timestamp(&data.ftLastAccessTime)
-        statvalue.st_size = _get_size(data)
+        statvalue._st_size = _get_size(data)
         statvalue.st_ino = 0
         statvalue.st_dev = 0
         return statvalue

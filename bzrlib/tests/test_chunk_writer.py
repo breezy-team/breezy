@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """Tests for writing fixed size chunks with compression."""
@@ -38,6 +38,24 @@ class TestWriter(TestCaseWithTransport):
         self.assertEqual(None, unused)
         # Only a zlib header.
         self.assertEqual(4088, padding)
+
+    def test_optimize_for_speed(self):
+        writer = chunk_writer.ChunkWriter(4096)
+        writer.set_optimize(for_size=False)
+        self.assertEqual(chunk_writer.ChunkWriter._repack_opts_for_speed,
+                         (writer._max_repack, writer._max_zsync))
+        writer = chunk_writer.ChunkWriter(4096, optimize_for_size=False)
+        self.assertEqual(chunk_writer.ChunkWriter._repack_opts_for_speed,
+                         (writer._max_repack, writer._max_zsync))
+
+    def test_optimize_for_size(self):
+        writer = chunk_writer.ChunkWriter(4096)
+        writer.set_optimize(for_size=True)
+        self.assertEqual(chunk_writer.ChunkWriter._repack_opts_for_size,
+                         (writer._max_repack, writer._max_zsync))
+        writer = chunk_writer.ChunkWriter(4096, optimize_for_size=True)
+        self.assertEqual(chunk_writer.ChunkWriter._repack_opts_for_size,
+                         (writer._max_repack, writer._max_zsync))
 
     def test_some_data(self):
         writer = chunk_writer.ChunkWriter(4096)

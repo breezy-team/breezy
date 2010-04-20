@@ -12,9 +12,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
-# Author: Martin Pool <mbp@canonical.com> 
+# Author: Martin Pool <mbp@canonical.com>
 #         Aaron Bentley <aaron.bentley@utoronto.ca>
 
 
@@ -29,7 +29,7 @@ class TextMerge(object):
     This is an iterable of tuples of lists of lines.
     Each tuple may have a length of 1 - 3, depending on whether the region it
     represents is conflicted.
-    
+
     Unconflicted region tuples have length 1.
     Conflicted region tuples have length 2 or 3.  Index 1 is text_a, e.g. THIS.
     Index 1 is text_b, e.g. OTHER.  Index 2 is optional.  If present, it
@@ -60,10 +60,10 @@ class TextMerge(object):
                     yield line
             else:
                 yield self.a_marker
-                for line in lines[0]: 
+                for line in lines[0]:
                     yield line
                 yield self.split_marker
-                for line in lines[1]: 
+                for line in lines[1]:
                     yield line
                 yield self.b_marker
 
@@ -120,15 +120,15 @@ class Merge2(TextMerge):
     regions produce conflicts.
     """
 
-    def __init__(self, lines_a, lines_b, a_marker=TextMerge.A_MARKER, 
-                 b_marker=TextMerge.B_MARKER, 
+    def __init__(self, lines_a, lines_b, a_marker=TextMerge.A_MARKER,
+                 b_marker=TextMerge.B_MARKER,
                  split_marker=TextMerge.SPLIT_MARKER):
         TextMerge.__init__(self, a_marker, b_marker, split_marker)
         self.lines_a = lines_a
         self.lines_b = lines_b
 
     def _merge_struct(self):
-        """Return structured merge info.  
+        """Return structured merge info.
         See TextMerge docstring.
         """
         sm = bzrlib.patiencediff.PatienceSequenceMatcher(None, self.lines_a, self.lines_b)
@@ -139,7 +139,7 @@ class Merge2(TextMerge):
             yield(self.lines_a[pos_a:ai], self.lines_b[pos_b:bi])
             # matching lines
             yield(self.lines_a[ai:ai+l],)
-            pos_a = ai + l 
+            pos_a = ai + l
             pos_b = bi + l
         # final non-matching lines
         yield(self.lines_a[pos_a:-1], self.lines_b[pos_b:-1])

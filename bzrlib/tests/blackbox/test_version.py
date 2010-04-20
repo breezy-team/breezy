@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black-box tests for bzr version."""
 
@@ -31,7 +31,22 @@ from bzrlib.tests import (
 
 class TestVersion(TestCase):
 
+    def test_main_version(self):
+        """Check output from version command and master option is reasonable"""
+        # output is intentionally passed through to stdout so that we
+        # can see the version being tested
+        self.permit_source_tree_branch_repo()
+        output = self.run_bzr('version')[0]
+        self.log('bzr version output:')
+        self.log(output)
+        self.assert_(output.startswith('Bazaar (bzr) '))
+        self.assertNotEqual(output.index('Canonical'), -1)
+        # make sure --version is consistent
+        tmp_output = self.run_bzr('--version')[0]
+        self.assertEquals(output, tmp_output)
+
     def test_version(self):
+        self.permit_source_tree_branch_repo()
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
         self.assertEqualDiff(out.splitlines()[0],
@@ -43,6 +58,7 @@ class TestVersion(TestCase):
         self.assertContainsRe(out, r'(?m)^  Bazaar log file:.*\.bzr\.log')
 
     def test_version_short(self):
+        self.permit_source_tree_branch_repo()
         out = self.run_bzr(["version", "--short"])[0]
         self.assertEqualDiff(out, bzrlib.version_string + '\n')
 
@@ -50,6 +66,7 @@ class TestVersion(TestCase):
 class TestVersionUnicodeOutput(TestCaseInTempDir):
 
     def _check(self, args):
+        self.permit_source_tree_branch_repo()
         # Even though trace._bzr_log_filename variable
         # is used only to keep actual log filename
         # and changing this variable in selftest
@@ -76,9 +93,10 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
         uni_val, str_val = probe_unicode_in_user_encoding()
         if uni_val is None:
             raise TestSkipped('Cannot find a unicode character that works in'
-                              ' encoding %s' % (bzrlib.user_encoding,))
+                              ' encoding %s' % (osutils.get_user_encoding(),))
 
         osutils.set_or_unset_env('BZR_HOME', str_val)
+        self.permit_source_tree_branch_repo()
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(out, r"(?m)^  Bazaar configuration: " + str_val)
@@ -98,6 +116,8 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         self.failUnlessExists(bzr_log)
 
     def test_dev_null(self):
+        # This test uses a subprocess to cause the log opening logic to
+        # execute. It would be better to just execute that logic directly.
         if sys.platform == 'win32':
             bzr_log = 'NUL'
         else:

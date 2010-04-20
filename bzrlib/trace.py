@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,9 +12,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Messages and logging for bazaar-ng.
+"""Messages and logging.
 
 Messages are supplied by callers as a string-formatting template, plus values
 to be inserted into it.  The actual %-formatting is deferred to the log
@@ -33,8 +33,7 @@ so that we can always rely on writing any message.
 
 Output to stderr depends on the mode chosen by the user.  By default, messages
 of info and above are sent out, which results in progress messages such as the
-list of files processed by add and commit.  In quiet mode, only warnings and
-above are shown.  In debug mode, stderr gets debug messages too.
+list of files processed by add and commit.  In debug mode, stderr gets debug messages too.
 
 Errors that terminate an operation are generally passed back as exceptions;
 others may be just emitted as messages.
@@ -59,7 +58,6 @@ import codecs
 import logging
 import os
 import sys
-import re
 import time
 
 from bzrlib.lazy_import import lazy_import
@@ -72,6 +70,11 @@ import traceback
 
 import bzrlib
 
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
+
 lazy_import(globals(), """
 from bzrlib import (
     debug,
@@ -79,6 +82,7 @@ from bzrlib import (
     osutils,
     plugin,
     symbol_versioning,
+    ui,
     )
 """)
 
@@ -123,17 +127,37 @@ def warning(*args, **kwargs):
     _bzr_logger.warning(*args, **kwargs)
 
 
-# configure convenient aliases for output routines
-#
-# TODO: deprecate them, have one name for each.
-info = note
-log_error = _bzr_logger.error
-error =     _bzr_logger.error
+@deprecated_function(deprecated_in((2, 1, 0)))
+def info(*args, **kwargs):
+    """Deprecated: use trace.note instead."""
+    note(*args, **kwargs)
+
+
+@deprecated_function(deprecated_in((2, 1, 0)))
+def log_error(*args, **kwargs):
+    """Deprecated: use bzrlib.trace.show_error instead"""
+    _bzr_logger.error(*args, **kwargs)
+
+
+@deprecated_function(deprecated_in((2, 1, 0)))
+def error(*args, **kwargs):
+    """Deprecated: use bzrlib.trace.show_error instead"""
+    _bzr_logger.error(*args, **kwargs)
+
+
+def show_error(*args, **kwargs):
+    """Show an error message to the user.
+
+    Don't use this for exceptions, use report_exception instead.
+    """
+    _bzr_logger.error(*args, **kwargs)
 
 
 def mutter(fmt, *args):
     if _trace_file is None:
         return
+    # XXX: Don't check this every time; instead anyone who closes the file
+    # ought to deregister it.  We can tolerate None.
     if (getattr(_trace_file, 'closed', None) is not None) and _trace_file.closed:
         return
 
@@ -152,11 +176,11 @@ def mutter(fmt, *args):
         out = fmt % tuple(real_args)
     else:
         out = fmt
-    timestamp = '%0.3f  ' % (time.time() - _bzr_log_start_time,)
+    now = time.time()
+    timestamp = '%0.3f  ' % (now - _bzr_log_start_time,)
     out = timestamp + out + '\n'
     _trace_file.write(out)
-    # no need to flush here, the trace file is now linebuffered when it's
-    # opened.
+    # there's no explicit flushing; the file is typically line buffered.
 
 
 def mutter_callsite(stacklevel, fmt, *args):
@@ -205,7 +229,7 @@ def _get_bzr_log_filename():
 
 
 def _open_bzr_log():
-    """Open the .bzr.log trace file.  
+    """Open the .bzr.log trace file.
 
     If the log is more than a particular length, the old file is renamed to
     .bzr.log.old and a new file is started.  Otherwise, we append to the
@@ -217,40 +241,56 @@ def _open_bzr_log():
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        bzr_log_file = open(_bzr_log_filename, 'at', 1) # line buffered
+        buffering = 0 # unbuffered
+        bzr_log_file = osutils.open_with_ownership(_bzr_log_filename, 'at', buffering)
         # bzr_log_file.tell() on windows always return 0 until some writing done
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
             bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
             bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
+
         return bzr_log_file
+
     except IOError, e:
-        warning("failed to open trace file: %s" % (e))
+        # If we are failing to open the log, then most likely logging has not
+        # been set up yet. So we just write to stderr rather than using
+        # 'warning()'. If we using warning(), users get the unhelpful 'no
+        # handlers registered for "bzr"' when something goes wrong on the
+        # server. (bug #503886)
+        sys.stderr.write("failed to open trace file: %s\n" % (e,))
     # TODO: What should happen if we fail to open the trace file?  Maybe the
     # objects should be pointed at /dev/null or the equivalent?  Currently
     # returns None which will cause failures later.
+    return None
 
 
 def enable_default_logging():
     """Configure default logging: messages to stderr and debug to .bzr.log
-    
+
     This should only be called once per process.
 
     Non-command-line programs embedding bzrlib do not need to call this.  They
     can instead either pass a file to _push_log_file, or act directly on
     logging.getLogger("bzr").
-    
+
     Output can be redirected away by calling _push_log_file.
     """
+    # Do this before we open the log file, so we prevent
+    # get_terminal_encoding() from mutter()ing multiple times
+    term_encoding = osutils.get_terminal_encoding()
+    start_time = osutils.format_local_date(_bzr_log_start_time,
+                                           timezone='local')
     # create encoded wrapper around stderr
     bzr_log_file = _open_bzr_log()
+    if bzr_log_file is not None:
+        bzr_log_file.write(start_time.encode('utf-8') + '\n')
     push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into bzr_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
-    writer_factory = codecs.getwriter(osutils.get_terminal_encoding())
+    writer_factory = codecs.getwriter(term_encoding)
     encoded_stderr = writer_factory(sys.stderr, errors='replace')
     stderr_handler = logging.StreamHandler(encoded_stderr)
     stderr_handler.setLevel(logging.INFO)
@@ -262,7 +302,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
 
     :param to_file: A file-like object to which messages will be sent.
 
-    :returns: A memento that should be passed to _pop_log_file to restore the 
+    :returns: A memento that should be passed to _pop_log_file to restore the
     previously active logging.
     """
     global _trace_file
@@ -297,7 +337,7 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     """Undo changes to logging/tracing done by _push_log_file.
 
     This flushes, but does not close the trace file.
-    
+
     Takes the memento returned from _push_log_file."""
     global _trace_file
     _trace_file = old_trace_file
@@ -310,26 +350,11 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     new_trace_file.flush()
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.one_two)
-def enable_test_log(to_file):
-    """Redirect logging to a temporary file for a test
-    
-    :returns: an opaque reference that should be passed to disable_test_log
-    after the test completes.
-    """
-    return push_log_file(to_file)
-
-
-@symbol_versioning.deprecated_function(symbol_versioning.one_two)
-def disable_test_log(memento):
-    return pop_log_file(memento)
-
-
 def log_exception_quietly():
     """Log the last exception to the trace file only.
 
-    Used for exceptions that occur internally and that may be 
-    interesting to developers but not to users.  For example, 
+    Used for exceptions that occur internally and that may be
+    interesting to developers but not to users.  For example,
     errors loading plugins.
     """
     mutter(traceback.format_exc())
@@ -343,6 +368,7 @@ def set_verbosity_level(level):
     global _verbosity_level
     _verbosity_level = level
     _update_logging_level(level < 0)
+    ui.ui_factory.be_quiet(level < 0)
 
 
 def get_verbosity_level():
@@ -354,7 +380,6 @@ def get_verbosity_level():
 
 
 def be_quiet(quiet=True):
-    # Perhaps this could be deprecated now ...
     if quiet:
         set_verbosity_level(-1)
     else:
@@ -379,19 +404,18 @@ def is_verbose():
     return _verbosity_level > 0
 
 
-@symbol_versioning.deprecated_function(symbol_versioning.one_two)
-def disable_default_logging():
-    """Turn off default log handlers.
-
-    Don't call this method, use _push_log_file and _pop_log_file instead.
-    """
-    pass
+def debug_memory(message='', short=True):
+    """Write out a memory dump."""
+    if sys.platform == 'win32':
+        from bzrlib import win32utils
+        win32utils.debug_memory_win32api(message=message, short=short)
+    else:
+        _debug_memory_proc(message=message, short=short)
 
 
 _short_fields = ('VmPeak', 'VmSize', 'VmRSS')
 
-def debug_memory(message='', short=True):
-    """Write out a memory dump."""
+def _debug_memory_proc(message='', short=True):
     try:
         status_file = file('/proc/%s/status' % os.getpid(), 'rb')
     except IOError:
@@ -419,15 +443,21 @@ def report_exception(exc_info, err_file):
 
     :return: The appropriate exit code for this error.
     """
-    exc_type, exc_object, exc_tb = exc_info
     # Log the full traceback to ~/.bzr.log
     log_exception_quietly()
+    if 'error' in debug.debug_flags:
+        print_exception(exc_info, err_file)
+        return errors.EXIT_ERROR
+    exc_type, exc_object, exc_tb = exc_info
     if (isinstance(exc_object, IOError)
         and getattr(exc_object, 'errno', None) == errno.EPIPE):
         err_file.write("bzr: broken pipe\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, KeyboardInterrupt):
         err_file.write("bzr: interrupted\n")
+        return errors.EXIT_ERROR
+    elif isinstance(exc_object, MemoryError):
+        err_file.write("bzr: out of memory\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, ImportError) \
         and str(exc_object).startswith("No module named "):
@@ -465,9 +495,6 @@ def report_user_error(exc_info, err_file, advice=None):
     :param advice: Extra advice to the user to be printed following the
         exception.
     """
-    if 'error' in debug.debug_flags:
-        print_exception(exc_info, err_file)
-        return
     err_file.write("bzr: ERROR: %s\n" % (exc_info[1],))
     if advice:
         err_file.write("%s\n" % (advice,))
@@ -475,25 +502,25 @@ def report_user_error(exc_info, err_file, advice=None):
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
-    print_exception(exc_info, err_file)
-    err_file.write('\n')
-    err_file.write('bzr %s on python %s (%s)\n' % \
-                       (bzrlib.__version__,
-                        bzrlib._format_version_tuple(sys.version_info),
-                        sys.platform))
-    err_file.write('arguments: %r\n' % sys.argv)
-    err_file.write(
-        'encoding: %r, fsenc: %r, lang: %r\n' % (
-            osutils.get_user_encoding(), sys.getfilesystemencoding(),
-            os.environ.get('LANG')))
-    err_file.write("plugins:\n")
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        err_file.write("  %-20s %s [%s]\n" %
-            (name, a_plugin.path(), a_plugin.__version__))
-    err_file.write(
-"""\
-*** Bazaar has encountered an internal error.
-    Please report a bug at https://bugs.launchpad.net/bzr/+filebug
-    including this traceback, and a description of what you
-    were doing when the error occurred.
-""")
+    from bzrlib.crash import report_bug
+    report_bug(exc_info, err_file)
+
+
+def _flush_stdout_stderr():
+    # installed into an atexit hook by bzrlib.initialize()
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except IOError, e:
+        import errno
+        if e.errno in [errno.EINVAL, errno.EPIPE]:
+            pass
+        else:
+            raise
+
+
+def _flush_trace():
+    # run from atexit hook
+    global _trace_file
+    if _trace_file:
+        _trace_file.flush()

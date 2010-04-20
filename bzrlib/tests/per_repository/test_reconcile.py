@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for reconciliation of repositories."""
 
@@ -47,7 +47,7 @@ class TestReconcile(TestCaseWithRepository):
     def checkNoBackupInventory(self, aBzrDir):
         """Check that there is no backup inventory in aBzrDir."""
         repo = aBzrDir.open_repository()
-        # Remote repository, and possibly others, do not have 
+        # Remote repository, and possibly others, do not have
         # _transport.
         if getattr(repo, '_transport', None) is not None:
             for path in repo._transport.list_dir('.'):
@@ -58,7 +58,7 @@ class TestsNeedingReweave(TestReconcile):
 
     def setUp(self):
         super(TestsNeedingReweave, self).setUp()
-        
+
         t = get_transport(self.get_url())
         # an empty inventory with no revision for testing with.
         repo = self.make_repository('inventory_without_revision')
@@ -104,7 +104,7 @@ class TestsNeedingReweave(TestReconcile):
         # i.e. a ghost.
         repo = self.make_repository('inventory_one_ghost')
         add_commit(repo, 'ghost', ['the_ghost'])
-         
+
         # a inventory with a ghost that can be corrected now.
         t.copy_tree('inventory_one_ghost', 'inventory_ghost_present')
         bzrdir_url = self.get_url('inventory_ghost_present')
@@ -231,7 +231,7 @@ class TestsNeedingReweave(TestReconcile):
     def test_reweave_inventory_preserves_a_revision_with_ghosts(self):
         d = bzrlib.bzrdir.BzrDir.open(self.get_url('inventory_one_ghost'))
         reconciler = d.open_repository().reconcile(thorough=True)
-        # no inconsistent parents should have been found: 
+        # no inconsistent parents should have been found:
         # the lack of a parent for ghost is normal
         self.assertEqual(0, reconciler.inconsistent_parents)
         # and one garbage inventories
@@ -240,7 +240,7 @@ class TestsNeedingReweave(TestReconcile):
         repo = d.open_repository()
         repo.get_inventory('ghost')
         self.assertEqual([None, 'ghost'], repo.get_ancestry('ghost'))
-        
+
     def test_reweave_inventory_fixes_ancestryfor_a_present_ghost(self):
         d = bzrlib.bzrdir.BzrDir.open(self.get_url('inventory_ghost_present'))
         repo = d.open_repository()
@@ -264,6 +264,40 @@ class TestsNeedingReweave(TestReconcile):
         self.assertEqual([None, 'the_ghost', 'ghost'], repo.get_ancestry('ghost'))
         self.assertEqual([None, 'the_ghost'], repo.get_ancestry('the_ghost'))
 
+    def test_text_from_ghost_revision(self):
+        repo = self.make_repository('text-from-ghost')
+        inv = Inventory(revision_id='final-revid')
+        inv.root.revision = 'root-revid'
+        ie = inv.add_path('bla', 'file', 'myfileid')
+        ie.revision = 'ghostrevid'
+        ie.text_size = 42
+        ie.text_sha1 = "bee68c8acd989f5f1765b4660695275948bf5c00"
+        rev = bzrlib.revision.Revision(timestamp=0,
+                                       timezone=None,
+                                       committer="Foo Bar <foo@example.com>",
+                                       message="Message",
+                                       revision_id='final-revid')
+        repo.lock_write()
+        try:
+            repo.start_write_group()
+            try:
+                repo.add_revision('final-revid', rev, inv)
+                try:
+                    repo.texts.add_lines(('myfileid', 'ghostrevid'),
+                        (('myfileid', 'ghost-text-parent'),),
+                        ["line1\n", "line2\n"])
+                except errors.RevisionNotPresent:
+                    raise TestSkipped("text ghost parents not supported")
+                if repo.supports_rich_root():
+                    root_id = inv.root.file_id
+                    repo.texts.add_lines((inv.root.file_id, inv.root.revision),
+                        [], [])
+            finally:
+                repo.commit_write_group()
+        finally:
+            repo.unlock()
+        repo.reconcile(thorough=True)
+
 
 class TestReconcileWithIncorrectRevisionCache(TestReconcile):
     """Ancestry data gets cached in knits and weaves should be reconcilable.
@@ -275,7 +309,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
     def setUp(self):
         self.reduceLockdirTimeout()
         super(TestReconcileWithIncorrectRevisionCache, self).setUp()
-        
+
         t = get_transport(self.get_url())
         # we need a revision with two parents in the wrong order
         # which should trigger reinsertion.
@@ -286,7 +320,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         # there is no api to construct a broken knit repository at
         # this point. if we ever encounter a bad graph in a knit repo
         # we should add a lower level api to allow constructing such cases.
-        
+
         # first off the common logic:
         tree = self.make_branch_and_tree('wrong-first-parent')
         second_tree = self.make_branch_and_tree('reversed-secondary-parents')
@@ -307,6 +341,9 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         repo.start_write_group()
         inv = Inventory(revision_id='wrong-first-parent')
         inv.root.revision = 'wrong-first-parent'
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            repo.texts.add_lines((root_id, 'wrong-first-parent'), [], [])
         sha1 = repo.add_inventory('wrong-first-parent', inv, ['2', '1'])
         rev = Revision(timestamp=0,
                        timezone=None,

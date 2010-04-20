@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tree creator for many commits, but no changes"""
 
@@ -28,11 +28,11 @@ from bzrlib.benchmarks.tree_creator import TreeCreator
 
 class HeavilyMergedTreeCreator(TreeCreator):
     """Create a tree in which almost every commit is a merge.
-   
-    No file changes are included.  This produces two trees, 
+
+    No file changes are included.  This produces two trees,
     one of which is returned.  Except for the first commit, every
     commit in its revision-history is a merge of another commit in the other
-    tree.  
+    tree.
     Not hardlinking the working tree, because there are no working tree files.
     """
 

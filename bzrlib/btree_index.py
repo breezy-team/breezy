@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,17 +12,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 #
 
 """B+Tree indices"""
 
-import array
-import bisect
+import cStringIO
 from bisect import bisect_right
-from copy import deepcopy
 import math
-import struct
 import tempfile
 import zlib
 
@@ -30,9 +27,11 @@ from bzrlib import (
     chunk_writer,
     debug,
     errors,
+    fifo_cache,
     index,
     lru_cache,
     osutils,
+    static_tuple,
     trace,
     )
 from bzrlib.index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
@@ -63,14 +62,20 @@ class _BuilderRow(object):
     def __init__(self):
         """Create a _BuilderRow."""
         self.nodes = 0
-        self.spool = tempfile.TemporaryFile()
+        self.spool = None# tempfile.TemporaryFile(prefix='bzr-index-row-')
         self.writer = None
 
     def finish_node(self, pad=True):
         byte_lines, _, padding = self.writer.finish()
         if self.nodes == 0:
+            self.spool = cStringIO.StringIO()
             # padded note:
             self.spool.write("\x00" * _RESERVED_HEADER_BYTES)
+        elif self.nodes == 1:
+            # We got bigger than 1 node, switch to a temp file
+            spool = tempfile.TemporaryFile(prefix='bzr-index-row-')
+            spool.write(self.spool.getvalue())
+            self.spool = spool
         skipped_bytes = 0
         if not pad and padding:
             del byte_lines[-1]
@@ -139,6 +144,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         self._nodes = {}
         # Indicate it hasn't been built yet
         self._nodes_by_key = None
+        self._optimize_for_size = False
 
     def add_node(self, key, value, references=()):
         """Add a node to the index.
@@ -154,15 +160,16 @@ class BTreeBuilder(index.GraphIndexBuilder):
         :param value: The value to associate with the key. It may be any
             bytes as long as it does not contain \0 or \n.
         """
+        # Ensure that 'key' is a StaticTuple
+        key = static_tuple.StaticTuple.from_sequence(key).intern()
         # we don't care about absent_references
         node_refs, _ = self._check_key_ref_value(key, references, value)
         if key in self._nodes:
             raise errors.BadIndexDuplicateKey(key, self)
-        self._nodes[key] = (node_refs, value)
-        self._keys.add(key)
+        self._nodes[key] = static_tuple.StaticTuple(node_refs, value)
         if self._nodes_by_key is not None and self._key_length > 1:
             self._update_nodes_by_key(key, value, node_refs)
-        if len(self._keys) < self._spill_at:
+        if len(self._nodes) < self._spill_at:
             return
         self._spill_mem_keys_to_disk()
 
@@ -179,6 +186,31 @@ class BTreeBuilder(index.GraphIndexBuilder):
         combine mem with the first and second indexes, creating a new one of
         size 4x. On the fifth create a single new one, etc.
         """
+        if self._combine_backing_indices:
+            (new_backing_file, size,
+             backing_pos) = self._spill_mem_keys_and_combine()
+        else:
+            new_backing_file, size = self._spill_mem_keys_without_combining()
+        # Note: The transport here isn't strictly needed, because we will use
+        #       direct access to the new_backing._file object
+        new_backing = BTreeGraphIndex(get_transport('.'), '<temp>', size)
+        # GC will clean up the file
+        new_backing._file = new_backing_file
+        if self._combine_backing_indices:
+            if len(self._backing_indices) == backing_pos:
+                self._backing_indices.append(None)
+            self._backing_indices[backing_pos] = new_backing
+            for backing_pos in range(backing_pos):
+                self._backing_indices[backing_pos] = None
+        else:
+            self._backing_indices.append(new_backing)
+        self._nodes = {}
+        self._nodes_by_key = None
+
+    def _spill_mem_keys_without_combining(self):
+        return self._write_nodes(self._iter_mem_nodes(), allow_optimize=False)
+
+    def _spill_mem_keys_and_combine(self):
         iterators_to_combine = [self._iter_mem_nodes()]
         pos = -1
         for pos, backing in enumerate(self._backing_indices):
@@ -188,22 +220,9 @@ class BTreeBuilder(index.GraphIndexBuilder):
             iterators_to_combine.append(backing.iter_all_entries())
         backing_pos = pos + 1
         new_backing_file, size = \
-            self._write_nodes(self._iter_smallest(iterators_to_combine))
-        dir_path, base_name = osutils.split(new_backing_file.name)
-        # Note: The transport here isn't strictly needed, because we will use
-        #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(get_transport(dir_path),
-                                      base_name, size)
-        # GC will clean up the file
-        new_backing._file = new_backing_file
-        if len(self._backing_indices) == backing_pos:
-            self._backing_indices.append(None)
-        self._backing_indices[backing_pos] = new_backing
-        for pos in range(backing_pos):
-            self._backing_indices[pos] = None
-        self._keys = set()
-        self._nodes = {}
-        self._nodes_by_key = None
+            self._write_nodes(self._iter_smallest(iterators_to_combine),
+                              allow_optimize=False)
+        return new_backing_file, size, backing_pos
 
     def add_nodes(self, nodes):
         """Add nodes to the index.
@@ -261,11 +280,14 @@ class BTreeBuilder(index.GraphIndexBuilder):
             except StopIteration:
                 current_values[pos] = None
 
-    def _add_key(self, string_key, line, rows):
+    def _add_key(self, string_key, line, rows, allow_optimize=True):
         """Add a key to the current chunk.
 
         :param string_key: The key to add.
         :param line: The fully serialised key and value.
+        :param allow_optimize: If set to False, prevent setting the optimize
+            flag when writing out. This is used by the _spill_mem_keys_to_disk
+            functionality.
         """
         if rows[-1].writer is None:
             # opening a new leaf chunk;
@@ -276,7 +298,12 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     length = _PAGE_SIZE
                     if internal_row.nodes == 0:
                         length -= _RESERVED_HEADER_BYTES # padded
-                    internal_row.writer = chunk_writer.ChunkWriter(length, 0)
+                    if allow_optimize:
+                        optimize_for_size = self._optimize_for_size
+                    else:
+                        optimize_for_size = False
+                    internal_row.writer = chunk_writer.ChunkWriter(length, 0,
+                        optimize_for_size=optimize_for_size)
                     internal_row.writer.write(_INTERNAL_FLAG)
                     internal_row.writer.write(_INTERNAL_OFFSET +
                         str(rows[pos + 1].nodes) + "\n")
@@ -284,7 +311,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             length = _PAGE_SIZE
             if rows[-1].nodes == 0:
                 length -= _RESERVED_HEADER_BYTES # padded
-            rows[-1].writer = chunk_writer.ChunkWriter(length)
+            rows[-1].writer = chunk_writer.ChunkWriter(length,
+                optimize_for_size=self._optimize_for_size)
             rows[-1].writer.write(_LEAF_FLAG)
         if rows[-1].writer.write(line):
             # this key did not fit in the node:
@@ -293,7 +321,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
             new_row = True
             for row in reversed(rows[:-1]):
                 # Mark the start of the next node in the node above. If it
-                # doesn't fit then propogate upwards until we find one that
+                # doesn't fit then propagate upwards until we find one that
                 # it does fit into.
                 if row.writer.write(key_line):
                     row.finish_node()
@@ -313,18 +341,22 @@ class BTreeBuilder(index.GraphIndexBuilder):
                 # This will be padded, hence the -100
                 new_row.writer = chunk_writer.ChunkWriter(
                     _PAGE_SIZE - _RESERVED_HEADER_BYTES,
-                    reserved_bytes)
+                    reserved_bytes,
+                    optimize_for_size=self._optimize_for_size)
                 new_row.writer.write(_INTERNAL_FLAG)
                 new_row.writer.write(_INTERNAL_OFFSET +
                     str(rows[1].nodes - 1) + "\n")
                 new_row.writer.write(key_line)
-            self._add_key(string_key, line, rows)
+            self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
 
-    def _write_nodes(self, node_iterator):
+    def _write_nodes(self, node_iterator, allow_optimize=True):
         """Write node_iterator out as a B+Tree.
 
         :param node_iterator: An iterator of sorted nodes. Each node should
             match the output given by iter_all_entries.
+        :param allow_optimize: If set to False, prevent setting the optimize
+            flag when writing out. This is used by the _spill_mem_keys_to_disk
+            functionality.
         :return: A file handle for a temporary file containing a B+Tree for
             the nodes.
         """
@@ -340,32 +372,29 @@ class BTreeBuilder(index.GraphIndexBuilder):
         self.row_lengths = []
         # Loop over all nodes adding them to the bottom row
         # (rows[-1]). When we finish a chunk in a row,
-        # propogate the key that didn't fit (comes after the chunk) to the
+        # propagate the key that didn't fit (comes after the chunk) to the
         # row above, transitively.
         for node in node_iterator:
             if key_count == 0:
                 # First key triggers the first row
                 rows.append(_LeafBuilderRow())
             key_count += 1
-            # TODO: Flattening the node into a string key and a line should
-            #       probably be put into a pyrex function. We can do a quick
-            #       iter over all the entries to determine the final length,
-            #       and then do a single malloc() rather than lots of
-            #       intermediate mallocs as we build everything up.
-            #       ATM 3 / 13s are spent flattening nodes (10s is compressing)
             string_key, line = _btree_serializer._flatten_node(node,
                                     self.reference_lists)
-            self._add_key(string_key, line, rows)
+            self._add_key(string_key, line, rows, allow_optimize=allow_optimize)
         for row in reversed(rows):
             pad = (type(row) != _LeafBuilderRow)
             row.finish_node(pad=pad)
-        result = tempfile.NamedTemporaryFile()
         lines = [_BTSIGNATURE]
         lines.append(_OPTION_NODE_REFS + str(self.reference_lists) + '\n')
         lines.append(_OPTION_KEY_ELEMENTS + str(self._key_length) + '\n')
         lines.append(_OPTION_LEN + str(key_count) + '\n')
         row_lengths = [row.nodes for row in rows]
         lines.append(_OPTION_ROW_LENGTHS + ','.join(map(str, row_lengths)) + '\n')
+        if row_lengths and row_lengths[-1] > 1:
+            result = tempfile.NamedTemporaryFile(prefix='bzr-index-')
+        else:
+            result = cStringIO.StringIO()
         result.writelines(lines)
         position = sum(map(len, lines))
         root_row = True
@@ -382,7 +411,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             # Special case the first node as it may be prefixed
             node = row.spool.read(_PAGE_SIZE)
             result.write(node[reserved:])
-            result.write("\x00" * (reserved - position))
+            if len(node) == _PAGE_SIZE:
+                result.write("\x00" * (reserved - position))
             position = 0 # Only the root row actually has an offset
             copied_len = osutils.pumpfile(row.spool, result)
             if copied_len != (row.nodes - 1) * _PAGE_SIZE:
@@ -407,8 +437,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
     def iter_all_entries(self):
         """Iterate over all keys within the index
 
-        :return: An iterable of (index, key, reference_lists, value). There is no
-            defined order for the result iteration - it will be in the most
+        :return: An iterable of (index, key, value, reference_lists). There is
+            no defined order for the result iteration - it will be in the most
             efficient order for the index (in this case dictionary hash order).
         """
         if 'evil' in debug.debug_flags:
@@ -433,15 +463,29 @@ class BTreeBuilder(index.GraphIndexBuilder):
             efficient order for the index (keys iteration order in this case).
         """
         keys = set(keys)
+        # Note: We don't use keys.intersection() here. If you read the C api,
+        #       set.intersection(other) special cases when other is a set and
+        #       will iterate the smaller of the two and lookup in the other.
+        #       It does *not* do this for any other type (even dict, unlike
+        #       some other set functions.) Since we expect keys is generally <<
+        #       self._nodes, it is faster to iterate over it in a list
+        #       comprehension
+        nodes = self._nodes
+        local_keys = [key for key in keys if key in nodes]
         if self.reference_lists:
-            for key in keys.intersection(self._keys):
-                node = self._nodes[key]
+            for key in local_keys:
+                node = nodes[key]
                 yield self, key, node[1], node[0]
         else:
-            for key in keys.intersection(self._keys):
-                node = self._nodes[key]
+            for key in local_keys:
+                node = nodes[key]
                 yield self, key, node[1]
-        keys.difference_update(self._keys)
+        # Find things that are in backing indices that have not been handled
+        # yet.
+        if not self._backing_indices:
+            return # We won't find anything there either
+        # Remove all of the keys that we found locally
+        keys.difference_update(local_keys)
         for backing in self._backing_indices:
             if backing is None:
                 continue
@@ -523,7 +567,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     else:
                         # yield keys
                         for value in key_dict.itervalues():
-                            yield (self, ) + value
+                            yield (self, ) + tuple(value)
             else:
                 yield (self, ) + key_dict
 
@@ -550,7 +594,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
 
         For InMemoryGraphIndex the estimate is exact.
         """
-        return len(self._keys) + sum(backing.key_count() for backing in
+        return len(self._nodes) + sum(backing.key_count() for backing in
             self._backing_indices if backing is not None)
 
     def validate(self):
@@ -560,15 +604,25 @@ class BTreeBuilder(index.GraphIndexBuilder):
 class _LeafNode(object):
     """A leaf node for a serialised B+Tree index."""
 
+    __slots__ = ('keys', 'min_key', 'max_key')
+
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
         # splitlines mangles the \r delimiters.. don't use it.
-        self.keys = dict(_btree_serializer._parse_leaf_lines(bytes,
-            key_length, ref_list_length))
+        key_list = _btree_serializer._parse_leaf_lines(bytes,
+            key_length, ref_list_length)
+        if key_list:
+            self.min_key = key_list[0][0]
+            self.max_key = key_list[-1][0]
+        else:
+            self.min_key = self.max_key = None
+        self.keys = dict(key_list)
 
 
 class _InternalNode(object):
     """An internal node for a serialised B+Tree index."""
+
+    __slots__ = ('keys', 'offset')
 
     def __init__(self, bytes):
         """Parse bytes to create an internal node object."""
@@ -578,10 +632,11 @@ class _InternalNode(object):
     def _parse_lines(self, lines):
         nodes = []
         self.offset = int(lines[1][7:])
+        as_st = static_tuple.StaticTuple.from_sequence
         for line in lines[2:]:
             if line == '':
                 break
-            nodes.append(tuple(line.split('\0')))
+            nodes.append(as_st(map(intern, line.split('\0'))).intern())
         return nodes
 
 
@@ -592,7 +647,8 @@ class BTreeGraphIndex(object):
     memory except when very large walks are done.
     """
 
-    def __init__(self, transport, name, size):
+    def __init__(self, transport, name, size, unlimited_cache=False,
+                 offset=0):
         """Create a B+Tree index object on the index name.
 
         :param transport: The transport to read data for the index from.
@@ -602,17 +658,30 @@ class BTreeGraphIndex(object):
             the initial read (to read the root node header) can be done
             without over-reading even on empty indices, and on small indices
             allows single-IO to read the entire index.
+        :param unlimited_cache: If set to True, then instead of using an
+            LRUCache with size _NODE_CACHE_SIZE, we will use a dict and always
+            cache all leaf nodes.
+        :param offset: The start of the btree index data isn't byte 0 of the
+            file. Instead it starts at some point later.
         """
         self._transport = transport
         self._name = name
         self._size = size
         self._file = None
-        self._page_size = transport.recommended_page_size()
+        self._recommended_pages = self._compute_recommended_pages()
         self._root_node = None
+        self._base_offset = offset
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
-        self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
-        self._internal_node_cache = lru_cache.LRUCache()
+        if unlimited_cache:
+            self._leaf_node_cache = {}
+            self._internal_node_cache = {}
+        else:
+            self._leaf_node_cache = lru_cache.LRUCache(_NODE_CACHE_SIZE)
+            # We use a FIFO here just to prevent possible blowout. However, a
+            # 300k record btree has only 3k leaf nodes, and only 20 internal
+            # nodes. A value of 100 scales to ~100*100*100 = 1M records.
+            self._internal_node_cache = fifo_cache.FIFOCache(100)
         self._key_count = None
         self._row_lengths = None
         self._row_offsets = None # Start of each row, [-1] is the end
@@ -628,15 +697,7 @@ class BTreeGraphIndex(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def _get_root_node(self):
-        if self._root_node is None:
-            # We may not have a root node yet
-            nodes = list(self._read_nodes([0]))
-            if len(nodes):
-                self._root_node = nodes[0][1]
-        return self._root_node
-
-    def _cache_nodes(self, nodes, cache):
+    def _get_and_cache_nodes(self, nodes):
         """Read nodes and cache them in the lru.
 
         The nodes list supplied is sorted and then read from disk, each node
@@ -649,17 +710,216 @@ class BTreeGraphIndex(object):
 
         :return: A dict of {node_pos: node}
         """
-        if len(nodes) > cache._max_cache:
-            trace.mutter('Requesting %s > %s nodes, not all will be cached',
-                         len(nodes), cache._max_cache)
         found = {}
+        start_of_leaves = None
         for node_pos, node in self._read_nodes(sorted(nodes)):
             if node_pos == 0: # Special case
                 self._root_node = node
             else:
-                cache.add(node_pos, node)
+                if start_of_leaves is None:
+                    start_of_leaves = self._row_offsets[-2]
+                if node_pos < start_of_leaves:
+                    self._internal_node_cache[node_pos] = node
+                else:
+                    self._leaf_node_cache[node_pos] = node
             found[node_pos] = node
         return found
+
+    def _compute_recommended_pages(self):
+        """Convert transport's recommended_page_size into btree pages.
+
+        recommended_page_size is in bytes, we want to know how many _PAGE_SIZE
+        pages fit in that length.
+        """
+        recommended_read = self._transport.recommended_page_size()
+        recommended_pages = int(math.ceil(recommended_read /
+                                          float(_PAGE_SIZE)))
+        return recommended_pages
+
+    def _compute_total_pages_in_index(self):
+        """How many pages are in the index.
+
+        If we have read the header we will use the value stored there.
+        Otherwise it will be computed based on the length of the index.
+        """
+        if self._size is None:
+            raise AssertionError('_compute_total_pages_in_index should not be'
+                                 ' called when self._size is None')
+        if self._root_node is not None:
+            # This is the number of pages as defined by the header
+            return self._row_offsets[-1]
+        # This is the number of pages as defined by the size of the index. They
+        # should be indentical.
+        total_pages = int(math.ceil(self._size / float(_PAGE_SIZE)))
+        return total_pages
+
+    def _expand_offsets(self, offsets):
+        """Find extra pages to download.
+
+        The idea is that we always want to make big-enough requests (like 64kB
+        for http), so that we don't waste round trips. So given the entries
+        that we already have cached and the new pages being downloaded figure
+        out what other pages we might want to read.
+
+        See also doc/developers/btree_index_prefetch.txt for more details.
+
+        :param offsets: The offsets to be read
+        :return: A list of offsets to download
+        """
+        if 'index' in debug.debug_flags:
+            trace.mutter('expanding: %s\toffsets: %s', self._name, offsets)
+
+        if len(offsets) >= self._recommended_pages:
+            # Don't add more, we are already requesting more than enough
+            if 'index' in debug.debug_flags:
+                trace.mutter('  not expanding large request (%s >= %s)',
+                             len(offsets), self._recommended_pages)
+            return offsets
+        if self._size is None:
+            # Don't try anything, because we don't know where the file ends
+            if 'index' in debug.debug_flags:
+                trace.mutter('  not expanding without knowing index size')
+            return offsets
+        total_pages = self._compute_total_pages_in_index()
+        cached_offsets = self._get_offsets_to_cached_pages()
+        # If reading recommended_pages would read the rest of the index, just
+        # do so.
+        if total_pages - len(cached_offsets) <= self._recommended_pages:
+            # Read whatever is left
+            if cached_offsets:
+                expanded = [x for x in xrange(total_pages)
+                               if x not in cached_offsets]
+            else:
+                expanded = range(total_pages)
+            if 'index' in debug.debug_flags:
+                trace.mutter('  reading all unread pages: %s', expanded)
+            return expanded
+
+        if self._root_node is None:
+            # ATM on the first read of the root node of a large index, we don't
+            # bother pre-reading any other pages. This is because the
+            # likelyhood of actually reading interesting pages is very low.
+            # See doc/developers/btree_index_prefetch.txt for a discussion, and
+            # a possible implementation when we are guessing that the second
+            # layer index is small
+            final_offsets = offsets
+        else:
+            tree_depth = len(self._row_lengths)
+            if len(cached_offsets) < tree_depth and len(offsets) == 1:
+                # We haven't read enough to justify expansion
+                # If we are only going to read the root node, and 1 leaf node,
+                # then it isn't worth expanding our request. Once we've read at
+                # least 2 nodes, then we are probably doing a search, and we
+                # start expanding our requests.
+                if 'index' in debug.debug_flags:
+                    trace.mutter('  not expanding on first reads')
+                return offsets
+            final_offsets = self._expand_to_neighbors(offsets, cached_offsets,
+                                                      total_pages)
+
+        final_offsets = sorted(final_offsets)
+        if 'index' in debug.debug_flags:
+            trace.mutter('expanded:  %s', final_offsets)
+        return final_offsets
+
+    def _expand_to_neighbors(self, offsets, cached_offsets, total_pages):
+        """Expand requests to neighbors until we have enough pages.
+
+        This is called from _expand_offsets after policy has determined that we
+        want to expand.
+        We only want to expand requests within a given layer. We cheat a little
+        bit and assume all requests will be in the same layer. This is true
+        given the current design, but if it changes this algorithm may perform
+        oddly.
+
+        :param offsets: requested offsets
+        :param cached_offsets: offsets for pages we currently have cached
+        :return: A set() of offsets after expansion
+        """
+        final_offsets = set(offsets)
+        first = end = None
+        new_tips = set(final_offsets)
+        while len(final_offsets) < self._recommended_pages and new_tips:
+            next_tips = set()
+            for pos in new_tips:
+                if first is None:
+                    first, end = self._find_layer_first_and_end(pos)
+                previous = pos - 1
+                if (previous > 0
+                    and previous not in cached_offsets
+                    and previous not in final_offsets
+                    and previous >= first):
+                    next_tips.add(previous)
+                after = pos + 1
+                if (after < total_pages
+                    and after not in cached_offsets
+                    and after not in final_offsets
+                    and after < end):
+                    next_tips.add(after)
+                # This would keep us from going bigger than
+                # recommended_pages by only expanding the first offsets.
+                # However, if we are making a 'wide' request, it is
+                # reasonable to expand all points equally.
+                # if len(final_offsets) > recommended_pages:
+                #     break
+            final_offsets.update(next_tips)
+            new_tips = next_tips
+        return final_offsets
+
+    def clear_cache(self):
+        """Clear out any cached/memoized values.
+
+        This can be called at any time, but generally it is used when we have
+        extracted some information, but don't expect to be requesting any more
+        from this index.
+        """
+        # Note that we don't touch self._root_node or self._internal_node_cache
+        # We don't expect either of those to be big, and it can save
+        # round-trips in the future. We may re-evaluate this if InternalNode
+        # memory starts to be an issue.
+        self._leaf_node_cache.clear()
+
+    def external_references(self, ref_list_num):
+        if self._root_node is None:
+            self._get_root_node()
+        if ref_list_num + 1 > self.node_ref_lists:
+            raise ValueError('No ref list %d, index has %d ref lists'
+                % (ref_list_num, self.node_ref_lists))
+        keys = set()
+        refs = set()
+        for node in self.iter_all_entries():
+            keys.add(node[1])
+            refs.update(node[3][ref_list_num])
+        return refs - keys
+
+    def _find_layer_first_and_end(self, offset):
+        """Find the start/stop nodes for the layer corresponding to offset.
+
+        :return: (first, end)
+            first is the first node in this layer
+            end is the first node of the next layer
+        """
+        first = end = 0
+        for roffset in self._row_offsets:
+            first = end
+            end = roffset
+            if offset < roffset:
+                break
+        return first, end
+
+    def _get_offsets_to_cached_pages(self):
+        """Determine what nodes we already have cached."""
+        cached_offsets = set(self._internal_node_cache.keys())
+        cached_offsets.update(self._leaf_node_cache.keys())
+        if self._root_node is not None:
+            cached_offsets.add(0)
+        return cached_offsets
+
+    def _get_root_node(self):
+        if self._root_node is None:
+            # We may not have a root node yet
+            self._get_internal_nodes([0])
+        return self._root_node
 
     def _get_nodes(self, cache, node_indexes):
         found = {}
@@ -672,7 +932,10 @@ class BTreeGraphIndex(object):
                 found[idx] = cache[idx]
             except KeyError:
                 needed.append(idx)
-        found.update(self._cache_nodes(needed, cache))
+        if not needed:
+            return found
+        needed = self._expand_offsets(needed)
+        found.update(self._get_and_cache_nodes(needed))
         return found
 
     def _get_internal_nodes(self, node_indexes):
@@ -682,17 +945,21 @@ class BTreeGraphIndex(object):
         """
         return self._get_nodes(self._internal_node_cache, node_indexes)
 
-    def _get_leaf_nodes(self, node_indexes):
-        """Get a bunch of nodes, from cache or disk."""
-        found = self._get_nodes(self._leaf_node_cache, node_indexes)
+    def _cache_leaf_values(self, nodes):
+        """Cache directly from key => value, skipping the btree."""
         if self._leaf_value_cache is not None:
-            for node in found.itervalues():
+            for node in nodes.itervalues():
                 for key, value in node.keys.iteritems():
                     if key in self._leaf_value_cache:
                         # Don't add the rest of the keys, we've seen this node
                         # before.
                         break
                     self._leaf_value_cache[key] = value
+
+    def _get_leaf_nodes(self, node_indexes):
+        """Get a bunch of nodes, from cache or disk."""
+        found = self._get_nodes(self._leaf_node_cache, node_indexes)
+        self._cache_leaf_values(found)
         return found
 
     def iter_all_entries(self):
@@ -709,17 +976,32 @@ class BTreeGraphIndex(object):
                 "iter_all_entries scales with size of history.")
         if not self.key_count():
             return
+        if self._row_offsets[-1] == 1:
+            # There is only the root node, and we read that via key_count()
+            if self.node_ref_lists:
+                for key, (value, refs) in sorted(self._root_node.keys.items()):
+                    yield (self, key, value, refs)
+            else:
+                for key, (value, refs) in sorted(self._root_node.keys.items()):
+                    yield (self, key, value)
+            return
         start_of_leaves = self._row_offsets[-2]
         end_of_leaves = self._row_offsets[-1]
-        needed_nodes = range(start_of_leaves, end_of_leaves)
+        needed_offsets = range(start_of_leaves, end_of_leaves)
+        if needed_offsets == [0]:
+            # Special case when we only have a root node, as we have already
+            # read everything
+            nodes = [(0, self._root_node)]
+        else:
+            nodes = self._read_nodes(needed_offsets)
         # We iterate strictly in-order so that we can use this function
         # for spilling index builds to disk.
         if self.node_ref_lists:
-            for _, node in self._read_nodes(needed_nodes):
+            for _, node in nodes:
                 for key, (value, refs) in sorted(node.keys.items()):
                     yield (self, key, value, refs)
         else:
-            for _, node in self._read_nodes(needed_nodes):
+            for _, node in nodes:
                 for key, (value, refs) in sorted(node.keys.items()):
                     yield (self, key, value)
 
@@ -805,6 +1087,39 @@ class BTreeGraphIndex(object):
             output.append(cur_out)
         return output
 
+    def _walk_through_internal_nodes(self, keys):
+        """Take the given set of keys, and find the corresponding LeafNodes.
+
+        :param keys: An unsorted iterable of keys to search for
+        :return: (nodes, index_and_keys)
+            nodes is a dict mapping {index: LeafNode}
+            keys_at_index is a list of tuples of [(index, [keys for Leaf])]
+        """
+        # 6 seconds spent in miss_torture using the sorted() line.
+        # Even with out of order disk IO it seems faster not to sort it when
+        # large queries are being made.
+        keys_at_index = [(0, sorted(keys))]
+
+        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
+            node_indexes = [idx for idx, s_keys in keys_at_index]
+            nodes = self._get_internal_nodes(node_indexes)
+
+            next_nodes_and_keys = []
+            for node_index, sub_keys in keys_at_index:
+                node = nodes[node_index]
+                positions = self._multi_bisect_right(sub_keys, node.keys)
+                node_offset = next_row_start + node.offset
+                next_nodes_and_keys.extend([(node_offset + pos, s_keys)
+                                           for pos, s_keys in positions])
+            keys_at_index = next_nodes_and_keys
+        # We should now be at the _LeafNodes
+        node_indexes = [idx for idx, s_keys in keys_at_index]
+
+        # TODO: We may *not* want to always read all the nodes in one
+        #       big go. Consider setting a max size on this.
+        nodes = self._get_leaf_nodes(node_indexes)
+        return nodes, keys_at_index
+
     def iter_entries(self, keys):
         """Iterate over keys within the index.
 
@@ -848,32 +1163,7 @@ class BTreeGraphIndex(object):
         needed_keys = keys
         if not needed_keys:
             return
-        # 6 seconds spent in miss_torture using the sorted() line.
-        # Even with out of order disk IO it seems faster not to sort it when
-        # large queries are being made.
-        needed_keys = sorted(needed_keys)
-
-        nodes_and_keys = [(0, needed_keys)]
-
-        for row_pos, next_row_start in enumerate(self._row_offsets[1:-1]):
-            node_indexes = [idx for idx, s_keys in nodes_and_keys]
-            nodes = self._get_internal_nodes(node_indexes)
-
-            next_nodes_and_keys = []
-            for node_index, sub_keys in nodes_and_keys:
-                node = nodes[node_index]
-                positions = self._multi_bisect_right(sub_keys, node.keys)
-                node_offset = next_row_start + node.offset
-                next_nodes_and_keys.extend([(node_offset + pos, s_keys)
-                                           for pos, s_keys in positions])
-            nodes_and_keys = next_nodes_and_keys
-        # We should now be at the _LeafNodes
-        node_indexes = [idx for idx, s_keys in nodes_and_keys]
-
-        # TODO: We may *not* want to always read all the nodes in one
-        #       big go. Consider setting a max size on this.
-
-        nodes = self._get_leaf_nodes(node_indexes)
+        nodes, nodes_and_keys = self._walk_through_internal_nodes(needed_keys)
         for node_index, sub_keys in nodes_and_keys:
             if not sub_keys:
                 continue
@@ -885,6 +1175,133 @@ class BTreeGraphIndex(object):
                         yield (self, next_sub_key, value, refs)
                     else:
                         yield (self, next_sub_key, value)
+
+    def _find_ancestors(self, keys, ref_list_num, parent_map, missing_keys):
+        """Find the parent_map information for the set of keys.
+
+        This populates the parent_map dict and missing_keys set based on the
+        queried keys. It also can fill out an arbitrary number of parents that
+        it finds while searching for the supplied keys.
+
+        It is unlikely that you want to call this directly. See
+        "CombinedGraphIndex.find_ancestry()" for a more appropriate API.
+
+        :param keys: A keys whose ancestry we want to return
+            Every key will either end up in 'parent_map' or 'missing_keys'.
+        :param ref_list_num: This index in the ref_lists is the parents we
+            care about.
+        :param parent_map: {key: parent_keys} for keys that are present in this
+            index. This may contain more entries than were in 'keys', that are
+            reachable ancestors of the keys requested.
+        :param missing_keys: keys which are known to be missing in this index.
+            This may include parents that were not directly requested, but we
+            were able to determine that they are not present in this index.
+        :return: search_keys    parents that were found but not queried to know
+            if they are missing or present. Callers can re-query this index for
+            those keys, and they will be placed into parent_map or missing_keys
+        """
+        if not self.key_count():
+            # We use key_count() to trigger reading the root node and
+            # determining info about this BTreeGraphIndex
+            # If we don't have any keys, then everything is missing
+            missing_keys.update(keys)
+            return set()
+        if ref_list_num >= self.node_ref_lists:
+            raise ValueError('No ref list %d, index has %d ref lists'
+                % (ref_list_num, self.node_ref_lists))
+
+        # The main trick we are trying to accomplish is that when we find a
+        # key listing its parents, we expect that the parent key is also likely
+        # to sit on the same page. Allowing us to expand parents quickly
+        # without suffering the full stack of bisecting, etc.
+        nodes, nodes_and_keys = self._walk_through_internal_nodes(keys)
+
+        # These are parent keys which could not be immediately resolved on the
+        # page where the child was present. Note that we may already be
+        # searching for that key, and it may actually be present [or known
+        # missing] on one of the other pages we are reading.
+        # TODO:
+        #   We could try searching for them in the immediate previous or next
+        #   page. If they occur "later" we could put them in a pending lookup
+        #   set, and then for each node we read thereafter we could check to
+        #   see if they are present.
+        #   However, we don't know the impact of keeping this list of things
+        #   that I'm going to search for every node I come across from here on
+        #   out.
+        #   It doesn't handle the case when the parent key is missing on a
+        #   page that we *don't* read. So we already have to handle being
+        #   re-entrant for that.
+        #   Since most keys contain a date string, they are more likely to be
+        #   found earlier in the file than later, but we would know that right
+        #   away (key < min_key), and wouldn't keep searching it on every other
+        #   page that we read.
+        #   Mostly, it is an idea, one which should be benchmarked.
+        parents_not_on_page = set()
+
+        for node_index, sub_keys in nodes_and_keys:
+            if not sub_keys:
+                continue
+            # sub_keys is all of the keys we are looking for that should exist
+            # on this page, if they aren't here, then they won't be found
+            node = nodes[node_index]
+            node_keys = node.keys
+            parents_to_check = set()
+            for next_sub_key in sub_keys:
+                if next_sub_key not in node_keys:
+                    # This one is just not present in the index at all
+                    missing_keys.add(next_sub_key)
+                else:
+                    value, refs = node_keys[next_sub_key]
+                    parent_keys = refs[ref_list_num]
+                    parent_map[next_sub_key] = parent_keys
+                    parents_to_check.update(parent_keys)
+            # Don't look for things we've already found
+            parents_to_check = parents_to_check.difference(parent_map)
+            # this can be used to test the benefit of having the check loop
+            # inlined.
+            # parents_not_on_page.update(parents_to_check)
+            # continue
+            while parents_to_check:
+                next_parents_to_check = set()
+                for key in parents_to_check:
+                    if key in node_keys:
+                        value, refs = node_keys[key]
+                        parent_keys = refs[ref_list_num]
+                        parent_map[key] = parent_keys
+                        next_parents_to_check.update(parent_keys)
+                    else:
+                        # This parent either is genuinely missing, or should be
+                        # found on another page. Perf test whether it is better
+                        # to check if this node should fit on this page or not.
+                        # in the 'everything-in-one-pack' scenario, this *not*
+                        # doing the check is 237ms vs 243ms.
+                        # So slightly better, but I assume the standard 'lots
+                        # of packs' is going to show a reasonable improvement
+                        # from the check, because it avoids 'going around
+                        # again' for everything that is in another index
+                        # parents_not_on_page.add(key)
+                        # Missing for some reason
+                        if key < node.min_key:
+                            # in the case of bzr.dev, 3.4k/5.3k misses are
+                            # 'earlier' misses (65%)
+                            parents_not_on_page.add(key)
+                        elif key > node.max_key:
+                            # This parent key would be present on a different
+                            # LeafNode
+                            parents_not_on_page.add(key)
+                        else:
+                            # assert key != node.min_key and key != node.max_key
+                            # If it was going to be present, it would be on
+                            # *this* page, so mark it missing.
+                            missing_keys.add(key)
+                parents_to_check = next_parents_to_check.difference(parent_map)
+                # Might want to do another .difference() from missing_keys
+        # parents_not_on_page could have been found on a different page, or be
+        # known to be missing. So cull out everything that has already been
+        # found.
+        search_keys = parents_not_on_page.difference(
+            parent_map).difference(missing_keys)
+        return search_keys
 
     def iter_entries_prefix(self, keys):
         """Iterate over keys within the index using prefix matching.
@@ -1008,6 +1425,16 @@ class BTreeGraphIndex(object):
             self._get_root_node()
         return self._key_count
 
+    def _compute_row_offsets(self):
+        """Fill out the _row_offsets attribute based on _row_lengths."""
+        offsets = []
+        row_offset = 0
+        for row in self._row_lengths:
+            offsets.append(row_offset)
+            row_offset += row
+        offsets.append(row_offset)
+        self._row_offsets = offsets
+
     def _parse_header_from_bytes(self, bytes):
         """Parse the header from a region of bytes.
 
@@ -1049,13 +1476,7 @@ class BTreeGraphIndex(object):
                 if len(length)])
         except ValueError:
             raise errors.BadIndexOptions(self)
-        offsets = []
-        row_offset = 0
-        for row in self._row_lengths:
-            offsets.append(row_offset)
-            row_offset += row
-        offsets.append(row_offset)
-        self._row_offsets = offsets
+        self._compute_row_offsets()
 
         # calculate the bytes we have processed
         header_end = (len(signature) + sum(map(len, lines[0:4])) + 4)
@@ -1065,33 +1486,50 @@ class BTreeGraphIndex(object):
         """Read some nodes from disk into the LRU cache.
 
         This performs a readv to get the node data into memory, and parses each
-        node, the yields it to the caller. The nodes are requested in the
+        node, then yields it to the caller. The nodes are requested in the
         supplied order. If possible doing sort() on the list before requesting
         a read may improve performance.
 
         :param nodes: The nodes to read. 0 - first node, 1 - second node etc.
         :return: None
         """
+        # may be the byte string of the whole file
+        bytes = None
+        # list of (offset, length) regions of the file that should, evenually
+        # be read in to data_ranges, either from 'bytes' or from the transport
         ranges = []
+        base_offset = self._base_offset
         for index in nodes:
-            offset = index * _PAGE_SIZE
+            offset = (index * _PAGE_SIZE)
             size = _PAGE_SIZE
             if index == 0:
                 # Root node - special case
                 if self._size:
                     size = min(_PAGE_SIZE, self._size)
                 else:
-                    stream = self._transport.get(self._name)
-                    start = stream.read(_PAGE_SIZE)
-                    # Avoid doing this again
-                    self._size = len(start)
-                    size = min(_PAGE_SIZE, self._size)
+                    # The only case where we don't know the size, is for very
+                    # small indexes. So we read the whole thing
+                    bytes = self._transport.get_bytes(self._name)
+                    num_bytes = len(bytes)
+                    self._size = num_bytes - base_offset
+                    # the whole thing should be parsed out of 'bytes'
+                    ranges = [(start, min(_PAGE_SIZE, num_bytes - start))
+                        for start in xrange(base_offset, num_bytes, _PAGE_SIZE)]
+                    break
             else:
+                if offset > self._size:
+                    raise AssertionError('tried to read past the end'
+                                         ' of the file %s > %s'
+                                         % (offset, self._size))
                 size = min(size, self._size - offset)
-            ranges.append((offset, size))
+            ranges.append((base_offset + offset, size))
         if not ranges:
             return
-        if self._file is None:
+        elif bytes is not None:
+            # already have the whole file
+            data_ranges = [(start, bytes[start:start+size])
+                           for start, size in ranges]
+        elif self._file is None:
             data_ranges = self._transport.readv(self._name, ranges)
         else:
             data_ranges = []
@@ -1099,6 +1537,7 @@ class BTreeGraphIndex(object):
                 self._file.seek(offset)
                 data_ranges.append((offset, self._file.read(size)))
         for offset, data in data_ranges:
+            offset -= base_offset
             if offset == 0:
                 # extract the header
                 offset, data = self._parse_header_from_bytes(data)
@@ -1132,6 +1571,7 @@ class BTreeGraphIndex(object):
 
 
 try:
-    from bzrlib import _btree_serializer_c as _btree_serializer
-except ImportError:
+    from bzrlib import _btree_serializer_pyx as _btree_serializer
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib import _btree_serializer_py as _btree_serializer

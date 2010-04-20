@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Implementation of Transport that never has a smart medium.
 
@@ -22,10 +22,10 @@ to never have a smart medium.
 """
 
 from bzrlib import errors
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
-class NoSmartTransportDecorator(TransportDecorator):
+class NoSmartTransportDecorator(decorator.TransportDecorator):
     """A decorator for transports that disables get_smart_medium."""
 
     @classmethod
@@ -36,14 +36,8 @@ class NoSmartTransportDecorator(TransportDecorator):
         raise errors.NoSmartMedium(self)
 
 
-class NoSmartTransportServer(DecoratorServer):
-    """Server for the NoSmartTransportDecorator for testing with."""
-
-    def get_decorator_class(self):
-        return NoSmartTransportDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(NoSmartTransportDecorator, NoSmartTransportServer)]
+    from bzrlib.tests import test_server
+    return [(NoSmartTransportDecorator, test_server.NoSmartTransportServer)]
 

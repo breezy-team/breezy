@@ -12,11 +12,15 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Tests for Repository.add_fallback_repository."""
 
-from bzrlib import errors
+from bzrlib import (
+    bzrdir,
+    errors,
+    remote,
+    )
 from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_repository import TestCaseWithRepository
@@ -45,3 +49,12 @@ class TestAddFallbackRepository(TestCaseWithRepository):
         # ... or on the repository directly...
         self.assertEqual({revision_id: (NULL_REVISION,)},
             repo.get_parent_map([revision_id]))
+        # ... or on the repository's graph.
+        self.assertEqual({revision_id: (NULL_REVISION,)},
+            repo.get_graph().get_parent_map([revision_id]))
+        # ... or on the repository's graph, when there is an other repository.
+        other = self.make_repository('other')
+        other.lock_read()
+        self.addCleanup(other.unlock)
+        self.assertEqual({revision_id: (NULL_REVISION,)},
+            repo.get_graph(other).get_parent_map([revision_id]))

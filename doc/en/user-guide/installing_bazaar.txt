@@ -52,6 +52,22 @@ doesn't work, please contact us via email or IRC so we can help you
 get things working.
 
 
+Installing into site-wide locations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Instead of adding the directory to your PATH, you can install bzr into the
+system locations using::
+
+  python setup.py install
+
+If you do not have a compiler, or do not have the python development tools
+installed, bzr supplies a (slower) pure-python implementation of all
+extensions. You can install without compiling extensions with::
+
+  python setup.py install build_ext --allow-python-fallback
+
+
+
 Running the development version
 -------------------------------
 
@@ -69,9 +85,9 @@ Here are the steps to follow:
 
   2. Get a copy of the development version like this::
 
-       bzr branch http://bazaar-vcs.org/bzr/bzr.dev
+       bzr branch lp:bzr
 
-  3. Put the created directory (bzr.dev) on your PATH.
+  3. Put the created directory on your PATH.
 
 Advanced users may also wish to build the optional C extensions for greater
 speed. This can be done using ``make`` and requires ``pyrex`` and a C compiler.

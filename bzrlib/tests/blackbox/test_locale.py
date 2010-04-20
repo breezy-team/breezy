@@ -12,24 +12,26 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test that bzr handles locales in a reasonable way"""
 
 import os
 import sys
 
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib import (
+    tests,
+    )
 
 
-class TestLocale(TestCaseWithTransport):
+class TestLocale(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestLocale, self).setUp()
 
         if sys.platform in ('win32',):
-            raise TestSkipped('Windows does not respond to the LANG'
-                              ' env variable')
+            raise tests.TestSkipped('Windows does not respond to the LANG'
+                                    ' env variable')
 
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/a'])
@@ -41,6 +43,7 @@ class TestLocale(TestCaseWithTransport):
         self.tree = tree
 
     def test_log_C(self):
+        self.disable_missing_extensions_warning()
         out, err = self.run_bzr_subprocess(
             '--no-aliases --no-plugins log -q --log-format=long tree',
                env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none',
@@ -61,21 +64,7 @@ message:
             '--no-aliases --no-plugins log -q --log-format=long tree',
                env_changes={'LANG':'BOGUS', 'BZR_PROGRESS_BAR':'none',
                             'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
-        # XXX: This depends on the exact formatting of a locale.Error
-        # as the first part of the string. It may be a little tempermental
-        self.assertEqualDiff("""\
-bzr: warning: unsupported locale setting
-  bzr could not set the application locale.
-  Although this should be no problem for bzr itself,
-  it might cause problems with some plugins.
-  To investigate the issue, look at the output
-  of the locale(1p) tool available on POSIX systems.
-bzr: warning: unsupported locale setting
-  Could not determine what text encoding to use.
-  This error usually means your Python interpreter
-  doesn't support the locale set by $LANG (BOGUS)
-  Continuing with ascii encoding.
-""", err)
+        self.assertStartsWith(err, 'bzr: warning: unsupported locale setting')
         self.assertEqualDiff("""\
 ------------------------------------------------------------
 revno: 1

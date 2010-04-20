@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Helper classes for repository implementation tests."""
 
@@ -32,7 +32,7 @@ class TestCaseWithBrokenRevisionIndex(TestCaseWithRepository):
 
     def make_repo_with_extra_ghost_index(self):
         """Make a corrupt repository.
-        
+
         It will contain one revision, 'revision-id'.  The knit index will claim
         that it has one parent, 'incorrect-parent', but the revision text will
         claim it has no parents.

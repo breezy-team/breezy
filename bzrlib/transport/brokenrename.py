@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Transport implementation that doesn't detect clashing renames.
 """
@@ -23,10 +23,10 @@ from bzrlib import (
         errors,
         urlutils,
         )
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
-class BrokenRenameTransportDecorator(TransportDecorator):
+class BrokenRenameTransportDecorator(decorator.TransportDecorator):
     """A transport that fails to detect clashing renames"""
 
     @classmethod
@@ -44,13 +44,6 @@ class BrokenRenameTransportDecorator(TransportDecorator):
         except (errors.DirectoryNotEmpty, errors.FileExists), e:
             # absorb the error
             return
-
-
-class BrokenRenameServer(DecoratorServer):
-    """Server for the BrokenRenameTransportDecorator for testing with."""
-
-    def get_decorator_class(self):
-        return BrokenRenameTransportDecorator
 
 
 def get_test_permutations():

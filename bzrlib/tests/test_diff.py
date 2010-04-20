@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,12 +12,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
 import os.path
 from cStringIO import StringIO
-import errno
 import subprocess
 import sys
 from tempfile import TemporaryFile
@@ -32,6 +31,8 @@ from bzrlib.diff import (
     external_diff,
     internal_diff,
     show_diff_trees,
+    get_trees_and_branches_to_diff,
+    get_trees_and_branches_to_diff_locked,
     )
 from bzrlib.errors import BinaryFile, NoDiff, ExecutableMissing
 import bzrlib.osutils as osutils
@@ -41,6 +42,11 @@ import bzrlib.patiencediff
 import bzrlib._patiencediff_py
 from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
                           TestCaseInTempDir, TestSkipped)
+from bzrlib.revisiontree import RevisionTree
+from bzrlib.revisionspec import RevisionSpec
+from bzrlib.symbol_versioning import deprecated_in
+
+from bzrlib.tests.test_win32utils import BackslashDirSeparatorFeature
 
 
 class _AttribFeature(Feature):
@@ -60,19 +66,8 @@ class _AttribFeature(Feature):
 AttribFeature = _AttribFeature()
 
 
-class _CompiledPatienceDiffFeature(Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._patiencediff_c
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._patiencediff_c'
-
-CompiledPatienceDiffFeature = _CompiledPatienceDiffFeature()
+compiled_patiencediff_feature = tests.ModuleAvailableFeature(
+                                    'bzrlib._patiencediff_c')
 
 
 def udiff_lines(old, new, allow_binary=False):
@@ -184,7 +179,7 @@ class TestDiff(TestCase):
                               StringIO(), diff_opts=['-u'])
         finally:
             os.environ['PATH'] = orig_path
-        
+
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
         output = StringIO()
@@ -355,7 +350,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
 +file2 contents at rev 3
 
 ''')
-        
+
     def test_diff_add_files(self):
         tree1 = self.b.repository.revision_tree(_mod_revision.NULL_REVISION)
         tree2 = self.b.repository.revision_tree('rev-1')
@@ -397,7 +392,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
         self.wt.rename_one('file1', 'file1b')
         old_tree = self.b.repository.revision_tree('rev-1')
         new_tree = self.b.repository.revision_tree('rev-4')
-        out = self.get_diff(old_tree, new_tree, specific_files=['file1b'], 
+        out = self.get_diff(old_tree, new_tree, specific_files=['file1b'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')
 
@@ -409,10 +404,10 @@ class TestDiffDates(TestShowDiffTreesHelper):
         self.wt.rename_one('file1', 'dir1/file1')
         old_tree = self.b.repository.revision_tree('rev-1')
         new_tree = self.b.repository.revision_tree('rev-4')
-        out = self.get_diff(old_tree, new_tree, specific_files=['dir1'], 
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir1'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')
-        out = self.get_diff(old_tree, new_tree, specific_files=['dir2'], 
+        out = self.get_diff(old_tree, new_tree, specific_files=['dir2'],
                             working_tree=self.wt)
         self.assertNotContainsRe(out, 'file1\t')
 
@@ -704,7 +699,7 @@ class TestDiffTree(TestCaseWithTransport):
             r'--- olddir/oldfile.*\n\+\+\+ newdir/newfile.*\n\@\@ -1,1 \+0,0'
              ' \@\@\n-old\n\n')
         self.assertContainsRe(self.differ.to_file.getvalue(),
-                              "=== target is 'new'\n")
+                              "=== target is u'new'\n")
 
     def test_diff_directory(self):
         self.build_tree(['new-tree/new-dir/'])
@@ -787,7 +782,7 @@ class TestPatienceDiffLib(TestCase):
         self.assertEquals(unique_lcs('ab', 'ab'), [(0,0), (1,1)])
         self.assertEquals(unique_lcs('abcde', 'cdeab'), [(2,0), (3,1), (4,2)])
         self.assertEquals(unique_lcs('cdeab', 'abcde'), [(0,2), (1,3), (2,4)])
-        self.assertEquals(unique_lcs('abXde', 'abYde'), [(0,0), (1,1), 
+        self.assertEquals(unique_lcs('abXde', 'abYde'), [(0,0), (1,1),
                                                          (3,3), (4,4)])
         self.assertEquals(unique_lcs('acbac', 'abc'), [(2,1)])
 
@@ -808,7 +803,7 @@ class TestPatienceDiffLib(TestCase):
         test_one('abcdbce', 'afbcgdbce', [(0,0), (1, 2), (2, 3), (3, 5),
                                           (4, 6), (5, 7), (6, 8)])
 
-        # recurse_matches doesn't match non-unique 
+        # recurse_matches doesn't match non-unique
         # lines surrounded by bogus text.
         # The update has been done in patiencediff.SequenceMatcher instead
 
@@ -951,24 +946,24 @@ class TestPatienceDiffLib(TestCase):
                  ('delete', 1,2, 1,1),
                  ('equal',  2,3, 1,2),
                 ])
-        chk_ops('aBccDe', 'abccde', 
+        chk_ops('aBccDe', 'abccde',
                 [('equal',   0,1, 0,1),
                  ('replace', 1,5, 1,5),
                  ('equal',   5,6, 5,6),
                 ])
-        chk_ops('aBcDec', 'abcdec', 
+        chk_ops('aBcDec', 'abcdec',
                 [('equal',   0,1, 0,1),
                  ('replace', 1,2, 1,2),
                  ('equal',   2,3, 2,3),
                  ('replace', 3,4, 3,4),
                  ('equal',   4,6, 4,6),
                 ])
-        chk_ops('aBcdEcdFg', 'abcdecdfg', 
+        chk_ops('aBcdEcdFg', 'abcdecdfg',
                 [('equal',   0,1, 0,1),
                  ('replace', 1,8, 1,8),
                  ('equal',   8,9, 8,9)
                 ])
-        chk_ops('aBcdEeXcdFg', 'abcdecdfg', 
+        chk_ops('aBcdEeXcdFg', 'abcdecdfg',
                 [('equal',   0,1, 0,1),
                  ('replace', 1,2, 1,2),
                  ('equal',   2,4, 2,4),
@@ -1034,7 +1029,7 @@ class TestPatienceDiffLib(TestCase):
     """
     gnxrf_netf = ['svyr*']
     gnxrf_bcgvbaf = ['ab-erphefr']
-  
+
     qrs eha(frys, svyr_yvfg, ab_erphefr=Snyfr):
         sebz omeyvo.nqq vzcbeg fzneg_nqq, nqq_ercbegre_cevag, nqq_ercbegre_ahyy
         vs vf_dhvrg():
@@ -1048,7 +1043,7 @@ pynff pzq_zxqve(Pbzznaq):
 '''.splitlines(True), '''\
     trg nqqrq jura lbh nqq n svyr va gur qverpgbel.
 
-    --qel-eha jvyy fubj juvpu svyrf jbhyq or nqqrq, ohg abg npghnyyl 
+    --qel-eha jvyy fubj juvpu svyrf jbhyq or nqqrq, ohg abg npghnyyl
     nqq gurz.
     """
     gnxrf_netf = ['svyr*']
@@ -1083,8 +1078,8 @@ pynff pzq_zxqve(Pbzznaq):
                  'how are you today?\n']
         unified_diff = bzrlib.patiencediff.unified_diff
         psm = self._PatienceSequenceMatcher
-        self.assertEquals([ '---  \n',
-                           '+++  \n',
+        self.assertEquals(['--- \n',
+                           '+++ \n',
                            '@@ -1,3 +1,2 @@\n',
                            ' hello there\n',
                            '-world\n',
@@ -1095,8 +1090,8 @@ pynff pzq_zxqve(Pbzznaq):
         txt_a = map(lambda x: x+'\n', 'abcdefghijklmnop')
         txt_b = map(lambda x: x+'\n', 'abcdefxydefghijklmnop')
         # This is the result with LongestCommonSubstring matching
-        self.assertEquals(['---  \n',
-                           '+++  \n',
+        self.assertEquals(['--- \n',
+                           '+++ \n',
                            '@@ -1,6 +1,11 @@\n',
                            ' a\n',
                            ' b\n',
@@ -1111,8 +1106,8 @@ pynff pzq_zxqve(Pbzznaq):
                            ' f\n']
                           , list(unified_diff(txt_a, txt_b)))
         # And the patience diff
-        self.assertEquals(['---  \n',
-                           '+++  \n',
+        self.assertEquals(['--- \n',
+                           '+++ \n',
                            '@@ -4,6 +4,11 @@\n',
                            ' d\n',
                            ' e\n',
@@ -1129,10 +1124,31 @@ pynff pzq_zxqve(Pbzznaq):
                           , list(unified_diff(txt_a, txt_b,
                                  sequencematcher=psm)))
 
+    def test_patience_unified_diff_with_dates(self):
+        txt_a = ['hello there\n',
+                 'world\n',
+                 'how are you today?\n']
+        txt_b = ['hello there\n',
+                 'how are you today?\n']
+        unified_diff = bzrlib.patiencediff.unified_diff
+        psm = self._PatienceSequenceMatcher
+        self.assertEquals(['--- a\t2008-08-08\n',
+                           '+++ b\t2008-09-09\n',
+                           '@@ -1,3 +1,2 @@\n',
+                           ' hello there\n',
+                           '-world\n',
+                           ' how are you today?\n'
+                          ]
+                          , list(unified_diff(txt_a, txt_b,
+                                 fromfile='a', tofile='b',
+                                 fromfiledate='2008-08-08',
+                                 tofiledate='2008-09-09',
+                                 sequencematcher=psm)))
+
 
 class TestPatienceDiffLib_c(TestPatienceDiffLib):
 
-    _test_needs_features = [CompiledPatienceDiffFeature]
+    _test_needs_features = [compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLib_c, self).setUp()
@@ -1174,8 +1190,8 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
 
         unified_diff_files = bzrlib.patiencediff.unified_diff_files
         psm = self._PatienceSequenceMatcher
-        self.assertEquals(['--- a1 \n',
-                           '+++ b1 \n',
+        self.assertEquals(['--- a1\n',
+                           '+++ b1\n',
                            '@@ -1,3 +1,2 @@\n',
                            ' hello there\n',
                            '-world\n',
@@ -1190,8 +1206,8 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
         open('b2', 'wb').writelines(txt_b)
 
         # This is the result with LongestCommonSubstring matching
-        self.assertEquals(['--- a2 \n',
-                           '+++ b2 \n',
+        self.assertEquals(['--- a2\n',
+                           '+++ b2\n',
                            '@@ -1,6 +1,11 @@\n',
                            ' a\n',
                            ' b\n',
@@ -1207,8 +1223,8 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
                           , list(unified_diff_files('a2', 'b2')))
 
         # And the patience diff
-        self.assertEquals(['--- a2 \n',
-                           '+++ b2 \n',
+        self.assertEquals(['--- a2\n',
+                           '+++ b2\n',
                            '@@ -4,6 +4,11 @@\n',
                            ' d\n',
                            ' e\n',
@@ -1228,7 +1244,7 @@ class TestPatienceDiffLibFiles(TestCaseInTempDir):
 
 class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 
-    _test_needs_features = [CompiledPatienceDiffFeature]
+    _test_needs_features = [compiled_patiencediff_feature]
 
     def setUp(self):
         super(TestPatienceDiffLibFiles_c, self).setUp()
@@ -1240,7 +1256,7 @@ class TestPatienceDiffLibFiles_c(TestPatienceDiffLibFiles):
 class TestUsingCompiledIfAvailable(TestCase):
 
     def test_PatienceSequenceMatcher(self):
-        if CompiledPatienceDiffFeature.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import PatienceSequenceMatcher_c
             self.assertIs(PatienceSequenceMatcher_c,
                           bzrlib.patiencediff.PatienceSequenceMatcher)
@@ -1250,7 +1266,7 @@ class TestUsingCompiledIfAvailable(TestCase):
                           bzrlib.patiencediff.PatienceSequenceMatcher)
 
     def test_unique_lcs(self):
-        if CompiledPatienceDiffFeature.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import unique_lcs_c
             self.assertIs(unique_lcs_c,
                           bzrlib.patiencediff.unique_lcs)
@@ -1260,7 +1276,7 @@ class TestUsingCompiledIfAvailable(TestCase):
                           bzrlib.patiencediff.unique_lcs)
 
     def test_recurse_matches(self):
-        if CompiledPatienceDiffFeature.available():
+        if compiled_patiencediff_feature.available():
             from bzrlib._patiencediff_c import recurse_matches_c
             self.assertIs(recurse_matches_c,
                           bzrlib.patiencediff.recurse_matches)
@@ -1275,21 +1291,31 @@ class TestDiffFromTool(TestCaseWithTransport):
     def test_from_string(self):
         diff_obj = DiffFromTool.from_string('diff', None, None, None)
         self.addCleanup(diff_obj.finish)
-        self.assertEqual(['diff', '%(old_path)s', '%(new_path)s'],
+        self.assertEqual(['diff', '@old_path', '@new_path'],
             diff_obj.command_template)
 
     def test_from_string_u5(self):
-        diff_obj = DiffFromTool.from_string('diff -u\\ 5', None, None, None)
+        diff_obj = DiffFromTool.from_string('diff "-u 5"', None, None, None)
         self.addCleanup(diff_obj.finish)
-        self.assertEqual(['diff', '-u 5', '%(old_path)s', '%(new_path)s'],
+        self.assertEqual(['diff', '-u 5', '@old_path', '@new_path'],
                          diff_obj.command_template)
         self.assertEqual(['diff', '-u 5', 'old-path', 'new-path'],
+                         diff_obj._get_command('old-path', 'new-path'))
+        
+    def test_from_string_path_with_backslashes(self):
+        self.requireFeature(BackslashDirSeparatorFeature)
+        tool = 'C:\\Tools\\Diff.exe'
+        diff_obj = DiffFromTool.from_string(tool, None, None, None)
+        self.addCleanup(diff_obj.finish)
+        self.assertEqual(['C:\\Tools\\Diff.exe', '@old_path', '@new_path'],
+                         diff_obj.command_template)
+        self.assertEqual(['C:\\Tools\\Diff.exe', 'old-path', 'new-path'],
                          diff_obj._get_command('old-path', 'new-path'))
 
     def test_execute(self):
         output = StringIO()
         diff_obj = DiffFromTool(['python', '-c',
-                                 'print "%(old_path)s %(new_path)s"'],
+                                 'print "@old_path @new_path"'],
                                 None, None, output)
         self.addCleanup(diff_obj.finish)
         diff_obj._execute('old', 'new')
@@ -1313,20 +1339,26 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.commit('old tree')
         tree.lock_read()
         self.addCleanup(tree.unlock)
+        basis_tree = tree.basis_tree()
+        basis_tree.lock_read()
+        self.addCleanup(basis_tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
-                                 'print "%(old_path)s %(new_path)s"'],
-                                tree, tree, output)
+                                 'print "@old_path @new_path"'],
+                                basis_tree, tree, output)
         diff_obj._prepare_files('file-id', 'file', 'file')
-        self.assertReadableByAttrib(diff_obj._root, 'old\\file', r'old\\file')
-        self.assertReadableByAttrib(diff_obj._root, 'new\\file', r'new\\file')
+        # The old content should be readonly
+        self.assertReadableByAttrib(diff_obj._root, 'old\\file',
+                                    r'R.*old\\file$')
+        # The new content should use the tree object, not a 'new' file anymore
+        self.assertEndsWith(tree.basedir, 'work/tree')
+        self.assertReadableByAttrib(tree.basedir, 'file', r'work\\tree\\file$')
 
     def assertReadableByAttrib(self, cwd, relpath, regex):
         proc = subprocess.Popen(['attrib', relpath],
                                 stdout=subprocess.PIPE,
                                 cwd=cwd)
-        proc.wait()
-        result = proc.stdout.read()
-        self.assertContainsRe(result, regex)
+        (result, err) = proc.communicate()
+        self.assertContainsRe(result.replace('\r\n', '\n'), regex)
 
     def test_prepare_files(self):
         output = StringIO()
@@ -1335,7 +1367,8 @@ class TestDiffFromTool(TestCaseWithTransport):
         self.build_tree_contents([('tree/oldname2', 'oldcontent2')])
         tree.add('oldname', 'file-id')
         tree.add('oldname2', 'file2-id')
-        tree.commit('old tree', timestamp=0)
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('old tree', timestamp=315532800)
         tree.rename_one('oldname', 'newname')
         tree.rename_one('oldname2', 'newname2')
         self.build_tree_contents([('tree/newname', 'newcontent')])
@@ -1346,18 +1379,79 @@ class TestDiffFromTool(TestCaseWithTransport):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         diff_obj = DiffFromTool(['python', '-c',
-                                 'print "%(old_path)s %(new_path)s"'],
+                                 'print "@old_path @new_path"'],
                                 old_tree, tree, output)
         self.addCleanup(diff_obj.finish)
         self.assertContainsRe(diff_obj._root, 'bzr-diff-[^/]*')
         old_path, new_path = diff_obj._prepare_files('file-id', 'oldname',
                                                      'newname')
         self.assertContainsRe(old_path, 'old/oldname$')
-        self.assertEqual(0, os.stat(old_path).st_mtime)
-        self.assertContainsRe(new_path, 'new/newname$')
+        self.assertEqual(315532800, os.stat(old_path).st_mtime)
+        self.assertContainsRe(new_path, 'tree/newname$')
         self.assertFileEqual('oldcontent', old_path)
         self.assertFileEqual('newcontent', new_path)
         if osutils.host_os_dereferences_symlinks():
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
+
+
+class TestGetTreesAndBranchesToDiffLocked(TestCaseWithTransport):
+
+    def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
+        """Call get_trees_and_branches_to_diff_locked.  Overridden by
+        TestGetTreesAndBranchesToDiff.
+        """
+        return get_trees_and_branches_to_diff_locked(
+            path_list, revision_specs, old_url, new_url, self.addCleanup)
+
+    def test_basic(self):
+        tree = self.make_branch_and_tree('tree')
+        (old_tree, new_tree,
+         old_branch, new_branch,
+         specific_files, extra_trees) = self.call_gtabtd(
+             ['tree'], None, None, None)
+
+        self.assertIsInstance(old_tree, RevisionTree)
+        self.assertEqual(_mod_revision.NULL_REVISION, old_tree.get_revision_id())
+        self.assertEqual(tree.basedir, new_tree.basedir)
+        self.assertEqual(tree.branch.base, old_branch.base)
+        self.assertEqual(tree.branch.base, new_branch.base)
+        self.assertIs(None, specific_files)
+        self.assertIs(None, extra_trees)
+
+    def test_with_rev_specs(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/file', 'oldcontent')])
+        tree.add('file', 'file-id')
+        tree.commit('old tree', timestamp=0, rev_id="old-id")
+        self.build_tree_contents([('tree/file', 'newcontent')])
+        tree.commit('new tree', timestamp=0, rev_id="new-id")
+
+        revisions = [RevisionSpec.from_string('1'),
+                     RevisionSpec.from_string('2')]
+        (old_tree, new_tree,
+         old_branch, new_branch,
+         specific_files, extra_trees) = self.call_gtabtd(
+            ['tree'], revisions, None, None)
+
+        self.assertIsInstance(old_tree, RevisionTree)
+        self.assertEqual("old-id", old_tree.get_revision_id())
+        self.assertIsInstance(new_tree, RevisionTree)
+        self.assertEqual("new-id", new_tree.get_revision_id())
+        self.assertEqual(tree.branch.base, old_branch.base)
+        self.assertEqual(tree.branch.base, new_branch.base)
+        self.assertIs(None, specific_files)
+        self.assertEqual(tree.basedir, extra_trees[0].basedir)
+
+
+class TestGetTreesAndBranchesToDiff(TestGetTreesAndBranchesToDiffLocked):
+    """Apply the tests for get_trees_and_branches_to_diff_locked to the
+    deprecated get_trees_and_branches_to_diff function.
+    """
+
+    def call_gtabtd(self, path_list, revision_specs, old_url, new_url):
+        return self.applyDeprecated(
+            deprecated_in((2, 2, 0)), get_trees_and_branches_to_diff,
+            path_list, revision_specs, old_url, new_url)
+

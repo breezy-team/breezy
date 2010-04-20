@@ -1,0 +1,70 @@
+What's New in Bazaar 2.2?
+=========================
+
+This document outlines the major improvements in Bazaar 2.2
+vs Bazaar 2.1. As well as summarizing improvements made to
+the core product, it highlights enhancements within the broader
+Bazaar world of potential interest to those upgrading.
+
+.. warning::
+
+   Bazaar 2.2.0 is currently in development. While less stable than
+   Bazaar 2.1.x, we aim to keep quality at a high level:
+
+   * Monthly beta releases should be suitable for early adopters of new
+     features.
+
+   * Nightly builds are suitable for users interested in assisting
+     with testing.
+
+   If it doubt, please use the latest 2.1 release instead.
+
+
+Improved conflict handling
+--------------------------
+
+Tree-shape conflicts can be resolved by providing ``--take-this`` and
+``--take-other`` to the ``bzr resolve`` command. Just marking the conflict
+as resolved is still accessible via the ``--done`` default action.
+
+
+Improved Launchpad integration
+------------------------------
+
+Merges can be proposed on Launchpad with the new **lp-propose-merge**
+command.
+
+
+Notable plugin enhancements
+---------------------------
+
+The grep plugin ...
+
+
+Better documentation
+--------------------
+
+Numerous improvements have been made to the developer documentation.
+
+
+Enhanced GUI clients
+--------------------
+
+(Details coming soon.)
+
+
+Further information
+-------------------
+
+For more detailed information on the changes made, be sure to check
+the :doc:`../release-notes/index` for:
+
+* the interim bzr `milestones <https://launchpad.net/bzr/2.2>`_
+* the plugins you use.
+
+For a summary of changes made in earlier releases, see:
+
+* :doc:`whats-new-in-2.1`
+
+Enjoy,
+The Bazaar Development Team

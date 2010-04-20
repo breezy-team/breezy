@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """A collection of extra help information for using bzr.
 
@@ -126,7 +126,7 @@ def _help_on_topics(dummy):
 
     topics = topic_registry.keys()
     lmax = max(len(topic) for topic in topics)
-        
+
     out = []
     for topic in topics:
         summary = topic_registry.get_summary(topic)
@@ -152,10 +152,16 @@ def _help_on_revisionspec(name):
     out.append(
 """Revision Identifiers
 
-A revision identifier refers to a specific state of a branch's history. It can
-be a revision number, or a keyword followed by ':' and often other
-parameters. Some examples of identifiers are '3', 'last:1', 'before:yesterday'
-and 'submit:'.
+A revision identifier refers to a specific state of a branch's history.  It
+can be expressed in several ways.  It can begin with a keyword to
+unambiguously specify a given lookup type; some examples are 'last:1',
+'before:yesterday' and 'submit:'.
+
+Alternately, it can be given without a keyword, in which case it will be
+checked as a revision number, a tag, a revision id, a date specification, or a
+branch specification, in that order.  For example, 'date:today' could be
+written as simply 'today', though if you have a tag called 'today' that will
+be found first.
 
 If 'REV1' and 'REV2' are revision identifiers, then 'REV1..REV2' denotes a
 revision range. Examples: '3647..3649', 'date:yesterday..-1' and
@@ -168,8 +174,8 @@ denotes a change between revisions (and not a sequence of changes).  In
 addition, "log" considers a closed range whereas "diff" and "merge" consider it
 to be open-ended, that is, they include one end but not the other.  For example:
 "bzr log -r 3647..3649" shows the messages of revisions 3647, 3648 and 3649,
-while "bzr diff -r 3647..3649" includes the changes done in revisions 3647 and
-3648, but not 3649.
+while "bzr diff -r 3647..3649" includes the changes done in revisions 3648 and
+3649, but not 3647.
 
 The keywords used as revision selection methods are the following:
 """)
@@ -179,7 +185,7 @@ The keywords used as revision selection methods are the following:
 
     # The help text is indented 4 spaces - this re cleans that up below
     indent_re = re.compile(r'^    ', re.MULTILINE)
-    for i in bzrlib.revisionspec.SPEC_TYPES:
+    for prefix, i in bzrlib.revisionspec.revspec_registry.iteritems():
         doc = i.help_txt
         if doc == bzrlib.revisionspec.RevisionSpec.help_txt:
             summary = "N/A"
@@ -191,7 +197,7 @@ The keywords used as revision selection methods are the following:
             #doc = indent_re.sub('', doc)
             while (doc[-2:] == '\n\n' or doc[-1:] == ' '):
                 doc = doc[:-1]
-        
+
         # Note: The leading : here are HACKs to get reStructuredText
         # 'field' formatting - we know that the prefix ends in a ':'.
         out.append(":%s\n\t%s" % (i.prefix, summary))
@@ -207,7 +213,8 @@ def _help_on_transport(name):
     import textwrap
 
     def add_string(proto, help, maxl, prefix_width=20):
-       help_lines = textwrap.wrap(help, maxl - prefix_width)
+       help_lines = textwrap.wrap(help, maxl - prefix_width,
+            break_long_words=False)
        line_with_indent = '\n' + ' ' * prefix_width
        help_text = line_with_indent.join(help_lines)
        return "%-20s%s\n" % (proto, help_text)
@@ -244,12 +251,35 @@ def _help_on_transport(name):
         out += "\nSupported modifiers::\n\n  " + \
             '  '.join(decl)
 
+    out += """\
+\nBazaar supports all of the standard parts within the URL::
+
+  <protocol>://[user[:password]@]host[:port]/[path]
+
+allowing URLs such as::
+
+  http://bzruser:BadPass@bzr.example.com:8080/bzr/trunk
+
+For bzr+ssh:// and sftp:// URLs, Bazaar also supports paths that begin
+with '~' as meaning that the rest of the path should be interpreted
+relative to the remote user's home directory.  For example if the user
+``remote`` has a  home directory of ``/home/remote`` on the server
+shell.example.com, then::
+
+  bzr+ssh://remote@shell.example.com/~/myproject/trunk
+
+would refer to ``/home/remote/myproject/trunk``.
+
+Many commands that accept URLs also accept location aliases too.  See
+::doc:`location-alias-help`.
+"""
+
     return out
 
 
 _basic_help = \
-"""Bazaar -- a free distributed version-control tool
-http://bazaar-vcs.org/
+"""Bazaar %s -- a free distributed version-control tool
+http://www.bazaar.canonical.com/
 
 Basic commands:
   bzr init           makes this directory a versioned branch
@@ -264,6 +294,7 @@ Basic commands:
 
   bzr merge          pull in changes from another branch
   bzr commit         save some or all changes
+  bzr send           send changes via email
 
   bzr log            show history of changes
   bzr check          validate storage
@@ -271,20 +302,21 @@ Basic commands:
   bzr help init      more help on e.g. init command
   bzr help commands  list all commands
   bzr help topics    list all help topics
-"""
+""" % bzrlib.__version__
 
 
 _global_options = \
 """Global Options
 
 These options may be used with any command, and may appear in front of any
-command.  (e.g. "bzr --profile help").
+command.  (e.g. ``bzr --profile help``).
 
 --version      Print the version number. Must be supplied before the command.
 --no-aliases   Do not process command aliases when running this command.
 --builtin      Use the built-in version of a command, not the plugin version.
                This does not suppress other plugin effects.
 --no-plugins   Do not process any plugins.
+--concurrency  Number of processes that can be run concurrently (selftest).
 
 --profile      Profile execution using the hotshot profiler.
 --lsprof       Profile execution using the lsprof profiler.
@@ -296,32 +328,18 @@ command.  (e.g. "bzr --profile help").
                will be a pickle.
 --coverage     Generate line coverage report in the specified directory.
 
-See doc/developers/profiling.txt for more information on profiling.
-A number of debug flags are also available to assist troubleshooting and
-development.
+See http://doc.bazaar.canonical.com/developers/profiling.html for more
+information on profiling.
 
--Dauth            Trace authentication sections used.
--Derror           Instead of normal error handling, always print a traceback
-                  on error.
--Devil            Capture call sites that do expensive or badly-scaling
-                  operations.
--Dfetch           Trace history copying between repositories.
--Dhashcache       Log every time a working file is read to determine its hash.
--Dhooks           Trace hook execution.
--Dhpss            Trace smart protocol requests and responses.
--Dhttp            Trace http connections, requests and responses
--Dindex           Trace major index operations.
--Dknit            Trace knit operations.
--Dlock            Trace when lockdir locks are taken or released.
--Dmerge           Emit information for debugging merges.
--Dpack            Emit information about pack operations.
+A number of debug flags are also available to assist troubleshooting and
+development.  See :doc:`debug-flags-help`.
 """
 
 _standard_options = \
 """Standard Options
 
 Standard options are legal for all commands.
-      
+
 --help, -h     Show help message.
 --verbose, -v  Display more information.
 --quiet, -q    Only display errors and warnings.
@@ -379,7 +397,7 @@ the same disk then there won't be a noticeable difference.
 
 Another possible use for a checkout is to use it with a treeless repository
 containing your branches, where you maintain only one working tree by
-switching the master branch that the checkout points to when you want to 
+switching the master branch that the checkout points to when you want to
 work on a different branch.
 
 Obviously to commit on a checkout you need to be able to write to the master
@@ -388,11 +406,13 @@ protocol , such as sftp://, and that you have write permissions at the other
 end. Checkouts also work on the local file system, so that all that matters is
 file permissions.
 
-You can change the master of a checkout by using the "bind" command (see "help
-bind"). This will change the location that the commits are sent to. The bind
-command can also be used to turn a branch into a heavy checkout. If you
-would like to convert your heavy checkout into a normal branch so that every
-commit is local, you can use the "unbind" command.
+You can change the master of a checkout by using the "switch" command (see
+"help switch").  This will change the location that the commits are sent to.
+The "bind" command can also be used to turn a normal branch into a heavy
+checkout. If you would like to convert your heavy checkout into a normal
+branch so that every commit is local, you can use the "unbind" command. To see
+whether or not a branch is bound or not you can use the "info" command. If the
+branch is bound it will tell you the location of the bound branch.
 
 Related commands::
 
@@ -400,12 +420,16 @@ Related commands::
               checkout
   update      Pull any changes in the master branch in to your checkout
   commit      Make a commit that is sent to the master branch. If you have
-              a heavy checkout then the --local option will commit to the 
+              a heavy checkout then the --local option will commit to the
               checkout without sending the commit to the master
-  bind        Change the master branch that the commits in the checkout will
+  switch      Change the master branch that the commits in the checkout will
               be sent to
+  bind        Turn a standalone branch into a heavy checkout so that any
+              commits will be sent to the master branch
   unbind      Turn a heavy checkout into a standalone branch so that any
               commits are only made locally
+  info        Displays whether a branch is bound or unbound. If the branch is
+              bound, then it will also display the location of the bound branch
 """
 
 _repositories = \
@@ -416,7 +440,7 @@ a repository associated with every branch.
 
 Repositories are a form of database. Bzr will usually maintain this for
 good performance automatically, but in some situations (e.g. when doing
-very many commits in a short time period) you may want to ask bzr to 
+very many commits in a short time period) you may want to ask bzr to
 optimise the database indices. This can be done by the 'bzr pack' command.
 
 By default just running 'bzr init' will create a repository within the new
@@ -501,11 +525,19 @@ history. All branches have a repository associated (which is where the
 branch history is stored), but multiple branches may share the same
 repository (a shared repository). Branches can be copied and merged.
 
+In addition, one branch may be bound to another one.  Binding to another
+branch indicates that commits which happen in this branch must also 
+happen in the other branch.  Bazaar ensures consistency by not allowing 
+commits when the two branches are out of date.  In order for a commit 
+to succeed, it may be necessary to update the current branch using 
+``bzr update``.
+
 Related commands::
 
   init    Change a directory into a versioned branch.
-  branch  Create a new copy of a branch.
+  branch  Create a new branch that is a copy of an existing branch.
   merge   Perform a three-way merge.
+  bind    Bind a branch to another one.
 """
 
 
@@ -539,6 +571,7 @@ Column 1 - versioning/renames::
   - File unversioned
   R File renamed
   ? File unknown
+  X File nonexistent (and unknown to bzr)
   C File has conflicts
   P Entry for a pending merge (not a file)
 
@@ -568,9 +601,11 @@ BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
 BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
 BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
 BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
-BZR_SSH          SSH client: paramiko (default), openssh, ssh, plink.
+BZR_SSH          Path to SSH client, or one of paramiko, openssh, sshcorp, plink.
 BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
+BZR_COLUMNS      Override implicit terminal width.
+BZR_CONCURRENCY  Number of processes that can be run concurrently (selftest).
 ================ =================================================================
 """
 
@@ -627,7 +662,7 @@ line-origin detection instead of a basis revision to determine the cause of
 differences.
 """
 
-_branches_out_of_sync = """Branches out of sync
+_branches_out_of_sync = """Branches Out of Sync
 
 When reconfiguring a checkout, tree or branch into a lightweight checkout,
 a local branch must be destroyed.  (For checkouts, this is the local branch
@@ -648,15 +683,55 @@ useful, you can "push --overwrite" or "pull --overwrite" instead.
 """
 
 
+_storage_formats = \
+"""Storage Formats
+
+To ensure that older clients do not access data incorrectly,
+Bazaar's policy is to introduce a new storage format whenever
+new features requiring new metadata are added. New storage
+formats may also be introduced to improve performance and
+scalability.
+
+The newest format, 2a, is highly recommended. If your
+project is not using 2a, then you should suggest to the
+project owner to upgrade.
+
+
+.. note::
+
+   Some of the older formats have two variants:
+   a plain one and a rich-root one. The latter include an additional
+   field about the root of the tree. There is no performance cost
+   for using a rich-root format but you cannot easily merge changes
+   from a rich-root format into a plain format. As a consequence,
+   moving a project to a rich-root format takes some co-ordination
+   in that all contributors need to upgrade their repositories
+   around the same time. 2a and all future formats will be
+   implicitly rich-root.
+
+See :doc:`current-formats-help` for the complete list of
+currently supported formats. See :doc:`other-formats-help` for
+descriptions of any available experimental and deprecated formats.
+"""
+
+
 # Register help topics
 topic_registry.register("revisionspec", _help_on_revisionspec,
                         "Explain how to use --revision")
 topic_registry.register('basic', _basic_help, "Basic commands", SECT_HIDDEN)
 topic_registry.register('topics', _help_on_topics, "Topics list", SECT_HIDDEN)
-def get_format_topic(topic):
+def get_current_formats_topic(topic):
     from bzrlib import bzrdir
-    return "Storage Formats\n\n" + bzrdir.format_registry.help_topic(topic)
-topic_registry.register('formats', get_format_topic, 'Directory formats')
+    return "Current Storage Formats\n\n" + \
+        bzrdir.format_registry.help_topic(topic)
+def get_other_formats_topic(topic):
+    from bzrlib import bzrdir
+    return "Other Storage Formats\n\n" + \
+        bzrdir.format_registry.help_topic(topic)
+topic_registry.register('current-formats', get_current_formats_topic,
+    'Current storage formats')
+topic_registry.register('other-formats', get_other_formats_topic,
+    'Experimental and deprecated storage formats')
 topic_registry.register('standard-options', _standard_options,
                         'Options that can be used with any command')
 topic_registry.register('global-options', _global_options,
@@ -667,23 +742,31 @@ topic_registry.register('status-flags', _status_flags,
                         "Help on status flags")
 def get_bugs_topic(topic):
     from bzrlib import bugtracker
-    return ("Bug Tracker Settings\n\n" + 
+    return ("Bug Tracker Settings\n\n" +
         bugtracker.tracker_registry.help_topic(topic))
 topic_registry.register('bugs', get_bugs_topic, 'Bug tracker settings')
 topic_registry.register('env-variables', _env_variables,
                         'Environment variable names and values')
 topic_registry.register('files', _files,
                         'Information on configuration and log files')
+topic_registry.register_lazy('hooks', 'bzrlib.hooks', 'hooks_help_text',
+                        'Points at which custom processing can be added')
 
-# Load some of the help topics from files
+# Load some of the help topics from files. Note that topics which reproduce API
+# details will tend to skew (quickly usually!) so please seek other solutions
+# for such things.
 topic_registry.register('authentication', _load_from_file,
                         'Information on configuring authentication')
 topic_registry.register('configuration', _load_from_file,
                         'Details on the configuration settings available')
-topic_registry.register('conflicts', _load_from_file,
+topic_registry.register('conflict-types', _load_from_file,
                         'Types of conflicts and what to do about them')
-topic_registry.register('hooks', _load_from_file,
-                        'Points at which custom processing can be added')
+topic_registry.register('debug-flags', _load_from_file,
+                        'Options to show or record debug information')
+topic_registry.register('location-alias', _load_from_file,
+                        'Aliases for remembered locations')
+topic_registry.register('log-formats', _load_from_file,
+                        'Details on the logging formats available')
 
 
 # Register concept topics.
@@ -694,6 +777,18 @@ topic_registry.register('branches', _branches,
                         'Information on what a branch is', SECT_CONCEPT)
 topic_registry.register('checkouts', _checkouts,
                         'Information on what a checkout is', SECT_CONCEPT)
+topic_registry.register('content-filters', _load_from_file,
+                        'Conversion of content into/from working trees',
+                        SECT_CONCEPT)
+topic_registry.register('diverged-branches', _load_from_file,
+                        'How to fix diverged branches',
+                        SECT_CONCEPT)
+topic_registry.register('eol', _load_from_file,
+                        'Information on end-of-line handling',
+                        SECT_CONCEPT)
+topic_registry.register('formats', _storage_formats,
+                        'Information on choosing a storage format',
+                        SECT_CONCEPT)
 topic_registry.register('patterns', _load_from_file,
                         'Information on the pattern syntax',
                         SECT_CONCEPT)
@@ -759,7 +854,7 @@ class RegisteredTopic(object):
             returned instead of plain text.
         """
         result = topic_registry.get_detail(self.topic)
-        # there is code duplicated here and in bzrlib/plugin.py's 
+        # there is code duplicated here and in bzrlib/plugin.py's
         # matching Topic code. This should probably be factored in
         # to a helper function and a common base class.
         if additional_see_also is not None:
@@ -781,6 +876,7 @@ class RegisteredTopic(object):
 
 def help_as_plain_text(text):
     """Minimal converter of reStructuredText to plain text."""
+    import re
     lines = text.splitlines()
     result = []
     for line in lines:
@@ -788,5 +884,7 @@ def help_as_plain_text(text):
             line = line[1:]
         elif line.endswith('::'):
             line = line[:-1]
+        # Map :doc:`xxx-help` to ``bzr help xxx``
+        line = re.sub(":doc:`(.+)-help`", r'``bzr help \1``', line)
         result.append(line)
     return "\n".join(result) + "\n"

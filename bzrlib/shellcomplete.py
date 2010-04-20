@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import sys
 
@@ -47,9 +47,10 @@ def shellcomplete_on_command(cmdname, outfile=None):
 
 def shellcomplete_on_options(options, outfile=None):
     for opt in options:
-        if opt.short_name:
+        short_name = opt.short_name()
+        if short_name:
             outfile.write('"(--%s -%s)"{--%s,-%s}\n'
-                    % (opt.name, opt.short_name(), opt.name, opt.short_name()))
+                    % (opt.name, short_name, opt.name, short_name))
         else:
             outfile.write('--%s\n' % opt.name)
 
@@ -59,20 +60,23 @@ def shellcomplete_commands(outfile = None):
     import inspect
     import commands
     from inspect import getdoc
-    
+
+    commands.install_bzr_command_hooks()
+
     if outfile is None:
         outfile = sys.stdout
-    
+
     cmds = []
-    for cmdname, cmdclass in commands.get_all_cmds():
-        cmds.append((cmdname, cmdclass))
-        for alias in cmdclass.aliases:
-            cmds.append((alias, cmdclass))
+    for cmdname in commands.all_command_names():
+        cmd = commands.get_cmd_object(cmdname)
+        cmds.append((cmdname, cmd))
+        for alias in cmd.aliases:
+            cmds.append((alias, cmd))
     cmds.sort()
-    for cmdname, cmdclass in cmds:
-        if cmdclass.hidden:
+    for cmdname, cmd in cmds:
+        if cmd.hidden:
             continue
-        doc = getdoc(cmdclass)
+        doc = getdoc(cmd)
         if doc is None:
             outfile.write(cmdname + '\n')
         else:
