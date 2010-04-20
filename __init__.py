@@ -25,7 +25,7 @@ from meta import *
 from meta import __version__
 
 from bzrlib.commands import Command, register_command
-from bzrlib.option import Option
+from bzrlib.option import Option, ListOption
 
 class cmd_bash_completion(Command):
     """Generate a shell function for bash command line completion.
@@ -45,11 +45,19 @@ class cmd_bash_completion(Command):
                help="Generate only the shell function, don't enable it"),
         Option("debug", type=None, hidden=True,
                help="Enable shell code useful for debugging"),
+        ListOption("plugin", type=str, argname="name",
+                   # param_name="selected_plugins", # doesn't work, bug #387117
+                   help="Enable completions for the selected plugin"
+                   + " (default: all plugins)"),
         ]
 
     def run(self, **kwargs):
         import sys
         from bashcomp import bash_completion_function
+        if 'plugin' in kwargs:
+            # work around bug #387117 which prevents us from using param_name
+            kwargs['selected_plugins'] = kwargs['plugin']
+            del kwargs['plugin']
         bash_completion_function(sys.stdout, **kwargs)
 
 register_command(cmd_bash_completion)

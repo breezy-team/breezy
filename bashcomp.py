@@ -143,11 +143,16 @@ def wrap_parser(list, parser):
     return wrap_container(list, parser)
 
 def bash_completion_function(out, function_name="_bzr", function_only=False,
-                             debug=False, no_plugins=False):
+                             debug=False,
+                             no_plugins=False, selected_plugins=None):
     cmds = []
     cases = ""
     reqarg = {}
     plugins = set()
+    if selected_plugins:
+        selected_plugins = set([x.replace('-', '_') for x in selected_plugins])
+    else:
+        selected_plugins = None
 
     re_switch = re.compile(r'\n(--[A-Za-z0-9-_]+)(?:, (-\S))?\s')
     help_text = help_topics.topic_registry.get_detail('global-options')
@@ -184,6 +189,8 @@ def bash_completion_function(out, function_name="_bzr", function_only=False,
         cmds.extend(aliases)
         plugin = cmd.plugin_name()
         if plugin is not None:
+            if selected_plugins is not None and plugin not in selected_plugins:
+                continue
             plugins.add(plugin)
             cases += "\t\t# plugin \"%s\"\n" % plugin
         opts = cmd.options()
@@ -255,6 +262,13 @@ if __name__ == '__main__':
     import optparse
     from meta import __version__
 
+    def plugin_callback(option, opt, value, parser):
+        values = parser.values.selected_plugins
+        if value == '-':
+            del values[:]
+        else:
+            values.append(value)
+
     parser = optparse.OptionParser(usage="%prog [-f NAME] [-o]",
                                    version="%%prog %s" % __version__)
     parser.add_option("--function-name", "-f", metavar="NAME",
@@ -265,6 +279,11 @@ if __name__ == '__main__':
                       help=optparse.SUPPRESS_HELP)
     parser.add_option("--no-plugins", action="store_true",
                       help="Don't load any bzr plugins")
+    parser.add_option("--plugin", metavar="NAME", type="string",
+                      dest="selected_plugins", default=[],
+                      action="callback", callback=plugin_callback,
+                      help="Enable completions for the selected plugin"
+                      + " (default: all plugins)")
     (opts, args) = parser.parse_args()
     if args:
         parser.error("script does not take positional arguments")
