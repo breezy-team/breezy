@@ -116,7 +116,6 @@ class TestCommit(ExternalBase):
         open(file_name, 'w').write('hello world')
         self.run_bzr(['add'])
         out, err = self.run_bzr(['commit', '-m', file_name])
-
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
         ue = osutils.get_user_encoding()
         self.assertContainsRe(err.decode(ue),
