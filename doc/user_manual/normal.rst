@@ -302,7 +302,7 @@ location of the ``.dsc`` file you would like to import. As well as using a
 local path this can be any URI that Bazaar supports, for instance a
 ``http://`` URL. For instance::
 
-  $ bzr import-dsc --distribution debian ../scruff_0.2-1.1.dsc
+  $ bzr import-dsc ../scruff_0.2-1.1.dsc
 
 The command will import the changes and then leave you with a tree that is
 the result of merging the changes in the source package in to the tip of
