@@ -72,6 +72,9 @@ Bug Fixes
   errors after two window resizes.
   (Andrew Bennetts)
 
+* Unicode characters in aliases are now handled correctly and do not cause
+  UnicodeEncodeError exception. (Parth Malwankar, #529930)
+
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
   that are not part of the ancestry anymore.
   (Vincent Ladeuil, #474807)
