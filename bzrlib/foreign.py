@@ -296,20 +296,9 @@ class cmd_dpush(Command):
         except NoWorkingTree:
             source_branch = Branch.open(directory)
             source_wt = None
-        if strict is None:
-            strict = source_branch.get_config(
-                ).get_user_option_as_bool('dpush_strict')
-        if strict is None: strict = True # default value
-        if strict and source_wt is not None:
-            if (source_wt.has_changes()):
-                raise errors.UncommittedChanges(
-                    source_wt, more='Use --no-strict to force the push.')
-            if source_wt.last_revision() != source_wt.branch.last_revision():
-                # The tree has lost sync with its branch, there is little
-                # chance that the user is aware of it but he can still force
-                # the push with --no-strict
-                raise errors.OutOfDateTree(
-                    source_wt, more='Use --no-strict to force the push.')
+        if source_wt is not None:
+            source_wt.warn_if_changed_or_out_of_date(
+                strict, 'dpush_strict', 'Use --no-strict to force the push.')
         stored_loc = source_branch.get_push_location()
         if location is None:
             if stored_loc is None:

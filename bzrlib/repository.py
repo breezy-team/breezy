@@ -40,6 +40,7 @@ from bzrlib import (
     lru_cache,
     osutils,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
     trace,
     tsort,
@@ -2580,7 +2581,7 @@ class Repository(_RelockDebugMixin):
             keys = tsort.topo_sort(parent_map)
         return [None] + list(keys)
 
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This operation only makes sense for some repository types. For other
@@ -2596,6 +2597,9 @@ class Repository(_RelockDebugMixin):
             obtained from the result of commit_write_group(). Out of
             date hints are simply ignored, because concurrent operations
             can obsolete them rapidly.
+
+        :param clean_obsolete_packs: Clean obsolete packs immediately after
+            the pack operation.
         """
 
     def get_transaction(self):
@@ -2625,6 +2629,15 @@ class Repository(_RelockDebugMixin):
 
     def _make_parents_provider(self):
         return self
+
+    @needs_read_lock
+    def get_known_graph_ancestry(self, revision_ids):
+        """Return the known graph for a set of revision ids and their ancestors.
+        """
+        st = static_tuple.StaticTuple
+        revision_keys = [st(r_id).intern() for r_id in revision_ids]
+        known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
+        return graph.GraphThunkIdsToKeys(known_graph)
 
     def get_graph(self, other_repository=None):
         """Return the graph walker for this repository format"""

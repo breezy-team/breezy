@@ -39,7 +39,10 @@ extensions:
 check: docs check-nodocs
 
 check-nodocs: extensions
-	$(PYTHON) -Werror -O ./bzr selftest -1 $(tests)
+	# Generate a stream for PQM to watch.
+	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	# Check that there were no errors reported.
+	subunit-stats < selftest.log
 
 # Run Python style checker (apt-get install pyflakes)
 #
