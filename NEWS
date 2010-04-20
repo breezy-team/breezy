@@ -76,6 +76,9 @@ Bug Fixes
   that are not part of the ancestry anymore.
   (Vincent Ladeuil, #474807)
 
+* Properly handle ``param_name`` attribute for ``ListOption``.
+  (Martin von Gagern, 387117)
+
 Improvements
 ************
 
