@@ -17,7 +17,9 @@
 
 """Tests of the 'bzr alias' command."""
 
+from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
 class TestAlias(ExternalBase):
@@ -43,9 +45,30 @@ class TestAlias(ExternalBase):
 
     def test_unicode_alias(self):
         """Unicode aliases should work (Bug #529930)"""
-        alias_cmd = u'alias uls="ls \N{euro sign}"'
-        self.run_bzr(['alias', u'uls="ls \N{euro sign}"'])
-        out, err = self.run_bzr('uls')
+        self.run_bzr(['init'])
+        open(u'\N{euro sign}','w').write('hello world!\n')
+        self.run_bzr(['add', u'\N{euro sign}'])
+        self.run_bzr(['ci', '-m', 'added'])
+
+        ensure_config_dir_exists()
+        CONFIG=(u"[ALIASES]\n"
+                "xls=ls -v\n"
+                "uls=ls \N{euro sign}\n")
+
+        open(config_filename(),'wb').write(CONFIG)
+
+        #user_enc = osutils.get_user_encoding()
+        #self.run_bzr(['alias', u'uls="ls \N{euro sign}"'])
+        #self.run_bzr(['alias', u'xls="ls -v"'])
+
+        #out, err = self.run_bzr('alias uls')
+        #alias_out=u'bzr alias uls="ls \N{euro sign}"\n'.encode(user_enc)
+        #self.assertEquals(alias_out, out)
+
+        out, err = self.run_bzr('xls')
+        self.assertEquals(out, '')
+        #uls_err = u'xx'
+        #self.assertEquals(err, uls_err)
 
     def test_alias_listing_alphabetical(self):
         self.run_bzr('alias commit="commit --strict"')
