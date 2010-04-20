@@ -286,7 +286,7 @@ class MutableTree(tree.Tree):
                 if strict is None:
                     # We don't want to interrupt the user if he expressed no
                     # preference about strict.
-                    trace.warning('%s', (err._format(),))
+                    trace.warning('%s', err._format())
                 else:
                     raise err
 

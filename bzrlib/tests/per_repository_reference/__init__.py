@@ -23,6 +23,7 @@ this.
 """
 
 from bzrlib import (
+    errors,
     repository,
     remote,
     )
@@ -64,6 +65,22 @@ class TestCorrectFormat(TestCaseWithExternalReferenceRepository):
         repo = self.make_referring('referring', 'repo')
         self.assertIsInstance(repo._format,
             self.repository_format.__class__)
+
+
+class TestIncompatibleStacking(TestCaseWithRepository):
+
+    def test_add_fallback_repository_rejects_incompatible(self):
+        # Repository.add_fallback_repository raises IncompatibleRepositories if
+        # you take two repositories in different serializations and try to
+        # stack them.
+        if self.make_repository('test')._format.supports_chks:
+            different_fmt = '1.9'
+        else:
+            different_fmt = '2a'
+        repo = self.make_repository('repo', format=different_fmt)
+        referring = self.make_repository('referring')
+        self.assertRaises(errors.IncompatibleRepositories,
+                referring.add_fallback_repository, repo)
 
 
 def external_reference_test_scenarios():
