@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -406,9 +406,16 @@ a_list = hmm, who knows ? # This is interpreted as a list !
         get_bool = conf.get_user_option_as_bool
         self.assertEqual(True, get_bool('a_true_bool'))
         self.assertEqual(False, get_bool('a_false_bool'))
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        msg = 'Value "%s" is not a boolean for "%s"'
         self.assertIs(None, get_bool('an_invalid_bool'))
+        self.assertEquals(msg % ('maybe', 'an_invalid_bool'), warnings[0])
+        warnings = []
         self.assertIs(None, get_bool('not_defined_in_this_config'))
-
+        self.assertEquals([], warnings)
 
     def test_get_user_option_as_list(self):
         conf, parser = self.make_config_parser("""
