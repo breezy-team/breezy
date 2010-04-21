@@ -2692,7 +2692,7 @@ class BzrBranch8(BzrBranch5):
         # if no option is found, then default to False.
         # Since append_revisions_only can have negative consequences
         # be very strict in interpreting the option value and default
-        # to True
+        # to False for compatibility.
         name = 'append_revisions_only'
         value = self.get_config().get_user_option(name)
         if value is None:

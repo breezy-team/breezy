@@ -497,21 +497,23 @@ class TestBranchOptions(TestCaseWithTransport):
         super(TestBranchOptions, self).setUp()
         self.branch = self.make_branch('.')
         self.config = self.branch.get_config()
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
 
     def check_aro_is(self, expected_value, value=None, check_warn=False):
         if value is not None:
             self.config.set_user_option('append_revisions_only', value)
         if check_warn:
-            warnings = []
-            def warning(*args):
-                warnings.append(args[0] % args[1:])
-            self.overrideAttr(trace, 'warning', warning)
+            self.warnings = []
         self.assertEqual(expected_value,
                          self.branch._get_append_revisions_only())
         if check_warn:
             msg = ('Value "%s" for append_revisions_only is neither True'
                    ' nor False, defaulting to False')
-            self.assertEqual(msg % value, warnings[0])
+            self.assertLength(1, self.warnings)
+            self.assertEqual(msg % value, self.warnings[0])
 
     def test_valid_append_revisions_only(self):
         """Ensure that BzrOptionValue raised on invalid settings"""
