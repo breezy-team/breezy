@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2702,8 +2702,8 @@ class BzrBranch8(BzrBranch5):
         if value == 'False':
             return False
         trace.warning('Value "%s" for append_revisions_only is neither True'
-                      ' nor False, defaulting to True', value)
-        return True
+                      ' nor False, defaulting to False', value)
+        return False
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,

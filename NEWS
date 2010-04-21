@@ -26,9 +26,10 @@ Improvements
 * The interpretation of 'append_revisions_only' has been made more
   strict, allowing for only 'True' and 'False'.  When unset, the
   option defaults to False for backward compatibility.  If the value
-  cannot be interpreted as a boolean, a warning is emitted
-  and, erring on the side of caution, the option defaults to True.
-  (Brian de Alwis)
+  cannot be interpreted as a boolean, a warning is emitted and, for
+  compatibility with previous bzr versions, the option defaults to
+  False.
+  (Brian de Alwis, Vincent Ladeuil)
 
 Documentation
 *************

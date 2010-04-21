@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -498,11 +498,20 @@ class TestBranchOptions(TestCaseWithTransport):
         self.branch = self.make_branch('.')
         self.config = self.branch.get_config()
 
-    def check_aro_is(self, expected_value, value=None):
+    def check_aro_is(self, expected_value, value=None, check_warn=False):
         if value is not None:
             self.config.set_user_option('append_revisions_only', value)
+        if check_warn:
+            warnings = []
+            def warning(*args):
+                warnings.append(args[0] % args[1:])
+            self.overrideAttr(trace, 'warning', warning)
         self.assertEqual(expected_value,
                          self.branch._get_append_revisions_only())
+        if check_warn:
+            msg = ('Value "%s" for append_revisions_only is neither True'
+                   ' nor False, defaulting to False')
+            self.assertEqual(msg % value, warnings[0])
 
     def test_valid_append_revisions_only(self):
         """Ensure that BzrOptionValue raised on invalid settings"""
@@ -515,29 +524,9 @@ class TestBranchOptions(TestCaseWithTransport):
     def test_invalid_append_revisions_only(self):
         """Ensure warning is noted on invalid settings"""
         self.config.set_user_option('append_revisions_only', 'invalid')
-        warnings = []
-        def warning(*args):
-            warnings.append(args[0] % args[1:])
-        self.overrideAttr(trace, 'warning', warning)
-        self.check_aro_is(True, 'false')
-        self.assertEqual(
-            'Value "false" for append_revisions_only is neither True'
-            ' nor False, defaulting to True',
-            warnings[0])
-
-        warnings = []
-        self.check_aro_is(True, 'true')
-        self.assertEqual(
-            'Value "true" for append_revisions_only is neither True'
-            ' nor False, defaulting to True',
-            warnings[0])
-
-        warnings = []
-        self.check_aro_is(True, 'not-a-bool')
-        self.assertEqual(
-            'Value "not-a-bool" for append_revisions_only is neither True'
-            ' nor False, defaulting to True',
-            warnings[0])
+        self.check_aro_is(False, 'false', check_warn=True)
+        self.check_aro_is(False, 'true', check_warn=True)
+        self.check_aro_is(False, 'not-a-bool', check_warn=True)
 
 
 class TestPullResult(TestCase):
