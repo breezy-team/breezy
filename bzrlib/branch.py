@@ -3267,7 +3267,7 @@ class InterToBranch5(GenericInterBranch):
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
         master_branch = None
-        if not local and bound_location and self.source.base != bound_location:
+        if not local and bound_location and self.source.user_url != bound_location:
             # not pulling from master, so we need to update master.
             master_branch = self.target.get_master_branch(possible_transports)
             master_branch.lock_write()

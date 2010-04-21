@@ -1244,9 +1244,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         # _real_branch had its get_stacked_on_url method called), then the
         # repository to be added may already be in the _real_repositories list.
         if self._real_repository is not None:
-            fallback_locations = [repo.bzrdir.root_transport.base for repo in
+            fallback_locations = [repo.user_url for repo in
                 self._real_repository._fallback_repositories]
-            if repository.bzrdir.root_transport.base not in fallback_locations:
+            if repository.user_url not in fallback_locations:
                 self._real_repository.add_fallback_repository(repository)
 
     def add_inventory(self, revid, inv, parents):
