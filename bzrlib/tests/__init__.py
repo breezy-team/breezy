@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Testing framework extensions"""
 
 # TODO: Perhaps there should be an API to find out if bzr running under the
 # test suite -- some plugins might want to avoid making intrusive changes if
