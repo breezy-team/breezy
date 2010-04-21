@@ -63,29 +63,26 @@ BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 BZR_BRANCH_FORMAT_6 = "Bazaar Branch Format 6 (bzr 0.15)\n"
 
 
-# TODO: Maybe include checks for common corruption of newlines, etc?
-
-# TODO: Some operations like log might retrieve the same revisions
-# repeatedly to calculate deltas.  We could perhaps have a weakref
-# cache in memory to make this faster.  In general anything can be
-# cached in memory between lock and unlock operations. .. nb thats
-# what the transaction identity map provides
-
-
-######################################################################
-# branch objects
-
-class Branch(object):
+class Branch(bzrdir.ControlComponent):
     """Branch holding a history of revisions.
 
-    base
-        Base directory/url of the branch.
+    :ivar base:
+        Base directory/url of the branch; using control_url and
+        control_transport is more standardized.
 
     hooks: An instance of BranchHooks.
     """
     # this is really an instance variable - FIXME move it there
     # - RBC 20060112
     base = None
+
+    @property
+    def control_transport(self):
+        return self._transport
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
 
     def __init__(self, *ignored, **ignored_too):
         self.tags = self._format.make_tags(self)
