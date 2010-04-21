@@ -104,7 +104,7 @@ class Branch(bzrdir.ControlComponent):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
         if repo.has_same_location(self.repository):
-            raise errors.UnstackableLocationError(self.base, url)
+            raise errors.UnstackableLocationError(self.user_url, url)
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
@@ -591,11 +591,11 @@ class Branch(bzrdir.ControlComponent):
         :param other: The branch to bind to
         :type other: Branch
         """
-        raise errors.UpgradeRequired(self.base)
+        raise errors.UpgradeRequired(self.user_url)
 
     def set_append_revisions_only(self, enabled):
         if not self._format.supports_set_append_revisions_only():
-            raise errors.UpgradeRequired(self.base)
+            raise errors.UpgradeRequired(self.user_url)
         if enabled:
             value = 'True'
         else:
@@ -621,7 +621,7 @@ class Branch(bzrdir.ControlComponent):
         :param pb: An optional progress bar to use.
         :return: None
         """
-        if self.base == from_branch.base:
+        if self.control_url == from_branch.control_url:
             return (0, [])
         if pb is not None:
             symbol_versioning.warn(
@@ -649,7 +649,7 @@ class Branch(bzrdir.ControlComponent):
     def get_old_bound_location(self):
         """Return the URL of the branch we used to be bound to
         """
-        raise errors.UpgradeRequired(self.base)
+        raise errors.UpgradeRequired(self.user_url)
 
     def get_commit_builder(self, parents, config=None, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -733,7 +733,7 @@ class Branch(bzrdir.ControlComponent):
             stacking.
         """
         if not self._format.supports_stacking():
-            raise errors.UnstackableBranchFormat(self._format, self.base)
+            raise errors.UnstackableBranchFormat(self._format, self.user_url)
         # XXX: Changing from one fallback repository to another does not check
         # that all the data you need is present in the new fallback.
         # Possibly it should.
@@ -780,7 +780,8 @@ class Branch(bzrdir.ControlComponent):
                 # stream from one of them to the other.  This does mean doing
                 # separate SSH connection setup, but unstacking is not a
                 # common operation so it's tolerable.
-                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
+                new_bzrdir = bzrdir.BzrDir.open_from_transport(
+                    self.bzrdir.user_transport)
                 new_repository = new_bzrdir.find_repository()
                 self.repository = new_repository
                 if self.repository._fallback_repositories:
@@ -890,7 +891,7 @@ class Branch(bzrdir.ControlComponent):
 
     def unbind(self):
         """Older format branches cannot bind or unbind."""
-        raise errors.UpgradeRequired(self.base)
+        raise errors.UpgradeRequired(self.user_url)
 
     def last_revision(self):
         """Return last revision id, or NULL_REVISION."""
@@ -1056,7 +1057,7 @@ class Branch(bzrdir.ControlComponent):
         try:
             return urlutils.join(self.base[:-1], parent)
         except errors.InvalidURLJoin, e:
-            raise errors.InaccessibleParent(parent, self.base)
+            raise errors.InaccessibleParent(parent, self.user_url)
 
     def _get_parent_location(self):
         raise NotImplementedError(self._get_parent_location)
@@ -1211,7 +1212,7 @@ class Branch(bzrdir.ControlComponent):
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
             self.copy_content_into(result, revision_id=revision_id)
-            result.set_parent(self.bzrdir.root_transport.base)
+            result.set_parent(self.bzrdir.user_url)
         finally:
             result.unlock()
         return result
@@ -1404,8 +1405,9 @@ class Branch(bzrdir.ControlComponent):
         :return: A branch associated with the file_id
         """
         # FIXME should provide multiple branches, based on config
-        return Branch.open(self.bzrdir.root_transport.clone(path).base,
-                           possible_transports=possible_transports)
+        return Branch.open_from_transport(
+            self.bzrdir.root_transport.clone(path),
+            possible_transports=possible_transports)
 
     def supports_tags(self):
         return self._format.supports_tags()
@@ -1553,7 +1555,7 @@ class BranchFormat(object):
             elsewhere)
         :return: a branch in this format
         """
-        mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
+        mutter('creating branch %r in %s', self, a_bzrdir.user_url)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         lock_map = {
             'metadir': ('lock', lockdir.LockDir),
@@ -1856,8 +1858,8 @@ class BranchFormatMetadir(BranchFormat):
             if format.__class__ != self.__class__:
                 raise AssertionError("wrong format %r found for %r" %
                     (format, self))
+        transport = a_bzrdir.get_branch_transport(None, name=name)
         try:
-            transport = a_bzrdir.get_branch_transport(None, name=name)
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
             return self._branch_class()(_format=self,
@@ -2061,10 +2063,10 @@ class BranchReferenceFormat(BranchFormat):
             # this format does not implement branch itself, thus the implicit
             # creation contract must see it as uninitializable
             raise errors.UninitializableFormat(self)
-        mutter('creating branch reference in %s', a_bzrdir.transport.base)
+        mutter('creating branch reference in %s', a_bzrdir.user_url)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
-            target_branch.bzrdir.root_transport.base)
+            target_branch.bzrdir.user_url)
         branch_transport.put_bytes('format', self.get_format_string())
         return self.open(
             a_bzrdir, name, _found=True,
@@ -2190,9 +2192,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     def __str__(self):
         if self.name is None:
-            return '%s(%r)' % (self.__class__.__name__, self.base)
+            return '%s(%s)' % (self.__class__.__name__, self.user_url)
         else:
-            return '%s(%r,%r)' % (self.__class__.__name__, self.base, self.name)
+            return '%s(%s,%s)' % (self.__class__.__name__, self.user_url,
+                self.name)
 
     __repr__ = __str__
 
@@ -2413,7 +2416,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         return result
 
     def get_stacked_on_url(self):
-        raise errors.UnstackableBranchFormat(self._format, self.base)
+        raise errors.UnstackableBranchFormat(self._format, self.user_url)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
@@ -2609,7 +2612,7 @@ class BzrBranch8(BzrBranch5):
         if _mod_revision.is_null(last_revision):
             return
         if last_revision not in self._lefthand_history(revision_id):
-            raise errors.AppendRevisionsOnlyViolation(self.base)
+            raise errors.AppendRevisionsOnlyViolation(self.user_url)
 
     def _gen_revision_history(self):
         """Generate the revision history from last revision
@@ -2715,7 +2718,7 @@ class BzrBranch8(BzrBranch5):
         if branch_location is None:
             return Branch.reference_parent(self, file_id, path,
                                            possible_transports)
-        branch_location = urlutils.join(self.base, branch_location)
+        branch_location = urlutils.join(self.user_url, branch_location)
         return Branch.open(branch_location,
                            possible_transports=possible_transports)
 
@@ -2836,7 +2839,7 @@ class BzrBranch6(BzrBranch7):
     """
 
     def get_stacked_on_url(self):
-        raise errors.UnstackableBranchFormat(self._format, self.base)
+        raise errors.UnstackableBranchFormat(self._format, self.user_url)
 
 
 ######################################################################
@@ -2929,7 +2932,7 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s', self.branch.base,
+        note('checked branch %s format %s', self.branch.user_url,
             self.branch._format)
         for error in self.errors:
             note('found error:%s', error)
