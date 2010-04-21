@@ -3594,7 +3594,7 @@ class cmd_selftest(Command):
             self.additional_selftest_args['runner_class'] = SubUnitBzrRunner
             # On Windows, disable automatic conversion of '\n' to '\r\n' in
             # stdout, which would corrupt the subunit stream. 
-            if sys.platform == "win32":
+            if sys.platform == "win32" and sys.stdout.fileno() >= 0:
                 import msvcrt
                 msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
         if parallel:
