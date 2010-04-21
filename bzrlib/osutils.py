@@ -1482,20 +1482,18 @@ def _terminal_size_changed(signum, frame):
         os.environ['COLUMNS'] = str(width)
 
 
-_registered_sigwinch = False
-
-def watch_sigwinch():
-    """Register for SIGWINCH, once and only once."""
-    global _registered_sigwinch
-    if not _registered_sigwinch:
-        if sys.platform == 'win32':
-            # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from
-            # ReadConsoleInput but I've no idea how to plug that in
-            # the current design -- vila 20091216
-            pass
-        else:
+if os.name == "posix" and getattr(signal, "SIGWINCH", None) is not None:
+    _registered_sigwinch = False
+    def watch_sigwinch():
+        """Register for SIGWINCH, once and only once."""
+        global _registered_sigwinch
+        if not _registered_sigwinch:
             set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
-        _registered_sigwinch = True
+            _registered_sigwinch = True
+else:
+    def watch_sigwinch():
+        """Do nothing as SIGWINCH doesn't exist on this platform"""
+        pass
 
 
 def supports_executable():
