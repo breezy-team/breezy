@@ -1405,9 +1405,8 @@ class Branch(bzrdir.ControlComponent):
         :return: A branch associated with the file_id
         """
         # FIXME should provide multiple branches, based on config
-        return Branch.open_from_transport(
-            self.bzrdir.root_transport.clone(path),
-            possible_transports=possible_transports)
+        return Branch.open(self.user_transport.clone(path).base,
+                           possible_transports=possible_transports)
 
     def supports_tags(self):
         return self._format.supports_tags()
