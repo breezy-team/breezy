@@ -86,9 +86,42 @@ from bzrlib import (
     registry,
     symbol_versioning,
     )
+    
+    
+class ControlComponent(object):
+    """Abstract base class for control directory components.
+    
+    This provides interfaces that are common across bzrdirs, 
+    repositories, branches, and workingtree control directories.
+    
+    They all expose two urls and transports: the *user* URL is the 
+    one that stops above the control directory (eg .bzr) and that 
+    should normally be used in messages, and the *control* URL is
+    under that in eg .bzr/checkout and is used to read the control
+    files.
+    
+    This can be used as a mixin and is intended to fit with 
+    foreign formats.
+    """
+    
+    @property
+    def control_transport(self):
+        raise NotImplementedError(self.control_transport)
+   
+    @property
+    def control_url(self):
+        return self.control_transport.base
+    
+    @property
+    def user_transport(self):
+        raise NotImplementedError(self.user_transport)
+        
+    @property
+    def user_url(self):
+        return self.user_transport.base
+    
 
-
-class BzrDir(object):
+class BzrDir(ControlComponent):
     """A .bzr control diretory.
 
     BzrDir instances let you create or open any of the things that can be
@@ -814,9 +847,19 @@ class BzrDir(object):
         :param _transport: the transport this dir is based at.
         """
         self._format = _format
+        # these are also under the more standard names of 
+        # control_transport and user_transport
         self.transport = _transport.clone('.bzr')
         self.root_transport = _transport
         self._mode_check_done = False
+        
+    @property 
+    def user_transport(self):
+        return self.root_transport
+        
+    @property
+    def control_transport(self):
+        return self.transport
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for bzrdir's.
