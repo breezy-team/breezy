@@ -642,7 +642,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._custom_format._serializer
 
 
-class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
+class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
+    bzrdir.ControlComponent):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
@@ -691,6 +692,17 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         # Additional places to query for data.
         self._fallback_repositories = []
 
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        # XXX: Normally you shouldn't directly get at the remote repository
+        # transport, but I'm not sure it's worth making this method
+        # optional -- mbp 2010-04-21
+        return self.bzrdir.get_repository_transport(None)
+        
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
 

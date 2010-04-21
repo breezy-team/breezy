@@ -106,7 +106,7 @@ class ControlComponent(object):
     
     @property
     def control_transport(self):
-        raise NotImplementedError(self.control_transport)
+        raise NotImplementedError
    
     @property
     def control_url(self):
@@ -114,7 +114,7 @@ class ControlComponent(object):
     
     @property
     def user_transport(self):
-        raise NotImplementedError(self.user_transport)
+        raise NotImplementedError
         
     @property
     def user_url(self):

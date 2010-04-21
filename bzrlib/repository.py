@@ -864,7 +864,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class Repository(_RelockDebugMixin):
+class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1291,11 +1291,10 @@ class Repository(_RelockDebugMixin):
 
         :param _format: The format of the repository on disk.
         :param a_bzrdir: The BzrDir of the repository.
-
-        In the future we will have a single api for all stores for
-        getting file texts, inventories and revisions, then
-        this construct will accept instances of those things.
         """
+        # In the future we will have a single api for all stores for
+        # getting file texts, inventories and revisions, then
+        # this construct will accept instances of those things.
         super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
@@ -1315,6 +1314,14 @@ class Repository(_RelockDebugMixin):
         # Is it safe to return inventory entries directly from the entry cache,
         # rather copying them?
         self._safe_to_return_from_cache = False
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def __repr__(self):
         if self._fallback_repositories:
