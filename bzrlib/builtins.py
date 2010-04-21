@@ -3592,6 +3592,11 @@ class cmd_selftest(Command):
                 raise errors.BzrCommandError("subunit not available. subunit "
                     "needs to be installed to use --subunit.")
             self.additional_selftest_args['runner_class'] = SubUnitBzrRunner
+            # On Windows, disable automatic conversion of '\n' to '\r\n' in
+            # stdout, which would corrupt the subunit stream. 
+            if sys.platform == "win32":
+                import msvcrt
+                msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
         if parallel:
             self.additional_selftest_args.setdefault(
                 'suite_decorators', []).append(parallel)

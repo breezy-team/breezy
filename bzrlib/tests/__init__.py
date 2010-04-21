@@ -3276,9 +3276,7 @@ def reinvoke_for_tests(suite):
         bzr_path = [bzr_path]
         if sys.platform == "win32":
             # if we're on windows, we can't execute the bzr script directly
-            # and we have to enable unbuffered binary stdout/stderr so that
-            # automatic CRLF conversion doesn't corrupt the subunit streams
-            bzr_path = [sys.executable, '-u'] + bzr_path
+            bzr_path = [sys.executable] + bzr_path
         fd, test_list_file_name = tempfile.mkstemp()
         test_list_file = os.fdopen(fd, 'wb', 1)
         for test in process_tests:
