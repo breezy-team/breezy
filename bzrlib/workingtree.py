@@ -174,7 +174,8 @@ class TreeLink(TreeEntry):
         return ''
 
 
-class WorkingTree(bzrlib.mutabletree.MutableTree):
+class WorkingTree(bzrlib.mutabletree.MutableTree,
+    bzrdir.ControlComponent):
     """Working copy tree.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -252,6 +253,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._detect_case_handling()
         self._rules_searcher = None
         self.views = self._make_views()
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
