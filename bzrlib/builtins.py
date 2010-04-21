@@ -504,9 +504,7 @@ class cmd_remove_tree(Command):
                 if (working.has_changes()):
                     raise errors.UncommittedChanges(working)
 
-            working_path = working.bzrdir.root_transport.base
-            branch_path = working.branch.bzrdir.root_transport.base
-            if working_path != branch_path:
+            if working.user_url != working.branch.user_url:
                 raise errors.BzrCommandError("You cannot remove the working tree"
                                              " from a lightweight checkout")
 

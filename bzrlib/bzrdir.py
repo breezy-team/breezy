@@ -294,8 +294,8 @@ class BzrDir(ControlComponent):
                 # copied, and finally if we are copying up to a specific
                 # revision_id then we can use the pending-ancestry-result which
                 # does not require traversing all of history to describe it.
-                if (result_repo.bzrdir.root_transport.base ==
-                    result.root_transport.base and not require_stacking and
+                if (result_repo.user_url == result.user_url
+                    and not require_stacking and
                     revision_id is not None):
                     fetch_spec = graph.PendingAncestryResult(
                         [revision_id], local_repo)
@@ -491,7 +491,7 @@ class BzrDir(ControlComponent):
             stop = False
             stack_on = config.get_default_stack_on()
             if stack_on is not None:
-                stack_on_pwd = found_bzrdir.root_transport.base
+                stack_on_pwd = found_bzrdir.user_url
                 stop = True
             # does it have a repository ?
             try:
@@ -499,8 +499,8 @@ class BzrDir(ControlComponent):
             except errors.NoRepositoryPresent:
                 repository = None
             else:
-                if ((found_bzrdir.root_transport.base !=
-                     self.root_transport.base) and not repository.is_shared()):
+                if (found_bzrdir.user_url != self.user_url 
+                    and not repository.is_shared()):
                     # Don't look higher, can't use a higher shared repo.
                     repository = None
                     stop = True
@@ -702,7 +702,7 @@ class BzrDir(ControlComponent):
             if stop:
                 return result
             next_transport = found_bzrdir.root_transport.clone('..')
-            if (found_bzrdir.root_transport.base == next_transport.base):
+            if (found_bzrdir.user_url == next_transport.base):
                 # top of the file system
                 return None
             # find the next containing bzrdir
@@ -725,7 +725,7 @@ class BzrDir(ControlComponent):
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
                 return None, False
-            if found_bzrdir.root_transport.base == self.root_transport.base:
+            if found_bzrdir.user_url == self.user_url:
                 return repository, True
             elif repository.is_shared():
                 return repository, True
@@ -2694,7 +2694,7 @@ class ConvertBzrDir4To5(Converter):
             if isinstance(self.bzrdir.transport, local.LocalTransport):
                 self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
-            return BzrDir.open(self.bzrdir.root_transport.base)
+            return BzrDir.open(self.bzrdir.user_url)
         finally:
             self.pb.finished()
 
@@ -2947,7 +2947,7 @@ class ConvertBzrDir5To6(Converter):
         try:
             ui.ui_factory.note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
-            return BzrDir.open(self.bzrdir.root_transport.base)
+            return BzrDir.open(self.bzrdir.user_url)
         finally:
             pb.finished()
 
@@ -3075,7 +3075,7 @@ class ConvertBzrDir6ToMeta(Converter):
             BzrDirMetaFormat1().get_format_string(),
             mode=self.file_mode)
         self.pb.finished()
-        return BzrDir.open(self.bzrdir.root_transport.base)
+        return BzrDir.open(self.bzrdir.user_url)
 
     def make_lock(self, name):
         """Make a lock for the new control dir name."""
@@ -3662,7 +3662,7 @@ class RepositoryAcquisitionPolicy(object):
             try:
                 stack_on = urlutils.rebase_url(self._stack_on,
                     self._stack_on_pwd,
-                    branch.bzrdir.root_transport.base)
+                    branch.user_url)
             except errors.InvalidRebaseURLs:
                 stack_on = self._get_full_stack_on()
         try:

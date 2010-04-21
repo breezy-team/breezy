@@ -2181,7 +2181,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._real_branch = None
         # Fill out expected attributes of branch for bzrlib API users.
         self._clear_cached_state()
-        self.base = self.bzrdir.root_transport.base
+        # TODO: deprecate self.base in favor of user_url
+        self.base = self.bzrdir.user_url
         self._name = name
         self._control_files = None
         self._lock_mode = None

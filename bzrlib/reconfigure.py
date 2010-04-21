@@ -82,14 +82,13 @@ class Reconfigure(object):
             self.repository = None
             self.local_repository = None
         else:
-            if (self.repository.bzrdir.root_transport.base ==
-                self.bzrdir.root_transport.base):
+            if (self.repository.user_url == self.bzrdir.user_url):
                 self.local_repository = self.repository
             else:
                 self.local_repository = None
         try:
             branch = self.bzrdir.open_branch()
-            if branch.bzrdir.root_transport.base == bzrdir.root_transport.base:
+            if branch.user_url == bzrdir.user_url:
                 self.local_branch = branch
                 self.referenced_branch = None
             else:
@@ -217,8 +216,8 @@ class Reconfigure(object):
             if not want_reference:
                 self._create_repository = True
         else:
-            if want_reference and (self.repository.bzrdir.root_transport.base
-                                   == self.bzrdir.root_transport.base):
+            if want_reference and (
+                self.repository.user_url == self.bzrdir.user_url):
                 if not self.repository.is_shared():
                     self._destroy_repository = True
         if self.referenced_branch is None:
