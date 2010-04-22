@@ -455,7 +455,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
             _mod_branch.BranchReferenceFormat().get_reference(checkout.bzrdir))
 
 
-class TestHooks(tests.TestCase):
+class TestHooks(tests.TestCaseWithTransport):
 
     def test_constructor(self):
         """Check that creating a BranchHooks instance has the right defaults."""
@@ -469,6 +469,10 @@ class TestHooks(tests.TestCase):
                         "post_uncommit not in %s" % hooks)
         self.assertTrue("post_change_branch_tip" in hooks,
                         "post_change_branch_tip not in %s" % hooks)
+        self.assertTrue("post_branch_init" in hooks,
+                        "post_branch_init not in %s" % hooks)
+        self.assertTrue("post_switch" in hooks,
+                        "post_switch not in %s" % hooks)
 
     def test_installed_hooks_are_BranchHooks(self):
         """The installed hooks object should be a BranchHooks."""
@@ -476,6 +480,40 @@ class TestHooks(tests.TestCase):
         self.assertIsInstance(self._preserved_hooks[_mod_branch.Branch][1],
                               _mod_branch.BranchHooks)
 
+    def test_post_branch_init_hook(self):
+        calls = []
+        _mod_branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        branch = self.make_branch('a')
+        self.assertLength(1, calls)
+        params = calls[0]
+        self.assertIsInstance(params, _mod_branch.BranchInitHookParams)
+        self.assertTrue(hasattr(params, 'bzrdir'))
+        self.assertTrue(hasattr(params, 'branch'))
+
+    def test_post_switch_hook(self):
+        from bzrlib import switch
+        calls = []
+        _mod_branch.Branch.hooks.install_named_hook('post_switch',
+            calls.append, None)
+        tree = self.make_branch_and_tree('branch-1')
+        self.build_tree(['branch-1/file-1'])
+        tree.add('file-1')
+        tree.commit('rev1')
+        to_branch = tree.bzrdir.sprout('branch-2').open_branch()
+        self.build_tree(['branch-1/file-2'])
+        tree.add('file-2')
+        tree.remove('file-1')
+        tree.commit('rev2')
+        checkout = tree.branch.create_checkout('checkout')
+        self.assertLength(0, calls)
+        switch.switch(checkout.bzrdir, to_branch)
+        self.assertLength(1, calls)
+        params = calls[0]
+        self.assertIsInstance(params, _mod_branch.SwitchHookParams)
+        self.assertTrue(hasattr(params, 'to_branch'))
+        self.assertTrue(hasattr(params, 'revision_id'))
 
 class TestPullResult(tests.TestCase):
 
