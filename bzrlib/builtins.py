@@ -2649,6 +2649,10 @@ class cmd_ignore(Command):
     using this command or directly by using an editor, be sure to commit
     it.
     
+    Bazaar also supports a global ignore file ~/.bazaar/ignore. On Windows
+    the global ignore file can be found in the application data directory as
+    C:\\Documents and Settings\\<user>\\Application Data\\Bazaar\\2.0\\ignore.
+
     Patterns prefixed with '!' are exceptions to ignore patterns and take
     precedence over regular ignores.  Such exceptions are used to specify
     files that should be versioned which would otherwise be ignored.
@@ -2696,27 +2700,19 @@ class cmd_ignore(Command):
     takes_args = ['name_pattern*']
     takes_options = [
         Option('default-rules',
-               help='Display the default ignore rules that bzr uses.'),
-        Option('old-default-rules',
-               help='Write out the ignore rules bzr < 0.9 always used.')
+               help='Display the default ignore rules that bzr uses.')
         ]
 
-    def run(self, name_pattern_list=None, default_rules=None,
-            old_default_rules=None):
+    def run(self, name_pattern_list=None, default_rules=None):
         from bzrlib import ignores
-        if default_rules or old_default_rules:
-            if default_rules is not None:
-                # dump the default rules and exit
-                for pattern in ignores.USER_DEFAULTS:
-                    self.outf.write("%s\n" % pattern)
-            if old_default_rules is not None:
-                # dump the rules and exit
-                for pattern in ignores.OLD_DEFAULTS:
-                    self.outf.write("%s\n" % pattern)
+        if default_rules is not None:
+            # dump the default rules and exit
+            for pattern in ignores.USER_DEFAULTS:
+                self.outf.write("%s\n" % pattern)
             return
         if not name_pattern_list:
             raise errors.BzrCommandError("ignore requires at least one "
-                "NAME_PATTERN, --default-rules or --old-default-rules")
+                "NAME_PATTERN or --default-rules.")
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
         for name_pattern in name_pattern_list:

@@ -20,7 +20,8 @@ New Features
   select alternative diff formats. (Jelmer Vernooij, #555994)
 
 * ``bzr ignore`` now supports a ``--default-rules`` option that displays
-  the default ignore rules used by bzr.
+  the default ignore rules used by bzr. The flag ``--old-default-rules``
+  is no longer supported by ``ignore``.
   (Parth Malwankar, #538703)
 
 * ``bzr pack`` now supports a ``--clean-obsolete-packs`` option that

@@ -106,7 +106,7 @@ class TestCommands(ExternalBase):
         """'ignore' with no arguments returns an error"""
         self.make_branch_and_tree('.')
         self.run_bzr_error(('bzr: ERROR: ignore requires at least one '
-                            'NAME_PATTERN, --default-rules or --old-default-rules\n',),
+                            'NAME_PATTERN or --default-rules.\n',),
                            'ignore')
 
     def test_ignore_default_rules(self):
@@ -114,11 +114,6 @@ class TestCommands(ExternalBase):
         reference_set = set(ignores.USER_DEFAULTS)
         output_set = set(out.rstrip().split('\n'))
         self.assertEqual(reference_set, output_set)
-        self.assertEqual('', err)
-
-    def test_ignore_old_defaults(self):
-        out, err = self.run_bzr('ignore --old-default-rules')
-        self.assertContainsRe(out, 'CVS')
         self.assertEqual('', err)
 
     def test_ignore_versioned_file(self):
