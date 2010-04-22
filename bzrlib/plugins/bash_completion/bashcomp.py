@@ -205,13 +205,18 @@ def bash_completion_function(out, function_name="_bzr", function_only=False,
             opt.add_option(parser, opt.short_name())
             if isinstance(opt, option.RegistryOption) and opt.enum_switch:
                 enum_switch = '--%s' % optname
-                keys = opt.registry.keys()
-                if enum_switch in optswitches and keys:
-                    optswitches.remove(enum_switch)
-                    for key in keys:
-                        optswitches.append('%s=%s' % (enum_switch, key))
-                    enums.append("%s) optEnums='%s' ;;"
-                                 % (enum_switch, ' '.join(keys)))
+                try:
+                    keys = opt.registry.keys()
+                except ImportError, e:
+                    cases += ("\t\t# ERROR getting registry keys for '--%s':"
+                              + " %s\n") % (optname, str(e).split('\n')[0])
+                else:
+                    if enum_switch in optswitches and keys:
+                        optswitches.remove(enum_switch)
+                        for key in keys:
+                            optswitches.append('%s=%s' % (enum_switch, key))
+                            enums.append("%s) optEnums='%s' ;;"
+                                         % (enum_switch, ' '.join(keys)))
             switches.extend(optswitches)
         if 'help' == cmdname or 'help' in cmd.aliases:
             fixedWords = " ".join(sorted(help_topics.topic_registry.keys()))
@@ -245,12 +250,16 @@ def bash_completion_function(out, function_name="_bzr", function_only=False,
         template = fun
     else:
         template = head + fun + tail
+    if debug:
+        perhaps_debug_output = debug_output
+    else:
+        perhaps_debug_output = ''
     out.write(template % {"cmds": " ".join(cmds),
                           "cases": cases,
                           "function_name": function_name,
                           "version": __version__,
                           "global_options": global_options,
-                          "debug": debug_output if debug else "",
+                          "debug": perhaps_debug_output,
                           "bzr_version": bzr_version,
                           })
 
