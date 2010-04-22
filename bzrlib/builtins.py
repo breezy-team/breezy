@@ -232,6 +232,14 @@ def _get_view_info_for_change_reporter(tree):
     return view_info
 
 
+def _open_tree_branch_or_directory(filename, directory):
+    """Open the tree or branch containing the specified file, unless
+    the --directory option is used to specify a different branch."""
+    if directory is not None:
+        return (None, Branch.open(directory), filename)
+    return bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+
+
 # TODO: Make sure no commands unconditionally use the working directory as a
 # branch.  If a filename argument is used, the first of them should be used to
 # specify the branch.  (Perhaps this can be factored out into some kind of
@@ -2518,12 +2526,13 @@ class cmd_ls(Command):
                    help='List entries of a particular kind: file, directory, symlink.',
                    type=unicode),
             'show-ids',
+            'directory',
             ]
     @display_command
     def run(self, revision=None, verbose=False,
             recursive=False, from_root=False,
             unknown=False, versioned=False, ignored=False,
-            null=False, kind=None, show_ids=False, path=None):
+            null=False, kind=None, show_ids=False, path=None, directory=None):
 
         if kind and kind not in ('file', 'directory', 'symlink'):
             raise errors.BzrCommandError('invalid kind specified')
@@ -2541,8 +2550,7 @@ class cmd_ls(Command):
                 raise errors.BzrCommandError('cannot specify both --from-root'
                                              ' and PATH')
             fs_path = path
-        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
-            fs_path)
+        tree, branch, relpath = _open_tree_branch_or_directory(fs_path)
 
         # Calculate the prefix to use
         prefix = None
@@ -2850,7 +2858,7 @@ class cmd_cat(Command):
     """
 
     _see_also = ['ls']
-    takes_options = [
+    takes_options = ['directory',
         Option('name-from-revision', help='The path name in the old tree.'),
         Option('filters', help='Apply content filters to display the '
                 'convenience form.'),
@@ -2861,12 +2869,12 @@ class cmd_cat(Command):
 
     @display_command
     def run(self, filename, revision=None, name_from_revision=False,
-            filters=False):
+            filters=False, directory=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError("bzr cat --revision takes exactly"
                                          " one revision specifier")
         tree, branch, relpath = \
-            bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+              _open_tree_branch_or_directory(filename, directory)
         branch.lock_read()
         self.add_cleanup(branch.unlock)
         return self._run(tree, branch, relpath, filename, revision,
@@ -4548,15 +4556,16 @@ class cmd_annotate(Command):
                      Option('long', help='Show commit date in annotations.'),
                      'revision',
                      'show-ids',
+                     'directory',
                      ]
     encoding_type = 'exact'
 
     @display_command
     def run(self, filename, all=False, long=False, revision=None,
-            show_ids=False):
+            show_ids=False, directory=None):
         from bzrlib.annotate import annotate_file, annotate_file_tree
         wt, branch, relpath = \
-            bzrdir.BzrDir.open_containing_tree_or_branch(filename)
+            _open_tree_branch_or_directory(filename, directory)
         if wt is not None:
             wt.lock_read()
             self.add_cleanup(wt.unlock)
