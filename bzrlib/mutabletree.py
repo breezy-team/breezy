@@ -258,7 +258,8 @@ class MutableTree(tree.Tree):
             return False
 
     @needs_read_lock
-    def warn_if_changed_or_out_of_date(self, strict, opt_name, more_msg):
+    def check_changed_or_out_of_date(self, strict, opt_name,
+                                     more_error, more_warning):
         """Check the tree for uncommitted changes and branch synchronization.
 
         If strict is None and not set in the config files, a warning is issued.
@@ -269,7 +270,9 @@ class MutableTree(tree.Tree):
 
         :param opt_name: strict option name to search in config file.
 
-        :param more_msg: Details about how to avoid the check.
+        :param more_error: Details about how to avoid the check.
+
+        :param more_warning: Details about what is happening.
         """
         if strict is None:
             strict = self.branch.get_config().get_user_option_as_bool(opt_name)
@@ -284,12 +287,12 @@ class MutableTree(tree.Tree):
                 err_class = errors.OutOfDateTree
             if err_class is not None:
                 if strict is None:
-                    err = err_class(self)
+                    err = err_class(self, more=more_warning)
                     # We don't want to interrupt the user if he expressed no
                     # preference about strict.
                     trace.warning('%s', err._format())
                 else:
-                    err = err_class(self, more=more_msg)
+                    err = err_class(self, more=more_error)
                     raise err
 
     @needs_read_lock
