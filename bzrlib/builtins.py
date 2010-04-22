@@ -5937,7 +5937,8 @@ class cmd_clean_tree(Command):
 
     To check what clean-tree will do, use --dry-run.
     """
-    takes_options = [Option('ignored', help='Delete all ignored files.'),
+    takes_options = ['directory',
+                     Option('ignored', help='Delete all ignored files.'),
                      Option('detritus', help='Delete conflict files, merge'
                             ' backups, and failed selftest dirs.'),
                      Option('unknown',
@@ -5946,14 +5947,14 @@ class cmd_clean_tree(Command):
                             ' deleting them.'),
                      Option('force', help='Do not prompt before deleting.')]
     def run(self, unknown=False, ignored=False, detritus=False, dry_run=False,
-            force=False):
+            force=False, directory=u'.'):
         from bzrlib.clean_tree import clean_tree
         if not (unknown or ignored or detritus):
             unknown = True
         if dry_run:
             force = True
-        clean_tree('.', unknown=unknown, ignored=ignored, detritus=detritus,
-                   dry_run=dry_run, no_prompt=force)
+        clean_tree(directory, unknown=unknown, ignored=ignored,
+                   detritus=detritus, dry_run=dry_run, no_prompt=force)
 
 
 class cmd_reference(Command):
