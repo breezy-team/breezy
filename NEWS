@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.2.b3
+bzr 2.2b3
 ##########
 
-:2.2.b3: NOT RELEASED YET
+:2.2b3: NOT RELEASED YET
 
 Compatibility Breaks
 ********************
@@ -18,6 +18,9 @@ New Features
 
 Bug Fixes
 *********
+
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
 
 Improvements
 ************
@@ -876,6 +879,10 @@ bzr 2.0.6
 Bug Fixes
 *********
 
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
+
 * ``bzr revert`` now only takes write lock on working tree, instead of on 
   both working tree and branch.
   (Danny van Heumen, #498409)
@@ -884,9 +891,6 @@ Bug Fixes
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
 
-* Additional merges after an unrelated branch has been merged with its
-  history no longer crash when deleted files are involved.
-  (Vincent Ladeuil, John Arbash Meinel, #375898)
 
 bzr 2.0.5
 #########
