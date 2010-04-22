@@ -47,6 +47,9 @@ Bug Fixes
   into the master branch will no longer claim that old commits have become
   pending merges. (Robert Collins, #562079)
 
+* ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
+  (Vincent Ladeuil, #566670)
+
 * ``bzrlib.mutabletree.MutableTree.commit`` will now support a passed in
   config as in previous versions of bzrlib. (Robert Collins)
 
