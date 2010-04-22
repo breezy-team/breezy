@@ -5,11 +5,19 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.2.0b3 (not released yet)
-##############################
+bzr 2.2b3
+#########
 
-:Codename: ???
-:2.2.0b3: ???
+:2.2b3: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
 
 Improvements
 ************
@@ -25,6 +33,18 @@ Improvements
 * ``Config.get_user_option_as_bool`` will now warn if a value cannot
   be interpreted as a boolean.
   (Vincent Ladeuil)
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
 
 bzr 2.1.0rc2
 ############
