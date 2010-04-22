@@ -1,104 +1,41 @@
-# Programmable completion for the Bazaar-NG bzr command under bash. Source
-# this file (or on some systems add it to ~/.bash_completion and start a new
-# shell) and bash's completion mechanism will know all about bzr's options!
+# Copyright (C) 2010  Martin von Gagern
+#
+# This file is part of bzr-bash-completion
+#
+# bzr-bash-completion free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation, either version 2 of the
+# License, or (at your option) any later version.
+#
+# bzr-bash-completion is distributed in the hope that it will be
+# useful, but WITHOUT ANY WARRANTY; without even the implied warranty
+# of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Known to work with bash 2.05a with programmable completion and extended
-# pattern matching enabled (use 'shopt -s extglob progcomp' to enable
-# these if they are not already enabled).
+# Programmable completion for the Bazaar-NG bzr command under bash.
+# Source this file (or add it to your ~/.bash_completion or ~/.bashrc
+# file, depending on your system configuration, and start a new shell)
+# and bash's completion mechanism will know all about bzr's options!
+#
+# This completion function assumes you have the bzr-bash-completion
+# plugin installed as a bzr plugin. It will generate the full
+# completion function at first invocation, thus avoiding long delays
+# for every shell you start.
 
-# Based originally on the svn bash completition script.
-# Customized by Sven Wilhelm/Icecrash.com
-
-_bzr ()
+shopt -s progcomp
+_bzr_lazy ()
 {
-	local cur cmds cmdOpts opt helpCmds optBase i
-
-	COMPREPLY=()
-	cur=${COMP_WORDS[COMP_CWORD]}
-
-	cmds='status diff commit ci checkin move remove log info check ignored'
-
-	if [[ $COMP_CWORD -eq 1 ]] ; then
-		COMPREPLY=( $( compgen -W "$cmds" -- $cur ) )
-		return 0
+	unset _bzr
+	eval "$(bzr bash-completion)"
+	if [[ $(type -t _bzr) == function ]]; then
+		unset _bzr_lazy
+		_bzr
+		return $?
+	else
+		return 1
 	fi
-
-	# if not typing an option, or if the previous option required a
-	# parameter, then fallback on ordinary filename expansion
-	helpCmds='help|--help|h|\?'
-	if [[ ${COMP_WORDS[1]} != @($helpCmds) ]] && \
-	   [[ "$cur" != -* ]] ; then
-		return 0
-	fi
-
-	cmdOpts=
-	case ${COMP_WORDS[1]} in
-	status)
-		cmdOpts="--all --show-ids"
-		;;
-	diff)
-		cmdOpts="-r --revision --diff-options"
-		;;
-	commit|ci|checkin)
-		cmdOpts="-r --message -F --file -v --verbose"
-		;;
-	move)
-		cmdOpts=""
-		;;
-	remove)
-		cmdOpts="-v --verbose"
-		;;
-	log)
-		cmdOpts="--forward --timezone -v --verbose --show-ids -r --revision"
-		;;
-	info)
-		cmdOpts=""
-		;;
-	ignored)
-		cmdOpts=""
-		;;
-	check)
-		cmdOpts=""
-		;;
-	help|h|\?)
-		cmdOpts="$cmds $qOpts"
-		;;
-	*)
-		;;
-	esac
-
-	cmdOpts="$cmdOpts --help -h"
-
-	# take out options already given
-	for (( i=2; i<=$COMP_CWORD-1; ++i )) ; do
-		opt=${COMP_WORDS[$i]}
-
-		case $opt in
-		--*)    optBase=${opt/=*/} ;;
-		-*)     optBase=${opt:0:2} ;;
-		esac
-
-		cmdOpts=" $cmdOpts "
-		cmdOpts=${cmdOpts/ ${optBase} / }
-
-		# take out alternatives
-		case $optBase in
-		-v)              cmdOpts=${cmdOpts/ --verbose / } ;;
-		--verbose)       cmdOpts=${cmdOpts/ -v / } ;;
-		-h)              cmdOpts=${cmdOpts/ --help / } ;;
-		--help)          cmdOpts=${cmdOpts/ -h / } ;;
-		-r)              cmdOpts=${cmdOpts/ --revision / } ;;
-		--revision)      cmdOpts=${cmdOpts/ -r / } ;;
-		esac
-
-		# skip next option if this one requires a parameter
-		if [[ $opt == @($optsParam) ]] ; then
-			((++i))
-		fi
-	done
-
-	COMPREPLY=( $( compgen -W "$cmdOpts" -- $cur ) )
-
-	return 0
 }
-complete -F _bzr -o default bzr
+complete -F _bzr_lazy -o default bzr
