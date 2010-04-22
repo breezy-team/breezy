@@ -82,6 +82,11 @@ fun="""\
 		curOpt=${COMP_WORDS[COMP_CWORD - 1]}
 		if [[ $curOpt == = ]]; then
 			curOpt=${COMP_WORDS[COMP_CWORD - 2]}
+		elif [[ $cur == : ]]; then
+			cur=
+			curOpt="$curOpt:"
+		elif [[ $curOpt == : ]]; then
+			curOpt=${COMP_WORDS[COMP_CWORD - 2]}:
 		fi
 	fi
 %(debug)s
@@ -95,18 +100,20 @@ fun="""\
 		;;
 	esac
 
-	# if not typing an option, and if we don't know all the
-	# possible non-option arguments for the current command,
-	# then fallback on ordinary filename expansion
 	if [[ -z $fixedWords ]] && [[ -z $optEnums ]] && [[ $cur != -* ]]; then
-		return 0
-	fi
-
-	if [[ $cur == = ]] && [[ -n $optEnums ]]; then
+		case $curOpt in
+			tag:*)
+				fixedWords="$(bzr tags | sed 's/  *[^ ]*$//')"
+				;;
+		esac
+	elif [[ $cur == = ]] && [[ -n $optEnums ]]; then
 		# complete directly after "--option=", list all enum values
-		COMPREPLY=( $optEnums )
+		fixedWords=$optEnums
 	else
 		fixedWords="$cmdOpts $globalOpts $optEnums $fixedWords"
+	fi
+
+	if [[ -n $fixedWords ]]; then
 		COMPREPLY=( $( compgen -W "$fixedWords" -- $cur ) )
 	fi
 
