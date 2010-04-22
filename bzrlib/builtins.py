@@ -556,12 +556,9 @@ class cmd_revision_info(Command):
     takes_args = ['revision_info*']
     takes_options = [
         'revision',
-        Option('directory',
+        custom_help('directory',
             help='Branch to examine, '
-                 'rather than the one containing the working directory.',
-            short_name='d',
-            type=unicode,
-            ),
+                 'rather than the one containing the working directory.'),
         Option('tree', help='Show revno of working tree'),
         ]
 
@@ -962,12 +959,9 @@ class cmd_pull(Command):
     takes_options = ['remember', 'overwrite', 'revision',
         custom_help('verbose',
             help='Show logs of pulled revisions.'),
-        Option('directory',
+        custom_help('directory',
             help='Branch to pull into, '
-                 'rather than the one containing the working directory.',
-            short_name='d',
-            type=unicode,
-            ),
+                 'rather than the one containing the working directory.'),
         Option('local',
             help="Perform a local pull in a bound "
                  "branch.  Local pulls are not applied to "
@@ -1090,12 +1084,9 @@ class cmd_push(Command):
         Option('create-prefix',
                help='Create the path leading up to the branch '
                     'if it does not already exist.'),
-        Option('directory',
+        custom_help('directory',
             help='Branch to push from, '
-                 'rather than the one containing the working directory.',
-            short_name='d',
-            type=unicode,
-            ),
+                 'rather than the one containing the working directory.'),
         Option('use-existing-dir',
                help='By default push will fail if the target'
                     ' directory exists, but does not already'
@@ -3770,12 +3761,9 @@ class cmd_merge(Command):
                 ' completely merged into the source, pull from the'
                 ' source rather than merging.  When this happens,'
                 ' you do not need to commit the result.'),
-        Option('directory',
+        custom_help('directory',
                help='Branch to merge into, '
-                    'rather than the one containing the working directory.',
-               short_name='d',
-               type=unicode,
-               ),
+                    'rather than the one containing the working directory.'),
         Option('preview', help='Instead of merging, show a diff of the'
                ' merge.'),
         Option('interactive', help='Select changes interactively.',
@@ -4878,9 +4866,8 @@ class cmd_serve(Command):
                     'result in a dynamically allocated port.  The default port '
                     'depends on the protocol.',
                type=str),
-        Option('directory',
-               help='Serve contents of this directory.',
-               type=unicode),
+        custom_help('directory',
+               help='Serve contents of this directory.'),
         Option('allow-writes',
                help='By default the server is a readonly server.  Supplying '
                     '--allow-writes enables write access to the contents of '
@@ -5315,11 +5302,8 @@ class cmd_tag(Command):
         Option('delete',
             help='Delete this tag rather than placing it.',
             ),
-        Option('directory',
-            help='Branch in which to place the tag.',
-            short_name='d',
-            type=unicode,
-            ),
+        custom_help('directory',
+            help='Branch in which to place the tag.'),
         Option('force',
             help='Replace existing tags.',
             ),
@@ -5368,11 +5352,8 @@ class cmd_tags(Command):
 
     _see_also = ['tag']
     takes_options = [
-        Option('directory',
-            help='Branch whose tags should be displayed.',
-            short_name='d',
-            type=unicode,
-            ),
+        custom_help('directory',
+            help='Branch whose tags should be displayed.'),
         RegistryOption.from_kwargs('sort',
             'Sort tags by different criteria.', title='Sorting',
             alpha='Sort tags lexicographically (default).',
