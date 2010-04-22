@@ -2689,21 +2689,8 @@ class BzrBranch8(BzrBranch5):
         return stacked_url
 
     def _get_append_revisions_only(self):
-        # if no option is found, then default to False.
-        # Since append_revisions_only can have negative consequences
-        # be very strict in interpreting the option value and default
-        # to False for compatibility.
-        name = 'append_revisions_only'
-        value = self.get_config().get_user_option(name)
-        if value is None:
-            return False
-        if value == 'True':
-            return True
-        if value == 'False':
-            return False
-        trace.warning('Value "%s" for append_revisions_only is neither True'
-                      ' nor False, defaulting to False', value)
-        return False
+        return self.get_config(
+            ).get_user_option_as_bool('append_revisions_only')
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,

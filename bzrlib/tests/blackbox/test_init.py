@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -196,7 +196,7 @@ class TestSFTPInit(TestCaseWithSFTPServer):
     def test_init_append_revisions_only(self):
         self.run_bzr('init --dirstate-tags normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
-        self.assertEqual(False, branch._get_append_revisions_only())
+        self.assertEqual(None, branch._get_append_revisions_only())
         self.run_bzr('init --append-revisions-only --dirstate-tags branch6')
         branch = _mod_branch.Branch.open('branch6')
         self.assertEqual(True, branch._get_append_revisions_only())

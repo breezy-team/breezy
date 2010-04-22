@@ -5,44 +5,26 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.2.0b1 (not released yet)
+bzr 2.2.0b3 (not released yet)
 ##############################
 
 :Codename: ???
-:2.2.0b1: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
+:2.2.0b3: ???
 
 Improvements
 ************
 
-* The interpretation of 'append_revisions_only' has been made more
-  strict, allowing for only 'True' and 'False'.  When unset, the
-  option defaults to False for backward compatibility.  If the value
-  cannot be interpreted as a boolean, a warning is emitted and, for
-  compatibility with previous bzr versions, the option defaults to
-  False.
+* ``append_revisions_only`` will no be interpreted as a boolean and a
+  warning emitted if illegal values are used. Note that for projects
+  that needs to maintain compatibility with previsous bzr versions,
+  only 'True' and 'False' strings must be used (previous versions of
+  bzr will interpret all strings differing from 'True'
+  (case-sensitive) as false.
   (Brian de Alwis, Vincent Ladeuil)
 
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
+* ``Config.get_user_option_as_bool`` will now warn if a value cannot
+  be interpreted as a boolean.
+  (Vincent Ladeuil)
 
 bzr 2.1.0rc2
 ############

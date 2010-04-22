@@ -510,25 +510,24 @@ class TestBranchOptions(TestCaseWithTransport):
         self.assertEqual(expected_value,
                          self.branch._get_append_revisions_only())
         if check_warn:
-            msg = ('Value "%s" for append_revisions_only is neither True'
-                   ' nor False, defaulting to False')
+            msg = ('Value "%s" is not a boolean for "append_revisions_only"')
             self.assertLength(1, self.warnings)
             self.assertEqual(msg % value, self.warnings[0])
 
     def test_valid_append_revisions_only(self):
-        """Ensure that BzrOptionValue raised on invalid settings"""
         self.assertEquals(None,
                           self.config.get_user_option('append_revisions_only'))
-        self.check_aro_is(False)
+        self.check_aro_is(None)
         self.check_aro_is(False, 'False')
         self.check_aro_is(True, 'True')
+        # The following values will cause compatibility problems on projects
+        # using older bzr versions (<2.2) but are accepted
+        self.check_aro_is(False, 'false')
+        self.check_aro_is(True, 'true')
 
     def test_invalid_append_revisions_only(self):
         """Ensure warning is noted on invalid settings"""
-        self.config.set_user_option('append_revisions_only', 'invalid')
-        self.check_aro_is(False, 'false', check_warn=True)
-        self.check_aro_is(False, 'true', check_warn=True)
-        self.check_aro_is(False, 'not-a-bool', check_warn=True)
+        self.check_aro_is(None, 'not-a-bool', check_warn=True)
 
 
 class TestPullResult(TestCase):
