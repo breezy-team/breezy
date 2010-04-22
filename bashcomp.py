@@ -246,12 +246,16 @@ def bash_completion_function(out, function_name="_bzr", function_only=False,
         template = fun
     else:
         template = head + fun + tail
+    if debug:
+        perhaps_debug_output = debug_output
+    else:
+        perhaps_debug_output = ''
     out.write(template % {"cmds": " ".join(cmds),
                           "cases": cases,
                           "function_name": function_name,
                           "version": __version__,
                           "global_options": global_options,
-                          "debug": debug_output if debug else "",
+                          "debug": perhaps_debug_output,
                           "bzr_version": bzr_version,
                           })
 
