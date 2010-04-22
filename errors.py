@@ -184,3 +184,9 @@ class SharedUpstreamConflictsWithTargetPackaging(BzrError):
             're-run the "merge-package" command to finish. '
             'Alternatively, until you commit you can use "bzr revert" to '
             'restore the state of the unmerged branch.')
+
+
+class PerFileTimestampsNotSupported(BzrError):
+
+    _fmt = ("Per file timestamps are not supported by the "
+            "currently loaded version of bzrlib.")

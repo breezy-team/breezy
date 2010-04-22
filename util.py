@@ -522,15 +522,18 @@ def debuild_config(tree, working_tree, no_user_config):
     return config
 
 
-def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
+def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
+           require_per_file_timestamps=False):
     """Simple wrapper around bzrlib.export.export that prefers 
     per_file_timestamps if it is supported.
 
     """
     # per_file_timestamps is available as of bzr 2.2.0
-    if bzr_version_info > (2, 2, 0):
+    if bzr_version_info >= (2, 2, 0):
         return bzr_export(tree, dest, format=format, root=root, subdir=subdir,
             filtered=filtered, per_file_timestamps=True)
     else:
+        if require_per_file_timestamps:
+            raise errors.PerFileTimestampsNotSupported()
         return bzr_export(tree, dest, format=format, root=root, subdir=subdir,
             filtered=filtered)
