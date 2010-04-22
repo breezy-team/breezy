@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010  Martin von Gagern
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This file is part of bzr-bash-completion
 #

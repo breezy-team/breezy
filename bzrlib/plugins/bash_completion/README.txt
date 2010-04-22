@@ -1,6 +1,6 @@
 .. comment
 
-  Copyright (C) 2010  Martin von Gagern
+  Copyright (C) 2010 Canonical Ltd
 
   This file is part of bzr-bash-completion
 
@@ -28,7 +28,7 @@ presses the completion key (usually tab).
 It is intended as a bzr plugin, but can be used to some extend as a
 standalone python script as well.
 
-| Copyright (C) 2009, 2010 Martin von Gagern <Martin.vGagern@gmx.net>
+| Copyright (C) 2009, 2010 Canonical Ltd
 
 .. contents::
 
