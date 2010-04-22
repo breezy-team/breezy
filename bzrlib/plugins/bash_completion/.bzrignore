@@ -1,0 +1,5 @@
+*.pyc
+*.pyo
+build
+bzr_bash_completion.egg-info
+dist
