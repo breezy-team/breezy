@@ -21,7 +21,6 @@ like::
 
     [/home/user/code/bzr]
     news_merge_files = NEWS
-    news_merge_files:policy = recurse
 
 The news_merge_files config option takes a list of file paths, separated by
 commas.
