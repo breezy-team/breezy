@@ -2652,7 +2652,7 @@ class cmd_ignore(Command):
     Bazaar also supports a global ignore file ~/.bazaar/ignore. On Windows
     the global ignore file can be found in the application data directory as
     C:\\Documents and Settings\\<user>\\Application Data\\Bazaar\\2.0\\ignore.
-    Global ignores are not touched by this command. The global ignore files
+    Global ignores are not touched by this command. The global ignore file
     can be edited directly using an editor.
 
     Patterns prefixed with '!' are exceptions to ignore patterns and take
