@@ -108,7 +108,7 @@ class TestCommit(ExternalBase):
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
 
-    def test_unicode_commit_message(self):
+    def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
         """
         file_name = u'\N{euro sign}'
@@ -117,9 +117,9 @@ class TestCommit(ExternalBase):
         self.run_bzr(['add'])
         out, err = self.run_bzr(['commit', '-m', file_name])
         reflags = re.MULTILINE|re.DOTALL|re.UNICODE
-        ue = osutils.get_user_encoding()
-        self.assertContainsRe(err.decode(ue),
-            u'The commit message is a file name: "\N{euro sign}"',
+        te = osutils.get_terminal_encoding()
+        self.assertContainsRe(err.decode(te),
+            u'The commit message is a file name:',
             flags=reflags)
 
     def test_warn_about_forgotten_commit_message(self):
