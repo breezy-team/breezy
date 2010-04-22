@@ -269,25 +269,27 @@ class MutableTree(tree.Tree):
 
         :param opt_name: strict option name to search in config file.
 
-        :param more_msg: Details about how to avoid the warnings.
+        :param more_msg: Details about how to avoid the check.
         """
         if strict is None:
             strict = self.branch.get_config().get_user_option_as_bool(opt_name)
         if strict is not False:
-            err = None
+            err_class = None
             if (self.has_changes()):
-                err = errors.UncommittedChanges(self, more=more_msg)
+                err_class = errors.UncommittedChanges
             elif self.last_revision() != self.branch.last_revision():
                 # The tree has lost sync with its branch, there is little
                 # chance that the user is aware of it but he can still force
                 # the action with --no-strict
-                err = errors.OutOfDateTree(self, more=more_msg)
-            if err is not None:
+                err_class = errors.OutOfDateTree
+            if err_class is not None:
                 if strict is None:
+                    err = err_class(self)
                     # We don't want to interrupt the user if he expressed no
                     # preference about strict.
                     trace.warning('%s', err._format())
                 else:
+                    err = err_class(self, more=more_msg)
                     raise err
 
     @needs_read_lock

@@ -27,6 +27,10 @@ New Features
 Bug Fixes
 *********
 
+* Wrong section, should be 2.2b3, should be fixed at merge.
+  Don't mention --no-strict when we just issue the warning about unclean trees.
+  (Vincent Ladeuil, #401599)
+
 * ``bzr dpush``, ``bzr push`` and ``bzr send`` will now issue a warning
   instead of failing when dirty trees are involved. The corresponding
   ``dpush_strict``, ``push_strict`` and ``send_strict`` should be set to
