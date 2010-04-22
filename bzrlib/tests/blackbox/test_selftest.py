@@ -22,7 +22,6 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     features,
-    stub_sftp,
     )
 from bzrlib.transport import memory
 
@@ -75,6 +74,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         # Test that we can pass a transport to the selftest core - sftp
         # version.
         self.requireFeature(features.paramiko)
+        from bzrlib.tests import stub_sftp
         params = self.get_params_passed_to_core('selftest --transport=sftp')
         self.assertEqual(stub_sftp.SFTPAbsoluteServer,
             params[1]["transport"])

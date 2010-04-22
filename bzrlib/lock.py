@@ -84,7 +84,7 @@ class LockResult(object):
         return self.lock_url == other.lock_url and self.details == other.details
 
     def __repr__(self):
-        return '%s(%s%s)' % (self.__class__.__name__,
+        return '%s(%s, %s)' % (self.__class__.__name__,
                              self.lock_url, self.details)
 
 

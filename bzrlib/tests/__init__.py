@@ -489,13 +489,13 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.ui.note('ERROR: %s\n    %s\n' % (
+        self.stream.write('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
 
     def report_failure(self, test, err):
-        self.ui.note('FAIL: %s\n    %s\n' % (
+        self.stream.write('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
@@ -3212,7 +3212,7 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                os.waitpid(self.pid, os.WNOHANG)
+                os.waitpid(self.pid, 0)
 
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
@@ -3276,7 +3276,9 @@ def reinvoke_for_tests(suite):
         bzr_path = [bzr_path]
         if sys.platform == "win32":
             # if we're on windows, we can't execute the bzr script directly
-            bzr_path = [sys.executable] + bzr_path
+            # and we have to enable unbuffered binary stdout/stderr so that
+            # automatic CRLF conversion doesn't corrupt the subunit streams
+            bzr_path = [sys.executable, '-u'] + bzr_path
         fd, test_list_file_name = tempfile.mkstemp()
         test_list_file = os.fdopen(fd, 'wb', 1)
         for test in process_tests:
@@ -4435,3 +4437,27 @@ try:
             return result
 except ImportError:
     pass
+
+class _PosixPermissionsFeature(Feature):
+
+    def _probe(self):
+        def has_perms():
+            # create temporary file and check if specified perms are maintained.
+            import tempfile
+
+            write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
+            fd, name = f
+            os.close(fd)
+            os.chmod(name, write_perms)
+
+            read_perms = os.stat(name).st_mode & 0777
+            os.unlink(name)
+            return (write_perms == read_perms)
+
+        return (os.name == 'posix') and has_perms()
+
+    def feature_name(self):
+        return 'POSIX permissions support'
+
+posix_permissions_feature = _PosixPermissionsFeature()

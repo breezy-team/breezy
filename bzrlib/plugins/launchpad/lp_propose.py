@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import urlparse
 import webbrowser
 
 from bzrlib import (
@@ -202,5 +203,9 @@ def modified_files(old_tree, new_tree):
 
 def canonical_url(object):
     """Return the canonical URL for a branch."""
-    url = object.self_link.replace('https://api.', 'https://code.')
-    return url.replace('/beta/', '/')
+    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
+        str(object.self_link))
+    path = '/'.join(path.split('/')[2:])
+    netloc = netloc.replace('api.', 'code.')
+    return urlparse.urlunparse((scheme, netloc, path, params, query,
+                                fragment))
