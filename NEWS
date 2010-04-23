@@ -42,9 +42,12 @@ Internals
 Testing
 *******
 
- * ``bzr selftest --parallel=subprocess`` now works correctly on win32.
+* ``bzr selftest --parallel=subprocess`` now works correctly on win32.
    (Gordon Tyler, #551332)
 
+* Workaround ``Crypto.Random`` check leading to spurious test
+  failures on Lucid, FreeBSD and gentoo.  
+  (Vincent Ladeuil, #528436)
 
 bzr 2.2b2
 #########
