@@ -122,6 +122,26 @@ class TestCommit(ExternalBase):
             u'The commit message is a file name:',
             flags=reflags)
 
+        # Run same test with a name throws encode
+        # error for the terminal encoding. We do this
+        # by forcing terminal encoding of ascii for
+        # osutils.get_terminal_encoding which is used
+        # by ui.text.show_warning
+        default_get_terminal_enc = osutils.get_terminal_encoding
+        try:
+            osutils.get_terminal_encoding = lambda: 'ascii'
+            file_name = u'foo\u1234'
+            open(file_name, 'w').write('hello world')
+            self.run_bzr(['add'])
+            out, err = self.run_bzr(['commit', '-m', file_name])
+            reflags = re.MULTILINE|re.DOTALL|re.UNICODE
+            te = osutils.get_terminal_encoding()
+            self.assertContainsRe(err.decode(te, 'replace'),
+                u'The commit message is a file name:',
+                flags=reflags)
+        finally:
+            osutils.get_terminal_encoding = default_get_terminal_enc
+
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught"""
         wt = self.make_branch_and_tree('.')
