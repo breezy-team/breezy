@@ -108,7 +108,8 @@ fun="""\
 		esac
 	elif [[ $cur == = ]] && [[ -n $optEnums ]]; then
 		# complete directly after "--option=", list all enum values
-		fixedWords=$optEnums
+		COMPREPLY=( $optEnums )
+		return 0
 	else
 		fixedWords="$cmdOpts $globalOpts $optEnums $fixedWords"
 	fi
