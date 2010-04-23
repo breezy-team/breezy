@@ -58,6 +58,11 @@ New Features
 * ``bzr diff`` now supports a --format option, which can be used to 
   select alternative diff formats. (Jelmer Vernooij, #555994)
 
+* ``bzr ignore`` now supports a ``--default-rules`` option that displays
+  the default ignore rules used by bzr. The flag ``--old-default-rules``
+  is no longer supported by ``ignore``.
+  (Parth Malwankar, #538703)
+
 * ``bzr pack`` now supports a ``--clean-obsolete-packs`` option that
   can save disk space by deleting obsolete pack files created during the
   pack operation.
