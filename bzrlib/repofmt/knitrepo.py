@@ -360,6 +360,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         result.revisions.get_parent_map([('A',)])
         result.signatures.get_parent_map([('A',)])
         result.unlock()
+        self._run_post_repo_init_hooks(result, a_bzrdir, shared)
         return result
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
