@@ -122,7 +122,7 @@ class TestCommit(ExternalBase):
             u'The commit message is a file name:',
             flags=reflags)
 
-        # Run same test with a name throws encode
+        # Run same test with a filename that causes encode
         # error for the terminal encoding. We do this
         # by forcing terminal encoding of ascii for
         # osutils.get_terminal_encoding which is used
