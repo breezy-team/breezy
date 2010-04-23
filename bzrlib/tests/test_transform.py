@@ -25,23 +25,37 @@ from bzrlib import (
     filters,
     generate_ids,
     osutils,
-    progress,
     revision as _mod_revision,
     rules,
     tests,
     urlutils,
     )
 from bzrlib.bzrdir import BzrDir
-from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
-                              UnversionedParent, ParentLoop, DeletingParent,
-                              NonDirectoryParent)
+from bzrlib.conflicts import (
+    DeletingParent,
+    DuplicateEntry,
+    DuplicateID,
+    MissingParent,
+    NonDirectoryParent,
+    ParentLoop,
+    UnversionedParent,
+)
 from bzrlib.diff import show_diff_trees
-from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, CantMoveRoot,
-                           PathsNotVersionedError, ExistingLimbo,
-                           ExistingPendingDeletion, ImmortalLimbo,
-                           ImmortalPendingDeletion, LockError)
-from bzrlib.osutils import file_kind, pathjoin
+from bzrlib.errors import (
+    DuplicateKey,
+    ExistingLimbo,
+    ExistingPendingDeletion,
+    ImmortalLimbo,
+    ImmortalPendingDeletion,
+    LockError,
+    MalformedTransform,
+    NoSuchFile,
+    ReusingTransform,
+)
+from bzrlib.osutils import (
+    file_kind,
+    pathjoin,
+)
 from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.tests import (
     HardlinkFeature,
@@ -49,12 +63,20 @@ from bzrlib.tests import (
     TestCase,
     TestCaseInTempDir,
     TestSkipped,
-    )
-from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
-                              resolve_conflicts, cook_conflicts,
-                              build_tree, get_backup_name,
-                              _FileMover, resolve_checkout,
-                              TransformPreview, create_from_tree)
+)
+from bzrlib.transform import (
+    build_tree,
+    create_from_tree,
+    cook_conflicts,
+    _FileMover,
+    FinalPaths,
+    get_backup_name,
+    resolve_conflicts,
+    resolve_checkout,
+    ROOT_PARENT,
+    TransformPreview,
+    TreeTransform,
+)
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -2090,6 +2112,38 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         tt.new_file('file', parent_id, 'contents', 'file-id')
         self.assertRaises(errors.MalformedTransform, tt.commit, branch,
                           'message')
+
+    def test_commit_rich_revision_data(self):
+        branch, tt = self.get_branch_and_transform()
+        rev_id = tt.commit(branch, 'message', timestamp=1, timezone=43200,
+                           committer='me <me@example.com>',
+                           revprops={'foo': 'bar'}, revision_id='revid-1',
+                           authors=['Author1 <author1@example.com>',
+                              'Author2 <author2@example.com>',
+                               ])
+        self.assertEqual('revid-1', rev_id)
+        revision = branch.repository.get_revision(rev_id)
+        self.assertEqual(1, revision.timestamp)
+        self.assertEqual(43200, revision.timezone)
+        self.assertEqual('me <me@example.com>', revision.committer)
+        self.assertEqual(['Author1 <author1@example.com>',
+                          'Author2 <author2@example.com>'],
+                         revision.get_apparent_authors())
+        del revision.properties['authors']
+        self.assertEqual({'foo': 'bar',
+                          'branch-nick': 'tree'},
+                         revision.properties)
+
+    def test_no_explicit_revprops(self):
+        branch, tt = self.get_branch_and_transform()
+        rev_id = tt.commit(branch, 'message', authors=[
+            'Author1 <author1@example.com>',
+            'Author2 <author2@example.com>', ])
+        revision = branch.repository.get_revision(rev_id)
+        self.assertEqual(['Author1 <author1@example.com>',
+                          'Author2 <author2@example.com>'],
+                         revision.get_apparent_authors())
+        self.assertEqual('tree', revision.properties['branch-nick'])
 
 
 class MockTransform(object):

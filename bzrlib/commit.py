@@ -189,6 +189,43 @@ class Commit(object):
         self.reporter = reporter
         self.config = config
 
+    @staticmethod
+    def update_revprops(revprops, branch, authors=None, author=None,
+                        local=False, possible_master_transports=None):
+        if revprops is None:
+            revprops = {}
+        if possible_master_transports is None:
+            possible_master_transports = []
+        if not 'branch-nick' in revprops:
+            revprops['branch-nick'] = branch._get_nick(
+                local,
+                possible_master_transports)
+        if authors is not None:
+            if author is not None:
+                raise AssertionError('Specifying both author and authors '
+                        'is not allowed. Specify just authors instead')
+            if 'author' in revprops or 'authors' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
+            if authors:
+                for individual in authors:
+                    if '\n' in individual:
+                        raise AssertionError('\\n is not a valid character '
+                                'in an author identity')
+                revprops['authors'] = '\n'.join(authors)
+        if author is not None:
+            symbol_versioning.warn('The parameter author was deprecated'
+                   ' in version 1.13. Use authors instead',
+                   DeprecationWarning)
+            if 'author' in revprops or 'authors' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
+            if '\n' in author:
+                raise AssertionError('\\n is not a valid character '
+                        'in an author identity')
+            revprops['authors'] = author
+        return revprops
+
     def commit(self,
                message=None,
                timestamp=None,
