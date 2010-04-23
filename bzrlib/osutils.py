@@ -39,7 +39,6 @@ import shutil
 from shutil import (
     rmtree,
     )
-import signal
 import socket
 import subprocess
 import tempfile
@@ -1366,7 +1365,12 @@ def set_signal_handler(signum, handler, restart_syscall=True):
         platform or Python version.
     """
     try:
+        import signal
         siginterrupt = signal.siginterrupt
+    except ImportError:
+        # This python implementation doesn't provide signal support, hence no
+        # handler exists
+        return None
     except AttributeError:
         # siginterrupt doesn't exist on this platform, or for this version
         # of Python.
@@ -1482,18 +1486,22 @@ def _terminal_size_changed(signum, frame):
         os.environ['COLUMNS'] = str(width)
 
 
-if os.name == "posix" and getattr(signal, "SIGWINCH", None) is not None:
-    _registered_sigwinch = False
-    def watch_sigwinch():
-        """Register for SIGWINCH, once and only once."""
-        global _registered_sigwinch
-        if not _registered_sigwinch:
-            set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
-            _registered_sigwinch = True
-else:
-    def watch_sigwinch():
-        """Do nothing as SIGWINCH doesn't exist on this platform"""
-        pass
+_registered_sigwinch = False
+def watch_sigwinch():
+    """Register for SIGWINCH, once and only once.
+
+    Do nothing if the signal module is not available.
+    """
+    global _registered_sigwinch
+    if not _registered_sigwinch:
+        try:
+            import signal
+            if getattr(signal, "SIGWINCH", None) is not None:
+                set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
+        except ImportError:
+            # python doesn't provide signal support, nothing we can do about it
+            pass
+        _registered_sigwinch = True
 
 
 def supports_executable():
