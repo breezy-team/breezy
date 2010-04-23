@@ -2870,8 +2870,8 @@ class BzrBranch8(BzrBranch5):
         return stacked_url
 
     def _get_append_revisions_only(self):
-        value = self.get_config().get_user_option('append_revisions_only')
-        return value == 'True'
+        return self.get_config(
+            ).get_user_option_as_bool('append_revisions_only')
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
