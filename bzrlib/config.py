@@ -196,7 +196,7 @@ class Config(object):
         if s is None:
             # The option doesn't exist
             return None
-        val =  ui.bool_from_string(s)
+        val = ui.bool_from_string(s)
         if val is None:
             # The value can't be interpreted as a boolean
             trace.warning('Value "%s" is not a boolean for "%s"',

@@ -497,37 +497,36 @@ class TestBranchOptions(TestCaseWithTransport):
         super(TestBranchOptions, self).setUp()
         self.branch = self.make_branch('.')
         self.config = self.branch.get_config()
-        self.warnings = []
-        def warning(*args):
-            self.warnings.append(args[0] % args[1:])
-        self.overrideAttr(trace, 'warning', warning)
 
-    def check_aro_is(self, expected_value, value=None, check_warn=False):
+    def check_append_revisions_only(self, expected_value, value=None):
+        """Set append_revisions_only in config and check its interpretation."""
         if value is not None:
             self.config.set_user_option('append_revisions_only', value)
-        if check_warn:
-            self.warnings = []
         self.assertEqual(expected_value,
                          self.branch._get_append_revisions_only())
-        if check_warn:
-            msg = ('Value "%s" is not a boolean for "append_revisions_only"')
-            self.assertLength(1, self.warnings)
-            self.assertEqual(msg % value, self.warnings[0])
 
     def test_valid_append_revisions_only(self):
         self.assertEquals(None,
                           self.config.get_user_option('append_revisions_only'))
-        self.check_aro_is(None)
-        self.check_aro_is(False, 'False')
-        self.check_aro_is(True, 'True')
+        self.check_append_revisions_only(None)
+        self.check_append_revisions_only(False, 'False')
+        self.check_append_revisions_only(True, 'True')
         # The following values will cause compatibility problems on projects
         # using older bzr versions (<2.2) but are accepted
-        self.check_aro_is(False, 'false')
-        self.check_aro_is(True, 'true')
+        self.check_append_revisions_only(False, 'false')
+        self.check_append_revisions_only(True, 'true')
 
     def test_invalid_append_revisions_only(self):
         """Ensure warning is noted on invalid settings"""
-        self.check_aro_is(None, 'not-a-bool', check_warn=True)
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        self.check_append_revisions_only(None, 'not-a-bool')
+        self.assertLength(1, self.warnings)
+        self.assertEqual(
+            'Value "not-a-bool" is not a boolean for "append_revisions_only"',
+            self.warnings[0])
 
 
 class TestPullResult(TestCase):
