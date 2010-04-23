@@ -22,6 +22,11 @@ Bug Fixes
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
+* Unicode commit messages that are the same as a file name no longer cause
+  UnicodeEncodeError. ``ui.text.show_warning`` now handles unicode
+  messages.
+  (Parth Malwankar, #563646)
+
 Improvements
 ************
 
@@ -116,11 +121,6 @@ Bug Fixes
   ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
   errors after two window resizes.
   (Andrew Bennetts)
-
-* Unicode commit messages that are the same as a file name no longer cause
-  UnicodeEncodeError. ``ui.text.show_warning`` now handles unicode
-  messages.
-  (Parth Malwankar, #563646)
 
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
   that are not part of the ancestry anymore.
