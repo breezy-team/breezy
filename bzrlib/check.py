@@ -192,8 +192,8 @@ class Check(object):
 
     def _report_repo_results(self, verbose):
         note('checked repository %s format %s',
-             self.repository.bzrdir.root_transport,
-             self.repository._format)
+            self.repository.user_url,
+            self.repository._format)
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d file-ids', len(self.checked_weaves))
         if verbose:

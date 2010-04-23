@@ -1476,7 +1476,7 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
 
         # now gather global repository information
         # XXX: This is available for many repos regardless of listability.
-        if self.bzrdir.root_transport.listable():
+        if self.user_transport.listable():
             # XXX: do we want to __define len__() ?
             # Maybe the versionedfiles object should provide a different
             # method to get the number of keys.
@@ -1514,7 +1514,7 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
 
         ret = []
         for branches, repository in bzrdir.BzrDir.find_bzrdirs(
-                self.bzrdir.root_transport, evaluate=Evaluator()):
+                self.user_transport, evaluate=Evaluator()):
             if branches is not None:
                 ret.extend(branches)
             if not using and repository is not None:
