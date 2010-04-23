@@ -2546,7 +2546,9 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         utf8_files = [('format', self.get_format_string())]
 
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
-        return self.open(a_bzrdir=a_bzrdir, _found=True)
+        repository = self.open(a_bzrdir=a_bzrdir, _found=True)
+        self._run_post_repo_init_hooks(repository, a_bzrdir, shared)
+        return repository
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().

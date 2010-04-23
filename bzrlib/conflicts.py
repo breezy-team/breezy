@@ -46,7 +46,7 @@ CONFLICT_SUFFIXES = ('.THIS', '.BASE', '.OTHER')
 
 
 class cmd_conflicts(commands.Command):
-    """List files with conflicts.
+    __doc__ = """List files with conflicts.
 
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
@@ -99,7 +99,7 @@ class ResolveActionOption(option.RegistryOption):
 
 
 class cmd_resolve(commands.Command):
-    """Mark a conflict as resolved.
+    __doc__ = """Mark a conflict as resolved.
 
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,

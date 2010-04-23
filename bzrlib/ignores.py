@@ -27,66 +27,6 @@ from bzrlib import (
 
 from trace import warning
 
-# This was the full ignore list for bzr 0.8
-# please keep these sorted (in C locale order) to aid merging
-OLD_DEFAULTS = [
-    '#*#',
-    '*$',
-    '*,v',
-    '*.BAK',
-    '*.a',
-    '*.bak',
-    '*.elc',
-    '*.exe',
-    '*.la',
-    '*.lo',
-    '*.o',
-    '*.obj',
-    '*.orig',
-    '*.py[oc]',
-    '*.so',
-    '*.tmp',
-    '*~',
-    '.#*',
-    '.*.sw[nop]',
-    '.*.tmp',
-    # Our setup tests dump .python-eggs in the bzr source tree root
-    './.python-eggs',
-    '.DS_Store',
-    '.arch-ids',
-    '.arch-inventory',
-    '.bzr.log',
-    '.del-*',
-    '.git',
-    '.hg',
-    '.jamdeps'
-    '.libs',
-    '.make.state',
-    '.sconsign*',
-    '.svn',
-    '.sw[nop]',    # vim editing nameless file
-    '.tmp*',
-    'BitKeeper',
-    'CVS',
-    'CVS.adm',
-    'RCS',
-    'SCCS',
-    'TAGS',
-    '_darcs',
-    'aclocal.m4',
-    'autom4te*',
-    'config.h',
-    'config.h.in',
-    'config.log',
-    'config.status',
-    'config.sub',
-    'stamp-h',
-    'stamp-h.in',
-    'stamp-h1',
-    '{arch}',
-]
-
-
 # ~/.bazaar/ignore will be filled out using
 # this ignore list, if it does not exist
 # please keep these sorted (in C locale order) to aid merging

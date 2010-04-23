@@ -495,9 +495,11 @@ append_revisions_only
 ~~~~~~~~~~~~~~~~~~~~~
 
 If set to "True" then revisions can only be appended to the log, not
-removed.  A branch with this setting enabled can only pull from
-another branch if the other branch's log is a longer version of its
-own.  This is normally set by ``bzr init --append-revisions-only``.
+removed.  A branch with this setting enabled can only pull from another
+branch if the other branch's log is a longer version of its own.  This is
+normally set by ``bzr init --append-revisions-only``. If you set it
+manually, use either 'True' or 'False' (case-sensitive) to maintain
+compatibility with previous bzr versions (older than 2.2).
 
 parent_location
 ~~~~~~~~~~~~~~~

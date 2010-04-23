@@ -41,7 +41,7 @@ from bzrlib.trace import note
 
 
 class cmd_bundle_info(Command):
-    """Output interesting stats about a bundle"""
+    __doc__ = """Output interesting stats about a bundle"""
 
     hidden = True
     takes_args = ['location']
