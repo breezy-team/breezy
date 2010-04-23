@@ -27,6 +27,7 @@ from bzrlib import (
     lock,
     lockdir,
     repository,
+    repository as _mod_repository,
     revision,
     revision as _mod_revision,
     symbol_versioning,
@@ -1151,6 +1152,7 @@ class RemoteRepository(_RpcHelper):
             # state, so always add a lock here. If a caller passes us a locked
             # repository, they are responsible for unlocking it later.
             repository.lock_read()
+        self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         # If self._real_repository was parameterised already (e.g. because a
         # _real_branch had its get_stacked_on_url method called), then the
@@ -1160,6 +1162,16 @@ class RemoteRepository(_RpcHelper):
                 self._real_repository._fallback_repositories]
             if repository.bzrdir.root_transport.base not in fallback_locations:
                 self._real_repository.add_fallback_repository(repository)
+
+    def _check_fallback_repository(self, repository):
+        """Check that this repository can fallback to repository safely.
+
+        Raise an error if not.
+
+        :param repository: A repository to fallback to.
+        """
+        return _mod_repository.InterRepository._assert_same_model(
+            self, repository)
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
