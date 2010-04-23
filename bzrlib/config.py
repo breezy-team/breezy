@@ -1415,7 +1415,7 @@ class CredentialStore(object):
 
 
 class PlainTextCredentialStore(CredentialStore):
-    """Plain text credential store for the authentication.conf file."""
+    __doc__ = """Plain text credential store for the authentication.conf file"""
 
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
