@@ -34,6 +34,11 @@ API Changes
 Internals
 *********
 
+* Permit bzr to run under ``python -OO`` which reduces the size of bytecode
+  files loaded from disk. To ensure docstrings needed for help are never
+  stripped, the prefix ``__doc__ =`` should now be used.
+  (Martin <gzlist@googlemail.com>)
+
 Testing
 *******
 
@@ -172,7 +177,6 @@ Internals
   is now possible again. As part of this, the _operation attribute on
   Command is now transient and only exists for the duration of ``run()``.
   (Robert Collins)
-
 
 bzr 2.2.0b1
 ###########
