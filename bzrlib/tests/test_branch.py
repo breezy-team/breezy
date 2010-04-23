@@ -515,6 +515,45 @@ class TestHooks(tests.TestCaseWithTransport):
         self.assertTrue(hasattr(params, 'to_branch'))
         self.assertTrue(hasattr(params, 'revision_id'))
 
+
+class TestBranchOptions(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestBranchOptions, self).setUp()
+        self.branch = self.make_branch('.')
+        self.config = self.branch.get_config()
+
+    def check_append_revisions_only(self, expected_value, value=None):
+        """Set append_revisions_only in config and check its interpretation."""
+        if value is not None:
+            self.config.set_user_option('append_revisions_only', value)
+        self.assertEqual(expected_value,
+                         self.branch._get_append_revisions_only())
+
+    def test_valid_append_revisions_only(self):
+        self.assertEquals(None,
+                          self.config.get_user_option('append_revisions_only'))
+        self.check_append_revisions_only(None)
+        self.check_append_revisions_only(False, 'False')
+        self.check_append_revisions_only(True, 'True')
+        # The following values will cause compatibility problems on projects
+        # using older bzr versions (<2.2) but are accepted
+        self.check_append_revisions_only(False, 'false')
+        self.check_append_revisions_only(True, 'true')
+
+    def test_invalid_append_revisions_only(self):
+        """Ensure warning is noted on invalid settings"""
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        self.check_append_revisions_only(None, 'not-a-bool')
+        self.assertLength(1, self.warnings)
+        self.assertEqual(
+            'Value "not-a-bool" is not a boolean for "append_revisions_only"',
+            self.warnings[0])
+
+
 class TestPullResult(tests.TestCase):
 
     def test_pull_result_to_int(self):

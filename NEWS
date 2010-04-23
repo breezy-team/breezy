@@ -6,7 +6,7 @@ Bazaar Release Notes
    :depth: 1
 
 bzr 2.2b3
-##########
+#########
 
 :2.2b3: NOT RELEASED YET
 
@@ -566,6 +566,18 @@ Bug Fixes
 
 Improvements
 ************
+
+* ``append_revisions_only`` will no be interpreted as a boolean and a
+  warning emitted if illegal values are used. Note that for projects
+  that needs to maintain compatibility with previsous bzr versions,
+  only 'True' and 'False' strings must be used (previous versions of
+  bzr will interpret all strings differing from 'True'
+  (case-sensitive) as false.
+  (Brian de Alwis, Vincent Ladeuil)
+
+* ``Config.get_user_option_as_bool`` will now warn if a value cannot
+  be interpreted as a boolean.
+  (Vincent Ladeuil)
 
 * Fetching into experimental formats will now print a warning. (Jelmer
   Vernooij)

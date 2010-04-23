@@ -193,7 +193,15 @@ class Config(object):
             interpreted as a boolean. Returns True or False otherwise.
         """
         s = self._get_user_option(option_name)
-        return ui.bool_from_string(s)
+        if s is None:
+            # The option doesn't exist
+            return None
+        val = ui.bool_from_string(s)
+        if val is None:
+            # The value can't be interpreted as a boolean
+            trace.warning('Value "%s" is not a boolean for "%s"',
+                          s, option_name)
+        return val
 
     def get_user_option_as_list(self, option_name):
         """Get a generic option as a list - no special process, no default.
