@@ -22,6 +22,9 @@ Bug Fixes
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
+* Unicode characters in aliases are now handled correctly and do not cause
+  UnicodeEncodeError exception. (Parth Malwankar, #529930)
+
 Improvements
 ************
 
@@ -126,9 +129,6 @@ Bug Fixes
   ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
   errors after two window resizes.
   (Andrew Bennetts)
-
-* Unicode characters in aliases are now handled correctly and do not cause
-  UnicodeEncodeError exception. (Parth Malwankar, #529930)
 
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
   that are not part of the ancestry anymore.
