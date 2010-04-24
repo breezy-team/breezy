@@ -291,6 +291,8 @@ class TestRemove(TestCaseWithWorkingTree):
         tree.remove('somedir', keep_files=False)
         self.assertNotInWorkingTree('somedir')
         self.failIfExists('somedir')
+        self.assertInWorkingTree('moved-file')
+        self.failUnlessExists('moved-file')
 
     def test_remove_directory_with_renames(self):
         """Delete directory with renames in or out."""
