@@ -692,13 +692,12 @@ class LeafNode(Node):
         the key/value pairs.
     """
 
-    __slots__ = ('_common_serialised_prefix', '_serialise_key')
+    __slots__ = ('_common_serialised_prefix',)
 
     def __init__(self, search_key_func=None):
         Node.__init__(self)
         # All of the keys in this leaf node share this common prefix
         self._common_serialised_prefix = None
-        self._serialise_key = '\x00'.join
         if search_key_func is None:
             self._search_key_func = _search_key_plain
         else:
@@ -887,6 +886,8 @@ class LeafNode(Node):
             if self._search_prefix is _unknown:
                 raise AssertionError('%r must be known' % self._search_prefix)
             return self._search_prefix, [("", self)]
+
+    _serialise_key = '\x00'.join
 
     def serialise(self, store):
         """Serialise the LeafNode to store.

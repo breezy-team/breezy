@@ -57,6 +57,58 @@ used in progress messages and error messages.
 Debugging hooks
 ---------------
 
-To get a list of installed hooks, use the hidden ``hooks`` command::
+To get a list of installed hooks (and available hook points), use the hidden
+``hooks`` command::
 
     bzr hooks
+
+
+Example: a merge plugin
+-----------------------
+
+Here's a complete plugin that demonstrates the ``Merger.merge_file_content``
+hook.  It installs a hook that forces any merge of a file named ``*.xml``
+to be a conflict, even if Bazaar thinks it can merge it cleanly.
+
+``merge_xml.py``::
+
+  """Custom 'merge' logic for *.xml files.
+  
+  Always conflicts if both branches have changed the file.
+  """
+  
+  from bzrlib.merge import AbstractPerFileMerger, Merger
+  
+  def merge_xml_files_hook(merger):
+      """Hook to merge *.xml files"""
+      return MergeXMLFiles(merger)
+  
+  class MergeXMLFiles(AbstractPerFileMerger):
+  
+      def filename_matches(self, params):
+          inventory = self.merger.this_tree.inventory
+          filename = inventory[params.file_id].name
+          if filename.endswith('.xml'):
+              return filename
+  
+      def merge_contents(self, params):
+          """Merge the contents of a single file."""
+          # First, check whether this custom merge logic should be used. We
+          # expect most files should not be merged by this handler.
+          if (
+              # OTHER is a straight winner, rely on default merge.
+              params.winner == 'other' or
+              # THIS and OTHER aren't both files.
+              not params.is_file_merge() or
+              # The filename doesn't match *.xml
+              not self.filename_matches(params)):
+              return 'not_applicable', None
+          return 'conflicted', params.this_lines
+  
+  Merger.hooks.install_named_hook(
+      'merge_file_content', merge_xml_files_hook, '*.xml file merge')
+
+``merge_file_content`` hooks are executed for each file to be merged.  For
+a more a complex example look at the ``news_merge`` plugin that's bundled with
+Bazaar in the ``bzrlib/plugins`` directory.
+
