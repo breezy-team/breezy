@@ -29,6 +29,11 @@ New Features
 Bug Fixes
 *********
 
+* ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
+  group ownership from the containing directory. This allow bzr to work
+  better with sudo.
+  (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
+
 * ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
   (Vincent Ladeuil, #566670)
 
@@ -368,11 +373,6 @@ Bug Fixes
 * ``update -r`` now supports updating to revisions that are not on
   mainline (i.e. it supports dotted revisions).
   (Parth Malwankar, #517800)
-
-* ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
-  group ownership from the containing directory. This allow bzr to work
-  better with sudo.
-  (Parth Malwankar, #376388)
 
 * Use first apparent author not committer in GNU Changelog format.
   (Martin von Gagern, #513322)
