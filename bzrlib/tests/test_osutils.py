@@ -1991,11 +1991,10 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.path, self.uid, self.gid = path, uid, gid
 
     def test_copy_ownership_from_path(self):
-        """copy_ownership_from_path test with specified src.
-        """
+        """copy_ownership_from_path test with specified src."""
         ownsrc = '/'
         f = open('test_file', 'wt')
-        osutils.copy_ownership('test_file', ownsrc)
+        osutils.copy_ownership_from_path('test_file', ownsrc)
 
         s = os.stat(ownsrc)
         self.assertEquals(self.path, 'test_file')
@@ -2003,11 +2002,10 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.gid, s.st_gid)
 
     def test_copy_ownership_nonesrc(self):
-        """copy_ownership_from_path test with src=None.
-        """
+        """copy_ownership_from_path test with src=None."""
         f = open('test_file', 'wt')
         # should use parent dir for permissions
-        osutils.copy_ownership('test_file')
+        osutils.copy_ownership_from_path('test_file')
 
         s = os.stat('..')
         self.assertEquals(self.path, 'test_file')
