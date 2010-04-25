@@ -16,8 +16,24 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr ignore`` now supports a ``--default-rules`` option that displays
+  the default ignore rules used by bzr. The flag ``--old-default-rules``
+  is no longer supported by ``ignore``.
+  (Parth Malwankar, #538703)
+
+* ``bzr pack`` now supports a ``--clean-obsolete-packs`` option that
+  can save disk space by deleting obsolete pack files created during the
+  pack operation.
+  (Parth Malwankar, #304320)
+
 Bug Fixes
 *********
+
+* ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
+  (Vincent Ladeuil, #566670)
+
+* ``bzr selftest`` should not use ui.note() since it's not unicode safe.
+  (Vincent Ladeuil, #563997)
 
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
@@ -27,6 +43,18 @@ Bug Fixes
 
 Improvements
 ************
+
+* ``append_revisions_only`` will no be interpreted as a boolean and a
+  warning emitted if illegal values are used. Note that for projects
+  that needs to maintain compatibility with previsous bzr versions,
+  only 'True' and 'False' strings must be used (previous versions of
+  bzr will interpret all strings differing from 'True'
+  (case-sensitive) as false.
+  (Brian de Alwis, Vincent Ladeuil)
+
+* ``Config.get_user_option_as_bool`` will now warn if a value cannot
+  be interpreted as a boolean.
+  (Vincent Ladeuil)
 
 Documentation
 *************
@@ -66,16 +94,6 @@ New Features
 * ``bzr diff`` now supports a --format option, which can be used to 
   select alternative diff formats. (Jelmer Vernooij, #555994)
 
-* ``bzr ignore`` now supports a ``--default-rules`` option that displays
-  the default ignore rules used by bzr. The flag ``--old-default-rules``
-  is no longer supported by ``ignore``.
-  (Parth Malwankar, #538703)
-
-* ``bzr pack`` now supports a ``--clean-obsolete-packs`` option that
-  can save disk space by deleting obsolete pack files created during the
-  pack operation.
-  (Parth Malwankar, #304320)
-
 Bug Fixes
 *********
 
@@ -94,14 +112,8 @@ Bug Fixes
   into the master branch will no longer claim that old commits have become
   pending merges. (Robert Collins, #562079)
 
-* ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
-  (Vincent Ladeuil, #566670)
-
 * ``bzrlib.mutabletree.MutableTree.commit`` will now support a passed in
   config as in previous versions of bzrlib. (Robert Collins)
-
-* ``bzr selftest`` should not use ui.note() since it's not unicode safe.
-  (Vincent Ladeuil, #563997)
 
 * Fix glitch in the warning about unclean trees display.
   (Vincent Ladeuil, #562665)
@@ -117,12 +129,6 @@ Bug Fixes
   Apport crash reports, to avoid "This problem report applies to a program
   which is not installed any more" error.
   (Martin Pool, James Westby, #528114)
-
-* Repositories accessed via a smart server now reject being stacked on a
-  repository in an incompatible format, as is the case when accessing them
-  via other methods.  This was causing fetches from those repositories via
-  a smart server (e.g. using ``bzr branch``) to receive invalid data.
-  (Andrew Bennetts, #562380)
 
 * Reset ``siginterrupt`` flag to False every time we handle a signal
   installed with ``set_signal_handler(..., restart_syscall=True)`` (from
@@ -579,18 +585,6 @@ Bug Fixes
 Improvements
 ************
 
-* ``append_revisions_only`` will no be interpreted as a boolean and a
-  warning emitted if illegal values are used. Note that for projects
-  that needs to maintain compatibility with previsous bzr versions,
-  only 'True' and 'False' strings must be used (previous versions of
-  bzr will interpret all strings differing from 'True'
-  (case-sensitive) as false.
-  (Brian de Alwis, Vincent Ladeuil)
-
-* ``Config.get_user_option_as_bool`` will now warn if a value cannot
-  be interpreted as a boolean.
-  (Vincent Ladeuil)
-
 * Fetching into experimental formats will now print a warning. (Jelmer
   Vernooij)
 
@@ -915,6 +909,11 @@ Bug Fixes
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
 
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
 
 bzr 2.0.5
 #########
