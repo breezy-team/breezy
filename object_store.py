@@ -434,15 +434,25 @@ class BazaarObjectStore(BaseObjectStore):
         except KeyError:
             return False
 
-    def lookup_git_sha(self, sha):
-        # See if sha is in map
-        try:
-            return self._cache.idmap.lookup_git_sha(sha)
-        except KeyError:
-            # if not, see if there are any unconverted revisions and add them
-            # to the map, search for sha in map again
-            self._update_sha_map()
-            return self._cache.idmap.lookup_git_sha(sha)
+    def lookup_git_shas(self, shas, update_map=True):
+        ret = {}
+        for sha in shas:
+            try:
+                ret[sha] = self._cache.idmap.lookup_git_sha(sha)
+            except KeyError:
+                if update_map:
+                    # if not, see if there are any unconverted revisions and add
+                    # them to the map, search for sha in map again
+                    self._update_sha_map()
+                    update_map = False
+                    try:
+                        ret[sha] = self._cache.idmap.lookup_git_sha(sha)
+                    except KeyError:
+                        pass
+        return ret
+
+    def lookup_git_sha(self, sha, update_map=True):
+        return self.lookup_git_shas([sha], update_map=update_map)[sha]
 
     def __getitem__(self, sha):
         if self._cache.content_cache is not None:
@@ -490,9 +500,10 @@ class BazaarObjectStore(BaseObjectStore):
         :param want: List of SHA1s of objects that should be sent
         """
         processed = set()
+        ret = self.lookup_git_shas(have + want)
         for commit_sha in have:
             try:
-                (type, (revid, tree_sha)) = self.lookup_git_sha(commit_sha)
+                (type, (revid, tree_sha)) = ret[commit_sha]
             except KeyError:
                 pass
             else:
@@ -502,9 +513,13 @@ class BazaarObjectStore(BaseObjectStore):
         for commit_sha in want:
             if commit_sha in have:
                 continue
-            (type, (revid, tree_sha)) = self.lookup_git_sha(commit_sha)
-            assert type == "commit"
-            pending.add(revid)
+            try:
+                (type, (revid, tree_sha)) = ret[commit_sha]
+            except KeyError:
+                pass
+            else:
+                assert type == "commit"
+                pending.add(revid)
         todo = set()
         while pending:
             processed.update(pending)
