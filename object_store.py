@@ -422,7 +422,7 @@ class BazaarObjectStore(BaseObjectStore):
     def __contains__(self, sha):
         # See if sha is in map
         try:
-            (type, type_data) = self._lookup_git_sha(sha)
+            (type, type_data) = self.lookup_git_sha(sha)
             if type == "commit":
                 return self.repository.has_revision(type_data[0])
             elif type == "blob":
@@ -434,7 +434,7 @@ class BazaarObjectStore(BaseObjectStore):
         except KeyError:
             return False
 
-    def _lookup_git_sha(self, sha):
+    def lookup_git_sha(self, sha):
         # See if sha is in map
         try:
             return self._cache.idmap.lookup_git_sha(sha)
@@ -450,7 +450,7 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._cache.content_cache[sha]
             except KeyError:
                 pass
-        (type, type_data) = self._lookup_git_sha(sha)
+        (type, type_data) = self.lookup_git_sha(sha)
         # convert object to git object
         if type == "commit":
             (revid, tree_sha) = type_data
@@ -492,7 +492,7 @@ class BazaarObjectStore(BaseObjectStore):
         processed = set()
         for commit_sha in have:
             try:
-                (type, (revid, tree_sha)) = self._lookup_git_sha(commit_sha)
+                (type, (revid, tree_sha)) = self.lookup_git_sha(commit_sha)
             except KeyError:
                 pass
             else:
@@ -502,7 +502,7 @@ class BazaarObjectStore(BaseObjectStore):
         for commit_sha in want:
             if commit_sha in have:
                 continue
-            (type, (revid, tree_sha)) = self._lookup_git_sha(commit_sha)
+            (type, (revid, tree_sha)) = self.lookup_git_sha(commit_sha)
             assert type == "commit"
             pending.add(revid)
         todo = set()
