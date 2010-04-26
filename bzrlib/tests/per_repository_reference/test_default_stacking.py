@@ -15,10 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib.tests.per_repository import TestCaseWithRepository
+from bzrlib.tests import per_repository
 
 
-class TestDefaultStackingPolicy(TestCaseWithRepository):
+class TestDefaultStackingPolicy(per_repository.TestCaseWithRepository):
 
     def test_sprout_to_smart_server_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""

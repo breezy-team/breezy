@@ -20,9 +20,9 @@ import webbrowser
 
 from bzrlib import (
     errors,
+    hooks,
     msgeditor,
 )
-from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.plugins.launchpad import (
     lp_api,
     lp_registration,
@@ -31,19 +31,19 @@ from bzrlib.plugins.launchpad import (
 from lazr.restfulclient import errors as restful_errors
 
 
-class ProposeMergeHooks(Hooks):
+class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
     def __init__(self):
-        Hooks.__init__(self)
+        hooks.Hooks.__init__(self)
         self.create_hook(
-            HookPoint(
+            hooks.HookPoint(
                 'get_prerequisite',
                 "Return the prerequisite branch for proposing as merge.",
                 (2, 1), None),
         )
         self.create_hook(
-            HookPoint(
+            hooks.HookPoint(
                 'merge_proposal_body',
                 "Return an initial body for the merge proposal message.",
                 (2, 1), None),

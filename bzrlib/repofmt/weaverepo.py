@@ -39,6 +39,7 @@ from bzrlib import (
     lockdir,
     osutils,
     revision as _mod_revision,
+    trace,
     urlutils,
     versionedfile,
     weave,
@@ -53,7 +54,6 @@ from bzrlib.repository import (
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
-from bzrlib.trace import mutter
 from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 from bzrlib.versionedfile import (
     AbsentContentFactory,
@@ -106,7 +106,8 @@ class AllInOneRepository(Repository):
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
         if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "_all_possible_ids scales with size of history.")
+            trace.mutter_callsite(
+                3, "_all_possible_ids scales with size of history.")
         return [key[-1] for key in self.inventories.keys()]
 
     @needs_read_lock
@@ -199,7 +200,8 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     def _all_possible_ids(self):
         """Return all the possible revisions that we could find."""
         if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "_all_possible_ids scales with size of history.")
+            trace.mutter_callsite(
+                3, "_all_possible_ids scales with size of history.")
         return [key[-1] for key in self.inventories.keys()]
 
     @needs_read_lock
@@ -286,7 +288,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
 
         # FIXME: RBC 20060125 don't peek under the covers
         # NB: no need to escape relative paths that are url safe.
@@ -526,7 +528,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['revision-store', 'weaves']
         files = [('inventory.weave', StringIO(empty_weave)),
                  ]
