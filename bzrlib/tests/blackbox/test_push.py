@@ -673,8 +673,9 @@ class TestPushStrictMixin(object):
             error_regexes = self._default_errors
         else:
             error_regexes = []
-        self.run_bzr(self._default_command + args,
-                     working_dir=self._default_wd, error_regexes=error_regexes)
+        ret = self.run_bzr(self._default_command + args,
+                           working_dir=self._default_wd,
+                           error_regexes=error_regexes)
         if pushed_revid is None:
             pushed_revid = self._default_pushed_revid
         tree_to = workingtree.WorkingTree.open('to')

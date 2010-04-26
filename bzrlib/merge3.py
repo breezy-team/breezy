@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -66,10 +66,24 @@ class Merge3(object):
     Given BASE, OTHER, THIS, tries to produce a combined text
     incorporating the changes from both BASE->OTHER and BASE->THIS.
     All three will typically be sequences of lines."""
-    def __init__(self, base, a, b, is_cherrypick=False):
-        check_text_lines(base)
-        check_text_lines(a)
-        check_text_lines(b)
+
+    def __init__(self, base, a, b, is_cherrypick=False, allow_objects=False):
+        """Constructor.
+
+        :param base: lines in BASE
+        :param a: lines in A
+        :param b: lines in B
+        :param is_cherrypick: flag indicating if this merge is a cherrypick.
+            When cherrypicking b => a, matches with b and base do not conflict.
+        :param allow_objects: if True, do not require that base, a and b are
+            plain Python strs.  Also prevents BinaryFile from being raised.
+            Lines can be any sequence of comparable and hashable Python
+            objects.
+        """
+        if not allow_objects:
+            check_text_lines(base)
+            check_text_lines(a)
+            check_text_lines(b)
         self.base = base
         self.a = a
         self.b = b

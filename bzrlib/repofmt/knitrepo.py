@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -360,6 +360,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         result.revisions.get_parent_map([('A',)])
         result.signatures.get_parent_map([('A',)])
         result.unlock()
+        self._run_post_repo_init_hooks(result, a_bzrdir, shared)
         return result
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):

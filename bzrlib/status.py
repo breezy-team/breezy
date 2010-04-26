@@ -166,6 +166,20 @@ def show_tree_status(wt, show_unchanged=None,
                            short=short, want_unchanged=show_unchanged, 
                            want_unversioned=want_unversioned, show_ids=show_ids)
 
+            # show the ignored files among specific files (i.e. show the files
+            # identified from input that we choose to ignore). 
+            if specific_files is not None:
+                # Ignored files is sorted because specific_files is already sorted
+                ignored_files = [specific for specific in
+                    specific_files if new.is_ignored(specific)]
+                if len(ignored_files) > 0 and not short:
+                    to_file.write("ignored:\n")
+                    prefix = ' '
+                else:
+                    prefix = 'I  '
+                for ignored_file in ignored_files:
+                    to_file.write("%s %s\n" % (prefix, ignored_file))
+
             # show the new conflicts only for now. XXX: get them from the
             # delta.
             conflicts = new.conflicts()

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -302,7 +302,9 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
                 mode=a_bzrdir._get_file_mode())
         finally:
             control_files.unlock()
-        return self.open(a_bzrdir, _found=True)
+        repository = self.open(a_bzrdir, _found=True)
+        self._run_post_repo_init_hooks(repository, a_bzrdir, shared)
+        return repository
 
     def open(self, a_bzrdir, _found=False):
         """See RepositoryFormat.open()."""

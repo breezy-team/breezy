@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Testing framework extensions"""
 
 # TODO: Perhaps there should be an API to find out if bzr running under the
 # test suite -- some plugins might want to avoid making intrusive changes if
@@ -489,13 +490,13 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.ui.note('ERROR: %s\n    %s\n' % (
+        self.stream.write('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
 
     def report_failure(self, test, err):
-        self.ui.note('FAIL: %s\n    %s\n' % (
+        self.stream.write('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
@@ -1311,6 +1312,14 @@ class TestCase(testtools.TestCase):
         finally:
             f.close()
         self.assertEqualDiff(content, s)
+
+    def assertDocstring(self, expected_docstring, obj):
+        """Fail if obj does not have expected_docstring"""
+        if __doc__ is None:
+            # With -OO the docstring should be None instead
+            self.assertIs(obj.__doc__, None)
+        else:
+            self.assertEqual(expected_docstring, obj.__doc__)
 
     def failUnlessExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
@@ -3212,7 +3221,7 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                os.waitpid(self.pid, os.WNOHANG)
+                os.waitpid(self.pid, 0)
 
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
@@ -3796,7 +3805,10 @@ def _test_suite_testmod_names():
 
 
 def _test_suite_modules_to_doctest():
-    """Return the list of modules to doctest."""   
+    """Return the list of modules to doctest."""
+    if __doc__ is None:
+        # GZ 2009-03-31: No docstrings with -OO so there's nothing to doctest
+        return []
     return [
         'bzrlib',
         'bzrlib.branchbuilder',
@@ -4435,3 +4447,27 @@ try:
             return result
 except ImportError:
     pass
+
+class _PosixPermissionsFeature(Feature):
+
+    def _probe(self):
+        def has_perms():
+            # create temporary file and check if specified perms are maintained.
+            import tempfile
+
+            write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
+            fd, name = f
+            os.close(fd)
+            os.chmod(name, write_perms)
+
+            read_perms = os.stat(name).st_mode & 0777
+            os.unlink(name)
+            return (write_perms == read_perms)
+
+        return (os.name == 'posix') and has_perms()
+
+    def feature_name(self):
+        return 'POSIX permissions support'
+
+posix_permissions_feature = _PosixPermissionsFeature()

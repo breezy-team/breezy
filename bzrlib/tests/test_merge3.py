@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -422,3 +422,26 @@ bbb
                              'g\n'
                              '>>>>>>>\n',
                              ''.join(m_lines))
+
+    def test_allow_objects(self):
+        """Objects other than strs may be used with Merge3 when
+        allow_objects=True.
+        
+        merge_groups and merge_regions work with non-str input.  Methods that
+        return lines like merge_lines fail.
+        """
+        base = [(x,x) for x in 'abcde']
+        a = [(x,x) for x in 'abcdef']
+        b = [(x,x) for x in 'Zabcde']
+        m3 = Merge3(base, a, b, allow_objects=True)
+        self.assertEqual(
+            [('b', 0, 1),
+             ('unchanged', 0, 5),
+             ('a', 5, 6)],
+            list(m3.merge_regions()))
+        self.assertEqual(
+            [('b', [('Z', 'Z')]),
+             ('unchanged', [(x,x) for x in 'abcde']),
+             ('a', [('f', 'f')])],
+            list(m3.merge_groups()))
+
