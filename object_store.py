@@ -93,6 +93,22 @@ class LRUTreeCache(object):
         self._cache.add(tree.get_revision_id(), tree)
 
 
+def _find_missing_bzr_revids(get_parent_map, pending, processed):
+    pending -= processed
+    todo = set()
+    while pending:
+        processed.update(pending)
+        next_map = get_parent_map(pending)
+        next_pending = set()
+        for item in next_map.iteritems():
+            todo.add(item[0])
+            next_pending.update(p for p in item[1] if p not in processed)
+        pending = next_pending
+    if NULL_REVISION in todo:
+        todo.remove(NULL_REVISION)
+    return todo
+
+
 def _check_expected_sha(expected_sha, object):
     """Check whether an object matches an expected SHA.
 
@@ -493,7 +509,8 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise AssertionError("Unknown object type '%s'" % type)
 
-    def generate_pack_contents(self, have, want, progress=None, get_tagged=None):
+    def generate_pack_contents(self, have, want, progress=None,
+            get_tagged=None):
         """Iterate over the contents of a pack file.
 
         :param have: List of SHA1s of objects that should not be sent
@@ -520,17 +537,9 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 assert type == "commit"
                 pending.add(revid)
-        todo = set()
-        while pending:
-            processed.update(pending)
-            next_map = self.repository.get_parent_map(pending)
-            next_pending = set()
-            for item in next_map.iteritems():
-                todo.add(item[0])
-                next_pending.update(p for p in item[1] if p not in processed)
-            pending = next_pending
-        if NULL_REVISION in todo:
-            todo.remove(NULL_REVISION)
+
+        todo = _find_missing_bzr_revids(self.repository.get_parent_map, 
+                                        pending, processed)
         trace.mutter('sending revisions %r', todo)
         ret = []
         pb = ui.ui_factory.nested_progress_bar()

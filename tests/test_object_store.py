@@ -20,12 +20,16 @@ from dulwich.objects import (
     Blob,
     )
 
+from bzrlib.graph import (
+    DictParentsProvider,
+    )
 from bzrlib.tests import (
     TestCase,
     )
 
 from bzrlib.plugins.git.object_store import (
     _check_expected_sha,
+    _find_missing_bzr_revids,
     )
 
 
@@ -48,3 +52,22 @@ class ExpectedShaTests(TestCase):
         _check_expected_sha(self.obj.sha().digest(), self.obj)
         self.assertRaises(AssertionError, _check_expected_sha, 
             "x" * 20, self.obj)
+
+
+class FindMissingBzrRevidsTests(TestCase):
+
+    def _find_missing(self, ancestry, want, have):
+        return _find_missing_bzr_revids(
+            DictParentsProvider(ancestry).get_parent_map,
+            set(want), set(have))
+
+    def test_simple(self):
+        self.assertEquals(set(), self._find_missing({}, [], []))
+
+    def test_up_to_date(self):
+        self.assertEquals(set(),
+                self._find_missing({"a": ["b"]}, ["a"], ["a"]))
+
+    def test_one_missing(self):
+        self.assertEquals(set(["a"]),
+                self._find_missing({"a": ["b"]}, ["a"], ["b"]))
