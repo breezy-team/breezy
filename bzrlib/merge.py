@@ -1044,7 +1044,7 @@ class Merge3Merger(object):
             # the other tree's root is a non-root in the current tree (as when
             # a previously unrelated branch is merged into another)
             return
-        if self.tt.final_kind(other_root) is None:
+        if self.tt.final_kind(other_root) is not None:
             other_root_is_present = True
         else:
             # other_root doesn't have a physical representation. We still need
