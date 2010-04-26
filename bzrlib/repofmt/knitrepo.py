@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ from bzrlib import (
     lockdir,
     osutils,
     revision as _mod_revision,
+    trace,
     transactions,
     versionedfile,
     xml5,
@@ -42,7 +43,6 @@ from bzrlib.repository import (
     RepositoryFormat,
     RootCommitBuilder,
     )
-from bzrlib.trace import mutter, mutter_callsite
 
 
 class _KnitParentsProvider(object):
@@ -342,7 +342,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         :param shared: If true the repository will be initialized as a shared
                        repository.
         """
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['knits']
         files = []
         utf8_files = [('format', self.get_format_string())]
