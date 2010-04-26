@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,11 +18,10 @@
 """Tests of the 'bzr pack' command."""
 import os
 
-from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.workingtree import WorkingTree
+from bzrlib import tests
 
 
-class TestPack(ExternalBase):
+class TestPack(tests.TestCaseWithTransport):
 
     def _make_versioned_file(self, path, line_prefix='line', total_lines=10):
         self._make_file(path, line_prefix, total_lines, versioned=True)
