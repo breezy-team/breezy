@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ from bzrlib.smart import server as smart_server
 from bzrlib.tests import (
     per_branch,
     per_transport,
+    stub_sftp,
     )
 from bzrlib.transport import (
     ftp,
@@ -737,7 +738,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
         self.add_file('hello', 'foo')
 
         remote_branch_url = self.get_url(self.remote_branch_dir)
-        if self.transport_server is sftp.SFTPHomeDirServer:
+        if self.transport_server is stub_sftp.SFTPHomeDirServer:
             # FIXME: Some policy search ends up above the user home directory
             # and are seen as attemps to escape test isolation
             raise tests.TestNotApplicable('Escaping test isolation')
