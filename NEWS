@@ -64,6 +64,10 @@ Documentation
 API Changes
 ***********
 
+* ``bzrlib.transform.TreeTransformBase.final_kind`` now returns None
+  instead of raising NoSuchFile.
+  (Vincent Ladeuil)
+  
 Internals
 *********
 
@@ -180,10 +184,6 @@ API Changes
   ``get_trees_and_branches_to_diff_locked`` instead.
   (Andrew Bennetts)
 
-* ``bzrlib.transform.TreeTransformBase.final_kind`` now returns None
-  instead of raising NoSuchFile.
-  (Vincent Ladeuil)
-  
 Internals
 *********
 
