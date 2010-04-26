@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +16,31 @@
 #
 
 """Tests of the 'bzr pack' command."""
+import os
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib import tests
 
 
-class TestPack(ExternalBase):
+class TestPack(tests.TestCaseWithTransport):
+
+    def _make_versioned_file(self, path, line_prefix='line', total_lines=10):
+        self._make_file(path, line_prefix, total_lines, versioned=True)
+
+    def _make_file(self, path, line_prefix, total_lines, versioned):
+        text=''
+        for i in range(total_lines):
+            text += line_prefix + str(i+1) + "\n"
+
+        open(path, 'w').write(text)
+        if versioned:
+            self.run_bzr(['add', path])
+            self.run_bzr(['ci', '-m', '"' + path + '"'])
+
+    def _update_file(self, path, text, checkin=True):
+        """append text to file 'path' and check it in"""
+        open(path, 'a').write(text)
+        if checkin:
+            self.run_bzr(['ci', path, '-m', '"' + path + '"'])
 
     def test_pack_silent(self):
         """pack command has no intrinsic output."""
@@ -42,3 +62,22 @@ class TestPack(ExternalBase):
         out, err = self.run_bzr('pack repository')
         self.assertEqual('', out)
         self.assertEqual('', err)
+
+    def test_pack_clean_obsolete_packs(self):
+        """Ensure --clean-obsolete-packs removes obsolete pack files
+        """
+        wd = 'foobar0'
+        wt = self.make_branch_and_tree(wd)
+        transport = wt.branch.repository.bzrdir.transport
+        os.chdir(wd)
+
+        # do multiple commits to ensure that obsolete packs are created
+        # by 'bzr pack'
+        self._make_versioned_file('file0.txt')
+        for i in range(5):
+            self._update_file('file0.txt', 'HELLO %d\n' % i)
+
+        out, err = self.run_bzr(['pack', '--clean-obsolete-packs'])
+
+        pack_names = transport.list_dir('repository/obsolete_packs')
+        self.assertTrue(len(pack_names) == 0)

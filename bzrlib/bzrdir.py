@@ -1330,9 +1330,50 @@ class BzrDirHooks(hooks.Hooks):
         self.create_hook(hooks.HookPoint('pre_open',
             "Invoked before attempting to open a BzrDir with the transport "
             "that the open will use.", (1, 14), None))
+        self.create_hook(hooks.HookPoint('post_repo_init',
+            "Invoked after a repository has been initialized. "
+            "post_repo_init is called with a "
+            "bzrlib.bzrdir.RepoInitHookParams.",
+            (2, 2), None))
 
 # install the default hooks
 BzrDir.hooks = BzrDirHooks()
+
+
+class RepoInitHookParams(object):
+    """Object holding parameters passed to *_repo_init hooks.
+
+    There are 4 fields that hooks may wish to access:
+
+    :ivar repository: Repository created
+    :ivar format: Repository format
+    :ivar bzrdir: The bzrdir for the repository
+    :ivar shared: The repository is shared
+    """
+
+    def __init__(self, repository, format, a_bzrdir, shared):
+        """Create a group of RepoInitHook parameters.
+
+        :param repository: Repository created
+        :param format: Repository format
+        :param bzrdir: The bzrdir for the repository
+        :param shared: The repository is shared
+        """
+        self.repository = repository
+        self.format = format
+        self.bzrdir = a_bzrdir
+        self.shared = shared
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        if self.repository:
+            return "<%s for %s>" % (self.__class__.__name__,
+                self.repository)
+        else:
+            return "<%s for %s>" % (self.__class__.__name__,
+                self.bzrdir)
 
 
 class BzrDirPreSplitOut(BzrDir):
