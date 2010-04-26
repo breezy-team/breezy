@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,7 +59,7 @@ def parse_ignore_file(f):
         # Otherwise go though line by line and pick out the 'good'
         # decodable lines
         lines = ignore_file.split('\n')
-        unicode_lines = []    
+        unicode_lines = []
         for line_number, line in enumerate(lines):
             try:
                 unicode_lines.append(line.decode('utf-8'))
@@ -67,7 +67,7 @@ def parse_ignore_file(f):
                 # report error about line (idx+1)
                 warning('.bzrignore: On Line #%d, malformed utf8 character. '
                         'Ignoring line.' % (line_number+1))
-    
+
     # Append each line to ignore list if it's not a comment line
     for line in unicode_lines:
         line = line.rstrip('\r\n')
