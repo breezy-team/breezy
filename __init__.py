@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -160,6 +160,7 @@ from bzrlib import (
     )
 lazy_import.lazy_import(globals(), """
 import stat
+import sys
 
 from bzrlib import (
     bzrdir,
@@ -695,10 +696,30 @@ class cmd_upload(commands.Command):
 commands.register_command(cmd_upload)
 
 
+def auto_upload_hook(params):
+    source_branch = params.branch
+    destination = get_upload_location(source_branch)
+    if destination is None:
+        return
+    auto_upload = get_upload_auto(source_branch)
+    if not auto_upload:
+        return
+    quiet = get_upload_auto_quiet(source_branch)
+    if not quiet:
+        display_url = urlutils.unescape_for_display(
+            destination, osutils.get_terminal_encoding())
+        trace.note('Automatically uploading to %s', display_url)
+    to_transport = transport.get_transport(destination)
+    last_revision = source_branch.last_revision()
+    last_tree = source_branch.repository.revision_tree(last_revision)
+    uploader = BzrUploader(source_branch, to_transport, sys.stdout,
+                           last_tree, last_revision, quiet=quiet)
+    uploader.upload_tree()
+
+
 def install_auto_upload_hook():
-    from bzrlib.plugins.upload import auto_upload_hook
     branch.Branch.hooks.install_named_hook('post_change_branch_tip',
-            auto_upload_hook.auto_upload_hook,
+            auto_upload_hook,
             'Auto upload code from a branch when it is changed.')
 
 
