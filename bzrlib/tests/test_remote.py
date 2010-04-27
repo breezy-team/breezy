@@ -529,6 +529,28 @@ class TestBzrDirOpen(TestRemote):
         self.assertIsInstance(bd, RemoteBzrDir)
         self.assertFinished(client)
 
+    def test_backwards_compat_hpss_v2(self):
+        client, transport = self.make_fake_client_and_transport()
+        # Monkey-patch fake client to simulate real-world behaviour with v2
+        # server: upon first RPC call detect the protocol version, and because
+        # the version is 2 also do _remember_remote_is_before((1, 6)) before
+        # continuing with the RPC.
+        orig_check_call = client._check_call
+        def check_call(method, args):
+            client._medium._protocol_version = 2
+            client._medium._remember_remote_is_before((1, 6))
+            client._check_call = orig_check_call
+            client._check_call(method, args)
+        client._check_call = check_call
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'unknown', ('BzrDir.open_2.1',))
+        client.add_expected_call(
+            'BzrDir.open', ('quack/',), 'success', ('yes',))
+        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client, _force_probe=True)
+        self.assertIsInstance(bd, RemoteBzrDir)
+        self.assertFinished(client)
+
 
 class TestBzrDirOpenBranch(TestRemote):
 
