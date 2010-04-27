@@ -5,6 +5,21 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.1.2
+#########
+
+:2.1.2: ?
+
+Bug Fixes
+*********
+
+* ``_remember_remote_is_before`` no longer raises AssertionError when
+  suboptimal behaviour is noticed; instead it just mutters to the log file
+  (and warns the user if they have set the ``hpss`` debug flag).  This
+  avoids unnecessary aborts in the case of minor bugs.
+  (Andrew Bennetts, #528041)
+
+
 bzr 2.1.1
 #########
 
