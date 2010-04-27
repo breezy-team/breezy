@@ -81,7 +81,7 @@ def _run_cleanups(funcs):
 class ObjectWithCleanups(object):
     """A mixin for objects that hold a cleanup list.
 
-    Subclass or client code can call add_cleanup and then later run_cleanups.
+    Subclass or client code can call add_cleanup and then later `cleanup_now`.
     """
     def __init__(self):
         self.cleanups = deque()
