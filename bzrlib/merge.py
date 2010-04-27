@@ -704,7 +704,8 @@ class Merge3Merger(object):
         :param this_tree: The local tree in the merge operation
         :param base_tree: The common tree in the merge operation
         :param other_tree: The other tree to merge changes from
-        :param this_branch: The branch associated with this_tree
+        :param this_branch: The branch associated with this_tree.  Defaults to
+            this_tree.branch if not supplied.
         :param interesting_ids: The file_ids of files that should be
             participate in the merge.  May not be combined with
             interesting_files.
@@ -728,6 +729,8 @@ class Merge3Merger(object):
         if interesting_files is not None and interesting_ids is not None:
             raise ValueError(
                 'specify either interesting_ids or interesting_files')
+        if this_branch is None:
+            this_branch = this_tree.branch
         self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
         self.this_tree = working_tree
