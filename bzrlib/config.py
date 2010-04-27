@@ -257,8 +257,7 @@ class Config(object):
 
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-        $BZR_EMAIL can be set to override this (as well as the
-        deprecated $BZREMAIL), then
+        $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If none is found, a reasonable default is (hopefully)
