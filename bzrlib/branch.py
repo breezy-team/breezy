@@ -621,7 +621,7 @@ class Branch(bzrdir.ControlComponent):
         :param pb: An optional progress bar to use.
         :return: None
         """
-        if self.control_url == from_branch.control_url:
+        if self.base == from_branch.base:
             return (0, [])
         if pb is not None:
             symbol_versioning.warn(
@@ -780,8 +780,7 @@ class Branch(bzrdir.ControlComponent):
                 # stream from one of them to the other.  This does mean doing
                 # separate SSH connection setup, but unstacking is not a
                 # common operation so it's tolerable.
-                new_bzrdir = bzrdir.BzrDir.open_from_transport(
-                    self.bzrdir.user_transport)
+                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
                 new_repository = new_bzrdir.find_repository()
                 self.repository = new_repository
                 if self.repository._fallback_repositories:
@@ -1212,7 +1211,7 @@ class Branch(bzrdir.ControlComponent):
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
             self.copy_content_into(result, revision_id=revision_id)
-            result.set_parent(self.bzrdir.user_url)
+            result.set_parent(self.bzrdir.root_transport.base)
         finally:
             result.unlock()
         return result
@@ -1405,7 +1404,7 @@ class Branch(bzrdir.ControlComponent):
         :return: A branch associated with the file_id
         """
         # FIXME should provide multiple branches, based on config
-        return Branch.open(self.user_transport.clone(path).base,
+        return Branch.open(self.bzrdir.root_transport.clone(path).base,
                            possible_transports=possible_transports)
 
     def supports_tags(self):
