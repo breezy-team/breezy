@@ -13,10 +13,18 @@ bzr 2.1.2
 Bug Fixes
 *********
 
+* Fixed ``AssertionError`` when accessing smart servers running Bazaar
+  versions before 1.6.
+  (Andrew Bennetts, #528041)
+
+Internals
+*********
+
 * ``_remember_remote_is_before`` no longer raises AssertionError when
-  suboptimal behaviour is noticed; instead it just mutters to the log file
-  (and warns the user if they have set the ``hpss`` debug flag).  This
-  avoids unnecessary aborts in the case of minor bugs.
+  suboptimal network behaviour is noticed; instead it just mutters to the
+  log file (and warns the user if they have set the ``hpss`` debug flag).
+  This was causing unnecessary aborts for performance bugs that are minor
+  at worst.
   (Andrew Bennetts, #528041)
 
 
