@@ -3201,6 +3201,19 @@ def partition_tests(suite, count):
     return result
 
 
+def workaround_zealous_crypto_random():
+    """Crypto.Random want to help us being secure, but we don't care here.
+
+    This workaround some test failure related to the sftp server. Once paramiko
+    stop using the controversial API in Crypto.Random, we may get rid of it.
+    """
+    try:
+        from Crypto.Random import atfork
+        atfork()
+    except ImportError:
+        pass
+
+
 def fork_for_tests(suite):
     """Take suite and start up one runner per CPU by forking()
 
@@ -3230,6 +3243,7 @@ def fork_for_tests(suite):
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
         if pid == 0:
+            workaround_zealous_crypto_random()
             try:
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
