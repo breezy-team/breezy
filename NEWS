@@ -5,6 +5,17 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+API Changes
+***********
+
+* `BzrDir`, `Branch`, `Repository` and `WorkingTree` now all support `user_url`,
+  `user_transport`, `control_url` and `control_transport` members pointing
+  respectively to the directory containing the ``.bzr`` control directory, 
+  and to the directory within ``.bzr`` used for the particular component.
+  All of them inherit from `ControlComponent` which provides default
+  implementations.
+  (Martin Pool)
+
 bzr 2.2b2
 #########
 
