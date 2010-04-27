@@ -46,7 +46,7 @@ Bug Fixes
 Improvements
 ************
 
-* ``append_revisions_only`` will no be interpreted as a boolean and a
+* ``append_revisions_only`` will now be interpreted as a boolean and a
   warning emitted if illegal values are used. Note that for projects
   that needs to maintain compatibility with previsous bzr versions,
   only 'True' and 'False' strings must be used (previous versions of
