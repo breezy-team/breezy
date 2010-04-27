@@ -1524,7 +1524,7 @@ class TestCase(testtools.TestCase):
             'EDITOR': None,
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
-            'EMAIL': None,
+            'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
