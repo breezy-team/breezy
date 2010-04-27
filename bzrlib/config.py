@@ -277,9 +277,16 @@ class Config(object):
         if v:
             return v.decode(osutils.get_user_encoding())
 
-        raise errors.BzrCommandError('Unable to determine your name.  '
-            'Please, set your name with command like:\n'
-            'bzr whoami "Your Name <name@example.com>"')
+        raise errors.BzrCommandError('Unable to determine your name.\n'
+            "Please, set your name with the 'whoami' command.\n"
+            'E.g. bzr whoami "Your Name <name@example.com>"')
+
+    def ensure_username(self):
+        """Raise BzrCommandError if username is not set.
+
+        This method relies on the username() function raising the error.
+        """
+        self.username()
 
     def signature_checking(self):
         """What is the current policy for signature checking?."""
