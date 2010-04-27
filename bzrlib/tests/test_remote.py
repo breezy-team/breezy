@@ -417,11 +417,12 @@ class Test_ClientMedium_remote_is_at_least(tests.TestCase):
         # Calling _remember_remote_is_before again with a lower value works.
         client_medium._remember_remote_is_before((1, 5))
         self.assertTrue(client_medium._is_remote_before((1, 5)))
-        # If you call _remember_remote_is_before with a larger value it logs a
-        # warning.
+        # If you call _remember_remote_is_before with a higher value it logs a
+        # warning, and continues to remember the lower value.
         self.assertNotContainsRe(self.get_log(), '_remember_remote_is_before')
         client_medium._remember_remote_is_before((1, 9))
         self.assertContainsRe(self.get_log(), '_remember_remote_is_before')
+        self.assertTrue(client_medium._is_remote_before((1, 5)))
 
 
 class TestBzrDirCloningMetaDir(TestRemote):
