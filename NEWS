@@ -13,6 +13,11 @@ bzr 2.2b3
 Compatibility Breaks
 ********************
 
+* ``bzr`` does not try to guess the username as ``username@hostname``
+  and requires it to be explictly set. This can be set using ``bzr
+  whoami``.
+  (Parth Malwankar, #549310)
+
 New Features
 ************
 
