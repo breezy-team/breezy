@@ -29,12 +29,6 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-# TODO: Give the workingtree sole responsibility for the working inventory;
-# remove the variable and references to it from the branch.  This may require
-# updating the commit code so as to update the inventory within the working
-# copy, and making sure there's only one WorkingTree for any directory on disk.
-# At the moment they may alias the inventory and have old copies of it in
-# memory.  (Now done? -- mbp 20060309)
 
 from cStringIO import StringIO
 import os
