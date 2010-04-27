@@ -18,6 +18,7 @@
 
 import os
 
+from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 import bzrlib.errors as errors
 from bzrlib.tests import TestCaseInTempDir
@@ -145,3 +146,12 @@ Location:
         self.assertLength(0, calls)
         self.run_bzr("init-repository a")
         self.assertLength(1, calls)
+
+    def test_init_without_username(self):
+        """Ensure init error if username is not set.
+        """
+        osutils.set_or_unset_env('EMAIL', None)
+        osutils.set_or_unset_env('BZR_EMAIL', None)
+        out, err = self.run_bzr(['init-repo', 'foo'], 3)
+        self.assertContainsRe(err, 'Unable to determine your name')
+        self.assertFalse(os.path.exists('foo'))

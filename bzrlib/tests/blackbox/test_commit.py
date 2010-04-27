@@ -710,3 +710,15 @@ altered in u2
         out, err = self.run_bzr_error(["empty commit message"],
             "commit tree/hello.txt", stdin="n\n")
         self.assertEqual(expected, tree.last_revision())
+
+    def test_commit_without_username(self):
+        """Ensure commit error if username is not set.
+        """
+        self.run_bzr(['init', 'foo'])
+        os.chdir('foo')
+        open('foo.txt', 'w').write('hello')
+        self.run_bzr(['add'])
+        osutils.set_or_unset_env('EMAIL', None)
+        osutils.set_or_unset_env('BZR_EMAIL', None)
+        out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
+        self.assertContainsRe(err, 'Unable to determine your name')
