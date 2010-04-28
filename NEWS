@@ -26,6 +26,11 @@ Bug Fixes
   history no longer crash when deleted files are involved.
   (Vincent Ladeuil, John Arbash Meinel, #375898)
 
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
+
 bzr 2.0.5
 #########
 
