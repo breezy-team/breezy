@@ -1546,6 +1546,12 @@ message:
 class TestLogExcludeAncestry(tests.TestCaseWithTransport):
 
     def make_branch_with_alternate_ancestries(self, relpath='.'):
+        # See test_merge_sorted_exclude_ancestry below for the difference with
+        # bt.per_branch.test_iter_merge_sorted_revision.
+        # TestIterMergeSortedRevisionsBushyGraph. 
+        # make_branch_with_alternate_ancestries
+        # and test_merge_sorted_exclude_ancestry
+        # See the FIXME in assertLogRevnos too.
         builder = branchbuilder.BranchBuilder(self.get_transport(relpath))
         # 1
         # |\
@@ -1588,6 +1594,9 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         b = self.make_branch_with_alternate_ancestries()
         self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2', '1'],
                              b, '1', '3', False)
+        # '2' is part of the '3' ancestry but not part of '1.1.1' ancestry so
+        # it should be mentioned even if merge_sort order will make it appear
+        # after 1.1.1
         self.assertLogRevnos(['3', '1.1.2', '1.2.1', '2'],
                              b, '1.1.1', '3', True)
 

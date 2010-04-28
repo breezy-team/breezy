@@ -230,6 +230,11 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         return br
 
     def make_branch_with_alternate_ancestries(self, relpath='.'):
+        # See test_merge_sorted_exclude_ancestry below for the difference with
+        # bt.test_log.TestLogExcludeAncestry.
+        # make_branch_with_alternate_ancestries and
+        # test_merge_sorted_exclude_ancestry
+        # See the FIXME in assertLogRevnos there too.
         builder = self.make_branch_builder(relpath)
         # 1
         # |\
@@ -290,6 +295,8 @@ class TestIterMergeSortedRevisionsBushyGraph(per_branch.TestCaseWithBranch):
         branch = self.make_branch_with_alternate_ancestries()
         self.assertIterRevids(['3', '1.1.2', '1.2.1', '2', '1.1.1', '1'],
                               branch)
+        # '2' is not part of the ancestry even if merge_sort order will make it
+        # appear before 1.1.1
         self.assertIterRevids(['1.1.2', '1.2.1'],
                               branch,
                               stop_rule='with-merges-without-common-ancestry',

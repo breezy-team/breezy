@@ -420,6 +420,8 @@ class Branch(object):
             * 'include' - the stop revision is the last item in the result
             * 'with-merges' - include the stop revision and all of its
               merged revisions in the result
+            * 'with-merges-without-common-ancestry' - filter out revisions 
+              that are in both ancestries
         :param direction: either 'reverse' or 'forward':
             * reverse means return the start_revision_id first, i.e.
               start at the most recent revision and go backwards in history
