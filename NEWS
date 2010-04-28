@@ -29,6 +29,16 @@ New Features
 Bug Fixes
 *********
 
+* ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
+  group ownership from the containing directory. This allow bzr to work
+  better with sudo.
+  (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
+
+* ``bzr log --exclude-common-ancestry -r X..Y`` displays the revisions that
+  are part of Y ancestry but not part of X ancestry (aka the graph
+  difference).
+  (Vincent Ladeuil, #320119)
+
 * ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
   (Vincent Ladeuil, #566670)
 
@@ -44,7 +54,7 @@ Bug Fixes
 Improvements
 ************
 
-* ``append_revisions_only`` will no be interpreted as a boolean and a
+* ``append_revisions_only`` will now be interpreted as a boolean and a
   warning emitted if illegal values are used. Note that for projects
   that needs to maintain compatibility with previsous bzr versions,
   only 'True' and 'False' strings must be used (previous versions of
@@ -62,6 +72,14 @@ Documentation
 API Changes
 ***********
 
+* `BzrDir`, `Branch`, `Repository` and `WorkingTree` now all support `user_url`,
+  `user_transport`, `control_url` and `control_transport` members pointing
+  respectively to the directory containing the ``.bzr`` control directory, 
+  and to the directory within ``.bzr`` used for the particular component.
+  All of them inherit from `ControlComponent` which provides default
+  implementations.
+  (Martin Pool)
+
 Internals
 *********
 
@@ -73,9 +91,12 @@ Internals
 Testing
 *******
 
- * ``bzr selftest --parallel=subprocess`` now works correctly on win32.
+* ``bzr selftest --parallel=subprocess`` now works correctly on win32.
    (Gordon Tyler, #551332)
 
+* Workaround ``Crypto.Random`` check leading to spurious test
+  failures on Lucid, FreeBSD and gentoo.  
+  (Vincent Ladeuil, #528436)
 
 bzr 2.2b2
 #########
@@ -108,6 +129,9 @@ Bug Fixes
   http://bugs.python.org/issue8396 .
   (Parth Malwankar, #413406)
 
+* ``bzr switch`` does not die if a ConfigurableFileMerger is used.
+  (Aaron Bentley, #559436)
+
 * ``bzr update`` when a pending merge in the working tree has been merged
   into the master branch will no longer claim that old commits have become
   pending merges. (Robert Collins, #562079)
@@ -137,7 +161,8 @@ Bug Fixes
   (Andrew Bennetts)
 
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
-  that are not part of the ancestry anymore.
+  that are not part of the Y revisions ancestry anymore when invoked with
+  -rX..Y.
   (Vincent Ladeuil, #474807)
 
 Improvements
@@ -371,11 +396,6 @@ Bug Fixes
 * ``update -r`` now supports updating to revisions that are not on
   mainline (i.e. it supports dotted revisions).
   (Parth Malwankar, #517800)
-
-* ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
-  group ownership from the containing directory. This allow bzr to work
-  better with sudo.
-  (Parth Malwankar, #376388)
 
 * Use first apparent author not committer in GNU Changelog format.
   (Martin von Gagern, #513322)

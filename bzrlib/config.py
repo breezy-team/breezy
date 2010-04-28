@@ -519,7 +519,8 @@ class GlobalConfig(IniBasedConfig):
 
     def _write_config_file(self):
         path = self._get_filename()
-        f = osutils.open_with_ownership(path, 'wb')
+        f = open(path, 'wb')
+        osutils.copy_ownership_from_path(path)
         self._get_parser().write(f)
         f.close()
 
@@ -818,7 +819,8 @@ def ensure_config_dir_exists(path=None):
                 trace.mutter('creating config parent directory: %r', parent_dir)
             os.mkdir(parent_dir)
         trace.mutter('creating config directory: %r', path)
-        osutils.mkdir_with_ownership(path)
+        os.mkdir(path)
+        osutils.copy_ownership_from_path(path)
 
 
 def config_dir():

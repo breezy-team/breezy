@@ -504,9 +504,7 @@ class cmd_remove_tree(Command):
                 if (working.has_changes()):
                     raise errors.UncommittedChanges(working)
 
-            working_path = working.bzrdir.root_transport.base
-            branch_path = working.branch.bzrdir.root_transport.base
-            if working_path != branch_path:
+            if working.user_url != working.branch.user_url:
                 raise errors.BzrCommandError("You cannot remove the working tree"
                                              " from a lightweight checkout")
 
@@ -2299,6 +2297,10 @@ class cmd_log(Command):
                    help='Show changes made in each revision as a patch.'),
             Option('include-merges',
                    help='Show merged revisions like --levels 0 does.'),
+            Option('exclude-common-ancestry',
+                   help='Display only the revisions that are not part'
+                   ' of both ancestries (require -rX..Y)'
+                   )
             ]
     encoding_type = 'replace'
 
@@ -2314,13 +2316,19 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False,
-            include_merges=False):
+            include_merges=False,
+            exclude_common_ancestry=False,
+            ):
         from bzrlib.log import (
             Logger,
             make_log_request_dict,
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
+        if (exclude_common_ancestry
+            and (revision is None or len(revision) != 2)):
+            raise errors.BzrCommandError(
+                '--exclude-common-ancestry requires -r with two revisions')
         if include_merges:
             if levels is None:
                 levels = 0
@@ -2419,7 +2427,9 @@ class cmd_log(Command):
             direction=direction, specific_fileids=file_ids,
             start_revision=rev1, end_revision=rev2, limit=limit,
             message_search=message, delta_type=delta_type,
-            diff_type=diff_type, _match_using_deltas=match_using_deltas)
+            diff_type=diff_type, _match_using_deltas=match_using_deltas,
+            exclude_common_ancestry=exclude_common_ancestry,
+            )
         Logger(b, rqst).show(lf)
 
 
