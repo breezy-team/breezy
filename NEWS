@@ -51,6 +51,10 @@ Bug Fixes
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
+* Show the filenames when a file rename fails so that the error will be
+  more comprehensible.
+  (Martin Pool, #491763)
+
 Improvements
 ************
 
