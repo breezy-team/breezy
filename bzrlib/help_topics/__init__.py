@@ -591,22 +591,27 @@ Column 3 - execute::
 _env_variables = \
 """Environment Variables
 
-================ =================================================================
-BZRPATH          Path where bzr is to look for shell plugin external commands.
-BZR_EMAIL        E-Mail address of the user. Overrides EMAIL.
-EMAIL            E-Mail address of the user.
-BZR_EDITOR       Editor for editing commit messages. Overrides EDITOR.
-EDITOR           Editor for editing commit messages.
-BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
-BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
-BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
-BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
-BZR_SSH          Path to SSH client, or one of paramiko, openssh, sshcorp, plink.
-BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
-BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
-BZR_COLUMNS      Override implicit terminal width.
-BZR_CONCURRENCY  Number of processes that can be run concurrently (selftest).
-================ =================================================================
+=================== =======================================================================
+BZRPATH             Path where bzr is to look for shell plugin external commands.
+BZR_EMAIL           E-Mail address of the user. Overrides EMAIL.
+EMAIL               E-Mail address of the user.
+BZR_EDITOR          Editor for editing commit messages. Overrides EDITOR.
+EDITOR              Editor for editing commit messages.
+BZR_PLUGIN_PATH     Paths where bzr should look for plugins.
+BZR_DISABLE_PLUGINS Plugins that bzr should not load.
+BZR_PLUGINS_AT      Plugins to load from a directory not in BZR_PLUGIN_PATH.
+BZR_HOME            Directory holding .bazaar config dir. Overrides HOME.
+BZR_HOME (Win32)    Directory holding bazaar config dir. Overrides APPDATA and HOME.
+BZR_REMOTE_PATH     Full name of remote 'bzr' command (for bzr+ssh:// URLs).
+BZR_SSH             Path to SSH client, or one of paramiko, openssh, sshcorp, plink.
+BZR_LOG             Location of .bzr.log (use '/dev/null' to suppress log).
+BZR_LOG (Win32)     Location of .bzr.log (use 'NUL' to suppress log).
+BZR_COLUMNS         Override implicit terminal width.
+BZR_CONCURRENCY     Number of processes that can be run concurrently (selftest).
+BZR_PROGRESS_BAR    Override the progress display. Values are “none”, “dots”, or “tty”.
+BZR_PDB             Control whether to launch a debugger on error.
+BZR_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a breakin debugger.
+=================== =======================================================================
 """
 
 
