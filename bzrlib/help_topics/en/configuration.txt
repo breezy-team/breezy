@@ -59,6 +59,16 @@ BZR_EDITOR
 
 Path to the editor Bazaar should use for commit messages, etc.
 
+BZR_LOG
+~~~~~~~
+
+Location of the Bazaar log file. You can check the current location by running ``bzr version``.
+
+The log file contains debug information that is useful for diagnosing or reporting problems with Bazaar.
+
+Setting this to ``NUL`` on Windows or ``/dev/null`` on other platforms will disable logging.
+
+
 BZR_PLUGIN_PATH
 ~~~~~~~~~~~~~~~
 
