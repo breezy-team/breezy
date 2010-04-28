@@ -19,7 +19,7 @@ sys.path = [os.path.abspath('../..')] + sys.path
 from bzrlib.doc_generate.sphinx_conf import *
 
 # Add the texinfo builder extension
-extensions.append('bzrlib.doc_generate.texinfo_builder')
+extensions.append('bzrlib.doc_generate.builders.texinfo')
 
 ## Configuration specific to this site ##
 

@@ -19,7 +19,7 @@
 from sphinx import builders
 from sphinx.builders import text as _text_builder
 
-from bzrlib.doc_generate import texinfo_writer
+from bzrlib.doc_generate.writers import texinfo as texinfo_writer
 
 class TexinfoBuilder(_text_builder.TextBuilder):
 
