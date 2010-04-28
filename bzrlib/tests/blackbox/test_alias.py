@@ -48,7 +48,7 @@ class TestAlias(ExternalBase):
     def test_unicode_alias(self):
         """Unicode aliases should work (Bug #529930)"""
         config_enc = 'utf-8'
-	te = osutils.get_terminal_encoding()
+        te = osutils.get_terminal_encoding()
         file_name = u'foo\xb6'
 
         self.run_bzr(['init'])
