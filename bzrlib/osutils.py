@@ -28,6 +28,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
 import errno
+import getpass
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
                     normpath as _nt_normpath,
@@ -2283,3 +2284,15 @@ if sys.platform == 'win32':
         return os.fdopen(os.open(filename, flags), mode, bufsize)
 else:
     open_file = open
+
+
+def getuser_unicode():
+    """Return the username as unicode.
+    """
+    try:
+        user_encoding = get_user_encoding()
+        username = getpass.getuser().decode(user_encoding)
+    except UnicodeDecodeError:
+        raise errors.BzrError("Can't decode username as %s." % \
+                user_encoding)
+    return username
