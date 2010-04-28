@@ -277,9 +277,7 @@ class Config(object):
         if v:
             return v.decode(osutils.get_user_encoding())
 
-        raise errors.BzrCommandError('Unable to determine your name.\n'
-            "Please, set your name with the 'whoami' command.\n"
-            'E.g. bzr whoami "Your Name <name@example.com>"')
+        raise errors.NoWhoami()
 
     def ensure_username(self):
         """Raise BzrCommandError if username is not set.

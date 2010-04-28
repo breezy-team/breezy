@@ -204,10 +204,10 @@ class TestSFTPInit(TestCaseWithSFTPServer):
                            'init --append-revisions-only --knit knit')
 
     def test_init_without_username(self):
-        """Ensure init error if username is not set.
+        """Ensure init works if username is not set.
         """
         osutils.set_or_unset_env('EMAIL', None)
         osutils.set_or_unset_env('BZR_EMAIL', None)
-        out, err = self.run_bzr(['init', 'foo'], 3)
-        self.assertContainsRe(err, 'Unable to determine your name')
-        self.assertFalse(os.path.exists('foo'))
+        out, err = self.run_bzr(['init', 'foo'])
+        self.assertEqual(err, '')
+        self.assertTrue(os.path.exists('foo'))

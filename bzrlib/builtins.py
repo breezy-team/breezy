@@ -1726,9 +1726,6 @@ class cmd_init(Command):
          ]
     def run(self, location=None, format=None, append_revisions_only=False,
             create_prefix=False):
-        c = config.GlobalConfig()
-        c.ensure_username()
-
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
@@ -1838,9 +1835,6 @@ class cmd_init_repository(Command):
     aliases = ["init-repo"]
 
     def run(self, location, format=None, no_trees=False):
-        c = config.GlobalConfig()
-        c.ensure_username()
-
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
 

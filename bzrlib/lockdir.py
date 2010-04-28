@@ -133,6 +133,8 @@ import bzrlib.ui
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import getpass
+
 from bzrlib import rio
 """)
 
@@ -441,15 +443,26 @@ class LockDir(lock.Lock):
         except NoSuchFile, e:
             self._trace("peek -> not held")
 
+    def _getuser_unicode(self):
+        """Return the username as unicode.
+        """
+        try:
+            user_encoding = osutils.get_user_encoding()
+            username = getpass.getuser().decode(user_encoding)
+        except UnicodeDecodeError:
+            raise errors.BzrError("Can't decode username as %s." % \
+                    user_encoding)
+        return username
+
     def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
         """
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
         try:
-            user = config.user_email()
-        except errors.NoEmailInUsername:
             user = config.username()
+        except errors.NoWhoami:
+            user = self._getuser_unicode()
         s = rio.Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
