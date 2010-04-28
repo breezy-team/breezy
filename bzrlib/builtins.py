@@ -1132,8 +1132,10 @@ class cmd_push(Command):
         else:
             revision_id = None
         if tree is not None and revision_id is None:
-            tree.warn_if_changed_or_out_of_date(
-                strict, 'push_strict', 'Use --no-strict to force the push.')
+            tree.check_changed_or_out_of_date(
+                strict, 'push_strict',
+                more_error='Use --no-strict to force the push.',
+                more_warning='Uncommitted changes will not be pushed.')
         # Get the stacked_on branch, if any
         if stacked_on is not None:
             stacked_on = urlutils.normalize_url(stacked_on)

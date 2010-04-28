@@ -45,6 +45,9 @@ Bug Fixes
 * ``bzr selftest`` should not use ui.note() since it's not unicode safe.
   (Vincent Ladeuil, #563997)
 
+* Don't mention --no-strict when we just issue the warning about unclean trees.
+  (Vincent Ladeuil, #401599)
+
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
