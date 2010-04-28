@@ -2011,3 +2011,14 @@ class TestCreationOps(tests.TestCaseInTempDir):
         self.assertEquals(self.path, 'test_file')
         self.assertEquals(self.uid, s.st_uid)
         self.assertEquals(self.gid, s.st_gid)
+
+class TestGetuserUnicode(tests.TestCase):
+
+    def test_ascii_user(self):
+        osutils.set_or_unset_env('LOGNAME', 'jrandom')
+        self.assertEqual(u'jrandom', osutils.getuser_unicode())
+
+    def test_unicode_user(self):
+        ue = osutils.get_user_encoding()
+        osutils.set_or_unset_env('LOGNAME', u'jrandom\xb6'.encode(ue))
+        self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
