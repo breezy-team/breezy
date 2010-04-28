@@ -34,6 +34,11 @@ Bug Fixes
   better with sudo.
   (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
 
+* ``bzr log --exclude-common-ancestry -r X..Y`` displays the revisions that
+  are part of Y ancestry but not part of X ancestry (aka the graph
+  difference).
+  (Vincent Ladeuil, #320119)
+
 * ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
   (Vincent Ladeuil, #566670)
 
@@ -153,7 +158,8 @@ Bug Fixes
   (Andrew Bennetts)
 
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
-  that are not part of the ancestry anymore.
+  that are not part of the Y revisions ancestry anymore when invoked with
+  -rX..Y.
   (Vincent Ladeuil, #474807)
 
 Improvements
