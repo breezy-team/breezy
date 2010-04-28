@@ -1342,3 +1342,18 @@ class TestEscaping(tests.TestCaseWithTransport):
         fileobj = StringIO()
         wt.branch.repository.create_bundle(
             'rev1', _mod_revision.NULL_REVISION, fileobj)
+
+
+
+
+class TestRepositoryControlComponent(per_repository.TestCaseWithRepository):
+    """Repository implementations adequately implement ControlComponent."""
+    
+    def test_urls(self):
+        repo = self.make_repository('repo')
+        self.assertIsInstance(repo.user_url, str)
+        self.assertEqual(repo.user_url, repo.user_transport.base)
+        # for all current bzrdir implementations the user dir must be 
+        # above the control dir but we might need to relax that?
+        self.assertEqual(repo.control_url.find(repo.user_url), 0)
+        self.assertEqual(repo.control_url, repo.control_transport.base)

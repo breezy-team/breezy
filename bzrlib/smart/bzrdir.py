@@ -110,7 +110,7 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         """Get the relative path for repository from current_transport."""
         # the relpath of the bzrdir in the found repository gives us the
         # path segments to pop-out.
-        relpath = repository.bzrdir.root_transport.relpath(
+        relpath = repository.user_transport.relpath(
             current_transport.base)
         if len(relpath):
             segments = ['..'] * len(relpath.split('/'))
