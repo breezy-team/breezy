@@ -2588,7 +2588,7 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
             keys = tsort.topo_sort(parent_map)
         return [None] + list(keys)
 
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This operation only makes sense for some repository types. For other
@@ -2604,6 +2604,9 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
             obtained from the result of commit_write_group(). Out of
             date hints are simply ignored, because concurrent operations
             can obsolete them rapidly.
+
+        :param clean_obsolete_packs: Clean obsolete packs immediately after
+            the pack operation.
         """
 
     def get_transaction(self):
@@ -3174,6 +3177,15 @@ class RepositoryFormat(object):
         _found is a private parameter, do not use it.
         """
         raise NotImplementedError(self.open)
+
+    def _run_post_repo_init_hooks(self, repository, a_bzrdir, shared):
+        from bzrlib.bzrdir import BzrDir, RepoInitHookParams
+        hooks = BzrDir.hooks['post_repo_init']
+        if not hooks:
+            return
+        params = RepoInitHookParams(repository, self, a_bzrdir, shared)
+        for hook in hooks:
+            hook(params)
 
 
 class MetaDirRepositoryFormat(RepositoryFormat):

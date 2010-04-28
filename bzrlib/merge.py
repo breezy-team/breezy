@@ -704,7 +704,8 @@ class Merge3Merger(object):
         :param this_tree: The local tree in the merge operation
         :param base_tree: The common tree in the merge operation
         :param other_tree: The other tree to merge changes from
-        :param this_branch: The branch associated with this_tree
+        :param this_branch: The branch associated with this_tree.  Defaults to
+            this_tree.branch if not supplied.
         :param interesting_ids: The file_ids of files that should be
             participate in the merge.  May not be combined with
             interesting_files.
@@ -728,6 +729,8 @@ class Merge3Merger(object):
         if interesting_files is not None and interesting_ids is not None:
             raise ValueError(
                 'specify either interesting_ids or interesting_files')
+        if this_branch is None:
+            this_branch = this_tree.branch
         self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
         self.this_tree = working_tree
@@ -1042,21 +1045,38 @@ class Merge3Merger(object):
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
+        if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
+            # the other tree's root is a non-root in the current tree (as when
+            # a previously unrelated branch is merged into another)
+            return
         try:
             self.tt.final_kind(other_root)
+            other_root_is_present = True
         except errors.NoSuchFile:
-            return
-        if self.this_tree.has_id(self.other_tree.inventory.root.file_id):
-            # the other tree's root is a non-root in the current tree
-            return
-        self.reparent_children(self.other_tree.inventory.root, self.tt.root)
-        self.tt.cancel_creation(other_root)
-        self.tt.cancel_versioning(other_root)
-
-    def reparent_children(self, ie, target):
-        for thing, child in ie.children.iteritems():
+            # other_root doesn't have a physical representation. We still need
+            # to move any references to the actual root of the tree.
+            other_root_is_present = False
+        # 'other_tree.inventory.root' is not present in this tree. We are
+        # calling adjust_path for children which *want* to be present with a
+        # correct place to go.
+        for thing, child in self.other_tree.inventory.root.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
-            self.tt.adjust_path(self.tt.final_name(trans_id), target, trans_id)
+            if not other_root_is_present:
+                # FIXME: Make final_kind returns None instead of raising
+                # NoSuchFile to avoid the ugly construct below -- vila 20100402
+                try:
+                    self.tt.final_kind(trans_id)
+                    # The item exist in the final tree and has a defined place
+                    # to go already.
+                    continue
+                except errors.NoSuchFile, e:
+                    pass
+            # Move the item into the root
+            self.tt.adjust_path(self.tt.final_name(trans_id),
+                                self.tt.root, trans_id)
+        if other_root_is_present:
+            self.tt.cancel_creation(other_root)
+            self.tt.cancel_versioning(other_root)
 
     def write_modified(self, results):
         modified_hashes = {}

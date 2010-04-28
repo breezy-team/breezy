@@ -138,3 +138,10 @@ Location:
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         e = self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertNotContainsRe(str(e), "location is a repository")
+
+    def test_init_repo_with_post_repo_init_hook(self):
+        calls = []
+        BzrDir.hooks.install_named_hook('post_repo_init', calls.append, None)
+        self.assertLength(0, calls)
+        self.run_bzr("init-repository a")
+        self.assertLength(1, calls)

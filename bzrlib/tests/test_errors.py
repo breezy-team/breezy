@@ -670,7 +670,7 @@ class ErrorWithBadFormat(errors.BzrError):
 
 
 class ErrorWithNoFormat(errors.BzrError):
-    """This class has a docstring but no format string."""
+    __doc__ = """This class has a docstring but no format string."""
 
 
 class TestErrorFormatting(TestCase):

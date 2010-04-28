@@ -307,8 +307,9 @@ class TestExport(ExternalBase):
         tree = self.example_branch()
         self.build_tree_contents([('branch/har', 'foo')])
         tree.add('har')
-        tree.commit('setup', timestamp=42)
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('setup', timestamp=315532800)
         self.run_bzr('export --per-file-timestamps t branch')
         har_st = os.stat('t/har')
-        self.assertEquals(42, har_st.st_mtime)
+        self.assertEquals(315532800, har_st.st_mtime)
 

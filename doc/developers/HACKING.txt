@@ -1053,7 +1053,8 @@ equivalently ``bzr command -h``.  We also have help on command options,
 and on other help topics.  (See ``help_topics.py``.)
 
 As for python docstrings, the first paragraph should be a single-sentence
-synopsis of the command.
+synopsis of the command. These are user-visible and should be prefixed with
+``__doc__ =`` so help works under ``python -OO`` with docstrings stripped.
 
 The help for options should be one or more proper sentences, starting with
 a capital letter and finishing with a full stop (period).
