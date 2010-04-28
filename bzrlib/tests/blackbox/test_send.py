@@ -307,6 +307,8 @@ class TestSendStrictMixin(TestSendMixin):
     _default_sent_revs = ['local']
     _default_errors = ['Working tree ".*/local/" has uncommitted '
                        'changes \(See bzr status\)\.',]
+    _default_additional_error = 'Use --no-strict to force the send.\n'
+    _default_additional_warning = 'Uncommitted changes will not be sent.'
 
     def set_config_send_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
@@ -315,7 +317,8 @@ class TestSendStrictMixin(TestSendMixin):
         conf.set_user_option('send_strict', value)
 
     def assertSendFails(self, args):
-        self.run_send(args, rc=3, err_re=self._default_errors)
+        out, err = self.run_send(args, rc=3, err_re=self._default_errors)
+        self.assertContainsRe(err, self._default_additional_error)
 
     def assertSendSucceeds(self, args, revs=None, with_warning=False):
         if with_warning:
@@ -327,6 +330,7 @@ class TestSendStrictMixin(TestSendMixin):
         out, err = self.run_send(args, err_re=err_re)
         bundling_revs = 'Bundling %d revision(s).\n' % len(revs)
         if with_warning:
+            self.assertContainsRe(err, self._default_additional_warning)
             self.assertEndsWith(err, bundling_revs)
         else:
             self.assertEquals(bundling_revs, err)
