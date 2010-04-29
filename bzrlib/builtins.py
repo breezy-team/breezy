@@ -2526,7 +2526,7 @@ class cmd_ls(Command):
             'revision',
             Option('recursive', short_name='R',
                    help='Recurse into subdirectories.'),
-            Option('from-root',
+            Option('from-root', short_name='l',
                    help='Print paths relative to the root of the branch.'),
             Option('unknown', short_name='u',
                 help='Print unknown files.'),
