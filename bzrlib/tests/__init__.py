@@ -191,6 +191,8 @@ class ExtendedTestResult(unittest._TextTestResult):
                 '%s is leaking threads among %d leaking tests.\n' % (
                 TestCase._first_thread_leaker_id,
                 TestCase._leaking_threads_tests))
+    # When merging to 2.1 this should conflict - take the 2.1 fix.
+    stopTestRun = done
 
     def _extractBenchmarkTime(self, testCase):
         """Add a benchmark time for the current test case."""
@@ -425,6 +427,8 @@ class TextTestResult(ExtendedTestResult):
         # called when the tests that are going to run have run
         self.pb.clear()
         super(TextTestResult, self).done()
+    # When merging to 2.1 this should conflict - take the 2.1 fix.
+    stopTestRun = done
 
     def finished(self):
         self.pb.finished()
@@ -2812,7 +2816,8 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
     result = runner.run(suite)
     if list_only:
         return True
-    result.done()
+    done = getattr(result, 'done', getattr(result, 'stopTestRun', None))
+    done()
     if strict:
         return result.wasStrictlySuccessful()
     else:
