@@ -65,7 +65,7 @@ cdef extern from "_static_tuple_c.h":
                                                                 Py_ssize_t)
 
 cdef object crc32
-from binascii import crc32
+from zlib import crc32
 
 
 # Set up the StaticTuple C_API functionality
