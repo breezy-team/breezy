@@ -482,6 +482,20 @@ def split_subsegments(url):
     return (join(parent_url, subsegments[0]), subsegments[1:])
 
 
+def split_segment_parameters(url):
+    """Split the segment parameters of the last segment of a URL.
+
+    :param url: A relative or absolute URL
+    :return: (url, segment_parameters)
+    """
+    (base_url, subsegments) = split_subsegments(url)
+    parameters = {}
+    for subsegment in subsegments:
+        (key, value) = subsegment.split("=", 1)
+        parameters[key] = value
+    return (base_url, parameters)
+
+
 def join_subsegments(base, *subsegments):
     """Create a new URL by adding subsegments to an existing one.
 
@@ -493,6 +507,24 @@ def join_subsegments(base, *subsegments):
             raise errors.InvalidURLJoin(", exists in subsegments",
                                         base, subsegments)
     return ",".join((base,) + subsegments)
+
+
+def join_segment_parameters(url, parameters):
+    """Create a new URL by adding segment parameters to an existing one.
+
+    :param url: A URL, as string
+    :param parameters: Dictionary of parameters
+    """
+    (base, existing_parameters) = split_segment_parameters(url)
+    new_parameters = {}
+    new_parameters.update(existing_parameters)
+    for key, value in parameters.iteritems():
+        if "=" in key:
+            raise errors.InvalidURLJoin("= exists in parameter key", url,
+                parameters)
+        new_parameters[key] = value
+    return join_subsegments(base, 
+        *["%s=%s" % item for item in new_parameters.items()])
 
 
 def _win32_strip_local_trailing_slash(url):

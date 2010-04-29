@@ -281,6 +281,21 @@ class TestUrlToPath(TestCase):
         self.assertEquals("/somedir/path,bla,bar",
             join_subsegments("/somedir/path", "bla", "bar"))
 
+    def test_join_segment_parameters(self):
+        join_segment_parameters = urlutils.join_segment_parameters
+        self.assertEquals("/somedir/path", 
+            join_segment_parameters("/somedir/path", {}))
+        self.assertEquals("/somedir/path,branch=brrr", 
+            join_segment_parameters("/somedir/path", {"branch": "brrr"}))
+        self.assertRaises(InvalidURLJoin,
+            join_segment_parameters, "/somedir/path",
+            {"branch": "brr,brr,brr"})
+        self.assertRaises(InvalidURLJoin,
+            join_segment_parameters, "/somedir/path", {"branch=bla": "brr"})
+        self.assertEquals("/somedir/path,bla=bar,branch=bla",
+            join_segment_parameters("/somedir/path", {
+                "branch": "bla", "bla": "bar"}))
+
     def test_function_type(self):
         if sys.platform == 'win32':
             self.assertEqual(urlutils._win32_local_path_to_url, urlutils.local_path_to_url)
@@ -435,6 +450,22 @@ class TestUrlToPath(TestCase):
             split_subsegments("/somedir/path,heads%2Ftip"))
         self.assertEquals(("/somedir/path", ["heads%2Ftip", "bar"]),
             split_subsegments("/somedir/path,heads%2Ftip,bar"))
+
+    def test_split_segment_parameters(self):
+        split_segment_parameters = urlutils.split_segment_parameters
+        self.assertEquals(("/some/path", {}),
+            split_segment_parameters("/some/path"))
+        self.assertEquals(("/some/path", {"branch": "tip"}),
+            split_segment_parameters("/some/path,branch=tip"))
+        self.assertEquals(("/some,dir/path", {"branch": "tip"}),
+            split_segment_parameters("/some,dir/path,branch=tip"))
+        self.assertEquals(("/somedir/path", {"ref": "heads%2Ftip"}),
+            split_segment_parameters("/somedir/path,ref=heads%2Ftip"))
+        self.assertEquals(("/somedir/path",
+            {"ref": "heads%2Ftip", "bla": "bar"}),
+            split_segment_parameters("/somedir/path,ref=heads%2Ftip,bla=bar"))
+        self.assertEquals(("/somedir/path", {"ref": "heads%2F=tip"}),
+            split_segment_parameters("/somedir/path,ref=heads%2F=tip"))
 
     def test_win32_strip_local_trailing_slash(self):
         strip = urlutils._win32_strip_local_trailing_slash
