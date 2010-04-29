@@ -25,9 +25,6 @@ import warnings
 # update this on each release
 _script_version = (2, 2, 0)
 
-if __doc__ is None:
-    print "bzr does not support python -OO."
-    sys.exit(2)
 try:
     version_info = sys.version_info
 except AttributeError:

@@ -47,11 +47,10 @@ class Convert(object):
     def convert(self):
         try:
             branch = self.bzrdir.open_branch()
-            if branch.bzrdir.root_transport.base != \
-                self.bzrdir.root_transport.base:
+            if branch.user_url != self.bzrdir.user_url:
                 ui.ui_factory.note("This is a checkout. The branch (%s) needs to be "
                              "upgraded separately." %
-                             branch.bzrdir.root_transport.base)
+                             branch.user_url)
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
             # might not be a format we can open without upgrading; see e.g.

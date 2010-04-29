@@ -192,8 +192,8 @@ class Check(object):
 
     def _report_repo_results(self, verbose):
         note('checked repository %s format %s',
-             self.repository.bzrdir.root_transport,
-             self.repository._format)
+            self.repository.user_url,
+            self.repository._format)
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d file-ids', len(self.checked_weaves))
         if verbose:
@@ -451,7 +451,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
             if do_repo or do_branch or do_tree:
                 if do_repo:
                     note("Checking repository at '%s'."
-                         % (repo.bzrdir.root_transport.base,))
+                         % (repo.user_url,))
                 result = repo.check(None, callback_refs=needed_refs,
                     check_repo=do_repo)
                 result.report_results(verbose)

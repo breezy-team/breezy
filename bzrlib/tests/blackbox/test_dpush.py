@@ -153,24 +153,6 @@ class TestDpushStrictMixin(object):
         conf.set_user_option('dpush_strict', value)
 
     _default_command = ['dpush', '../to']
-    _default_pushed_revid = False # Doesn't aplly for dpush
-
-    def assertPushSucceeds(self, args, pushed_revid=None, with_warning=False):
-        if with_warning:
-            error_regexes = self._default_errors
-        else:
-            error_regexes = []
-        self.run_bzr(self._default_command + args,
-                     working_dir=self._default_wd, error_regexes=error_regexes)
-        if pushed_revid is None:
-            # dpush change the revids, so we need to get back to it
-            branch_from = branch.Branch.open(self._default_wd)
-            pushed_revid = branch_from.last_revision()
-        branch_to = branch.Branch.open('to')
-        repo_to = branch_to.repository
-        self.assertTrue(repo_to.has_revision(pushed_revid))
-        self.assertEqual(branch_to.last_revision(), pushed_revid)
-
 
 
 class TestDpushStrictWithoutChanges(TestDpushStrictMixin,

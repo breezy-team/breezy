@@ -111,8 +111,10 @@ def send(submit_branch, revision, public_branch, remember, format,
                 base_revision_id = revision[0].as_revision_id(branch)
         if revision_id is None:
             if tree is not None:
-                tree.warn_if_changed_or_out_of_date(
-                    strict, 'send_strict', 'Use --no-strict to force the send.')
+                tree.check_changed_or_out_of_date(
+                    strict, 'send_strict',
+                    more_error='Use --no-strict to force the send.',
+                    more_warning='Uncommitted changes will not be sent.')
             revision_id = branch.last_revision()
         if revision_id == NULL_REVISION:
             raise errors.BzrCommandError('No revisions to submit.')
