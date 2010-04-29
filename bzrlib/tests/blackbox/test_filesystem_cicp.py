@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,8 @@
 
 import os
 
+from bzrlib import (osutils,
+    )
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import CaseInsCasePresFilenameFeature, KnownFailure
 from bzrlib.osutils import canonical_relpath, pathjoin
@@ -89,7 +91,7 @@ class TestAdd(TestCICPBase):
         self.build_tree(['MixedCase'])
         self.check_output('adding MixedCase\n', 'add MixedCase')
         # 'accidently' rename the file on disk
-        os.rename('MixedCase', 'mixedcase')
+        osutils.rename('MixedCase', 'mixedcase')
         self.check_empty_output('add mixedcase')
 
     def test_re_add_dir(self):
@@ -103,7 +105,7 @@ class TestAdd(TestCICPBase):
                           'adding MixedCaseParent/MixedCase\n',
                           'add MixedCaseParent')
         # 'accidently' rename the directory on disk
-        os.rename('MixedCaseParent', 'mixedcaseparent')
+        osutils.rename('MixedCaseParent', 'mixedcaseparent')
         self.check_empty_output('add mixedcaseparent')
 
     def test_add_not_found(self):
@@ -130,7 +132,7 @@ class TestMove(TestCICPBase):
         wt = self._make_mixed_case_tree()
         self.run_bzr('add')
         self.run_bzr('ci -m message')
-        os.rename('CamelCaseParent/CamelCase', 'CamelCaseParent/NewCamelCase')
+        osutils.rename('CamelCaseParent/CamelCase', 'CamelCaseParent/NewCamelCase')
 
         # In this case we can specify the incorrect case for the destination,
         # as we use --after, so the file-system is sniffed.
@@ -157,7 +159,7 @@ class TestMove(TestCICPBase):
         # Remove the source and create a destination file on disk with a different case.
         # bzr should report that the filename is already versioned.
         os.unlink('CamelCaseParent/CamelCase')
-        os.rename('lowercaseparent/lowercase', 'lowercaseparent/LOWERCASE')
+        osutils.rename('lowercaseparent/lowercase', 'lowercaseparent/LOWERCASE')
         ex = 'bzr: ERROR: Could not move CamelCase => lowercase: lowercaseparent/lowercase is already versioned.\n'
         self.check_error_output(3, ex, 'mv --after camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE')
 
@@ -173,7 +175,7 @@ class TestMove(TestCICPBase):
         wt = self._make_mixed_case_tree()
         self.run_bzr('add')
         self.run_bzr('ci -m message')
-        os.rename('CamelCaseParent', 'NewCamelCaseParent')
+        osutils.rename('CamelCaseParent', 'NewCamelCaseParent')
 
         # In this case we can specify the incorrect case for the destination,
         # as we use --after, so the file-system is sniffed.
@@ -199,7 +201,7 @@ class TestMove(TestCICPBase):
 
         # perform a mv to the new case - we must ensure the file-system has the
         # new case first.
-        os.rename('CamelCaseParent/CamelCase', 'CamelCaseParent/camelCase')
+        osutils.rename('CamelCaseParent/CamelCase', 'CamelCaseParent/camelCase')
         self.check_output('CamelCaseParent/CamelCase => CamelCaseParent/camelCase\n',
                           'mv --after camelcaseparent/camelcase camelcaseparent/camelCase')
         # bzr should not have renamed the file to a different case
