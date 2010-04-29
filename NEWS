@@ -73,6 +73,10 @@ Improvements
 Documentation
 *************
 
+* First tests defined for sphinx, including a new bzrlib.tests.features.sphinx
+  to make the tests conditional.
+  (Vincent Ladeuil)
+
 API Changes
 ***********
 

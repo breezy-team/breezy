@@ -25,6 +25,7 @@ apport = tests.ModuleAvailableFeature('apport')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 subunit = tests.ModuleAvailableFeature('subunit')
+sphinx = tests.ModuleAvailableFeature('sphinx')
 
 
 class _PosixPermissionsFeature(tests.Feature):

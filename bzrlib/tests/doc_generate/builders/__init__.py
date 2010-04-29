@@ -17,17 +17,20 @@
 
 """Sphinx builders tests."""
 
+from bzrlib.tests import features
+
 def load_tests(basic_tests, module, loader):
     suite = loader.suiteClass()
     # add the tests for this module
     suite.addTests(basic_tests)
 
-    testmod_names = [
-        'texinfo',
-        ]
-    # add the tests for the sub modules
-    suite.addTests(loader.loadTestsFromModuleNames(
-            ['bzrlib.tests.doc_generate.builders.test_' + name
-             for name in testmod_names]))
+    if features.sphinx.available():
+        testmod_names = [
+            'texinfo',
+            ]
+        # add the tests for the sub modules
+        suite.addTests(loader.loadTestsFromModuleNames(
+                ['bzrlib.tests.doc_generate.builders.test_' + name
+                 for name in testmod_names]))
 
     return suite

@@ -16,17 +16,38 @@
 
 """sphinx texinfo builder tests."""
 
+import os
+from sphinx import application
+
 from bzrlib import tests
 from bzrlib.doc_generate import (
     # FIXME: doc/en/conf.py should be used here, or rather merged into
-    # sphinx_conf and the later be renamed conf -- vila 20100429
-    sphinx_conf,
+    # bzrlib/doc_generate/conf.py -- vila 20100429
+    conf,
     )
+from bzrlib.tests import features
 
 
 class TestBuilderDefined(tests.TestCase):
 
     def test_builder_defined(self):
         self.assertTrue('bzrlib.doc_generate.builders.texinfo'
-                        in sphinx_conf.extensions)
+                        in conf.extensions)
 
+
+class TestBuilderLoaded(tests.TestCaseInTempDir):
+
+    _test_needs_features = [features.sphinx]
+
+    def test_builder_loaded(self):
+        out = tests.StringIOWrapper()
+        err = tests.StringIOWrapper()
+        app = application.Sphinx(
+            '.', confdir=os.path.dirname(conf.__file__), outdir='.',
+            doctreedir='.',
+            buildername='texinfo',
+            confoverrides={},
+            status=out, warning=err,
+            freshenv=False, warningiserror=False,
+            tags=[])
+        self.assertTrue('texinfo' in app.builderclasses)
