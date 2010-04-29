@@ -93,7 +93,60 @@ class AbstractPerFileMerger(object):
         return ('not applicable', None)
 
 
-class ConfigurableFileMerger(AbstractPerFileMerger):
+class PerFileMerger(AbstractPerFileMerger):
+    """Merge individual files when self.file_matches returns True.
+
+    This class is intended to be subclassed.  The file_matches and
+    merge_matching methods should be overridden with concrete implementations.
+    """
+
+    def file_matches(self, params):
+        """Return True if merge_matching should be called on this file.
+
+        Only called with merges of plain files with no clear winner.
+
+        Subclasses must override this.
+        """
+        raise NotImplementedError(self.file_matches)
+
+    def get_filename(self, params, tree):
+        """Lookup the filename (i.e. basename, not path), given a Tree (e.g.
+        self.merger.this_tree) and a MergeHookParams.
+        """
+        return osutils.basename(tree.id2path(params.file_id))
+
+    def get_filepath(self, params, tree):
+        """Calculate the path to the file in a tree.
+
+        :param params: A MergeHookParams describing the file to merge
+        :param tree: a Tree, e.g. self.merger.this_tree.
+        """
+        return tree.id2path(params.file_id)
+
+    def merge_contents(self, params):
+        """Merge the contents of a single file."""
+        # Check whether this custom merge logic should be used.
+        if (
+            # OTHER is a straight winner, rely on default merge.
+            params.winner == 'other' or
+            # THIS and OTHER aren't both files.
+            not params.is_file_merge() or
+            # The filename doesn't match *.xml
+            not self.file_matches(params)):
+            return 'not_applicable', None
+        return self.merge_matching(params)
+
+    def merge_matching(self, params):
+        """Merge the contents of a single file that has matched the criteria
+        in PerFileMerger.merge_contents (is a conflict, is a file,
+        self.file_matches is True).
+
+        Subclasses must override this.
+        """
+        raise NotImplementedError(self.merge_matching)
+
+
+class ConfigurableFileMerger(PerFileMerger):
     """Merge individual files when configured via a .conf file.
 
     This is a base class for concrete custom file merging logic. Concrete
@@ -122,7 +175,7 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
         if self.name_prefix is None:
             raise ValueError("name_prefix must be set.")
 
-    def filename_matches_config(self, params):
+    def file_matches(self, params):
         """Check whether the file should call the merge hook.
 
         <name_prefix>_merge_files configuration variable is a list of files
@@ -142,24 +195,12 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
                 affected_files = self.default_files
             self.affected_files = affected_files
         if affected_files:
-            filename = self.merger.this_tree.id2path(params.file_id)
-            if filename in affected_files:
+            filepath = self.get_filepath(params, self.merger.this_tree)
+            if filepath in affected_files:
                 return True
         return False
 
-    def merge_contents(self, params):
-        """Merge the contents of a single file."""
-        # First, check whether this custom merge logic should be used.  We
-        # expect most files should not be merged by this handler.
-        if (
-            # OTHER is a straight winner, rely on default merge.
-            params.winner == 'other' or
-            # THIS and OTHER aren't both files.
-            not params.is_file_merge() or
-            # The filename isn't listed in the 'NAME_merge_files' config
-            # option.
-            not self.filename_matches_config(params)):
-            return 'not_applicable', None
+    def merge_matching(self, params):
         return self.merge_text(params)
 
     def merge_text(self, params):

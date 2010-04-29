@@ -76,6 +76,10 @@ Documentation
 API Changes
 ***********
 
+* Added ``bzrlib.merge.PerFileMerger``, a more convenient way to write
+  some kinds of ``merge_file_content`` hook functions.
+  (Andrew Bennetts)
+  
 * `BzrDir`, `Branch`, `Repository` and `WorkingTree` now all support `user_url`,
   `user_transport`, `control_url` and `control_transport` members pointing
   respectively to the directory containing the ``.bzr`` control directory, 
