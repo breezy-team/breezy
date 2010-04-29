@@ -5,6 +5,18 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.1.2
+#########
+
+:2.1.2: NOT RELEASED YET
+
+Bug Fixes
+*********
+
+* ``bzr switch`` does not die if a ConfigurableFileMerger is used.
+  (Aaron Bentley, #559436)
+
+
 bzr 2.1.1
 #########
 
