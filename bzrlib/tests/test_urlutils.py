@@ -295,6 +295,12 @@ class TestUrlToPath(TestCase):
         self.assertEquals("/somedir/path,bla=bar,branch=bla",
             join_segment_parameters("/somedir/path", {
                 "branch": "bla", "bla": "bar"}))
+        self.assertEquals("/somedir/path,bla=bar,branch=bla",
+            join_segment_parameters("/somedir/path,bla=bar", {
+                "branch": "bla"}))
+        self.assertEquals("/somedir/path,bla=bloe",
+            join_segment_parameters("/somedir/path,bla=bar", {
+                "bla": "bloe"}))
 
     def test_function_type(self):
         if sys.platform == 'win32':
