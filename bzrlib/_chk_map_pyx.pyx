@@ -36,7 +36,7 @@ cdef extern from "Python.h":
     int PyString_CheckExact(object)
     char *PyString_AS_STRING(object s)
     Py_ssize_t PyString_GET_SIZE(object)
-    unsigned long PyInt_AsUnsignedLongMask(object)
+    unsigned long PyInt_AsUnsignedLongMask(object) except? -1
 
     int PyDict_SetItem(object d, object k, object v) except -1
 
@@ -101,7 +101,6 @@ def _search_key_16(key):
     cdef unsigned long crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
-    cdef PyObject *bit
 
     if not StaticTuple_CheckExact(key):
         raise TypeError('key %r is not a StaticTuple' % (key,))
@@ -117,10 +116,7 @@ def _search_key_16(key):
         # We use the _ptr variant, because GET_ITEM returns a borrowed
         # reference, and Pyrex assumes that returned 'object' are a new
         # reference
-        bit = StaticTuple_GET_ITEM_ptr(key, i)
-        if not PyString_CheckExact_ptr(bit):
-            raise TypeError('Bit %d of %r is not a string' % (i, key))
-        crc_val = PyInt_AsUnsignedLongMask(crc32(<object>bit))
+        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
         # Hex(val) order
         sprintf(c_out, '%08X', crc_val)
         c_out = c_out + 8
@@ -135,7 +131,6 @@ def _search_key_255(key):
     cdef unsigned long crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
-    cdef PyObject *bit
 
     if not StaticTuple_CheckExact(key):
         raise TypeError('key %r is not a StaticTuple' % (key,))
@@ -148,11 +143,7 @@ def _search_key_255(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        bit = StaticTuple_GET_ITEM_ptr(key, i)
-        if not PyString_CheckExact_ptr(bit):
-            raise TypeError('Bit %d of %r is not a string: %r'
-                            % (i, key, <object>bit))
-        crc_val = PyInt_AsUnsignedLongMask(crc32(<object>bit))
+        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
         # MSB order
         c_out[0] = (crc_val >> 24) & 0xFF
         c_out[1] = (crc_val >> 16) & 0xFF
