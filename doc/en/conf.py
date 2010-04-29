@@ -13,13 +13,7 @@ import sys, os
 sys.path = [os.path.abspath('../..')] + sys.path
 
 # Most of the configuration for Bazaar docs is defined here ...
-
-# FIXME: better move the content of sphinx_conf here and cleanup the result
-# -- vila 20100428
 from bzrlib.doc_generate.sphinx_conf import *
-
-# Add the texinfo builder extension
-extensions.append('bzrlib.doc_generate.builders.texinfo')
 
 ## Configuration specific to this site ##
 
