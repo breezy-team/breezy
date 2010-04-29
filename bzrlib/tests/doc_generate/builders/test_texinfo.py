@@ -24,8 +24,9 @@ from bzrlib.doc_generate import (
     )
 
 
-class TestBuilderLoaded(tests.TestCase):
+class TestBuilderDefined(tests.TestCase):
 
-    def test_builder_loaded(self):
+    def test_builder_defined(self):
         self.assertTrue('bzrlib.doc_generate.builders.texinfo'
                         in sphinx_conf.extensions)
+
