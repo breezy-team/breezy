@@ -113,6 +113,10 @@ Documentation
 API Changes
 ***********
 
+* Added ``bzrlib.merge.PerFileMerger``, a more convenient way to write
+  some kinds of ``merge_file_content`` hook functions.
+  (Andrew Bennetts)
+  
 * ``bzrlib.diff.get_trees_and_branches_to_diff`` is deprecated.  Use
   ``get_trees_and_branches_to_diff_locked`` instead.
   (Andrew Bennetts)
