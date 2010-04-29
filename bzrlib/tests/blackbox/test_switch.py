@@ -20,6 +20,7 @@
 
 import os
 
+from bzrlib import osutils
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.directory_service import directories
@@ -167,7 +168,7 @@ class TestSwitch(ExternalBase):
     def prepare_lightweight_switch(self):
         branch = self.make_branch('branch')
         branch.create_checkout('tree', lightweight=True)
-        os.rename('branch', 'branch1')
+        osutils.rename('branch', 'branch1')
 
     def test_switch_lightweight_after_branch_moved(self):
         self.prepare_lightweight_switch()
@@ -225,3 +226,29 @@ class TestSwitch(ExternalBase):
         self.run_bzr('switch -b foo:branch2', working_dir='tree')
         tree = WorkingTree.open('tree')
         self.assertEndsWith(tree.branch.base, 'foo-branch2/')
+
+    def test_switch_with_post_switch_hook(self):
+        from bzrlib import branch as _mod_branch
+        calls = []
+        _mod_branch.Branch.hooks.install_named_hook('post_switch',
+            calls.append, None)
+        self.make_branch_and_tree('branch')
+        self.run_bzr('branch branch branch2')
+        self.run_bzr('checkout branch checkout')
+        os.chdir('checkout')
+        self.assertLength(0, calls)
+        out, err = self.run_bzr('switch ../branch2')
+        self.assertLength(1, calls)
+
+    def test_switch_lightweight_co_with_post_switch_hook(self):
+        from bzrlib import branch as _mod_branch
+        calls = []
+        _mod_branch.Branch.hooks.install_named_hook('post_switch',
+            calls.append, None)
+        self.make_branch_and_tree('branch')
+        self.run_bzr('branch branch branch2')
+        self.run_bzr('checkout --lightweight branch checkout')
+        os.chdir('checkout')
+        self.assertLength(0, calls)
+        out, err = self.run_bzr('switch ../branch2')
+        self.assertLength(1, calls)

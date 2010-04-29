@@ -63,29 +63,26 @@ BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 BZR_BRANCH_FORMAT_6 = "Bazaar Branch Format 6 (bzr 0.15)\n"
 
 
-# TODO: Maybe include checks for common corruption of newlines, etc?
-
-# TODO: Some operations like log might retrieve the same revisions
-# repeatedly to calculate deltas.  We could perhaps have a weakref
-# cache in memory to make this faster.  In general anything can be
-# cached in memory between lock and unlock operations. .. nb thats
-# what the transaction identity map provides
-
-
-######################################################################
-# branch objects
-
-class Branch(object):
+class Branch(bzrdir.ControlComponent):
     """Branch holding a history of revisions.
 
-    base
-        Base directory/url of the branch.
+    :ivar base:
+        Base directory/url of the branch; using control_url and
+        control_transport is more standardized.
 
     hooks: An instance of BranchHooks.
     """
     # this is really an instance variable - FIXME move it there
     # - RBC 20060112
     base = None
+
+    @property
+    def control_transport(self):
+        return self._transport
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
 
     def __init__(self, *ignored, **ignored_too):
         self.tags = self._format.make_tags(self)
@@ -107,7 +104,7 @@ class Branch(object):
         """Activate the branch/repository from url as a fallback repository."""
         repo = self._get_fallback_repository(url)
         if repo.has_same_location(self.repository):
-            raise errors.UnstackableLocationError(self.base, url)
+            raise errors.UnstackableLocationError(self.user_url, url)
         self.repository.add_fallback_repository(repo)
 
     def break_lock(self):
@@ -420,6 +417,8 @@ class Branch(object):
             * 'include' - the stop revision is the last item in the result
             * 'with-merges' - include the stop revision and all of its
               merged revisions in the result
+            * 'with-merges-without-common-ancestry' - filter out revisions 
+              that are in both ancestries
         :param direction: either 'reverse' or 'forward':
             * reverse means return the start_revision_id first, i.e.
               start at the most recent revision and go backwards in history
@@ -456,7 +455,7 @@ class Branch(object):
             stop_revision_id, stop_rule)
         # Make sure we don't return revisions that are not part of the
         # start_revision_id ancestry.
-        filtered = self._filter_non_ancestors(filtered)
+        filtered = self._filter_start_non_ancestors(filtered)
         if direction == 'reverse':
             return filtered
         if direction == 'forward':
@@ -499,6 +498,18 @@ class Branch(object):
                        node.end_of_merge)
                 if rev_id == stop_revision_id:
                     return
+        elif stop_rule == 'with-merges-without-common-ancestry':
+            # We want to exclude all revisions that are already part of the
+            # stop_revision_id ancestry.
+            graph = self.repository.get_graph()
+            ancestors = graph.find_unique_ancestors(start_revision_id,
+                                                    [stop_revision_id])
+            for node in rev_iter:
+                rev_id = node.key[-1]
+                if rev_id not in ancestors:
+                    continue
+                yield (rev_id, node.merge_depth, node.revno,
+                       node.end_of_merge)
         elif stop_rule == 'with-merges':
             stop_rev = self.repository.get_revision(stop_revision_id)
             if stop_rev.parent_ids:
@@ -527,7 +538,7 @@ class Branch(object):
         else:
             raise ValueError('invalid stop_rule %r' % stop_rule)
 
-    def _filter_non_ancestors(self, rev_iter):
+    def _filter_start_non_ancestors(self, rev_iter):
         # If we started from a dotted revno, we want to consider it as a tip
         # and don't want to yield revisions that are not part of its
         # ancestry. Given the order guaranteed by the merge sort, we will see
@@ -594,11 +605,11 @@ class Branch(object):
         :param other: The branch to bind to
         :type other: Branch
         """
-        raise errors.UpgradeRequired(self.base)
+        raise errors.UpgradeRequired(self.user_url)
 
     def set_append_revisions_only(self, enabled):
         if not self._format.supports_set_append_revisions_only():
-            raise errors.UpgradeRequired(self.base)
+            raise errors.UpgradeRequired(self.user_url)
         if enabled:
             value = 'True'
         else:
@@ -652,7 +663,7 @@ class Branch(object):
     def get_old_bound_location(self):
         """Return the URL of the branch we used to be bound to
         """
-        raise errors.UpgradeRequired(self.base)
+        raise errors.UpgradeRequired(self.user_url)
 
     def get_commit_builder(self, parents, config=None, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -736,7 +747,7 @@ class Branch(object):
             stacking.
         """
         if not self._format.supports_stacking():
-            raise errors.UnstackableBranchFormat(self._format, self.base)
+            raise errors.UnstackableBranchFormat(self._format, self.user_url)
         # XXX: Changing from one fallback repository to another does not check
         # that all the data you need is present in the new fallback.
         # Possibly it should.
@@ -893,7 +904,7 @@ class Branch(object):
 
     def unbind(self):
         """Older format branches cannot bind or unbind."""
-        raise errors.UpgradeRequired(self.base)
+        raise errors.UpgradeRequired(self.user_url)
 
     def last_revision(self):
         """Return last revision id, or NULL_REVISION."""
@@ -1059,7 +1070,7 @@ class Branch(object):
         try:
             return urlutils.join(self.base[:-1], parent)
         except errors.InvalidURLJoin, e:
-            raise errors.InaccessibleParent(parent, self.base)
+            raise errors.InaccessibleParent(parent, self.user_url)
 
     def _get_parent_location(self):
         raise NotImplementedError(self._get_parent_location)
@@ -1547,6 +1558,14 @@ class BranchFormat(object):
         """Return the short format description for this format."""
         raise NotImplementedError(self.get_format_description)
 
+    def _run_post_branch_init_hooks(self, a_bzrdir, name, branch):
+        hooks = Branch.hooks['post_branch_init']
+        if not hooks:
+            return
+        params = BranchInitHookParams(self, a_bzrdir, name, branch)
+        for hook in hooks:
+            hook(params)
+
     def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
                            lock_type='metadir', set_format=True):
         """Initialize a branch in a bzrdir, with specified files
@@ -1560,7 +1579,7 @@ class BranchFormat(object):
             elsewhere)
         :return: a branch in this format
         """
-        mutter('creating branch %r in %s', self, a_bzrdir.transport.base)
+        mutter('creating branch %r in %s', self, a_bzrdir.user_url)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         lock_map = {
             'metadir': ('lock', lockdir.LockDir),
@@ -1588,7 +1607,9 @@ class BranchFormat(object):
         finally:
             if lock_taken:
                 control_files.unlock()
-        return self.open(a_bzrdir, name, _found=True)
+        branch = self.open(a_bzrdir, name, _found=True)
+        self._run_post_branch_init_hooks(a_bzrdir, name, branch)
+        return branch
 
     def initialize(self, a_bzrdir, name=None):
         """Create a branch of this format in a_bzrdir.
@@ -1754,6 +1775,16 @@ class BranchHooks(Hooks):
             "should return a tag name or None if no tag name could be "
             "determined. The first non-None tag name returned will be used.",
             (2, 2), None))
+        self.create_hook(HookPoint('post_branch_init',
+            "Called after new branch initialization completes. "
+            "post_branch_init is called with a "
+            "bzrlib.branch.BranchInitHookParams. "
+            "Note that init, branch and checkout (both heavyweight and "
+            "lightweight) will all trigger this hook.", (2, 2), None))
+        self.create_hook(HookPoint('post_switch',
+            "Called after a checkout switches branch. "
+            "post_switch is called with a "
+            "bzrlib.branch.SwitchHookParams.", (2, 2), None))
 
 
 
@@ -1797,6 +1828,84 @@ class ChangeBranchTipParams(object):
         return "<%s of %s from (%s, %s) to (%s, %s)>" % (
             self.__class__.__name__, self.branch,
             self.old_revno, self.old_revid, self.new_revno, self.new_revid)
+
+
+class BranchInitHookParams(object):
+    """Object holding parameters passed to *_branch_init hooks.
+
+    There are 4 fields that hooks may wish to access:
+
+    :ivar format: the branch format
+    :ivar bzrdir: the BzrDir where the branch will be/has been initialized
+    :ivar name: name of colocated branch, if any (or None)
+    :ivar branch: the branch created
+
+    Note that for lightweight checkouts, the bzrdir and format fields refer to
+    the checkout, hence they are different from the corresponding fields in
+    branch, which refer to the original branch.
+    """
+
+    def __init__(self, format, a_bzrdir, name, branch):
+        """Create a group of BranchInitHook parameters.
+
+        :param format: the branch format
+        :param a_bzrdir: the BzrDir where the branch will be/has been
+            initialized
+        :param name: name of colocated branch, if any (or None)
+        :param branch: the branch created
+
+        Note that for lightweight checkouts, the bzrdir and format fields refer
+        to the checkout, hence they are different from the corresponding fields
+        in branch, which refer to the original branch.
+        """
+        self.format = format
+        self.bzrdir = a_bzrdir
+        self.name = name
+        self.branch = branch
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        if self.branch:
+            return "<%s of %s>" % (self.__class__.__name__, self.branch)
+        else:
+            return "<%s of format:%s bzrdir:%s>" % (
+                self.__class__.__name__, self.branch,
+                self.format, self.bzrdir)
+
+
+class SwitchHookParams(object):
+    """Object holding parameters passed to *_switch hooks.
+
+    There are 4 fields that hooks may wish to access:
+
+    :ivar control_dir: BzrDir of the checkout to change
+    :ivar to_branch: branch that the checkout is to reference
+    :ivar force: skip the check for local commits in a heavy checkout
+    :ivar revision_id: revision ID to switch to (or None)
+    """
+
+    def __init__(self, control_dir, to_branch, force, revision_id):
+        """Create a group of SwitchHook parameters.
+
+        :param control_dir: BzrDir of the checkout to change
+        :param to_branch: branch that the checkout is to reference
+        :param force: skip the check for local commits in a heavy checkout
+        :param revision_id: revision ID to switch to (or None)
+        """
+        self.control_dir = control_dir
+        self.to_branch = to_branch
+        self.force = force
+        self.revision_id = revision_id
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        return "<%s for %s to (%s, %s)>" % (self.__class__.__name__,
+            self.control_dir, self.to_branch,
+            self.revision_id)
 
 
 class BzrBranchFormat4(BranchFormat):
@@ -1863,8 +1972,8 @@ class BranchFormatMetadir(BranchFormat):
             if format.__class__ != self.__class__:
                 raise AssertionError("wrong format %r found for %r" %
                     (format, self))
+        transport = a_bzrdir.get_branch_transport(None, name=name)
         try:
-            transport = a_bzrdir.get_branch_transport(None, name=name)
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
             return self._branch_class()(_format=self,
@@ -2068,14 +2177,16 @@ class BranchReferenceFormat(BranchFormat):
             # this format does not implement branch itself, thus the implicit
             # creation contract must see it as uninitializable
             raise errors.UninitializableFormat(self)
-        mutter('creating branch reference in %s', a_bzrdir.transport.base)
+        mutter('creating branch reference in %s', a_bzrdir.user_url)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         branch_transport.put_bytes('location',
-            target_branch.bzrdir.root_transport.base)
+            target_branch.bzrdir.user_url)
         branch_transport.put_bytes('format', self.get_format_string())
-        return self.open(
+        branch = self.open(
             a_bzrdir, name, _found=True,
             possible_transports=[target_branch.bzrdir.root_transport])
+        self._run_post_branch_init_hooks(a_bzrdir, name, branch)
+        return branch
 
     def __init__(self):
         super(BranchReferenceFormat, self).__init__()
@@ -2197,9 +2308,10 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     def __str__(self):
         if self.name is None:
-            return '%s(%r)' % (self.__class__.__name__, self.base)
+            return '%s(%s)' % (self.__class__.__name__, self.user_url)
         else:
-            return '%s(%r,%r)' % (self.__class__.__name__, self.base, self.name)
+            return '%s(%s,%s)' % (self.__class__.__name__, self.user_url,
+                self.name)
 
     __repr__ = __str__
 
@@ -2420,7 +2532,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         return result
 
     def get_stacked_on_url(self):
-        raise errors.UnstackableBranchFormat(self._format, self.base)
+        raise errors.UnstackableBranchFormat(self._format, self.user_url)
 
     def set_push_location(self, location):
         """See Branch.set_push_location."""
@@ -2616,7 +2728,7 @@ class BzrBranch8(BzrBranch5):
         if _mod_revision.is_null(last_revision):
             return
         if last_revision not in self._lefthand_history(revision_id):
-            raise errors.AppendRevisionsOnlyViolation(self.base)
+            raise errors.AppendRevisionsOnlyViolation(self.user_url)
 
     def _gen_revision_history(self):
         """Generate the revision history from last revision
@@ -2722,7 +2834,7 @@ class BzrBranch8(BzrBranch5):
         if branch_location is None:
             return Branch.reference_parent(self, file_id, path,
                                            possible_transports)
-        branch_location = urlutils.join(self.base, branch_location)
+        branch_location = urlutils.join(self.user_url, branch_location)
         return Branch.open(branch_location,
                            possible_transports=possible_transports)
 
@@ -2774,8 +2886,8 @@ class BzrBranch8(BzrBranch5):
         return stacked_url
 
     def _get_append_revisions_only(self):
-        value = self.get_config().get_user_option('append_revisions_only')
-        return value == 'True'
+        return self.get_config(
+            ).get_user_option_as_bool('append_revisions_only')
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
@@ -2843,7 +2955,7 @@ class BzrBranch6(BzrBranch7):
     """
 
     def get_stacked_on_url(self):
-        raise errors.UnstackableBranchFormat(self._format, self.base)
+        raise errors.UnstackableBranchFormat(self._format, self.user_url)
 
 
 ######################################################################
@@ -2936,7 +3048,7 @@ class BranchCheckResult(object):
         :param verbose: Requests more detailed display of what was checked,
             if any.
         """
-        note('checked branch %s format %s', self.branch.base,
+        note('checked branch %s format %s', self.branch.user_url,
             self.branch._format)
         for error in self.errors:
             note('found error:%s', error)
@@ -3271,7 +3383,7 @@ class InterToBranch5(GenericInterBranch):
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
         master_branch = None
-        if not local and bound_location and self.source.base != bound_location:
+        if not local and bound_location and self.source.user_url != bound_location:
             # not pulling from master, so we need to update master.
             master_branch = self.target.get_master_branch(possible_transports)
             master_branch.lock_write()

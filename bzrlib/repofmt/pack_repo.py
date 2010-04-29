@@ -1560,7 +1560,7 @@ class RepositoryPackCollection(object):
         """Is the collection already packed?"""
         return not (self.repo._format.pack_compresses or (len(self._names) > 1))
 
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Pack the pack collection totally."""
         self.ensure_loaded()
         total_packs = len(self._names)
@@ -1581,6 +1581,9 @@ class RepositoryPackCollection(object):
                 pack_operations[-1][0] += pack.get_revision_count()
                 pack_operations[-1][1].append(pack)
         self._execute_pack_operations(pack_operations, OptimisingPacker)
+
+        if clean_obsolete_packs:
+            self._clear_obsolete_packs()
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         """Plan a pack operation.
@@ -2375,13 +2378,13 @@ class KnitPackRepository(KnitRepository):
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
     @needs_write_lock
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This will pack all the data to a single pack. In future it may
         recompress deltas or do other such expensive operations.
         """
-        self._pack_collection.pack(hint=hint)
+        self._pack_collection.pack(hint=hint, clean_obsolete_packs=clean_obsolete_packs)
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
@@ -2543,7 +2546,9 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         utf8_files = [('format', self.get_format_string())]
 
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
-        return self.open(a_bzrdir=a_bzrdir, _found=True)
+        repository = self.open(a_bzrdir=a_bzrdir, _found=True)
+        self._run_post_repo_init_hooks(repository, a_bzrdir, shared)
+        return repository
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().

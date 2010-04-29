@@ -864,7 +864,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class Repository(_RelockDebugMixin):
+class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1291,11 +1291,10 @@ class Repository(_RelockDebugMixin):
 
         :param _format: The format of the repository on disk.
         :param a_bzrdir: The BzrDir of the repository.
-
-        In the future we will have a single api for all stores for
-        getting file texts, inventories and revisions, then
-        this construct will accept instances of those things.
         """
+        # In the future we will have a single api for all stores for
+        # getting file texts, inventories and revisions, then
+        # this construct will accept instances of those things.
         super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
@@ -1315,6 +1314,14 @@ class Repository(_RelockDebugMixin):
         # Is it safe to return inventory entries directly from the entry cache,
         # rather copying them?
         self._safe_to_return_from_cache = False
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def __repr__(self):
         if self._fallback_repositories:
@@ -1469,7 +1476,7 @@ class Repository(_RelockDebugMixin):
 
         # now gather global repository information
         # XXX: This is available for many repos regardless of listability.
-        if self.bzrdir.root_transport.listable():
+        if self.user_transport.listable():
             # XXX: do we want to __define len__() ?
             # Maybe the versionedfiles object should provide a different
             # method to get the number of keys.
@@ -1507,7 +1514,7 @@ class Repository(_RelockDebugMixin):
 
         ret = []
         for branches, repository in bzrdir.BzrDir.find_bzrdirs(
-                self.bzrdir.root_transport, evaluate=Evaluator()):
+                self.user_transport, evaluate=Evaluator()):
             if branches is not None:
                 ret.extend(branches)
             if not using and repository is not None:
@@ -2581,7 +2588,7 @@ class Repository(_RelockDebugMixin):
             keys = tsort.topo_sort(parent_map)
         return [None] + list(keys)
 
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This operation only makes sense for some repository types. For other
@@ -2597,6 +2604,9 @@ class Repository(_RelockDebugMixin):
             obtained from the result of commit_write_group(). Out of
             date hints are simply ignored, because concurrent operations
             can obsolete them rapidly.
+
+        :param clean_obsolete_packs: Clean obsolete packs immediately after
+            the pack operation.
         """
 
     def get_transaction(self):
@@ -3167,6 +3177,15 @@ class RepositoryFormat(object):
         _found is a private parameter, do not use it.
         """
         raise NotImplementedError(self.open)
+
+    def _run_post_repo_init_hooks(self, repository, a_bzrdir, shared):
+        from bzrlib.bzrdir import BzrDir, RepoInitHookParams
+        hooks = BzrDir.hooks['post_repo_init']
+        if not hooks:
+            return
+        params = RepoInitHookParams(repository, self, a_bzrdir, shared)
+        for hook in hooks:
+            hook(params)
 
 
 class MetaDirRepositoryFormat(RepositoryFormat):

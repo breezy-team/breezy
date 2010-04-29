@@ -989,3 +989,16 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         merger.do_merge()
         self.assertEqual('../branch/reference',
                          tree.branch.get_reference_info('file-id')[1])
+
+
+class TestBranchControlComponent(per_branch.TestCaseWithBranch):
+    """Branch implementations adequately implement ControlComponent."""
+    
+    def test_urls(self):
+        br = self.make_branch('branch')
+        self.assertIsInstance(br.user_url, str)
+        self.assertEqual(br.user_url, br.user_transport.base)
+        # for all current bzrdir implementations the user dir must be 
+        # above the control dir but we might need to relax that?
+        self.assertEqual(br.control_url.find(br.user_url), 0)
+        self.assertEqual(br.control_url, br.control_transport.base)
