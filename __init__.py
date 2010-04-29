@@ -61,3 +61,11 @@ class cmd_bash_completion(Command):
         bash_completion_function(sys.stdout, **kwargs)
 
 register_command(cmd_bash_completion)
+
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'tests',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
