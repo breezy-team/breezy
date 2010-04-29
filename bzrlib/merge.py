@@ -113,7 +113,7 @@ class PerFileMerger(AbstractPerFileMerger):
         """Lookup the filename (i.e. basename, not path), given a Tree (e.g.
         self.merger.this_tree) and a MergeHookParams.
         """
-        return tree.inventory[params.file_id].name
+        return osutils.basename(tree.id2path(params.file_id))
 
     def get_filepath(self, params, tree):
         """Calculate the path to the file in a tree.
@@ -134,7 +134,7 @@ class PerFileMerger(AbstractPerFileMerger):
             # The filename doesn't match *.xml
             not self.file_matches(params)):
             return 'not_applicable', None
-        return self.merge_matching(self, params)
+        return self.merge_matching(params)
 
     def merge_matching(self, params):
         """Merge the contents of a single file that has matched the criteria
