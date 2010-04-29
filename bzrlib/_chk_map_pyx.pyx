@@ -102,8 +102,6 @@ def _search_key_16(key):
     cdef Py_ssize_t out_off
     cdef char *c_out
 
-    if not StaticTuple_CheckExact(key):
-        raise TypeError('key %r is not a StaticTuple' % (key,))
     num_bits = len(key)
     # 4 bytes per crc32, and another 1 byte between bits
     num_out_bytes = (9 * num_bits) - 1
@@ -113,9 +111,6 @@ def _search_key_16(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        # We use the _ptr variant, because GET_ITEM returns a borrowed
-        # reference, and Pyrex assumes that returned 'object' are a new
-        # reference
         crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
         # Hex(val) order
         sprintf(c_out, '%08X', crc_val)
@@ -132,8 +127,6 @@ def _search_key_255(key):
     cdef Py_ssize_t out_off
     cdef char *c_out
 
-    if not StaticTuple_CheckExact(key):
-        raise TypeError('key %r is not a StaticTuple' % (key,))
     num_bits = len(key)
     # 4 bytes per crc32, and another 1 byte between bits
     num_out_bytes = (5 * num_bits) - 1
