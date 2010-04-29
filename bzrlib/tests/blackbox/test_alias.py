@@ -19,7 +19,6 @@
 import os
 import codecs
 
-from bzrlib import osutils
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
@@ -48,13 +47,12 @@ class TestAlias(ExternalBase):
     def test_unicode_alias(self):
         """Unicode aliases should work (Bug #529930)"""
         config_enc = 'utf-8'
-        te = osutils.get_terminal_encoding()
         file_name = u'foo\xb6'
 
-        self.run_bzr(['init'])
-        open(file_name,'w').write('hello world!\n')
-        self.run_bzr(['add'])
-        self.run_bzr(['ci', '-m', 'added'])
+        tree = self.make_branch_and_tree('.')
+        self.build_tree([file_name])
+        tree.add(file_name)
+        tree.commit('added')
 
         ensure_config_dir_exists()
         CONFIG=(u'[ALIASES]\n'
