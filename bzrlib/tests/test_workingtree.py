@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -303,9 +303,9 @@ class TestInstrumentedTree(TestCase):
         self.assertEqual(
             'method_with_tree_write_lock',
             tree.method_with_tree_write_lock.__name__)
-        self.assertEqual(
+        self.assertDocstring(
             "A lock_tree_write decorated method that returns its arguments.",
-            tree.method_with_tree_write_lock.__doc__)
+            tree.method_with_tree_write_lock)
         args = (1, 2, 3)
         kwargs = {'a':'b'}
         result = tree.method_with_tree_write_lock(1,2,3, a='b')

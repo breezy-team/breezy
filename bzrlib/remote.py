@@ -643,7 +643,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._custom_format._serializer
 
 
-class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
+class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
+    bzrdir.ControlComponent):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
@@ -692,6 +693,17 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         # Additional places to query for data.
         self._fallback_repositories = []
 
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        # XXX: Normally you shouldn't directly get at the remote repository
+        # transport, but I'm not sure it's worth making this method
+        # optional -- mbp 2010-04-21
+        return self.bzrdir.get_repository_transport(None)
+        
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
 
@@ -1234,9 +1246,9 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         # _real_branch had its get_stacked_on_url method called), then the
         # repository to be added may already be in the _real_repositories list.
         if self._real_repository is not None:
-            fallback_locations = [repo.bzrdir.root_transport.base for repo in
+            fallback_locations = [repo.user_url for repo in
                 self._real_repository._fallback_repositories]
-            if repository.bzrdir.root_transport.base not in fallback_locations:
+            if repository.user_url not in fallback_locations:
                 self._real_repository.add_fallback_repository(repository)
 
     def _check_fallback_repository(self, repository):
@@ -2181,7 +2193,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._real_branch = None
         # Fill out expected attributes of branch for bzrlib API users.
         self._clear_cached_state()
-        self.base = self.bzrdir.root_transport.base
+        # TODO: deprecate self.base in favor of user_url
+        self.base = self.bzrdir.user_url
         self._name = name
         self._control_files = None
         self._lock_mode = None
