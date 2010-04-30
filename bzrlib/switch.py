@@ -17,8 +17,6 @@
 # Original author: David Allouche
 
 from bzrlib import errors, merge, revision
-from bzrlib.branch import Branch, BranchFormat, BranchReferenceFormat
-from bzrlib.bzrdir import BzrDir
 from bzrlib.trace import note
 
 

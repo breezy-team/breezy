@@ -37,7 +37,6 @@ from bzrlib import (
 import bzrlib
 from bzrlib import (
     errors,
-    symbol_versioning,
     ui,
     )
 from bzrlib.revision import NULL_REVISION

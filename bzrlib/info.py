@@ -17,13 +17,11 @@
 __all__ = ['show_bzrdir_info']
 
 from cStringIO import StringIO
-import os
 import time
 import sys
 
 from bzrlib import (
     bzrdir,
-    diff,
     errors,
     hooks as _mod_hooks,
     osutils,

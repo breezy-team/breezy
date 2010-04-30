@@ -17,7 +17,6 @@
 import difflib
 import os
 import re
-import shutil
 import string
 import sys
 
@@ -43,9 +42,6 @@ from bzrlib import (
 from bzrlib.workingtree import WorkingTree
 """)
 
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    )
 from bzrlib.trace import mutter, note, warning
 
 

@@ -18,7 +18,6 @@
 # point down
 
 import os
-import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """

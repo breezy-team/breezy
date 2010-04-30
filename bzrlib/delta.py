@@ -15,12 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
-    errors,
     osutils,
     )
-from bzrlib.inventory import InventoryEntry
-from bzrlib.trace import mutter, is_quiet
-from bzrlib.symbol_versioning import deprecated_function
+from bzrlib.trace import is_quiet
 
 
 class TreeDelta(object):
