@@ -16,6 +16,10 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr commit`` accepts ``-p`` (for "patch") as a shorter name for
+  ``--show-diff``.
+  (Parth Malwankar, #571467)
+  
 * ``bzr ignore`` now supports a ``--default-rules`` option that displays
   the default ignore rules used by bzr. The flag ``--old-default-rules``
   is no longer supported by ``ignore``.
