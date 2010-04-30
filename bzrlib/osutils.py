@@ -1356,15 +1356,25 @@ def set_signal_handler(signum, handler, restart_syscall=True):
         False)`).  May be ignored if the feature is not available on this
         platform or Python version.
     """
-    old_handler = signal.signal(signum, handler)
+    try:
+        siginterrupt = signal.siginterrupt
+    except AttributeError:
+        # siginterrupt doesn't exist on this platform, or for this version
+        # of Python.
+        siginterrupt = lambda signum, flag: None
     if restart_syscall:
-        try:
-            siginterrupt = signal.siginterrupt
-        except AttributeError: # siginterrupt doesn't exist on this platform, or for this version of
-            # Python.
-            pass
-        else:
+        def sig_handler(*args):
+            # Python resets the siginterrupt flag when a signal is
+            # received.  <http://bugs.python.org/issue8354>
+            # As a workaround for some cases, set it back the way we want it.
             siginterrupt(signum, False)
+            # Now run the handler function passed to set_signal_handler.
+            handler(*args)
+    else:
+        sig_handler = handler
+    old_handler = signal.signal(signum, sig_handler)
+    if restart_syscall:
+        siginterrupt(signum, False)
     return old_handler
 
 

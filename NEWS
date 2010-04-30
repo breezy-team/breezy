@@ -16,6 +16,12 @@ Bug Fixes
 * ``bzr switch`` does not die if a ConfigurableFileMerger is used.
   (Aaron Bentley, #559436)
 
+* Reset ``siginterrupt`` flag to False every time we handle a signal
+  installed with ``set_signal_handler(..., restart_syscall=True)`` (from
+  ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
+  errors after two window resizes.
+  (Andrew Bennetts)
+
 
 bzr 2.1.1
 #########
