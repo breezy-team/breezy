@@ -70,20 +70,14 @@ class BashCompletionMixin(object):
                                 stderr=subprocess.PIPE)
         if cword < 0:
             cword = len(words) + cword
-        input = """
-%(script)s
-
-COMP_WORDS=( %(words)s )
-COMP_CWORD=%(cword)d
-%(name)s
-echo ${#COMPREPLY[*]}
-IFS=$'\\n'
-echo "${COMPREPLY[*]}"
-""" % { 'script': self.script,
-        'words': 
-        'cword': cword,
-        'name': getattr(self, 'script_name', '_bzr'),
-      }
+        input = '%s\n' % self.script
+        input += ('COMP_WORDS=( %s )\n' %
+                  ' '.join(["'"+w.replace("'", "'\\''")+"'" for w in words]))
+        input += 'COMP_CWORD=%d\n' % cword
+        input += '%s\n' % getattr(self, 'script_name', '_bzr')
+        input += 'echo ${#COMPREPLY[*]}\n'
+        input += "IFS=$'\\n'\n"
+        input += 'echo "${COMPREPLY[*]}"\n'
         (out, err) = proc.communicate(input)
         if '' != err:
             raise AssertionError('Unexpected error message:\n%s' % err)
