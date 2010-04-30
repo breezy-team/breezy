@@ -1351,6 +1351,12 @@ class cmd_checkout(Command):
                 source.bzrdir.create_workingtree(revision_id)
                 return
 
+        # Fail early if to_location exists. We don't want to
+        # give a message "Copying history ..." and then fail
+        # saying to_location/.bzr exists.
+        if osutils.lexists(to_location):
+            raise errors.BzrCommandError('"%s" exists.' % to_location)
+
         if not lightweight:
             self.outf.write('Copying history to "%s". '
                 'This may take some time.\n' % to_location)
