@@ -609,10 +609,16 @@ class SmartClientMedium(SmartMedium):
             # which is newer than a previously supplied older-than version.
             # This indicates that some smart verb call is not guarded
             # appropriately (it should simply not have been tried).
-            raise AssertionError(
+            trace.mutter(
                 "_remember_remote_is_before(%r) called, but "
                 "_remember_remote_is_before(%r) was called previously."
-                % (version_tuple, self._remote_version_is_before))
+                , version_tuple, self._remote_version_is_before)
+            if 'hpss' in debug.debug_flags:
+                ui.ui_factory.show_warning(
+                    "_remember_remote_is_before(%r) called, but "
+                    "_remember_remote_is_before(%r) was called previously."
+                    % (version_tuple, self._remote_version_is_before))
+            return
         self._remote_version_is_before = version_tuple
 
     def protocol_version(self):
