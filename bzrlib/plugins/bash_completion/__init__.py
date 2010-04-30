@@ -20,47 +20,14 @@ This plugin provides a command called bash-completion that generates a
 bash completion function for bzr. See its documentation for details.
 """
 
-from meta import *
-from meta import __version__
+from bzrlib.plugins.bash_completion.meta import *
+from bzrlib.plugins.bash_completion.meta import __version__
 
-from bzrlib import commands, option
-
-
-class cmd_bash_completion(commands.Command):
-    """Generate a shell function for bash command line completion.
-
-    This command generates a shell function which can be used by bash to
-    automatically complete the currently typed command when the user presses
-    the completion key (usually tab).
-    
-    Commonly used like this:
-        eval "`bzr bash-completion`"
-    """
-
-    takes_options = [
-        option.Option("function-name", short_name="f", type=str, argname="name",
-               help="Name of the generated function (default: _bzr)"),
-        option.Option("function-only", short_name="o", type=None,
-               help="Generate only the shell function, don't enable it"),
-        option.Option("debug", type=None, hidden=True,
-               help="Enable shell code useful for debugging"),
-        option.ListOption("plugin", type=str, argname="name",
-                # param_name="selected_plugins", # doesn't work, bug #387117
-                help="Enable completions for the selected plugin"
-                + " (default: all plugins)"),
-        ]
-
-    def run(self, **kwargs):
-        import sys
-        from bashcomp import bash_completion_function
-        if 'plugin' in kwargs:
-            # work around bug #387117 which prevents us from using param_name
-            kwargs['selected_plugins'] = kwargs['plugin']
-            del kwargs['plugin']
-        bash_completion_function(sys.stdout, **kwargs)
+from bzrlib import commands
 
 
-commands.register_command(cmd_bash_completion)
+commands.plugin_cmds.register_lazy('cmd_bash_completion', [],
+                                   'bzrlib.plugins.bash_completion.bashcomp')
 
 
 def load_tests(basic_tests, module, loader):
