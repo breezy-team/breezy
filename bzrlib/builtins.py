@@ -2028,11 +2028,7 @@ class cmd_modified(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
-    takes_options = [
-            Option('null',
-                   help='Write an ascii NUL (\\0) separator '
-                   'between files rather than a newline.')
-            ]
+    takes_options = [ 'null' ]
 
     @display_command
     def run(self, null=False):
@@ -2051,11 +2047,7 @@ class cmd_added(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
-    takes_options = [
-            Option('null',
-                   help='Write an ascii NUL (\\0) separator '
-                   'between files rather than a newline.')
-            ]
+    takes_options = [ 'null' ]
 
     @display_command
     def run(self, null=False):
@@ -2534,12 +2526,10 @@ class cmd_ls(Command):
                    short_name='V'),
             Option('ignored', short_name='i',
                 help='Print ignored files.'),
-            Option('null', short_name='Z',
-                   help='Write an ascii NUL (\\0) separator '
-                   'between files rather than a newline.'),
             Option('kind', short_name='k',
                    help='List entries of a particular kind: file, directory, symlink.',
                    type=unicode),
+            'null',
             'show-ids',
             ]
     @display_command
