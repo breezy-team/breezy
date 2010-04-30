@@ -846,7 +846,15 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         file_trans_id = rename_transform.trans_id_file_id('myfile-id')
         dir_id = rename_transform.trans_id_file_id('first-id')
         rename_transform.adjust_path('newname', dir_id, file_trans_id)
-        rename_transform.apply()
+        e = self.assertRaises(errors.TransformRenameFailed,
+            rename_transform.apply)
+        # Looks like: 
+        # "Failed to rename .../work/.bzr/checkout/limbo/new-1
+        # to .../first-dir/newname: [Errno 13] Permission denied"
+        # so the first filename is not visible in it; we expect a strerror but
+        # it may vary per OS and language so it's not checked here
+        self.assertContainsRe(str(e),
+            "Failed to rename .*first-dir.newname:")
 
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.

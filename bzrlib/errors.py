@@ -1923,6 +1923,16 @@ class ReusingTransform(BzrError):
 class CantMoveRoot(BzrError):
 
     _fmt = "Moving the root directory is not supported at this time"
+    
+    
+class TransformRenameFailed(BzrError):
+
+    _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
+    
+    def __init__(self, from_path, to_path, why):
+        self.from_path = from_path
+        self.to_path = to_path
+        self.why = why
 
 
 class BzrMoveFailedError(BzrError):

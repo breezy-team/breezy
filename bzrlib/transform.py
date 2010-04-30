@@ -2904,7 +2904,11 @@ class _FileMover(object):
         except OSError, e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
                 raise errors.FileExists(to, str(e))
-            raise
+            # normal OSError doesn't include filenames so it's hard to see where
+            # the problem is, see https://bugs.launchpad.net/bzr/+bug/491763
+            raise errors.TransformRenameFailed(from_, to, str(e))
+        except IOError, e:
+            raise errors.TransformRenameFailed(from_, to, str(e))
         self.past_renames.append((from_, to))
 
     def pre_delete(self, from_, to):
