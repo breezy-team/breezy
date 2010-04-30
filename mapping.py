@@ -264,7 +264,8 @@ class BzrGitMapping(foreign.VcsMapping):
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.
 
-        :return: a `bzrlib.revision.Revision` object.
+        :return: a `bzrlib.revision.Revision` object and a 
+            dictionary of path -> file ids
         """
         if commit is None:
             raise AssertionError("Commit object can't be None")
@@ -300,7 +301,7 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['commit-timezone-neg-utc'] = ""
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
-        return rev
+        return rev, {}
 
 
 class BzrGitMappingv1(BzrGitMapping):
@@ -327,9 +328,9 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         return ret
 
     def import_commit(self, commit):
-        rev = super(BzrGitMappingExperimental, self).import_commit(commit)
+        rev, file_ids = super(BzrGitMappingExperimental, self).import_commit(commit)
         rev.properties['converted_revision'] = "git %s\n" % commit.id
-        return rev
+        return rev, file_ids
 
 
 class GitMappingRegistry(VcsMappingRegistry):

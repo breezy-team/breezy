@@ -178,7 +178,7 @@ class LocalGitRepository(GitRepository):
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         # print "fetched revision:", git_commit_id
-        revision = mapping.import_commit(commit)
+        revision, file_ids = mapping.import_commit(commit)
         assert revision is not None
         return revision
 

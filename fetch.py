@@ -317,7 +317,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
     o = lookup_object(head)
-    rev = mapping.import_commit(o)
+    rev, file_ids = mapping.import_commit(o)
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
@@ -332,11 +332,16 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
     store_updater.add_object(o, None)
+    def lookup_file_id(path):
+        try:
+            return file_ids[path]
+        except KeyError:
+            return mapping.generate_file_id(path)
     inv_delta, unusual_modes = import_git_tree(repo.texts,
             mapping, "", u"", (base_tree, o.tree), base_inv, 
             None, rev.revision_id, [p.inventory for p in parent_trees],
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
-            mapping.generate_file_id,
+            lookup_file_id,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
     store_updater.finish()
     if unusual_modes != {}:
@@ -389,7 +394,7 @@ def import_git_objects(repo, mapping, object_iter,
         except KeyError:
             continue
         if isinstance(o, Commit):
-            rev = mapping.import_commit(o)
+            rev, file_ids = mapping.import_commit(o)
             if repo.has_revision(rev.revision_id):
                 continue
             squash_revision(repo, rev)
