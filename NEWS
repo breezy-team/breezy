@@ -8,14 +8,23 @@ Bazaar Release Notes
 bzr 2.1.2
 #########
 
-:2.1.2: ?
+:2.1.2: NOT RELEASED YET
 
 Bug Fixes
 *********
 
+* ``bzr switch`` does not die if a ConfigurableFileMerger is used.
+  (Aaron Bentley, #559436)
+
 * Fixed ``AssertionError`` when accessing smart servers running Bazaar
   versions before 1.6.
   (Andrew Bennetts, #528041)
+
+* Reset ``siginterrupt`` flag to False every time we handle a signal
+  installed with ``set_signal_handler(..., restart_syscall=True)`` (from
+  ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
+  errors after two window resizes.
+  (Andrew Bennetts)
 
 Internals
 *********
