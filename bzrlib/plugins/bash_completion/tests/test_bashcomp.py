@@ -14,16 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib.tests import TestCase, TestCaseWithTransport, Feature
-from bzrlib import commands
-from StringIO import StringIO
-from ..bashcomp import *
 import bzrlib
+from bzrlib import commands, tests
+from bzrlib.plugins.bash_completion.bashcomp import *
+
 import os
 import subprocess
+from StringIO import StringIO
 
 
-class _BashFeature(Feature):
+class _BashFeature(tests.Feature):
     """Feature testing whether a bash executable is available."""
 
     bash_paths = ['/bin/bash', '/usr/bin/bash']
@@ -112,7 +112,7 @@ class BashCompletionMixin(object):
         return out.getvalue()
 
 
-class TestBashCompletion(TestCase, BashCompletionMixin):
+class TestBashCompletion(tests.TestCase, BashCompletionMixin):
     """Test bash completions that don't execute bzr."""
 
     def __init__(self, methodName='testMethod'):
@@ -168,7 +168,8 @@ _bzr() {
                           cword=4, contains=['2a'], omits=['1.9'])
 
 
-class TestBashCompletionInvoking(TestCaseWithTransport, BashCompletionMixin):
+class TestBashCompletionInvoking(tests.TestCaseWithTransport,
+                                 BashCompletionMixin):
     """Test bash completions that might execute bzr.
 
     Only the syntax ``$(bzr ...`` is supported so far. The bzr command
@@ -204,7 +205,7 @@ class TestBashCompletionInvoking(TestCaseWithTransport, BashCompletionMixin):
                       expect=['tag1', 'tag2'])
 
 
-class TestBashCodeGen(TestCase):
+class TestBashCodeGen(tests.TestCase):
 
     def test_command_names(self):
         data = CompletionData()
@@ -279,7 +280,7 @@ class TestBashCodeGen(TestCase):
 ''', cg.command_case(cmd))
 
 
-class TestDataCollector(TestCase):
+class TestDataCollector(tests.TestCase):
 
     def setUp(self):
         super(TestDataCollector, self).setUp()
