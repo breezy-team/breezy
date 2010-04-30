@@ -52,6 +52,10 @@ Bug Fixes
 * Don't mention --no-strict when we just issue the warning about unclean trees.
   (Vincent Ladeuil, #401599)
 
+* Heavyweight checkout operation now shows a message to the user indicating
+  history is being copied.
+  (Parth Malwankar, #538868)
+
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
