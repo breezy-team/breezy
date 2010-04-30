@@ -20,11 +20,11 @@ This plugin provides a command called bash-completion that generates a
 bash completion function for bzr. See its documentation for details.
 """
 
-from bzrlib.plugins.bash_completion.meta import *
-from bzrlib.plugins.bash_completion.meta import __version__
+from bzrlib import commands, version_info
 
-from bzrlib import commands
 
+bzr_plugin_name = 'bash_completion'
+bzr_commands = [ 'bash-completion' ]
 
 commands.plugin_cmds.register_lazy('cmd_bash_completion', [],
                                    'bzrlib.plugins.bash_completion.bashcomp')

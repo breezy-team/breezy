@@ -16,7 +16,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib.plugins.bash_completion.meta import __version__
 from bzrlib import (
     commands,
     config,
@@ -46,7 +45,7 @@ class BashCodeGen(object):
 # Customized by Sven Wilhelm/Icecrash.com
 # Adjusted for automatic generation by Martin von Gagern
 
-# Generated using the bzr-bash-completion plugin version %(version)s.
+# Generated using the bash_completion plugin.
 # See https://launchpad.net/bzr-bash-completion for details.
 
 # Commands and options of bzr %(bzr_version)s
@@ -57,7 +56,6 @@ complete -F %(function_name)s -o default bzr
 """     % {
             "function_name": self.function_name,
             "function": self.function(),
-            "version": __version__,
             "bzr_version": self.bzr_version(),
         })
 
@@ -427,7 +425,6 @@ if __name__ == '__main__':
     import sys
     import locale
     import optparse
-    from meta import __version__
 
     def plugin_callback(option, opt, value, parser):
         values = parser.values.selected_plugins
@@ -436,8 +433,7 @@ if __name__ == '__main__':
         else:
             values.append(value)
 
-    parser = optparse.OptionParser(usage="%prog [-f NAME] [-o]",
-                                   version="%%prog %s" % __version__)
+    parser = optparse.OptionParser(usage="%prog [-f NAME] [-o]")
     parser.add_option("--function-name", "-f", metavar="NAME",
                       help="Name of the generated function (default: _bzr)")
     parser.add_option("--function-only", "-o", action="store_true",
