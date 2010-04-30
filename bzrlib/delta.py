@@ -104,112 +104,11 @@ class TreeDelta(object):
                 return True
         return False
 
-
-    def show(self, to_file, show_ids=False, show_unchanged=False,
-             short_status=False, indent='',
-             filter=None):
-        """Output this delta in status-like form to to_file.
-
-        :param to_file: A file-like object where the output is displayed.
-
-        :param show_ids: Output the file ids if True.
-
-        :param show_unchanged: Output the unchanged files if True.
-
-        :param short_status: Single-line status if True.
-
-        :param indent: Added at the beginning of all output lines (for merged
-            revisions).
-
-        :param filter: A callable receiving a path and a file id and
-            returning True if the path should be displayed.
-        """
-
-        def decorate_path(path, kind, meta_modified=None):
-            if kind == 'directory':
-                path += '/'
-            elif kind == 'symlink':
-                path += '@'
-            if meta_modified:
-                path += '*'
-            return path
-
-        def show_more_renamed(item):
-            (oldpath, file_id, kind,
-             text_modified, meta_modified, newpath) = item
-            dec_new_path = decorate_path(newpath, kind, meta_modified)
-            to_file.write(' => %s' % dec_new_path)
-            if text_modified or meta_modified:
-                extra_modified.append((newpath, file_id, kind,
-                                       text_modified, meta_modified))
-
-        def show_more_kind_changed(item):
-            (path, file_id, old_kind, new_kind) = item
-            to_file.write(' (%s => %s)' % (old_kind, new_kind))
-
-        def show_path(path, file_id, kind, meta_modified,
-                      default_format, with_file_id_format):
-            dec_path = decorate_path(path, kind, meta_modified)
-            if show_ids:
-                to_file.write(with_file_id_format % dec_path)
-            else:
-                to_file.write(default_format % dec_path)
-
-        def show_list(files, long_status_name, short_status_letter,
-                      default_format='%s', with_file_id_format='%-30s',
-                      show_more=None):
-            if files:
-                header_shown = False
-                if short_status:
-                    prefix = short_status_letter
-                else:
-                    prefix = ''
-                prefix = indent + prefix + '  '
-
-                for item in files:
-                    path, file_id, kind = item[:3]
-                    if (filter is not None and not filter(path, file_id)):
-                        continue
-                    if not header_shown and not short_status:
-                        to_file.write(indent + long_status_name + ':\n')
-                        header_shown = True
-                    meta_modified = None
-                    if len(item) == 5:
-                        meta_modified = item[4]
-
-                    to_file.write(prefix)
-                    show_path(path, file_id, kind, meta_modified,
-                              default_format, with_file_id_format)
-                    if show_more is not None:
-                        show_more(item)
-                    if show_ids:
-                        to_file.write(' %s' % file_id)
-                    to_file.write('\n')
-
-        show_list(self.removed, 'removed', 'D')#
-        show_list(self.added, 'added', 'A')
-        extra_modified = []
-        # Reorder self.renamed tuples so that all lists share the same
-        # order for their 3 first fields and that they also begin like
-        # the self.modified tuples
-        renamed = [(p, i, k, tm, mm, np)
-                   for  p, np, i, k, tm, mm  in self.renamed]
-        show_list(renamed, 'renamed', 'R', with_file_id_format='%s',
-                  show_more=show_more_renamed)
-        show_list(self.kind_changed, 'kind changed', 'K',
-                  with_file_id_format='%s',
-                  show_more=show_more_kind_changed)
-        show_list(self.modified + extra_modified, 'modified', 'M')
-        if show_unchanged:
-            show_list(self.unchanged, 'unchanged', 'S')
-
-        show_list(self.unversioned, 'unknown', ' ')
-
     def get_changes_as_text(self, show_ids=False, show_unchanged=False,
-             short_status=False):
+                            short_status=False):
         import StringIO
         output = StringIO.StringIO()
-        self.show(output, show_ids, show_unchanged, short_status)
+        report_delta(output, self, short_status, show_ids, show_unchanged)
         return output.getvalue()
 
 
@@ -390,7 +289,6 @@ class _ChangeReporter(object):
         self.output("%s%s%s %s%s", rename, self.modified_map[modified], exe,
                     old_path, path)
 
-
 def report_changes(change_iterator, reporter):
     """Report the changes from a change iterator.
 
@@ -434,3 +332,105 @@ def report_changes(change_iterator, reporter):
         versioned_change = versioned_change_map[versioned]
         reporter.report(file_id, path, versioned_change, renamed, modified,
                         exe_change, kind)
+
+def report_delta(to_file, delta, short_status=False, show_ids=False, 
+         show_unchanged=False, indent='', filter=None):
+    """Output this delta in status-like form to to_file.
+
+    :param to_file: A file-like object where the output is displayed.
+
+    :param delta: A TreeDelta containing the changes to be displayed
+
+    :param short_status: Single-line status if True.
+
+    :param show_ids: Output the file ids if True.
+
+    :param show_unchanged: Output the unchanged files if True.
+
+    :param indent: Added at the beginning of all output lines (for merged
+        revisions).
+
+    :param filter: A callable receiving a path and a file id and
+        returning True if the path should be displayed.
+    """
+
+    def decorate_path(path, kind, meta_modified=None):
+        if kind == 'directory':
+            path += '/'
+        elif kind == 'symlink':
+            path += '@'
+        if meta_modified:
+            path += '*'
+        return path
+
+    def show_more_renamed(item):
+        (oldpath, file_id, kind,
+         text_modified, meta_modified, newpath) = item
+        dec_new_path = decorate_path(newpath, kind, meta_modified)
+        to_file.write(' => %s' % dec_new_path)
+        if text_modified or meta_modified:
+            extra_modified.append((newpath, file_id, kind,
+                                   text_modified, meta_modified))
+
+    def show_more_kind_changed(item):
+        (path, file_id, old_kind, new_kind) = item
+        to_file.write(' (%s => %s)' % (old_kind, new_kind))
+
+    def show_path(path, file_id, kind, meta_modified,
+                  default_format, with_file_id_format):
+        dec_path = decorate_path(path, kind, meta_modified)
+        if show_ids:
+            to_file.write(with_file_id_format % dec_path)
+        else:
+            to_file.write(default_format % dec_path)
+
+    def show_list(files, long_status_name, short_status_letter,
+                  default_format='%s', with_file_id_format='%-30s',
+                  show_more=None):
+        if files:
+            header_shown = False
+            if short_status:
+                prefix = short_status_letter
+            else:
+                prefix = ''
+            prefix = indent + prefix + '  '
+
+            for item in files:
+                path, file_id, kind = item[:3]
+                if (filter is not None and not filter(path, file_id)):
+                    continue
+                if not header_shown and not short_status:
+                    to_file.write(indent + long_status_name + ':\n')
+                    header_shown = True
+                meta_modified = None
+                if len(item) == 5:
+                    meta_modified = item[4]
+
+                to_file.write(prefix)
+                show_path(path, file_id, kind, meta_modified,
+                          default_format, with_file_id_format)
+                if show_more is not None:
+                    show_more(item)
+                if show_ids:
+                    to_file.write(' %s' % file_id)
+                to_file.write('\n')
+
+    show_list(delta.removed, 'removed', 'D')
+    show_list(delta.added, 'added', 'A')
+    extra_modified = []
+    # Reorder delta.renamed tuples so that all lists share the same
+    # order for their 3 first fields and that they also begin like
+    # the delta.modified tuples
+    renamed = [(p, i, k, tm, mm, np)
+               for  p, np, i, k, tm, mm  in delta.renamed]
+    show_list(renamed, 'renamed', 'R', with_file_id_format='%s',
+              show_more=show_more_renamed)
+    show_list(delta.kind_changed, 'kind changed', 'K',
+              with_file_id_format='%s',
+              show_more=show_more_kind_changed)
+    show_list(delta.modified + extra_modified, 'modified', 'M')
+    if show_unchanged:
+        show_list(delta.unchanged, 'unchanged', 'S')
+
+    show_list(delta.unversioned, 'unknown', ' ')
+

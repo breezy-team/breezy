@@ -93,7 +93,60 @@ class AbstractPerFileMerger(object):
         return ('not applicable', None)
 
 
-class ConfigurableFileMerger(AbstractPerFileMerger):
+class PerFileMerger(AbstractPerFileMerger):
+    """Merge individual files when self.file_matches returns True.
+
+    This class is intended to be subclassed.  The file_matches and
+    merge_matching methods should be overridden with concrete implementations.
+    """
+
+    def file_matches(self, params):
+        """Return True if merge_matching should be called on this file.
+
+        Only called with merges of plain files with no clear winner.
+
+        Subclasses must override this.
+        """
+        raise NotImplementedError(self.file_matches)
+
+    def get_filename(self, params, tree):
+        """Lookup the filename (i.e. basename, not path), given a Tree (e.g.
+        self.merger.this_tree) and a MergeHookParams.
+        """
+        return osutils.basename(tree.id2path(params.file_id))
+
+    def get_filepath(self, params, tree):
+        """Calculate the path to the file in a tree.
+
+        :param params: A MergeHookParams describing the file to merge
+        :param tree: a Tree, e.g. self.merger.this_tree.
+        """
+        return tree.id2path(params.file_id)
+
+    def merge_contents(self, params):
+        """Merge the contents of a single file."""
+        # Check whether this custom merge logic should be used.
+        if (
+            # OTHER is a straight winner, rely on default merge.
+            params.winner == 'other' or
+            # THIS and OTHER aren't both files.
+            not params.is_file_merge() or
+            # The filename doesn't match *.xml
+            not self.file_matches(params)):
+            return 'not_applicable', None
+        return self.merge_matching(params)
+
+    def merge_matching(self, params):
+        """Merge the contents of a single file that has matched the criteria
+        in PerFileMerger.merge_contents (is a conflict, is a file,
+        self.file_matches is True).
+
+        Subclasses must override this.
+        """
+        raise NotImplementedError(self.merge_matching)
+
+
+class ConfigurableFileMerger(PerFileMerger):
     """Merge individual files when configured via a .conf file.
 
     This is a base class for concrete custom file merging logic. Concrete
@@ -122,7 +175,7 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
         if self.name_prefix is None:
             raise ValueError("name_prefix must be set.")
 
-    def filename_matches_config(self, params):
+    def file_matches(self, params):
         """Check whether the file should call the merge hook.
 
         <name_prefix>_merge_files configuration variable is a list of files
@@ -142,24 +195,12 @@ class ConfigurableFileMerger(AbstractPerFileMerger):
                 affected_files = self.default_files
             self.affected_files = affected_files
         if affected_files:
-            filename = self.merger.this_tree.id2path(params.file_id)
-            if filename in affected_files:
+            filepath = self.get_filepath(params, self.merger.this_tree)
+            if filepath in affected_files:
                 return True
         return False
 
-    def merge_contents(self, params):
-        """Merge the contents of a single file."""
-        # First, check whether this custom merge logic should be used.  We
-        # expect most files should not be merged by this handler.
-        if (
-            # OTHER is a straight winner, rely on default merge.
-            params.winner == 'other' or
-            # THIS and OTHER aren't both files.
-            not params.is_file_merge() or
-            # The filename isn't listed in the 'NAME_merge_files' config
-            # option.
-            not self.filename_matches_config(params)):
-            return 'not_applicable', None
+    def merge_matching(self, params):
         return self.merge_text(params)
 
     def merge_text(self, params):
@@ -704,7 +745,8 @@ class Merge3Merger(object):
         :param this_tree: The local tree in the merge operation
         :param base_tree: The common tree in the merge operation
         :param other_tree: The other tree to merge changes from
-        :param this_branch: The branch associated with this_tree
+        :param this_branch: The branch associated with this_tree.  Defaults to
+            this_tree.branch if not supplied.
         :param interesting_ids: The file_ids of files that should be
             participate in the merge.  May not be combined with
             interesting_files.
@@ -728,6 +770,8 @@ class Merge3Merger(object):
         if interesting_files is not None and interesting_ids is not None:
             raise ValueError(
                 'specify either interesting_ids or interesting_files')
+        if this_branch is None:
+            this_branch = this_tree.branch
         self.interesting_ids = interesting_ids
         self.interesting_files = interesting_files
         self.this_tree = working_tree
@@ -1015,7 +1059,6 @@ class Merge3Merger(object):
                         continue
                 else:
                     raise AssertionError('unhandled kind: %s' % other_ie.kind)
-                # XXX: We need to handle kind == 'symlink'
 
             # If we have gotten this far, that means something has changed
             result.append((file_id, content_changed,
@@ -1043,21 +1086,38 @@ class Merge3Merger(object):
         other_root = self.tt.trans_id_file_id(other_root_file_id)
         if other_root == self.tt.root:
             return
+        if self.other_tree.inventory.root.file_id in self.this_tree.inventory:
+            # the other tree's root is a non-root in the current tree (as when
+            # a previously unrelated branch is merged into another)
+            return
         try:
             self.tt.final_kind(other_root)
+            other_root_is_present = True
         except errors.NoSuchFile:
-            return
-        if self.this_tree.has_id(self.other_tree.inventory.root.file_id):
-            # the other tree's root is a non-root in the current tree
-            return
-        self.reparent_children(self.other_tree.inventory.root, self.tt.root)
-        self.tt.cancel_creation(other_root)
-        self.tt.cancel_versioning(other_root)
-
-    def reparent_children(self, ie, target):
-        for thing, child in ie.children.iteritems():
+            # other_root doesn't have a physical representation. We still need
+            # to move any references to the actual root of the tree.
+            other_root_is_present = False
+        # 'other_tree.inventory.root' is not present in this tree. We are
+        # calling adjust_path for children which *want* to be present with a
+        # correct place to go.
+        for thing, child in self.other_tree.inventory.root.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
-            self.tt.adjust_path(self.tt.final_name(trans_id), target, trans_id)
+            if not other_root_is_present:
+                # FIXME: Make final_kind returns None instead of raising
+                # NoSuchFile to avoid the ugly construct below -- vila 20100402
+                try:
+                    self.tt.final_kind(trans_id)
+                    # The item exist in the final tree and has a defined place
+                    # to go already.
+                    continue
+                except errors.NoSuchFile, e:
+                    pass
+            # Move the item into the root
+            self.tt.adjust_path(self.tt.final_name(trans_id),
+                                self.tt.root, trans_id)
+        if other_root_is_present:
+            self.tt.cancel_creation(other_root)
+            self.tt.cancel_versioning(other_root)
 
     def write_modified(self, results):
         modified_hashes = {}
@@ -1110,16 +1170,18 @@ class Merge3Merger(object):
 
     @staticmethod
     def _three_way(base, other, this):
-        #if base == other, either they all agree, or only THIS has changed.
         if base == other:
+            # if 'base == other', either they all agree, or only 'this' has
+            # changed.
             return 'this'
         elif this not in (base, other):
+            # 'this' is neither 'base' nor 'other', so both sides changed
             return 'conflict'
-        # "Ambiguous clean merge" -- both sides have made the same change.
         elif this == other:
+            # "Ambiguous clean merge" -- both sides have made the same change.
             return "this"
-        # this == base: only other has changed.
         else:
+            # this == base: only other has changed.
             return "other"
 
     @staticmethod
@@ -1169,7 +1231,7 @@ class Merge3Merger(object):
                 # only has an lca value
                 return 'other'
 
-        # At this point, the lcas disagree, and the tips disagree
+        # At this point, the lcas disagree, and the tip disagree
         return 'conflict'
 
     @staticmethod

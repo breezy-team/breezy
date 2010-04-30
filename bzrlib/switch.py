@@ -17,8 +17,18 @@
 # Original author: David Allouche
 
 from bzrlib import errors, merge, revision
+from bzrlib.branch import Branch
 from bzrlib.trace import note
 
+
+def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
+    from bzrlib.branch import SwitchHookParams
+    hooks = Branch.hooks['post_switch']
+    if not hooks:
+        return
+    params = SwitchHookParams(control_dir, to_branch, force, revision_id)
+    for hook in hooks:
+        hook(params)
 
 def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
     """Switch the branch associated with a checkout.
@@ -36,7 +46,7 @@ def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
     _set_branch_location(control_dir, to_branch, force)
     tree = control_dir.open_workingtree()
     _update(tree, source_repository, quiet, revision_id)
-
+    _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
 
 def _check_pending_merges(control, force=False):
     """Check that there are no outstanding pending merges before switching.

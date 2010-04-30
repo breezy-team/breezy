@@ -18,6 +18,7 @@ import os
 from cStringIO import StringIO
 
 from bzrlib import (
+    branchbuilder,
     errors,
     log,
     registry,
@@ -877,6 +878,43 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
             formatter_kwargs=dict(levels=0))
 
 
+class TestGnuChangelogFormatter(TestCaseForLogFormatter):
+
+    def test_gnu_changelog(self):
+        wt = self.make_standard_commit('nicky', authors=[])
+        self.assertFormatterResult('''\
+2005-11-22  Lorem Ipsum  <test@example.com>
+
+\tadd a
+
+''',
+            wt.branch, log.GnuChangelogLogFormatter)
+
+    def test_with_authors(self):
+        wt = self.make_standard_commit('nicky',
+            authors=['Fooa Fooz <foo@example.com>',
+                     'Bari Baro <bar@example.com>'])
+        self.assertFormatterResult('''\
+2005-11-22  Fooa Fooz  <foo@example.com>
+
+\tadd a
+
+''',
+            wt.branch, log.GnuChangelogLogFormatter)
+
+    def test_verbose(self):
+        wt = self.make_standard_commit('nicky')
+        self.assertFormatterResult('''\
+2005-11-22  John Doe  <jdoe@example.com>
+
+\t* a:
+
+\tadd a
+
+''',
+            wt.branch, log.GnuChangelogLogFormatter,
+            show_log_kwargs=dict(verbose=True))
+
 class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
 
     def _get_view_revisions(self, *args, **kwargs):
@@ -1504,3 +1542,62 @@ message:
 
     def test_bugs_handler_present(self):
         self.properties_handler_registry.get('bugs_properties_handler')
+
+class TestLogExcludeAncestry(tests.TestCaseWithTransport):
+
+    def make_branch_with_alternate_ancestries(self, relpath='.'):
+        # See test_merge_sorted_exclude_ancestry below for the difference with
+        # bt.per_branch.test_iter_merge_sorted_revision.
+        # TestIterMergeSortedRevisionsBushyGraph. 
+        # make_branch_with_alternate_ancestries
+        # and test_merge_sorted_exclude_ancestry
+        # See the FIXME in assertLogRevnos too.
+        builder = branchbuilder.BranchBuilder(self.get_transport(relpath))
+        # 1
+        # |\
+        # 2 \
+        # |  |
+        # |  1.1.1
+        # |  | \
+        # |  |  1.2.1
+        # |  | /
+        # |  1.1.2
+        # | /
+        # 3
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot('1.2.1', ['1.1.1'], [])
+        builder.build_snapshot('1.1.2', ['1.1.1', '1.2.1'], [])
+        builder.build_snapshot('3', ['2', '1.1.2'], [])
+        builder.finish_series()
+        br = builder.get_branch()
+        br.lock_read()
+        self.addCleanup(br.unlock)
+        return br
+
+    def assertLogRevnos(self, expected_revnos, b, start, end,
+                        exclude_common_ancestry):
+        # FIXME: the layering in log makes it hard to test intermediate levels,
+        # I wish adding filters with their parameters were easier...
+        # -- vila 20100413
+        iter_revs = log._calc_view_revisions(
+            b, start, end, direction='reverse',
+            generate_merge_revisions=True,
+            exclude_common_ancestry=exclude_common_ancestry)
+        self.assertEqual(expected_revnos,
+                         [revid for revid, revno, depth in iter_revs])
+
+    def test_merge_sorted_exclude_ancestry(self):
+        b = self.make_branch_with_alternate_ancestries()
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2', '1'],
+                             b, '1', '3', False)
+        # '2' is part of the '3' ancestry but not part of '1.1.1' ancestry so
+        # it should be mentioned even if merge_sort order will make it appear
+        # after 1.1.1
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '2'],
+                             b, '1.1.1', '3', True)
+
+

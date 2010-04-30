@@ -132,6 +132,12 @@ class ReportCommitToLog(NullCommitReporter):
 
     def completed(self, revno, rev_id):
         self._note('Committed revision %d.', revno)
+        # self._note goes to the console too; so while we want to log the
+        # rev_id, we can't trivially only log it. (See bug 526425). Long
+        # term we should rearrange the reporting structure, but for now
+        # we just mutter seperately. We mutter the revid and revno together
+        # so that concurrent bzr invocations won't lead to confusion.
+        mutter('Committed revid %s as revno %d.', rev_id, revno)
 
     def deleted(self, path):
         self._note('deleted %s', path)
@@ -221,6 +227,9 @@ class Commit(object):
             commit.
         """
         operation = OperationWithCleanups(self._commit)
+        self.revprops = revprops or {}
+        # XXX: Can be set on __init__ or passed in - this is a bit ugly.
+        self.config = config or self.config
         return operation.run(
                message=message,
                timestamp=timestamp,
@@ -231,19 +240,17 @@ class Commit(object):
                allow_pointless=allow_pointless,
                strict=strict,
                verbose=verbose,
-               revprops=revprops,
                working_tree=working_tree,
                local=local,
                reporter=reporter,
-               config=config,
                message_callback=message_callback,
                recursive=recursive,
                exclude=exclude,
                possible_master_transports=possible_master_transports)
 
     def _commit(self, operation, message, timestamp, timezone, committer,
-            specific_files, rev_id, allow_pointless, strict, verbose, revprops,
-            working_tree, local, reporter, config, message_callback, recursive,
+            specific_files, rev_id, allow_pointless, strict, verbose,
+            working_tree, local, reporter, message_callback, recursive,
             exclude, possible_master_transports):
         mutter('preparing to commit')
 
@@ -284,7 +291,6 @@ class Commit(object):
             self.specific_files = None
             
         self.allow_pointless = allow_pointless
-        self.revprops = revprops
         self.message_callback = message_callback
         self.timestamp = timestamp
         self.timezone = timezone
@@ -356,7 +362,7 @@ class Commit(object):
         # Collect the changes
         self._set_progress_stage("Collecting changes", counter=True)
         self.builder = self.branch.get_commit_builder(self.parents,
-            self.config, timestamp, timezone, committer, revprops, rev_id)
+            self.config, timestamp, timezone, committer, self.revprops, rev_id)
 
         try:
             self.builder.will_record_deletes()

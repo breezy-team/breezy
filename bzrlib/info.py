@@ -78,9 +78,9 @@ class LocationList(object):
 
 def gather_location_info(repository, branch=None, working=None):
     locs = {}
-    repository_path = repository.bzrdir.root_transport.base
+    repository_path = repository.user_url
     if branch is not None:
-        branch_path = branch.bzrdir.root_transport.base
+        branch_path = branch.user_url
         master_path = branch.get_bound_location()
         if master_path is None:
             master_path = branch_path
@@ -88,7 +88,7 @@ def gather_location_info(repository, branch=None, working=None):
         branch_path = None
         master_path = None
     if working:
-        working_path = working.bzrdir.root_transport.base
+        working_path = working.user_url
         if working_path != branch_path:
             locs['light checkout root'] = working_path
         if master_path != branch_path:
@@ -418,8 +418,8 @@ def describe_layout(repository=None, branch=None, tree=None):
         if branch is None and tree is not None:
             phrase = "branchless tree"
         else:
-            if (tree is not None and tree.bzrdir.root_transport.base !=
-                branch.bzrdir.root_transport.base):
+            if (tree is not None and tree.user_url !=
+                branch.user_url):
                 independence = ''
                 phrase = "Lightweight checkout"
             elif branch.get_bound_location() is not None:
@@ -444,8 +444,7 @@ def describe_format(control, repository, branch, tree):
     """
     candidates  = []
     if (branch is not None and tree is not None and
-        branch.bzrdir.root_transport.base !=
-        tree.bzrdir.root_transport.base):
+        branch.user_url != tree.user_url):
         branch = None
         repository = None
     non_aliases = set(bzrdir.format_registry.keys())

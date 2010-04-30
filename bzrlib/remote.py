@@ -27,8 +27,10 @@ from bzrlib import (
     lock,
     lockdir,
     repository,
+    repository as _mod_repository,
     revision,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
 )
 from bzrlib.branch import BranchReferenceFormat
@@ -641,7 +643,8 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         return self._custom_format._serializer
 
 
-class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
+class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
+    bzrdir.ControlComponent):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
@@ -690,6 +693,17 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         # Additional places to query for data.
         self._fallback_repositories = []
 
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        # XXX: Normally you shouldn't directly get at the remote repository
+        # transport, but I'm not sure it's worth making this method
+        # optional -- mbp 2010-04-21
+        return self.bzrdir.get_repository_transport(None)
+        
     def __str__(self):
         return "%s(%s)" % (self.__class__.__name__, self.base)
 
@@ -902,6 +916,15 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         """Return the graph for this repository format"""
         parents_provider = self._make_parents_provider(other_repository)
         return graph.Graph(parents_provider)
+
+    @needs_read_lock
+    def get_known_graph_ancestry(self, revision_ids):
+        """Return the known graph for a set of revision ids and their ancestors.
+        """
+        st = static_tuple.StaticTuple
+        revision_keys = [st(r_id).intern() for r_id in revision_ids]
+        known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
+        return graph.GraphThunkIdsToKeys(known_graph)
 
     def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
@@ -1217,15 +1240,26 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
             # state, so always add a lock here. If a caller passes us a locked
             # repository, they are responsible for unlocking it later.
             repository.lock_read()
+        self._check_fallback_repository(repository)
         self._fallback_repositories.append(repository)
         # If self._real_repository was parameterised already (e.g. because a
         # _real_branch had its get_stacked_on_url method called), then the
         # repository to be added may already be in the _real_repositories list.
         if self._real_repository is not None:
-            fallback_locations = [repo.bzrdir.root_transport.base for repo in
+            fallback_locations = [repo.user_url for repo in
                 self._real_repository._fallback_repositories]
-            if repository.bzrdir.root_transport.base not in fallback_locations:
+            if repository.user_url not in fallback_locations:
                 self._real_repository.add_fallback_repository(repository)
+
+    def _check_fallback_repository(self, repository):
+        """Check that this repository can fallback to repository safely.
+
+        Raise an error if not.
+
+        :param repository: A repository to fallback to.
+        """
+        return _mod_repository.InterRepository._assert_same_model(
+            self, repository)
 
     def add_inventory(self, revid, inv, parents):
         self._ensure_real()
@@ -1585,13 +1619,13 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin):
         return self._real_repository.inventories
 
     @needs_write_lock
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This is not currently implemented within the smart server.
         """
         self._ensure_real()
-        return self._real_repository.pack(hint=hint)
+        return self._real_repository.pack(hint=hint, clean_obsolete_packs=clean_obsolete_packs)
 
     @property
     def revisions(self):
@@ -2159,7 +2193,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._real_branch = None
         # Fill out expected attributes of branch for bzrlib API users.
         self._clear_cached_state()
-        self.base = self.bzrdir.root_transport.base
+        # TODO: deprecate self.base in favor of user_url
+        self.base = self.bzrdir.user_url
         self._name = name
         self._control_files = None
         self._lock_mode = None

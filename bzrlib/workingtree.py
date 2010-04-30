@@ -29,12 +29,6 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-# TODO: Give the workingtree sole responsibility for the working inventory;
-# remove the variable and references to it from the branch.  This may require
-# updating the commit code so as to update the inventory within the working
-# copy, and making sure there's only one WorkingTree for any directory on disk.
-# At the moment they may alias the inventory and have old copies of it in
-# memory.  (Now done? -- mbp 20060309)
 
 from cStringIO import StringIO
 import os
@@ -173,7 +167,8 @@ class TreeLink(TreeEntry):
         return ''
 
 
-class WorkingTree(bzrlib.mutabletree.MutableTree):
+class WorkingTree(bzrlib.mutabletree.MutableTree,
+    bzrdir.ControlComponent):
     """Working copy tree.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -251,6 +246,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._detect_case_handling()
         self._rules_searcher = None
         self.views = self._make_views()
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
@@ -1138,7 +1141,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         This does not include files that have been deleted in this
         tree. Skips the control directory.
 
-        :param include_root: if True, do not return an entry for the root
+        :param include_root: if True, return an entry for the root
         :param from_dir: start from this directory or None for the root
         :param recursive: whether to recurse into subdirectories or not
         """
@@ -2257,9 +2260,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             last_rev = _mod_revision.NULL_REVISION
         if revision is None:
             revision = self.branch.last_revision()
-        else:
-            if revision not in self.branch.revision_history():
-                raise errors.NoSuchRevision(self.branch, revision)
 
         old_tip = old_tip or _mod_revision.NULL_REVISION
 
