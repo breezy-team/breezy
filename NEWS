@@ -38,6 +38,10 @@ Bug Fixes
   better with sudo.
   (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
 
+* ``bzr clean-tree`` should not delete nested bzrdirs. Required for proper
+  support of bzr-externals and scmproj plugins.
+  (Alexander Belchenko, bug #572098)
+
 * ``bzr log --exclude-common-ancestry -r X..Y`` displays the revisions that
   are part of Y ancestry but not part of X ancestry (aka the graph
   difference).

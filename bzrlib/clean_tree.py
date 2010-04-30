@@ -20,6 +20,7 @@ import os
 import shutil
 import sys
 
+from bzrlib import bzrdir, errors
 from bzrlib.osutils import has_symlinks, isdir
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
@@ -53,6 +54,7 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
     try:
         deletables = list(iter_deletables(tree, unknown=unknown,
             ignored=ignored, detritus=detritus))
+        deletables = filter_out_nested_bzrdirs(deletables)
         if len(deletables) == 0:
             note('Nothing to delete.')
             return 0
@@ -66,6 +68,19 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
         delete_items(deletables, dry_run=dry_run)
     finally:
         tree.unlock()
+
+
+def filter_out_nested_bzrdirs(deletables):
+    result = []
+    for path, subp in deletables:
+        if isdir(path):
+            try:
+                bzrdir.BzrDir.open(path)
+            except errors.NotBranchError:
+                result.append((path,subp))
+        else:
+            result.append((path,subp))
+    return result
 
 
 def delete_items(deletables, dry_run=False):
