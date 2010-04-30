@@ -608,7 +608,7 @@ BZR_LOG             Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)     Location of .bzr.log (use 'NUL' to suppress log).
 BZR_COLUMNS         Override implicit terminal width.
 BZR_CONCURRENCY     Number of processes that can be run concurrently (selftest).
-BZR_PROGRESS_BAR    Override the progress display. Values are “none”, “dots”, or “tty”.
+BZR_PROGRESS_BAR    Override the progress display. Values are 'none', 'dots', or 'tty'.
 BZR_PDB             Control whether to launch a debugger on error.
 BZR_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a breakin debugger.
 =================== =======================================================================

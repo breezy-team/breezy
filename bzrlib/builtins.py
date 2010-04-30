@@ -4669,6 +4669,7 @@ class cmd_re_sign(Command):
 
 class cmd_bind(Command):
     __doc__ = """Convert the current branch into a checkout of the supplied branch.
+    If no branch is supplied, rebind to the last bound location.
 
     Once converted into a checkout, commits must succeed on the master branch
     before they will be applied to the local branch.
