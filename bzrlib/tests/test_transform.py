@@ -830,6 +830,24 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         rename.set_executability(True, myfile)
         rename.apply()
 
+    def test_rename_fails(self):
+        # see https://bugs.launchpad.net/bzr/+bug/491763
+        create, root_id = self.get_transform()
+        first_dir = create.new_directory('first-dir', root_id, 'first-id')
+        myfile = create.new_file('myfile', root_id, 'myfile-text',
+                                 'myfile-id')
+        create.apply()
+        # make the file and directory readonly in the hope this will prevent
+        # renames
+        osutils.make_readonly(self.wt.abspath('first-dir'))
+        osutils.make_readonly(self.wt.abspath('myfile'))
+        # now transform to rename
+        rename_transform, root_id = self.get_transform()
+        file_trans_id = rename_transform.trans_id_file_id('myfile-id')
+        dir_id = rename_transform.trans_id_file_id('first-id')
+        rename_transform.adjust_path('newname', dir_id, file_trans_id)
+        rename_transform.apply()
+
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.
 
