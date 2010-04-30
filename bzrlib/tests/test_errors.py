@@ -715,7 +715,7 @@ class TestErrorFormatting(TestCase):
             str(e))
             
     def test_transform_rename_failed(self):
-        e = errors.TransformRenameFailed(u"from", u"to", "readonly file")
+        e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
         self.assertEquals(
             u"Failed to rename from to to: readonly file",
             str(e))
