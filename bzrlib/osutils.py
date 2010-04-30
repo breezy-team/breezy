@@ -1158,8 +1158,8 @@ def relpath(base, path):
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
 
-    NOTE: `base` should not have trailing slash otherwise you'll get false
-    negative result.
+    NOTE: `base` should not have a trailing slash otherwise you'll get
+    PathNotChild exceptions regardless of `path`.
     """
 
     if len(base) < MIN_ABS_PATHLENGTH:
