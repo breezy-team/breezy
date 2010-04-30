@@ -35,7 +35,7 @@ Bug Fixes
   (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
 
 * ``bzr rm`` should not refuse to delete directories which contained a file
-  which have been moved elsewhere in the tree after the previous commit.
+  which has been moved elsewhere in the tree after the previous commit.
   (Marius Kruger, Daniel Watkins, #129880)
 
 * ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
