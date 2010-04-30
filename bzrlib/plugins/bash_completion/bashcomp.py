@@ -27,7 +27,17 @@ from bzrlib import (
 import bzrlib
 import re
 
-head="""\
+
+class BashCodeGen(object):
+    """Generate a bash script for given completion data."""
+
+    def __init__(self, data, function_name='_bzr', debug=False):
+        self.data = data
+        self.function_name = function_name
+        self.debug = debug
+
+    def script(self):
+        return ("""\
 # Programmable completion for the Bazaar-NG bzr command under bash.
 # Known to work with bash 2.05a as well as bash 4.1.2, and probably
 # all versions in between as well.
@@ -42,8 +52,17 @@ head="""\
 # Commands and options of bzr %(bzr_version)s
 
 shopt -s progcomp
-"""
-fun="""\
+%(function)s
+complete -F %(function_name)s -o default bzr
+"""     % {
+            "function_name": self.function_name,
+            "function": self.function(),
+            "version": __version__,
+            "bzr_version": self.bzr_version(),
+        })
+
+    def function(self):
+        return ("""\
 %(function_name)s ()
 {
 	local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
@@ -81,6 +100,11 @@ fun="""\
 		curOpt=${COMP_WORDS[COMP_CWORD - 1]}
 		if [[ $curOpt == = ]]; then
 			curOpt=${COMP_WORDS[COMP_CWORD - 2]}
+		elif [[ $cur == : ]]; then
+			cur=
+			curOpt="$curOpt:"
+		elif [[ $curOpt == : ]]; then
+			curOpt=${COMP_WORDS[COMP_CWORD - 2]}:
 		fi
 	fi
 %(debug)s
@@ -94,28 +118,42 @@ fun="""\
 		;;
 	esac
 
-	# if not typing an option, and if we don't know all the
-	# possible non-option arguments for the current command,
-	# then fallback on ordinary filename expansion
 	if [[ -z $fixedWords ]] && [[ -z $optEnums ]] && [[ $cur != -* ]]; then
-		return 0
-	fi
-
-	if [[ $cur == = ]] && [[ -n $optEnums ]]; then
+		case $curOpt in
+			tag:*)
+				fixedWords="$(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//')"
+				;;
+		esac
+	elif [[ $cur == = ]] && [[ -n $optEnums ]]; then
 		# complete directly after "--option=", list all enum values
 		COMPREPLY=( $optEnums )
+		return 0
 	else
 		fixedWords="$cmdOpts $globalOpts $optEnums $fixedWords"
+	fi
+
+	if [[ -n $fixedWords ]]; then
 		COMPREPLY=( $( compgen -W "$fixedWords" -- $cur ) )
 	fi
 
 	return 0
 }
-"""
-tail="""\
-complete -F %(function_name)s -o default bzr
-"""
-debug_output=r"""
+"""     % {
+            "cmds": self.command_names(),
+            "function_name": self.function_name,
+            "cases": self.command_cases(),
+            "global_options": self.global_options(),
+            "debug": self.debug_output(),
+        })
+
+    def command_names(self):
+        return " ".join(self.data.all_command_aliases())
+
+    def debug_output(self):
+        if not self.debug:
+            return ''
+        else:
+            return (r"""
 	# Debugging code enabled using the --debug command line switch.
 	# Will dump some variables to the top portion of the terminal.
 	echo -ne '\e[s\e[H'
@@ -126,142 +164,229 @@ debug_output=r"""
 		echo "\$${i}=\"${!i}\""$'\e[K'
 	done
 	echo -ne '---\e[K\e[u'
-"""
+""")
 
-def wrap_container(list, parser):
-    def tweaked_add_option(*opts, **attrs):
-        list.extend(opts)
-    parser.add_option = tweaked_add_option
-    return parser
+    def bzr_version(self):
+        bzr_version = bzrlib.version_string
+        if not self.data.plugins:
+            bzr_version += "."
+        else:
+            bzr_version += " and the following plugins:"
+            for name, plugin in sorted(self.data.plugins.iteritems()):
+                bzr_version += "\n# %s" % plugin
+        return bzr_version
 
-def wrap_parser(list, parser):
-    orig_add_option_group = parser.add_option_group
-    def tweaked_add_option_group(*opts, **attrs):
-        return wrap_container(list, orig_add_option_group(*opts, **attrs))
-    parser.add_option_group = tweaked_add_option_group
-    return wrap_container(list, parser)
+    def global_options(self):
+        return " ".join(sorted(self.data.global_options))
 
-def bash_completion_function(out, function_name="_bzr", function_only=False,
-                             debug=False,
-                             no_plugins=False, selected_plugins=None):
-    cmds = []
-    cases = ""
-    reqarg = {}
-    plugins = set()
-    if selected_plugins:
-        selected_plugins = set([x.replace('-', '_') for x in selected_plugins])
-    else:
-        selected_plugins = None
+    def command_cases(self):
+        cases = ""
+        for command in self.data.commands:
+            cases += self.command_case(command)
+        return cases
 
-    re_switch = re.compile(r'\n(--[A-Za-z0-9-_]+)(?:, (-\S))?\s')
-    help_text = help_topics.topic_registry.get_detail('global-options')
-    global_options = set()
-    for long, short in re_switch.findall(help_text):
-        global_options.add(long)
-        if short:
-            global_options.add(short)
-    global_options = " ".join(sorted(global_options))
+    def command_case(self, command):
+        case = "\t%s)\n" % "|".join(command.aliases)
+        if command.plugin:
+            case += "\t\t# plugin \"%s\"\n" % command.plugin
+        options = []
+        enums = []
+        for option in command.options:
+            for message in option.error_messages:
+                case += "\t\t# %s\n" % message
+            if option.registry_keys:
+                for key in option.registry_keys:
+                    options.append("%s=%s" % (option, key))
+                enums.append("%s) optEnums='%s' ;;" %
+                             (option, ' '.join(option.registry_keys)))
+            else:
+                options.append(str(option))
+        case += "\t\tcmdOpts='%s'\n" % " ".join(options)
+        if command.fixed_words:
+            fixed_words = command.fixed_words
+            if isinstance(fixed_words, list):
+                fixed_words = "'%s'" + ' '.join(fixed_words)
+            case += "\t\tfixedWords=%s\n" % fixed_words
+        if enums:
+            case += "\t\tcase $curOpt in\n\t\t\t"
+            case += "\n\t\t\t".join(enums)
+            case += "\n\t\tesac\n"
+        case += "\t\t;;\n"
+        return case
 
-    user_aliases = {} # dict from cmd name to set of user-defined alias names
-    for alias, expansion in config.GlobalConfig().get_aliases().iteritems():
-        for token in commands.shlex_split_unicode(expansion):
-            if not token.startswith("-"):
-                user_aliases.setdefault(token, set()).add(alias)
-                break
 
-    all_cmds = sorted(commands.all_command_names())
-    for cmdname in all_cmds:
-        cmd = commands.get_cmd_object(cmdname)
+class CompletionData(object):
+
+    def __init__(self):
+        self.plugins = {}
+        self.global_options = set()
+        self.commands = []
+
+    def all_command_aliases(self):
+        for c in self.commands:
+            for a in c.aliases:
+                yield a
+
+
+class CommandData(object):
+
+    def __init__(self, name):
+        self.name = name
+        self.aliases = [name]
+        self.plugin = None
+        self.options = []
+        self.fixed_words = None
+
+
+class PluginData(object):
+
+    def __init__(self, name, version=None):
+        if version is None:
+            version = bzrlib.plugin.plugins()[name].__version__
+        self.name = name
+        self.version = version
+
+    def __str__(self):
+        if self.version == 'unknown':
+            return self.name
+        return '%s %s' % (self.name, self.version)
+
+
+class OptionData(object):
+
+    def __init__(self, name):
+        self.name = name
+        self.registry_keys = None
+        self.error_messages = []
+
+    def __str__(self):
+        return self.name
+
+    def __cmp__(self, other):
+        return cmp(self.name, other.name)
+
+
+class DataCollector(object):
+
+    def __init__(self, no_plugins=False, selected_plugins=None):
+        self.data = CompletionData()
+        self.user_aliases = {}
+        if no_plugins:
+            self.selected_plugins = set()
+        elif selected_plugins is None:
+            self.selected_plugins = None
+        else:
+            self.selected_plugins = set([x.replace('-', '_')
+                                         for x in selected_plugins])
+
+    def collect(self):
+        self.global_options()
+        self.aliases()
+        self.commands()
+        return self.data
+
+    def global_options(self):
+        re_switch = re.compile(r'\n(--[A-Za-z0-9-_]+)(?:, (-\S))?\s')
+        help_text = help_topics.topic_registry.get_detail('global-options')
+        for long, short in re_switch.findall(help_text):
+            self.data.global_options.add(long)
+            if short:
+                self.data.global_options.add(short)
+
+    def aliases(self):
+        for alias, expansion in config.GlobalConfig().get_aliases().iteritems():
+            for token in commands.shlex_split_unicode(expansion):
+                if not token.startswith("-"):
+                    self.user_aliases.setdefault(token, set()).add(alias)
+                    break
+
+    def commands(self):
+        for name in sorted(commands.all_command_names()):
+            self.command(name)
+
+    def command(self, name):
+        cmd = commands.get_cmd_object(name)
+        cmd_data = CommandData(name)
+
+        plugin_name = cmd.plugin_name()
+        if plugin_name is not None:
+            if (self.selected_plugins is not None and
+                plugin not in self.selected_plugins):
+                return None
+            plugin_data = self.data.plugins.get(plugin_name)
+            if plugin_data is None:
+                plugin_data = PluginData(plugin_name)
+                self.data.plugins[plugin_name] = plugin_data
+            cmd_data.plugin = plugin_data
+        self.data.commands.append(cmd_data)
 
         # Find all aliases to the command; both cmd-defined and user-defined.
         # We assume a user won't override one command with a different one,
         # but will choose completely new names or add options to existing
         # ones while maintaining the actual command name unchanged.
-        aliases = [cmdname]
-        aliases.extend(cmd.aliases)
-        aliases.extend(sorted([alias
-                               for name in aliases
-                               if name in user_aliases
-                               for alias in user_aliases[name]
-                               if alias not in aliases]))
-        cases += "\t%s)\n" % "|".join(aliases)
-        cmds.extend(aliases)
-        plugin = cmd.plugin_name()
-        if plugin is not None:
-            if selected_plugins is not None and plugin not in selected_plugins:
-                continue
-            plugins.add(plugin)
-            cases += "\t\t# plugin \"%s\"\n" % plugin
+        cmd_data.aliases.extend(cmd.aliases)
+        cmd_data.aliases.extend(sorted([useralias
+            for cmdalias in cmd_data.aliases
+            if cmdalias in self.user_aliases
+            for useralias in self.user_aliases[cmdalias]
+            if useralias not in cmd_data.aliases]))
+
         opts = cmd.options()
-        switches = []
-        enums = []
-        fixedWords = None
-        for optname in sorted(cmd.options()):
-            opt = opts[optname]
-            optswitches = []
-            parser = option.get_optparser({optname: opt})
-            parser = wrap_parser(optswitches, parser)
-            optswitches[:] = []
-            opt.add_option(parser, opt.short_name())
-            if isinstance(opt, option.RegistryOption) and opt.enum_switch:
-                enum_switch = '--%s' % optname
+        for optname, opt in sorted(opts.iteritems()):
+            cmd_data.options.extend(self.option(opt))
+
+        if 'help' == name or 'help' in cmd.aliases:
+            cmd_data.fixed_words = ('"$cmds %s"' %
+                " ".join(sorted(help_topics.topic_registry.keys())))
+
+        return cmd_data
+
+    def option(self, opt):
+        optswitches = {}
+        parser = option.get_optparser({opt.name: opt})
+        parser = self.wrap_parser(optswitches, parser)
+        optswitches.clear()
+        opt.add_option(parser, opt.short_name())
+        if isinstance(opt, option.RegistryOption) and opt.enum_switch:
+            enum_switch = '--%s' % opt.name
+            enum_data = optswitches.get(enum_switch)
+            if enum_data:
                 try:
-                    keys = opt.registry.keys()
+                    enum_data.registry_keys = opt.registry.keys()
                 except ImportError, e:
-                    cases += ("\t\t# ERROR getting registry keys for '--%s':"
-                              + " %s\n") % (optname, str(e).split('\n')[0])
-                else:
-                    if enum_switch in optswitches and keys:
-                        optswitches.remove(enum_switch)
-                        for key in keys:
-                            optswitches.append('%s=%s' % (enum_switch, key))
-                            enums.append("%s) optEnums='%s' ;;"
-                                         % (enum_switch, ' '.join(keys)))
-            switches.extend(optswitches)
-        if 'help' == cmdname or 'help' in cmd.aliases:
-            fixedWords = " ".join(sorted(help_topics.topic_registry.keys()))
-            fixedWords = '"$cmds %s"' % fixedWords
+                    enum_data.error_messages.append(
+                        "ERROR getting registry keys for '--%s': %s"
+                        % (opt.name, str(e).split('\n')[0]))
+        return sorted(optswitches.values())
 
-        cases += "\t\tcmdOpts='" + " ".join(switches) + "'\n"
-        if fixedWords:
-            if isinstance(fixedWords, list):
-                fixedWords = "'" + join(fixedWords) + "'"
-            cases += "\t\tfixedWords=" + fixedWords + "\n"
-        if enums:
-            cases += "\t\tcase $curOpt in\n\t\t\t"
-            cases += "\n\t\t\t".join(enums)
-            cases += "\n\t\tesac\n"
-        cases += "\t\t;;\n"
+    def wrap_container(self, optswitches, parser):
+        def tweaked_add_option(*opts, **attrs):
+            for name in opts:
+                optswitches[name] = OptionData(name)
+        parser.add_option = tweaked_add_option
+        return parser
 
-    bzr_version = bzrlib.version_string
-    if not plugins:
-        bzr_version += "."
-    else:
-        bzr_version += " and the following plugins:"
-        for plugin in sorted(plugins):
-            pv = bzrlib.plugin.plugins()[plugin].__version__
-            if pv == 'unknown':
-                pv = ''
-            else:
-                pv = ' ' + pv
-                bzr_version += "\n# %s%s" % (plugin, pv)
+    def wrap_parser(self, optswitches, parser):
+        orig_add_option_group = parser.add_option_group
+        def tweaked_add_option_group(*opts, **attrs):
+            return self.wrap_container(optswitches,
+                orig_add_option_group(*opts, **attrs))
+        parser.add_option_group = tweaked_add_option_group
+        return self.wrap_container(optswitches, parser)
 
+
+def bash_completion_function(out, function_name="_bzr", function_only=False,
+                             debug=False,
+                             no_plugins=False, selected_plugins=None):
+    dc = DataCollector(no_plugins=no_plugins, selected_plugins=selected_plugins)
+    data = dc.collect()
+    cg = BashCodeGen(data, function_name=function_name, debug=debug)
     if function_only:
-        template = fun
+        res = cg.function()
     else:
-        template = head + fun + tail
-    if debug:
-        perhaps_debug_output = debug_output
-    else:
-        perhaps_debug_output = ''
-    out.write(template % {"cmds": " ".join(cmds),
-                          "cases": cases,
-                          "function_name": function_name,
-                          "version": __version__,
-                          "global_options": global_options,
-                          "debug": perhaps_debug_output,
-                          "bzr_version": bzr_version,
-                          })
+        res = cg.script()
+    out.write(res)
+
 
 if __name__ == '__main__':
 

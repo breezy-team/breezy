@@ -23,10 +23,10 @@ bash completion function for bzr. See its documentation for details.
 from meta import *
 from meta import __version__
 
-from bzrlib.commands import Command, register_command
-from bzrlib.option import Option, ListOption
+from bzrlib import commands, option
 
-class cmd_bash_completion(Command):
+
+class cmd_bash_completion(commands.Command):
     """Generate a shell function for bash command line completion.
 
     This command generates a shell function which can be used by bash to
@@ -38,16 +38,16 @@ class cmd_bash_completion(Command):
     """
 
     takes_options = [
-        Option("function-name", short_name="f", type=str, argname="name",
+        option.Option("function-name", short_name="f", type=str, argname="name",
                help="Name of the generated function (default: _bzr)"),
-        Option("function-only", short_name="o", type=None,
+        option.Option("function-only", short_name="o", type=None,
                help="Generate only the shell function, don't enable it"),
-        Option("debug", type=None, hidden=True,
+        option.Option("debug", type=None, hidden=True,
                help="Enable shell code useful for debugging"),
-        ListOption("plugin", type=str, argname="name",
-                   # param_name="selected_plugins", # doesn't work, bug #387117
-                   help="Enable completions for the selected plugin"
-                   + " (default: all plugins)"),
+        option.ListOption("plugin", type=str, argname="name",
+                # param_name="selected_plugins", # doesn't work, bug #387117
+                help="Enable completions for the selected plugin"
+                + " (default: all plugins)"),
         ]
 
     def run(self, **kwargs):
@@ -59,4 +59,14 @@ class cmd_bash_completion(Command):
             del kwargs['plugin']
         bash_completion_function(sys.stdout, **kwargs)
 
-register_command(cmd_bash_completion)
+
+commands.register_command(cmd_bash_completion)
+
+
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'tests',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
