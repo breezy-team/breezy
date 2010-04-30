@@ -2925,7 +2925,7 @@ class _FileMover(object):
             try:
                 osutils.rename(to, from_)
             except (OSError, IOError), e:
-                raise errors.TransformRenameFailed(from_, to, str(e), e.errno)                
+                raise errors.TransformRenameFailed(to, from_, str(e), e.errno)                
         # after rollback, don't reuse _FileMover
         past_renames = None
         pending_deletions = None
