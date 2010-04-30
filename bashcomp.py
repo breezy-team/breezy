@@ -103,7 +103,7 @@ fun="""\
 	if [[ -z $fixedWords ]] && [[ -z $optEnums ]] && [[ $cur != -* ]]; then
 		case $curOpt in
 			tag:*)
-				fixedWords="$(bzr tags | sed 's/  *[^ ]*$//')"
+				fixedWords="$(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//')"
 				;;
 		esac
 	elif [[ $cur == = ]] && [[ -n $optEnums ]]; then

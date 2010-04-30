@@ -187,7 +187,7 @@ class TestBashCompletionInvoking(TestCaseWithTransport, BashCompletionMixin):
         return s.replace("$(bzr ", "$('%s' " % self.get_bzr_path())
 
     def test_revspec_tag_all(self):
-        wt = self.make_branch_and_tree('.', format='2a')
+        wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
         wt.branch.tags.set_tag('3tag', 'null:')
@@ -195,7 +195,7 @@ class TestBashCompletionInvoking(TestCaseWithTransport, BashCompletionMixin):
                       expect=['tag1', 'tag2', '3tag'])
 
     def test_revspec_tag_prefix(self):
-        wt = self.make_branch_and_tree('.', format='2a')
+        wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
         wt.branch.tags.set_tag('3tag', 'null:')
