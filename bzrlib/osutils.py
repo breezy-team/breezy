@@ -388,16 +388,6 @@ def _win32_rename(old, new):
         raise
 
 
-def _wrapped_rename(old, new):
-    """Rename a file or directory"""
-    try:
-        os.rename(old, new)
-    except (IOError, OSError), e:
-        # this is eventually called by all rename-like functions, so should 
-        # catch all of them
-        raise _add_rename_error_details(e, old, new)
-
-
 def _mac_getcwd():
     return unicodedata.normalize('NFC', os.getcwdu())
 
@@ -408,7 +398,7 @@ abspath = _posix_abspath
 realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = os.path.normpath
-rename = _wrapped_rename # overridden below on win32
+rename = os.rename
 getcwd = os.getcwdu
 dirname = os.path.dirname
 basename = os.path.basename
