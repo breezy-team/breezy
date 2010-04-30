@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
+from bzrlib import tests
 from bzrlib.builtins import cmd_checkout
 from bzrlib.tests.transport_util import TestCaseWithConnectionHookedTransport
 
@@ -27,6 +27,7 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_checkout()
+        cmd.outf = tests.StringIOWrapper()
         cmd.run(self.get_url('branch1'), 'local')
         self.assertEquals(1, len(self.connections))
 
@@ -36,6 +37,7 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_checkout()
+        cmd.outf = tests.StringIOWrapper()
         cmd.run(self.get_url('branch1'), 'local', lightweight=True)
         self.assertEquals(1, len(self.connections))
 
