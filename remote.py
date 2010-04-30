@@ -65,7 +65,7 @@ from dulwich.errors import (
     )
 from dulwich.pack import (
     Pack,
-    PackData,
+    ThinPackData,
     )
 import os
 import tempfile
@@ -226,7 +226,7 @@ class TemporaryPackIterator(Pack):
     @property
     def data(self):
         if self._data is None:
-            self._data = PackData(self._data_path)
+            self._data = ThinPackData(self.resolve_ext_ref, self._data_path)
         return self._data
 
     @property
@@ -237,7 +237,7 @@ class TemporaryPackIterator(Pack):
                 try:
                     def report_progress(cur, total):
                         pb.update("generating index", cur, total)
-                    self.data.create_index(self._idx_path, self.resolve_ext_ref,
+                    self.data.create_index(self._idx_path, 
                         progress=report_progress)
                 finally:
                     pb.finished()
