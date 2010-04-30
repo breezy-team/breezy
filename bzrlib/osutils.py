@@ -362,14 +362,6 @@ def _win32_mkdtemp(*args, **kwargs):
     return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
 
 
-def _add_rename_error_details(e, old, new):
-    new_e = OSError(e.errno, "failed to rename %s to %s: %s"
-        % (old, new, e.strerror))
-    new_e.filename = old
-    new_e.to_filename = new
-    return new_e
-
-
 def _win32_rename(old, new):
     """We expect to be able to atomically replace 'new' with old.
 
