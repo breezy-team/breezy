@@ -177,6 +177,9 @@ Bug Fixes
   -rX..Y.
   (Vincent Ladeuil, #474807)
 
+* Properly handle ``param_name`` attribute for ``ListOption``.
+  (Martin von Gagern, 387117)
+
 Improvements
 ************
 
