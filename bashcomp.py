@@ -175,6 +175,7 @@ complete -F %(function_name)s -o default bzr
             bzr_version += " and the following plugins:"
             for name, plugin in sorted(self.data.plugins.iteritems()):
                 bzr_version += "\n# %s" % plugin
+        return bzr_version
 
     def global_options(self):
         return " ".join(sorted(self.data.global_options))
@@ -312,7 +313,7 @@ class DataCollector(object):
         if plugin_name is not None:
             if (self.selected_plugins is not None and
                 plugin not in self.selected_plugins):
-                return
+                return None
             plugin_data = self.data.plugins.get(plugin_name)
             if plugin_data is None:
                 plugin_data = PluginData(plugin_name)
@@ -338,6 +339,8 @@ class DataCollector(object):
         if 'help' == name or 'help' in cmd.aliases:
             cmd_data.fixed_words = ('"$cmds %s"' %
                 " ".join(sorted(help_topics.topic_registry.keys())))
+
+        return cmd_data
 
     def option(self, opt):
         optswitches = {}
