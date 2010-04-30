@@ -534,17 +534,15 @@ elif 'py2exe' in sys.argv:
             install_data.run(self)
 
             py2exe = self.distribution.get_command_obj('py2exe', False)
-            optimize = py2exe.optimize
+            # GZ 2010-04-19: Setup has py2exe.optimize as 2, but give plugins
+            #                time before living with docstring stripping
+            optimize = 1
             compile_names = [f for f in self.outfiles if f.endswith('.py')]
             byte_compile(compile_names,
                          optimize=optimize,
                          force=self.force, prefix=self.install_dir,
                          dry_run=self.dry_run)
-            if optimize:
-                suffix = 'o'
-            else:
-                suffix = 'c'
-            self.outfiles.extend([f + suffix for f in compile_names])
+            self.outfiles.extend([f + 'o' for f in compile_names])
     # end of class install_data_with_bytecompile
 
     target = py2exe.build_exe.Target(script = "bzr",
@@ -692,7 +690,7 @@ elif 'py2exe' in sys.argv:
                                "excludes": excludes,
                                "dll_excludes": dll_excludes,
                                "dist_dir": "win32_bzr.exe",
-                               "optimize": 1,
+                               "optimize": 2,
                               },
                    }
 
