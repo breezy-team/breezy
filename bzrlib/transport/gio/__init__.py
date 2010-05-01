@@ -33,6 +33,7 @@ import gio
 import gtk
 import sys
 import getpass
+import urlparse
 
 from bzrlib import (
     config,
@@ -94,8 +95,14 @@ class GioTransport(ConnectedTransport):
 
         super(GioTransport, self).__init__(base,
             _from_transport=_from_transport)
-        
-        self.url = base[len('gio+'):]
+       
+        #Remove the username and password from the url we send to GIO
+        (scheme, user, password, host, port, path) = urlutils.parse_url(base[len('gio+'):])
+        netloc = host
+        if port:
+            netloc = "%s:%s" % (host,port)
+        u = (scheme, netloc, path,'','','')
+        self.url = urlparse.urlunparse(u)
 
     def _relpath_to_url(self, relpath):
         full_url = urlutils.join(self.url, relpath)
