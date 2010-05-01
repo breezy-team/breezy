@@ -221,7 +221,8 @@ class BzrGitMapping(foreign.VcsMapping):
         return message, metadata
 
     def _decode_commit_message(self, rev, message, encoding):
-        return message.decode(encoding), None
+        message, metadata = self._extract_bzr_metadata(rev, message)
+        return message.decode(encoding), metadata
 
     def _encode_commit_message(self, rev, message, encoding):
         return message.encode(encoding)
@@ -321,7 +322,10 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
         if rev.git_metadata is not None:
-            file_ids = rev.git_metadata.file_ids
+            md = rev.git_metadata
+            file_ids = md.file_ids
+            if md.revision_id:
+                rev.revision_id = md.revision_id
         else:
             file_ids = {}
         return rev, file_ids

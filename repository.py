@@ -173,7 +173,10 @@ class LocalGitRepository(GitRepository):
         try:
             return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
         except errors.InvalidRevisionId:
-            raise errors.NoSuchRevision(self, bzr_revid)
+            try:
+                return self._git.refs["refs/bzr/%s" % bzr_revid], self.get_mapping()
+            except KeyError:
+                raise errors.NoSuchRevision(self, bzr_revid)
 
     def get_revision(self, revision_id):
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)

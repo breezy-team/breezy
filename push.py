@@ -61,13 +61,11 @@ class MissingObjectsIterator(object):
         self.pb = pb
 
     def import_revisions(self, revids, roundtrip):
-        ret = []
         for i, revid in enumerate(revids):
             if self.pb:
                 self.pb.update("pushing revisions", i, len(revids))
             git_commit = self.import_revision(revid, roundtrip)
-            ret.append((revid, git_commit))
-        return ret
+            yield (revid, git_commit)
 
     def import_revision(self, revid, roundtrip):
         """Import the gist of a revision into this Git repository.
@@ -114,6 +112,7 @@ class InterToLocalGitRepository(InterToGitRepository):
     def __init__(self, source, target):
         super(InterToLocalGitRepository, self).__init__(source, target)
         self.target_store = self.target._git.object_store
+        self.target_refs = self.target._git.refs
 
     def missing_revisions(self, stop_revisions, check_revid):
         missing = []
@@ -186,7 +185,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         elif fetch_spec is not None:
             stop_revisions = fetch_spec.heads
         else:
-            stop_revisions = []
+            stop_revisions = self.source.all_revision_ids()
         self.source.lock_read()
         try:
             todo = self._find_missing_revs(stop_revisions)
@@ -194,7 +193,9 @@ class InterToLocalGitRepository(InterToGitRepository):
             try:
                 object_generator = MissingObjectsIterator(self.source_store,
                     self.source, pb)
-                object_generator.import_revisions(todo, roundtrip=True)
+                for (revid, git_sha) in object_generator.import_revisions(
+                    todo, roundtrip=True):
+                    self.target_refs["refs/bzr/%s" % revid] = git_sha
                 self.target_store.add_objects(object_generator)
             finally:
                 pb.finished()

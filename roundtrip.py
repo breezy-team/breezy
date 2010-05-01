@@ -35,8 +35,7 @@ class BzrGitRevisionMetadata(object):
     properties = {}
 
     def __nonzero__(self):
-        return bool(self.revision_id is None or self.file_ids or
-                    self.properties)
+        return bool(self.revision_id or self.file_ids or self.properties)
 
 
 def parse_roundtripping_metadata(text):
