@@ -1750,6 +1750,8 @@ register_transport_proto('gio+ftp://', help="Access using FTP through GIO.")
 register_lazy_transport('gio+ftp://', 'bzrlib.transport.gio', 'GioTransport')
 register_transport_proto('gio+ssh://', help="Access using SSH through GIO.")
 register_lazy_transport('gio+ssh://', 'bzrlib.transport.gio', 'GioTransport')
+register_transport_proto('gio+sftp://', help="Access using SFTP through GIO.")
+register_lazy_transport('gio+sftp://', 'bzrlib.transport.gio', 'GioTransport')
 
 try:
     import kerberos
