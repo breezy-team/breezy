@@ -59,6 +59,9 @@ Bug Fixes
   more comprehensible.
   (Martin Pool, #491763)
 
+* ``bzr ignore`` will no longer add duplicate patterns to .bzrignore.
+  (Gordon Tyler, #572092)
+
 Improvements
 ************
 
