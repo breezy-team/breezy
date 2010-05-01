@@ -17,12 +17,10 @@
 import os
 import re
 import stat
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 import sys
 import time
 import codecs
-import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """

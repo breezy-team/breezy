@@ -176,9 +176,11 @@ def get_runtime_ignores():
 
 
 def tree_ignores_add_patterns(tree, name_pattern_list):
-    """Add a list of ignore patterns to the ignore file in a tree.
+    """Add more ignore patterns to the ignore file in a tree.
+    If ignore file does not exist then it will be created.
+    The ignore file will be automatically added under version control.
 
-    :param tree: Tree to retrieve the ignore list from.
+    :param tree: Working tree to update the ignore list.
     :param name_pattern_list: List of ignore patterns.
     :return: None
     """
@@ -219,5 +221,5 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     finally:
         f.close()
 
-    if not tree.path2id('.bzrignore'):
-        tree.add(['.bzrignore'])
+    if not tree.path2id(bzrlib.IGNORE_FILENAME):
+        tree.add([bzrlib.IGNORE_FILENAME])
