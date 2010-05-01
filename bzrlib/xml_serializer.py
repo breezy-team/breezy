@@ -23,7 +23,7 @@
 # ElementTree bits
 
 from bzrlib.serializer import Serializer
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter
 
 try:
     try:
