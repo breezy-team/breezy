@@ -300,8 +300,7 @@ class LocalGitBranch(GitBranch):
         self.set_last_revision(revid)
 
     def set_last_revision(self, revid):
-        (newhead, self.mapping) = self.mapping.revision_id_bzr_to_foreign(
-                revid)
+        (newhead, self.mapping) = self.repository.lookup_bzr_revision_id(revid)
         self.head = newhead
 
     def _set_head(self, value):
@@ -583,12 +582,26 @@ class InterToGitBranch(branch.InterBranch):
 
     def push(self, overwrite=True, stop_revision=None,
              _override_hook_source_branch=None):
-        return self._push(stop_revision=stop_revision, roundtrip=True)
+        from dulwich.protocol import ZERO_SHA
+        result = GitBranchPushResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        if stop_revision is None:
+            stop_revision = self.source.last_revision()
+        # FIXME: Check for diverged branches
+        refs = { self.target.ref: stop_revision }
+        for name, revid in self.source.tags.get_tag_dict().iteritems():
+            if self.source.repository.has_revision(revid):
+                refs[tag_name_to_ref(name)] = revid
+        old_refs = self.target.repository._git.get_refs()
+        self.target.repository.fetch_refs(self.source.repository, refs)
+        result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
+            old_refs.get(self.target.ref, ZERO_SHA))
+        result.new_revid = refs[self.target.ref]
+        return result
 
     def lossy_push(self, stop_revision=None):
         return self._push(stop_revision=stop_revision, roundtrip=False)
-
-    def _push(self, roundtrip, stop_revision=None):
         from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
@@ -602,11 +615,11 @@ class InterToGitBranch(branch.InterBranch):
                 refs[tag_name_to_ref(name)] = revid
         revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
             self.source.repository, refs)
+        result.revidmap = revidmap
         result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
             old_refs.get(self.target.ref, ZERO_SHA))
         result.new_revid = self.target.mapping.revision_id_foreign_to_bzr(
             new_refs[self.target.ref])
-        result.revidmap = revidmap
         return result
 
 

@@ -20,6 +20,9 @@ from bzrlib import (
     errors,
     ui,
     )
+from bzrlib.graph import (
+    PendingAncestryResult,
+    )
 from bzrlib.repository import (
     InterRepository,
     )
@@ -124,6 +127,10 @@ class InterToLocalGitRepository(InterToGitRepository):
             return graph.iter_topo_order(missing)
         finally:
             pb.finished()
+
+    def fetch_refs(self, refs):
+        fetch_spec = PendingAncestryResult(refs.values(), self.source)
+        self.fetch(fetch_spec=fetch_spec)
 
     def dfetch_refs(self, refs):
         old_refs = self.target._git.get_refs()
