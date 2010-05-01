@@ -287,6 +287,7 @@ class BzrGitMapping(foreign.VcsMapping):
             for k, v in rev.properties.iteritems():
                 if not k in mapping_properties:
                     metadata.properties[k] = v
+            metadata.file_ids = file_ids
         commit.message = inject_bzr_metadata(commit.message, metadata)
         return commit
 

@@ -202,6 +202,16 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.timezone = 0
         self.assertRoundtripRevision(r, {})
 
+    def test_file_ids(self):
+        r = Revision("myrevid")
+        r.message = "MyCommitMessage"
+        r.parent_ids = []
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        r.properties = {}
+        self.assertRoundtripRevision(r, {"foo/bar": "fileid"})
+
 
 class RoundtripRevisionsFromGit(tests.TestCase):
 
