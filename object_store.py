@@ -303,16 +303,17 @@ class BazaarObjectStore(BaseObjectStore):
         self._update_sha_map()
         return iter(self._cache.idmap.sha1s())
 
-    def _reconstruct_commit(self, rev, tree_sha):
+    def _reconstruct_commit(self, rev, tree_sha, roundtrip):
         def parent_lookup(revid):
             try:
                 return self._lookup_revision_sha1(revid)
             except errors.NoSuchRevision:
                 trace.warning("Ignoring ghost parent %s", revid)
                 return None
-        return self.mapping.export_commit(rev, tree_sha, parent_lookup)
+        return self.mapping.export_commit(rev, tree_sha, parent_lookup,
+            roundtrip)
 
-    def _revision_to_objects(self, rev, tree):
+    def _revision_to_objects(self, rev, tree, roundtrip):
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
         parent_trees = self.tree_cache.revision_trees(
@@ -330,7 +331,8 @@ class BazaarObjectStore(BaseObjectStore):
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 tree_sha = self[base_sha1].tree
-        commit_obj = self._reconstruct_commit(rev, tree_sha)
+        commit_obj = self._reconstruct_commit(rev, tree_sha,
+            roundtrip=roundtrip)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
                 rev.revision_id)
@@ -347,7 +349,9 @@ class BazaarObjectStore(BaseObjectStore):
         rev = self.repository.get_revision(revid)
         tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
-        for path, obj, ie in self._revision_to_objects(rev, tree):
+        # FIXME: roundtrip=True AND roundtrip=False
+        for path, obj, ie in self._revision_to_objects(rev, tree,
+            roundtrip=True):
             updater.add_object(obj, ie)
         commit_obj = updater.finish()
         return commit_obj.id
@@ -486,7 +490,8 @@ class BazaarObjectStore(BaseObjectStore):
                 trace.mutter('entry for %s %s in shamap: %r, but not found in '
                              'repository', type, sha, type_data)
                 raise KeyError(sha)
-            commit = self._reconstruct_commit(rev, tree_sha)
+            # FIXME
+            commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True) 
             _check_expected_sha(sha, commit)
             return commit
         elif type == "blob":

@@ -47,6 +47,8 @@ from bzrlib.plugins.git.hg import (
     )
 from bzrlib.plugins.git.roundtrip import (
     extract_bzr_metadata,
+    inject_bzr_metadata,
+    BzrGitRevisionMetadata,
     )
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0644
@@ -216,15 +218,15 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def _extract_bzr_metadata(self, rev, message):
         (message, metadata) = extract_bzr_metadata(message)
-        return message
+        return message, metadata
 
     def _decode_commit_message(self, rev, message, encoding):
-        return message.decode(encoding)
+        return message.decode(encoding), None
 
     def _encode_commit_message(self, rev, message, encoding):
         return message.encode(encoding)
 
-    def export_commit(self, rev, tree_sha, parent_lookup):
+    def export_commit(self, rev, tree_sha, parent_lookup, roundtrip):
         """Turn a Bazaar revision in to a Git commit
 
         :param tree_sha: Tree sha for the commit
@@ -266,6 +268,15 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = commit.commit_timezone
         commit.message = self._encode_commit_message(rev, rev.message, 
             encoding)
+        if roundtrip:
+            metadata = BzrGitRevisionMetadata()
+            try:
+                mapping_registry.parse_revision_id(rev.revision_id)
+            except errors.InvalidRevisionId:
+                metadata.revision_id = rev.revision_id
+        else:
+            metadata = None
+        commit.message = inject_bzr_metadata(commit.message, metadata)
         return commit
 
     def import_commit(self, commit):
@@ -279,12 +290,13 @@ class BzrGitMapping(foreign.VcsMapping):
         rev = ForeignRevision(commit.id, self,
                 self.revision_id_foreign_to_bzr(commit.id))
         rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
+        rev.git_metadata = None
         def decode_using_encoding(rev, commit, encoding):
             rev.committer = str(commit.committer).decode(encoding)
             if commit.committer != commit.author:
                 rev.properties['author'] = str(commit.author).decode(encoding)
-            rev.message = self._decode_commit_message(rev, commit.message, 
-                encoding)
+            rev.message, rev.git_metadata = self._decode_commit_message(
+                rev, commit.message, encoding)
         if commit.encoding is not None:
             rev.properties['git-explicit-encoding'] = commit.encoding
             decode_using_encoding(rev, commit, commit.encoding)
@@ -308,7 +320,11 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['commit-timezone-neg-utc'] = ""
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
-        return rev, {}
+        if rev.git_metadata is not None:
+            file_ids = rev.git_metadata.file_ids
+        else:
+            file_ids = {}
+        return rev, file_ids
 
 
 class BzrGitMappingv1(BzrGitMapping):
@@ -326,8 +342,8 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
     def _decode_commit_message(self, rev, message, encoding):
         message = self._extract_hg_metadata(rev, message)
         message = self._extract_git_svn_metadata(rev, message)
-        message = self._extract_bzr_metadata(rev, message)
-        return message.decode(encoding)
+        message, metadata = self._extract_bzr_metadata(rev, message)
+        return message.decode(encoding), metadata
 
     def _encode_commit_message(self, rev, message, encoding):
         ret = message.encode(encoding)

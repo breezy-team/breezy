@@ -57,21 +57,24 @@ class MissingObjectsIterator(object):
         self._pending = []
         self.pb = pb
 
-    def import_revisions(self, revids):
+    def import_revisions(self, revids, roundtrip):
+        ret = []
         for i, revid in enumerate(revids):
             if self.pb:
                 self.pb.update("pushing revisions", i, len(revids))
-            git_commit = self.import_revision(revid)
-            yield (revid, git_commit)
+            git_commit = self.import_revision(revid, roundtrip)
+            ret.append((revid, git_commit))
+        return ret
 
-    def import_revision(self, revid):
+    def import_revision(self, revid, roundtrip):
         """Import the gist of a revision into this Git repository.
 
         """
         tree = self._object_store.tree_cache.revision_tree(revid)
         rev = self.source.get_revision(revid)
         commit = None
-        for path, obj, ie in self._object_store._revision_to_objects(rev, tree):
+        for path, obj, ie in self._object_store._revision_to_objects(rev, tree,
+            roundtrip):
             if obj.type_name == "commit":
                 commit = obj
             self._pending.append((obj, path))
@@ -101,10 +104,6 @@ class InterToGitRepository(InterRepository):
     def copy_content(self, revision_id=None, pb=None):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
-
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        raise NoPushSupport()
 
 
 class InterToLocalGitRepository(InterToGitRepository):
@@ -162,7 +161,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                 object_generator = MissingObjectsIterator(self.source_store,
                     self.source, pb)
                 for old_bzr_revid, git_commit in object_generator.import_revisions(
-                    todo):
+                    todo, roundtrip=False):
                     new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
                     revidmap[old_bzr_revid] = new_bzr_revid
                     gitidmap[old_bzr_revid] = git_commit
@@ -172,6 +171,28 @@ class InterToLocalGitRepository(InterToGitRepository):
         finally:
             self.source.unlock()
         return revidmap, gitidmap
+
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
+        if revision_id is not None:
+            stop_revisions = [revision_id]
+        elif fetch_spec is not None:
+            stop_revisions = fetch_spec.heads
+        else:
+            stop_revisions = []
+        self.source.lock_read()
+        try:
+            todo = self._find_missing_revs(stop_revisions)
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                object_generator = MissingObjectsIterator(self.source_store,
+                    self.source, pb)
+                object_generator.import_revisions(todo, roundtrip=True)
+                self.target_store.add_objects(object_generator)
+            finally:
+                pb.finished()
+        finally:
+            self.source.unlock()
 
     @staticmethod
     def is_compatible(source, target):
@@ -199,6 +220,10 @@ class InterToRemoteGitRepository(InterToGitRepository):
         finally:
             self.source.unlock()
         return revidmap, old_refs, new_refs
+
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
+        raise NoPushSupport()
 
     @staticmethod
     def is_compatible(source, target):

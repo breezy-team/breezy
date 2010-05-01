@@ -583,9 +583,12 @@ class InterToGitBranch(branch.InterBranch):
 
     def push(self, overwrite=True, stop_revision=None,
              _override_hook_source_branch=None):
-        raise NoPushSupport()
+        return self._push(stop_revision=stop_revision, roundtrip=True)
 
     def lossy_push(self, stop_revision=None):
+        return self._push(stop_revision=stop_revision, roundtrip=False)
+
+    def _push(self, roundtrip, stop_revision=None):
         from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
