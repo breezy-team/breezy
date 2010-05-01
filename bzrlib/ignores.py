@@ -176,32 +176,45 @@ def get_runtime_ignores():
 
 
 def tree_ignores_add_patterns(tree, name_pattern_list):
-    """Retrieve a list of ignores from the ignore file in a tree.
+    """Add a list of ignore patterns to the ignore file in a tree.
 
     :param tree: Tree to retrieve the ignore list from.
-    :return:
+    :param name_pattern_list: List of ignore patterns.
+    :return: None
     """
+    # read in the existing ignores set
     ifn = tree.abspath(bzrlib.IGNORE_FILENAME)
     if tree.has_filename(ifn):
         f = open(ifn, 'rt')
         try:
-            igns = f.read().decode('utf-8')
+            # grab a copy of the raw contents of the file
+            orig_contents = f.read()
+            # then parse it from the start
+            f.seek(0)
+            ignores = parse_ignore_file(f)
+            # figure out what kind of line endings are used
+            newline = getattr(f, 'newlines', None)
+            if type(newline) is tuple:
+                newline = newline[0]
+            elif newline is None:
+                newline = '\n'
         finally:
             f.close()
     else:
-        igns = ""
+        orig_contents = ''
+        ignores = set()
+        newline = '\n'
 
-    # TODO: If the file already uses crlf-style termination, maybe
-    # we should use that for the newly added lines?
-
-    if igns and igns[-1] != '\n':
-        igns += '\n'
-    for name_pattern in name_pattern_list:
-        igns += name_pattern + '\n'
-
+    # write out the updated ignores set
     f = atomicfile.AtomicFile(ifn, 'wb')
     try:
-        f.write(igns.encode('utf-8'))
+        f.write(orig_contents)
+        if len(orig_contents) > 0 and not orig_contents.endswith(newline):
+            f.write(newline)
+        for pattern in name_pattern_list:
+            if not pattern in ignores:
+                f.write(pattern.encode('utf-8'))
+                f.write(newline)
         f.commit()
     finally:
         f.close()

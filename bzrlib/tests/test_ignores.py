@@ -165,27 +165,38 @@ class TestRuntimeIgnores(TestCase):
 
 
 class TestTreeIgnores(TestCaseWithTransport):
+    
+    def assertPatternsEquals(self, patterns):
+        self.assertEquals(set(patterns),
+                          set(open(".bzrignore", 'r').read().strip().split('\n')))
 
     def test_new_file(self):
         tree = self.make_branch_and_tree(".")
         ignores.tree_ignores_add_patterns(tree, ["myentry"])
         self.assertTrue(tree.has_filename(".bzrignore"))
-        self.assertEquals("myentry\n",
-                          open(".bzrignore", 'r').read())
+        self.assertPatternsEquals(["myentry"])
 
     def test_add_to_existing(self):
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([('.bzrignore', "myentry1\n")])
         tree.add([".bzrignore"])
         ignores.tree_ignores_add_patterns(tree, ["myentry2", "foo"])
-        self.assertEquals("myentry1\nmyentry2\nfoo\n",
-                          open(".bzrignore", 'r').read())
+        self.assertPatternsEquals(["myentry1", "myentry2", "foo"])
 
     def test_adds_ending_newline(self):
         tree = self.make_branch_and_tree(".")
         self.build_tree_contents([('.bzrignore', "myentry1")])
         tree.add([".bzrignore"])
         ignores.tree_ignores_add_patterns(tree, ["myentry2"])
-        self.assertEquals("myentry1\nmyentry2\n",
-                          open(".bzrignore", 'r').read())
+        self.assertPatternsEquals(["myentry1", "myentry2"])
+        text = open(".bzrignore", 'r').read()
+        self.assertTrue(text.endswith('\r\n') or
+                        text.endswith('\n') or
+                        text.endswith('\r'))
 
+    def test_does_not_add_dupe(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([('.bzrignore', "myentry\n")])
+        tree.add([".bzrignore"])
+        ignores.tree_ignores_add_patterns(tree, ["myentry"])
+        self.assertPatternsEquals(["myentry"])
