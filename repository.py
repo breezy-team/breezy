@@ -100,9 +100,6 @@ class LocalGitRepository(GitRepository):
     """Git repository on the file system."""
 
     def __init__(self, gitdir, lockfiles):
-        # FIXME: This also caches negatives. Need to be more careful
-        # about this once we start writing to git
-        self._parents_provider = graph.CachingParentsProvider(self)
         GitRepository.__init__(self, gitdir, lockfiles)
         self.base = gitdir.root_transport.base
         self._git = gitdir._git
@@ -122,10 +119,6 @@ class LocalGitRepository(GitRepository):
         for rev, parents in graph.iter_ancestry(bzr_heads):
             ret.add(rev)
         return ret
-
-    def _make_parents_provider(self):
-        """See Repository._make_parents_provider()."""
-        return self._parents_provider
 
     def get_parent_map(self, revids):
         parent_map = {}
