@@ -283,7 +283,7 @@ class BzrGitMapping(foreign.VcsMapping):
             mapping_properties = set(
                 ['author', 'author-timezone', 'author-timezone-neg-utc',
                  'commit-timezone-neg-utc', 'git-implicit-encoding',
-                 'git-explicit-encoding', 'author-timestamp'])
+                 'git-explicit-encoding', 'author-timestamp', 'file-modes'])
             for k, v in rev.properties.iteritems():
                 if not k in mapping_properties:
                     metadata.properties[k] = v
