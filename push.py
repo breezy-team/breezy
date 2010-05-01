@@ -109,6 +109,10 @@ class InterToGitRepository(InterRepository):
 
 class InterToLocalGitRepository(InterToGitRepository):
 
+    def __init__(self, source, target):
+        super(InterToLocalGitRepository, self).__init__(source, target)
+        self.target_store = self.target._git.object_store
+
     def missing_revisions(self, stop_revisions, check_revid):
         missing = []
         pb = ui.ui_factory.nested_progress_bar()
@@ -135,31 +139,34 @@ class InterToLocalGitRepository(InterToGitRepository):
             new_refs[name] = gitid
         return revidmap, old_refs, new_refs
 
+    def _find_missing_revs(self, stop_revisions):
+        def check_revid(revid):
+            if revid == NULL_REVISION:
+                return True
+            try:
+                return (self.source_store._lookup_revision_sha1(revid) in self.target_store)
+            except errors.NoSuchRevision:
+                # Ghost, can't dpush
+                return True
+        return list(self.missing_revisions(stop_revisions, check_revid))
+
     def dfetch(self, stop_revisions):
         """Import the gist of the ancestry of a particular revision."""
         gitidmap = {}
         revidmap = {}
         self.source.lock_read()
         try:
-            target_store = self.target._git.object_store
-            def check_revid(revid):
-                if revid == NULL_REVISION:
-                    return True
-                try:
-                    return (self.source_store._lookup_revision_sha1(revid) in target_store)
-                except errors.NoSuchRevision:
-                    # Ghost, can't dpush
-                    return True
-            todo = list(self.missing_revisions(stop_revisions, check_revid))
+            todo = self._find_missing_revs(stop_revisions)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                object_generator = MissingObjectsIterator(self.source_store, self.source, pb)
+                object_generator = MissingObjectsIterator(self.source_store,
+                    self.source, pb)
                 for old_bzr_revid, git_commit in object_generator.import_revisions(
                     todo):
                     new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
                     revidmap[old_bzr_revid] = new_bzr_revid
                     gitidmap[old_bzr_revid] = git_commit
-                target_store.add_objects(object_generator)
+                self.target_store.add_objects(object_generator)
             finally:
                 pb.finished()
         finally:
