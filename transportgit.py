@@ -135,7 +135,7 @@ class TransportObjectStore(PackBasedObjectStore):
     def _get_loose_object(self, sha):
         path = '%s/%s' % self._split_loose_object(sha)
         try:
-            return ShaFile._parse_file(self.transport.get(path).read())
+            return ShaFile.from_file(self.transport.get(path))
         except NoSuchFile:
             return None
 
