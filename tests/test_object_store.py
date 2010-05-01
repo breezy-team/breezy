@@ -71,3 +71,12 @@ class FindMissingBzrRevidsTests(TestCase):
     def test_one_missing(self):
         self.assertEquals(set(["a"]),
                 self._find_missing({"a": ["b"]}, ["a"], ["b"]))
+
+    def test_two_missing(self):
+        self.assertEquals(set(["a", "b"]),
+                self._find_missing({"a": ["b"], "b": ["c"]}, ["a"], ["c"]))
+
+    def test_two_missing_history(self):
+        self.assertEquals(set(["a", "b"]),
+                self._find_missing({"a": ["b"], "b": ["c"], "c": ["d"]},
+                    ["a"], ["c"]))
