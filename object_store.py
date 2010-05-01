@@ -93,14 +93,25 @@ class LRUTreeCache(object):
         self._cache.add(tree.get_revision_id(), tree)
 
 
-def _find_missing_bzr_revids(get_parent_map, pending, processed):
-    pending -= processed
+def _find_missing_bzr_revids(get_parent_map, want, have):
+    """Find the revisions that have to be pushed.
+
+    :param get_parent_map: Function that returns the parents for a sequence
+        of revisions.
+    :param want: Revisions the target wants
+    :param have: Revisions the target already has
+    :return: Set of revisions to fetch
+    """
+    pending = want - have
+    processed = set()
     todo = set()
     while pending:
         processed.update(pending)
         next_map = get_parent_map(pending)
         next_pending = set()
         for item in next_map.iteritems():
+            if item[0] in have:
+                continue
             todo.add(item[0])
             next_pending.update(p for p in item[1] if p not in processed)
         pending = next_pending
