@@ -26,9 +26,12 @@ class BzrGitRevisionMetadata(object):
     :ivar revision_id: Revision id, as string
     :ivar properties: Revision properties, as dictionary
     :ivar file_ids: File ids, as map from path -> file id
+    :ivar explicit_parent_ids: Parent ids (needed if there are ghosts)
     """
 
     revision_id = None
+
+    explicit_parent_ids = None
 
     file_ids = {}
 
@@ -46,6 +49,8 @@ def parse_roundtripping_metadata(text):
         (key, value) = l.split(":", 1)
         if key == "revision-id":
             ret.revision_id = value.strip()
+        elif key == "parent-ids":
+            ret.explicit_parent_ids = tuple(value.strip().split(" "))
         else:
             raise ValueError
     return ret
@@ -57,7 +62,12 @@ def generate_roundtripping_metadata(metadata):
     :param metadata: A `BzrGitRevisionMetadata` instance
     :return: String with revision metadata
     """
-    return "revision-id: %s\n" % metadata.revision_id
+    lines = []
+    if metadata.revision_id:
+        lines.append("revision-id: %s\n" % metadata.revision_id)
+    if metadata.explicit_parent_ids:
+        lines.append("parent-ids: %s\n" % " ".join(metadata.explicit_parent_ids))
+    return "".join(lines)
 
 
 def extract_bzr_metadata(message):

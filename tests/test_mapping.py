@@ -146,9 +146,12 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
     def setUp(self):
         super(RoundtripRevisionsFromBazaar, self).setUp()
         self.mapping = BzrGitMappingv1()
+        self._parent_map = {}
+        self._lookup_parent = self._parent_map.__getitem__
 
     def assertRoundtripRevision(self, orig_rev):
-        commit = self.mapping.export_commit(orig_rev, "mysha", None, True)
+        commit = self.mapping.export_commit(orig_rev, "mysha",
+            self._lookup_parent, True)
         rev, file_ids = self.mapping.import_commit(commit)
         self.assertEquals({}, file_ids)
         self.assertEquals(orig_rev.revision_id, rev.revision_id)
@@ -163,6 +166,26 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r = Revision(self.mapping.revision_id_foreign_to_bzr("edf99e6c56495c620f20d5dacff9859ff7119261"))
         r.message = "MyCommitMessage"
         r.parent_ids = []
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        r.properties = {}
+        self.assertRoundtripRevision(r)
+
+    def test_revision_id(self):
+        r = Revision("myrevid")
+        r.message = "MyCommitMessage"
+        r.parent_ids = []
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        r.properties = {}
+        self.assertRoundtripRevision(r)
+
+    def test_ghost_parent(self):
+        r = Revision("myrevid")
+        r.message = "MyCommitMessage"
+        r.parent_ids = ["iamaghost"]
         r.committer = "Jelmer Vernooij <jelmer@apache.org>"
         r.timestamp = 453543543
         r.timezone = 0

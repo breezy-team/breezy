@@ -238,11 +238,17 @@ class BzrGitMapping(foreign.VcsMapping):
         from dulwich.objects import Commit
         commit = Commit()
         commit.tree = tree_sha
+        if roundtrip:
+            metadata = BzrGitRevisionMetadata()
+        else:
+            metadata = None
         for p in rev.parent_ids:
             try:
                 git_p = parent_lookup(p)
             except KeyError:
                 git_p = None
+                if metadata is not None:
+                    metadata.explicit_parent_ids = rev.parent_ids
             if git_p is not None:
                 assert len(git_p) == 40, "unexpected length for %r" % git_p
                 commit.parents.append(git_p)
@@ -269,14 +275,11 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = commit.commit_timezone
         commit.message = self._encode_commit_message(rev, rev.message, 
             encoding)
-        if roundtrip:
-            metadata = BzrGitRevisionMetadata()
+        if metadata is not None:
             try:
                 mapping_registry.parse_revision_id(rev.revision_id)
             except errors.InvalidRevisionId:
                 metadata.revision_id = rev.revision_id
-        else:
-            metadata = None
         commit.message = inject_bzr_metadata(commit.message, metadata)
         return commit
 
@@ -326,6 +329,8 @@ class BzrGitMapping(foreign.VcsMapping):
             file_ids = md.file_ids
             if md.revision_id:
                 rev.revision_id = md.revision_id
+            if md.explicit_parent_ids:
+                rev.parent_ids = md.explicit_parent_ids
         else:
             file_ids = {}
         return rev, file_ids
