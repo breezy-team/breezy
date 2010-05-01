@@ -171,6 +171,10 @@ class GioTransport(ConnectedTransport):
             except gio.Error, e:
                 if (e.code == gio.ERROR_NOT_MOUNTED):
                     op = gio.MountOperation()
+                    if user:
+                        op.set_username(user)
+                    if password:
+                        op.set_password(password)
                     op.connect('ask-password', self._ask_password_cb)  
                     m = connection.mount_enclosing_volume(op, self._mount_done_cb)
                     while self.mounted==0:
@@ -497,7 +501,10 @@ class GioTransport(ConnectedTransport):
             mutter('unable to understand error for path: %s: %s', path, err)
             raise err
 
-def get_test_permutations():
-    """Return the permutations to be used in testing."""
-    from bzrlib.tests import ftp_server
-    return [(FtpTransport, ftp_server.FTPTestServer)]
+#def get_test_permutations():
+#    """Return the permutations to be used in testing."""
+#    from bzrlib.tests import stub_sftp
+#    return [(GioTransport, stub_sftp.SFTPAbsoluteServer),
+#            (GioTransport, stub_sftp.SFTPHomeDirServer),
+#            (GioTransport, stub_sftp.SFTPSiblingAbsoluteServer),
+#            ]
