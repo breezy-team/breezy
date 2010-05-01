@@ -127,7 +127,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
             ie.text_sha1 = osutils.sha_strings(blob.chunked)
     # Check what revision we should store
     parent_keys = []
-    for pinv in parent_invs[1:]:
+    for pinv in parent_invs:
         try:
             pie = pinv[file_id]
         except NoSuchId:
@@ -136,7 +136,9 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
             # found a revision in one of the parents to use
             ie.revision = pie.revision
             break
-        parent_keys.append((file_id, pie.revision))
+        parent_key = (file_id, pie.revision)
+        if not parent_key in parent_keys:
+            parent_keys.append(parent_key)
     if ie.revision is None:
         # Need to store a new revision
         ie.revision = revision_id
