@@ -195,7 +195,10 @@ class InterToLocalGitRepository(InterToGitRepository):
                     self.source, pb)
                 for (revid, git_sha) in object_generator.import_revisions(
                     todo, roundtrip=True):
-                    self.target_refs["refs/bzr/%s" % revid] = git_sha
+                    try:
+                        self.mapping.revision_id_bzr_to_foreign(revid)
+                    except errors.InvalidRevisionId:
+                        self.target_refs["refs/bzr/%s" % revid] = git_sha
                 self.target_store.add_objects(object_generator)
             finally:
                 pb.finished()
