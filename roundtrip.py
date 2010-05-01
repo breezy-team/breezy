@@ -53,6 +53,9 @@ def parse_roundtripping_metadata(text):
             ret.explicit_parent_ids = tuple(value.strip().split(" "))
         elif key.startswith("property-"):
             ret.properties[key[len("property-"):]] = value[1:].rstrip("\n")
+        elif key == "file-id":
+            (file_id, path) = value[1:].rstrip("\n").split(" ", 1)
+            ret.file_ids[path] = file_id
         else:
             raise ValueError
     return ret
@@ -71,6 +74,8 @@ def generate_roundtripping_metadata(metadata):
         lines.append("parent-ids: %s\n" % " ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         lines.append("property-%s: %s\n" % (key, metadata.properties[key]))
+    for key in sorted(metadata.file_ids.keys()):
+        lines.append("file-id: %s %s\n" % (metadata.file_ids[key], key))
     return "".join(lines)
 
 

@@ -44,6 +44,10 @@ class RoundtripTests(TestCase):
         md = parse_roundtripping_metadata("property-foop: blar\n")
         self.assertEquals({"foop": "blar"}, md.properties)
 
+    def test_file_ids(self):
+        md = parse_roundtripping_metadata("file-id: bar foo/la\n")
+        self.assertEquals({"foo/la": "bar"}, md.file_ids)
+
 
 class FormatTests(TestCase):
 
@@ -63,6 +67,12 @@ class FormatTests(TestCase):
         metadata = BzrGitRevisionMetadata()
         metadata.properties = {"foo": "bar"}
         self.assertEquals("property-foo: bar\n",
+            generate_roundtripping_metadata(metadata))
+
+    def test_file_ids(self):
+        metadata = BzrGitRevisionMetadata()
+        metadata.file_ids = {"foo/la": "bar"}
+        self.assertEquals("file-id: bar foo/la\n",
             generate_roundtripping_metadata(metadata))
 
 
