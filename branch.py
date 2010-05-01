@@ -300,8 +300,7 @@ class LocalGitBranch(GitBranch):
         self.set_last_revision(revid)
 
     def set_last_revision(self, revid):
-        (newhead, self.mapping) = self.mapping.revision_id_bzr_to_foreign(
-                revid)
+        (newhead, self.mapping) = self.repository.lookup_bzr_revision_id(revid)
         self.head = newhead
 
     def _set_head(self, value):
