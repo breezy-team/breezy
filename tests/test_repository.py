@@ -220,7 +220,7 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
         store, store_iter = self.object_iter()
         store._cache.idmap.start_write_group()
         try:
-            return store_iter.import_revision(revid)
+            return store_iter.import_revision(revid, roundtrip=False)
         except:
             store._cache.idmap.abort_write_group()
             raise

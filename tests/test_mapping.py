@@ -19,6 +19,9 @@ from bzrlib.inventory import (
     InventoryDirectory,
     InventoryFile,
     )
+from bzrlib.revision import (
+    Revision,
+    )
 
 from dulwich.objects import (
     Blob,
@@ -138,6 +141,35 @@ class TestImportCommit(tests.TestCase):
         self.assertTrue("git-implicit-encoding" not in rev.properties)
 
 
+class RoundtripRevisionsFromBazaar(tests.TestCase):
+
+    def setUp(self):
+        super(RoundtripRevisionsFromBazaar, self).setUp()
+        self.mapping = BzrGitMappingv1()
+
+    def assertRoundtripRevision(self, orig_rev):
+        commit = self.mapping.export_commit(orig_rev, "mysha", None, True)
+        rev, file_ids = self.mapping.import_commit(commit)
+        self.assertEquals({}, file_ids)
+        self.assertEquals(orig_rev.revision_id, rev.revision_id)
+        self.assertEquals(orig_rev.properties, rev.properties)
+        self.assertEquals(orig_rev.committer, rev.committer)
+        self.assertEquals(orig_rev.timestamp, rev.timestamp)
+        self.assertEquals(orig_rev.timezone, rev.timezone)
+        self.assertEquals(orig_rev.message, rev.message)
+        self.assertEquals(list(orig_rev.parent_ids), list(rev.parent_ids))
+
+    def test_simple_commit(self):
+        r = Revision(self.mapping.revision_id_foreign_to_bzr("edf99e6c56495c620f20d5dacff9859ff7119261"))
+        r.message = "MyCommitMessage"
+        r.parent_ids = []
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        r.properties = {}
+        self.assertRoundtripRevision(r)
+
+
 class RoundtripRevisionsFromGit(tests.TestCase):
 
     def setUp(self):
@@ -153,7 +185,8 @@ class RoundtripRevisionsFromGit(tests.TestCase):
     def assertRoundtripCommit(self, commit1):
         rev, file_ids = self.mapping.import_commit(commit1)
         self.assertEquals(file_ids, {})
-        commit2 = self.mapping.export_commit(rev, "12341212121212", None)
+        commit2 = self.mapping.export_commit(rev, "12341212121212", None,
+            True)
         self.assertEquals(commit1.committer, commit2.committer)
         self.assertEquals(commit1.commit_time, commit2.commit_time)
         self.assertEquals(commit1.commit_timezone, commit2.commit_timezone)
