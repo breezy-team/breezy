@@ -280,6 +280,13 @@ class BzrGitMapping(foreign.VcsMapping):
                 mapping_registry.parse_revision_id(rev.revision_id)
             except errors.InvalidRevisionId:
                 metadata.revision_id = rev.revision_id
+            mapping_properties = set(
+                ['author', 'author-timezone', 'author-timezone-neg-utc',
+                 'commit-timezone-neg-utc', 'git-implicit-encoding',
+                 'git-explicit-encoding', 'author-timestamp'])
+            for k, v in rev.properties.iteritems():
+                if not k in mapping_properties:
+                    metadata.properties[k] = v
         commit.message = inject_bzr_metadata(commit.message, metadata)
         return commit
 
@@ -331,6 +338,7 @@ class BzrGitMapping(foreign.VcsMapping):
                 rev.revision_id = md.revision_id
             if md.explicit_parent_ids:
                 rev.parent_ids = md.explicit_parent_ids
+            rev.properties.update(md.properties)
         else:
             file_ids = {}
         return rev, file_ids

@@ -38,7 +38,11 @@ class RoundtripTests(TestCase):
 
     def test_parent_ids(self):
         md = parse_roundtripping_metadata("parent-ids: foo bar\n")
-        self.assertEquals(("foo", "bar"), md.parent_ids)
+        self.assertEquals(("foo", "bar"), md.explicit_parent_ids)
+
+    def test_properties(self):
+        md = parse_roundtripping_metadata("property-foop: blar\n")
+        self.assertEquals({"foop": "blar"}, md.properties)
 
 
 class FormatTests(TestCase):
@@ -53,6 +57,12 @@ class FormatTests(TestCase):
         metadata = BzrGitRevisionMetadata()
         metadata.explicit_parent_ids = ("foo", "bar")
         self.assertEquals("parent-ids: foo bar\n",
+            generate_roundtripping_metadata(metadata))
+
+    def test_properties(self):
+        metadata = BzrGitRevisionMetadata()
+        metadata.properties = {"foo": "bar"}
+        self.assertEquals("property-foo: bar\n",
             generate_roundtripping_metadata(metadata))
 
 

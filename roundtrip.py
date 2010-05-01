@@ -33,9 +33,9 @@ class BzrGitRevisionMetadata(object):
 
     explicit_parent_ids = None
 
-    file_ids = {}
-
-    properties = {}
+    def __init__(self):
+        self.file_ids = {}
+        self.properties = {}
 
     def __nonzero__(self):
         return bool(self.revision_id or self.file_ids or self.properties)
@@ -51,6 +51,8 @@ def parse_roundtripping_metadata(text):
             ret.revision_id = value.strip()
         elif key == "parent-ids":
             ret.explicit_parent_ids = tuple(value.strip().split(" "))
+        elif key.startswith("property-"):
+            ret.properties[key[len("property-"):]] = value[1:].rstrip("\n")
         else:
             raise ValueError
     return ret
@@ -67,6 +69,8 @@ def generate_roundtripping_metadata(metadata):
         lines.append("revision-id: %s\n" % metadata.revision_id)
     if metadata.explicit_parent_ids:
         lines.append("parent-ids: %s\n" % " ".join(metadata.explicit_parent_ids))
+    for key in sorted(metadata.properties.keys()):
+        lines.append("property-%s: %s\n" % (key, metadata.properties[key]))
     return "".join(lines)
 
 
