@@ -227,7 +227,7 @@ class BzrGitMapping(foreign.VcsMapping):
     def _encode_commit_message(self, rev, message, encoding):
         return message.encode(encoding)
 
-    def export_commit(self, rev, tree_sha, parent_lookup, roundtrip):
+    def export_commit(self, rev, tree_sha, parent_lookup, roundtrip, file_ids):
         """Turn a Bazaar revision in to a Git commit
 
         :param tree_sha: Tree sha for the commit

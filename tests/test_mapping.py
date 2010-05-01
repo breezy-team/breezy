@@ -149,11 +149,11 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         self._parent_map = {}
         self._lookup_parent = self._parent_map.__getitem__
 
-    def assertRoundtripRevision(self, orig_rev):
+    def assertRoundtripRevision(self, orig_rev, orig_file_ids):
         commit = self.mapping.export_commit(orig_rev, "mysha",
-            self._lookup_parent, True)
+            self._lookup_parent, True, orig_file_ids)
         rev, file_ids = self.mapping.import_commit(commit)
-        self.assertEquals({}, file_ids)
+        self.assertEquals(orig_file_ids, file_ids)
         self.assertEquals(orig_rev.revision_id, rev.revision_id)
         self.assertEquals(orig_rev.properties, rev.properties)
         self.assertEquals(orig_rev.committer, rev.committer)
@@ -170,7 +170,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.timestamp = 453543543
         r.timezone = 0
         r.properties = {}
-        self.assertRoundtripRevision(r)
+        self.assertRoundtripRevision(r, {})
 
     def test_revision_id(self):
         r = Revision("myrevid")
@@ -180,7 +180,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.timestamp = 453543543
         r.timezone = 0
         r.properties = {}
-        self.assertRoundtripRevision(r)
+        self.assertRoundtripRevision(r, {})
 
     def test_ghost_parent(self):
         r = Revision("myrevid")
@@ -190,7 +190,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.timestamp = 453543543
         r.timezone = 0
         r.properties = {}
-        self.assertRoundtripRevision(r)
+        self.assertRoundtripRevision(r, {})
 
     def test_custom_property(self):
         r = Revision("myrevid")
@@ -200,7 +200,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.committer = "Jelmer Vernooij <jelmer@apache.org>"
         r.timestamp = 453543543
         r.timezone = 0
-        self.assertRoundtripRevision(r)
+        self.assertRoundtripRevision(r, {})
 
 
 class RoundtripRevisionsFromGit(tests.TestCase):
@@ -217,9 +217,8 @@ class RoundtripRevisionsFromGit(tests.TestCase):
 
     def assertRoundtripCommit(self, commit1):
         rev, file_ids = self.mapping.import_commit(commit1)
-        self.assertEquals(file_ids, {})
         commit2 = self.mapping.export_commit(rev, "12341212121212", None,
-            True)
+            True, file_ids)
         self.assertEquals(commit1.committer, commit2.committer)
         self.assertEquals(commit1.commit_time, commit2.commit_time)
         self.assertEquals(commit1.commit_timezone, commit2.commit_timezone)
