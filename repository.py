@@ -184,11 +184,17 @@ class LocalGitRepository(GitRepository):
 
     def has_revision(self, revision_id):
         try:
-            self.get_revision(revision_id)
+            git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         except errors.NoSuchRevision:
             return False
-        else:
-            return True
+        return (git_commit_id in self._git)
+
+    def has_revisions(self, revision_ids):
+        ret = set()
+        for revid in revision_ids:
+            if self.has_revision(revid):
+                ret.add(revid)
+        return ret
 
     def get_revisions(self, revids):
         return [self.get_revision(r) for r in revids]
