@@ -45,6 +45,9 @@ from bzrlib.plugins.git.hg import (
     format_hg_metadata,
     extract_hg_metadata,
     )
+from bzrlib.plugins.git.roundtrip import (
+    extract_bzr_metadata,
+    )
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0644
 
@@ -211,6 +214,10 @@ class BzrGitMapping(foreign.VcsMapping):
                 [(new, old) for (old, new) in renames.iteritems()]))
         return message
 
+    def _extract_bzr_metadata(self, rev, message):
+        (message, metadata) = extract_bzr_metadata(message)
+        return message
+
     def _decode_commit_message(self, rev, message, encoding):
         return message.decode(encoding)
 
@@ -319,6 +326,7 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
     def _decode_commit_message(self, rev, message, encoding):
         message = self._extract_hg_metadata(rev, message)
         message = self._extract_git_svn_metadata(rev, message)
+        message = self._extract_bzr_metadata(rev, message)
         return message.decode(encoding)
 
     def _encode_commit_message(self, rev, message, encoding):

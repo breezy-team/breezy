@@ -34,6 +34,9 @@ class BzrGitRevisionMetadata(object):
 
     properties = {}
 
+    def __nonzero__(self):
+        return (self.revision_id is None or self.file_ids or self.properties)
+
 
 def parse_roundtripping_metadata(text):
     """Parse Bazaar roundtripping metadata."""
@@ -46,3 +49,30 @@ def parse_roundtripping_metadata(text):
         else:
             raise ValueError
     return ret
+
+
+def generate_roundtripping_metadata(metadata):
+    """Serialize the roundtripping metadata.
+
+    :param metadata: A `BzrGitRevisionMetadata` instance
+    :return: String with revision metadata
+    """
+    return "revision-id: %s\n" % metadata.revision_id
+
+
+def extract_bzr_metadata(message):
+    """Extract Bazaar metadata from a commit message.
+
+    :param message: Commit message to extract from
+    :return: Tuple with original commit message and metadata object
+    """
+    split = message.split("\n--BZR--\n", 1)
+    if len(split) != 2:
+        return message, None
+    return split[0], parse_roundtripping_metadata(split[1])
+
+
+def inject_bzr_metadata(message, metadata):
+    if metadata is None:
+        return message
+    return message + "\n--BZR--\n" + generate_roundtripping_metadata(metadata)

@@ -21,7 +21,13 @@
 
 from bzrlib.tests import TestCase
 
-from bzrlib.plugins.git.roundtrip import parse_roundtripping_metadata
+from bzrlib.plugins.git.roundtrip import (
+    BzrGitRevisionMetadata,
+    extract_bzr_metadata,
+    generate_roundtripping_metadata,
+    inject_bzr_metadata,
+    parse_roundtripping_metadata,
+    )
 
 
 class RoundtripTests(TestCase):
@@ -30,3 +36,34 @@ class RoundtripTests(TestCase):
         md = parse_roundtripping_metadata("revision-id: foo\n")
         self.assertEquals("foo", md.revision_id)
 
+
+class FormatTests(TestCase):
+
+    def test_simple(self):
+        metadata = BzrGitRevisionMetadata()
+        metadata.revision_id = "bla"
+        self.assertEquals("revision-id: bla\n",
+            generate_roundtripping_metadata(metadata))
+
+
+class ExtractMetadataTests(TestCase):
+
+    def test_roundtrip(self):
+        (msg, metadata) = extract_bzr_metadata("""Foo
+--BZR--
+revision-id: foo
+""")
+        self.assertEquals("Foo", msg)
+        self.assertEquals("foo", metadata.revision_id)
+
+
+class GenerateMetadataTests(TestCase):
+
+    def test_roundtrip(self):
+        metadata = BzrGitRevisionMetadata()
+        metadata.revision_id = "myrevid"
+        msg = inject_bzr_metadata("Foo", metadata)
+        self.assertEquals("""Foo
+--BZR--
+revision-id: myrevid
+""", msg)
