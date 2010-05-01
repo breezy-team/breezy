@@ -549,10 +549,10 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
-        # FIXME: Also check target uses VersionedFile
         return (isinstance(source, RemoteGitRepository) and
                 target.supports_rich_root() and
-                not isinstance(target, GitRepository))
+                not isinstance(target, GitRepository) and
+                target.texts is not None)
 
 
 class InterLocalGitNonGitRepository(InterGitNonGitRepository):
@@ -582,10 +582,10 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
-        # FIXME: Also check target uses VersionedFile
         return (isinstance(source, LocalGitRepository) and
                 target.supports_rich_root() and
-                not isinstance(target, GitRepository))
+                not isinstance(target, GitRepository) and
+                target.texts is not None)
 
 
 class InterGitGitRepository(InterGitRepository):
