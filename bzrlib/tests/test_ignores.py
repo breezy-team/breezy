@@ -167,8 +167,8 @@ class TestRuntimeIgnores(TestCase):
 class TestTreeIgnores(TestCaseWithTransport):
     
     def assertPatternsEquals(self, patterns):
-        self.assertEquals(set(patterns),
-                          set(open(".bzrignore", 'r').read().strip().split('\n')))
+        self.assertEquals(sorted(patterns),
+                          sorted(open(".bzrignore", 'r').read().strip().split('\n')))
 
     def test_new_file(self):
         tree = self.make_branch_and_tree(".")
