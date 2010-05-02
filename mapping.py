@@ -49,6 +49,8 @@ from bzrlib.plugins.git.roundtrip import (
     extract_bzr_metadata,
     inject_bzr_metadata,
     BzrGitRevisionMetadata,
+    deserialize_fileid_map,
+    serialize_fileid_map,
     )
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0644
@@ -118,6 +120,8 @@ def squash_revision(target_repo, rev):
 class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
+
+    BZR_FILE_IDS_FILE = '.bzrfileids'
 
     def __init__(self):
         super(BzrGitMapping, self).__init__(foreign_git)
@@ -233,7 +237,10 @@ class BzrGitMapping(foreign.VcsMapping):
         :param fileid_map: File id map, mapping paths to file ids
         :return: A Git blob object
         """
-        raise NotImplementedError(self.export_fileid_map)
+        from dulwich.objects import Blob
+        b = Blob()
+        b.set_raw_chunks(serialize_fileid_map(fileid_map))
+        return b
 
     def export_commit(self, rev, tree_sha, parent_lookup, roundtrip):
         """Turn a Bazaar revision in to a Git commit
@@ -304,7 +311,7 @@ class BzrGitMapping(foreign.VcsMapping):
         :param blob: Git blob object with fileid map
         :return: Dictionary mapping paths to file ids
         """
-        raise NotImplementedError(self.import_fileid_map)
+        return deserialize_fileid_map(blob.text)
 
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.

@@ -98,6 +98,6 @@ class FileIdRoundTripTests(TestCase):
             deserialize_fileid_map("bar/bla\0fid\n"))
 
     def test_serialize(self):
-        self.assertEquals("bar/bla\0fid\n",
+        self.assertEquals(["bar/bla\0fid\n"],
             serialize_fileid_map({"bar/bla": "fid"}))
 

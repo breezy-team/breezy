@@ -32,6 +32,9 @@ from bzrlib import (
     ui,
     urlutils,
     )
+from bzrlib.inventory import (
+    InventoryFile,
+    )
 from bzrlib.revision import (
     NULL_REVISION,
     )
@@ -48,6 +51,7 @@ from bzrlib.plugins.git.shamap import (
     )
 
 import posixpath
+import stat
 
 
 def get_object_store(repo, mapping=None):
@@ -325,25 +329,35 @@ class BazaarObjectStore(BaseObjectStore):
             roundtrip)
 
     def _revision_to_objects(self, rev, tree, roundtrip):
+        """Convert a revision to a set of git objects.
+
+        :param rev: Bazaar revision object
+        :param tree: Bazaar revision tree
+        :param roundtrip: Whether to roundtrip all Bazaar revision data
+        """
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
         parent_trees = self.tree_cache.revision_trees(
             [p for p in rev.parent_ids if p in present_parents])
-        tree_sha = None
+        root_tree = None
         for path, obj, ie in _tree_to_objects(tree, parent_trees,
                 self._cache.idmap, unusual_modes):
             yield path, obj, ie
             if path == "":
-                tree_sha = obj.id
-        if tree_sha is None:
+                root_tree = obj
+        if root_tree is None:
             # Pointless commit - get the tree sha elsewhere
             if not rev.parent_ids:
-                tree_sha = Tree().id
+                root_tree = Tree()
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
-                tree_sha = self[base_sha1].tree
-        commit_obj = self._reconstruct_commit(rev, tree_sha,
-            roundtrip=roundtrip) # FIXME
+                root_tree = self[base_sha1]
+        if roundtrip:
+            b = self.mapping.export_fileid_map({}) # FIXME
+            if b is not None:
+                root_tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
+                yield self.mapping.BZR_FILE_IDS_FILE, b, None
+        commit_obj = self._reconstruct_commit(rev, root_tree.id, roundtrip=roundtrip)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
                 rev.revision_id)
@@ -360,7 +374,6 @@ class BazaarObjectStore(BaseObjectStore):
         rev = self.repository.get_revision(revid)
         tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
-        # FIXME: roundtrip=True AND roundtrip=False
         for path, obj, ie in self._revision_to_objects(rev, tree,
             roundtrip=True):
             updater.add_object(obj, ie)
@@ -501,7 +514,6 @@ class BazaarObjectStore(BaseObjectStore):
                 trace.mutter('entry for %s %s in shamap: %r, but not found in '
                              'repository', type, sha, type_data)
                 raise KeyError(sha)
-            # FIXME
             commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True)
             _check_expected_sha(sha, commit)
             return commit

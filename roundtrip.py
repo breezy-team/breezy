@@ -94,7 +94,7 @@ def serialize_fileid_map(file_ids):
     lines = []
     for path in sorted(file_ids.keys()):
         lines.append("%s\0%s\n" % (path, file_ids[path]))
-    return "".join(lines)
+    return lines
 
 
 def deserialize_fileid_map(file):
