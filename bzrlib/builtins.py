@@ -2550,7 +2550,8 @@ class cmd_ls(Command):
                 raise errors.BzrCommandError('cannot specify both --from-root'
                                              ' and PATH')
             fs_path = path
-        tree, branch, relpath = _open_tree_branch_or_directory(fs_path)
+        tree, branch, relpath = \
+            _open_tree_branch_or_directory(fs_path, directory)
 
         # Calculate the prefix to use
         prefix = None
@@ -2874,7 +2875,7 @@ class cmd_cat(Command):
             raise errors.BzrCommandError("bzr cat --revision takes exactly"
                                          " one revision specifier")
         tree, branch, relpath = \
-              _open_tree_branch_or_directory(filename, directory)
+            _open_tree_branch_or_directory(filename, directory)
         branch.lock_read()
         self.add_cleanup(branch.unlock)
         return self._run(tree, branch, relpath, filename, revision,
