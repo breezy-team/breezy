@@ -132,7 +132,9 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
             pie = pinv[file_id]
         except NoSuchId:
             continue
-        if pie.text_sha1 == ie.text_sha1 and pie.executable == ie.executable and pie.symlink_target == ie.symlink_target:
+        if (pie.text_sha1 == ie.text_sha1 and
+            pie.executable == ie.executable and
+            pie.symlink_target == ie.symlink_target):
             # found a revision in one of the parents to use
             ie.revision = pie.revision
             break
@@ -147,7 +149,9 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
             chunks = []
         else: 
             chunks = blob.chunked
-        texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), tuple(parent_keys), ie.text_sha1, chunks)])
+        texts.insert_record_stream([
+            ChunkedContentFactory((file_id, ie.revision),
+                tuple(parent_keys), ie.text_sha1, chunks)])
     invdelta = []
     if base_hexsha is not None:
         old_path = path # Renames are not supported yet
@@ -180,7 +184,8 @@ def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
     else:
         oldpath = path
     ie.reference_revision = mapping.revision_id_foreign_to_bzr(hexsha)
-    texts.insert_record_stream([ChunkedContentFactory((file_id, ie.revision), (), None, [])])
+    texts.insert_record_stream([
+        ChunkedContentFactory((file_id, ie.revision), (), None, [])])
     invdelta = [(oldpath, path, file_id, ie)]
     return invdelta, {}
 
@@ -246,27 +251,23 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
             child_base_hexsha = None
             child_base_mode = 0
         if stat.S_ISDIR(child_mode):
-            subinvdelta, grandchildmodes = import_git_tree(
-                    texts, mapping, child_path, name,
-                    (child_base_hexsha, child_hexsha),
-                    base_inv, file_id, revision_id, parent_invs, lookup_object,
-                    (child_base_mode, child_mode), store_updater, 
-                    lookup_file_id, allow_submodules=allow_submodules)
+            subinvdelta, grandchildmodes = import_git_tree(texts, mapping,
+                child_path, name, (child_base_hexsha, child_hexsha), base_inv,
+                file_id, revision_id, parent_invs, lookup_object, 
+                (child_base_mode, child_mode), store_updater, lookup_file_id,
+                allow_submodules=allow_submodules)
         elif S_ISGITLINK(child_mode): # submodule
             if not allow_submodules:
                 raise SubmodulesRequireSubtrees()
-            subinvdelta, grandchildmodes = import_git_submodule(
-                    texts, mapping, child_path, name,
-                    (child_base_hexsha, child_hexsha),
-                    base_inv, file_id, revision_id, parent_invs, lookup_object,
-                    (child_base_mode, child_mode), store_updater,
-                    lookup_file_id)
+            subinvdelta, grandchildmodes = import_git_submodule(texts, mapping,
+                child_path, name, (child_base_hexsha, child_hexsha), base_inv,
+                file_id, revision_id, parent_invs, lookup_object,
+                (child_base_mode, child_mode), store_updater, lookup_file_id)
         else:
-            subinvdelta = import_git_blob(texts, mapping,
-                    child_path, name, (child_base_hexsha, child_hexsha),
-                    base_inv, file_id, revision_id, parent_invs, lookup_object,
-                    (child_base_mode, child_mode), store_updater,
-                    lookup_file_id)
+            subinvdelta = import_git_blob(texts, mapping, child_path, name,
+                (child_base_hexsha, child_hexsha), base_inv, file_id,
+                revision_id, parent_invs, lookup_object,
+                (child_base_mode, child_mode), store_updater, lookup_file_id)
             grandchildmodes = {}
         child_modes.update(grandchildmodes)
         invdelta.extend(subinvdelta)
@@ -306,7 +307,8 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
                sorted(old_obj) == sorted(new_obj)):
             for name in old_obj:
                 if old_obj[name][0] != new_obj[name][0]:
-                    raise AssertionError("Modes for %s differ: %o != %o" % (path, old_obj[name][0], new_obj[name][0]))
+                    raise AssertionError("Modes for %s differ: %o != %o" %
+                        (path, old_obj[name][0], new_obj[name][0]))
                 if old_obj[name][1] != new_obj[name][1]:
                     # Found a differing child, delve deeper
                     path = posixpath.join(path, name)
@@ -436,8 +438,7 @@ def import_git_objects(repo, mapping, object_iter,
                         pb.update("fetching revisions", offset+i,
                                   len(revision_ids))
                     import_git_commit(repo, mapping, head, lookup_object,
-                                      target_git_object_retriever,
-                                      trees_cache)
+                        target_git_object_retriever, trees_cache)
                     last_imported = head
             except:
                 repo.abort_write_group()
@@ -501,7 +502,8 @@ class InterGitNonGitRepository(InterGitRepository):
             present_interesting_heads = self.target.has_revisions(interesting_heads)
             missing_interesting_heads = set(interesting_heads) - present_interesting_heads
             if missing_interesting_heads:
-                raise AssertionError("Missing interesting heads: %r" % missing_interesting_heads)
+                raise AssertionError("Missing interesting heads: %r" %
+                    missing_interesting_heads)
         return self._refs
 
 
@@ -548,9 +550,8 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             if pb is None:
                 create_pb = pb = ui.ui_factory.nested_progress_bar()
             try:
-                objects_iter = self.source.fetch_objects(
-                            record_determine_wants, graph_walker,
-                            store.get_raw, progress)
+                objects_iter = self.source.fetch_objects(record_determine_wants,
+                    graph_walker, store.get_raw, progress)
                 return import_git_objects(self.target, mapping,
                     objects_iter, store, recorded_wants, pb, limit)
             finally:
