@@ -23,10 +23,12 @@ from bzrlib.tests import TestCase
 
 from bzrlib.plugins.git.roundtrip import (
     BzrGitRevisionMetadata,
+    deserialize_fileid_map,
     extract_bzr_metadata,
     generate_roundtripping_metadata,
     inject_bzr_metadata,
     parse_roundtripping_metadata,
+    serialize_fileid_map,
     )
 
 
@@ -43,10 +45,6 @@ class RoundtripTests(TestCase):
     def test_properties(self):
         md = parse_roundtripping_metadata("property-foop: blar\n")
         self.assertEquals({"foop": "blar"}, md.properties)
-
-    def test_file_ids(self):
-        md = parse_roundtripping_metadata("file-id: bar foo/la\n")
-        self.assertEquals({"foo/la": "bar"}, md.file_ids)
 
 
 class FormatTests(TestCase):
@@ -67,12 +65,6 @@ class FormatTests(TestCase):
         metadata = BzrGitRevisionMetadata()
         metadata.properties = {"foo": "bar"}
         self.assertEquals("property-foo: bar\n",
-            generate_roundtripping_metadata(metadata))
-
-    def test_file_ids(self):
-        metadata = BzrGitRevisionMetadata()
-        metadata.file_ids = {"foo/la": "bar"}
-        self.assertEquals("file-id: bar foo/la\n",
             generate_roundtripping_metadata(metadata))
 
 
@@ -97,3 +89,15 @@ class GenerateMetadataTests(TestCase):
 --BZR--
 revision-id: myrevid
 """, msg)
+
+
+class FileIdRoundTripTests(TestCase):
+
+    def test_deserialize(self):
+        self.assertEquals({"bar/bla": "fid"},
+            deserialize_fileid_map("bar/bla\0fid\n"))
+
+    def test_serialize(self):
+        self.assertEquals("bar/bla\0fid\n",
+            serialize_fileid_map({"bar/bla": "fid"}))
+

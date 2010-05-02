@@ -227,7 +227,15 @@ class BzrGitMapping(foreign.VcsMapping):
     def _encode_commit_message(self, rev, message, encoding):
         return message.encode(encoding)
 
-    def export_commit(self, rev, tree_sha, parent_lookup, roundtrip, file_ids):
+    def export_fileid_map(self, fileid_map):
+        """Export a file id map to a fileid map.
+
+        :param fileid_map: File id map, mapping paths to file ids
+        :return: A Git blob object
+        """
+        raise NotImplementedError(self.export_fileid_map)
+
+    def export_commit(self, rev, tree_sha, parent_lookup, roundtrip):
         """Turn a Bazaar revision in to a Git commit
 
         :param tree_sha: Tree sha for the commit
@@ -287,9 +295,16 @@ class BzrGitMapping(foreign.VcsMapping):
             for k, v in rev.properties.iteritems():
                 if not k in mapping_properties:
                     metadata.properties[k] = v
-            metadata.file_ids = file_ids
         commit.message = inject_bzr_metadata(commit.message, metadata)
         return commit
+
+    def import_fileid_map(self, blob):
+        """Convert a git file id map blob.
+
+        :param blob: Git blob object with fileid map
+        :return: Dictionary mapping paths to file ids
+        """
+        raise NotImplementedError(self.import_fileid_map)
 
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.
@@ -334,15 +349,12 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.timezone = commit.commit_timezone
         if rev.git_metadata is not None:
             md = rev.git_metadata
-            file_ids = md.file_ids
             if md.revision_id:
                 rev.revision_id = md.revision_id
             if md.explicit_parent_ids:
                 rev.parent_ids = md.explicit_parent_ids
             rev.properties.update(md.properties)
-        else:
-            file_ids = {}
-        return rev, file_ids
+        return rev
 
 
 class BzrGitMappingv1(BzrGitMapping):

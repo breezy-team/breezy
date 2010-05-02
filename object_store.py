@@ -314,7 +314,7 @@ class BazaarObjectStore(BaseObjectStore):
         self._update_sha_map()
         return iter(self._cache.idmap.sha1s())
 
-    def _reconstruct_commit(self, rev, tree_sha, roundtrip, file_ids):
+    def _reconstruct_commit(self, rev, tree_sha, roundtrip):
         def parent_lookup(revid):
             try:
                 return self._lookup_revision_sha1(revid)
@@ -322,7 +322,7 @@ class BazaarObjectStore(BaseObjectStore):
                 trace.warning("Ignoring ghost parent %s", revid)
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup,
-            roundtrip, file_ids)
+            roundtrip)
 
     def _revision_to_objects(self, rev, tree, roundtrip):
         unusual_modes = extract_unusual_modes(rev)
@@ -343,7 +343,7 @@ class BazaarObjectStore(BaseObjectStore):
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 tree_sha = self[base_sha1].tree
         commit_obj = self._reconstruct_commit(rev, tree_sha,
-            roundtrip=roundtrip, file_ids={}) # FIXME
+            roundtrip=roundtrip) # FIXME
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
                 rev.revision_id)
@@ -502,8 +502,7 @@ class BazaarObjectStore(BaseObjectStore):
                              'repository', type, sha, type_data)
                 raise KeyError(sha)
             # FIXME
-            commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True,
-                file_ids={})
+            commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True)
             _check_expected_sha(sha, commit)
             return commit
         elif type == "blob":

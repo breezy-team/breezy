@@ -25,7 +25,6 @@ class BzrGitRevisionMetadata(object):
     
     :ivar revision_id: Revision id, as string
     :ivar properties: Revision properties, as dictionary
-    :ivar file_ids: File ids, as map from path -> file id
     :ivar explicit_parent_ids: Parent ids (needed if there are ghosts)
     """
 
@@ -34,11 +33,10 @@ class BzrGitRevisionMetadata(object):
     explicit_parent_ids = None
 
     def __init__(self):
-        self.file_ids = {}
         self.properties = {}
 
     def __nonzero__(self):
-        return bool(self.revision_id or self.file_ids or self.properties)
+        return bool(self.revision_id or self.properties)
 
 
 def parse_roundtripping_metadata(text):
@@ -53,9 +51,6 @@ def parse_roundtripping_metadata(text):
             ret.explicit_parent_ids = tuple(value.strip().split(" "))
         elif key.startswith("property-"):
             ret.properties[key[len("property-"):]] = value[1:].rstrip("\n")
-        elif key == "file-id":
-            (file_id, path) = value[1:].rstrip("\n").split(" ", 1)
-            ret.file_ids[path] = file_id
         else:
             raise ValueError
     return ret
@@ -74,8 +69,6 @@ def generate_roundtripping_metadata(metadata):
         lines.append("parent-ids: %s\n" % " ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         lines.append("property-%s: %s\n" % (key, metadata.properties[key]))
-    for key in sorted(metadata.file_ids.keys()):
-        lines.append("file-id: %s %s\n" % (metadata.file_ids[key], key))
     return "".join(lines)
 
 
@@ -95,3 +88,20 @@ def inject_bzr_metadata(message, metadata):
     if not metadata:
         return message
     return message + "\n--BZR--\n" + generate_roundtripping_metadata(metadata)
+
+
+def serialize_fileid_map(file_ids):
+    lines = []
+    for path in sorted(file_ids.keys()):
+        lines.append("%s\0%s\n" % (path, file_ids[path]))
+    return "".join(lines)
+
+
+def deserialize_fileid_map(file):
+    ret = {}
+    f = StringIO(file)
+    lines = f.readlines()
+    for l in lines:
+        (path, file_id) = l.rstrip("\n").split("\0")
+        ret[path] = file_id
+    return ret

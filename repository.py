@@ -118,7 +118,7 @@ class LocalGitRepository(GitRepository):
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            rev, file_ids = self.get_mapping().import_commit(o)
+            rev = self.get_mapping().import_commit(o)
             ret.append(rev.revision_id)
         return ret
 
@@ -180,7 +180,7 @@ class LocalGitRepository(GitRepository):
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         # print "fetched revision:", git_commit_id
-        revision, file_ids = mapping.import_commit(commit)
+        revision = mapping.import_commit(commit)
         assert revision is not None
         return revision
 

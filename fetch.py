@@ -319,7 +319,8 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
     o = lookup_object(head)
-    rev, file_ids = mapping.import_commit(o)
+    rev = mapping.import_commit(o)
+    file_ids = {} # FIXME
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
@@ -396,7 +397,7 @@ def import_git_objects(repo, mapping, object_iter,
         except KeyError:
             continue
         if isinstance(o, Commit):
-            rev, file_ids = mapping.import_commit(o)
+            rev = mapping.import_commit(o)
             if repo.has_revision(rev.revision_id):
                 continue
             squash_revision(repo, rev)

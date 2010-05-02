@@ -84,7 +84,7 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = "Author"
-        rev, file_ids = BzrGitMappingv1().import_commit(c)
+        rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals("Some message", rev.message)
         self.assertEquals("Committer", rev.committer)
         self.assertEquals("Author", rev.properties['author'])
@@ -105,7 +105,7 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("iso8859-1")
         c.encoding = "iso8859-1"
-        rev, file_ids = BzrGitMappingv1().import_commit(c)
+        rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("iso8859-1", rev.properties["git-explicit-encoding"])
         self.assertTrue("git-implicit-encoding" not in rev.properties)
@@ -120,7 +120,7 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("latin1")
-        rev, file_ids = BzrGitMappingv1().import_commit(c)
+        rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("latin1", rev.properties["git-implicit-encoding"])
         self.assertTrue("git-explicit-encoding" not in rev.properties)
@@ -135,7 +135,7 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("utf-8")
-        rev, file_ids = BzrGitMappingv1().import_commit(c)
+        rev = BzrGitMappingv1().import_commit(c)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertTrue("git-explicit-encoding" not in rev.properties)
         self.assertTrue("git-implicit-encoding" not in rev.properties)
@@ -149,11 +149,10 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         self._parent_map = {}
         self._lookup_parent = self._parent_map.__getitem__
 
-    def assertRoundtripRevision(self, orig_rev, orig_file_ids):
+    def assertRoundtripRevision(self, orig_rev):
         commit = self.mapping.export_commit(orig_rev, "mysha",
-            self._lookup_parent, True, orig_file_ids)
-        rev, file_ids = self.mapping.import_commit(commit)
-        self.assertEquals(orig_file_ids, file_ids)
+            self._lookup_parent, True)
+        rev = self.mapping.import_commit(commit)
         self.assertEquals(orig_rev.revision_id, rev.revision_id)
         self.assertEquals(orig_rev.properties, rev.properties)
         self.assertEquals(orig_rev.committer, rev.committer)
@@ -170,7 +169,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.timestamp = 453543543
         r.timezone = 0
         r.properties = {}
-        self.assertRoundtripRevision(r, {})
+        self.assertRoundtripRevision(r)
 
     def test_revision_id(self):
         r = Revision("myrevid")
@@ -180,7 +179,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.timestamp = 453543543
         r.timezone = 0
         r.properties = {}
-        self.assertRoundtripRevision(r, {})
+        self.assertRoundtripRevision(r)
 
     def test_ghost_parent(self):
         r = Revision("myrevid")
@@ -190,7 +189,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.timestamp = 453543543
         r.timezone = 0
         r.properties = {}
-        self.assertRoundtripRevision(r, {})
+        self.assertRoundtripRevision(r)
 
     def test_custom_property(self):
         r = Revision("myrevid")
@@ -200,17 +199,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
         r.committer = "Jelmer Vernooij <jelmer@apache.org>"
         r.timestamp = 453543543
         r.timezone = 0
-        self.assertRoundtripRevision(r, {})
-
-    def test_file_ids(self):
-        r = Revision("myrevid")
-        r.message = "MyCommitMessage"
-        r.parent_ids = []
-        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
-        r.timestamp = 453543543
-        r.timezone = 0
-        r.properties = {}
-        self.assertRoundtripRevision(r, {"foo/bar": "fileid"})
+        self.assertRoundtripRevision(r)
 
 
 class RoundtripRevisionsFromGit(tests.TestCase):
@@ -226,9 +215,9 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         raise NotImplementedError(self.assertRoundtripBlob)
 
     def assertRoundtripCommit(self, commit1):
-        rev, file_ids = self.mapping.import_commit(commit1)
+        rev = self.mapping.import_commit(commit1)
         commit2 = self.mapping.export_commit(rev, "12341212121212", None,
-            True, file_ids)
+            True)
         self.assertEquals(commit1.committer, commit2.committer)
         self.assertEquals(commit1.commit_time, commit2.commit_time)
         self.assertEquals(commit1.commit_timezone, commit2.commit_timezone)
