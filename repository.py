@@ -19,7 +19,6 @@
 
 from bzrlib import (
     errors,
-    graph,
     inventory,
     repository,
     revision,
@@ -43,6 +42,11 @@ from bzrlib.plugins.git.tree import (
 from bzrlib.plugins.git.versionedfiles import (
     GitRevisions,
     GitTexts,
+    )
+
+
+from dulwich.objects import (
+    Commit,
     )
 
 
@@ -110,14 +114,12 @@ class LocalGitRepository(GitRepository):
 
     def all_revision_ids(self):
         ret = set([])
-        heads = self._git.refs.as_dict('refs/heads')
-        if heads == {}:
-            return ret
-        bzr_heads = [self.get_mapping().revision_id_foreign_to_bzr(h) for h in heads.itervalues()]
-        ret = set(bzr_heads)
-        graph = self.get_graph()
-        for rev, parents in graph.iter_ancestry(bzr_heads):
-            ret.add(rev)
+        for sha in self._git.object_store:
+            o = self._git.object_store[sha]
+            if not isinstance(o, Commit):
+                continue
+            rev, file_ids = self.get_mapping().import_commit(o)
+            ret.append(rev.revision_id)
         return ret
 
     def get_parent_map(self, revids):
