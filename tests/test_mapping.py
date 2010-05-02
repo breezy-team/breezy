@@ -53,6 +53,12 @@ class TestRevidConversionV1(tests.TestCase):
                             "git-v1:"
                             "c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
 
+    def test_is_control_file(self):
+        mapping = BzrGitMappingv1()
+        self.assertTrue(mapping.is_control_file(".bzrdummy"))
+        self.assertTrue(mapping.is_control_file(".bzrfileids"))
+        self.assertFalse(mapping.is_control_file(".bzrfoo"))
+
 
 class FileidTests(tests.TestCase):
 

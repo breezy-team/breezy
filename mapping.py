@@ -123,6 +123,8 @@ class BzrGitMapping(foreign.VcsMapping):
 
     BZR_FILE_IDS_FILE = '.bzrfileids'
 
+    BZR_DUMMY_FILE = '.bzrdummy'
+
     def __init__(self):
         super(BzrGitMapping, self).__init__(foreign_git)
 
@@ -151,6 +153,9 @@ class BzrGitMapping(foreign.VcsMapping):
         if path == "":
             return ROOT_ID
         return escape_file_id(path)
+
+    def is_control_file(self, path):
+        return path in (self.BZR_FILE_IDS_FILE, self.BZR_DUMMY_FILE)
 
     def parse_file_id(self, file_id):
         if file_id == ROOT_ID:
