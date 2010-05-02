@@ -93,6 +93,7 @@ class RevisionSpec_git(RevisionSpec):
 
     def _find_short_git_sha1(self, branch, sha1):
         from bzrlib.plugins.git.mapping import (
+            ForeignGit,
             mapping_registry,
             )
         parse_revid = getattr(branch.repository, "lookup_bzr_revision_id",
@@ -104,6 +105,8 @@ class RevisionSpec_git(RevisionSpec):
                 try:
                     foreign_revid, mapping = parse_revid(revid)
                 except InvalidRevisionId:
+                    continue
+                if not isinstance(mapping.vcs, ForeignGit):
                     continue
                 if foreign_revid.startswith(sha1):
                     history = self._history(branch, revid)
