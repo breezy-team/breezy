@@ -17,6 +17,7 @@
 """Lists of ignore files, etc."""
 
 import errno
+from StringIO import StringIO
 
 import bzrlib
 from bzrlib import (
@@ -190,10 +191,7 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
         f = open(ifn, 'rt')
         try:
             # grab a copy of the raw contents of the file
-            orig_contents = f.read()
-            # then parse it from the start
-            f.seek(0)
-            ignores = parse_ignore_file(f)
+            file_contents = StringIO(f.read())
             # figure out what kind of line endings are used
             newline = getattr(f, 'newlines', None)
             if type(newline) is tuple:
@@ -203,15 +201,17 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
         finally:
             f.close()
     else:
-        orig_contents = ''
-        ignores = set()
+        file_contents = StringIO()
         newline = '\n'
+
+    ignores = parse_ignore_file(file_contents)
 
     # write out the updated ignores set
     f = atomicfile.AtomicFile(ifn, 'wb')
     try:
-        f.write(orig_contents)
-        if len(orig_contents) > 0 and not orig_contents.endswith(newline):
+        s = file_contents.getvalue()
+        f.write(s)
+        if len(s) > 0 and not s.endswith(newline):
             f.write(newline)
         for pattern in name_pattern_list:
             if not pattern in ignores:
@@ -220,6 +220,8 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
         f.commit()
     finally:
         f.close()
+    
+    file_contents.close()
 
     if not tree.path2id(bzrlib.IGNORE_FILENAME):
         tree.add([bzrlib.IGNORE_FILENAME])
