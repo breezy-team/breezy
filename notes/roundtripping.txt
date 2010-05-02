@@ -5,12 +5,8 @@ Bzr revision metadata that doesn't exist in git:
  - file ids
   * git-sha+path -> fileid mapping
 
-"bzr" git branch with bzr-specific metadata:
-
- * under refs/remotes/ to hide it from the user
- * Tree object with several children:
-  * ":revisions": single object with mappings from git sha to (bzr revid, revprops, file id mapping object)
-  * "bzr revision id": single object with mappings from git sha to bzr file id, revision id
+refs/bzr/<revid> refs to be able to find Git revisions based on Bazaar revision
+ids.
 
 .bzr needs extra git metadata:
 
