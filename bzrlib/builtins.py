@@ -2072,7 +2072,7 @@ class cmd_added(Command):
             if inv.is_root(file_id) and len(basis_inv) == 0:
                 continue
             path = inv.id2path(file_id)
-            if not os.access(osutils.abspath(path), os.F_OK):
+            if not os.access(osutils.pathjoin(wt.basedir, path), os.F_OK):
                 continue
             if null:
                 self.outf.write(path + '\0')
