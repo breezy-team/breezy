@@ -228,7 +228,8 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_tree is None or type(base_tree) is not Tree:
         ie.revision = revision_id
         invdelta.append((old_path, path, ie.file_id, ie))
-        texts.insert_record_stream([ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
+        texts.insert_record_stream([
+            ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
     # Remember for next time
     existing_children = set()
     child_modes = {}
@@ -320,7 +321,6 @@ def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
     o = lookup_object(head)
     rev = mapping.import_commit(o)
-    file_ids = {} # FIXME
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
@@ -335,6 +335,13 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
     store_updater.add_object(o, None)
+    root_tree = lookup_object(o.tree)
+    try:
+        file_id_map_sha = root_tree[mapping.BZR_FILE_IDS_FILE][1]
+    except KeyError:
+        file_ids = {}
+    else:
+        file_ids = mapping.import_fileid_map(lookup_object(file_id_map_sha))
     def lookup_file_id(path):
         try:
             return file_ids[path]
