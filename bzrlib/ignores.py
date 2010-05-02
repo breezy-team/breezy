@@ -204,24 +204,25 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
         file_contents = StringIO()
         newline = '\n'
 
-    ignores = parse_ignore_file(file_contents)
-
-    # write out the updated ignores set
-    f = atomicfile.AtomicFile(ifn, 'wb')
     try:
-        s = file_contents.getvalue()
-        f.write(s)
-        if len(s) > 0 and not s.endswith(newline):
-            f.write(newline)
-        for pattern in name_pattern_list:
-            if not pattern in ignores:
-                f.write(pattern.encode('utf-8'))
-                f.write(newline)
-        f.commit()
-    finally:
-        f.close()
+        ignores = parse_ignore_file(file_contents)
     
-    file_contents.close()
+        # write out the updated ignores set
+        f = atomicfile.AtomicFile(ifn, 'wb')
+        try:
+            s = file_contents.getvalue()
+            f.write(s)
+            if len(s) > 0 and not s.endswith(newline):
+                f.write(newline)
+            for pattern in name_pattern_list:
+                if not pattern in ignores:
+                    f.write(pattern.encode('utf-8'))
+                    f.write(newline)
+            f.commit()
+        finally:
+            f.close()
+    finally:
+        file_contents.close()
 
     if not tree.path2id(bzrlib.IGNORE_FILENAME):
         tree.add([bzrlib.IGNORE_FILENAME])
