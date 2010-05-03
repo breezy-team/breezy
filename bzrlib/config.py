@@ -193,7 +193,15 @@ class Config(object):
             interpreted as a boolean. Returns True or False otherwise.
         """
         s = self._get_user_option(option_name)
-        return ui.bool_from_string(s)
+        if s is None:
+            # The option doesn't exist
+            return None
+        val = ui.bool_from_string(s)
+        if val is None:
+            # The value can't be interpreted as a boolean
+            trace.warning('Value "%s" is not a boolean for "%s"',
+                          s, option_name)
+        return val
 
     def get_user_option_as_list(self, option_name):
         """Get a generic option as a list - no special process, no default.
@@ -511,7 +519,8 @@ class GlobalConfig(IniBasedConfig):
 
     def _write_config_file(self):
         path = self._get_filename()
-        f = osutils.open_with_ownership(path, 'wb')
+        f = open(path, 'wb')
+        osutils.copy_ownership_from_path(path)
         self._get_parser().write(f)
         f.close()
 
@@ -810,7 +819,8 @@ def ensure_config_dir_exists(path=None):
                 trace.mutter('creating config parent directory: %r', parent_dir)
             os.mkdir(parent_dir)
         trace.mutter('creating config directory: %r', path)
-        osutils.mkdir_with_ownership(path)
+        os.mkdir(path)
+        osutils.copy_ownership_from_path(path)
 
 
 def config_dir():
@@ -1407,7 +1417,7 @@ class CredentialStore(object):
 
 
 class PlainTextCredentialStore(CredentialStore):
-    """Plain text credential store for the authentication.conf file."""
+    __doc__ = """Plain text credential store for the authentication.conf file"""
 
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""

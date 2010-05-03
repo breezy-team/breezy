@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.2b2
+bzr 2.2b3
 #########
 
-:2.2b2: NOT RELEASED YET
+:2.2b3: NOT RELEASED YET
 
 Compatibility Breaks
 ********************
@@ -16,8 +16,14 @@ Compatibility Breaks
 New Features
 ************
 
-* ``bzr diff`` now supports a --format option, which can be used to 
-  select alternative diff formats. (Jelmer Vernooij, #555994)
+* ``bzr commit`` accepts ``-p`` (for "patch") as a shorter name for
+  ``--show-diff``.
+  (Parth Malwankar, #571467)
+  
+* ``bzr ignore`` now supports a ``--default-rules`` option that displays
+  the default ignore rules used by bzr. The flag ``--old-default-rules``
+  is no longer supported by ``ignore``.
+  (Parth Malwankar, #538703)
 
 * ``bzr pack`` now supports a ``--clean-obsolete-packs`` option that
   can save disk space by deleting obsolete pack files created during the
@@ -33,6 +39,114 @@ New Features
 Bug Fixes
 *********
 
+* ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
+  group ownership from the containing directory. This allow bzr to work
+  better with sudo.
+  (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
+
+* ``bzr log --exclude-common-ancestry -r X..Y`` displays the revisions that
+  are part of Y ancestry but not part of X ancestry (aka the graph
+  difference).
+  (Vincent Ladeuil, #320119)
+
+* ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
+  (Vincent Ladeuil, #566670)
+
+* ``bzr selftest`` should not use ui.note() since it's not unicode safe.
+  (Vincent Ladeuil, #563997)
+
+* Don't mention --no-strict when we just issue the warning about unclean trees.
+  (Vincent Ladeuil, #401599)
+
+* Fixed ``AssertionError`` when accessing smart servers running Bazaar
+  versions before 1.6.
+  (Andrew Bennetts, #528041)
+
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Show the filenames when a file rename fails so that the error will be
+  more comprehensible.
+  (Martin Pool, #491763)
+
+Improvements
+************
+
+* ``append_revisions_only`` will now be interpreted as a boolean and a
+  warning emitted if illegal values are used. Note that for projects
+  that needs to maintain compatibility with previsous bzr versions,
+  only 'True' and 'False' strings must be used (previous versions of
+  bzr will interpret all strings differing from 'True'
+  (case-sensitive) as false.
+  (Brian de Alwis, Vincent Ladeuil)
+
+* ``Config.get_user_option_as_bool`` will now warn if a value cannot
+  be interpreted as a boolean.
+  (Vincent Ladeuil)
+
+Documentation
+*************
+
+API Changes
+***********
+
+* Added ``bzrlib.merge.PerFileMerger``, a more convenient way to write
+  some kinds of ``merge_file_content`` hook functions.
+  (Andrew Bennetts)
+  
+* `BzrDir`, `Branch`, `Repository` and `WorkingTree` now all support `user_url`,
+  `user_transport`, `control_url` and `control_transport` members pointing
+  respectively to the directory containing the ``.bzr`` control directory, 
+  and to the directory within ``.bzr`` used for the particular component.
+  All of them inherit from `ControlComponent` which provides default
+  implementations.
+  (Martin Pool)
+
+Internals
+*********
+
+* ``_remember_remote_is_before`` no longer raises AssertionError when
+  suboptimal network behaviour is noticed; instead it just mutters to the
+  log file (and warns the user if they have set the ``hpss`` debug flag).
+  This was causing unnecessary aborts for performance bugs that are minor
+  at worst.
+  (Andrew Bennetts, #528041)
+
+* Permit bzr to run under ``python -OO`` which reduces the size of bytecode
+  files loaded from disk. To ensure docstrings needed for help are never
+  stripped, the prefix ``__doc__ =`` should now be used.
+  (Martin <gzlist@googlemail.com>)
+
+Testing
+*******
+
+* ``bzr selftest --parallel=subprocess`` now works correctly on win32.
+   (Gordon Tyler, #551332)
+
+* Workaround ``Crypto.Random`` check leading to spurious test
+  failures on Lucid, FreeBSD and gentoo.  
+  (Vincent Ladeuil, #528436)
+
+bzr 2.2b2
+#########
+
+:2.2b2: 2010-04-16
+
+This is a somewhat early second beta of the 2.2 series, to fix a python2.4
+incompatibility in the 2.2b1 release.  It also includes a swag of
+performance, usability and correctness improvements: test feedback on all
+of these would be welcome.
+
+
+New Features
+************
+
+* ``bzr diff`` now supports a --format option, which can be used to 
+  select alternative diff formats. (Jelmer Vernooij, #555994)
+
+Bug Fixes
+*********
+
 * ``bzr dpush``, ``bzr push`` and ``bzr send`` will now issue a warning
   instead of failing when dirty trees are involved. The corresponding
   ``dpush_strict``, ``push_strict`` and ``send_strict`` should be set to
@@ -44,21 +158,21 @@ Bug Fixes
   http://bugs.python.org/issue8396 .
   (Parth Malwankar, #413406)
 
+* ``bzr switch`` does not die if a ConfigurableFileMerger is used.
+  (Aaron Bentley, #559436)
+
 * ``bzr update`` when a pending merge in the working tree has been merged
   into the master branch will no longer claim that old commits have become
   pending merges. (Robert Collins, #562079)
 
-* ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
-  (Vincent Ladeuil, #566670)
-
 * ``bzrlib.mutabletree.MutableTree.commit`` will now support a passed in
   config as in previous versions of bzrlib. (Robert Collins)
 
-* ``bzr selftest`` should not use ui.note() since it's not unicode safe.
-  (Vincent Ladeuil, #563997)
-
 * Fix glitch in the warning about unclean trees display.
   (Vincent Ladeuil, #562665)
+
+* Fixed Python2.4 incompatibilities in the bzr2.2b1 source tarball.
+  (Martin Pool)
 
 * Help messages generated by ``RegistryOption.from_kwargs`` list the
   switches in alphabetical order, rather than in an undefined order.
@@ -69,12 +183,6 @@ Bug Fixes
   which is not installed any more" error.
   (Martin Pool, James Westby, #528114)
 
-* Repositories accessed via a smart server now reject being stacked on a
-  repository in an incompatible format, as is the case when accessing them
-  via other methods.  This was causing fetches from those repositories via
-  a smart server (e.g. using ``bzr branch``) to receive invalid data.
-  (Andrew Bennetts, #562380)
-
 * Reset ``siginterrupt`` flag to False every time we handle a signal
   installed with ``set_signal_handler(..., restart_syscall=True)`` (from
   ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
@@ -82,8 +190,12 @@ Bug Fixes
   (Andrew Bennetts)
 
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
-  that are not part of the ancestry anymore.
+  that are not part of the Y revisions ancestry anymore when invoked with
+  -rX..Y.
   (Vincent Ladeuil, #474807)
+
+* Properly handle ``param_name`` attribute for ``ListOption``.
+  (Martin von Gagern, 387117)
 
 Improvements
 ************
@@ -116,9 +228,6 @@ Improvements
   less.)
   (Martin Pool, #553017)
 
-Documentation
-*************
-
 API Changes
 ***********
 
@@ -135,16 +244,10 @@ Internals
   Command is now transient and only exists for the duration of ``run()``.
   (Robert Collins)
 
-Testing
-*******
-
-* ``bzr selftest --parallel=subprocess`` now works correctly on win32.
-  (Gordon Tyler, #551332)
-
 bzr 2.2.0b1
 ###########
 
-:2.2.0b1: Not released yet
+:2.2.0b1: 2010-04-01
 
 Compatibility Breaks
 ********************
@@ -326,11 +429,6 @@ Bug Fixes
   mainline (i.e. it supports dotted revisions).
   (Parth Malwankar, #517800)
 
-* ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
-  group ownership from the containing directory. This allow bzr to work
-  better with sudo.
-  (Parth Malwankar, #376388)
-
 * Use first apparent author not committer in GNU Changelog format.
   (Martin von Gagern, #513322)
 
@@ -431,6 +529,38 @@ Testing
   happens, and another warning will be written if the log file could not
   be closed after retrying 100 times.  (Andrew Bennetts, #531746)
 
+bzr 2.1.2
+#########
+
+:2.1.2: NOT RELEASED YET
+
+Bug Fixes
+*********
+
+* ``bzr switch`` does not die if a ConfigurableFileMerger is used.
+  (Aaron Bentley, #559436)
+
+* Fixed ``AssertionError`` when accessing smart servers running Bazaar
+  versions before 1.6.
+  (Andrew Bennetts, #528041)
+
+* Reset ``siginterrupt`` flag to False every time we handle a signal
+  installed with ``set_signal_handler(..., restart_syscall=True)`` (from
+  ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
+  errors after two window resizes.
+  (Andrew Bennetts)
+
+Internals
+*********
+
+* ``_remember_remote_is_before`` no longer raises AssertionError when
+  suboptimal network behaviour is noticed; instead it just mutters to the
+  log file (and warns the user if they have set the ``hpss`` debug flag).
+  This was causing unnecessary aborts for performance bugs that are minor
+  at worst.
+  (Andrew Bennetts, #528041)
+
+
 bzr 2.1.1
 #########
 
@@ -463,6 +593,12 @@ Bug Fixes
 * Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
   problems importing bzrlib from a non-main thread.
   (Elliot Murphy, #521989)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
 
 * Standardize the error handling when creating a new ``StaticTuple``
   (problems will raise TypeError). (Matt Nordhoff, #457979)
@@ -851,6 +987,10 @@ bzr 2.0.6
 Bug Fixes
 *********
 
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
+
 * ``bzr revert`` now only takes write lock on working tree, instead of on 
   both working tree and branch.
   (Danny van Heumen, #498409)
@@ -859,9 +999,11 @@ Bug Fixes
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
 
-* Additional merges after an unrelated branch has been merged with its
-  history no longer crash when deleted files are involved.
-  (Vincent Ladeuil, John Arbash Meinel, #375898)
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
 
 bzr 2.0.5
 #########

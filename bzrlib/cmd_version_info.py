@@ -48,7 +48,7 @@ def _parse_version_info_format(format):
 
 
 class cmd_version_info(Command):
-    """Show version information about this tree.
+    __doc__ = """Show version information about this tree.
 
     You can use this command to add information about version into
     source code of an application. The output can be in one of the

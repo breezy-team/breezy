@@ -23,7 +23,7 @@ rather starts again from the run_bzr function.
 """
 
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib import tests
 
 
 def load_tests(basic_tests, module, loader):
@@ -125,7 +125,7 @@ def load_tests(basic_tests, module, loader):
     return suite
 
 
-class ExternalBase(TestCaseWithTransport):
+class ExternalBase(tests.TestCaseWithTransport):
 
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.

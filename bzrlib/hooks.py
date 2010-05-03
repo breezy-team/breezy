@@ -18,7 +18,6 @@
 """Support for plugin hooking logic."""
 from bzrlib import registry
 from bzrlib.lazy_import import lazy_import
-from bzrlib.symbol_versioning import deprecated_method
 lazy_import(globals(), """
 import textwrap
 

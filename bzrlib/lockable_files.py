@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
@@ -33,10 +31,6 @@ from bzrlib import (
 
 from bzrlib.decorators import (
     only_raises,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
     )
 
 

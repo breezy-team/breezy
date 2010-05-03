@@ -1971,3 +1971,15 @@ class ChrootedBzrDirTests(ChrootedTestCase):
         self.assertRaises(errors.NoRepositoryPresent,
                           made_control.find_repository)
 
+
+class TestBzrDirControlComponent(TestCaseWithBzrDir):
+    """BzrDir implementations adequately implement ControlComponent."""
+    
+    def test_urls(self):
+        bd = self.make_bzrdir('bd')
+        self.assertIsInstance(bd.user_url, str)
+        self.assertEqual(bd.user_url, bd.user_transport.base)
+        # for all current bzrdir implementations the user dir must be 
+        # above the control dir but we might need to relax that?
+        self.assertEqual(bd.control_url.find(bd.user_url), 0)
+        self.assertEqual(bd.control_url, bd.control_transport.base)

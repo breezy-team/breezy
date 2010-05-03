@@ -247,7 +247,7 @@ def _open_directory_or_containing_tree_or_branch(filename, directory):
 # opens the branch?)
 
 class cmd_status(Command):
-    """Display status summary.
+    __doc__ = """Display status summary.
 
     This reports on versioned and unknown files, reporting them
     grouped by state.  Possible states are:
@@ -340,7 +340,7 @@ class cmd_status(Command):
 
 
 class cmd_cat_revision(Command):
-    """Write out metadata for a revision.
+    __doc__ = """Write out metadata for a revision.
 
     The revision to print can either be specified by a specific
     revision identifier, or you can use --revision.
@@ -398,7 +398,7 @@ class cmd_cat_revision(Command):
         
 
 class cmd_dump_btree(Command):
-    """Dump the contents of a btree index file to stdout.
+    __doc__ = """Dump the contents of a btree index file to stdout.
 
     PATH is a btree index file, it can be any URL. This includes things like
     .bzr/repository/pack-names, or .bzr/repository/indices/a34b3a...ca4a4.iix
@@ -479,7 +479,7 @@ class cmd_dump_btree(Command):
 
 
 class cmd_remove_tree(Command):
-    """Remove the working tree from a given branch/checkout.
+    __doc__ = """Remove the working tree from a given branch/checkout.
 
     Since a lightweight checkout is little more than a working tree
     this will refuse to run against one.
@@ -512,9 +512,7 @@ class cmd_remove_tree(Command):
                 if (working.has_changes()):
                     raise errors.UncommittedChanges(working)
 
-            working_path = working.bzrdir.root_transport.base
-            branch_path = working.branch.bzrdir.root_transport.base
-            if working_path != branch_path:
+            if working.user_url != working.branch.user_url:
                 raise errors.BzrCommandError("You cannot remove the working tree"
                                              " from a lightweight checkout")
 
@@ -522,7 +520,7 @@ class cmd_remove_tree(Command):
 
 
 class cmd_revno(Command):
-    """Show current revision number.
+    __doc__ = """Show current revision number.
 
     This is equal to the number of revisions on this branch.
     """
@@ -558,7 +556,7 @@ class cmd_revno(Command):
 
 
 class cmd_revision_info(Command):
-    """Show revision number and revision id for a given revision identifier.
+    __doc__ = """Show revision number and revision id for a given revision identifier.
     """
     hidden = True
     takes_args = ['revision_info*']
@@ -617,7 +615,7 @@ class cmd_revision_info(Command):
 
 
 class cmd_add(Command):
-    """Add specified files or directories.
+    __doc__ = """Add specified files or directories.
 
     In non-recursive mode, all the named items are added, regardless
     of whether they were previously ignored.  A warning is given if
@@ -703,7 +701,7 @@ class cmd_add(Command):
 
 
 class cmd_mkdir(Command):
-    """Create a new versioned directory.
+    __doc__ = """Create a new versioned directory.
 
     This is equivalent to creating the directory and then adding it.
     """
@@ -725,7 +723,7 @@ class cmd_mkdir(Command):
 
 
 class cmd_relpath(Command):
-    """Show path of a file relative to root"""
+    __doc__ = """Show path of a file relative to root"""
 
     takes_args = ['filename']
     hidden = True
@@ -740,7 +738,7 @@ class cmd_relpath(Command):
 
 
 class cmd_inventory(Command):
-    """Show inventory of the current working copy or a revision.
+    __doc__ = """Show inventory of the current working copy or a revision.
 
     It is possible to limit the output to a particular entry
     type using the --kind option.  For example: --kind file.
@@ -801,7 +799,7 @@ class cmd_inventory(Command):
 
 
 class cmd_mv(Command):
-    """Move or rename a file.
+    __doc__ = """Move or rename a file.
 
     :Usage:
         bzr mv OLDNAME NEWNAME
@@ -938,7 +936,7 @@ class cmd_mv(Command):
 
 
 class cmd_pull(Command):
-    """Turn this branch into a mirror of another branch.
+    __doc__ = """Turn this branch into a mirror of another branch.
 
     By default, this command only works on branches that have not diverged.
     Branches are considered diverged if the destination branch's most recent 
@@ -1062,7 +1060,7 @@ class cmd_pull(Command):
 
 
 class cmd_push(Command):
-    """Update a mirror of this branch.
+    __doc__ = """Update a mirror of this branch.
 
     The target branch will not have its working tree populated because this
     is both expensive, and is not supported on remote file systems.
@@ -1133,8 +1131,10 @@ class cmd_push(Command):
         else:
             revision_id = None
         if tree is not None and revision_id is None:
-            tree.warn_if_changed_or_out_of_date(
-                strict, 'push_strict', 'Use --no-strict to force the push.')
+            tree.check_changed_or_out_of_date(
+                strict, 'push_strict',
+                more_error='Use --no-strict to force the push.',
+                more_warning='Uncommitted changes will not be pushed.')
         # Get the stacked_on branch, if any
         if stacked_on is not None:
             stacked_on = urlutils.normalize_url(stacked_on)
@@ -1172,7 +1172,7 @@ class cmd_push(Command):
 
 
 class cmd_branch(Command):
-    """Create a new branch that is a copy of an existing branch.
+    __doc__ = """Create a new branch that is a copy of an existing branch.
 
     If the TO_LOCATION is omitted, the last component of the FROM_LOCATION will
     be used.  In other words, "branch ../foo/bar" will attempt to create ./bar.
@@ -1285,7 +1285,7 @@ class cmd_branch(Command):
 
 
 class cmd_checkout(Command):
-    """Create a new checkout of an existing branch.
+    __doc__ = """Create a new checkout of an existing branch.
 
     If BRANCH_LOCATION is omitted, checkout will reconstitute a working tree for
     the branch found in '.'. This is useful if you have removed the working tree
@@ -1354,7 +1354,7 @@ class cmd_checkout(Command):
 
 
 class cmd_renames(Command):
-    """Show list of renamed files.
+    __doc__ = """Show list of renamed files.
     """
     # TODO: Option to show renames between two historical versions.
 
@@ -1386,7 +1386,7 @@ class cmd_renames(Command):
 
 
 class cmd_update(Command):
-    """Update a tree to have the latest code committed to its branch.
+    __doc__ = """Update a tree to have the latest code committed to its branch.
 
     This will perform a merge into the working tree, and may generate
     conflicts. If you have any local changes, you will still
@@ -1472,7 +1472,7 @@ class cmd_update(Command):
 
 
 class cmd_info(Command):
-    """Show information about a working tree, branch or repository.
+    __doc__ = """Show information about a working tree, branch or repository.
 
     This command will show all known locations and formats associated to the
     tree, branch or repository.
@@ -1516,7 +1516,7 @@ class cmd_info(Command):
 
 
 class cmd_remove(Command):
-    """Remove files or directories.
+    __doc__ = """Remove files or directories.
 
     This makes bzr stop tracking changes to the specified files. bzr will delete
     them if they can easily be recovered using revert. If no options or
@@ -1570,7 +1570,7 @@ class cmd_remove(Command):
 
 
 class cmd_file_id(Command):
-    """Print file_id of a particular file or directory.
+    __doc__ = """Print file_id of a particular file or directory.
 
     The file_id is assigned when the file is first added and remains the
     same through all revisions where the file exists, even when it is
@@ -1592,7 +1592,7 @@ class cmd_file_id(Command):
 
 
 class cmd_file_path(Command):
-    """Print path of file_ids to a file or directory.
+    __doc__ = """Print path of file_ids to a file or directory.
 
     This prints one line for each directory down to the target,
     starting at the branch root.
@@ -1614,7 +1614,7 @@ class cmd_file_path(Command):
 
 
 class cmd_reconcile(Command):
-    """Reconcile bzr metadata in a branch.
+    __doc__ = """Reconcile bzr metadata in a branch.
 
     This can correct data mismatches that may have been caused by
     previous ghost operations or bzr upgrades. You should only
@@ -1642,7 +1642,7 @@ class cmd_reconcile(Command):
 
 
 class cmd_revision_history(Command):
-    """Display the list of revision ids on a branch."""
+    __doc__ = """Display the list of revision ids on a branch."""
 
     _see_also = ['log']
     takes_args = ['location?']
@@ -1658,7 +1658,7 @@ class cmd_revision_history(Command):
 
 
 class cmd_ancestry(Command):
-    """List all revisions merged into this branch."""
+    __doc__ = """List all revisions merged into this branch."""
 
     _see_also = ['log', 'revision-history']
     takes_args = ['location?']
@@ -1683,7 +1683,7 @@ class cmd_ancestry(Command):
 
 
 class cmd_init(Command):
-    """Make a directory into a versioned branch.
+    __doc__ = """Make a directory into a versioned branch.
 
     Use this to create an empty branch, or before importing an
     existing project.
@@ -1792,7 +1792,7 @@ class cmd_init(Command):
 
 
 class cmd_init_repository(Command):
-    """Create a shared repository for branches to share storage space.
+    __doc__ = """Create a shared repository for branches to share storage space.
 
     New branches created under the repository directory will store their
     revisions in the repository, not in the branch directory.  For branches
@@ -1852,7 +1852,7 @@ class cmd_init_repository(Command):
 
 
 class cmd_diff(Command):
-    """Show differences in the working tree, between revisions or branches.
+    __doc__ = """Show differences in the working tree, between revisions or branches.
 
     If no arguments are given, all changes for the current tree are listed.
     If files are given, only the changes in those files are listed.
@@ -1993,7 +1993,7 @@ class cmd_diff(Command):
 
 
 class cmd_deleted(Command):
-    """List files deleted in the working tree.
+    __doc__ = """List files deleted in the working tree.
     """
     # TODO: Show files deleted since a previous revision, or
     # between two revisions.
@@ -2022,7 +2022,7 @@ class cmd_deleted(Command):
 
 
 class cmd_modified(Command):
-    """List files modified in working tree.
+    __doc__ = """List files modified in working tree.
     """
 
     hidden = True
@@ -2045,7 +2045,7 @@ class cmd_modified(Command):
 
 
 class cmd_added(Command):
-    """List files added in working tree.
+    __doc__ = """List files added in working tree.
     """
 
     hidden = True
@@ -2081,7 +2081,7 @@ class cmd_added(Command):
 
 
 class cmd_root(Command):
-    """Show the tree root directory.
+    __doc__ = """Show the tree root directory.
 
     The root is the nearest enclosing directory with a .bzr control
     directory."""
@@ -2111,7 +2111,7 @@ def _parse_levels(s):
 
 
 class cmd_log(Command):
-    """Show historical log for a branch or subset of a branch.
+    __doc__ = """Show historical log for a branch or subset of a branch.
 
     log is bzr's default tool for exploring the history of a branch.
     The branch to use is taken from the first parameter. If no parameters
@@ -2298,6 +2298,10 @@ class cmd_log(Command):
                    help='Show changes made in each revision as a patch.'),
             Option('include-merges',
                    help='Show merged revisions like --levels 0 does.'),
+            Option('exclude-common-ancestry',
+                   help='Display only the revisions that are not part'
+                   ' of both ancestries (require -rX..Y)'
+                   )
             ]
     encoding_type = 'replace'
 
@@ -2313,13 +2317,19 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False,
-            include_merges=False):
+            include_merges=False,
+            exclude_common_ancestry=False,
+            ):
         from bzrlib.log import (
             Logger,
             make_log_request_dict,
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
+        if (exclude_common_ancestry
+            and (revision is None or len(revision) != 2)):
+            raise errors.BzrCommandError(
+                '--exclude-common-ancestry requires -r with two revisions')
         if include_merges:
             if levels is None:
                 levels = 0
@@ -2418,7 +2428,9 @@ class cmd_log(Command):
             direction=direction, specific_fileids=file_ids,
             start_revision=rev1, end_revision=rev2, limit=limit,
             message_search=message, delta_type=delta_type,
-            diff_type=diff_type, _match_using_deltas=match_using_deltas)
+            diff_type=diff_type, _match_using_deltas=match_using_deltas,
+            exclude_common_ancestry=exclude_common_ancestry,
+            )
         Logger(b, rqst).show(lf)
 
 
@@ -2482,7 +2494,7 @@ def get_log_format(long=False, short=False, line=False, default='long'):
 
 
 class cmd_touching_revisions(Command):
-    """Return revision-ids which affected a particular file.
+    __doc__ = """Return revision-ids which affected a particular file.
 
     A more user-friendly interface is "bzr log FILE".
     """
@@ -2503,7 +2515,7 @@ class cmd_touching_revisions(Command):
 
 
 class cmd_ls(Command):
-    """List files in a tree.
+    __doc__ = """List files in a tree.
     """
 
     _see_also = ['status', 'cat']
@@ -2621,7 +2633,7 @@ class cmd_ls(Command):
 
 
 class cmd_unknowns(Command):
-    """List unknown files.
+    __doc__ = """List unknown files.
     """
 
     hidden = True
@@ -2635,7 +2647,7 @@ class cmd_unknowns(Command):
 
 
 class cmd_ignore(Command):
-    """Ignore specified files or patterns.
+    __doc__ = """Ignore specified files or patterns.
 
     See ``bzr help patterns`` for details on the syntax of patterns.
 
@@ -2650,6 +2662,12 @@ class cmd_ignore(Command):
     using this command or directly by using an editor, be sure to commit
     it.
     
+    Bazaar also supports a global ignore file ~/.bazaar/ignore. On Windows
+    the global ignore file can be found in the application data directory as
+    C:\\Documents and Settings\\<user>\\Application Data\\Bazaar\\2.0\\ignore.
+    Global ignores are not touched by this command. The global ignore file
+    can be edited directly using an editor.
+
     Patterns prefixed with '!' are exceptions to ignore patterns and take
     precedence over regular ignores.  Such exceptions are used to specify
     files that should be versioned which would otherwise be ignored.
@@ -2696,21 +2714,21 @@ class cmd_ignore(Command):
     _see_also = ['status', 'ignored', 'patterns']
     takes_args = ['name_pattern*']
     takes_options = ['directory',
-        Option('old-default-rules',
-               help='Write out the ignore rules bzr < 0.9 always used.')
+        Option('default-rules',
+               help='Display the default ignore rules that bzr uses.')
         ]
 
-    def run(self, name_pattern_list=None, old_default_rules=None,
+    def run(self, name_pattern_list=None, default_rules=None,
             directory=u'.'):
         from bzrlib import ignores
-        if old_default_rules is not None:
-            # dump the rules and exit
-            for pattern in ignores.OLD_DEFAULTS:
+        if default_rules is not None:
+            # dump the default rules and exit
+            for pattern in ignores.USER_DEFAULTS:
                 self.outf.write("%s\n" % pattern)
             return
         if not name_pattern_list:
             raise errors.BzrCommandError("ignore requires at least one "
-                                  "NAME_PATTERN or --old-default-rules")
+                "NAME_PATTERN or --default-rules.")
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
         for name_pattern in name_pattern_list:
@@ -2738,7 +2756,7 @@ class cmd_ignore(Command):
 
 
 class cmd_ignored(Command):
-    """List ignored files and the patterns that matched them.
+    __doc__ = """List ignored files and the patterns that matched them.
 
     List all the ignored files and the ignore pattern that caused the file to
     be ignored.
@@ -2766,7 +2784,7 @@ class cmd_ignored(Command):
 
 
 class cmd_lookup_revision(Command):
-    """Lookup the revision-id from a revision-number
+    __doc__ = """Lookup the revision-id from a revision-number
 
     :Examples:
         bzr lookup-revision 33
@@ -2787,7 +2805,7 @@ class cmd_lookup_revision(Command):
 
 
 class cmd_export(Command):
-    """Export current or past revision to a destination directory or archive.
+    __doc__ = """Export current or past revision to a destination directory or archive.
 
     If no revision is specified this exports the last committed revision.
 
@@ -2850,7 +2868,7 @@ class cmd_export(Command):
 
 
 class cmd_cat(Command):
-    """Write the contents of a file as of a given revision to standard output.
+    __doc__ = """Write the contents of a file as of a given revision to standard output.
 
     If no revision is nominated, the last revision is used.
 
@@ -2936,7 +2954,7 @@ class cmd_cat(Command):
 
 
 class cmd_local_time_offset(Command):
-    """Show the offset in seconds from GMT to local time."""
+    __doc__ = """Show the offset in seconds from GMT to local time."""
     hidden = True
     @display_command
     def run(self):
@@ -2945,7 +2963,7 @@ class cmd_local_time_offset(Command):
 
 
 class cmd_commit(Command):
-    """Commit changes into a new revision.
+    __doc__ = """Commit changes into a new revision.
 
     An explanatory message needs to be given for each commit. This is
     often done by using the --message option (getting the message from the
@@ -3059,7 +3077,7 @@ class cmd_commit(Command):
                          "the master branch until a normal commit "
                          "is performed."
                     ),
-             Option('show-diff',
+             Option('show-diff', short_name='p',
                     help='When no message is supplied, show the diff along'
                     ' with the status summary in the message editor.'),
              ]
@@ -3211,7 +3229,7 @@ class cmd_commit(Command):
 
 
 class cmd_check(Command):
-    """Validate working tree structure, branch consistency and repository history.
+    __doc__ = """Validate working tree structure, branch consistency and repository history.
 
     This command checks various invariants about branch and repository storage
     to detect data corruption or bzr bugs.
@@ -3281,7 +3299,7 @@ class cmd_check(Command):
 
 
 class cmd_upgrade(Command):
-    """Upgrade branch storage to current format.
+    __doc__ = """Upgrade branch storage to current format.
 
     The check command or bzr developers may sometimes advise you to run
     this command. When the default format has changed you may also be warned
@@ -3305,7 +3323,7 @@ class cmd_upgrade(Command):
 
 
 class cmd_whoami(Command):
-    """Show or set bzr user id.
+    __doc__ = """Show or set bzr user id.
 
     :Examples:
         Show the email of the current user::
@@ -3355,7 +3373,7 @@ class cmd_whoami(Command):
 
 
 class cmd_nick(Command):
-    """Print or set the branch nickname.
+    __doc__ = """Print or set the branch nickname.
 
     If unset, the tree root directory name is used as the nickname.
     To print the current nickname, execute with no argument.
@@ -3380,7 +3398,7 @@ class cmd_nick(Command):
 
 
 class cmd_alias(Command):
-    """Set/unset and display aliases.
+    __doc__ = """Set/unset and display aliases.
 
     :Examples:
         Show the current aliases::
@@ -3450,7 +3468,7 @@ class cmd_alias(Command):
 
 
 class cmd_selftest(Command):
-    """Run internal test suite.
+    __doc__ = """Run internal test suite.
 
     If arguments are given, they are regular expressions that say which tests
     should run.  Tests matching any expression are run, and other tests are
@@ -3597,6 +3615,11 @@ class cmd_selftest(Command):
                 raise errors.BzrCommandError("subunit not available. subunit "
                     "needs to be installed to use --subunit.")
             self.additional_selftest_args['runner_class'] = SubUnitBzrRunner
+            # On Windows, disable automatic conversion of '\n' to '\r\n' in
+            # stdout, which would corrupt the subunit stream. 
+            if sys.platform == "win32" and sys.stdout.fileno() >= 0:
+                import msvcrt
+                msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
         if parallel:
             self.additional_selftest_args.setdefault(
                 'suite_decorators', []).append(parallel)
@@ -3633,7 +3656,7 @@ class cmd_selftest(Command):
 
 
 class cmd_version(Command):
-    """Show version of bzr."""
+    __doc__ = """Show version of bzr."""
 
     encoding_type = 'replace'
     takes_options = [
@@ -3650,7 +3673,7 @@ class cmd_version(Command):
 
 
 class cmd_rocks(Command):
-    """Statement of optimism."""
+    __doc__ = """Statement of optimism."""
 
     hidden = True
 
@@ -3660,7 +3683,7 @@ class cmd_rocks(Command):
 
 
 class cmd_find_merge_base(Command):
-    """Find and print a base revision for merging two branches."""
+    __doc__ = """Find and print a base revision for merging two branches."""
     # TODO: Options to specify revisions on either side, as if
     #       merging only part of the history.
     takes_args = ['branch', 'other']
@@ -3686,7 +3709,7 @@ class cmd_find_merge_base(Command):
 
 
 class cmd_merge(Command):
-    """Perform a three-way merge.
+    __doc__ = """Perform a three-way merge.
 
     The source of the merge can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
@@ -4044,7 +4067,7 @@ class cmd_merge(Command):
 
 
 class cmd_remerge(Command):
-    """Redo a merge.
+    __doc__ = """Redo a merge.
 
     Use this if you want to try a different merge technique while resolving
     conflicts.  Some merge techniques are better than others, and remerge
@@ -4139,7 +4162,7 @@ class cmd_remerge(Command):
 
 
 class cmd_revert(Command):
-    """Revert files to a previous revision.
+    __doc__ = """Revert files to a previous revision.
 
     Giving a list of files will revert only those files.  Otherwise, all files
     will be reverted.  If the revision is not specified with '--revision', the
@@ -4211,7 +4234,7 @@ class cmd_revert(Command):
 
 
 class cmd_assert_fail(Command):
-    """Test reporting of assertion failures"""
+    __doc__ = """Test reporting of assertion failures"""
     # intended just for use in testing
 
     hidden = True
@@ -4221,7 +4244,7 @@ class cmd_assert_fail(Command):
 
 
 class cmd_help(Command):
-    """Show help on a command or other topic.
+    __doc__ = """Show help on a command or other topic.
     """
 
     _see_also = ['topics']
@@ -4240,7 +4263,7 @@ class cmd_help(Command):
 
 
 class cmd_shell_complete(Command):
-    """Show appropriate completions for context.
+    __doc__ = """Show appropriate completions for context.
 
     For a list of all available commands, say 'bzr shell-complete'.
     """
@@ -4255,7 +4278,7 @@ class cmd_shell_complete(Command):
 
 
 class cmd_missing(Command):
-    """Show unmerged/unpulled revisions between two branches.
+    __doc__ = """Show unmerged/unpulled revisions between two branches.
 
     OTHER_BRANCH may be local or remote.
 
@@ -4428,7 +4451,7 @@ class cmd_missing(Command):
 
 
 class cmd_pack(Command):
-    """Compress the data within a repository.
+    __doc__ = """Compress the data within a repository.
 
     This operation compresses the data within a bazaar repository. As
     bazaar supports automatic packing of repository, this operation is
@@ -4463,7 +4486,7 @@ class cmd_pack(Command):
 
 
 class cmd_plugins(Command):
-    """List the installed plugins.
+    __doc__ = """List the installed plugins.
 
     This command displays the list of installed plugins including
     version of plugin and a short description of each.
@@ -4508,7 +4531,7 @@ class cmd_plugins(Command):
 
 
 class cmd_testament(Command):
-    """Show testament (signing-form) of a revision."""
+    __doc__ = """Show testament (signing-form) of a revision."""
     takes_options = [
             'revision',
             Option('long', help='Produce long-format testament.'),
@@ -4540,7 +4563,7 @@ class cmd_testament(Command):
 
 
 class cmd_annotate(Command):
-    """Show the origin of each line in a file.
+    __doc__ = """Show the origin of each line in a file.
 
     This prints out the given file with an annotation on the left side
     indicating which revision, author and date introduced the change.
@@ -4594,7 +4617,7 @@ class cmd_annotate(Command):
 
 
 class cmd_re_sign(Command):
-    """Create a digital signature for an existing revision."""
+    __doc__ = """Create a digital signature for an existing revision."""
     # TODO be able to replace existing ones.
 
     hidden = True # is this right ?
@@ -4660,7 +4683,7 @@ class cmd_re_sign(Command):
 
 
 class cmd_bind(Command):
-    """Convert the current branch into a checkout of the supplied branch.
+    __doc__ = """Convert the current branch into a checkout of the supplied branch.
 
     Once converted into a checkout, commits must succeed on the master branch
     before they will be applied to the local branch.
@@ -4700,7 +4723,7 @@ class cmd_bind(Command):
 
 
 class cmd_unbind(Command):
-    """Convert the current checkout into a regular branch.
+    __doc__ = """Convert the current checkout into a regular branch.
 
     After unbinding, the local branch is considered independent and subsequent
     commits will be local only.
@@ -4717,7 +4740,7 @@ class cmd_unbind(Command):
 
 
 class cmd_uncommit(Command):
-    """Remove the last committed revision.
+    __doc__ = """Remove the last committed revision.
 
     --verbose will print out what is being removed.
     --dry-run will go through all the motions, but not actually
@@ -4825,7 +4848,7 @@ class cmd_uncommit(Command):
 
 
 class cmd_break_lock(Command):
-    """Break a dead lock on a repository, branch or working directory.
+    __doc__ = """Break a dead lock on a repository, branch or working directory.
 
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
@@ -4850,7 +4873,7 @@ class cmd_break_lock(Command):
 
 
 class cmd_wait_until_signalled(Command):
-    """Test helper for test_start_and_stop_bzr_subprocess_send_signal.
+    __doc__ = """Test helper for test_start_and_stop_bzr_subprocess_send_signal.
 
     This just prints a line to signal when it is ready, then blocks on stdin.
     """
@@ -4864,7 +4887,7 @@ class cmd_wait_until_signalled(Command):
 
 
 class cmd_serve(Command):
-    """Run the bzr server."""
+    __doc__ = """Run the bzr server."""
 
     aliases = ['server']
 
@@ -4929,7 +4952,7 @@ class cmd_serve(Command):
 
 
 class cmd_join(Command):
-    """Combine a tree into its containing tree.
+    __doc__ = """Combine a tree into its containing tree.
 
     This command requires the target tree to be in a rich-root format.
 
@@ -4975,7 +4998,7 @@ class cmd_join(Command):
 
 
 class cmd_split(Command):
-    """Split a subdirectory of a tree into a separate tree.
+    __doc__ = """Split a subdirectory of a tree into a separate tree.
 
     This command will produce a target tree in a format that supports
     rich roots, like 'rich-root' or 'rich-root-pack'.  These formats cannot be
@@ -5001,7 +5024,7 @@ class cmd_split(Command):
 
 
 class cmd_merge_directive(Command):
-    """Generate a merge directive for auto-merge tools.
+    __doc__ = """Generate a merge directive for auto-merge tools.
 
     A directive requests a merge to be performed, and also provides all the
     information necessary to do so.  This means it must either include a
@@ -5100,7 +5123,7 @@ class cmd_merge_directive(Command):
 
 
 class cmd_send(Command):
-    """Mail or create a merge-directive for submitting changes.
+    __doc__ = """Mail or create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
 
@@ -5217,7 +5240,7 @@ class cmd_send(Command):
 
 
 class cmd_bundle_revisions(cmd_send):
-    """Create a merge-directive for submitting changes.
+    __doc__ = """Create a merge-directive for submitting changes.
 
     A merge directive provides many things needed for requesting merges:
 
@@ -5290,7 +5313,7 @@ class cmd_bundle_revisions(cmd_send):
 
 
 class cmd_tag(Command):
-    """Create, remove or modify a tag naming a revision.
+    __doc__ = """Create, remove or modify a tag naming a revision.
 
     Tags give human-meaningful names to revisions.  Commands that take a -r
     (--revision) option can be given -rtag:X, where X is any previously
@@ -5360,7 +5383,7 @@ class cmd_tag(Command):
 
 
 class cmd_tags(Command):
-    """List tags.
+    __doc__ = """List tags.
 
     This command shows a table of tag names and the revisions they reference.
     """
@@ -5431,7 +5454,7 @@ class cmd_tags(Command):
 
 
 class cmd_reconfigure(Command):
-    """Reconfigure the type of a bzr directory.
+    __doc__ = """Reconfigure the type of a bzr directory.
 
     A target configuration must be specified.
 
@@ -5522,7 +5545,7 @@ class cmd_reconfigure(Command):
 
 
 class cmd_switch(Command):
-    """Set the branch of a checkout and update.
+    __doc__ = """Set the branch of a checkout and update.
 
     For lightweight checkouts, this changes the branch being referenced.
     For heavyweight checkouts, this checks that there are no local commits
@@ -5618,7 +5641,7 @@ class cmd_switch(Command):
 
 
 class cmd_view(Command):
-    """Manage filtered views.
+    __doc__ = """Manage filtered views.
 
     Views provide a mask over the tree so that users can focus on
     a subset of a tree when doing their work. After creating a view,
@@ -5772,7 +5795,7 @@ class cmd_view(Command):
 
 
 class cmd_hooks(Command):
-    """Show hooks."""
+    __doc__ = """Show hooks."""
 
     hidden = True
 
@@ -5792,7 +5815,7 @@ class cmd_hooks(Command):
 
 
 class cmd_remove_branch(Command):
-    """Remove a branch.
+    __doc__ = """Remove a branch.
 
     This will remove the branch from the specified location but 
     will keep any working tree or repository in place.
@@ -5817,7 +5840,7 @@ class cmd_remove_branch(Command):
         
 
 class cmd_shelve(Command):
-    """Temporarily set aside some changes from the current tree.
+    __doc__ = """Temporarily set aside some changes from the current tree.
 
     Shelve allows you to temporarily put changes you've made "on the shelf",
     ie. out of the way, until a later time when you can bring them back from
@@ -5892,7 +5915,7 @@ class cmd_shelve(Command):
 
 
 class cmd_unshelve(Command):
-    """Restore shelved changes.
+    __doc__ = """Restore shelved changes.
 
     By default, the most recently shelved changes are restored. However if you
     specify a shelf by id those changes will be restored instead.  This works
@@ -5924,7 +5947,7 @@ class cmd_unshelve(Command):
 
 
 class cmd_clean_tree(Command):
-    """Remove unwanted files from working tree.
+    __doc__ = """Remove unwanted files from working tree.
 
     By default, only unknown files, not ignored files, are deleted.  Versioned
     files are never deleted.
@@ -5959,7 +5982,7 @@ class cmd_clean_tree(Command):
 
 
 class cmd_reference(Command):
-    """list, view and set branch locations for nested trees.
+    __doc__ = """list, view and set branch locations for nested trees.
 
     If no arguments are provided, lists the branch locations for nested trees.
     If one argument is provided, display the branch location for that tree.

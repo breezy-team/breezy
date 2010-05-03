@@ -53,7 +53,7 @@ from bzrlib.option import (
 
 
 class cmd_register_branch(Command):
-    """Register a branch with launchpad.net.
+    __doc__ = """Register a branch with launchpad.net.
 
     This command lists a bzr branch in the directory of branches on
     launchpad.net.  Registration allows the branch to be associated with
@@ -161,7 +161,7 @@ register_command(cmd_register_branch)
 
 
 class cmd_launchpad_open(Command):
-    """Open a Launchpad branch page in your web browser."""
+    __doc__ = """Open a Launchpad branch page in your web browser."""
 
     aliases = ['lp-open']
     takes_options = [
@@ -211,7 +211,7 @@ register_command(cmd_launchpad_open)
 
 
 class cmd_launchpad_login(Command):
-    """Show or set the Launchpad user ID.
+    __doc__ = """Show or set the Launchpad user ID.
 
     When communicating with Launchpad, some commands need to know your
     Launchpad user ID.  This command can be used to set or show the
@@ -267,7 +267,7 @@ register_command(cmd_launchpad_login)
 
 # XXX: cmd_launchpad_mirror is untested
 class cmd_launchpad_mirror(Command):
-    """Ask Launchpad to mirror a branch now."""
+    __doc__ = """Ask Launchpad to mirror a branch now."""
 
     aliases = ['lp-mirror']
     takes_args = ['location?']
@@ -286,7 +286,7 @@ register_command(cmd_launchpad_mirror)
 
 
 class cmd_lp_propose_merge(Command):
-    """Propose merging a branch on Launchpad.
+    __doc__ = """Propose merging a branch on Launchpad.
 
     This will open your usual editor to provide the initial comment.  When it
     has created the proposal, it will open it in your default web browser.

@@ -14,14 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Merge hook for bzr's NEWS file.
+__doc__ = """Merge hook for bzr's NEWS file.
 
 To enable this plugin, add a section to your branch.conf or location.conf
 like::
 
     [/home/user/code/bzr]
     news_merge_files = NEWS
-    news_merge_files:policy = recurse
 
 The news_merge_files config option takes a list of file paths, separated by
 commas.
