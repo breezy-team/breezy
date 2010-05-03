@@ -232,7 +232,7 @@ def _get_view_info_for_change_reporter(tree):
     return view_info
 
 
-def _open_tree_branch_or_directory(filename, directory):
+def _open_directory_or_containing_tree_or_branch(filename, directory):
     """Open the tree or branch containing the specified file, unless
     the --directory option is used to specify a different branch."""
     if directory is not None:
@@ -2551,7 +2551,7 @@ class cmd_ls(Command):
                                              ' and PATH')
             fs_path = path
         tree, branch, relpath = \
-            _open_tree_branch_or_directory(fs_path, directory)
+            _open_directory_or_containing_tree_or_branch(fs_path, directory)
 
         # Calculate the prefix to use
         prefix = None
@@ -2875,7 +2875,7 @@ class cmd_cat(Command):
             raise errors.BzrCommandError("bzr cat --revision takes exactly"
                                          " one revision specifier")
         tree, branch, relpath = \
-            _open_tree_branch_or_directory(filename, directory)
+            _open_directory_or_containing_tree_or_branch(filename, directory)
         branch.lock_read()
         self.add_cleanup(branch.unlock)
         return self._run(tree, branch, relpath, filename, revision,
@@ -4566,7 +4566,7 @@ class cmd_annotate(Command):
             show_ids=False, directory=None):
         from bzrlib.annotate import annotate_file, annotate_file_tree
         wt, branch, relpath = \
-            _open_tree_branch_or_directory(filename, directory)
+            _open_directory_or_containing_tree_or_branch(filename, directory)
         if wt is not None:
             wt.lock_read()
             self.add_cleanup(wt.unlock)
