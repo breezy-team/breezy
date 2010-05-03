@@ -762,6 +762,7 @@ class cmd_import_upstream(Command):
         # differences are:
         # - this uses an upstream branch and a packaging branch
         # - this can import when there is a previous upstream tag present
+        version = version.encode('utf8')
         branch, _ = Branch.open_containing('.')
         if upstream_branch is None:
             upstream = None

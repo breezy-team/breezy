@@ -53,6 +53,7 @@ from bzrlib.errors import (
         AlreadyBranchError,
         BzrCommandError,
         NotBranchError,
+        NoSuchRevision,
         NoWorkingTree,
         UnrelatedBranches,
         )
@@ -157,6 +158,10 @@ def make_pristine_tar_delta(dest, tarball_path):
     :param tarball_path: Path to the tarball
     :return: pristine-tarball
     """
+    # If tarball_path is relative, the cwd=dest parameter to Popen will make
+    # pristine-tar faaaail. pristine-tar doesn't use the VFS either, so we
+    # assume local paths.
+    tarball_path = osutils.abspath(tarball_path)
     command = ["pristine-tar", "gendelta", tarball_path, "-"]
     try:
         proc = subprocess.Popen(command, stdout=subprocess.PIPE,
@@ -397,7 +402,7 @@ class DistributionBranch(object):
         return False
 
     def has_upstream_version_in_packaging_branch(self, version, md5=None):
-        assert isinstance(version, str)
+        assert isinstance(version, str), str(type(version))
         for tag_name in self.possible_upstream_tag_names(version):
             if self._has_version(self.branch, tag_name, md5=md5):
                 return True
@@ -547,8 +552,12 @@ class DistributionBranch(object):
         if revid is None:
             revid = self.upstream_branch.last_revision()
         self.upstream_branch.tags.set_tag(tag_name, revid)
-        self.branch.repository.fetch(self.upstream_branch.repository,
-            revision_id=revid)
+        try:
+            self.branch.repository.fetch(self.upstream_branch.repository,
+                revision_id=revid)
+        except NoSuchRevision:
+            # See bug lp:574223
+            pass
         self.branch.tags.set_tag(tag_name, revid)
         return tag_name, revid
 
