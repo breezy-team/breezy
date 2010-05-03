@@ -91,6 +91,7 @@ from bzrlib.plugins.builddeb.util import (
         open_file_via_transport,
         tarball_name,
         )
+from bzrlib import revision as mod_revision
 
 dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building.")
@@ -714,9 +715,10 @@ class cmd_import_dsc(Command):
                 if last_version is not None:
                     if not db.has_upstream_version_in_packaging_branch(
                             last_version.upstream_version):
-                        raise BzrCommandError("Unable to find the tag for "
-                                "the previous upstream version, %s, in the "
-                                "branch: %s" % (last_version,
+                        raise BzrCommandError("Unable to find the tag for the "
+                            "previous upstream version, %s, in the branch: %s."
+                            " Consider importing it via import-dsc or "
+                            "import-upsteram." % (last_version,
                                     db.upstream_tag_name(last_version.upstream_version)))
                     upstream_tip = db.revid_of_upstream_version_from_branch(
                             last_version.upstream_version)
@@ -728,6 +730,76 @@ class cmd_import_dsc(Command):
                 shutil.rmtree(tempdir)
         finally:
             tree.unlock()
+
+
+class cmd_import_upstream(Command):
+    """Imports a single upstream tarball.
+    
+    This calls the core workhorse used by merge-upstream to incorporate
+    new tarballs, but makes no changes to your working tree. A common use
+    for it is to get a pristine-tar enabled upstream tag for a packaging branch
+    which has not been previously using the pristine tar features.
+
+    for instance::
+
+        $ bzr import-upstream 1.2.3 ../package_1.2.3.orig.tar.gz
+
+    If upstream is packaged in bzr, you should provide the upstream branch
+    whose tip commit is the closest match to the tarball::
+
+        $ bzr import-upstream 1.2.3 ../package_1.2.3.orig.tar.gz ../upstream
+
+    After doing this, commands that assume there is an upstream tarball, like 
+    'bzr builddeb' will be able to create one on the fly.
+    """
+
+    takes_args = ['version', 'location', 'upstream_branch?']
+
+    def run(self, version, location, upstream_branch=None):
+        from bzrlib.plugins.builddeb.errors import MissingChangelogError
+        # Note that this is similar to dh_make, but I don't understand what
+        # that does well enough to make it reusable with confidence. Key
+        # differences are:
+        # - this uses an upstream branch and a packaging branch
+        # - this can import when there is a previous upstream tag present
+        branch, _ = Branch.open_containing('.')
+        if upstream_branch is None:
+            upstream = None
+        else:
+            upstream = Branch.open(upstream_branch)
+        branch.lock_write() # we will be adding a tag here.
+        self.add_cleanup(branch.unlock)
+        tempdir = tempfile.mkdtemp(
+            dir=branch.bzrdir.root_transport.clone('..').local_abspath('.'))
+        self.add_cleanup(shutil.rmtree, tempdir)
+        db = DistributionBranch(branch, upstream_branch=upstream)
+        if db.has_upstream_version_in_packaging_branch(version):
+            raise BzrCommandError("Version %s is already present." % version)
+        # TODO: support -r, search for similarity etc.
+        if upstream is not None:
+            parents = [upstream.last_revision()]
+        else:
+            parents = []
+        if parents == [mod_revision.NULL_REVISION]:
+            parents = []
+        if parents:
+            db.extract_upstream_tree(parents[0], tempdir)
+        else:
+            db._create_empty_upstream_tree(tempdir)
+        tree = db.get_branch_tip_revtree()
+        tree.lock_read()
+        try:
+            try:
+                changelog, _ = find_changelog(tree, False)
+                last_version = changelog.version
+            except MissingChangelogError:
+                last_version = None
+        finally:
+            tree.unlock()
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        db.import_upstream_tarball(location, version, parents)
+        db.branch.repository.fetch
 
 
 class cmd_bd_do(Command):

@@ -13,7 +13,9 @@ if it is not already in the required place.
 If it can it will reconstruct the tarball from ``pristine-tar`` information
 stored in the branch. ``bzr-builddeb`` will store this information whenever
 it can, so using its commands such as ``merge-upstream`` and ``import-dsc``
-will lead to the best experience.
+will lead to the best experience. If you have an existing branch missing
+this information, you can use the ``import-upstream`` command to import a
+single tarball, after which the ``merge-upstream`` command should be used.
 
 If there is no ``pristine-tar`` information then it will use apt to download
 the tarball from the archive if there is one of the correct version there.

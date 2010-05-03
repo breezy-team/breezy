@@ -74,10 +74,7 @@ def _get_tarball(tree, tarball, package_name, version, use_v3=False):
     provider = upstream.UpstreamProvider(package_name, "%s-1" % version,
             orig_dir, [])
     provider.provide(os.path.join(tree.basedir, ".."))
-    m = md5.md5()
-    m.update(open(tarball_filename).read())
-    md5sum = m.hexdigest()
-    return tarball_filename, md5sum
+    return tarball_filename, util.md5sum_filename(tarball_filename)
 
 
 def import_upstream(tarball, package_name, version, use_v3=False):
@@ -92,12 +89,7 @@ def import_upstream(tarball, package_name, version, use_v3=False):
             upstream_tree=tree)
     dbs = import_dsc.DistributionBranchSet()
     dbs.add_branch(db)
-    tarball_dir = db._extract_tarball_to_tempdir(tarball_filename)
-    try:
-        db.import_upstream(tarball_dir, version, md5sum, parents,
-                upstream_tarball=tarball_filename)
-    finally:
-        shutil.rmtree(tarball_dir)
+    db.import_upstream_tarball(tarball_filename, version, parents, md5sum=md5sum)
     return tree
 
 

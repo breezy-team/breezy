@@ -74,6 +74,7 @@ from bzrlib.plugins.builddeb.util import (
     export,
     get_commit_info_from_changelog,
     get_snapshot_revision,
+    md5sum_filename,
     open_file_via_transport,
     open_transport,
     safe_decode,
@@ -531,20 +532,25 @@ class DistributionBranch(object):
     def tag_upstream_version(self, version, revid=None):
         """Tags the upstream branch's last revision with an upstream version.
 
-        Sets a tag on the last revision of the upstream branch with a tag
-        that refers to the upstream part of the version provided.
+        Sets a tag on the last revision of the upstream branch and on the main
+        branch with a tag that refers to the upstream part of the version
+        provided.
 
         :param version: the upstream part of the version number to derive the 
             tag name from.
         :param revid: the revid to associate the tag with, or None for the
             tip of self.upstream_branch.
+        :return The tag name, revid of the added tag.
         """
         assert isinstance(version, str)
         tag_name = self.upstream_tag_name(version)
         if revid is None:
             revid = self.upstream_branch.last_revision()
         self.upstream_branch.tags.set_tag(tag_name, revid)
+        self.branch.repository.fetch(self.upstream_branch.repository,
+            revision_id=revid)
         self.branch.tags.set_tag(tag_name, revid)
+        return tag_name, revid
 
     def _default_config_for_tree(self, tree):
         # FIXME: shouldn't go to configobj directly
@@ -947,8 +953,17 @@ class DistributionBranch(object):
                         upstream_revision))
         if file_ids_from is not None:
             upstream_trees = file_ids_from + upstream_trees
-        import_dir(self.upstream_tree, upstream_part,
-                file_ids_from=upstream_trees + [self.tree])
+        if self.tree:
+            self_tree = self.tree
+            self_tree.lock_write() # might also be upstream tree for dh_make
+        else:
+            self_tree = self.get_branch_tip_revtree()
+            self_tree.lock_read()
+        try:
+            import_dir(self.upstream_tree, upstream_part,
+                    file_ids_from=upstream_trees + [self_tree])
+        finally:
+            self_tree.unlock()
         self.upstream_tree.set_parent_ids(upstream_parents)
         revprops = {"deb-md5": md5}
         if upstream_tarball is not None:
@@ -971,9 +986,30 @@ class DistributionBranch(object):
         self.tag_upstream_version(version, revid=revid)
         return revid
 
-    def _mark_native_config(self, native):
-        poss_native_tree = self.branch.repository.revision_tree(
+    def import_upstream_tarball(self, tarball_filename, version, parents,
+        md5sum=None):
+        """Import an upstream part to the upstream branch.
+
+        :param tarball_filename: The tarball to import.
+        :param version: The upstream version to import.
+        :param parents: The parents to use for the import.
+        :param md5sum: hex digest of the md5sum of the tarball, if known.
+        """
+        if not md5sum:
+            md5sum = md5sum_filename(tarball_filename)
+        tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
+        try:
+            self.import_upstream(tarball_dir, version, md5sum, parents,
+                upstream_tarball=tarball_filename)
+        finally:
+            shutil.rmtree(tarball_dir)
+
+    def get_branch_tip_revtree(self):
+        return self.branch.repository.revision_tree(
                 self.branch.last_revision())
+
+    def _mark_native_config(self, native):
+        poss_native_tree = self.get_branch_tip_revtree()
         current_native = self._is_tree_native(poss_native_tree)
         current_config = self._default_config_for_tree(poss_native_tree)
         dirname = os.path.join(self.tree.basedir,
@@ -1319,13 +1355,14 @@ class DistributionBranch(object):
             extractor.cleanup()
 
     def extract_upstream_tree(self, upstream_tip, basedir):
-        # Extract that to a tempdir so we can get a working
-        # tree for it.
+        """Extract upstream_tip to a tempdir as a working tree."""
         # TODO: should stack rather than trying to use the repository,
         # as that will be more efficient.
         # TODO: remove the _extract_upstream_tree alias below.
         to_location = os.path.join(basedir, "upstream")
-        dir_to = self.branch.bzrdir.sprout(to_location,
+        # Use upstream_branch if it has been set, otherwise self.branch.
+        source_branch = self.upstream_branch or self.branch
+        dir_to = source_branch.bzrdir.sprout(to_location,
                 revision_id=upstream_tip,
                 accelerator_tree=self.tree)
         try:
@@ -1359,7 +1396,17 @@ class DistributionBranch(object):
                 existing_bzrdir.create_workingtree()
         self.upstream_branch = branch
         self.upstream_tree = branch.bzrdir.open_workingtree()
-        self.upstream_tree.set_root_id(self.tree.path2id(""))
+        if self.tree:
+            root_id = self.tree.path2id('')
+        else:
+            tip = self.get_branch_tip_revtree()
+            tip.lock_read()
+            try:
+                root_id = tip.path2id('')
+            finally:
+                tip.unlock()
+        if root_id:
+            self.upstream_tree.set_root_id(root_id)
 
     def _extract_tarball_to_tempdir(self, tarball_filename):
         tempdir = tempfile.mkdtemp()
@@ -1439,9 +1486,7 @@ class DistributionBranch(object):
                             self.branch.last_revision()):
                         raise UpstreamBranchAlreadyMerged
                 tarball_filename = os.path.abspath(tarball_filename)
-                m = md5.md5()
-                m.update(open(tarball_filename).read())
-                md5sum = m.hexdigest()
+                md5sum = md5sum_filename(tarball_filename)
                 tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
                 try:
                     # FIXME: should use upstream_parents()?
