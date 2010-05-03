@@ -32,9 +32,6 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.inventory import (
-    InventoryFile,
-    )
 from bzrlib.revision import (
     NULL_REVISION,
     )
