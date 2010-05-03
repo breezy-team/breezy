@@ -167,8 +167,8 @@ class TestRuntimeIgnores(TestCase):
 class TestTreeIgnores(TestCaseWithTransport):
     
     def assertPatternsEquals(self, patterns):
-        self.assertEquals(sorted(patterns),
-                          sorted(open(".bzrignore", 'r').read().strip().split('\n')))
+        contents = open(".bzrignore", 'rU').read().strip().split('\n')
+        self.assertEquals(sorted(patterns), sorted(contents))
 
     def test_new_file(self):
         tree = self.make_branch_and_tree(".")
@@ -200,3 +200,20 @@ class TestTreeIgnores(TestCaseWithTransport):
         tree.add([".bzrignore"])
         ignores.tree_ignores_add_patterns(tree, ["myentry"])
         self.assertPatternsEquals(["myentry"])
+
+    def test_non_ascii(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([('.bzrignore',
+                                   u"myentry\u1234\n".encode('utf-8'))])
+        tree.add([".bzrignore"])
+        ignores.tree_ignores_add_patterns(tree, [u"myentry\u5678"])
+        self.assertPatternsEquals([u"myentry\u1234".encode('utf-8'),
+                                   u"myentry\u5678".encode('utf-8')])
+
+    def test_crlf(self):
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([('.bzrignore', "myentry1\r\n")])
+        tree.add([".bzrignore"])
+        ignores.tree_ignores_add_patterns(tree, ["myentry2", "foo"])
+        self.assertEquals(open('.bzrignore', 'rb').read(), 'myentry1\r\nmyentry2\r\nfoo\r\n')
+        self.assertPatternsEquals(["myentry1", "myentry2", "foo"])
