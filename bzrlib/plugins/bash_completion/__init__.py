@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Generate a shell function for bash command line completion.
+__doc__ = """Generate a shell function for bash command line completion.
 
 This plugin provides a command called bash-completion that generates a
 bash completion function for bzr. See its documentation for details.

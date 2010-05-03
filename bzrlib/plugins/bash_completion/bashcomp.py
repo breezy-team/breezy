@@ -387,7 +387,7 @@ def bash_completion_function(out, function_name="_bzr", function_only=False,
 
 
 class cmd_bash_completion(commands.Command):
-    """Generate a shell function for bash command line completion.
+    __doc__ = """Generate a shell function for bash command line completion.
 
     This command generates a shell function which can be used by bash to
     automatically complete the currently typed command when the user presses
