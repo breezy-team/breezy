@@ -141,7 +141,6 @@ class GioTransport(ConnectedTransport):
     def _ask_password_cb(self, op, message, default_user, default_domain, flags):
         #really use bzrlib.auth get_password for this
         #or possibly better gnome-keyring?
-        ui.ui_factory.note(message)
         auth = config.AuthenticationConfig()
         host = self.host
         user = None
@@ -193,6 +192,7 @@ class GioTransport(ConnectedTransport):
                     self.mounted = 1
             except gio.Error, e:
                 if (e.code == gio.ERROR_NOT_MOUNTED):
+                    ui.ui_factory.show_message('Mounting %s using GIO' % self.url)
                     op = gio.MountOperation()
                     if user:
                         op.set_username(user)
@@ -258,10 +258,12 @@ class GioTransport(ConnectedTransport):
             ret = StringIO(buf)
             return ret
         except gio.Error, e:
-            #Currently no retries code is implemented, don't
-            #know if that is needed or is gio makes things more
-            #reliable
-            self._translate_gio_error(e, relpath)
+            #If we get a not mounted here it might mean
+            #that a bad path has been entered (or that mount failed)
+            if (e.code == gio.ERROR_NOT_MOUNTED):
+                raise errors.PathError(relpath, extra='Failed to get file, make sure the path is correct. ' + str(e))
+            else:
+                self._translate_gio_error(e, relpath)
 
     def put_file(self, relpath, fp, mode=None):
         """Copy the file-like object into the location.
