@@ -27,7 +27,6 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_checkout()
-        cmd.outf = tests.StringIOWrapper()
         cmd.run(self.get_url('branch1'), 'local')
         self.assertEquals(1, len(self.connections))
 
@@ -37,7 +36,6 @@ class TestCheckout(TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         cmd = cmd_checkout()
-        cmd.outf = tests.StringIOWrapper()
         cmd.run(self.get_url('branch1'), 'local', lightweight=True)
         self.assertEquals(1, len(self.connections))
 
