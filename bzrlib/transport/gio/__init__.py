@@ -44,6 +44,7 @@ from bzrlib import (
     osutils,
     urlutils,
     debug,
+    ui,
     )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
@@ -101,6 +102,9 @@ class GioTransport(ConnectedTransport):
             raise ValueError(base)
 
         (scheme, user, password, host, port, path) = urlutils.parse_url(base[len('gio+'):])
+        self.host = host
+        self.port = port
+        self.scheme = scheme
         #Seems it is not possible to list supported backends for GIO
         #so a hardcoded list it is then.
         gio_backends = [ 'dav', 'ftp', 'obex', 'sftp', 'ssh', 'smb' ]
@@ -137,33 +141,32 @@ class GioTransport(ConnectedTransport):
     def _ask_password_cb(self, op, message, default_user, default_domain, flags):
         #really use bzrlib.auth get_password for this
         #or possibly better gnome-keyring?
-        print message
-        if flags & gio.ASK_PASSWORD_NEED_USERNAME:
-            print "Username: "
-            user = sys.stdin.readline()
-            if user[-1] == '\n':
-                user = user[:-1]
+        ui.ui_factory.note(message)
+        auth = config.AuthenticationConfig()
+        host = self.host
+        user = None
+        if flags & gio.ASK_PASSWORD_NEED_USERNAME and flags & gio.ASK_PASSWORD_NEED_DOMAIN:
+            prompt = self.scheme.upper() + ' %(host)s DOMAIN\username' 
+            user_and_domain = auth.get_user(self.scheme, self.host, port=self.port, ask=True, prompt=prompt)
+            (domain, user) = user_and_domain.split('\\',1)
             op.set_username(user)
-        if flags & gio.ASK_PASSWORD_NEED_DOMAIN:
-            print "Domain: "
-            domain = sys.stdin.readline()
-            if domain[-1] == '\n':
-                domain = domain[:-1]
             op.set_domain(domain)
+        elif flags & gio.ASK_PASSWORD_NEED_USERNAME:
+            user = auth.get_user(self.scheme, self.host, port=self.port, ask=True)
+            op.set_username(user)
+        elif flags & gio.ASK_PASSWORD_NEED_DOMAIN:
+            #Don't know how common this case is, but anyway
+            #a DOMAIN and a username prompt should be the 
+            #same so I will missuse the ui_factory get_username
+            #a little bit here.
+            prompt = self.scheme.upper() + ' %(host)s DOMAIN' 
+            domain = ui.ui_factory.get_username(prompt=prompt)
+            op.set_domain(domain)
+
         if flags & gio.ASK_PASSWORD_NEED_PASSWORD:
-            print "Password: "
-            isatty = getattr(sys.stdin, 'isatty', None)
-            if isatty is not None and isatty():
-                # getpass() ensure the password is not echoed and other
-                # cross-platform niceties
-                password = getpass.getpass('')
-            else:
-                # echo doesn't make sense without a terminal
-                password = sys.stdin.readline()
-                if not password:
-                    password = None
-                elif password[-1] == '\n':
-                    password = password[:-1]
+            if user is None:
+                user = op.get_username()
+            password = auth.get_password(self.scheme, self.host, user, port=self.port)
             op.set_password(password)
         op.reply(gio.MOUNT_OPERATION_HANDLED)
 
