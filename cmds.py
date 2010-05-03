@@ -718,7 +718,7 @@ class cmd_import_dsc(Command):
                         raise BzrCommandError("Unable to find the tag for the "
                             "previous upstream version, %s, in the branch: %s."
                             " Consider importing it via import-dsc or "
-                            "import-upsteram." % (last_version,
+                            "import-upstream." % (last_version,
                                     db.upstream_tag_name(last_version.upstream_version)))
                     upstream_tip = db.revid_of_upstream_version_from_branch(
                             last_version.upstream_version)
