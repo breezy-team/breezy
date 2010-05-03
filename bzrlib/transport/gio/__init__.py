@@ -43,6 +43,7 @@ from bzrlib import (
     errors,
     osutils,
     urlutils,
+    debug,
     )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
@@ -81,7 +82,8 @@ class GioStatResult(object):
     def __init__(self, f):
         info = f.query_info('standard::size,standard::type')
         self.st_size = info.get_size()
-        #mutter("stat size is %d bytes" % self.st_size)
+        #if 'gio' in debug.debug_flags: 
+        #    mutter("stat size is %d bytes" % self.st_size)
         type = info.get_file_type()
         if (type == gio.FILE_TYPE_REGULAR):
             self.st_mode = stat.S_IFREG
@@ -220,7 +222,8 @@ class GioTransport(ConnectedTransport):
     def has(self, relpath):
         """Does the target location exist?"""
         try:
-            mutter('GIO has check: %s' % relpath)
+            if 'gio' in debug.debug_flags: 
+                mutter('GIO has check: %s' % relpath)
             f = self._get_GIO(relpath)
             st = GioStatResult(f)
             if stat.S_ISREG(st.st_mode) or stat.S_ISDIR(st.st_mode):
@@ -243,7 +246,8 @@ class GioTransport(ConnectedTransport):
         then read from. For now we do this via the magic of StringIO
         """
         try:
-            mutter("GIO get: %s" % relpath)
+            if 'gio' in debug.debug_flags: 
+                mutter("GIO get: %s" % relpath)
             f = self._get_GIO(relpath)
             fin = f.read()
             buf = fin.read()
@@ -262,7 +266,8 @@ class GioTransport(ConnectedTransport):
         :param relpath: Location to put the contents, relative to base.
         :param fp:       File-like or string object.
         """
-        mutter("GIO put_file %s" % relpath)
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO put_file %s" % relpath)
         tmppath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
                     os.getpid(), random.randint(0, 0x7FFFFFFF))
         f = None
@@ -281,7 +286,8 @@ class GioTransport(ConnectedTransport):
 
                 if mode is not None:
                     self._setmode(relpath, mode)
-                #mutter("GIO put_file wrote %d bytes", length);
+                #if 'gio' in debug.debug_flags: 
+                #   mutter("GIO put_file wrote %d bytes", length);
                 return length
             except gio.Error, e:
                 self._translate_gio_error(e, relpath)
@@ -303,7 +309,8 @@ class GioTransport(ConnectedTransport):
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""
         try:
-            mutter("GIO mkdir: %s" % relpath)
+            if 'gio' in debug.debug_flags: 
+                mutter("GIO mkdir: %s" % relpath)
             f = self._get_GIO(relpath)
             f.make_directory()
             self._setmode(relpath, mode)
@@ -312,7 +319,8 @@ class GioTransport(ConnectedTransport):
 
     def open_write_stream(self, relpath, mode=None):
         """See Transport.open_write_stream."""
-        mutter("GIO open_write_stream %s" % relpath)
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO open_write_stream %s" % relpath)
         if mode is not None:
             self._setmode(relpath, mode)
         result = GioFileStream(self, relpath)
@@ -325,13 +333,15 @@ class GioTransport(ConnectedTransport):
         For FTP we suggest a large page size to reduce the overhead
         introduced by latency.
         """
-        mutter("GIO recommended_page")
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO recommended_page")
         return 64 * 1024
 
     def rmdir(self, relpath):
         """Delete the directory at rel_path"""
         try:
-            mutter("GIO rmdir %s" % relpath)
+            if 'gio' in debug.debug_flags: 
+                mutter("GIO rmdir %s" % relpath)
             st = self.stat(relpath)
             if stat.S_ISDIR(st.st_mode):
                 f = self._get_GIO(relpath)
@@ -353,7 +363,8 @@ class GioTransport(ConnectedTransport):
         """
         #GIO append_to seems not to append but to truncate
         #Work around this.
-        mutter("GIO append_file: %s" % relpath)
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO append_file: %s" % relpath)
         tmppath = '%s.tmp.%.9f.%d.%d' % (relpath, time.time(),
                     os.getpid(), random.randint(0, 0x7FFFFFFF))
         try:
@@ -385,7 +396,8 @@ class GioTransport(ConnectedTransport):
 
         Only set permissions on Unix systems
         """
-        mutter("GIO _setmode %s" % relpath)
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO _setmode %s" % relpath)
         if mode:
             try:
                 f = self._get_GIO(relpath)
@@ -401,7 +413,8 @@ class GioTransport(ConnectedTransport):
     def rename(self, rel_from, rel_to):
         """Rename without special overwriting"""
         try:
-            mutter("GIO move (rename): %s => %s", rel_from, rel_to)
+            if 'gio' in debug.debug_flags: 
+                mutter("GIO move (rename): %s => %s", rel_from, rel_to)
             f = self._get_GIO(rel_from)
             t = self._get_GIO(rel_to)
             f.move(t)
@@ -411,7 +424,8 @@ class GioTransport(ConnectedTransport):
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
         try:
-            mutter("GIO move: %s => %s", rel_from, rel_to)
+            if 'gio' in debug.debug_flags: 
+                mutter("GIO move: %s => %s", rel_from, rel_to)
             f = self._get_GIO(rel_from)
             t = self._get_GIO(rel_to)
             f.move(t, flags=gio.FILE_COPY_OVERWRITE)
@@ -421,7 +435,8 @@ class GioTransport(ConnectedTransport):
     def delete(self, relpath):
         """Delete the item at relpath"""
         try:
-            mutter("GIO delete: %s", relpath)
+            if 'gio' in debug.debug_flags: 
+                mutter("GIO delete: %s", relpath)
             f = self._get_GIO(relpath)
             f.delete()
         except gio.Error, e:
@@ -429,18 +444,21 @@ class GioTransport(ConnectedTransport):
 
     def external_url(self):
         """See bzrlib.transport.Transport.external_url."""
-        mutter("GIO external_url", self.base)
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO external_url", self.base)
         # GIO external url
         return self.base
 
     def listable(self):
         """See Transport.listable."""
-        mutter("GIO listable")
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO listable")
         return True
 
     def list_dir(self, relpath):
         """See Transport.list_dir."""
-        mutter("GIO list_dir")
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO list_dir")
         try:
             entries = []
             f = self._get_GIO(relpath)
@@ -455,7 +473,8 @@ class GioTransport(ConnectedTransport):
         """See Transport.iter_files_recursive.
 
         This is cargo-culted from the SFTP transport"""
-        mutter("GIO iter_files_recursive")
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO iter_files_recursive")
         queue = list(self.list_dir("."))
         while queue:
             relpath = queue.pop(0)
@@ -469,7 +488,8 @@ class GioTransport(ConnectedTransport):
     def stat(self, relpath):
         """Return the stat information for a file."""
         try:
-            mutter("GIO stat: %s", relpath)
+            if 'gio' in debug.debug_flags: 
+                mutter("GIO stat: %s", relpath)
             f = self._get_GIO(relpath)
             return GioStatResult(f)
         except gio.Error, e:
@@ -479,7 +499,8 @@ class GioTransport(ConnectedTransport):
         """Lock the given file for shared (read) access.
         :return: A lock object, which should be passed to Transport.unlock()
         """
-        mutter("GIO lock_read", relpath)
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO lock_read", relpath)
 
         class BogusLock(object):
             # The old RemoteBranch ignore lock for reading, so we will
@@ -499,11 +520,13 @@ class GioTransport(ConnectedTransport):
 
         :return: A lock object, which should be passed to Transport.unlock()
         """
-        mutter("GIO lock_write", relpath)
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO lock_write", relpath)
         return self.lock_read(relpath)
 
     def _translate_gio_error(self, err, path, extra=None):
-        mutter("GIO Error: %s %s" % (str(err), path))
+        if 'gio' in debug.debug_flags: 
+            mutter("GIO Error: %s %s" % (str(err), path))
         if extra is None:
             extra = str(err)
         if err.code == gio.ERROR_NOT_FOUND:
