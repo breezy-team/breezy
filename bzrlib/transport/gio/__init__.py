@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Mattias Eriksson, Canonical
+# Copyright (C) 2010 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,6 +13,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#
+# Author: Mattias Eriksson
+
 """Implementation of Transport over gio.
 
 Written by Mattias Eriksson <snaggen@acc.umu.se> based on the ftp transport.
@@ -95,16 +98,23 @@ class GioTransport(ConnectedTransport):
         if not base.startswith('gio+'):
             raise ValueError(base)
 
-        super(GioTransport, self).__init__(base,
-            _from_transport=_from_transport)
+        (scheme, user, password, host, port, path) = urlutils.parse_url(base[len('gio+'):])
+        #Seems it is not possible to list supported backends for GIO
+        #so a hardcoded list it is then.
+        gio_backends = [ 'dav', 'ftp', 'obex', 'sftp', 'ssh', 'smb' ]
+        if scheme not in gio_backends:
+            raise errors.InvalidURL(base, extra="GIO support is only available for " + ', '.join(gio_backends))
 
         #Remove the username and password from the url we send to GIO
-        (scheme, user, password, host, port, path) = urlutils.parse_url(base[len('gio+'):])
         netloc = host
         if port:
             netloc = "%s:%s" % (host, port)
         u = (scheme, netloc, path, '', '', '')
         self.url = urlparse.urlunparse(u)
+
+        # And finally initialize super
+        super(GioTransport, self).__init__(base,
+            _from_transport=_from_transport)
 
     def _relpath_to_url(self, relpath):
         full_url = urlutils.join(self.url, relpath)

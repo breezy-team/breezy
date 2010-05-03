@@ -1740,18 +1740,8 @@ register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
-register_transport_proto('gio+smb://', help="Access using SMB through GIO.")
-register_lazy_transport('gio+smb://', 'bzrlib.transport.gio', 'GioTransport')
-register_transport_proto('gio+dav://', help="Access using DAV through GIO.")
-register_lazy_transport('gio+dav://', 'bzrlib.transport.gio', 'GioTransport')
-register_transport_proto('gio+obex://', help="Access using OBEX through GIO.")
-register_lazy_transport('gio+obex://', 'bzrlib.transport.gio', 'GioTransport')
-register_transport_proto('gio+ftp://', help="Access using FTP through GIO.")
-register_lazy_transport('gio+ftp://', 'bzrlib.transport.gio', 'GioTransport')
-register_transport_proto('gio+ssh://', help="Access using SSH through GIO.")
-register_lazy_transport('gio+ssh://', 'bzrlib.transport.gio', 'GioTransport')
-register_transport_proto('gio+sftp://', help="Access using SFTP through GIO.")
-register_lazy_transport('gio+sftp://', 'bzrlib.transport.gio', 'GioTransport')
+register_transport_proto('gio+', help="Access using any GIO supported protocols.")
+register_lazy_transport('gio+', 'bzrlib.transport.gio', 'GioTransport')
 
 try:
     import kerberos
