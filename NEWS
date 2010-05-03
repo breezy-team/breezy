@@ -24,6 +24,12 @@ New Features
   pack operation.
   (Parth Malwankar, #304320)
 
+* Support ``--directory`` option for a number of additional commands:
+  added, annotate, bind, cat, cat-revision, clean-tree, deleted,
+  export, ignore, ignored, lookup-revision, ls, modified, nick,
+  re-sign, unbind, unknowns.
+  (Martin von Gagern, #527878)
+
 Bug Fixes
 *********
 
