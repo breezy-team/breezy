@@ -418,9 +418,12 @@ class Test_ClientMedium_remote_is_at_least(tests.TestCase):
         # Calling _remember_remote_is_before again with a lower value works.
         client_medium._remember_remote_is_before((1, 5))
         self.assertTrue(client_medium._is_remote_before((1, 5)))
-        # You cannot call _remember_remote_is_before with a larger value.
-        self.assertRaises(
-            AssertionError, client_medium._remember_remote_is_before, (1, 9))
+        # If you call _remember_remote_is_before with a higher value it logs a
+        # warning, and continues to remember the lower value.
+        self.assertNotContainsRe(self.get_log(), '_remember_remote_is_before')
+        client_medium._remember_remote_is_before((1, 9))
+        self.assertContainsRe(self.get_log(), '_remember_remote_is_before')
+        self.assertTrue(client_medium._is_remote_before((1, 5)))
 
 
 class TestBzrDirCloningMetaDir(TestRemote):
@@ -519,6 +522,28 @@ class TestBzrDirOpen(TestRemote):
 
     def test_backwards_compat(self):
         client, transport = self.make_fake_client_and_transport()
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'unknown', ('BzrDir.open_2.1',))
+        client.add_expected_call(
+            'BzrDir.open', ('quack/',), 'success', ('yes',))
+        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client, _force_probe=True)
+        self.assertIsInstance(bd, RemoteBzrDir)
+        self.assertFinished(client)
+
+    def test_backwards_compat_hpss_v2(self):
+        client, transport = self.make_fake_client_and_transport()
+        # Monkey-patch fake client to simulate real-world behaviour with v2
+        # server: upon first RPC call detect the protocol version, and because
+        # the version is 2 also do _remember_remote_is_before((1, 6)) before
+        # continuing with the RPC.
+        orig_check_call = client._check_call
+        def check_call(method, args):
+            client._medium._protocol_version = 2
+            client._medium._remember_remote_is_before((1, 6))
+            client._check_call = orig_check_call
+            client._check_call(method, args)
+        client._check_call = check_call
         client.add_expected_call(
             'BzrDir.open_2.1', ('quack/',), 'unknown', ('BzrDir.open_2.1',))
         client.add_expected_call(

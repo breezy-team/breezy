@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib import registry, help_topics
+from bzrlib import registry
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import errors, urlutils
