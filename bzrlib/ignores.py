@@ -17,7 +17,7 @@
 """Lists of ignore files, etc."""
 
 import errno
-from StringIO import StringIO
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
