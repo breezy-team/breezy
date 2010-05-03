@@ -54,6 +54,22 @@ from bzrlib.transport import (
     Server,
     )
 
+from bzrlib.tests.test_server import TestServer
+
+class GioLocalURLServer(TestServer):
+    """A pretend server for local transports, using file:// urls.
+
+    Of course no actual server is required to access the local filesystem, so
+    this just exists to tell the test code how to get to it.
+    """
+
+    def start_server(self):
+        pass
+
+    def get_url(self):
+        """See Transport.Server.get_url."""
+        return "gio+" + urlutils.local_path_to_url('')
+
 
 class GioFileStream(FileStream):
     """A file stream object returned by open_write_stream.
@@ -107,7 +123,7 @@ class GioTransport(ConnectedTransport):
         self.scheme = scheme
         #Seems it is not possible to list supported backends for GIO
         #so a hardcoded list it is then.
-        gio_backends = [ 'dav', 'ftp', 'obex', 'sftp', 'ssh', 'smb' ]
+        gio_backends = [ 'dav', 'file', 'ftp', 'obex', 'sftp', 'ssh', 'smb' ]
         if scheme not in gio_backends:
             raise errors.InvalidURL(base, extra="GIO support is only available for " + ', '.join(gio_backends))
 
@@ -124,6 +140,8 @@ class GioTransport(ConnectedTransport):
 
     def _relpath_to_url(self, relpath):
         full_url = urlutils.join(self.url, relpath)
+        if isinstance(full_url,unicode):
+            raise errors.InvalidURL(full_url)
         return full_url
 
     def _get_GIO(self, relpath):
@@ -424,7 +442,7 @@ class GioTransport(ConnectedTransport):
             t = self._get_GIO(rel_to)
             f.move(t)
         except gio.Error, e:
-            self._translate_gio_error(e, relfrom)
+            self._translate_gio_error(e, rel_from)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""
@@ -546,14 +564,13 @@ class GioTransport(ConnectedTransport):
             raise errors.ResourceBusy(path, extra=extra)
         elif err.code == gio.ERROR_PERMISSION_DENIED:
             raise errors.PermissionDenied(path, extra=extra)
+        elif err.code == gio.ERROR_IS_DIRECTORY: 
+            raise errors.PathError(path, extra=extra)
         else:
             mutter('unable to understand error for path: %s: %s', path, err)
             raise err
 
-#def get_test_permutations():
-#    """Return the permutations to be used in testing."""
-#    from bzrlib.tests import stub_sftp
-#    return [(GioTransport, stub_sftp.SFTPAbsoluteServer),
-#            (GioTransport, stub_sftp.SFTPHomeDirServer),
-#            (GioTransport, stub_sftp.SFTPSiblingAbsoluteServer),
-#            ]
+def get_test_permutations():
+    """Return the permutations to be used in testing."""
+    from bzrlib.tests import test_server
+    return [(GioTransport, GioLocalURLServer),]
