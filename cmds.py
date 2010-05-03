@@ -736,9 +736,13 @@ class cmd_import_upstream(Command):
     """Imports a single upstream tarball.
     
     This calls the core workhorse used by merge-upstream to incorporate
-    new tarballs, but makes no changes to your working tree. A common use
-    for it is to get a pristine-tar enabled upstream tag for a packaging branch
-    which has not been previously using the pristine tar features.
+    new tarballs, but makes no changes to your working tree. It limits itself
+    to adding a tag into your current branch. E.g. importing an upstream with
+    version 2.3 will create upstream-2.3 as a tag.
+
+    A common use for import-upsream is to get a pristine-tar enabled upstream
+    tag for a packaging branch which has not been previously using the pristine
+    tar features.
 
     for instance::
 
@@ -751,6 +755,10 @@ class cmd_import_upstream(Command):
 
     After doing this, commands that assume there is an upstream tarball, like 
     'bzr builddeb' will be able to create one on the fly.
+    
+    If you want to manually merge with the imported upstream, you can do::
+
+        $ bzr merge . -r upstream-1.2.3
     """
 
     takes_args = ['version', 'location', 'upstream_branch?']
@@ -800,7 +808,6 @@ class cmd_import_upstream(Command):
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         db.import_upstream_tarball(location, version, parents)
-        db.branch.repository.fetch
 
 
 class cmd_bd_do(Command):
