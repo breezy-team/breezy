@@ -96,6 +96,8 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     :param blob: A git blob
     :return: Inventory delta for this file
     """
+    if mapping.is_control_file(path):
+        return []
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
         return []
