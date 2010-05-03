@@ -17,14 +17,13 @@
 
 """Directory lookup that uses Launchpad."""
 
-from urlparse import urlsplit, urlunsplit
+from urlparse import urlsplit
 import xmlrpclib
 
 from bzrlib import (
     debug,
     errors,
     trace,
-    urlutils,
     )
 from bzrlib.transport import (
     get_transport,

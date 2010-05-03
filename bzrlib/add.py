@@ -16,15 +16,11 @@
 
 """Helper functions for adding files to working trees."""
 
-import errno
-import os
 import sys
 
 import bzrlib.bzrdir
-import bzrlib.errors as errors
 import bzrlib.osutils
 from bzrlib.symbol_versioning import *
-from bzrlib.workingtree import WorkingTree
 
 
 class AddAction(object):
