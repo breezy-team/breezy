@@ -86,9 +86,42 @@ from bzrlib import (
     registry,
     symbol_versioning,
     )
+    
+    
+class ControlComponent(object):
+    """Abstract base class for control directory components.
+    
+    This provides interfaces that are common across bzrdirs, 
+    repositories, branches, and workingtree control directories.
+    
+    They all expose two urls and transports: the *user* URL is the 
+    one that stops above the control directory (eg .bzr) and that 
+    should normally be used in messages, and the *control* URL is
+    under that in eg .bzr/checkout and is used to read the control
+    files.
+    
+    This can be used as a mixin and is intended to fit with 
+    foreign formats.
+    """
+    
+    @property
+    def control_transport(self):
+        raise NotImplementedError
+   
+    @property
+    def control_url(self):
+        return self.control_transport.base
+    
+    @property
+    def user_transport(self):
+        raise NotImplementedError
+        
+    @property
+    def user_url(self):
+        return self.user_transport.base
+    
 
-
-class BzrDir(object):
+class BzrDir(ControlComponent):
     """A .bzr control diretory.
 
     BzrDir instances let you create or open any of the things that can be
@@ -261,8 +294,8 @@ class BzrDir(object):
                 # copied, and finally if we are copying up to a specific
                 # revision_id then we can use the pending-ancestry-result which
                 # does not require traversing all of history to describe it.
-                if (result_repo.bzrdir.root_transport.base ==
-                    result.root_transport.base and not require_stacking and
+                if (result_repo.user_url == result.user_url
+                    and not require_stacking and
                     revision_id is not None):
                     fetch_spec = graph.PendingAncestryResult(
                         [revision_id], local_repo)
@@ -458,7 +491,7 @@ class BzrDir(object):
             stop = False
             stack_on = config.get_default_stack_on()
             if stack_on is not None:
-                stack_on_pwd = found_bzrdir.root_transport.base
+                stack_on_pwd = found_bzrdir.user_url
                 stop = True
             # does it have a repository ?
             try:
@@ -466,8 +499,8 @@ class BzrDir(object):
             except errors.NoRepositoryPresent:
                 repository = None
             else:
-                if ((found_bzrdir.root_transport.base !=
-                     self.root_transport.base) and not repository.is_shared()):
+                if (found_bzrdir.user_url != self.user_url 
+                    and not repository.is_shared()):
                     # Don't look higher, can't use a higher shared repo.
                     repository = None
                     stop = True
@@ -669,7 +702,7 @@ class BzrDir(object):
             if stop:
                 return result
             next_transport = found_bzrdir.root_transport.clone('..')
-            if (found_bzrdir.root_transport.base == next_transport.base):
+            if (found_bzrdir.user_url == next_transport.base):
                 # top of the file system
                 return None
             # find the next containing bzrdir
@@ -692,7 +725,7 @@ class BzrDir(object):
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
                 return None, False
-            if found_bzrdir.root_transport.base == self.root_transport.base:
+            if found_bzrdir.user_url == self.user_url:
                 return repository, True
             elif repository.is_shared():
                 return repository, True
@@ -814,9 +847,19 @@ class BzrDir(object):
         :param _transport: the transport this dir is based at.
         """
         self._format = _format
+        # these are also under the more standard names of 
+        # control_transport and user_transport
         self.transport = _transport.clone('.bzr')
         self.root_transport = _transport
         self._mode_check_done = False
+        
+    @property 
+    def user_transport(self):
+        return self.root_transport
+        
+    @property
+    def control_transport(self):
+        return self.transport
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for bzrdir's.
@@ -2692,7 +2735,7 @@ class ConvertBzrDir4To5(Converter):
             if isinstance(self.bzrdir.transport, local.LocalTransport):
                 self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
-            return BzrDir.open(self.bzrdir.root_transport.base)
+            return BzrDir.open(self.bzrdir.user_url)
         finally:
             self.pb.finished()
 
@@ -2945,7 +2988,7 @@ class ConvertBzrDir5To6(Converter):
         try:
             ui.ui_factory.note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
-            return BzrDir.open(self.bzrdir.root_transport.base)
+            return BzrDir.open(self.bzrdir.user_url)
         finally:
             pb.finished()
 
@@ -3073,7 +3116,7 @@ class ConvertBzrDir6ToMeta(Converter):
             BzrDirMetaFormat1().get_format_string(),
             mode=self.file_mode)
         self.pb.finished()
-        return BzrDir.open(self.bzrdir.root_transport.base)
+        return BzrDir.open(self.bzrdir.user_url)
 
     def make_lock(self, name):
         """Make a lock for the new control dir name."""
@@ -3660,7 +3703,7 @@ class RepositoryAcquisitionPolicy(object):
             try:
                 stack_on = urlutils.rebase_url(self._stack_on,
                     self._stack_on_pwd,
-                    branch.bzrdir.root_transport.base)
+                    branch.user_url)
             except errors.InvalidRebaseURLs:
                 stack_on = self._get_full_stack_on()
         try:

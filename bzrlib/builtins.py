@@ -504,9 +504,7 @@ class cmd_remove_tree(Command):
                 if (working.has_changes()):
                     raise errors.UncommittedChanges(working)
 
-            working_path = working.bzrdir.root_transport.base
-            branch_path = working.branch.bzrdir.root_transport.base
-            if working_path != branch_path:
+            if working.user_url != working.branch.user_url:
                 raise errors.BzrCommandError("You cannot remove the working tree"
                                              " from a lightweight checkout")
 
@@ -1134,8 +1132,10 @@ class cmd_push(Command):
         else:
             revision_id = None
         if tree is not None and revision_id is None:
-            tree.warn_if_changed_or_out_of_date(
-                strict, 'push_strict', 'Use --no-strict to force the push.')
+            tree.check_changed_or_out_of_date(
+                strict, 'push_strict',
+                more_error='Use --no-strict to force the push.',
+                more_warning='Uncommitted changes will not be pushed.')
         # Get the stacked_on branch, if any
         if stacked_on is not None:
             stacked_on = urlutils.normalize_url(stacked_on)
@@ -2299,6 +2299,10 @@ class cmd_log(Command):
                    help='Show changes made in each revision as a patch.'),
             Option('include-merges',
                    help='Show merged revisions like --levels 0 does.'),
+            Option('exclude-common-ancestry',
+                   help='Display only the revisions that are not part'
+                   ' of both ancestries (require -rX..Y)'
+                   )
             ]
     encoding_type = 'replace'
 
@@ -2314,13 +2318,19 @@ class cmd_log(Command):
             message=None,
             limit=None,
             show_diff=False,
-            include_merges=False):
+            include_merges=False,
+            exclude_common_ancestry=False,
+            ):
         from bzrlib.log import (
             Logger,
             make_log_request_dict,
             _get_info_for_log_files,
             )
         direction = (forward and 'forward') or 'reverse'
+        if (exclude_common_ancestry
+            and (revision is None or len(revision) != 2)):
+            raise errors.BzrCommandError(
+                '--exclude-common-ancestry requires -r with two revisions')
         if include_merges:
             if levels is None:
                 levels = 0
@@ -2419,7 +2429,9 @@ class cmd_log(Command):
             direction=direction, specific_fileids=file_ids,
             start_revision=rev1, end_revision=rev2, limit=limit,
             message_search=message, delta_type=delta_type,
-            diff_type=diff_type, _match_using_deltas=match_using_deltas)
+            diff_type=diff_type, _match_using_deltas=match_using_deltas,
+            exclude_common_ancestry=exclude_common_ancestry,
+            )
         Logger(b, rqst).show(lf)
 
 
@@ -3061,7 +3073,7 @@ class cmd_commit(Command):
                          "the master branch until a normal commit "
                          "is performed."
                     ),
-             Option('show-diff',
+             Option('show-diff', short_name='p',
                     help='When no message is supplied, show the diff along'
                     ' with the status summary in the message editor.'),
              ]
@@ -4669,6 +4681,7 @@ class cmd_re_sign(Command):
 
 class cmd_bind(Command):
     __doc__ = """Convert the current branch into a checkout of the supplied branch.
+    If no branch is supplied, rebind to the last bound location.
 
     Once converted into a checkout, commits must succeed on the master branch
     before they will be applied to the local branch.

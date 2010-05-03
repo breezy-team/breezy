@@ -19,7 +19,13 @@
 
 import os
 
-from bzrlib import branch, errors, switch, tests
+from bzrlib import (
+    branch,
+    errors,
+    merge as _mod_merge,
+    switch,
+    tests,
+)
 
 
 class TestSwitch(tests.TestCaseWithTransport):
@@ -128,6 +134,24 @@ class TestSwitch(tests.TestCaseWithTransport):
             lightweight=self.lightweight)
         switch.switch(checkout.bzrdir, tree2.branch)
         self.assertEqual('custom-root-id', tree2.get_root_id())
+
+    def test_switch_configurable_file_merger(self):
+        class DummyMerger(_mod_merge.ConfigurableFileMerger):
+            name_prefix = 'file'
+
+        _mod_merge.Merger.hooks.install_named_hook(
+            'merge_file_content', DummyMerger,
+            'test factory')
+        foo = self.make_branch('foo')
+        checkout = foo.create_checkout('checkout', lightweight=True)
+        self.build_tree_contents([('checkout/file', 'a')])
+        checkout.add('file')
+        checkout.commit('a')
+        bar = foo.bzrdir.sprout('bar').open_workingtree()
+        self.build_tree_contents([('bar/file', 'b')])
+        bar.commit('b')
+        self.build_tree_contents([('checkout/file', 'c')])
+        switch.switch(checkout.bzrdir, bar.branch)
 
 
 class TestSwitchHeavyweight(TestSwitch):
