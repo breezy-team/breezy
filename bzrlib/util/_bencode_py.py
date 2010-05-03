@@ -90,8 +90,9 @@ class BDecoder(object):
             raise TypeError
         try:
             r, l = self.decode_func[x[0]](x, 0)
-        except (IndexError, KeyError, OverflowError):
-            raise ValueError
+        except (IndexError, KeyError, OverflowError), e:
+            import sys
+            raise ValueError, ValueError(str(e)), sys.exc_info()[2]
         if l != len(x):
             raise ValueError
         return r
