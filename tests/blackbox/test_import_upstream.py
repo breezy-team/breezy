@@ -91,8 +91,11 @@ class TestImportUpstream(TestBaseImportDsc):
         self.make_debian_dir(tree.bzrdir.root_transport.local_abspath('debian'))
         tree.smart_add(['working'])
         tree.commit('save changes')
-        self.run_bzr(['import-upstream', self.upstream_version,
-            os.path.abspath(self.upstream_tarball_name)], working_dir='working')
+        tar_path = "../%s" % self.upstream_tarball_name
+        out, err = self.run_bzr(['import-upstream', self.upstream_version,
+            tar_path], working_dir='working')
+        self.assertEqual('Imported %s as upstream-%s.\n' % (tar_path,
+            self.upstream_version), out)
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertFalse(tree.has_changes())

@@ -812,8 +812,9 @@ class cmd_import_upstream(Command):
         tree.lock_read()
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
-        db.import_upstream_tarball(location, version, parents,
+        tag_name, _ = db.import_upstream_tarball(location, version, parents,
             upstream_branch=upstream)
+        self.outf.write('Imported %s as %s.\n' % (location, tag_name))
 
 
 class cmd_bd_do(Command):

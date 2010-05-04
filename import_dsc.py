@@ -928,6 +928,7 @@ class DistributionBranch(object):
         :param upstream_parents: the parents to give the upstream revision
         :param timestamp: a tuple of (timestamp, timezone) to use for
             the commit, or None to use the current time.
+        :return: (tag_name, revision_id) of the imported tarball.
         """
         # Should we just dump the upstream part on whatever is currently
         # there, or try and pull all of the other upstream versions
@@ -992,8 +993,8 @@ class DistributionBranch(object):
         revid = self.upstream_tree.commit("Import upstream version %s" \
                 % (version,),
                 revprops=revprops, timestamp=timestamp, timezone=timezone)
-        self.tag_upstream_version(version, revid=revid)
-        return revid
+        tag_name, _ = self.tag_upstream_version(version, revid=revid)
+        return tag_name, revid
 
     def import_upstream_tarball(self, tarball_filename, version, parents,
         md5sum=None, upstream_branch=None):
@@ -1007,12 +1008,13 @@ class DistributionBranch(object):
         :param upstream_branch: An upstream branch to associate with the
             tarball.
         :param md5sum: hex digest of the md5sum of the tarball, if known.
+        :return: (tag_name, revision_id) of the imported tarball.
         """
         if not md5sum:
             md5sum = md5sum_filename(tarball_filename)
         tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
         try:
-            self.import_upstream(tarball_dir, version, md5sum, parents,
+            return self.import_upstream(tarball_dir, version, md5sum, parents,
                 upstream_tarball=tarball_filename,
                 upstream_branch=upstream_branch)
         finally:
@@ -1237,7 +1239,7 @@ class DistributionBranch(object):
                     # from another branch:
                     upstream_parents = self.upstream_parents(versions,
                             version.upstream_version)
-                    new_revid = self.import_upstream(upstream_part,
+                    _, new_revid = self.import_upstream(upstream_part,
                             version.upstream_version,
                             upstream_md5, upstream_parents,
                             upstream_tarball=upstream_tarball,
@@ -1507,7 +1509,7 @@ class DistributionBranch(object):
                     parents = []
                     if self.upstream_branch.last_revision() != NULL_REVISION:
                         parents = [self.upstream_branch.last_revision()]
-                    new_revid = self.import_upstream(tarball_dir,
+                    _, new_revid = self.import_upstream(tarball_dir,
                             version.upstream_version,
                             md5sum, parents, upstream_tarball=tarball_filename,
                             upstream_branch=upstream_branch,
