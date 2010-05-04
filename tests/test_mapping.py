@@ -276,21 +276,28 @@ class DirectoryToTreeTests(tests.TestCase):
 
     def test_empty(self):
         ie = InventoryDirectory('foo', 'foo', 'foo')
-        t = directory_to_tree(ie, None, {})
+        t = directory_to_tree(ie, None, {}, None)
         self.assertEquals(None, t)
 
     def test_empty_dir(self):
         ie = InventoryDirectory('foo', 'foo', 'foo')
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
         ie.children['bar'] = child_ie
-        t = directory_to_tree(ie, lambda x: None, {})
+        t = directory_to_tree(ie, lambda x: None, {}, None)
         self.assertEquals(None, t)
+
+    def test_empty_dir_dummy_files(self):
+        ie = InventoryDirectory('foo', 'foo', 'foo')
+        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        ie.children['bar'] = child_ie
+        t = directory_to_tree(ie, lambda x: None, {}, ".mydummy")
+        self.assertTrue(".mydummy" in t)
 
     def test_empty_root(self):
         ie = InventoryDirectory('foo', 'foo', None)
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
         ie.children['bar'] = child_ie
-        t = directory_to_tree(ie, lambda x: None, {})
+        t = directory_to_tree(ie, lambda x: None, {}, None)
         self.assertEquals(Tree(), t)
 
     def test_with_file(self):
@@ -298,7 +305,7 @@ class DirectoryToTreeTests(tests.TestCase):
         child_ie = InventoryFile('bar', 'bar', 'bar')
         ie.children['bar'] = child_ie
         b = Blob.from_string("bla")
-        t1 = directory_to_tree(ie, lambda x: b.id, {})
+        t1 = directory_to_tree(ie, lambda x: b.id, {}, None)
         t2 = Tree()
         t2.add(0100644, "bar", b.id)
         self.assertEquals(t1, t2)

@@ -298,7 +298,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
     diff = []
     new_objs = {}
     for path, obj, ie in _tree_to_objects(ret_tree, parent_trees,
-        target_git_object_retriever._cache.idmap, unusual_modes):
+        target_git_object_retriever._cache.idmap, unusual_modes, mapping.BZR_DUMMY_FILE):
         old_obj_id = tree_lookup_path(lookup_object, o.tree, path)[1]
         new_objs[path] = obj
         if obj.id != old_obj_id:

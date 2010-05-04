@@ -142,11 +142,13 @@ def _check_expected_sha(expected_sha, object):
             expected_sha))
 
 
-def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
+def _tree_to_objects(tree, parent_trees, idmap, unusual_modes, dummy_file_name=None):
     """Iterate over the objects that were introduced in a revision.
 
     :param idmap: id map
     :param unusual_modes: Unusual file modes
+    :param dummy_file_name: File name to use for dummy files
+        in empty directories. None to skip empty directories
     :return: Yields (path, object, ie) entries
     """
     new_trees = {}
@@ -244,7 +246,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
             elif ie.kind == "directory":
                 # Not all cache backends store the tree information, 
                 # calculate again from scratch
-                ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
+                ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes,
+                    dummy_file_name)
                 if ret is None:
                     return ret
                 return ret.id
@@ -254,7 +257,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
     for path in sorted(trees.keys(), reverse=True):
         ie = tree.inventory[trees[path]]
         assert ie.kind == "directory"
-        obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
+        obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes,
+            dummy_file_name)
         if obj is not None:
             yield path, obj, ie
             shamap[ie.file_id] = obj.id
@@ -338,7 +342,7 @@ class BazaarObjectStore(BaseObjectStore):
             [p for p in rev.parent_ids if p in present_parents])
         root_tree = None
         for path, obj, ie in _tree_to_objects(tree, parent_trees,
-                self._cache.idmap, unusual_modes):
+                self._cache.idmap, unusual_modes, self.mapping.BZR_DUMMY_FILE):
             yield path, obj, ie
             if path == "":
                 root_tree = obj
@@ -426,7 +430,8 @@ class BazaarObjectStore(BaseObjectStore):
                         [(entry.file_id, entry.revision, None)]).next().id
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes)
+        tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes,
+            self.mapping.BZR_DUMMY_FILE)
         _check_expected_sha(expected_sha, tree)
         return tree
 
