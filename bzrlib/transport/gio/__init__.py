@@ -219,9 +219,7 @@ class GioTransport(ConnectedTransport):
                     op.connect('ask-password', self._ask_password_cb)
                     m = connection.mount_enclosing_volume(op, self._mount_done_cb)
                     while self.mounted == 0:
-                        if gtk.events_pending():
-                            gtk.main_iteration()
-                        time.sleep(0.1)
+                        gtk.main_iteration(block=True)
                 else:
                     mounted = 1
         except gio.Error, e:
