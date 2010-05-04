@@ -996,12 +996,16 @@ class DistributionBranch(object):
         return revid
 
     def import_upstream_tarball(self, tarball_filename, version, parents,
-        md5sum=None):
+        md5sum=None, upstream_branch=None):
         """Import an upstream part to the upstream branch.
 
         :param tarball_filename: The tarball to import.
         :param version: The upstream version to import.
-        :param parents: The parents to use for the import.
+        :param parents: The tarball-branch parents to use for the import.
+            If an upstream branch is supplied, its automatically added to
+            parents.
+        :param upstream_branch: An upstream branch to associate with the
+            tarball.
         :param md5sum: hex digest of the md5sum of the tarball, if known.
         """
         if not md5sum:
@@ -1009,7 +1013,8 @@ class DistributionBranch(object):
         tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
         try:
             self.import_upstream(tarball_dir, version, md5sum, parents,
-                upstream_tarball=tarball_filename)
+                upstream_tarball=tarball_filename,
+                upstream_branch=upstream_branch)
         finally:
             shutil.rmtree(tarball_dir)
 

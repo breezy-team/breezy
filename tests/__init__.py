@@ -125,6 +125,7 @@ def load_tests(standard_tests, module, loader):
             'test_source_distiller',
             'test_upstream',
             'test_util',
+            'test_tagging',
             ]
     suite.addTest(loader.loadTestsFromModuleNames(["%s.%s" % (__name__, i)
                                             for i in testmod_names]))

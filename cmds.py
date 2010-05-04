@@ -48,6 +48,7 @@ from bzrlib.errors import (
     )
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib import revision as mod_revision
 from bzrlib.tag import _merge_tags_if_possible
 from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
@@ -91,7 +92,7 @@ from bzrlib.plugins.builddeb.util import (
         open_file_via_transport,
         tarball_name,
         )
-from bzrlib import revision as mod_revision
+from bzrlib.plugins.builddeb.tagging import *
 
 dont_purge_opt = Option('dont-purge',
     help="Don't purge the build directory after building.")
@@ -791,20 +792,23 @@ class cmd_import_upstream(Command):
             parents = []
         if parents == [mod_revision.NULL_REVISION]:
             parents = []
+        tagged_versions = {}
+        for tag_name, tag_revid in branch.tags.get_tag_dict().iteritems():
+            if not is_upstream_tag(tag_name):
+                continue
+            tag_version = Version(upstream_tag_version(tag_name))
+            tagged_versions[tag_version] = tag_revid
+        tag_order = sorted(tagged_versions.keys())
+        if tag_order:
+            parents.insert(0, tagged_versions[tag_order[-1]])
         if parents:
+            # See bug lp:309682
+            db.upstream_branch.repository.fetch(branch.repository, parents[0])
             db.extract_upstream_tree(parents[0], tempdir)
         else:
             db._create_empty_upstream_tree(tempdir)
         tree = db.get_branch_tip_revtree()
         tree.lock_read()
-        try:
-            try:
-                changelog, _ = find_changelog(tree, False)
-                last_version = changelog.version
-            except MissingChangelogError:
-                last_version = None
-        finally:
-            tree.unlock()
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
         db.import_upstream_tarball(location, version, parents)

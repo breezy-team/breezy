@@ -32,10 +32,14 @@ from bzrlib.plugins.builddeb.tests.test_import_dsc import PristineTarFeature
 
 class TestBaseImportDsc(BuilddebTestCase):
 
-  upstream_dir = property(lambda self:
-      self.package_name + '-' + self.upstream_version)
+  def _upstream_dir(self, package_name, upstream_version):
+      return package_name + '-' + upstream_version
+  upstream_dir = property(lambda self:self._upstream_dir(self.package_name,
+      self.upstream_version))
+  def _upstream_tarball_name(self, package_name, upstream_version):
+      return package_name + '_' + upstream_version + '.orig.tar.gz'
   upstream_tarball_name = property(lambda self:
-      self.package_name + '_' + self.upstream_version + '.orig.tar.gz')
+      self._upstream_tarball_name(self.package_name, self.upstream_version))
   dsc_name = property(lambda self:
       self.package_name + '_' + str(self.package_version) + '.dsc')
 
@@ -45,9 +49,20 @@ class TestBaseImportDsc(BuilddebTestCase):
     transport.ensure_base()
     self.build_tree(['README'], transport=transport)
 
-  def make_upstream_tarball(self):
-    self.make_unpacked_upstream_source()
-    tar = tarfile.open(self.upstream_tarball_name, 'w:gz')
+  def get_test_upstream_version(self, upstream_version):
+    """Return the upstream_version to be used in a test helper method."""
+    if upstream_version is None:
+        return self.upstream_version
+    else:
+        return upstream_version
+
+  def make_upstream_tarball(self, upstream_version=None):
+    upstream_version = self.get_test_upstream_version(upstream_version)
+    upstream_dir = self._upstream_dir(self.package_name, upstream_version)
+    self.make_unpacked_upstream_source(get_transport(upstream_dir))
+    tar = tarfile.open(
+        self._upstream_tarball_name(self.package_name, upstream_version),
+        'w:gz')
     try:
       tar.add(self.upstream_dir)
     finally:
@@ -101,5 +116,5 @@ class TestImportDsc(TestBaseImportDsc):
         'package.'], 'import-dsc')
 
 
-# vim: ts=2 sts=2 sw=2
+# vim: ts=4 sts=4 sw=4
 

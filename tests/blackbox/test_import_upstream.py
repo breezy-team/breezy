@@ -25,6 +25,7 @@ import subprocess
 import tarfile
 
 from bzrlib import tests
+from debian_bundle.changelog import Version
 
 from bzrlib.plugins.builddeb.tests.blackbox.test_import_dsc import TestBaseImportDsc
 from bzrlib.plugins.builddeb.tests.test_import_dsc import PristineTarFeature
@@ -32,9 +33,14 @@ from bzrlib.plugins.builddeb.tests.test_import_dsc import PristineTarFeature
 
 class TestImportUpstream(TestBaseImportDsc):
 
-    def assertHasImportArtifacts(self, tree):
-        upstream_tag = 'upstream-%s' % self.upstream_version
-        tags = tree.branch._format.make_tags(tree.branch)
+    def setUp(self):
+        TestBaseImportDsc.setUp(self)
+        self.requireFeature(PristineTarFeature)
+
+    def assertHasImportArtifacts(self, tree, upstream_version=None):
+        upstream_version = self.get_test_upstream_version(upstream_version)
+        upstream_tag = self.upstream_tag(upstream_version)
+        tags = tree.branch.tags
         # If it imported, we have a tag
         imported_rev = tags.lookup_tag(upstream_tag)
         # For a working revision tree
@@ -43,8 +49,41 @@ class TestImportUpstream(TestBaseImportDsc):
         self.addCleanup(revtree.unlock)
         return revtree
 
+    def assertUpstreamContentAndFileIdFromTree(self, revtree, fromtree):
+        """Check what content and file ids revtree has."""
+        # that does not have debian/
+        self.assertEqual(None, revtree.path2id('debian'))
+        # and does have the same fileid for README as in tree
+        self.assertNotEqual(None, revtree.path2id('README'))
+        self.assertEqual(fromtree.path2id('README'), revtree.path2id('README'))
+
+    def make_upstream_tree(self):
+        """Make an upstream tree with its own history."""
+        upstreamtree = self.make_branch_and_tree('upstream')
+        self.make_unpacked_upstream_source(transport=upstreamtree.bzrdir.root_transport)
+        upstreamtree.smart_add(['upstream'])
+        upstreamtree.commit('upstream release')
+        return upstreamtree
+
+    def make_upstream_change(self, upstreamtree):
+        """Commit a change to upstreamtree."""
+        # Currently an empty commit, but we may need file content changes to be
+        # thorough?
+        return upstreamtree.commit('new commit')
+
+    def make_workingdir(self):
+        """Make a working directory with both upstream source and debian packaging."""
+        tree = self.make_branch_and_tree('working')
+        self.make_unpacked_upstream_source(transport=tree.bzrdir.root_transport)
+        self.make_debian_dir(tree.bzrdir.root_transport.local_abspath('debian'))
+        tree.smart_add(['working'])
+        tree.commit('save changes')
+        return tree
+
+    def upstream_tag(self, version):
+        return "upstream-%s" % version
+
     def test_import_upstream_no_branch_no_prior_tarball(self):
-        self.requireFeature(PristineTarFeature)
         self.make_upstream_tarball()
         self.make_real_source_package()
         tree = self.make_branch_and_tree('working')
@@ -58,26 +97,14 @@ class TestImportUpstream(TestBaseImportDsc):
         self.addCleanup(tree.unlock)
         self.assertFalse(tree.has_changes())
         revtree = self.assertHasImportArtifacts(tree)
-        # that does not have debian/
-        self.assertEqual(None, revtree.path2id('debian'))
-        # and does have the same fileid for README
-        self.assertNotEqual(None, revtree.path2id('README'))
-        self.assertEqual(tree.path2id('README'), revtree.path2id('README'))
+        self.assertUpstreamContentAndFileIdFromTree(revtree, tree)
 
     def test_import_upstream_with_branch_no_prior_tarball(self):
-        self.requireFeature(PristineTarFeature)
         self.make_upstream_tarball()
         # The two branches are deliberately disconnected, to reflect likely
         # situations where this is first called.
-        upstreamtree = self.make_branch_and_tree('upstream')
-        self.make_unpacked_upstream_source(transport=upstreamtree.bzrdir.root_transport)
-        upstreamtree.smart_add(['upstream'])
-        upstreamtree.commit('upstream release')
-        tree = self.make_branch_and_tree('working')
-        self.make_unpacked_upstream_source(transport=tree.bzrdir.root_transport)
-        self.make_debian_dir(tree.bzrdir.root_transport.local_abspath('debian'))
-        tree.smart_add(['working'])
-        tree.commit('save changes')
+        upstreamtree = self.make_upstream_tree()
+        tree = self.make_workingdir()
         self.run_bzr(['import-upstream', self.upstream_version, "../%s" %
             self.upstream_tarball_name, '../upstream'],
             working_dir='working')
@@ -85,11 +112,37 @@ class TestImportUpstream(TestBaseImportDsc):
         self.addCleanup(tree.unlock)
         self.assertFalse(tree.has_changes())
         revtree = self.assertHasImportArtifacts(tree)
-        # that does not have debian/
-        self.assertEqual(None, revtree.path2id('debian'))
-        # and has the fileid from upstream for README.
-        self.assertNotEqual(None, revtree.path2id('README'))
-        self.assertEqual(upstreamtree.path2id('README'), revtree.path2id('README'))
+        self.assertUpstreamContentAndFileIdFromTree(revtree, upstreamtree)
+
+    def test_import_upstream_with_branch_prior_tarball(self):
+        self.make_upstream_tarball()
+        upstreamtree = self.make_upstream_tree()
+        tree = self.make_workingdir()
+        # XXX: refactor: make this an API call - running blackbox in test prep
+        # is ugly.
+        self.run_bzr(['import-upstream', self.upstream_version, "../%s" %
+            self.upstream_tarball_name, '../upstream'],
+            working_dir='working')
+        new_version = Version('0.2-1')
+        self.make_upstream_tarball(new_version.upstream_version)
+        upstream_parent = self.make_upstream_change(upstreamtree)
+        self.run_bzr(['import-upstream', new_version.upstream_version, "../%s" %
+            self._upstream_tarball_name(self.package_name, new_version.upstream_version), '../upstream'],
+            working_dir='working')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertFalse(tree.has_changes())
+        revtree = self.assertHasImportArtifacts(tree, new_version.upstream_version)
+        self.assertUpstreamContentAndFileIdFromTree(revtree, upstreamtree)
+        # Check parents: we want
+        # [previous_import, upstream_parent] to reflect that the 'branch' is
+        # the tarball branch aka upstream branch [ugh], and then a merge in
+        # from upstream so that cherrypicks do the right thing.
+        tags = tree.branch.tags
+        self.assertEqual([tags.lookup_tag(self.upstream_tag(self.upstream_version)),
+            upstreamtree.branch.last_revision()],
+            revtree.get_parent_ids())
+
 
 # vim: ts=4 sts=4 sw=4
 
