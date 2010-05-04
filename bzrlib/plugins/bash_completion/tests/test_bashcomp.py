@@ -20,7 +20,6 @@ from bzrlib.plugins.bash_completion.bashcomp import *
 
 import os
 import subprocess
-from StringIO import StringIO
 
 
 class _BashFeature(tests.Feature):
@@ -53,15 +52,11 @@ class BashCompletionMixin(object):
 
     _test_needs_features = [BashFeature]
 
-    def complete(self, words, cword=-1, expect=None,
-                 contains=[], omits=[]):
+    def complete(self, words, cword=-1):
         """Perform a bash completion.
 
         :param words: a list of words representing the current command.
         :param cword: the current word to complete, defaults to the last one.
-        :param expect: an exact iterable of expected completions.
-        :param contains: an iterable of words required in the completion result.
-        :param omits: an iterable of words forbidden in the completion result.
         """
         if self.script is None:
             self.script = self.get_script()
@@ -93,23 +88,31 @@ class BashCompletionMixin(object):
         if nlines == 0 and len(lines) == 1 and lines[0] == '':
             del lines[0]
         self.assertEqual(nlines, len(lines), 'No newlines in generated words')
-        res = set(lines)
-        if expect is not None:
-            self.assertEqual(set(expect), res)
-        missing = set(contains) - res
+        self.completion_result = set(lines)
+        return self.completion_result
+
+    def assertCompletionEquals(self, *words):
+        self.assertEqual(set(words), self.completion_result)
+
+    def assertCompletionContains(self, *words):
+        missing = set(words) - self.completion_result
         if missing:
             raise AssertionError('Completion should contain %r but it has %r'
-                                 % (missing, res))
-        surplus = set(omits) & res
+                                 % (missing, self.completion_result))
+
+    def assertCompletionOmits(self, *words):
+        surplus = set(words) & self.completion_result
         if surplus:
             raise AssertionError('Completion should omit %r but it has %r'
-                                 % (surplus, res))
-        return res
+                                 % (surplus, res, self.completion_result))
 
     def get_script(self):
-        out = StringIO()
-        bash_completion_function(out, function_only=True)
-        return out.getvalue()
+        commands.install_bzr_command_hooks()
+        dc = DataCollector()
+        data = dc.collect()
+        cg = BashCodeGen(data)
+        res = cg.function()
+        return res
 
 
 class TestBashCompletion(tests.TestCase, BashCompletionMixin):
@@ -118,10 +121,6 @@ class TestBashCompletion(tests.TestCase, BashCompletionMixin):
     def __init__(self, methodName='testMethod'):
         super(TestBashCompletion, self).__init__(methodName)
         self.script = None
-
-    def setUp(self):
-        super(TestBashCompletion, self).setUp()
-        commands.install_bzr_command_hooks()
 
     def test_simple_scipt(self):
         """Ensure that the test harness works as expected"""
@@ -136,36 +135,39 @@ _bzr() {
     COMPREPLY+=( "+${COMP_WORDS[COMP_CWORD]}-" )
 }
 """
-        self.complete(['foo', '"bar', "'baz"], cword=1,
-                      expect=["-'baz+", '-"bar+', '-foo+', '+"bar-'])
+        self.complete(['foo', '"bar', "'baz"], cword=1)
+        self.assertCompletionEquals("-'baz+", '-"bar+', '-foo+', '+"bar-')
 
     def test_cmd_ini(self):
-        c = self.complete(['bzr', 'ini'],
-                          contains=['init', 'init-repo', 'init-repository'])
-        self.assertFalse('commit' in c)
+        self.complete(['bzr', 'ini'])
+        self.assertCompletionContains('init', 'init-repo', 'init-repository')
+        self.assertCompletionOmits('commit')
 
     def test_init_opts(self):
-        c = self.complete(['bzr', 'init', '-'],
-                          contains=['-h', '--2a', '--format=2a'])
+        self.complete(['bzr', 'init', '-'])
+        self.assertCompletionContains('-h', '--2a', '--format=2a')
 
     def test_global_opts(self):
-        c = self.complete(['bzr', '-', 'init'], cword=1,
-                          contains=['--no-plugins', '--builtin'])
+        self.complete(['bzr', '-', 'init'], cword=1)
+        self.assertCompletionContains('--no-plugins', '--builtin')
 
     def test_commit_dashm(self):
-        c = self.complete(['bzr', 'commit', '-m'], expect=['-m'])
+        self.complete(['bzr', 'commit', '-m'])
+        self.assertCompletionEquals('-m')
 
     def test_status_negated(self):
-        c = self.complete(['bzr', 'status', '--n'],
-                          contains=['--no-versioned', '--no-verbose'])
+        self.complete(['bzr', 'status', '--n'])
+        self.assertCompletionContains('--no-versioned', '--no-verbose')
 
     def test_init_format_any(self):
-        c = self.complete(['bzr', 'init', '--format', '=', 'directory'],
-                          cword=3, contains=['1.9', '2a'])
+        self.complete(['bzr', 'init', '--format', '=', 'directory'], cword=3)
+        self.assertCompletionContains('1.9', '2a')
 
     def test_init_format_2(self):
-        c = self.complete(['bzr', 'init', '--format', '=', '2', 'directory'],
-                          cword=4, contains=['2a'], omits=['1.9'])
+        self.complete(['bzr', 'init', '--format', '=', '2', 'directory'],
+                      cword=4)
+        self.assertCompletionContains('2a')
+        self.assertCompletionOmits('1.9')
 
 
 class TestBashCompletionInvoking(tests.TestCaseWithTransport,
@@ -180,10 +182,6 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         super(TestBashCompletionInvoking, self).__init__(methodName)
         self.script = None
 
-    def setUp(self):
-        super(TestBashCompletionInvoking, self).setUp()
-        commands.install_bzr_command_hooks()
-
     def get_script(self):
         s = super(TestBashCompletionInvoking, self).get_script()
         return s.replace("$(bzr ", "$('%s' " % self.get_bzr_path())
@@ -193,16 +191,16 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
         wt.branch.tags.set_tag('3tag', 'null:')
-        self.complete(['bzr', 'log', '-r', 'tag', ':'],
-                      expect=['tag1', 'tag2', '3tag'])
+        self.complete(['bzr', 'log', '-r', 'tag', ':'])
+        self.assertCompletionEquals('tag1', 'tag2', '3tag')
 
     def test_revspec_tag_prefix(self):
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
         wt.branch.tags.set_tag('3tag', 'null:')
-        self.complete(['bzr', 'log', '-r', 'tag', ':', 't'],
-                      expect=['tag1', 'tag2'])
+        self.complete(['bzr', 'log', '-r', 'tag', ':', 't'])
+        self.assertCompletionEquals('tag1', 'tag2')
 
 
 class TestBashCodeGen(tests.TestCase):
