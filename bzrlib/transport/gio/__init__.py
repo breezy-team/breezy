@@ -566,7 +566,7 @@ class GioTransport(ConnectedTransport):
             raise errors.PathError(path, extra=extra)
         else:
             mutter('unable to understand error for path: %s: %s', path, err)
-            raise err
+            raise errors.PathError(path, extra="Unhandled gio error: " + str(err))
 
 def get_test_permutations():
     """Return the permutations to be used in testing."""
