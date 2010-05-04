@@ -196,7 +196,7 @@ class RemoteGitDir(GitDir):
         self._mode_check_done = None
 
     def _branch_name_to_ref(self, name):
-        return branch_name_to_ref(name, default="refs/heads/master")
+        return branch_name_to_ref(name, default="HEAD")
 
     def open_repository(self):
         return RemoteGitRepository(self, self._lockfiles)
