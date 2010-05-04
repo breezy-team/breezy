@@ -111,7 +111,8 @@ def find_changelog(t, merge, max_blocks=1):
 
     :param t: the Tree to look in.
     :param merge: whether this is a "merge" package.
-    :param max_blocks: Number of max_blocks to parse (defaults to 1)
+    :param max_blocks: Number of max_blocks to parse (defaults to 1). Use None
+        to parse the entire changelog.
     :return: (changelog, larstiq) where changelog is the Changelog,
         and larstiq is a boolean indicating whether the file is at
         'changelog' if merge was given, False otherwise.
@@ -269,18 +270,24 @@ def lookup_distribution(distribution_or_suite):
     return suite_to_distribution(distribution_or_suite)
 
 
+def md5sum_filename(filename):
+    """Calculate the md5sum of a file by name."""
+    m = md5.md5()
+    f = open(filename, 'rb')
+    try:
+        for line in f:
+            m.update(line)
+    finally:
+        f.close()
+    return m.hexdigest()
+
+
 def move_file_if_different(source, target, md5sum):
     if os.path.exists(target):
         if os.path.samefile(source, target):
             return
-        t_md5sum = md5.md5()
-        target_f = open(target)
-        try:
-            for line in target_f:
-                t_md5sum.update(line)
-        finally:
-            target_f.close()
-        if t_md5sum.hexdigest() == md5sum:
+        t_md5sum = md5sum_filename(target)
+        if t_md5sum == md5sum:
             return
     shutil.move(source, target)
 
@@ -479,7 +486,7 @@ def find_last_distribution(changelog):
     """Find the last changelog that was used in a changelog.
 
     This will skip stanzas with the 'UNRELEASED' distribution.
-    
+
     :param changelog: Changelog to analyze
     """
     for block in changelog._blocks:

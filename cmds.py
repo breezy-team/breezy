@@ -48,6 +48,7 @@ from bzrlib.errors import (
     )
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
+from bzrlib import revision as mod_revision
 from bzrlib.tag import _merge_tags_if_possible
 from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
@@ -74,6 +75,10 @@ from bzrlib.plugins.builddeb.source_distiller import (
         FullSourceDistiller,
         MergeModeDistiller,
         NativeSourceDistiller,
+        )
+from bzrlib.plugins.builddeb.tagging import (
+        is_upstream_tag,
+        upstream_tag_version,
         )
 from bzrlib.plugins.builddeb.upstream import (
         UpstreamProvider,
@@ -714,9 +719,10 @@ class cmd_import_dsc(Command):
                 if last_version is not None:
                     if not db.has_upstream_version_in_packaging_branch(
                             last_version.upstream_version):
-                        raise BzrCommandError("Unable to find the tag for "
-                                "the previous upstream version, %s, in the "
-                                "branch: %s" % (last_version,
+                        raise BzrCommandError("Unable to find the tag for the "
+                            "previous upstream version, %s, in the branch: %s."
+                            " Consider importing it via import-dsc or "
+                            "import-upstream." % (last_version,
                                     db.upstream_tag_name(last_version.upstream_version)))
                     upstream_tip = db.revid_of_upstream_version_from_branch(
                             last_version.upstream_version)
@@ -728,6 +734,86 @@ class cmd_import_dsc(Command):
                 shutil.rmtree(tempdir)
         finally:
             tree.unlock()
+
+
+class cmd_import_upstream(Command):
+    """Imports an upstream tarball.
+
+    This will import an upstream tarball in to your branch, but not modify the
+    working tree. Use merge-upstream if you wish to directly merge the new
+    upstream version in to your tree.
+
+    The imported revision can be accessed using the tag name that will be
+    reported at the end of a successful operation. The revision will include
+    the pristine-tar data that will allow other commands to recreate the
+    tarball when needed.
+
+    For instance::
+
+        $ bzr import-upstream 1.2.3 ../package_1.2.3.orig.tar.gz
+
+    If upstream is packaged in bzr, you should provide the upstream branch
+    whose tip commit is the closest match to the tarball::
+
+        $ bzr import-upstream 1.2.3 ../package_1.2.3.orig.tar.gz ../upstream
+
+    After doing this, commands that assume there is an upstream tarball, like
+    'bzr builddeb' will be able to recreate the one provided at import-upstream
+    time, meaning that you don't need to distribute the tarball in addition to
+    the branch.
+
+    If you want to manually merge with the imported upstream, you can do::
+
+        $ bzr merge . -r tag:upstream-1.2.3
+
+    The imported revision will have file ids taken from your branch, the
+    upstream branch, or previous tarball imports as necessary. In addition
+    the parents of the new revision will be the previous upstream tarball
+    import and the tip of the upstream branch if you supply one.
+    """
+
+    takes_args = ['version', 'location', 'upstream_branch?']
+
+    def run(self, version, location, upstream_branch=None):
+        # TODO: support -r, search for similarity etc.
+        version = version.encode('utf8')
+        branch, _ = Branch.open_containing('.')
+        if upstream_branch is None:
+            upstream = None
+        else:
+            upstream = Branch.open(upstream_branch)
+        branch.lock_write() # we will be adding a tag here.
+        self.add_cleanup(branch.unlock)
+        tempdir = tempfile.mkdtemp(
+            dir=branch.bzrdir.root_transport.clone('..').local_abspath('.'))
+        self.add_cleanup(shutil.rmtree, tempdir)
+        db = DistributionBranch(branch, upstream_branch=upstream)
+        if db.has_upstream_version_in_packaging_branch(version):
+            raise BzrCommandError("Version %s is already present." % version)
+        tagged_versions = {}
+        for tag_name, tag_revid in branch.tags.get_tag_dict().iteritems():
+            if not is_upstream_tag(tag_name):
+                continue
+            tag_version = Version(upstream_tag_version(tag_name))
+            tagged_versions[tag_version] = tag_revid
+        tag_order = sorted(tagged_versions.keys())
+        if tag_order:
+            parents = [tagged_versions[tag_order[-1]]]
+        else:
+            parents = []
+        if parents:
+            # See bug lp:309682
+            db.upstream_branch.repository.fetch(branch.repository, parents[0])
+            db.extract_upstream_tree(parents[0], tempdir)
+        else:
+            db._create_empty_upstream_tree(tempdir)
+        tree = db.get_branch_tip_revtree()
+        tree.lock_read()
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tag_name, _ = db.import_upstream_tarball(location, version, parents,
+            upstream_branch=upstream)
+        self.outf.write('Imported %s as tag:%s.\n' % (location, tag_name))
 
 
 class cmd_bd_do(Command):
@@ -826,7 +912,7 @@ class cmd_bd_do(Command):
 
 class cmd_mark_uploaded(Command):
     """Mark that this branch has been uploaded, prior to pushing it.
-    
+
     When a package has been uploaded we want to mark the revision
     that it was uploaded in. This command automates doing that
     by marking the current tip revision with the version indicated

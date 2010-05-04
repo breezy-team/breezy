@@ -58,6 +58,7 @@ commands = {
         "builddeb": ["bd"],
         "dh_make": ["dh_make"],
         "import_dsc": [],
+        "import_upstream": [],
         "mark_uploaded": [],
         "merge_package": [],
         "merge_upstream": ["mu"],
