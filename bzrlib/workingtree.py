@@ -95,7 +95,6 @@ from bzrlib.osutils import (
 from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
-from bzrlib.progress import ProgressPhase
 from bzrlib.revision import CURRENT_REVISION
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (
