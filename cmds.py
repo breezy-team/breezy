@@ -760,6 +760,11 @@ class cmd_import_upstream(Command):
     If you want to manually merge with the imported upstream, you can do::
 
         $ bzr merge . -r upstream-1.2.3
+
+    Imported revisions have file ids taken from any of: your branch, the
+    upstream branch, previous tarball imports. They are given as parents the
+    closest lower version number tarball import, as identified by tags in your
+    branch, and the tip of the upstream branch if you suplpy one.
     """
 
     takes_args = ['version', 'location', 'upstream_branch?']
@@ -771,6 +776,7 @@ class cmd_import_upstream(Command):
         # differences are:
         # - this uses an upstream branch and a packaging branch
         # - this can import when there is a previous upstream tag present
+        # TODO: support -r, search for similarity etc.
         version = version.encode('utf8')
         branch, _ = Branch.open_containing('.')
         if upstream_branch is None:
@@ -785,13 +791,6 @@ class cmd_import_upstream(Command):
         db = DistributionBranch(branch, upstream_branch=upstream)
         if db.has_upstream_version_in_packaging_branch(version):
             raise BzrCommandError("Version %s is already present." % version)
-        # TODO: support -r, search for similarity etc.
-        if upstream is not None:
-            parents = [upstream.last_revision()]
-        else:
-            parents = []
-        if parents == [mod_revision.NULL_REVISION]:
-            parents = []
         tagged_versions = {}
         for tag_name, tag_revid in branch.tags.get_tag_dict().iteritems():
             if not is_upstream_tag(tag_name):
@@ -800,7 +799,9 @@ class cmd_import_upstream(Command):
             tagged_versions[tag_version] = tag_revid
         tag_order = sorted(tagged_versions.keys())
         if tag_order:
-            parents.insert(0, tagged_versions[tag_order[-1]])
+            parents = [tagged_versions[tag_order[-1]]]
+        else:
+            parents = []
         if parents:
             # See bug lp:309682
             db.upstream_branch.repository.fetch(branch.repository, parents[0])
@@ -811,7 +812,8 @@ class cmd_import_upstream(Command):
         tree.lock_read()
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
-        db.import_upstream_tarball(location, version, parents)
+        db.import_upstream_tarball(location, version, parents,
+            upstream_branch=upstream)
 
 
 class cmd_bd_do(Command):
