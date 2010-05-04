@@ -34,12 +34,9 @@ class TestBuilderDefined(tests.TestCase):
         self.assertTrue('bzrlib.doc_generate.builders.texinfo'
                         in conf.extensions)
 
+class TestSphinx(tests.TestCaseInTempDir):
 
-class TestBuilderLoaded(tests.TestCaseInTempDir):
-
-    _test_needs_features = [features.sphinx]
-
-    def test_builder_loaded(self):
+    def make_sphinx(self):
         out = tests.StringIOWrapper()
         err = tests.StringIOWrapper()
         app = application.Sphinx(
@@ -48,6 +45,51 @@ class TestBuilderLoaded(tests.TestCaseInTempDir):
             buildername='texinfo',
             confoverrides={},
             status=out, warning=err,
-            freshenv=False, warningiserror=False,
-            tags=[])
+            freshenv=True)
+        return app, out, err
+
+class TestBuilderLoaded(TestSphinx):
+
+    def test_builder_loaded(self):
+        app, out, err = self.make_sphinx()
         self.assertTrue('texinfo' in app.builderclasses)
+
+
+class TestTexinfoFileGeneration(TestSphinx):
+
+    def test_files_generated(self):
+        self.build_tree_contents(
+            [('index.txt', """
+Table of Contents
+=================
+
+.. toctree::
+   :maxdepth: 1
+
+   content
+"""),
+             ('content.txt', """
+
+bzr 0.0.8
+*********
+
+Improvements
+============
+
+* Adding a file whose parent directory is not versioned will
+  implicitly add the parent, and so on up to the root.
+"""),
+             ])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        self.failUnlessExists('index.texi')
+        self.failUnlessExists('content.texi')
+        # FIXME: When the content of the files becomes clearer replace the
+        # assertion above by the ones below -- vila 20100504
+#         self.assertFileEqual("""\
+# """,
+#                               'content.texi')
+#         self.assertFileEqual("""\
+# """,
+#                               'index.texi')
+# 
