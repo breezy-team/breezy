@@ -354,7 +354,12 @@ class BazaarObjectStore(BaseObjectStore):
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[base_sha1]
         if roundtrip:
-            b = self.mapping.export_fileid_map({}) # FIXME
+            # FIXME: This can probably be a lot more efficient...
+            file_ids = {}
+            for (path, ie) in tree.inventory.iter_entries():
+                if self.mapping.generate_file_id(path) != ie.file_id:
+                    file_ids[path] = ie.file_id
+            b = self.mapping.export_fileid_map(file_ids)
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None

@@ -162,6 +162,10 @@ class BzrGitMapping(foreign.VcsMapping):
             return ""
         return unescape_file_id(file_id)
 
+    def revid_as_refname(self, revid):
+        import urllib
+        return "refs/bzr/%s" % urllib.quote(revid)
+
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
             ret = [(path, unusual_file_modes[path])

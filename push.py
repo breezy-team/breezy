@@ -198,7 +198,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                     try:
                         self.mapping.revision_id_bzr_to_foreign(revid)
                     except errors.InvalidRevisionId:
-                        self.target_refs["refs/bzr/%s" % revid] = git_sha
+                        self.target_refs[self.mapping.revid_as_refname(revid)] = git_sha
                 self.target_store.add_objects(object_generator)
             finally:
                 pb.finished()
