@@ -562,3 +562,27 @@ def parse_git_svn_id(text):
     (head, uuid) = text.rsplit(" ", 1)
     (full_url, rev) = head.rsplit("@", 1)
     return (full_url, int(rev), uuid)
+
+
+class GitFileIdMap(object):
+
+    def __init__(self, file_ids, mapping):
+        self.file_ids = file_ids
+        self.paths = None
+        self.mapping = mapping
+
+    def lookup_file_id(self, path):
+        try:
+            return self.file_ids[path]
+        except KeyError:
+            return self.mapping.generate_file_id(path)
+
+    def lookup_path(self, file_id):
+        if self.paths is None:
+            self.paths = {}
+            for k, v in self.file_ids.iteritems():
+                self.paths[v] = k
+        try:
+            return self.paths[file_id]
+        except KeyError:
+            return self.mapping.parse_file_id(file_id)

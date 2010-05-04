@@ -28,6 +28,7 @@ from bzrlib.plugins.git.inventory import (
     GitInventory,
     )
 from bzrlib.plugins.git.mapping import (
+    GitFileIdMap,
     mode_is_executable,
     mode_kind,
     )
@@ -46,7 +47,14 @@ class GitRevisionTree(revisiontree.RevisionTree):
         except KeyError, r:
             raise errors.NoSuchRevision(repository, revision_id)
         self.tree = commit.tree
-        self._inventory = GitInventory(self.tree, self.mapping, store, 
+        try:
+            file_id_map_sha = store[self.tree][self.mapping.BZR_FILE_IDS_FILE][1]
+        except KeyError:
+            file_ids = {}
+        else:
+            file_ids = self.mapping.import_fileid_map(store[file_id_map_sha])
+        fileid_map = GitFileIdMap(file_ids, self.mapping)
+        self._inventory = GitInventory(self.tree, self.mapping, fileid_map, store, 
                                        revision_id)
 
     def get_revision_id(self):

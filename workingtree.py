@@ -46,6 +46,9 @@ from bzrlib.decorators import (
 from bzrlib.plugins.git.inventory import (
     GitIndexInventory,
     )
+from bzrlib.plugins.git.mapping import (
+    GitFileIdMap,
+    )
 from bzrlib.plugins.git.tree import (
     changes_from_git_changes,
     tree_delta_from_git_changes,
@@ -176,8 +179,16 @@ class GitWorkingTree(workingtree.WorkingTree):
         except KeyError, name:
             raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
         basis_inv = self.repository.get_inventory(self.mapping.revision_id_foreign_to_bzr(head))
-        result = GitIndexInventory(basis_inv, self.mapping, self.index,
-            self.repository._git.object_store)
+        store = self.repository._git.object_store
+        commit = store[head]
+        try:
+            file_id_map_sha = store[commit.tree][self.mapping.BZR_FILE_IDS_FILE][1]
+        except KeyError:
+            file_ids = {}
+        else:
+            file_ids = self.mapping.import_fileid_map(store[file_id_map_sha])
+        fileid_map = GitFileIdMap(file_ids, self.mapping)
+        result = GitIndexInventory(basis_inv, fileid_map, self.index, store)
         self._set_inventory(result, dirty=False)
 
     @needs_read_lock
