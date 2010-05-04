@@ -1306,13 +1306,15 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return self._real_repository.make_working_trees()
 
     def refresh_data(self):
-        """Re-read any data needed to to synchronise with disk.
+        """Re-read any data needed to synchronise with disk.
 
         This method is intended to be called after another repository instance
         (such as one used by a smart server) has inserted data into the
-        repository.  If called during a write group it may raise
-        IsInWriteGroupError (depending on repository format), but it may be
-        called at any other time.
+        repository. On all repositories this will work outside of write groups.
+        Some repository formats (pack and newer for bzrlib native formats)
+        support refresh_data inside write groups. If called inside a write
+        group on a repository that does not support refreshing in a write group
+        IsInWriteGroupError will be raised.
         """
         if self._real_repository is not None:
             self._real_repository.refresh_data()
