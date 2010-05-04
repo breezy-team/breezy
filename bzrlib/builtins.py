@@ -1353,7 +1353,7 @@ class cmd_checkout(Command):
 
         if not lightweight:
             message = ('Copying history to "%s". '
-                'This may take some time.' % to_location)
+                'To checkout without local history use --lightweight.' % to_location)
             ui.ui_factory.show_message(message)
         source.create_checkout(to_location, revision_id, lightweight,
                                accelerator_tree, hardlink)
