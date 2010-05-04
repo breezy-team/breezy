@@ -16,7 +16,6 @@
 
 from bzrlib.tests import TestCase, TestCaseWithTransport, Feature
 from bzrlib import commands
-from StringIO import StringIO
 from ..bashcomp import *
 import bzrlib
 import os
@@ -108,9 +107,12 @@ class BashCompletionMixin(object):
                                  % (surplus, res, self.completion_result))
 
     def get_script(self):
-        out = StringIO()
-        bash_completion_function(out, function_only=True)
-        return out.getvalue()
+        commands.install_bzr_command_hooks()
+        dc = DataCollector()
+        data = dc.collect()
+        cg = BashCodeGen(data)
+        res = cg.function()
+        return res
 
 
 class TestBashCompletion(TestCase, BashCompletionMixin):
@@ -119,10 +121,6 @@ class TestBashCompletion(TestCase, BashCompletionMixin):
     def __init__(self, methodName='testMethod'):
         super(TestBashCompletion, self).__init__(methodName)
         self.script = None
-
-    def setUp(self):
-        super(TestBashCompletion, self).setUp()
-        commands.install_bzr_command_hooks()
 
     def test_simple_scipt(self):
         """Ensure that the test harness works as expected"""
@@ -182,10 +180,6 @@ class TestBashCompletionInvoking(TestCaseWithTransport, BashCompletionMixin):
     def __init__(self, methodName='testMethod'):
         super(TestBashCompletionInvoking, self).__init__(methodName)
         self.script = None
-
-    def setUp(self):
-        super(TestBashCompletionInvoking, self).setUp()
-        commands.install_bzr_command_hooks()
 
     def get_script(self):
         s = super(TestBashCompletionInvoking, self).get_script()
