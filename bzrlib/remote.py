@@ -1310,12 +1310,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
         This method is intended to be called after another repository instance
         (such as one used by a smart server) has inserted data into the
-        repository. It may not be called during a write group, but may be
+        repository.  If called during a write group it may raise
+        IsInWriteGroupError (depending on repository format), but it may be
         called at any other time.
         """
-        if self.is_in_write_group():
-            raise errors.InternalBzrError(
-                "May not refresh_data while in a write group.")
         if self._real_repository is not None:
             self._real_repository.refresh_data()
 

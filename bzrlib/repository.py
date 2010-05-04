@@ -26,7 +26,6 @@ from bzrlib import (
     chk_map,
     config,
     debug,
-    errors,
     fetch as _mod_fetch,
     fifo_cache,
     generate_ids,
@@ -62,13 +61,24 @@ from bzrlib.inventory import (
     entry_factory,
     )
 from bzrlib.lock import _RelockDebugMixin
-from bzrlib import registry
+from bzrlib import (
+    errors,
+    registry,
+    )
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
+
+
+class IsInWriteGroupError(errors.InternalBzrError):
+
+    _fmt = "May not refresh_data of repo %(repo)s while in a write group."
+
+    def __init__(self, repo):
+        errors.InternalBzrError.__init__(self, repo=repo)
 
 
 class CommitBuilder(object):
@@ -1638,12 +1648,10 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
 
         This method is intended to be called after another repository instance
         (such as one used by a smart server) has inserted data into the
-        repository. It may not be called during a write group, but may be
+        repository.  If called during a write group it may raise
+        IsInWriteGroupError (depending on repository format), but it may be
         called at any other time.
         """
-        if self.is_in_write_group():
-            raise errors.InternalBzrError(
-                "May not refresh_data while in a write group.")
         self._refresh_data()
 
     def resume_write_group(self, tokens):
