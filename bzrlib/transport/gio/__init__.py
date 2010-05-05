@@ -407,12 +407,12 @@ class GioTransport(ConnectedTransport):
                     self._translate_gio_error(e, relpath)
             length = self._pump(file, fout)
             fout.close()
-            fo.move(fi, flags=gio.FILE_COPY_OVERWRITE)
-            info = GioStatResult(fi)
+            info = GioStatResult(fo)
             if info.st_size != result + length:
                 raise errors.BzrError("Failed to append size after " \
                       "(%d) is not original (%d) + written (%d) total (%d)" % \
                       (info.st_size, result, length, result + length))
+            fo.move(fi, flags=gio.FILE_COPY_OVERWRITE)
             return result
         except gio.Error, e:
             self._translate_gio_error(e, relpath)
