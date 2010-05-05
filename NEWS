@@ -44,6 +44,9 @@ Bug Fixes
   better with sudo.
   (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
 
+* ``bzr ignore`` will no longer add duplicate patterns to .bzrignore.
+  (Gordon Tyler, #572092)
+
 * ``bzr log --exclude-common-ancestry -r X..Y`` displays the revisions that
   are part of Y ancestry but not part of X ancestry (aka the graph
   difference).
