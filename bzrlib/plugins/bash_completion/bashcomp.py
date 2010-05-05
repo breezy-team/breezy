@@ -415,7 +415,8 @@ class cmd_bash_completion(commands.Command):
         from bashcomp import bash_completion_function
         if 'plugin' in kwargs:
             # work around bug #387117 which prevents us from using param_name
-            kwargs['selected_plugins'] = kwargs['plugin']
+            if len(kwargs['plugin']) > 0:
+                kwargs['selected_plugins'] = kwargs['plugin']
             del kwargs['plugin']
         bash_completion_function(sys.stdout, **kwargs)
 
