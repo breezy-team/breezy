@@ -20,8 +20,6 @@ import os
 import sys
 from optparse import OptionParser
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 
 def split_into_topics(lines, out_file, out_dir):
     """Split a large NEWS file into topics, one per release.
@@ -45,6 +43,12 @@ def split_into_topics(lines, out_file, out_dir):
         elif topic_file:
             topic_file.write(line)
         else:
+            # FIXME: the 'content' directive is used for rst2html (and
+            # conflicts with the 'toctree' we insert), we should get rid of
+            # that once we fully switch to sphinx -- vila 20100505
+            if (line.startswith('.. contents::')
+                or line.startswith('   :depth:')):
+                    continue
             # Still in the header - dump content straight to output
             out_file.write(line)
 
