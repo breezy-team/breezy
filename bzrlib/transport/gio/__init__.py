@@ -396,8 +396,12 @@ class GioTransport(ConnectedTransport):
                 info = GioStatResult(fi)
                 result = info.st_size
                 fin = fi.read()
-                length = self._pump(fin, fout)
+                self._pump(fin, fout)
                 fin.close()
+            #This separate except is to catch and ignore the 
+            #gio.ERROR_NOT_FOUND for the already existing file. 
+            #It is valid to open a non-existing file for append.
+            #This is caused by the broken gio append_to... 
             except gio.Error, e:
                 if e.code != gio.ERROR_NOT_FOUND:
                     self._translate_gio_error(e, relpath)
