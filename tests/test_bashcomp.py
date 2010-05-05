@@ -56,6 +56,7 @@ class _ExecutableFeature(Feature):
         return '%s executable' % self.name
 
 BashFeature = _ExecutableFeature('bash')
+SedFeature = _ExecutableFeature('sed')
 
 
 class BashCompletionMixin(object):
@@ -197,6 +198,7 @@ class TestBashCompletionInvoking(TestCaseWithTransport, BashCompletionMixin):
         return s.replace("$(bzr ", "$('%s' " % self.get_bzr_path())
 
     def test_revspec_tag_all(self):
+        self.requireFeature(SedFeature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
@@ -205,6 +207,7 @@ class TestBashCompletionInvoking(TestCaseWithTransport, BashCompletionMixin):
         self.assertCompletionEquals('tag1', 'tag2', '3tag')
 
     def test_revspec_tag_prefix(self):
+        self.requireFeature(SedFeature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
