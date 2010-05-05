@@ -201,19 +201,19 @@ class TestBashCompletionInvoking(TestCaseWithTransport, BashCompletionMixin):
         self.requireFeature(SedFeature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
-        wt.branch.tags.set_tag('tag2', 'null:')
+        wt.branch.tags.set_tag('tag 2', 'null:')
         wt.branch.tags.set_tag('3tag', 'null:')
         self.complete(['bzr', 'log', '-r', 'tag', ':'])
-        self.assertCompletionEquals('tag1', 'tag2', '3tag')
+        self.assertCompletionEquals('tag1', 'tag 2', '3tag')
 
     def test_revspec_tag_prefix(self):
         self.requireFeature(SedFeature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
-        wt.branch.tags.set_tag('tag2', 'null:')
+        wt.branch.tags.set_tag('tag 2', 'null:')
         wt.branch.tags.set_tag('3tag', 'null:')
         self.complete(['bzr', 'log', '-r', 'tag', ':', 't'])
-        self.assertCompletionEquals('tag1', 'tag2')
+        self.assertCompletionEquals('tag1', 'tag 2')
 
 
 class TestBashCodeGen(TestCase):
@@ -261,10 +261,10 @@ class TestBashCodeGen(TestCase):
         cg = BashCodeGen(data)
         self.assertEqualDiff('''\
 \tbar|baz)
-\t\tcmdOpts='--opt'
+\t\tcmdOpts=( --opt )
 \t\t;;
 \tfoo)
-\t\tcmdOpts=''
+\t\tcmdOpts=(  )
 \t\t;;
 ''', cg.command_cases())
 
@@ -283,9 +283,9 @@ class TestBashCodeGen(TestCase):
 \tcmd)
 \t\t# plugin "plugger 1.0"
 \t\t# Some error message
-\t\tcmdOpts='--bar=that --bar=this --foo'
+\t\tcmdOpts=( --bar=that --bar=this --foo )
 \t\tcase $curOpt in
-\t\t\t--bar) optEnums='that this' ;;
+\t\t\t--bar) optEnums=( that this ) ;;
 \t\tesac
 \t\t;;
 ''', cg.command_case(cmd))
