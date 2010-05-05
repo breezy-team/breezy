@@ -615,7 +615,9 @@ class InterToGitBranch(branch.InterBranch):
     def update_revisions(self, *args, **kwargs):
         raise NoPushSupport()
 
-    def _get_new_refs(self, stop_revision):
+    def _get_new_refs(self, stop_revision=None):
+        if stop_revision is None:
+            stop_revision = self.source.last_revision()
         refs = { self.target.ref: stop_revision }
         for name, revid in self.source.tags.get_tag_dict().iteritems():
             if self.source.repository.has_revision(revid):
@@ -628,8 +630,6 @@ class InterToGitBranch(branch.InterBranch):
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        if stop_revision is None:
-            stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
         refs = self._get_new_refs(stop_revision)
         old_refs = self.target.repository._git.get_refs()
@@ -639,14 +639,12 @@ class InterToGitBranch(branch.InterBranch):
         result.new_revid = refs[self.target.ref]
         return result
 
-    def push(self, overwrite=True, stop_revision=None,
+    def push(self, overwrite=False, stop_revision=None,
              _override_hook_source_branch=None):
         from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        if stop_revision is None:
-            stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
         refs = self._get_new_refs(stop_revision)
         old_refs = self.target.repository._git.get_refs()
@@ -661,13 +659,10 @@ class InterToGitBranch(branch.InterBranch):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        if stop_revision is None:
-            stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
         refs = self._get_new_refs(stop_revision)
-        revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
+        result.revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
             self.source.repository, refs)
-        result.revidmap = revidmap
         result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
             old_refs.get(self.target.ref, ZERO_SHA))
         result.new_revid = self.target.mapping.revision_id_foreign_to_bzr(
