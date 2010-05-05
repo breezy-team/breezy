@@ -20,9 +20,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     errors,
-    osutils,
     revision,
-    symbol_versioning,
     tree,
     )
 

@@ -26,7 +26,6 @@ from bzrlib import (
     chk_map,
     config,
     debug,
-    errors,
     fetch as _mod_fetch,
     fifo_cache,
     generate_ids,
@@ -62,13 +61,24 @@ from bzrlib.inventory import (
     entry_factory,
     )
 from bzrlib.lock import _RelockDebugMixin
-from bzrlib import registry
+from bzrlib import (
+    errors,
+    registry,
+    )
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
+
+
+class IsInWriteGroupError(errors.InternalBzrError):
+
+    _fmt = "May not refresh_data of repo %(repo)s while in a write group."
+
+    def __init__(self, repo):
+        errors.InternalBzrError.__init__(self, repo=repo)
 
 
 class CommitBuilder(object):
@@ -864,7 +874,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class Repository(_RelockDebugMixin):
+class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1291,11 +1301,10 @@ class Repository(_RelockDebugMixin):
 
         :param _format: The format of the repository on disk.
         :param a_bzrdir: The BzrDir of the repository.
-
-        In the future we will have a single api for all stores for
-        getting file texts, inventories and revisions, then
-        this construct will accept instances of those things.
         """
+        # In the future we will have a single api for all stores for
+        # getting file texts, inventories and revisions, then
+        # this construct will accept instances of those things.
         super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
@@ -1315,6 +1324,14 @@ class Repository(_RelockDebugMixin):
         # Is it safe to return inventory entries directly from the entry cache,
         # rather copying them?
         self._safe_to_return_from_cache = False
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def __repr__(self):
         if self._fallback_repositories:
@@ -1469,7 +1486,7 @@ class Repository(_RelockDebugMixin):
 
         # now gather global repository information
         # XXX: This is available for many repos regardless of listability.
-        if self.bzrdir.root_transport.listable():
+        if self.user_transport.listable():
             # XXX: do we want to __define len__() ?
             # Maybe the versionedfiles object should provide a different
             # method to get the number of keys.
@@ -1507,7 +1524,7 @@ class Repository(_RelockDebugMixin):
 
         ret = []
         for branches, repository in bzrdir.BzrDir.find_bzrdirs(
-                self.bzrdir.root_transport, evaluate=Evaluator()):
+                self.user_transport, evaluate=Evaluator()):
             if branches is not None:
                 ret.extend(branches)
             if not using and repository is not None:
@@ -1627,16 +1644,16 @@ class Repository(_RelockDebugMixin):
         return missing_keys
 
     def refresh_data(self):
-        """Re-read any data needed to to synchronise with disk.
+        """Re-read any data needed to synchronise with disk.
 
         This method is intended to be called after another repository instance
         (such as one used by a smart server) has inserted data into the
-        repository. It may not be called during a write group, but may be
-        called at any other time.
+        repository. On all repositories this will work outside of write groups.
+        Some repository formats (pack and newer for bzrlib native formats)
+        support refresh_data inside write groups. If called inside a write
+        group on a repository that does not support refreshing in a write group
+        IsInWriteGroupError will be raised.
         """
-        if self.is_in_write_group():
-            raise errors.InternalBzrError(
-                "May not refresh_data while in a write group.")
         self._refresh_data()
 
     def resume_write_group(self, tokens):

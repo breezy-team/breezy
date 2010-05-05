@@ -184,6 +184,13 @@ class TestRename(tests.TestCaseInTempDir):
         shape = sorted(os.listdir('.'))
         self.assertEquals(['A', 'B'], shape)
 
+    def test_rename_error(self):
+        # We wrap os.rename to make it give an error including the filenames
+        # https://bugs.launchpad.net/bzr/+bug/491763
+        err = self.assertRaises(OSError, osutils.rename,
+            'nonexistent', 'target')
+        self.assertContainsString(str(err), 'nonexistent')
+
 
 class TestRandChars(tests.TestCase):
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -62,3 +62,13 @@ class TestBzrTools(TestCaseWithTransport):
         self.failIfExists('name')
         self.failIfExists('name~')
         self.failIfExists('name.pyc')
+
+    def test_clean_tree_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/added', 'a/unknown', 'a/ignored'])
+        tree.add('added')
+        self.run_bzr('clean-tree -d a --unknown --ignored --force')
+        self.failIfExists('a/unknown')
+        self.failIfExists('a/ignored')
+        self.failUnlessExists('a/added')

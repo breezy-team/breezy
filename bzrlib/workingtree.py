@@ -29,12 +29,6 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-# TODO: Give the workingtree sole responsibility for the working inventory;
-# remove the variable and references to it from the branch.  This may require
-# updating the commit code so as to update the inventory within the working
-# copy, and making sure there's only one WorkingTree for any directory on disk.
-# At the moment they may alias the inventory and have old copies of it in
-# memory.  (Now done? -- mbp 20060309)
 
 from cStringIO import StringIO
 import os
@@ -101,7 +95,6 @@ from bzrlib.osutils import (
 from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
-from bzrlib.progress import ProgressPhase
 from bzrlib.revision import CURRENT_REVISION
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (
@@ -174,7 +167,8 @@ class TreeLink(TreeEntry):
         return ''
 
 
-class WorkingTree(bzrlib.mutabletree.MutableTree):
+class WorkingTree(bzrlib.mutabletree.MutableTree,
+    bzrdir.ControlComponent):
     """Working copy tree.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -252,6 +246,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._detect_case_handling()
         self._rules_searcher = None
         self.views = self._make_views()
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
@@ -1954,8 +1956,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_info, file_infos in\
-                self.walkdirs(directory):
+            for parent_info, file_infos in self.walkdirs(directory):
                 for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.path2id(relpath) or self.is_ignored(relpath):
@@ -1996,8 +1997,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                             # ... but not ignored
                             has_changed_files = True
                             break
-                    elif content_change and (kind[1] is not None):
-                        # Versioned and changed, but not deleted
+                    elif (content_change and (kind[1] is not None) and
+                            osutils.is_inside_any(files, path[1])):
+                        # Versioned and changed, but not deleted, and still
+                        # in one of the dirs to be deleted.
                         has_changed_files = True
                         break
 

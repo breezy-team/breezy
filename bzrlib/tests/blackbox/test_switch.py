@@ -20,6 +20,7 @@
 
 import os
 
+from bzrlib import osutils
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.directory_service import directories
@@ -167,7 +168,7 @@ class TestSwitch(ExternalBase):
     def prepare_lightweight_switch(self):
         branch = self.make_branch('branch')
         branch.create_checkout('tree', lightweight=True)
-        os.rename('branch', 'branch1')
+        osutils.rename('branch', 'branch1')
 
     def test_switch_lightweight_after_branch_moved(self):
         self.prepare_lightweight_switch()

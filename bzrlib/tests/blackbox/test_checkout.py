@@ -64,7 +64,8 @@ class TestCheckout(ExternalBase):
                          result.open_branch().bzrdir.root_transport.base)
 
     def test_checkout_dash_r(self):
-        self.run_bzr('checkout -r -2 branch checkout')
+        out, err = self.run_bzr(['checkout', '-r', '-2', 'branch', 'checkout'])
+        self.assertContainsRe(out, 'Copying history to "checkout".')
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
@@ -72,7 +73,9 @@ class TestCheckout(ExternalBase):
         self.failIfExists('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
-        self.run_bzr('checkout --lightweight -r -2 branch checkout')
+        out, err = self.run_bzr(['checkout','--lightweight', '-r', '-2',
+            'branch', 'checkout'])
+        self.assertNotContainsRe(out, 'Copying history')
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
