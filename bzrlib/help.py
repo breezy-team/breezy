@@ -30,7 +30,6 @@ from bzrlib import (
     help_topics,
     osutils,
     plugin,
-    symbol_versioning,
     )
 
 

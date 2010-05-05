@@ -46,13 +46,9 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
-from bzrlib import errors, osutils
-from bzrlib import repository as _mod_repository
-from bzrlib import revision
+from bzrlib import errors
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import BzrCheckError
-from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import note

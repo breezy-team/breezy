@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006  Canonical Ltd
+# Copyright (C) 2005-2010  Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -78,3 +78,12 @@ class TestNick(ExternalBase):
                          child.branch.get_config().has_explicit_nickname())
         osutils.rmtree('../base')
         self.assertEqual('child', self.run_bzr('nick')[0][:-1])
+
+    def test_nick_directory(self):
+        """Test --directory option"""
+        self.make_branch_and_tree('me.dev')
+        nick = self.run_bzr(['nick', '--directory=me.dev'])[0]
+        self.assertEqual('me.dev\n', nick)
+        self.run_bzr(['nick', '-d', 'me.dev', 'moo'])
+        nick = self.run_bzr(['nick', '--directory', 'me.dev'])[0]
+        self.assertEqual('moo\n', nick)

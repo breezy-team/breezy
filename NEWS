@@ -16,6 +16,10 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr commit`` accepts ``-p`` (for "patch") as a shorter name for
+  ``--show-diff``.
+  (Parth Malwankar, #571467)
+  
 * ``bzr ignore`` now supports a ``--default-rules`` option that displays
   the default ignore rules used by bzr. The flag ``--old-default-rules``
   is no longer supported by ``ignore``.
@@ -25,6 +29,12 @@ New Features
   can save disk space by deleting obsolete pack files created during the
   pack operation.
   (Parth Malwankar, #304320)
+
+* Support ``--directory`` option for a number of additional commands:
+  added, annotate, bind, cat, cat-revision, clean-tree, deleted,
+  export, ignore, ignored, lookup-revision, ls, modified, nick,
+  re-sign, unbind, unknowns.
+  (Martin von Gagern, #527878)
 
 Bug Fixes
 *********
@@ -48,12 +58,19 @@ Bug Fixes
 * Don't mention --no-strict when we just issue the warning about unclean trees.
   (Vincent Ladeuil, #401599)
 
+* Fixed ``AssertionError`` when accessing smart servers running Bazaar
+  versions before 1.6.
+  (Andrew Bennetts, #528041)
+
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
 * Show the filenames when a file rename fails so that the error will be
   more comprehensible.
   (Martin Pool, #491763)
+
+* Unicode characters in aliases are now handled correctly and do not cause
+  UnicodeEncodeError exception. (Parth Malwankar, #529930)
 
 Improvements
 ************
@@ -92,8 +109,23 @@ API Changes
   implementations.
   (Martin Pool)
 
+* ``Repository.refresh_data`` may now be called in a write group on
+  pack-based repositories.  Older repositories will still raise an error
+  in this case.  Subclasses of ``Repository`` can still override
+  ``Repository._refresh_data``, but are now responsible for raising
+  ``bzrlib.repository.IsInWriteGroupError`` if they do not support
+  ``refresh_data`` during a write group.
+  (Andrew Bennetts, #574236)
+
 Internals
 *********
+
+* ``_remember_remote_is_before`` no longer raises AssertionError when
+  suboptimal network behaviour is noticed; instead it just mutters to the
+  log file (and warns the user if they have set the ``hpss`` debug flag).
+  This was causing unnecessary aborts for performance bugs that are minor
+  at worst.
+  (Andrew Bennetts, #528041)
 
 * Permit bzr to run under ``python -OO`` which reduces the size of bytecode
   files loaded from disk. To ensure docstrings needed for help are never
@@ -176,6 +208,9 @@ Bug Fixes
   that are not part of the Y revisions ancestry anymore when invoked with
   -rX..Y.
   (Vincent Ladeuil, #474807)
+
+* Properly handle ``param_name`` attribute for ``ListOption``.
+  (Martin von Gagern, 387117)
 
 Improvements
 ************
@@ -509,6 +544,38 @@ Testing
   happens, and another warning will be written if the log file could not
   be closed after retrying 100 times.  (Andrew Bennetts, #531746)
 
+bzr 2.1.2
+#########
+
+:2.1.2: NOT RELEASED YET
+
+Bug Fixes
+*********
+
+* ``bzr switch`` does not die if a ConfigurableFileMerger is used.
+  (Aaron Bentley, #559436)
+
+* Fixed ``AssertionError`` when accessing smart servers running Bazaar
+  versions before 1.6.
+  (Andrew Bennetts, #528041)
+
+* Reset ``siginterrupt`` flag to False every time we handle a signal
+  installed with ``set_signal_handler(..., restart_syscall=True)`` (from
+  ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
+  errors after two window resizes.
+  (Andrew Bennetts)
+
+Internals
+*********
+
+* ``_remember_remote_is_before`` no longer raises AssertionError when
+  suboptimal network behaviour is noticed; instead it just mutters to the
+  log file (and warns the user if they have set the ``hpss`` debug flag).
+  This was causing unnecessary aborts for performance bugs that are minor
+  at worst.
+  (Andrew Bennetts, #528041)
+
+
 bzr 2.1.1
 #########
 
@@ -541,6 +608,12 @@ Bug Fixes
 * Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
   problems importing bzrlib from a non-main thread.
   (Elliot Murphy, #521989)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
 
 * Standardize the error handling when creating a new ``StaticTuple``
   (problems will raise TypeError). (Matt Nordhoff, #457979)

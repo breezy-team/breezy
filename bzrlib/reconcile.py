@@ -30,7 +30,6 @@ from bzrlib import (
     cleanup,
     errors,
     ui,
-    repository,
     )
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
