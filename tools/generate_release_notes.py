@@ -30,7 +30,7 @@ def split_into_topics(lines, out_file, out_dir):
     """
     topic_file = None
     for index, line in enumerate(lines):
-        maybe_new_topic = line[:4] in ['bzr ', 'bzr-0',]
+        maybe_new_topic = line[:4] in ('bzr ', 'bzr-',)
         if maybe_new_topic and lines[index + 1].startswith('####'):
             release = line.strip()
             if topic_file is None:
@@ -51,11 +51,14 @@ def split_into_topics(lines, out_file, out_dir):
                     continue
             # Still in the header - dump content straight to output
             out_file.write(line)
+    if topic_file is not None:
+        # Close the last topic_file opened
+        topic_file.close()
 
 
 def open_topic_file(out_file, out_dir, release):
     topic_name = release.replace(' ', '-')
-    out_file.write("   %s\n" % (topic_name,))
+    out_file.write("   %s <%s>\n" % (release, topic_name,))
     topic_path = os.path.join(out_dir, "%s.txt" % (topic_name,))
     result = open(topic_path, 'w')
     result.write("%s\n" % (release,))
