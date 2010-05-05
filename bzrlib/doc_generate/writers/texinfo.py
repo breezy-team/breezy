@@ -72,13 +72,16 @@ class TexinfoTranslator(nodes.NodeVisitor):
         pass
 
     def visit_paragraph(self, node):
-        pass
+        # Start the paragraph on a new line.
+        self.add_text('\n')
 
     def depart_paragraph(self, node):
-        pass
+        # End the paragraph with a new line.
+        self.add_text('\n')
 
     def visit_compact_paragraph(self, node):
         pass
+
     def depart_compact_paragraph(self, node):
         pass
 
@@ -134,16 +137,16 @@ class TexinfoTranslator(nodes.NodeVisitor):
     # Styled text
 
     def visit_emphasis(self, node):
-        self.add_text('*')
+        self.add_text('@emph{')
 
     def depart_emphasis(self, node):
-        self.add_text('*')
+        self.add_text('}')
 
     def visit_strong(self, node):
-        self.add_text('**')
+        self.add_text('@strong{')
 
     def depart_strong(self, node):
-        self.add_text('**')
+        self.add_text('}')
 
     def visit_literal_block(self, node):
         pass

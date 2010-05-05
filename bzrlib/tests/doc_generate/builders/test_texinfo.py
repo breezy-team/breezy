@@ -93,3 +93,36 @@ Improvements
 # """,
 #                               'index.texi')
 # 
+
+class TestTextGeneration(TestSphinx):
+
+    def test_emphasis(self):
+        self.build_tree_contents([('index.txt', """*important*"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        # Note that since the input is a paragraph, we get two \n (even if the
+        # input has none)
+        self.assertFileEqual("""\n@emph{important}\n""", 'index.texi')
+
+    def test_strong(self):
+        self.build_tree_contents([('index.txt', """**very important**"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        # Note that since the input is a paragraph, we get two \n (even if the
+        # input has none)
+        self.assertFileEqual("""\n@strong{very important}\n""", 'index.texi')
+
+    def test_paragraphs(self):
+        self.build_tree_contents([('index.txt', """\
+This is a paragraph.
+
+This is another one.
+"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        self.assertFileEqual("""\
+
+This is a paragraph.
+
+This is another one.
+""", 'index.texi')
