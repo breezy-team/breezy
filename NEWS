@@ -30,6 +30,12 @@ New Features
   pack operation.
   (Parth Malwankar, #304320)
 
+* Support ``--directory`` option for a number of additional commands:
+  added, annotate, bind, cat, cat-revision, clean-tree, deleted,
+  export, ignore, ignored, lookup-revision, ls, modified, nick,
+  re-sign, unbind, unknowns.
+  (Martin von Gagern, #527878)
+
 * The bash_completion plugin from the bzr-bash-completion project has
   been merged into the tree. It provides a bash-completion command and
   replaces the outdated ``contrib/bash/bzr`` script with a version
@@ -68,6 +74,9 @@ Bug Fixes
   more comprehensible.
   (Martin Pool, #491763)
 
+* Unicode characters in aliases are now handled correctly and do not cause
+  UnicodeEncodeError exception. (Parth Malwankar, #529930)
+
 Improvements
 ************
 
@@ -100,6 +109,14 @@ API Changes
   All of them inherit from `ControlComponent` which provides default
   implementations.
   (Martin Pool)
+
+* ``Repository.refresh_data`` may now be called in a write group on
+  pack-based repositories.  Older repositories will still raise an error
+  in this case.  Subclasses of ``Repository`` can still override
+  ``Repository._refresh_data``, but are now responsible for raising
+  ``bzrlib.repository.IsInWriteGroupError`` if they do not support
+  ``refresh_data`` during a write group.
+  (Andrew Bennetts, #574236)
 
 Internals
 *********
