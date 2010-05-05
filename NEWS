@@ -69,6 +69,10 @@ Bug Fixes
   versions before 1.6.
   (Andrew Bennetts, #528041)
 
+* Heavyweight checkout operation now shows a message to the user indicating
+  history is being copied.
+  (Parth Malwankar, #538868)
+
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
