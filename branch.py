@@ -329,6 +329,12 @@ class LocalGitBranch(GitBranch):
 
 class GitBranchPullResult(branch.PullResult):
 
+    def __init__(self):
+        super(GitBranchPullResult, self).__init__()
+        self.new_git_head = None
+        self._old_revno = None
+        self._new_revno = None
+
     def report(self, to_file):
         if not is_quiet():
             if self.old_revid == self.new_revid:
@@ -339,6 +345,35 @@ class GitBranchPullResult(branch.PullResult):
             else:
                 to_file.write('Now on revision %d.\n' % (self.new_revno,))
         self._show_tag_conficts(to_file)
+
+    def _lookup_revno(self, revid):
+        assert isinstance(revid, str), "was %r" % revid
+        # Try in source branch first, it'll be faster
+        try:
+            return self.source_branch.revision_id_to_revno(revid)
+        except errors.NoSuchRevision:
+            # FIXME: Check using graph.find_distance_to_null() ?
+            return self.target_branch.revision_id_to_revno(revid)
+
+    def _get_old_revno(self):
+        if self._old_revno is not None:
+            return self._old_revno
+        return self._lookup_revno(self.old_revid)
+
+    def _set_old_revno(self, revno):
+        self._old_revno = revno
+
+    old_revno = property(_get_old_revno, _set_old_revno)
+
+    def _get_new_revno(self):
+        if self._new_revno is not None:
+            return self._new_revno
+        return self._lookup_revno(self.new_revid)
+
+    def _set_new_revno(self, revno):
+        self._new_revno = revno
+    
+    new_revno = property(_get_new_revno, _set_new_revno)
 
 
 class GitBranchPushResult(branch.BranchPushResult):
@@ -579,6 +614,26 @@ class InterToGitBranch(branch.InterBranch):
 
     def update_revisions(self, *args, **kwargs):
         raise NoPushSupport()
+
+    def pull(self, overwrite=False, stop_revision=None, local=False,
+             possible_transports=None):
+        from dulwich.protocol import ZERO_SHA
+        result = GitBranchPullResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        if stop_revision is None:
+            stop_revision = self.source.last_revision()
+        # FIXME: Check for diverged branches
+        refs = { self.target.ref: stop_revision }
+        for name, revid in self.source.tags.get_tag_dict().iteritems():
+            if self.source.repository.has_revision(revid):
+                refs[tag_name_to_ref(name)] = revid
+        old_refs = self.target.repository._git.get_refs()
+        self.target.repository.fetch_refs(self.source.repository, refs)
+        result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
+            old_refs.get(self.target.ref, ZERO_SHA))
+        result.new_revid = refs[self.target.ref]
+        return result
 
     def push(self, overwrite=True, stop_revision=None,
              _override_hook_source_branch=None):
