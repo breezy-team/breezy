@@ -631,8 +631,9 @@ class InterToGitBranch(branch.InterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         # FIXME: Check for diverged branches
-        refs = self._get_new_refs(stop_revision)
         old_refs = self.target.repository._git.get_refs()
+        refs = dict(old_refs)
+        refs.update(self._get_new_refs(stop_revision))
         self.target.repository.fetch_refs(self.source.repository, refs)
         result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
             old_refs.get(self.target.ref, ZERO_SHA))
@@ -646,8 +647,9 @@ class InterToGitBranch(branch.InterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         # FIXME: Check for diverged branches
-        refs = self._get_new_refs(stop_revision)
         old_refs = self.target.repository._git.get_refs()
+        refs = dict(old_refs)
+        refs.update(self._get_new_refs(stop_revision))
         self.target.repository.fetch_refs(self.source.repository, refs)
         result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
             old_refs.get(self.target.ref, ZERO_SHA))

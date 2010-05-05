@@ -133,12 +133,12 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def dfetch_refs(self, refs):
         old_refs = self.target._git.get_refs()
-        new_refs = {}
+        new_refs = dict(old_refs)
         revidmap, gitidmap = self.dfetch(refs.values())
         for name, revid in refs.iteritems():
-            if revid in gitidmap:
+            try:
                 gitid = gitidmap[revid]
-            else:
+            except KeyError:
                 gitid = self.source_store._lookup_revision_sha1(revid)
             self.target._git.refs[name] = gitid
             new_refs[name] = gitid
