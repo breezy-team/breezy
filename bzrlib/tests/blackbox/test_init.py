@@ -206,6 +206,11 @@ class TestSFTPInit(TestCaseWithSFTPServer):
     def test_init_without_username(self):
         """Ensure init works if username is not set.
         """
+        # bzr makes user specified whoami mandatory for operations
+        # like commit as whoami is recorded. init however is not so final
+        # and uses whoami only in a lock file. Without whoami the login name
+        # is used. This test is to ensure that init passes even when whoami
+        # is not available.
         osutils.set_or_unset_env('EMAIL', None)
         osutils.set_or_unset_env('BZR_EMAIL', None)
         out, err = self.run_bzr(['init', 'foo'])

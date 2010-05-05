@@ -150,6 +150,11 @@ Location:
     def test_init_repo_without_username(self):
         """Ensure init-repo works if username is not set.
         """
+        # bzr makes user specified whoami mandatory for operations
+        # like commit as whoami is recorded. init-repo however is not so final
+        # and uses whoami only in a lock file. Without whoami the login name
+        # is used. This test is to ensure that init-repo passes even when whoami
+        # is not available.
         osutils.set_or_unset_env('EMAIL', None)
         osutils.set_or_unset_env('BZR_EMAIL', None)
         out, err = self.run_bzr(['init-repo', 'foo'])
