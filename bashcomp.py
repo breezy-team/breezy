@@ -156,6 +156,7 @@ complete -F %(function_name)s -o default bzr
             "global_options": self.global_options(),
             "debug": self.debug_output(),
         })
+        # Help Emacs terminate strings: "'
 
     def command_names(self):
         return " ".join(self.data.all_command_aliases())
