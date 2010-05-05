@@ -38,6 +38,7 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
+    IsInWriteGroupError,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
@@ -210,6 +211,8 @@ class KnitRepository(MetaDirRepository):
     def _refresh_data(self):
         if not self.is_locked():
             return
+        if self.is_in_write_group():
+            raise IsInWriteGroupError(self)
         # Create a new transaction to force all knits to see the scope change.
         # This is safe because we're outside a write group.
         self.control_files._finish_transaction()
