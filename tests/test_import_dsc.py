@@ -746,15 +746,28 @@ class DistributionBranchTests(BuilddebTestCase):
         check_one_type("modified", modified, changes.modified)
         check_one_type("renamed", renamed, changes.renamed)
 
-    def test_import_upstream(self):
+    def import_a_tree(self, contents=None):
+        """Import a tree from disk."""
         version = Version("0.1-1")
         name = "package"
         basedir = name + "-" + str(version.upstream_version)
-        os.mkdir(basedir)
-        write_to_file(os.path.join(basedir, "README"), "Hi\n")
-        write_to_file(os.path.join(basedir, "BUGS"), "")
+        if contents is None:
+            contents = [
+                (basedir + '/',),
+                (os.path.join(basedir, "README"), "Hi\n"),
+                (os.path.join(basedir, "BUGS"), ""),
+                ]
+        else:
+            # add basedir to the contents
+            contents = [(basedir + '/' + element[0],) + element[1:] for
+                element in contents]
+        self.build_tree_contents(contents)
         self.db1.import_upstream(basedir, version.upstream_version, 
             self.fake_md5_1, [])
+        return version
+
+    def test_import_upstream(self):
+        version = self.import_a_tree()
         tree = self.up_tree1
         branch = tree.branch
         rh = branch.revision_history()
@@ -765,6 +778,15 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(rev.message,
                 "Import upstream version %s" % str(version.upstream_version))
         self.assertEqual(rev.properties['deb-md5'], self.fake_md5_1)
+
+    def test_import_upstream_preserves_dot_bzrignore(self):
+        self.import_a_tree([('',), ('.bzrignore', '')])
+        branch = self.up_tree1.branch
+        branch.lock_read()
+        self.addCleanup(branch.unlock)
+        tip = branch.last_revision()
+        revtree = branch.repository.revision_tree(tip)
+        self.assertNotEqual(None, revtree.path2id('.bzrignore'))
 
     def test_import_upstream_on_another(self):
         version1 = Version("0.1-1")
