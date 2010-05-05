@@ -257,8 +257,7 @@ class Config(object):
 
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-        $BZR_EMAIL can be set to override this (as well as the
-        deprecated $BZREMAIL), then
+        $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If none is found, a reasonable default is (hopefully)
@@ -278,11 +277,14 @@ class Config(object):
         if v:
             return v.decode(osutils.get_user_encoding())
 
-        name, email = _auto_user_id()
-        if name:
-            return '%s <%s>' % (name, email)
-        else:
-            return email
+        raise errors.NoWhoami()
+
+    def ensure_username(self):
+        """Raise BzrCommandError if username is not set.
+
+        This method relies on the username() function raising the error.
+        """
+        self.username()
 
     def signature_checking(self):
         """What is the current policy for signature checking?."""
@@ -897,79 +899,6 @@ def xdg_cache_dir():
         return e
     else:
         return os.path.expanduser('~/.cache')
-
-
-def _auto_user_id():
-    """Calculate automatic user identification.
-
-    Returns (realname, email).
-
-    Only used when none is set in the environment or the id file.
-
-    This previously used the FQDN as the default domain, but that can
-    be very slow on machines where DNS is broken.  So now we simply
-    use the hostname.
-    """
-    import socket
-
-    if sys.platform == 'win32':
-        name = win32utils.get_user_name_unicode()
-        if name is None:
-            raise errors.BzrError("Cannot autodetect user name.\n"
-                                  "Please, set your name with command like:\n"
-                                  'bzr whoami "Your Name <name@domain.com>"')
-        host = win32utils.get_host_name_unicode()
-        if host is None:
-            host = socket.gethostname()
-        return name, (name + '@' + host)
-
-    try:
-        import pwd
-        uid = os.getuid()
-        try:
-            w = pwd.getpwuid(uid)
-        except KeyError:
-            raise errors.BzrCommandError('Unable to determine your name.  '
-                'Please use "bzr whoami" to set it.')
-
-        # we try utf-8 first, because on many variants (like Linux),
-        # /etc/passwd "should" be in utf-8, and because it's unlikely to give
-        # false positives.  (many users will have their user encoding set to
-        # latin-1, which cannot raise UnicodeError.)
-        try:
-            gecos = w.pw_gecos.decode('utf-8')
-            encoding = 'utf-8'
-        except UnicodeError:
-            try:
-                encoding = osutils.get_user_encoding()
-                gecos = w.pw_gecos.decode(encoding)
-            except UnicodeError:
-                raise errors.BzrCommandError('Unable to determine your name.  '
-                   'Use "bzr whoami" to set it.')
-        try:
-            username = w.pw_name.decode(encoding)
-        except UnicodeError:
-            raise errors.BzrCommandError('Unable to determine your name.  '
-                'Use "bzr whoami" to set it.')
-
-        comma = gecos.find(',')
-        if comma == -1:
-            realname = gecos
-        else:
-            realname = gecos[:comma]
-        if not realname:
-            realname = username
-
-    except ImportError:
-        import getpass
-        try:
-            user_encoding = osutils.get_user_encoding()
-            realname = username = getpass.getuser().decode(user_encoding)
-        except UnicodeDecodeError:
-            raise errors.BzrError("Can't decode username as %s." % \
-                    user_encoding)
-
-    return realname, (username + '@' + socket.gethostname())
 
 
 def parse_username(username):
