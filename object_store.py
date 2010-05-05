@@ -32,6 +32,10 @@ from bzrlib import (
     ui,
     urlutils,
     )
+from bzrlib.inventory import (
+    InventoryDirectory,
+    ROOT_ID,
+    )
 from bzrlib.revision import (
     NULL_REVISION,
     )
@@ -343,16 +347,21 @@ class BazaarObjectStore(BaseObjectStore):
         root_tree = None
         for path, obj, ie in _tree_to_objects(tree, parent_trees,
                 self._cache.idmap, unusual_modes, self.mapping.BZR_DUMMY_FILE):
-            yield path, obj, ie
             if path == "":
                 root_tree = obj
+                root_ie = ie
+                # Don't yield just yet
+            else:
+                yield path, obj, ie
         if root_tree is None:
             # Pointless commit - get the tree sha elsewhere
             if not rev.parent_ids:
                 root_tree = Tree()
+                root_ie = InventoryDirectory(ROOT_ID, '', None)
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[base_sha1]
+                root_ie = tree.inventory.root
         if roundtrip:
             # FIXME: This can probably be a lot more efficient...
             file_ids = {}
@@ -363,6 +372,7 @@ class BazaarObjectStore(BaseObjectStore):
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None
+        yield "", root_tree, root_ie
         commit_obj = self._reconstruct_commit(rev, root_tree.id, roundtrip=roundtrip)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
