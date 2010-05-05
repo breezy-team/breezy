@@ -18,7 +18,7 @@
 
 from bzrlib import (
     errors,
-    remote,
+    repository,
     )
 from bzrlib.tests import TestSkipped
 from bzrlib.tests.per_repository import TestCaseWithRepository
@@ -45,22 +45,34 @@ class TestRefreshData(TestCaseWithRepository):
         self.addCleanup(repo.unlock)
         repo.refresh_data()
 
-    def test_refresh_data_in_write_group_errors(self):
+    def test_refresh_data_in_write_group(self):
+        # refresh_data may either succeed or raise IsInWriteGroupError during a
+        # write group.
         repo = self.make_repository('.')
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         self.addCleanup(repo.abort_write_group)
-        # No flow control anticipated, BzrError is enough
-        self.assertRaises(errors.BzrError, repo.refresh_data)
+        try:
+            repo.refresh_data()
+        except repository.IsInWriteGroupError:
+            # This is ok.
+            pass
+        else:
+            # This is ok too.
+            pass
 
-    def test_refresh_data_after_fetch_new_data_visible(self):
-        source = self.make_branch_and_tree('source')
-        revid = source.commit('foo')
-        repo = self.make_repository('target')
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+    def fetch_new_revision_into_concurrent_instance(self, repo, token):
+        """Create a new revision (revid 'new-rev') and fetch it into a
+        concurrent instance of repo.
+        """
+        source = self.make_branch_and_memory_tree('source')
+        source.lock_write()
+        self.addCleanup(source.unlock)
+        source.add([''], ['root-id'])
+        revid = source.commit('foo', rev_id='new-rev')
         # Force data reading on weaves/knits
+        repo.all_revision_ids()
         repo.revisions.keys()
         repo.inventories.keys()
         # server repo is the instance a smart server might hold for this
@@ -75,5 +87,34 @@ class TestRefreshData(TestCaseWithRepository):
             server_repo.fetch(source.branch.repository, revid)
         finally:
             server_repo.unlock()
+
+    def test_refresh_data_after_fetch_new_data_visible(self):
+        repo = self.make_repository('target')
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        self.fetch_new_revision_into_concurrent_instance(repo, token)
         repo.refresh_data()
-        self.assertNotEqual({}, repo.get_graph().get_parent_map([revid]))
+        self.assertNotEqual({}, repo.get_graph().get_parent_map(['new-rev']))
+
+    def test_refresh_data_after_fetch_new_data_visible_in_write_group(self):
+        tree = self.make_branch_and_memory_tree('target')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.add([''], ['root-id'])
+        tree.commit('foo', rev_id='commit-in-target')
+        repo = tree.branch.repository
+        token = repo.lock_write()
+        self.addCleanup(repo.unlock)
+        repo.start_write_group()
+        self.addCleanup(repo.abort_write_group)
+        self.fetch_new_revision_into_concurrent_instance(repo, token)
+        # Call refresh_data.  It either fails with IsInWriteGroupError, or it
+        # succeeds and the new revisions are visible.
+        try:
+            repo.refresh_data()
+        except repository.IsInWriteGroupError:
+            pass
+        else:
+            self.assertEqual(
+                ['commit-in-target', 'new-rev'],
+                sorted(repo.all_revision_ids()))

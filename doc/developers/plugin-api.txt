@@ -186,9 +186,8 @@ plugins``.  As with all Python docstrings, the first line should be a
 short complete sentence summarizing the plugin.  The full docstring is
 shown by ``bzr help PLUGIN_NAME``.
 
-Remember that to be effective, the module docstring must be the first
-statement in the file.  It may come after comments but it must be before
-any import statements.
+This is a user-visible docstring so should be prefixed with ``__doc__ =``
+to ensure help works under ``python -OO`` with docstrings stripped.
 
 API version
 -----------

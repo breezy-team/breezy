@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ from bzrlib.trace import note
 
 
 class cmd_bundle_info(Command):
-    """Output interesting stats about a bundle"""
+    __doc__ = """Output interesting stats about a bundle"""
 
     hidden = True
     takes_args = ['location']

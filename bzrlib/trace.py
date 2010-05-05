@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -111,6 +111,12 @@ _bzr_logger = logging.getLogger('bzr')
 
 
 def note(*args, **kwargs):
+    """Output a note to the user.
+
+    Takes the same parameters as logging.info.
+
+    :return: None
+    """
     # FIXME note always emits utf-8, regardless of the terminal encoding
     #
     # FIXME: clearing the ui and then going through the abstract logging
@@ -238,12 +244,37 @@ def _open_bzr_log():
     This sets the global _bzr_log_filename.
     """
     global _bzr_log_filename
+
+    def _open_or_create_log_file(filename):
+        """Open existing log file, or create with ownership and permissions
+
+        It inherits the ownership and permissions (masked by umask) from
+        the containing directory to cope better with being run under sudo
+        with $HOME still set to the user's homedir.
+        """
+        flags = os.O_WRONLY | os.O_APPEND | osutils.O_TEXT
+        while True:
+            try:
+                fd = os.open(filename, flags)
+                break
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+            try:
+                fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0666)
+            except OSError, e:
+                if e.errno != errno.EEXIST:
+                    raise
+            else:
+                osutils.copy_ownership_from_path(filename)
+                break
+        return os.fdopen(fd, 'at', 0) # unbuffered
+
+
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        buffering = 0 # unbuffered
-        bzr_log_file = osutils.open_with_ownership(_bzr_log_filename, 'at', buffering)
-        # bzr_log_file.tell() on windows always return 0 until some writing done
+        bzr_log_file = _open_or_create_log_file(_bzr_log_filename)
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
             bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")
@@ -252,7 +283,7 @@ def _open_bzr_log():
 
         return bzr_log_file
 
-    except IOError, e:
+    except EnvironmentError, e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
         # 'warning()'. If we using warning(), users get the unhelpful 'no

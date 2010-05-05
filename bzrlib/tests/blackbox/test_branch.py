@@ -217,6 +217,36 @@ class TestBranch(ExternalBase):
         b = branch.Branch.open('b')
         self.assertEndsWith(b.get_bound_location(), '/a/')
 
+    def test_branch_with_post_branch_init_hook(self):
+        calls = []
+        branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        self.example_branch('a')
+        self.assertLength(1, calls)
+        self.run_bzr('branch a b')
+        self.assertLength(2, calls)
+
+    def test_checkout_with_post_branch_init_hook(self):
+        calls = []
+        branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        self.example_branch('a')
+        self.assertLength(1, calls)
+        self.run_bzr('checkout a b')
+        self.assertLength(2, calls)
+
+    def test_lightweight_checkout_with_post_branch_init_hook(self):
+        calls = []
+        branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        self.example_branch('a')
+        self.assertLength(1, calls)
+        self.run_bzr('checkout --lightweight a b')
+        self.assertLength(2, calls)
+
 
 class TestBranchStacked(ExternalBase):
     """Tests for branch --stacked"""
@@ -325,6 +355,8 @@ class TestBranchStacked(ExternalBase):
             '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
+            'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
+            'This may take some time. Upgrade the repositories to the same format for better performance.\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 
@@ -338,6 +370,8 @@ class TestBranchStacked(ExternalBase):
             '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
+            'Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n'
+            'This may take some time. Upgrade the repositories to the same format for better performance.\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 

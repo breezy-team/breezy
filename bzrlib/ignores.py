@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,65 +25,7 @@ from bzrlib import (
     globbing,
     )
 
-# This was the full ignore list for bzr 0.8
-# please keep these sorted (in C locale order) to aid merging
-OLD_DEFAULTS = [
-    '#*#',
-    '*$',
-    '*,v',
-    '*.BAK',
-    '*.a',
-    '*.bak',
-    '*.elc',
-    '*.exe',
-    '*.la',
-    '*.lo',
-    '*.o',
-    '*.obj',
-    '*.orig',
-    '*.py[oc]',
-    '*.so',
-    '*.tmp',
-    '*~',
-    '.#*',
-    '.*.sw[nop]',
-    '.*.tmp',
-    # Our setup tests dump .python-eggs in the bzr source tree root
-    './.python-eggs',
-    '.DS_Store',
-    '.arch-ids',
-    '.arch-inventory',
-    '.bzr.log',
-    '.del-*',
-    '.git',
-    '.hg',
-    '.jamdeps'
-    '.libs',
-    '.make.state',
-    '.sconsign*',
-    '.svn',
-    '.sw[nop]',    # vim editing nameless file
-    '.tmp*',
-    'BitKeeper',
-    'CVS',
-    'CVS.adm',
-    'RCS',
-    'SCCS',
-    'TAGS',
-    '_darcs',
-    'aclocal.m4',
-    'autom4te*',
-    'config.h',
-    'config.h.in',
-    'config.log',
-    'config.status',
-    'config.sub',
-    'stamp-h',
-    'stamp-h.in',
-    'stamp-h1',
-    '{arch}',
-]
-
+from trace import warning
 
 # ~/.bazaar/ignore will be filled out using
 # this ignore list, if it does not exist
@@ -100,10 +42,34 @@ USER_DEFAULTS = [
 ]
 
 
+
 def parse_ignore_file(f):
-    """Read in all of the lines in the file and turn it into an ignore list"""
+    """Read in all of the lines in the file and turn it into an ignore list
+    
+    Continue in the case of utf8 decoding errors, and emit a warning when 
+    such and error is found. Optimise for the common case -- no decoding 
+    errors.
+    """
     ignored = set()
-    for line in f.read().decode('utf8').split('\n'):
+    ignore_file = f.read()
+    try:
+        # Try and parse whole ignore file at once.
+        unicode_lines = ignore_file.decode('utf8').split('\n')
+    except UnicodeDecodeError:
+        # Otherwise go though line by line and pick out the 'good'
+        # decodable lines
+        lines = ignore_file.split('\n')
+        unicode_lines = []
+        for line_number, line in enumerate(lines):
+            try:
+                unicode_lines.append(line.decode('utf-8'))
+            except UnicodeDecodeError:
+                # report error about line (idx+1)
+                warning('.bzrignore: On Line #%d, malformed utf8 character. '
+                        'Ignoring line.' % (line_number+1))
+
+    # Append each line to ignore list if it's not a comment line
+    for line in unicode_lines:
         line = line.rstrip('\r\n')
         if not line or line.startswith('#'):
             continue
@@ -210,10 +176,11 @@ def get_runtime_ignores():
 
 
 def tree_ignores_add_patterns(tree, name_pattern_list):
-    """Retrieve a list of ignores from the ignore file in a tree.
+    """Add more ignore patterns to the ignore file in a tree.
+    If ignore file does not exist then it will be created.
+    The ignore file will be automatically added under version control.
 
-    :param tree: Tree to retrieve the ignore list from.
-    :return:
+    :param tree: Working tree to update the ignore list.
     """
     ifn = tree.abspath(bzrlib.IGNORE_FILENAME)
     if tree.has_filename(ifn):
@@ -240,5 +207,5 @@ def tree_ignores_add_patterns(tree, name_pattern_list):
     finally:
         f.close()
 
-    if not tree.path2id('.bzrignore'):
-        tree.add(['.bzrignore'])
+    if not tree.path2id(bzrlib.IGNORE_FILENAME):
+        tree.add([bzrlib.IGNORE_FILENAME])

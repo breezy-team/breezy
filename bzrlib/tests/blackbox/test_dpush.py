@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -153,20 +153,6 @@ class TestDpushStrictMixin(object):
         conf.set_user_option('dpush_strict', value)
 
     _default_command = ['dpush', '../to']
-    _default_pushed_revid = False # Doesn't aplly for dpush
-
-    def assertPushSucceeds(self, args, pushed_revid=None):
-        self.run_bzr(self._default_command + args,
-                     working_dir=self._default_wd)
-        if pushed_revid is None:
-            # dpush change the revids, so we need to get back to it
-            branch_from = branch.Branch.open(self._default_wd)
-            pushed_revid = branch_from.last_revision()
-        branch_to = branch.Branch.open('to')
-        repo_to = branch_to.repository
-        self.assertTrue(repo_to.has_revision(pushed_revid))
-        self.assertEqual(branch_to.last_revision(), pushed_revid)
-
 
 
 class TestDpushStrictWithoutChanges(TestDpushStrictMixin,

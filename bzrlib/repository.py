@@ -26,7 +26,6 @@ from bzrlib import (
     chk_map,
     config,
     debug,
-    errors,
     fetch as _mod_fetch,
     fifo_cache,
     generate_ids,
@@ -40,6 +39,7 @@ from bzrlib import (
     lru_cache,
     osutils,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
     trace,
     tsort,
@@ -61,13 +61,24 @@ from bzrlib.inventory import (
     entry_factory,
     )
 from bzrlib.lock import _RelockDebugMixin
-from bzrlib import registry
+from bzrlib import (
+    errors,
+    registry,
+    )
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
+
+
+class IsInWriteGroupError(errors.InternalBzrError):
+
+    _fmt = "May not refresh_data of repo %(repo)s while in a write group."
+
+    def __init__(self, repo):
+        errors.InternalBzrError.__init__(self, repo=repo)
 
 
 class CommitBuilder(object):
@@ -863,7 +874,7 @@ class RootCommitBuilder(CommitBuilder):
 # Repositories
 
 
-class Repository(_RelockDebugMixin):
+class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1290,11 +1301,10 @@ class Repository(_RelockDebugMixin):
 
         :param _format: The format of the repository on disk.
         :param a_bzrdir: The BzrDir of the repository.
-
-        In the future we will have a single api for all stores for
-        getting file texts, inventories and revisions, then
-        this construct will accept instances of those things.
         """
+        # In the future we will have a single api for all stores for
+        # getting file texts, inventories and revisions, then
+        # this construct will accept instances of those things.
         super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
@@ -1314,6 +1324,14 @@ class Repository(_RelockDebugMixin):
         # Is it safe to return inventory entries directly from the entry cache,
         # rather copying them?
         self._safe_to_return_from_cache = False
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def __repr__(self):
         if self._fallback_repositories:
@@ -1468,7 +1486,7 @@ class Repository(_RelockDebugMixin):
 
         # now gather global repository information
         # XXX: This is available for many repos regardless of listability.
-        if self.bzrdir.root_transport.listable():
+        if self.user_transport.listable():
             # XXX: do we want to __define len__() ?
             # Maybe the versionedfiles object should provide a different
             # method to get the number of keys.
@@ -1506,7 +1524,7 @@ class Repository(_RelockDebugMixin):
 
         ret = []
         for branches, repository in bzrdir.BzrDir.find_bzrdirs(
-                self.bzrdir.root_transport, evaluate=Evaluator()):
+                self.user_transport, evaluate=Evaluator()):
             if branches is not None:
                 ret.extend(branches)
             if not using and repository is not None:
@@ -1626,16 +1644,16 @@ class Repository(_RelockDebugMixin):
         return missing_keys
 
     def refresh_data(self):
-        """Re-read any data needed to to synchronise with disk.
+        """Re-read any data needed to synchronise with disk.
 
         This method is intended to be called after another repository instance
         (such as one used by a smart server) has inserted data into the
-        repository. It may not be called during a write group, but may be
-        called at any other time.
+        repository. On all repositories this will work outside of write groups.
+        Some repository formats (pack and newer for bzrlib native formats)
+        support refresh_data inside write groups. If called inside a write
+        group on a repository that does not support refreshing in a write group
+        IsInWriteGroupError will be raised.
         """
-        if self.is_in_write_group():
-            raise errors.InternalBzrError(
-                "May not refresh_data while in a write group.")
         self._refresh_data()
 
     def resume_write_group(self, tokens):
@@ -2580,7 +2598,7 @@ class Repository(_RelockDebugMixin):
             keys = tsort.topo_sort(parent_map)
         return [None] + list(keys)
 
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This operation only makes sense for some repository types. For other
@@ -2596,6 +2614,9 @@ class Repository(_RelockDebugMixin):
             obtained from the result of commit_write_group(). Out of
             date hints are simply ignored, because concurrent operations
             can obsolete them rapidly.
+
+        :param clean_obsolete_packs: Clean obsolete packs immediately after
+            the pack operation.
         """
 
     def get_transaction(self):
@@ -2625,6 +2646,15 @@ class Repository(_RelockDebugMixin):
 
     def _make_parents_provider(self):
         return self
+
+    @needs_read_lock
+    def get_known_graph_ancestry(self, revision_ids):
+        """Return the known graph for a set of revision ids and their ancestors.
+        """
+        st = static_tuple.StaticTuple
+        revision_keys = [st(r_id).intern() for r_id in revision_ids]
+        known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
+        return graph.GraphThunkIdsToKeys(known_graph)
 
     def get_graph(self, other_repository=None):
         """Return the graph walker for this repository format"""
@@ -3033,8 +3063,8 @@ class RepositoryFormat(object):
     # Is the format experimental ?
     experimental = False
 
-    def __str__(self):
-        return "<%s>" % self.__class__.__name__
+    def __repr__(self):
+        return "%s()" % self.__class__.__name__
 
     def __eq__(self, other):
         # format objects are generally stateless
@@ -3157,6 +3187,15 @@ class RepositoryFormat(object):
         _found is a private parameter, do not use it.
         """
         raise NotImplementedError(self.open)
+
+    def _run_post_repo_init_hooks(self, repository, a_bzrdir, shared):
+        from bzrlib.bzrdir import BzrDir, RepoInitHookParams
+        hooks = BzrDir.hooks['post_repo_init']
+        if not hooks:
+            return
+        params = RepoInitHookParams(repository, self, a_bzrdir, shared)
+        for hook in hooks:
+            hook(params)
 
 
 class MetaDirRepositoryFormat(RepositoryFormat):
@@ -3372,7 +3411,13 @@ class InterRepository(InterObject):
         :return: None.
         """
         ui.ui_factory.warn_experimental_format_fetch(self)
-        f = _mod_fetch.RepoFetcher(to_repository=self.target,
+        from bzrlib.fetch import RepoFetcher
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        if self.source._format.network_name() != self.target._format.network_name():
+            ui.ui_factory.show_user_warning('cross_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
+        f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                fetch_spec=fetch_spec,
@@ -3956,12 +4001,6 @@ class InterDifferingSerializer(InterRepository):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             raise AssertionError("Not implemented yet...")
-        # See <https://launchpad.net/bugs/456077> asking for a warning here
-        #
-        # nb this is only active for local-local fetches; other things using
-        # streaming.
-        ui.ui_factory.warn_cross_format_fetch(self.source._format,
-            self.target._format)
         ui.ui_factory.warn_experimental_format_fetch(self)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
@@ -3969,6 +4008,11 @@ class InterDifferingSerializer(InterRepository):
             self._revision_id_to_root_id = {}
         else:
             self._converting_to_rich_root = False
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        if self.source._format.network_name() != self.target._format.network_name():
+            ui.ui_factory.show_user_warning('cross_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
@@ -4257,8 +4301,6 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
-                ui.ui_factory.warn_cross_format_fetch(src_format,
-                    self.target_repo._format)
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':

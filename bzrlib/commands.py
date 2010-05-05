@@ -182,10 +182,7 @@ def _register_builtin_commands():
     import bzrlib.builtins
     for cmd_class in _scan_module_for_commands(bzrlib.builtins).values():
         builtin_command_registry.register(cmd_class)
-    # lazy builtins
-    builtin_command_registry.register_lazy('cmd_bundle_info',
-        [],
-        'bzrlib.bundle.commands')
+    bzrlib.builtins._register_lazy_builtins()
 
 
 def _scan_module_for_commands(module):
@@ -414,7 +411,7 @@ class Command(object):
             warn("No help message set for %r" % self)
         # List of standard options directly supported
         self.supported_std_options = []
-        self._operation = cleanup.OperationWithCleanups(self.run)
+        self._setup_run()
 
     def add_cleanup(self, cleanup_func, *args, **kwargs):
         """Register a function to call after self.run returns or raises.
@@ -432,7 +429,9 @@ class Command(object):
 
         This is useful for releasing expensive or contentious resources (such
         as write locks) before doing further work that does not require those
-        resources (such as writing results to self.outf).
+        resources (such as writing results to self.outf). Note though, that
+        as it releases all resources, this may release locks that the command
+        wants to hold, so use should be done with care.
         """
         self._operation.cleanup_now()
 
@@ -683,11 +682,30 @@ class Command(object):
 
         self._setup_outf()
 
-        return self.run_direct(**all_cmd_args)
+        return self.run(**all_cmd_args)
 
+    def _setup_run(self):
+        """Wrap the defined run method on self with a cleanup.
+
+        This is called by __init__ to make the Command be able to be run
+        by just calling run(), as it could be before cleanups were added.
+
+        If a different form of cleanups are in use by your Command subclass,
+        you can override this method.
+        """
+        class_run = self.run
+        def run(*args, **kwargs):
+            self._operation = cleanup.OperationWithCleanups(class_run)
+            try:
+                return self._operation.run_simple(*args, **kwargs)
+            finally:
+                del self._operation
+        self.run = run
+
+    @deprecated_method(deprecated_in((2, 2, 0)))
     def run_direct(self, *args, **kwargs):
-        """Call run directly with objects (without parsing an argv list)."""
-        return self._operation.run_simple(*args, **kwargs)
+        """Deprecated thunk from bzrlib 2.1."""
+        return self.run(*args, **kwargs)
 
     def run(self):
         """Actually run the command.
@@ -698,6 +716,17 @@ class Command(object):
         Return 0 or None if the command was successful, or a non-zero
         shell error code if not.  It's OK for this method to allow
         an exception to raise up.
+
+        This method is automatically wrapped by Command.__init__ with a 
+        cleanup operation, stored as self._operation. This can be used
+        via self.add_cleanup to perform automatic cleanups at the end of
+        run().
+
+        The argument for run are assembled by introspection. So for instance,
+        if your command takes an argument files, you would declare::
+
+            def run(self, files=None):
+                pass
         """
         raise NotImplementedError('no implementation of command %r'
                                   % self.name())
@@ -1048,15 +1077,9 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     if not opt_no_aliases:
         alias_argv = get_alias(argv[0])
         if alias_argv:
-            user_encoding = osutils.get_user_encoding()
-            alias_argv = [a.decode(user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
     cmd = argv.pop(0)
-    # We want only 'ascii' command names, but the user may have typed
-    # in a Unicode name. In that case, they should just get a
-    # 'command not found' error later.
-
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
     run = cmd_obj.run_argv_aliases
     run_argv = [argv, alias_argv]

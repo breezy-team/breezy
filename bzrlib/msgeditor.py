@@ -18,7 +18,6 @@
 """Commit message editor support."""
 
 import codecs
-import errno
 import os
 from subprocess import call
 import sys
@@ -27,6 +26,8 @@ from bzrlib import (
     config,
     osutils,
     trace,
+    transport,
+    ui,
     )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
 from bzrlib.hooks import HookPoint, Hooks
@@ -139,10 +140,21 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     try:
         msgfilename, hasinfo = _create_temp_file_with_commit_template(
                                     infotext, ignoreline, start_message)
-
-        if not msgfilename or not _run_editor(msgfilename):
+        if not msgfilename:
             return None
-
+        basename = osutils.basename(msgfilename)
+        msg_transport = transport.get_transport(osutils.dirname(msgfilename))
+        reference_content = msg_transport.get_bytes(basename)
+        if not _run_editor(msgfilename):
+            return None
+        edited_content = msg_transport.get_bytes(basename)
+        if edited_content == reference_content:
+            if not ui.ui_factory.get_boolean(
+                "Commit message was not edited, use anyway"):
+                # Returning "" makes cmd_commit raise 'empty commit message
+                # specified' which is a reasonable error, given the user has
+                # rejected using the unedited template.
+                return ""
         started = False
         msg = []
         lastline, nlines = 0, 0

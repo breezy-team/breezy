@@ -27,7 +27,6 @@ from bzrlib import (
     osutils,
     trace,
     )
-from bzrlib.branch import Branch
 
 
 def show_version(show_config=True, show_copyright=True, to_file=None):

@@ -110,20 +110,11 @@ def send(submit_branch, revision, public_branch, remember, format,
             if len(revision) == 2:
                 base_revision_id = revision[0].as_revision_id(branch)
         if revision_id is None:
-            if strict is None:
-                strict = branch.get_config(
-                    ).get_user_option_as_bool('send_strict')
-            if strict is None: strict = True # default value
-            if strict and tree is not None:
-                if (tree.has_changes()):
-                    raise errors.UncommittedChanges(
-                        tree, more='Use --no-strict to force the send.')
-                if tree.last_revision() != tree.branch.last_revision():
-                    # The tree has lost sync with its branch, there is little
-                    # chance that the user is aware of it but he can still force
-                    # the send with --no-strict
-                    raise errors.OutOfDateTree(
-                        tree, more='Use --no-strict to force the send.')
+            if tree is not None:
+                tree.check_changed_or_out_of_date(
+                    strict, 'send_strict',
+                    more_error='Use --no-strict to force the send.',
+                    more_warning='Uncommitted changes will not be sent.')
             revision_id = branch.last_revision()
         if revision_id == NULL_REVISION:
             raise errors.BzrCommandError('No revisions to submit.')

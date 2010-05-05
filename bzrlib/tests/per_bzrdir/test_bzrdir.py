@@ -252,17 +252,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         bzrdir.create_branch()
         bzrdir.open_branch()
 
-    def test_destroy_colocated_branch(self):
-        branch = self.make_branch('branch')
-        bzrdir = branch.bzrdir
-        try:
-            colo_branch = bzrdir.create_branch('colo')
-        except errors.NoColocatedBranchSupport:
-            raise TestNotApplicable('BzrDir does not do colocated branches')
-        bzrdir.destroy_branch("colo")
-        self.assertRaises(errors.NotBranchError, bzrdir.open_branch, 
-                          "colo")
-
     def test_destroy_repository(self):
         repo = self.make_repository('repository')
         bzrdir = repo.bzrdir
@@ -1421,23 +1410,6 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
         self.assertEqual(made_control, made_branch.bzrdir)
 
-    def test_create_colo_branch(self):
-        # a bzrdir can construct a branch and repository for itself.
-        if not self.bzrdir_format.is_supported():
-            # unsupported formats are not loopback testable
-            # because the default open will not open them and
-            # they may not be initializable.
-            raise TestNotApplicable('Control dir format not supported')
-        t = get_transport(self.get_url())
-        made_control = self.bzrdir_format.initialize(t.base)
-        made_repo = made_control.create_repository()
-        try:
-            made_branch = made_control.create_branch("colo")
-        except errors.NoColocatedBranchSupport:
-            raise TestNotApplicable('Colocated branches not supported')
-        self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
-        self.assertEqual(made_control, made_branch.bzrdir)
-
     def test_open_branch(self):
         if not self.bzrdir_format.is_supported():
             # unsupported formats are not loopback testable
@@ -1999,3 +1971,15 @@ class ChrootedBzrDirTests(ChrootedTestCase):
         self.assertRaises(errors.NoRepositoryPresent,
                           made_control.find_repository)
 
+
+class TestBzrDirControlComponent(TestCaseWithBzrDir):
+    """BzrDir implementations adequately implement ControlComponent."""
+    
+    def test_urls(self):
+        bd = self.make_bzrdir('bd')
+        self.assertIsInstance(bd.user_url, str)
+        self.assertEqual(bd.user_url, bd.user_transport.base)
+        # for all current bzrdir implementations the user dir must be 
+        # above the control dir but we might need to relax that?
+        self.assertEqual(bd.control_url.find(bd.user_url), 0)
+        self.assertEqual(bd.control_url, bd.control_transport.base)

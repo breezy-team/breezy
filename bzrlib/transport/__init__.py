@@ -539,6 +539,9 @@ class Transport(object):
 
         This function will only be defined for Transports which have a
         physical local filesystem representation.
+
+        :raises errors.NotLocalUrl: When no local path representation is
+            available.
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
 
@@ -1065,7 +1068,6 @@ class Transport(object):
         # use mask to ensure that bits other than rwx are ignored.
         stat = self.stat(from_relpath)
         target.mkdir('.', stat.st_mode & 0777)
-
         source.copy_tree_to_transport(target)
 
     def copy_tree_to_transport(self, to_transport):

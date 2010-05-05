@@ -17,12 +17,10 @@
 import os
 import re
 import stat
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 import sys
 import time
 import codecs
-import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -39,7 +37,7 @@ import shutil
 from shutil import (
     rmtree,
     )
-import signal
+import socket
 import subprocess
 import tempfile
 from tempfile import (
@@ -50,11 +48,15 @@ import unicodedata
 from bzrlib import (
     cache_utf8,
     errors,
-    win32utils,
     trace,
+    win32utils,
     )
-
 """)
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 # sha and md5 modules are deprecated in python2.6 but hashlib is available as
 # of 2.5
@@ -358,6 +360,14 @@ def _win32_mkdtemp(*args, **kwargs):
     return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
 
 
+def _add_rename_error_details(e, old, new):
+    new_e = OSError(e.errno, "failed to rename %s to %s: %s"
+        % (old, new, e.strerror))
+    new_e.filename = old
+    new_e.to_filename = new
+    return new_e
+
+
 def _win32_rename(old, new):
     """We expect to be able to atomically replace 'new' with old.
 
@@ -365,7 +375,7 @@ def _win32_rename(old, new):
     and then deleted.
     """
     try:
-        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
+        fancy_rename(old, new, rename_func=_wrapped_rename, unlink_func=os.unlink)
     except OSError, e:
         if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
             # If we try to rename a non-existant file onto cwd, we get
@@ -374,6 +384,16 @@ def _win32_rename(old, new):
             # On Linux, we seem to get EBUSY, on Mac we get EINVAL
             os.lstat(old)
         raise
+
+
+def _wrapped_rename(old, new):
+    """Rename a file or directory"""
+    try:
+        os.rename(old, new)
+    except (IOError, OSError), e:
+        # this is eventually called by all rename-like functions, so should 
+        # catch all of them
+        raise _add_rename_error_details(e, old, new)
 
 
 def _mac_getcwd():
@@ -386,8 +406,8 @@ abspath = _posix_abspath
 realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = os.path.normpath
+rename = _wrapped_rename # overridden below on win32
 getcwd = os.getcwdu
-rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
@@ -1127,7 +1147,7 @@ def contains_linebreaks(s):
 
 
 def relpath(base, path):
-    """Return path relative to base, or raise exception.
+    """Return path relative to base, or raise PathNotChild exception.
 
     The path may be either an absolute path or a path relative to the
     current working directory.
@@ -1135,6 +1155,9 @@ def relpath(base, path):
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
+
+    NOTE: `base` should not have a trailing slash otherwise you'll get
+    PathNotChild exceptions regardless of `path`.
     """
 
     if len(base) < MIN_ABS_PATHLENGTH:
@@ -1360,15 +1383,30 @@ def set_signal_handler(signum, handler, restart_syscall=True):
         False)`).  May be ignored if the feature is not available on this
         platform or Python version.
     """
-    old_handler = signal.signal(signum, handler)
+    try:
+        import signal
+        siginterrupt = signal.siginterrupt
+    except ImportError:
+        # This python implementation doesn't provide signal support, hence no
+        # handler exists
+        return None
+    except AttributeError:
+        # siginterrupt doesn't exist on this platform, or for this version
+        # of Python.
+        siginterrupt = lambda signum, flag: None
     if restart_syscall:
-        try:
-            siginterrupt = signal.siginterrupt
-        except AttributeError: # siginterrupt doesn't exist on this platform, or for this version of
-            # Python.
-            pass
-        else:
+        def sig_handler(*args):
+            # Python resets the siginterrupt flag when a signal is
+            # received.  <http://bugs.python.org/issue8354>
+            # As a workaround for some cases, set it back the way we want it.
             siginterrupt(signum, False)
+            # Now run the handler function passed to set_signal_handler.
+            handler(*args)
+    else:
+        sig_handler = handler
+    old_handler = signal.signal(signum, sig_handler)
+    if restart_syscall:
+        siginterrupt(signum, False)
     return old_handler
 
 
@@ -1468,18 +1506,20 @@ def _terminal_size_changed(signum, frame):
 
 
 _registered_sigwinch = False
-
 def watch_sigwinch():
-    """Register for SIGWINCH, once and only once."""
+    """Register for SIGWINCH, once and only once.
+
+    Do nothing if the signal module is not available.
+    """
     global _registered_sigwinch
     if not _registered_sigwinch:
-        if sys.platform == 'win32':
-            # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from
-            # ReadConsoleInput but I've no idea how to plug that in
-            # the current design -- vila 20091216
+        try:
+            import signal
+            if getattr(signal, "SIGWINCH", None) is not None:
+                set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
+        except ImportError:
+            # python doesn't provide signal support, nothing we can do about it
             pass
-        else:
-            set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
         _registered_sigwinch = True
 
 
@@ -1806,14 +1846,15 @@ def copy_tree(from_path, to_path, handlers={}):
             real_handlers[kind](abspath, relpath)
 
 
-def copy_ownership(dst, src=None):
+def copy_ownership_from_path(dst, src=None):
     """Copy usr/grp ownership from src file/dir to dst file/dir.
 
     If src is None, the containing directory is used as source. If chown
     fails, the error is ignored and a warning is printed.
     """
-    has_chown = getattr(os, 'chown')
-    if has_chown is None: return
+    chown = getattr(os, 'chown', None)
+    if chown is None:
+        return
 
     if src == None:
         src = os.path.dirname(dst)
@@ -1822,33 +1863,9 @@ def copy_ownership(dst, src=None):
 
     try:
         s = os.stat(src)
-        os.chown(dst, s.st_uid, s.st_gid)
+        chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
         trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
-
-
-def mkdir_with_ownership(path, ownership_src=None):
-    """Create the directory 'path' with specified ownership.
-
-    If ownership_src is given, copies (chown) usr/grp ownership
-    from 'ownership_src' to 'path'. If ownership_src is None, use the
-    containing dir ownership.
-    """
-    os.mkdir(path)
-    copy_ownership(path, ownership_src)
-
-
-def open_with_ownership(filename, mode='r', bufsize=-1, ownership_src=None):
-    """Open the file 'filename' with the specified ownership.
-
-    If ownership_src is specified, copy usr/grp ownership from ownership_src
-    to filename. If ownership_src is None, copy ownership from containing
-    directory.
-    Returns the opened file object.
-    """
-    f = open(filename, mode, bufsize)
-    copy_ownership(filename, ownership_src)
-    return f
 
 
 def path_prefix_key(path):
@@ -1956,40 +1973,82 @@ def get_host_name():
         return socket.gethostname().decode(get_user_encoding())
 
 
-def recv_all(socket, bytes):
+# We must not read/write any more than 64k at a time from/to a socket so we
+# don't risk "no buffer space available" errors on some platforms.  Windows in
+# particular is likely to throw WSAECONNABORTED or WSAENOBUFS if given too much
+# data at once.
+MAX_SOCKET_CHUNK = 64 * 1024
+
+def read_bytes_from_socket(sock, report_activity=None,
+        max_read_size=MAX_SOCKET_CHUNK):
+    """Read up to max_read_size of bytes from sock and notify of progress.
+
+    Translates "Connection reset by peer" into file-like EOF (return an
+    empty string rather than raise an error), and repeats the recv if
+    interrupted by a signal.
+    """
+    while 1:
+        try:
+            bytes = sock.recv(max_read_size)
+        except socket.error, e:
+            eno = e.args[0]
+            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
+                # The connection was closed by the other side.  Callers expect
+                # an empty string to signal end-of-stream.
+                return ""
+            elif eno == errno.EINTR:
+                # Retry the interrupted recv.
+                continue
+            raise
+        else:
+            if report_activity is not None:
+                report_activity(len(bytes), 'read')
+            return bytes
+
+
+def recv_all(socket, count):
     """Receive an exact number of bytes.
 
     Regular Socket.recv() may return less than the requested number of bytes,
-    dependning on what's in the OS buffer.  MSG_WAITALL is not available
+    depending on what's in the OS buffer.  MSG_WAITALL is not available
     on all platforms, but this should work everywhere.  This will return
     less than the requested amount if the remote end closes.
 
     This isn't optimized and is intended mostly for use in testing.
     """
     b = ''
-    while len(b) < bytes:
-        new = until_no_eintr(socket.recv, bytes - len(b))
+    while len(b) < count:
+        new = read_bytes_from_socket(socket, None, count - len(b))
         if new == '':
             break # eof
         b += new
     return b
 
 
-def send_all(socket, bytes, report_activity=None):
+def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
+ 
+    Breaks large blocks in smaller chunks to avoid buffering limitations on
+    some platforms, and catches EINTR which may be thrown if the send is
+    interrupted by a signal.
 
-    Regular socket.sendall() can give socket error 10053 on Windows.  This
-    implementation sends no more than 64k at a time, which avoids this problem.
-
+    This is preferred to socket.sendall(), because it avoids portability bugs
+    and provides activity reporting.
+ 
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
     """
-    chunk_size = 2**16
-    for pos in xrange(0, len(bytes), chunk_size):
-        block = bytes[pos:pos+chunk_size]
-        if report_activity is not None:
-            report_activity(len(block), 'write')
-        until_no_eintr(socket.sendall, block)
+    sent_total = 0
+    byte_count = len(bytes)
+    while sent_total < byte_count:
+        try:
+            sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
+        except socket.error, e:
+            if e.args[0] != errno.EINTR:
+                raise
+        else:
+            sent_total += sent
+            report_activity(sent, 'write')
 
 
 def dereference_path(path):
@@ -2066,7 +2125,18 @@ def file_kind(f, _lstat=os.lstat):
 
 
 def until_no_eintr(f, *a, **kw):
-    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    """Run f(*a, **kw), retrying if an EINTR error occurs.
+    
+    WARNING: you must be certain that it is safe to retry the call repeatedly
+    if EINTR does occur.  This is typically only true for low-level operations
+    like os.read.  If in any doubt, don't use this.
+
+    Keep in mind that this is not a complete solution to EINTR.  There is
+    probably code in the Python standard library and other dependencies that
+    may encounter EINTR if a signal arrives (and there is signal handler for
+    that signal).  So this function can reduce the impact for IO that bzrlib
+    directly controls, but it is not a complete solution.
+    """
     # Borrowed from Twisted's twisted.python.util.untilConcludes function.
     while True:
         try:
@@ -2075,6 +2145,7 @@ def until_no_eintr(f, *a, **kw):
             if e.errno == errno.EINTR:
                 continue
             raise
+
 
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
