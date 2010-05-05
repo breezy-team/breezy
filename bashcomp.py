@@ -68,7 +68,7 @@ complete -F %(function_name)s -o default bzr
 {
 	local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
 	local curOpt optEnums
-        local IFS=$' \n'
+	local IFS=$' \\n'
 
 	COMPREPLY=()
 	cur=${COMP_WORDS[COMP_CWORD]}
@@ -120,11 +120,16 @@ complete -F %(function_name)s -o default bzr
 		;;
 	esac
 
-	IFS=$'\n'
+	IFS=$'\\n'
 	if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
 		case $curOpt in
 			tag:*)
-				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//') )
+				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
+				;;
+		esac
+		case $cur in
+			[\\"\\']tag:*)
+				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//; s/^/tag:/') )
 				;;
 		esac
 	elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
