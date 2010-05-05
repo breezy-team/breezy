@@ -30,6 +30,10 @@ New Features
   pack operation.
   (Parth Malwankar, #304320)
 
+* New command line option ``--authors`` to ``bzr log`` allows users to
+  select which of the apparent authors and committer should be
+  included in the log. Defaults depend on format. (Martin von Gagern, #513322)
+
 * Support ``--directory`` option for a number of additional commands:
   added, annotate, bind, cat, cat-revision, clean-tree, deleted,
   export, ignore, ignored, lookup-revision, ls, modified, nick,
@@ -329,10 +333,6 @@ New Features
 
 * Merges can be proposed on Launchpad with the new lp-propose-merge command.
   (Aaron Bentley, Jonathan Lange)
-
-* New command line option ``--authors`` to ``bzr log`` allows users to
-  select which of the apparent authors and committer should be
-  included in the log. Defaults depend on format.
 
 Bug Fixes
 *********
