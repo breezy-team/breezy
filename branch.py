@@ -615,6 +615,13 @@ class InterToGitBranch(branch.InterBranch):
     def update_revisions(self, *args, **kwargs):
         raise NoPushSupport()
 
+    def _get_new_refs(self, stop_revision):
+        refs = { self.target.ref: stop_revision }
+        for name, revid in self.source.tags.get_tag_dict().iteritems():
+            if self.source.repository.has_revision(revid):
+                refs[tag_name_to_ref(name)] = revid
+        return refs
+
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None):
         from dulwich.protocol import ZERO_SHA
@@ -624,10 +631,7 @@ class InterToGitBranch(branch.InterBranch):
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
-        refs = { self.target.ref: stop_revision }
-        for name, revid in self.source.tags.get_tag_dict().iteritems():
-            if self.source.repository.has_revision(revid):
-                refs[tag_name_to_ref(name)] = revid
+        refs = self._get_new_refs(stop_revision)
         old_refs = self.target.repository._git.get_refs()
         self.target.repository.fetch_refs(self.source.repository, refs)
         result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
@@ -644,10 +648,7 @@ class InterToGitBranch(branch.InterBranch):
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
-        refs = { self.target.ref: stop_revision }
-        for name, revid in self.source.tags.get_tag_dict().iteritems():
-            if self.source.repository.has_revision(revid):
-                refs[tag_name_to_ref(name)] = revid
+        refs = self._get_new_refs(stop_revision)
         old_refs = self.target.repository._git.get_refs()
         self.target.repository.fetch_refs(self.source.repository, refs)
         result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
@@ -656,7 +657,6 @@ class InterToGitBranch(branch.InterBranch):
         return result
 
     def lossy_push(self, stop_revision=None):
-        return self._push(stop_revision=stop_revision, roundtrip=False)
         from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
@@ -664,10 +664,7 @@ class InterToGitBranch(branch.InterBranch):
         if stop_revision is None:
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
-        refs = { self.target.ref: stop_revision }
-        for name, revid in self.source.tags.get_tag_dict().iteritems():
-            if self.source.repository.has_revision(revid):
-                refs[tag_name_to_ref(name)] = revid
+        refs = self._get_new_refs(stop_revision)
         revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
             self.source.repository, refs)
         result.revidmap = revidmap

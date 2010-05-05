@@ -355,7 +355,7 @@ class BazaarObjectStore(BaseObjectStore):
                 root_tree = Tree()
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
-                root_tree = self[base_sha1]
+                root_tree = self[self[base_sha1].tree]
             root_ie = tree.inventory.root
         if roundtrip:
             # FIXME: This can probably be a lot more efficient, 
@@ -550,8 +550,13 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise AssertionError("Unknown object type '%s'" % type)
 
-    def generate_pack_contents(self, have, want, progress=None,
+    def generate_lossy_pack_contents(self, have, want, progress=None,
             get_tagged=None):
+        return self.generate_pack_contents(have, want, progress, get_tagged,
+            lossy=True)
+
+    def generate_pack_contents(self, have, want, progress=None,
+            get_tagged=None, lossy=False):
         """Iterate over the contents of a pack file.
 
         :param have: List of SHA1s of objects that should not be sent
@@ -589,7 +594,8 @@ class BazaarObjectStore(BaseObjectStore):
                 pb.update("generating git objects", i, len(todo))
                 rev = self.repository.get_revision(revid)
                 tree = self.tree_cache.revision_tree(revid)
-                for path, obj, ie in self._revision_to_objects(rev, tree):
+                for path, obj, ie in self._revision_to_objects(rev, tree,
+                    roundtrip=not lossy):
                     ret.append((obj, path))
         finally:
             pb.finished()

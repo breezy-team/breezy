@@ -227,7 +227,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
         self.source.lock_read()
         try:
             new_refs = self.target.send_pack(determine_wants,
-                    self.source_store.generate_pack_contents)
+                    self.source_store.generate_lossy_pack_contents)
         finally:
             self.source.unlock()
         return revidmap, old_refs, new_refs
