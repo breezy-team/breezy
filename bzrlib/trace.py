@@ -114,6 +114,7 @@ def note(*args, **kwargs):
     """Output a note to the user.
 
     Takes the same parameters as logging.info.
+
     :return: None
     """
     # FIXME note always emits utf-8, regardless of the terminal encoding
