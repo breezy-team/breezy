@@ -1147,7 +1147,7 @@ def contains_linebreaks(s):
 
 
 def relpath(base, path):
-    """Return path relative to base, or raise exception.
+    """Return path relative to base, or raise PathNotChild exception.
 
     The path may be either an absolute path or a path relative to the
     current working directory.
@@ -1155,6 +1155,9 @@ def relpath(base, path):
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
+
+    NOTE: `base` should not have a trailing slash otherwise you'll get
+    PathNotChild exceptions regardless of `path`.
     """
 
     if len(base) < MIN_ABS_PATHLENGTH:
