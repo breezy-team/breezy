@@ -1,9 +1,4 @@
-try:
-    import hashlib as md5
-except ImportError:
-    import md5
 import os
-import shutil
 import sys
 import subprocess
 

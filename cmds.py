@@ -22,10 +22,6 @@
 #
 
 import commands
-try:
-    import hashlib as md5
-except ImportError:
-    import md5
 import os
 import shutil
 import subprocess
@@ -48,7 +44,6 @@ from bzrlib.errors import (
     )
 from bzrlib.option import Option
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib import revision as mod_revision
 from bzrlib.tag import _merge_tags_if_possible
 from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
@@ -967,11 +962,10 @@ class cmd_merge_package(Command):
     takes_args = ['source']
 
     def run(self, source):
-        source_branch = target_branch = None
+        source_branch = None
         # Get the target branch.
         try:
             tree = WorkingTree.open_containing('.')[0]
-            target_branch = tree.branch
         except (NotBranchError, NoWorkingTree):
             raise BzrCommandError(
                 "There is no tree to merge the source branch in to")
@@ -982,28 +976,24 @@ class cmd_merge_package(Command):
             raise BzrCommandError("Invalid source branch URL?")
 
         tree.lock_write()
-        try:
-            this_config = debuild_config(tree, tree, False)
-            source_branch.lock_read()
-            try:
-                that_config = debuild_config(source_branch.basis_tree(),
-                        source_branch.basis_tree(), False)
-                if not (this_config.native or that_config.native):
-                    fix_ancestry_as_needed(tree, source_branch)
+        self.add_cleanup(tree.unlock)
+        source_branch.lock_read()
+        self.add_cleanup(source_branch.unlock)
+        this_config = debuild_config(tree, tree, False)
+        that_config = debuild_config(source_branch.basis_tree(),
+                source_branch.basis_tree(), False)
+        if not (this_config.native or that_config.native):
+            fix_ancestry_as_needed(tree, source_branch)
 
-                # Merge source packaging branch in to the target packaging branch.
-                _merge_tags_if_possible(source_branch, tree.branch)
-                conflicts = tree.merge_from_branch(source_branch)
-                if conflicts > 0:
-                    note('The merge resulted in %s conflicts. Please resolve these '
-                         'and commit the changes with "bzr commit".' % conflicts)
-                else:
-                    note('The merge resulted in no conflicts. You may commit the '
-                    'changes by running "bzr commit".')
-            finally:
-                source_branch.unlock()
-        finally:
-            tree.unlock()
+        # Merge source packaging branch in to the target packaging branch.
+        _merge_tags_if_possible(source_branch, tree.branch)
+        conflicts = tree.merge_from_branch(source_branch)
+        if conflicts > 0:
+            note('The merge resulted in %s conflicts. Please resolve these '
+                 'and commit the changes with "bzr commit".' % conflicts)
+        else:
+            note('The merge resulted in no conflicts. You may commit the '
+            'changes by running "bzr commit".')
 
 
 class cmd_dh_make(Command):

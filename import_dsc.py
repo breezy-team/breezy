@@ -30,10 +30,6 @@ from base64 import (
         standard_b64encode,
         )
 import errno
-try:
-    import hashlib as md5
-except ImportError:
-    import md5
 import os
 import re
 import shutil
