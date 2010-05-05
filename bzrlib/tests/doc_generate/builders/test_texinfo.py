@@ -106,7 +106,7 @@ class TestTextGeneration(TestSphinx):
         app.build(True, [])
         # Note that since the input is a paragraph, we get two \n (even if the
         # input has none)
-        self.assertFileEqual("""\n@emph{important}\n""", 'index.texi')
+        self.assertFileEqual("""@emph{important}\n\n""", 'index.texi')
 
     def test_strong(self):
         self.build_tree_contents([('index.txt', """**very important**"""),])
@@ -114,7 +114,7 @@ class TestTextGeneration(TestSphinx):
         app.build(True, [])
         # Note that since the input is a paragraph, we get two \n (even if the
         # input has none)
-        self.assertFileEqual("""\n@strong{very important}\n""", 'index.texi')
+        self.assertFileEqual("""@strong{very important}\n\n""", 'index.texi')
 
     def test_paragraphs(self):
         self.build_tree_contents([('index.txt', """\
@@ -125,10 +125,10 @@ This is another one.
         app, out, err = self.make_sphinx()
         app.build(True, [])
         self.assertFileEqual("""\
-
 This is a paragraph.
 
 This is another one.
+
 """, 'index.texi')
 
 
@@ -143,3 +143,28 @@ Bazaar Release Notes
         app, out, err = self.make_sphinx()
         app.build(True, [])
         self.assertFileEqual("""@title Bazaar Release Notes\n""", 'index.texi')
+
+
+class TestListGeneration(TestSphinx):
+
+    def test_bullet_list(self):
+        self.build_tree_contents([('index.txt', """\
+* This is a bulleted list.
+* It has two items, the second
+  item uses two lines.
+"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        print err.getvalue()
+        self.assertFileEqual("""\
+@itemize @bullet
+@item
+This is a bulleted list.
+
+@item
+It has two items, the second
+item uses two lines.
+
+@end itemize
+""",
+ 'index.texi')

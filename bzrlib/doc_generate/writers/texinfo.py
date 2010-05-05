@@ -72,17 +72,19 @@ class TexinfoTranslator(nodes.NodeVisitor):
         pass
 
     def visit_paragraph(self, node):
-        # Start the paragraph on a new line.
-        self.add_text('\n')
+        pass
 
     def depart_paragraph(self, node):
-        # End the paragraph with a new line.
-        self.add_text('\n')
+        # End the paragraph with a new line and leave a blank line after it.
+        self.add_text('\n\n')
 
     def visit_compact_paragraph(self, node):
         pass
 
     def depart_compact_paragraph(self, node):
+        # XXX: Seems to be used by .toctree.
+        # End the paragraph with a new line and leave a blank line after it.
+        self.add_text('\n\n')
         pass
 
     def visit_block_quote(self, node):
@@ -164,10 +166,10 @@ class TexinfoTranslator(nodes.NodeVisitor):
     # Lists
 
     def visit_bullet_list(self, node):
-        pass
+        self.add_text('@itemize @bullet\n')
 
     def depart_bullet_list(self, node):
-        pass
+        self.add_text('@end itemize\n')
 
     def visit_enumerated_list(self, node):
         pass
@@ -222,9 +224,10 @@ class TexinfoTranslator(nodes.NodeVisitor):
         pass
 
     def visit_list_item(self, node):
-        pass
+        self.add_text('@item\n')
 
     def depart_list_item(self, node):
+        # The item contains a paragraph which already ends with a blank line.
         pass
 
     def visit_option_list(self, node):
