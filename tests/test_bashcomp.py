@@ -320,6 +320,12 @@ class TestDataCollector(TestCase):
         self.assertSubset(['init', 'init-repo', 'init-repository'],
                            dc.data.all_command_aliases())
 
+    def test_commands_from_plugins(self):
+        dc = DataCollector()
+        dc.commands()
+        self.assertSubset(['bash-completion'],
+                           dc.data.all_command_aliases())
+
     def test_commit_dashm(self):
         dc = DataCollector()
         cmd = dc.command('commit')
