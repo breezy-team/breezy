@@ -17,6 +17,7 @@ bzr-builddeb (2.5) UNRELEASED; urgency=low
   [ Robert Collins ]
   * Add import-upstream command which imports an upstream - useful for
     migrating existing packaging branches into pristine-tar using mode.
+  * Stop stripping .bzrignore from tarball imports. LP: #496907
 
  -- Jelmer Vernooij <jelmer@debian.org>  Thu, 15 Apr 2010 19:28:25 +0200
 

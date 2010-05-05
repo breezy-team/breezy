@@ -63,7 +63,7 @@ class ZipInfoWrapper(object):
 
 
 files_to_ignore = set(
-    ['.bzrignore', '.shelf', '.bzr', '.bzr.backup', '.bzrtags',
+    ['.shelf', '.bzr', '.bzr.backup', '.bzrtags',
      '.bzr-builddeb'])
 
 
