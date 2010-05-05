@@ -112,13 +112,14 @@ class TexinfoTranslator(nodes.NodeVisitor):
     def visit_comment(self, node):
         raise nodes.SkipNode
 
-    # Attributes
+    # Document attributes
 
     def visit_title(self, node):
-        pass
+        # XXX: This seems to be used for other things than the document itself.
+        self.add_text('@title ')
 
     def depart_title(self, node):
-        pass
+        self.add_text('\n')
 
     def visit_label(self, node):
         raise nodes.SkipNode

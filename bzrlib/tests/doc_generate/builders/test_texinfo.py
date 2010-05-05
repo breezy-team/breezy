@@ -96,6 +96,10 @@ Improvements
 
 class TestTextGeneration(TestSphinx):
 
+    # FIXME: something smells wrong here as we can't process a single file
+    # alone. On top of that, it seems the doc tree must contain an index.txt
+    # file. We may need a texinfo builder ? -- vila 20100505
+
     def test_emphasis(self):
         self.build_tree_contents([('index.txt', """*important*"""),])
         app, out, err = self.make_sphinx()
@@ -126,3 +130,16 @@ This is a paragraph.
 
 This is another one.
 """, 'index.texi')
+
+
+class TestDocumentAttributesGeneration(TestSphinx):
+
+    def test_title(self):
+        self.build_tree_contents([('index.txt', """\
+####################
+Bazaar Release Notes
+####################
+"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        self.assertFileEqual("""@title Bazaar Release Notes\n""", 'index.texi')
