@@ -2028,7 +2028,7 @@ class cmd_modified(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
-    takes_options = [ 'null' ]
+    takes_options = ['null']
 
     @display_command
     def run(self, null=False):
@@ -2047,7 +2047,7 @@ class cmd_added(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
-    takes_options = [ 'null' ]
+    takes_options = ['null']
 
     @display_command
     def run(self, null=False):
