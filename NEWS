@@ -96,6 +96,11 @@ Bug Fixes
 * Unicode characters in aliases are now handled correctly and do not cause
   UnicodeEncodeError exception. (Parth Malwankar, #529930)
 
+* Unicode commit messages that are the same as a file name no longer cause
+  UnicodeEncodeError. ``ui.text.show_warning`` now handles unicode
+  messages.
+  (Parth Malwankar, #563646)
+
 Improvements
 ************
 
