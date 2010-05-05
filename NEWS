@@ -48,6 +48,10 @@ Bug Fixes
   better with sudo.
   (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
 
+* ``bzr clean-tree`` should not delete nested bzrdirs. Required for proper
+  support of bzr-externals and scmproj plugins.
+  (Alexander Belchenko, bug #572098)
+
 * ``bzr ignore`` will no longer add duplicate patterns to .bzrignore.
   (Gordon Tyler, #572092)
 
