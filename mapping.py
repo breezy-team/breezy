@@ -320,7 +320,7 @@ class BzrGitMapping(foreign.VcsMapping):
         :param blob: Git blob object with fileid map
         :return: Dictionary mapping paths to file ids
         """
-        return deserialize_fileid_map(blob.text)
+        return deserialize_fileid_map(blob.data)
 
     def import_commit(self, commit):
         """Convert a git commit to a bzr revision.

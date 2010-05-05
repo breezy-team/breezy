@@ -179,6 +179,8 @@ class GitInventoryDirectory(GitInventoryEntry):
         for mode, name, hexsha in self.object.entries():
             basename = name.decode("utf-8")
             child_path = osutils.pathjoin(self.path, basename)
+            if self._inventory.mapping.is_control_file(child_path):
+                continue
             executable = mode_is_executable(mode)
             kind_class = {'directory': GitInventoryDirectory,
                           'file': GitInventoryFile,

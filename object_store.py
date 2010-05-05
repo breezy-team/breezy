@@ -32,10 +32,6 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.inventory import (
-    InventoryDirectory,
-    ROOT_ID,
-    )
 from bzrlib.revision import (
     NULL_REVISION,
     )
@@ -357,13 +353,13 @@ class BazaarObjectStore(BaseObjectStore):
             # Pointless commit - get the tree sha elsewhere
             if not rev.parent_ids:
                 root_tree = Tree()
-                root_ie = InventoryDirectory(ROOT_ID, '', None)
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[base_sha1]
-                root_ie = tree.inventory.root
+            root_ie = tree.inventory.root
         if roundtrip:
-            # FIXME: This can probably be a lot more efficient...
+            # FIXME: This can probably be a lot more efficient, 
+            # not all files necessarily have to be processed.
             file_ids = {}
             for (path, ie) in tree.inventory.iter_entries():
                 if self.mapping.generate_file_id(path) != ie.file_id:
