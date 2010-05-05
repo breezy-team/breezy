@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -70,3 +70,12 @@ class TestModified(ExternalBase):
         tree.commit(message='modified %s' %(name))
         check_modified('')
 
+    def test_modified_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/README'])
+        tree.add('README')
+        tree.commit('r1')
+        self.build_tree_contents([('a/README', 'changed\n')])
+        out, err = self.run_bzr(['modified', '--directory=a'])
+        self.assertEquals('README\n', out)

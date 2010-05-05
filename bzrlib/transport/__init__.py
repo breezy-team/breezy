@@ -539,6 +539,9 @@ class Transport(object):
 
         This function will only be defined for Transports which have a
         physical local filesystem representation.
+
+        :raises errors.NotLocalUrl: When no local path representation is
+            available.
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
 
