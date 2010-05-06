@@ -2301,11 +2301,11 @@ class TestRepositoryLockWrite(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response('ok', 'a token')
-        result = repo.lock_write()
+        token = repo.lock_write().repository_token
         self.assertEqual(
             [('call', 'Repository.lock_write', ('quack/', ''))],
             client._calls)
-        self.assertEqual('a token', result)
+        self.assertEqual('a token', token)
 
     def test_lock_write_already_locked(self):
         transport_path = 'quack'

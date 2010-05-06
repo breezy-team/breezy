@@ -58,7 +58,7 @@ class TestRefreshData(TestCaseWithRepository):
         source = self.make_branch_and_tree('source')
         revid = source.commit('foo')
         repo = self.make_repository('target')
-        token = repo.lock_write()
+        token = repo.lock_write().repository_token
         self.addCleanup(repo.unlock)
         # Force data reading on weaves/knits
         repo.revisions.keys()

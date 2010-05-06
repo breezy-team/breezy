@@ -96,8 +96,18 @@ API Changes
   implementations.
   (Martin Pool)
 
+* Lock methods on ``Tree``, ``Branch`` and ``Repository`` are now
+  expected to return an object which can be used to unlock them. This reduces
+  duplicate code when using cleanups. The previous 'tokens's returned by
+  ``Branch.lock_write`` and ``Repository.lock_write`` are now attributes
+  on the result of the lock_write. ``repository.RepositoryWriteLockResult``
+  and ``branch.BranchWriteLockResult`` document this. (Robert Collins)
+
 Internals
 *********
+
+* ``log._get_info_for_log_files`` now takes an add_cleanup callable.
+  (Robert Collins)
 
 * ``_remember_remote_is_before`` no longer raises AssertionError when
   suboptimal network behaviour is noticed; instead it just mutters to the

@@ -69,6 +69,7 @@ from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepositoryFormat,
     RepositoryFormat,
+    RepositoryWriteLockResult,
     RootCommitBuilder,
     StreamSource,
     )
@@ -2354,6 +2355,7 @@ class KnitPackRepository(KnitRepository):
                 # Writes don't affect fallback repos
                 repo.lock_read()
             self._refresh_data()
+        return RepositoryWriteLockResult(self.unlock, None)
 
     def lock_read(self):
         locked = self.is_locked()
@@ -2368,6 +2370,7 @@ class KnitPackRepository(KnitRepository):
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
+        return self
 
     def leave_lock_in_place(self):
         # not supported - raise an error

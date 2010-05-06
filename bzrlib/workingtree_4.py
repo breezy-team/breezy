@@ -567,7 +567,11 @@ class DirStateWorkingTree(WorkingTree3):
             return _mod_revision.NULL_REVISION
 
     def lock_read(self):
-        """See Branch.lock_read, and WorkingTree.unlock."""
+        """See Branch.lock_read, and WorkingTree.unlock.
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
+        """
         self.branch.lock_read()
         try:
             self._control_files.lock_read()
@@ -586,6 +590,7 @@ class DirStateWorkingTree(WorkingTree3):
         except:
             self.branch.unlock()
             raise
+        return self
 
     def _lock_self_write(self):
         """This should be called after the branch is locked."""
@@ -606,16 +611,25 @@ class DirStateWorkingTree(WorkingTree3):
         except:
             self.branch.unlock()
             raise
+        return self
 
     def lock_tree_write(self):
-        """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock.
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
+        """
         self.branch.lock_read()
-        self._lock_self_write()
+        return self._lock_self_write()
 
     def lock_write(self):
-        """See MutableTree.lock_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_write, and WorkingTree.unlock.
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
+        """
         self.branch.lock_write()
-        self._lock_self_write()
+        return self._lock_self_write()
 
     @needs_tree_write_lock
     def move(self, from_paths, to_dir, after=False):
@@ -1859,6 +1873,9 @@ class DirStateRevisionTree(Tree):
             return None
         return ie.executable
 
+    def is_locked(self):
+        return self._locked
+
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # We use a standard implementation, because DirStateRevisionTree is
         # dealing with one of the parents of the current state
@@ -1877,13 +1894,18 @@ class DirStateRevisionTree(Tree):
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def lock_read(self):
-        """Lock the tree for a set of operations."""
+        """Lock the tree for a set of operations.
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
+        """
         if not self._locked:
             self._repository.lock_read()
             if self._dirstate._lock_token is None:
                 self._dirstate.lock_read()
                 self._dirstate_locked = True
         self._locked += 1
+        return self
 
     def _must_be_locked(self):
         if not self._locked:

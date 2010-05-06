@@ -292,9 +292,11 @@ class SmartServerBranchRequestLockWrite(SmartServerBranchRequest):
         if repo_token == '':
             repo_token = None
         try:
-            repo_token = branch.repository.lock_write(token=repo_token)
+            repo_token = branch.repository.lock_write(
+                token=repo_token).repository_token
             try:
-                branch_token = branch.lock_write(token=branch_token)
+                branch_token = branch.lock_write(
+                    token=branch_token).branch_token
             finally:
                 # this leaves the repository with 1 lock
                 branch.repository.unlock()

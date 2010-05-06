@@ -283,10 +283,21 @@ class Branch(bzrdir.ControlComponent):
         new_history.reverse()
         return new_history
 
-    def lock_write(self):
+    def lock_write(self, token=None):
+        """Lock the branch for write operations.
+
+        :param token: A token to permit reacquiring a previously held and
+            preserved lock.
+        :return: A BranchWriteLockResult.
+        """
         raise NotImplementedError(self.lock_write)
 
     def lock_read(self):
+        """Lock the branch for read operations.
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
+        """
         raise NotImplementedError(self.lock_read)
 
     def unlock(self):
@@ -2265,6 +2276,19 @@ network_format_registry.register(
     _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
 
 
+class BranchWriteLockResult(object):
+    """The result of write locking a branch.
+
+    :ivar branch_token: The token obtained from the underlying branch lock, or
+        None.
+    :ivar unlock: A callable which will unlock the lock.
+    """
+
+    def __init__(self, unlock, branch_token):
+        self.branch_token = branch_token
+        self.unlock = unlock
+
+
 class BzrBranch(Branch, _RelockDebugMixin):
     """A branch stored in the actual filesystem.
 
@@ -2324,6 +2348,12 @@ class BzrBranch(Branch, _RelockDebugMixin):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
+        """Lock the branch for write operations.
+
+        :param token: A token to permit reacquiring a previously held and
+            preserved lock.
+        :return: A BranchWriteLockResult.
+        """
         if not self.is_locked():
             self._note_lock('w')
         # All-in-one needs to always unlock/lock.
@@ -2335,13 +2365,19 @@ class BzrBranch(Branch, _RelockDebugMixin):
         else:
             took_lock = False
         try:
-            return self.control_files.lock_write(token=token)
+            return BranchWriteLockResult(self.unlock,
+                self.control_files.lock_write(token=token))
         except:
             if took_lock:
                 self.repository.unlock()
             raise
 
     def lock_read(self):
+        """Lock the branch for read operations.
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
+        """
         if not self.is_locked():
             self._note_lock('r')
         # All-in-one needs to always unlock/lock.
@@ -2354,6 +2390,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             took_lock = False
         try:
             self.control_files.lock_read()
+            return self
         except:
             if took_lock:
                 self.repository.unlock()

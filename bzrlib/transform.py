@@ -1798,9 +1798,12 @@ class _PreviewTree(tree.Tree):
             executable = self.is_executable(file_id, path)
         return kind, executable, None
 
+    def is_locked(self):
+        return False
+
     def lock_read(self):
         # Perhaps in theory, this should lock the TreeTransform?
-        pass
+        return self
 
     def unlock(self):
         pass
