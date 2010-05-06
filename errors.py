@@ -190,3 +190,11 @@ class PerFileTimestampsNotSupported(BzrError):
 
     _fmt = ("Per file timestamps are not supported by the "
             "currently loaded version of bzrlib.")
+
+
+class NoPreviousUpload(BzrError):
+
+    _fmt = ("There was no previous upload to %(distribution)s.")
+
+    def __init__(self, distribution):
+        BzrError.__init__(self, distribution=distribution)

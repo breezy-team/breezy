@@ -30,6 +30,8 @@ from debian_bundle.changelog import Changelog, Version
 from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
                 AddChangelogError,
+                NoPreviousUpload,
+                UnknownDistribution,
                 )
 from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
 from bzrlib.plugins.builddeb.util import (
@@ -39,6 +41,7 @@ from bzrlib.plugins.builddeb.util import (
                   find_changelog,
                   find_extra_authors,
                   find_last_distribution,
+                  find_previous_upload,
                   find_thanks,
                   get_export_upstream_revision,
                   get_commit_info_from_changelog,
@@ -725,3 +728,43 @@ class GetExportUpstreamRevisionTests(TestCase):
         config = DebBuildConfig([])
         self.assertEquals(None, 
             get_export_upstream_revision(config, Version("0.1-1")))
+
+
+class FindPreviousUploadTests(TestCase):
+
+    def make_changelog(self, versions_and_distributions):
+        cl = Changelog()
+        changes = ["  [ A. Hacker ]", "  * Something"]
+        author = "J. Maintainer <maint@example.com>"
+        for version, distro in versions_and_distributions:
+            cl.new_block(changes=changes, author=author,
+                                distributions=distro, version=version)
+        return cl
+
+    def test_find_previous_upload_debian(self):
+        cl = self.make_changelog([("0.1-1", "unstable"),
+                ("0.1-2", "unstable")])
+        self.assertEqual(Version("0.1-1"), find_previous_upload(cl))
+        cl = self.make_changelog([("0.1-1", "unstable"),
+                ("0.1-1.1", "stable-security"), ("0.1-2", "unstable")])
+        self.assertEqual(Version("0.1-1"), find_previous_upload(cl))
+
+    def test_find_previous_upload_ubuntu(self):
+        cl = self.make_changelog([("0.1-1", "lucid"),
+                ("0.1-2", "lucid")])
+        self.assertEqual(Version("0.1-1"), find_previous_upload(cl))
+        cl = self.make_changelog([("0.1-1", "lucid"),
+                ("0.1-1.1", "unstable"), ("0.1-2", "maverick")])
+        self.assertEqual(Version("0.1-1"), find_previous_upload(cl))
+
+    def test_find_previous_upload_unknown(self):
+        cl = self.make_changelog([("0.1-1", "lucid"),
+                ("0.1-2", "UNRELEASED")])
+        self.assertRaises(UnknownDistribution, find_previous_upload, cl)
+
+    def test_find_previous_upload_missing(self):
+        cl = self.make_changelog([("0.1-1", "unstable"),
+                ("0.1-2", "lucid")])
+        self.assertRaises(NoPreviousUpload, find_previous_upload, cl)
+        cl = self.make_changelog([("0.1-1", "unstable")])
+        self.assertRaises(NoPreviousUpload, find_previous_upload, cl)

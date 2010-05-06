@@ -54,8 +54,19 @@ from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (
                 MissingChangelogError,
                 AddChangelogError,
+                NoPreviousUpload,
+                UnknownDistribution,
                 UnparseableChangelog,
                 )
+
+
+DEBIAN_RELEASES = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'stable',
+        'testing', 'unstable', 'experimental', 'frozen', 'sid')
+DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
+UBUNTU_RELEASES = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
+        'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic',
+        'lucid', 'maverick')
+UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 
 def safe_decode(s):
@@ -242,15 +253,8 @@ def suite_to_distribution(suite):
     :param suite: the string containing the suite
     :return: "debian", "ubuntu", or None if the distribution couldn't be inferred.
     """
-    debian_releases = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'stable',
-            'testing', 'unstable', 'experimental', 'frozen', 'sid')
-    debian_targets = ('', '-security', '-proposed-updates', '-backports')
-    ubuntu_releases = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
-            'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic',
-            'lucid', 'maverick')
-    ubuntu_targets = ('', '-proposed', '-updates', '-security', '-backports')
-    all_debian = [r + t for r in debian_releases for t in debian_targets]
-    all_ubuntu = [r + t for r in ubuntu_releases for t in ubuntu_targets]
+    all_debian = [r + t for r in DEBIAN_RELEASES for t in DEBIAN_POCKETS]
+    all_ubuntu = [r + t for r in UBUNTU_RELEASES for t in UBUNTU_POCKETS]
     if suite in all_debian:
         return "debian"
     if suite in all_ubuntu:
@@ -544,3 +548,40 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
             raise errors.PerFileTimestampsNotSupported()
         return bzr_export(tree, dest, format=format, root=root, subdir=subdir,
             filtered=filtered)
+
+
+def find_previous_upload(cl):
+    """Given a changelog, find the previous upload to the distribution.
+
+    When e.g. Ubuntu merges from Debian they want to build with
+    -vPREV_VERSION. Here's where we find that previous version.
+
+    We look at the last changelog entry and find the upload target.
+    We then search backwards until we find the same target. That's
+    the previous version that we return.
+
+    We require there to be a previous version, otherwise we throw
+    an error.
+
+    It's not a simple string comparison to find the same target in
+    a previous version, as we should consider old series in e.g.
+    Ubuntu.
+    """
+    blocks = cl._blocks
+    current_target = blocks[0].distributions.split(" ")[0]
+    all_debian = [r + t for r in DEBIAN_RELEASES for t in DEBIAN_POCKETS]
+    all_ubuntu = [r + t for r in UBUNTU_RELEASES for t in UBUNTU_POCKETS]
+    if current_target in all_debian:
+        match_targets = (current_target,)
+    elif current_target in all_ubuntu:
+        match_targets = UBUNTU_RELEASES
+        if "-" in current_target:
+            match_targets += [current_target.split("-", 1)[0]
+                + t for t in UBUNTU_POCKETS]
+    else:
+        raise UnknownDistribution(current_target)
+    previous_version = None
+    for block in blocks[1:]:
+        if block.distributions.split(" ")[0] in match_targets:
+            return block.version
+    raise NoPreviousUpload(current_target)

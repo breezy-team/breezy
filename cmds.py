@@ -85,6 +85,7 @@ from bzrlib.plugins.builddeb.util import (
         dget_changes,
         find_changelog,
         find_last_distribution,
+        find_previous_upload,
         get_export_upstream_revision,
         lookup_distribution,
         open_file,
@@ -178,6 +179,9 @@ class cmd_builddeb(Command):
                         short_name='S')
     result_compat_opt = Option('result', help="Present only for compatibility "
             "with bzr-builddeb <= 2.0. Use --result-dir instead.")
+    package_merge_opt = Option('package-merge', help="Build using the "
+            "appropriate -v and -sa options for merging in the changes from "
+            "another source.")
     takes_args = ['branch_or_build_options*']
     aliases = ['bd']
     takes_options = [working_tree_opt, export_only_opt,
@@ -186,7 +190,7 @@ class cmd_builddeb(Command):
         export_upstream_opt, export_upstream_revision_opt,
         quick_opt, reuse_opt, native_opt,
         source_opt, 'revision',
-        no_user_conf_opt, result_compat_opt]
+        no_user_conf_opt, result_compat_opt, package_merge_opt]
 
     def _get_tree_and_branch(self, location):
         if location is None:
@@ -321,7 +325,8 @@ class cmd_builddeb(Command):
             export_upstream=None, export_upstream_revision=None,
             orig_dir=None, split=None,
             quick=False, reuse=False, native=False,
-            source=False, revision=None, no_user_config=False, result=None):
+            source=False, revision=None, no_user_config=False, result=None,
+            package_merge=None):
         if result is not None:
             warning("--result is deprected, use --result-dir instead")
         branch, build_options, source = self._branch_and_build_options(
@@ -346,9 +351,16 @@ class cmd_builddeb(Command):
                 tree.inventory.root.children.keys() == ["debian"]):
                 # Default to merge mode if there's only a debian/ directory
                 merge = True
+            (changelog, larstiq) = find_changelog(tree, merge)
+            if package_merge:
+                prev_version = find_previous_upload(changelog)
+                build_options.append("-v%s" % str(prev_version))
+                if (prev_version.upstream_version
+                        != changelog.version.upstream_version
+                        or prev_version.epoch != changelog.version.epoch):
+                    build_options.append("-sa")
             build_cmd = self._get_build_command(config, builder, quick,
                     build_options)
-            (changelog, larstiq) = find_changelog(tree, merge)
             result_dir, build_dir, orig_dir = self._get_dirs(config, branch,
                     is_local, result_dir or result, build_dir, orig_dir)
 
