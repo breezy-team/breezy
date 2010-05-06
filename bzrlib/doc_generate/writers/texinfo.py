@@ -143,7 +143,7 @@ class TexinfoTranslator(nodes.NodeVisitor):
         self.add_text('@samp{')
 
     def depart_literal_block(self, node):
-        self.add_text('}\n\n')
+        self.add_text('}\n')
 
     def visit_block_quote(self, node):
         pass
@@ -236,10 +236,10 @@ class TexinfoTranslator(nodes.NodeVisitor):
             self.add_text('@end itemize\n')
 
     def visit_enumerated_list(self, node):
-        pass
+        self.add_text('@enumerate\n')
 
     def depart_enumerated_list(self, node):
-        pass
+        self.add_text('@end enumerate\n')
 
     def visit_definition_list(self, node):
         pass

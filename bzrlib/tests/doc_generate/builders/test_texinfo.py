@@ -112,7 +112,6 @@ Do this::
 Do this:
 
 @samp{bzr xxx}
-
 """, 'index.texi')
 
 
@@ -151,6 +150,28 @@ It has two items, the second
 item uses two lines.
 
 @end itemize
+""",
+ 'index.texi')
+
+    def test_enumerated_list(self):
+        self.build_tree_contents([('index.txt', """\
+#. This is a numbered list.
+#. It has two items, the second
+   item uses two lines.
+"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        print err.getvalue()
+        self.assertFileEqual("""\
+@enumerate
+@item
+This is a numbered list.
+
+@item
+It has two items, the second
+item uses two lines.
+
+@end enumerate
 """,
  'index.texi')
 
