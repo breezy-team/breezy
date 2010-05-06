@@ -45,6 +45,12 @@ class TexinfoTranslator(nodes.NodeVisitor):
     def __init__(self, document, builder):
         nodes.NodeVisitor.__init__(self, document)
         self.chunks = []
+        # toctree uses some nodes for different purposes (namely:
+        # caompact_paragraph, bullet_list, reference, list_item) that needs to
+        # know when they are proessing a toctree. The following attributes take
+        # care of the needs.
+        self.in_toctree = False
+        self.toctree_current_ref = None
 
     def add_text(self, text):
         self.chunks.append(text)
@@ -52,6 +58,8 @@ class TexinfoTranslator(nodes.NodeVisitor):
     # The whole document
 
     def visit_document(self, node):
+        # The debug killer trick
+        # print node.pformat()
         pass
 
     def depart_document(self, node):
@@ -79,13 +87,31 @@ class TexinfoTranslator(nodes.NodeVisitor):
         self.add_text('\n\n')
 
     def visit_compact_paragraph(self, node):
-        pass
+        if node.has_key('toctree'):
+            self.in_toctree = True
+            self.add_text('@menu\n')
+        elif self.in_toctree:
+            self.toctree_current_ref = None
 
     def depart_compact_paragraph(self, node):
-        # XXX: Seems to be used by .toctree.
-        # End the paragraph with a new line and leave a blank line after it.
-        self.add_text('\n\n')
-        pass
+        if node.has_key('toctree'):
+            self.add_text('@end menu\n')
+            self.in_toctree = False
+        elif self.in_toctree:
+            # * FIRST-ENTRY-NAME:(FILENAME)NODENAME.     DESCRIPTION
+            entry_name = node.astext()
+            # XXX: the file name should probably be adjusted to the targeted
+            # info file name
+            file_name = self.toctree_current_ref
+            node_name = entry_name
+            description = ''
+            # XXX: What if :maxdepth: is not 1 ?
+            self.add_text('* %s:(%s)%s. %s\n' % (entry_name, file_name,
+                                                 node_name, description))
+            self.toctree_current_ref = None
+        else:
+            # End the paragraph with a new line and leave a blank line after it.
+            self.add_text('\n\n')
 
     def visit_block_quote(self, node):
         pass
@@ -135,7 +161,8 @@ class TexinfoTranslator(nodes.NodeVisitor):
         pass
 
     def depart_Text(self, node):
-        self.add_text(node.astext())
+        if not self.in_toctree:
+            self.add_text(node.astext())
 
     # Styled text
 
@@ -166,10 +193,16 @@ class TexinfoTranslator(nodes.NodeVisitor):
     # Lists
 
     def visit_bullet_list(self, node):
-        self.add_text('@itemize @bullet\n')
+        if self.in_toctree:
+            pass
+        else:
+            self.add_text('@itemize @bullet\n')
 
     def depart_bullet_list(self, node):
-        self.add_text('@end itemize\n')
+        if self.in_toctree:
+            pass
+        else:
+            self.add_text('@end itemize\n')
 
     def visit_enumerated_list(self, node):
         pass
@@ -224,7 +257,8 @@ class TexinfoTranslator(nodes.NodeVisitor):
         pass
 
     def visit_list_item(self, node):
-        self.add_text('@item\n')
+        if not self.in_toctree:
+            self.add_text('@item\n')
 
     def depart_list_item(self, node):
         # The item contains a paragraph which already ends with a blank line.
@@ -312,7 +346,10 @@ class TexinfoTranslator(nodes.NodeVisitor):
     # References
 
     def visit_reference(self, node):
-        pass
+        uri = node.get('refuri', '')
+        if self.in_toctree:
+            self.toctree_current_ref = uri
+
     def depart_reference(self, node):
         pass
 
@@ -337,9 +374,3 @@ class TexinfoTranslator(nodes.NodeVisitor):
     def visit_image(self, node):
         self.add_text(_('[image]'))
         raise nodes.SkipNode
-
-
-# For quick debugging activate the lines below
-# from sphinx.writers import text
-# TexinfoWriter = text.TextWriter
-

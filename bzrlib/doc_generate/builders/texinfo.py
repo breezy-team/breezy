@@ -27,9 +27,12 @@ class TexinfoBuilder(_text_builder.TextBuilder):
     format = 'texinfo'
     out_suffix = '.texi'
 
-
     def prepare_writing(self, docnames):
         self.writer = texinfo_writer.TexinfoWriter(self)
+
+    def get_target_uri(self, docname, typ=None):
+        # This returns the targeted texinfo relpath
+        return docname + self.out_suffix
 
 
 def setup(app):

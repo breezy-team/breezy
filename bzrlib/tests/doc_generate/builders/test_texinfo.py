@@ -55,45 +55,6 @@ class TestBuilderLoaded(TestSphinx):
         self.assertTrue('texinfo' in app.builderclasses)
 
 
-class TestTexinfoFileGeneration(TestSphinx):
-
-    def test_files_generated(self):
-        self.build_tree_contents(
-            [('index.txt', """
-Table of Contents
-=================
-
-.. toctree::
-   :maxdepth: 1
-
-   content
-"""),
-             ('content.txt', """
-
-bzr 0.0.8
-*********
-
-Improvements
-============
-
-* Adding a file whose parent directory is not versioned will
-  implicitly add the parent, and so on up to the root.
-"""),
-             ])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        self.failUnlessExists('index.texi')
-        self.failUnlessExists('content.texi')
-        # FIXME: When the content of the files becomes clearer replace the
-        # assertion above by the ones below -- vila 20100504
-#         self.assertFileEqual("""\
-# """,
-#                               'content.texi')
-#         self.assertFileEqual("""\
-# """,
-#                               'index.texi')
-# 
-
 class TestTextGeneration(TestSphinx):
 
     # FIXME: something smells wrong here as we can't process a single file
@@ -142,7 +103,8 @@ Bazaar Release Notes
 """),])
         app, out, err = self.make_sphinx()
         app.build(True, [])
-        self.assertFileEqual("""@title Bazaar Release Notes\n""", 'index.texi')
+        self.assertFileEqual("""@chapter Bazaar Release Notes\n""",
+                             'index.texi')
 
 
 class TestListGeneration(TestSphinx):
@@ -168,3 +130,91 @@ item uses two lines.
 @end itemize
 """,
  'index.texi')
+
+
+class TestTocTreeGeneration(TestSphinx):
+
+    def test_toctree(self):
+        self.build_tree_contents(
+            [('index.txt', """
+Table of Contents
+=================
+
+.. toctree::
+   :maxdepth: 1
+
+   bzr 0.0.8 <bzr-0.0.8>
+"""),
+             ('bzr-0.0.8.txt', """
+
+bzr 0.0.8
+*********
+
+Improvements
+============
+
+* Adding a file whose parent directory is not versioned will
+  implicitly add the parent, and so on up to the root.
+"""),
+             ])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        self.assertFileEqual("""\
+@chapter Table of Contents
+@menu
+* bzr 0.0.8:(bzr-0.0.8.texi)bzr 0.0.8. 
+@end menu
+""",
+                             'index.texi')
+        self.assertFileEqual("""\
+@chapter bzr 0.0.8
+@section Improvements
+@itemize @bullet
+@item
+Adding a file whose parent directory is not versioned will
+implicitly add the parent, and so on up to the root.
+
+@end itemize
+""",
+                             'bzr-0.0.8.texi')
+
+
+class TestFileProduction(TestSphinx):
+
+    def test_files_generated(self):
+        self.build_tree_contents(
+            [('index.txt', """
+Table of Contents
+=================
+
+.. toctree::
+   :maxdepth: 1
+
+   content
+"""),
+             ('content.txt', """
+
+bzr 0.0.8
+*********
+
+Improvements
+============
+
+* Adding a file whose parent directory is not versioned will
+  implicitly add the parent, and so on up to the root.
+"""),
+             ])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        self.failUnlessExists('index.texi')
+        self.failUnlessExists('content.texi')
+        # FIXME: When the content of the files becomes clearer replace the
+        # assertion above by the ones below -- vila 20100504
+#         self.assertFileEqual("""\
+# """,
+#                               'content.texi')
+#         self.assertFileEqual("""\
+# """,
+#                               'index.texi')
+# 
+
