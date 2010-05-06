@@ -35,23 +35,30 @@ class StubTree(object):
         return self._is_locked
 
 
-class TestReturnsCallableLeavingObjectUnlocked(TestCase):
+class FakeUnlockable(object):
+    """Something that can be unlocked."""
+
+    def unlock(self):
+        pass
+
+
+class TestReturnsUnlockable(TestCase):
 
     def test___str__(self):
-        matcher = ReturnsCallableLeavingObjectUnlocked(StubTree(True))
+        matcher = ReturnsUnlockable(StubTree(True))
         self.assertEqual(
-            'ReturnsCallableLeavingObjectUnlocked(lockable_thing=I am da tree)',
+            'ReturnsUnlockable(lockable_thing=I am da tree)',
             str(matcher))
 
     def test_match(self):
         stub_tree = StubTree(False)
-        matcher = ReturnsCallableLeavingObjectUnlocked(stub_tree)
-        self.assertThat(matcher.match(lambda:lambda:None), Equals(None))
+        matcher = ReturnsUnlockable(stub_tree)
+        self.assertThat(matcher.match(lambda:FakeUnlockable()), Equals(None))
 
     def test_mismatch(self):
         stub_tree = StubTree(True)
-        matcher = ReturnsCallableLeavingObjectUnlocked(stub_tree)
-        mismatch = matcher.match(lambda:lambda:None)
+        matcher = ReturnsUnlockable(stub_tree)
+        mismatch = matcher.match(lambda:FakeUnlockable())
         self.assertNotEqual(None, mismatch)
         self.assertThat(mismatch.describe(), Equals("I am da tree is locked"))
 

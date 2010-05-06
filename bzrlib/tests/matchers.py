@@ -27,17 +27,17 @@ assertions in Test Case objects, so they are recommended for new testing work.
 """
 
 __all__ = [
-    'ReturnsCallableLeavingObjectUnlocked',
+    'ReturnsUnlockable',
     ]
 
 from testtools.matchers import Mismatch, Matcher
 
 
-class ReturnsCallableLeavingObjectUnlocked(Matcher):
+class ReturnsUnlockable(Matcher):
     """A matcher that checks for the pattern we want lock* methods to have:
 
-    They should return a callable.
-    Calling that callable should unlock the original object.
+    They should return an object with an unlock() method.
+    Calling that method should unlock the original object.
 
     :ivar lockable_thing: The object which can be locked that will be
         inspected.
@@ -48,11 +48,11 @@ class ReturnsCallableLeavingObjectUnlocked(Matcher):
         self.lockable_thing = lockable_thing
 
     def __str__(self):
-        return ('ReturnsCallableLeavingObjectUnlocked(lockable_thing=%s)' % 
+        return ('ReturnsUnlockable(lockable_thing=%s)' % 
             self.lockable_thing)
 
     def match(self, lock_method):
-        lock_method()()
+        lock_method().unlock()
         if self.lockable_thing.is_locked():
             return _IsLocked(self.lockable_thing)
         return None
