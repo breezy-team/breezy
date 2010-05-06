@@ -42,6 +42,27 @@ class TexinfoWriter(writers.Writer):
 
 class TexinfoTranslator(nodes.NodeVisitor):
 
+    # Sphinx and texinfo doesn't use the same names for the section levels,
+    # since this can be confusing, here are the correspondances (sphinx ->
+    # texinfo).
+    # part -> chapter
+    # chapter -> section
+    # section -> subsection
+    # subsection -> subsubsection
+    # Additionally, sphinx defines subsubsections and paragraphs
+    section_names = ['chapter', 'section', 'subsection', 'subsubsection']
+    """texinfo section names differ from the sphinx ones.
+
+    Since this can be confusing, the correspondences are shown below
+    (shpinx -> texinfo):
+    part       -> chapter
+    chapter    -> section
+    section    -> subsection
+    subsection -> subsubsection
+
+    Additionally, sphinx defines subsubsections and paragraphs.
+    """
+
     def __init__(self, document, builder):
         nodes.NodeVisitor.__init__(self, document)
         self.chunks = []
@@ -51,6 +72,11 @@ class TexinfoTranslator(nodes.NodeVisitor):
         # care of the needs.
         self.in_toctree = False
         self.toctree_current_ref = None
+        # sections can be embedded and produce different directives depending
+        # on the depth.
+        self.section_level = -1
+        # The title text is in a Text node that shouldn't be output literally
+        self.in_title = False
 
     def add_text(self, text):
         self.chunks.append(text)
@@ -68,10 +94,10 @@ class TexinfoTranslator(nodes.NodeVisitor):
     # Layout
 
     def visit_section(self, node):
-        pass
+        self.section_level += 1
 
     def depart_section(self, node):
-        pass
+        self.section_level -= 1
 
     def visit_topic(self, node):
         pass
@@ -143,11 +169,16 @@ class TexinfoTranslator(nodes.NodeVisitor):
     # Document attributes
 
     def visit_title(self, node):
-        # XXX: This seems to be used for other things than the document itself.
-        self.add_text('@title ')
+        self.in_title = True
+        try:
+            section_name = self.section_names[self.section_level]
+        except IndexError:
+            # Just use @heading, it's not numbered anyway
+            section_name = 'heading'
+        self.add_text('@%s %s\n' % (section_name, node.astext()))
 
     def depart_title(self, node):
-        self.add_text('\n')
+        self.in_title = False
 
     def visit_label(self, node):
         raise nodes.SkipNode
@@ -161,7 +192,7 @@ class TexinfoTranslator(nodes.NodeVisitor):
         pass
 
     def depart_Text(self, node):
-        if not self.in_toctree:
+        if not self.in_toctree and not self.in_title:
             self.add_text(node.astext())
 
     # Styled text

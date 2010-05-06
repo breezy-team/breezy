@@ -178,6 +178,76 @@ implicitly add the parent, and so on up to the root.
 """,
                              'bzr-0.0.8.texi')
 
+class TestSections(TestSphinx):
+
+    def test_sections(self):
+        self.build_tree_contents([('index.txt', '''\
+###########
+Chapter one
+###########
+
+Chapter introduction.
+
+***********
+section one
+***********
+
+The first section.
+
+
+subsection one
+==============
+
+The first subsection.
+
+subsection two
+==============
+
+The second subsection.
+
+subsubsection one
+-----------------
+
+Here is sus sub section one.
+
+blob one
+^^^^^^^^
+
+Far tooo deep to get a name
+
+thing one
+"""""""""
+
+No idea how to call that, but sphinx says it's a paragraph.
+'''),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        print err.getvalue()
+        self.assertFileEqual("""\
+@chapter Chapter one
+Chapter introduction.
+
+@section section one
+The first section.
+
+@subsection subsection one
+The first subsection.
+
+@subsection subsection two
+The second subsection.
+
+@subsubsection subsubsection one
+Here is sus sub section one.
+
+@heading blob one
+Far tooo deep to get a name
+
+@heading thing one
+No idea how to call that, but sphinx says it's a paragraph.
+
+""",
+ 'index.texi')
+
 
 class TestFileProduction(TestSphinx):
 
