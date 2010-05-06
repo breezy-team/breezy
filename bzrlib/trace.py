@@ -111,6 +111,12 @@ _bzr_logger = logging.getLogger('bzr')
 
 
 def note(*args, **kwargs):
+    """Output a note to the user.
+
+    Takes the same parameters as logging.info.
+
+    :return: None
+    """
     # FIXME note always emits utf-8, regardless of the terminal encoding
     #
     # FIXME: clearing the ui and then going through the abstract logging

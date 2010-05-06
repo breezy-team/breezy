@@ -1349,6 +1349,11 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.bzrdir.create_workingtree(revision_id)
                 return
+
+        if not lightweight:
+            message = ('Copying history to "%s". '
+                'To checkout without local history use --lightweight.' % to_location)
+            ui.ui_factory.show_message(message)
         source.create_checkout(to_location, revision_id, lightweight,
                                accelerator_tree, hardlink)
 
@@ -2270,6 +2275,11 @@ class cmd_log(Command):
                    help='Show just the specified revision.'
                    ' See also "help revisionspec".'),
             'log-format',
+            RegistryOption('authors',
+                'What names to list as authors - first, all or committer.',
+                title='Authors',
+                lazy_registry=('bzrlib.log', 'author_list_registry'),
+            ),
             Option('levels',
                    short_name='n',
                    help='Number of levels to display - 0 for all, 1 for flat.',
@@ -2310,6 +2320,7 @@ class cmd_log(Command):
             limit=None,
             show_diff=False,
             include_merges=False,
+            authors=None,
             exclude_common_ancestry=False,
             ):
         from bzrlib.log import (
@@ -2395,7 +2406,8 @@ class cmd_log(Command):
                         show_timezone=timezone,
                         delta_format=get_verbosity_level(),
                         levels=levels,
-                        show_advice=levels is None)
+                        show_advice=levels is None,
+                        author_list_handler=authors)
 
         # Choose the algorithm for doing the logging. It's annoying
         # having multiple code paths like this but necessary until
