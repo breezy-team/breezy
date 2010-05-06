@@ -13,6 +13,12 @@ bzr 2.2b3
 Compatibility Breaks
 ********************
 
+* An API break has been made to the lock_write method of ``Branch`` and
+  ``Repository`` objects; they now return ``branch.BranchWriteLockResult``
+  and ``repository.RepositoryWriteLockResult`` objects. This makes
+  changing the API in future easier and permits some cleaner calling code.
+  (Robert Collins)
+
 New Features
 ************
 
