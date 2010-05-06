@@ -139,6 +139,12 @@ class TexinfoTranslator(nodes.NodeVisitor):
             # End the paragraph with a new line and leave a blank line after it.
             self.add_text('\n\n')
 
+    def visit_literal_block(self, node):
+        self.add_text('@samp{')
+
+    def depart_literal_block(self, node):
+        self.add_text('}\n\n')
+
     def visit_block_quote(self, node):
         pass
 
@@ -209,17 +215,11 @@ class TexinfoTranslator(nodes.NodeVisitor):
     def depart_strong(self, node):
         self.add_text('}')
 
-    def visit_literal_block(self, node):
-        pass
-
-    def depart_literal_block(self, node):
-        pass
-
     def visit_literal(self, node):
-        pass
+        self.add_text('@code{')
 
     def depart_literal(self, node):
-        pass
+        self.add_text('}')
 
     # Lists
 

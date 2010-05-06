@@ -77,6 +77,14 @@ class TestTextGeneration(TestSphinx):
         # input has none)
         self.assertFileEqual("""@strong{very important}\n\n""", 'index.texi')
 
+    def test_literal(self):
+        self.build_tree_contents([('index.txt', """the command is ``foo``"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        # Note that since the input is a paragraph, we get two \n (even if the
+        # input has none)
+        self.assertFileEqual("""the command is @code{foo}\n\n""", 'index.texi')
+
     def test_paragraphs(self):
         self.build_tree_contents([('index.txt', """\
 This is a paragraph.
@@ -89,6 +97,21 @@ This is another one.
 This is a paragraph.
 
 This is another one.
+
+""", 'index.texi')
+
+    def test_literal_block(self):
+        self.build_tree_contents([('index.txt', """\
+Do this::
+
+   bzr xxx
+"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        self.assertFileEqual("""\
+Do this:
+
+@samp{bzr xxx}
 
 """, 'index.texi')
 
