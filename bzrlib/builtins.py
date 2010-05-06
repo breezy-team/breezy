@@ -1350,11 +1350,6 @@ class cmd_checkout(Command):
             except errors.NoWorkingTree:
                 source.bzrdir.create_workingtree(revision_id)
                 return
-
-        if not lightweight:
-            message = ('Copying history to "%s". '
-                'To checkout without local history use --lightweight.' % to_location)
-            ui.ui_factory.show_message(message)
         source.create_checkout(to_location, revision_id, lightweight,
                                accelerator_tree, hardlink)
 
