@@ -2288,6 +2288,10 @@ class BranchWriteLockResult(object):
         self.branch_token = branch_token
         self.unlock = unlock
 
+    def __str__(self):
+        return "BranchWriteLockResult(%s, %s)" % (self.branch_token,
+            self.unlock)
+
 
 class BzrBranch(Branch, _RelockDebugMixin):
     """A branch stored in the actual filesystem.

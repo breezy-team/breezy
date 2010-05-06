@@ -872,6 +872,10 @@ class RepositoryWriteLockResult(object):
         self.repository_token = repository_token
         self.unlock = unlock
 
+    def __str__(self):
+        return "RepositoryWriteLockResult(%s, %s)" % (self.repository_token,
+            self.unlock)
+
 
 ######################################################################
 # Repositories
