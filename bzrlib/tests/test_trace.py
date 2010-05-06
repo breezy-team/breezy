@@ -29,7 +29,7 @@ from bzrlib import (
     errors,
     trace,
     )
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import TestCaseInTempDir, TestCase, ModuleAvailableFeature
 from bzrlib.trace import (
     mutter, mutter_callsite, report_exception,
     set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
@@ -103,6 +103,20 @@ class TestTrace(TestCase):
         # 'No such file' for open()
         self.assertContainsRe(msg,
             r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
+
+    def test_format_pywintypes_error(self):
+        self.requireFeature(ModuleAvailableFeature("pywintypes"))
+        import pywintypes, win32file
+        try:
+            win32file.RemoveDirectory('nosuchfile22222')
+        except pywintypes.error:
+            pass
+        msg = _format_exception()
+        # GZ 2010-05-03: Formatting for pywintypes.error is basic, a 3-tuple
+        #                with errno, function name, and locale error message
+        self.expectFailure("pywintypes.error not treated as user error",
+            self.assertContainsRe, msg,
+            r"^bzr: ERROR: \(2, 'RemoveDirectory', .*\)")
 
     def test_format_unicode_error(self):
         try:
