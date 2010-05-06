@@ -82,6 +82,15 @@ class TestCheckout(ExternalBase):
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
         self.failIfExists('checkout/added_in_2')
 
+    def test_heavy_checkout_inside_shared_repo(self):
+        """Checkout in shared-repo should not warn on history copy.
+        """
+        self.run_bzr(['init-repo', 'foo'])
+        os.chdir('foo')
+        self.run_bzr(['init', 'bar'])
+        out, err = self.run_bzr(['checkout', 'bar', 'baz'])
+        self.assertNotContainsRe(out, 'Copying history')
+
     def test_checkout_reconstitutes_working_trees(self):
         # doing a 'bzr checkout' in the directory of a branch with no tree
         # or a 'bzr checkout path' with path the name of a directory with
