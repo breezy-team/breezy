@@ -77,6 +77,12 @@ class TexinfoTranslator(nodes.NodeVisitor):
         self.section_level = -1
         # The title text is in a Text node that shouldn't be output literally
         self.in_title = False
+        # Tables has some specific nodes but need more help
+        self.in_table = False
+        self.tab_nb_cols = None
+        self.tab_item_cmd = None
+        self.tab_tab_cmd = None
+        self.tab_entry_num = None
 
     def add_text(self, text):
         self.chunks.append(text)
@@ -109,8 +115,10 @@ class TexinfoTranslator(nodes.NodeVisitor):
         pass
 
     def depart_paragraph(self, node):
-        # End the paragraph with a new line and leave a blank line after it.
-        self.add_text('\n\n')
+        if not self.in_table:
+            # End the paragraph with a new line and leave a blank line after
+            # it.
+            self.add_text('\n\n')
 
     def visit_compact_paragraph(self, node):
         if node.has_key('toctree'):
@@ -198,7 +206,7 @@ class TexinfoTranslator(nodes.NodeVisitor):
         pass
 
     def depart_Text(self, node):
-        if not self.in_toctree and not self.in_title:
+        if not self.in_toctree and not self.in_title and not self.in_table:
             self.add_text(node.astext())
 
     # Styled text
@@ -337,41 +345,59 @@ class TexinfoTranslator(nodes.NodeVisitor):
 
     # Tables
     def visit_table(self, node):
-        pass
+        self.in_table = True
+        self.add_text('@multitable ')
 
     def depart_table(self, node):
-        pass
+        self.add_text('@end multitable\n')
+        self.in_table = False
 
     def visit_tgroup(self, node):
-        pass
+        self.tab_nb_cols = node['cols']
 
     def depart_tgroup(self, node):
-        pass
+        self.tab_nb_cols = None
 
     def visit_colspec(self, node):
-        raise nodes.SkipNode
+        self.add_text('{%s}' % ('x' * node['colwidth']))
+
+    def depart_colspec(self, node):
+        self.tab_nb_cols -= 1
+        if self.tab_nb_cols == 0:
+            self.add_text('\n') # end the @multitable line
 
     def visit_thead(self, node):
-        pass
+        self.tab_item_cmd = '@headitem %s '
+        self.tab_tab_cmd = '@tab %s'
+
     def depart_thead(self, node):
-        pass
-
-    def visit_row(self, node):
-        pass
-
-    def depart_row(self, node):
-        pass
-
-    def visit_entry(self, node):
-        pass
-
-    def depart_entry(self, node):
-        pass
+        self.add_text('\n')
+        self.tab_item_cmd = None
+        self.tab_tab_cmd = None
 
     def visit_tbody(self, node):
-        pass
+        self.tab_item_cmd = '@item %s\n'
+        self.tab_tab_cmd = '@tab %s\n'
 
     def depart_tbody(self, node):
+        self.tab_item_cmd = None
+        self.tab_tab_cmd = None
+
+    def visit_row(self, node):
+        self.tab_entry_num = 0
+
+    def depart_row(self, node):
+        self.tab_entry_num = None
+
+    def visit_entry(self, node):
+        if self.tab_entry_num == 0:
+            cmd = self.tab_item_cmd
+        else:
+            cmd = self.tab_tab_cmd
+        self.add_text(cmd % node.astext())
+        self.tab_entry_num += 1
+
+    def depart_entry(self, node):
         pass
 
     # References
@@ -405,3 +431,4 @@ class TexinfoTranslator(nodes.NodeVisitor):
     def visit_image(self, node):
         self.add_text(_('[image]'))
         raise nodes.SkipNode
+

@@ -176,6 +176,35 @@ item uses two lines.
  'index.texi')
 
 
+class TestTableGeneration(TestSphinx):
+
+    def test_table(self):
+        self.build_tree_contents([('index.txt', """\
+  ===========         ================
+  Prefix              Description
+  ===========         ================
+  first               The first
+  second              The second
+  last                The last
+  ===========         ================
+"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        print err.getvalue()
+        self.assertFileEqual("""\
+@multitable {xxxxxxxxxxx}{xxxxxxxxxxxxxxxx}
+@headitem Prefix @tab Description
+@item first
+@tab The first
+@item second
+@tab The second
+@item last
+@tab The last
+@end multitable
+""",
+ 'index.texi')
+
+
 class TestTocTreeGeneration(TestSphinx):
 
     def test_toctree(self):
