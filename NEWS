@@ -13,6 +13,10 @@ bzr 2.1.2
 Bug Fixes
 *********
 
+* ``bzr clean-tree`` should not delete nested bzrdirs. Required for proper
+  support of bzr-externals and scmproj plugins.
+  (Alexander Belchenko, bug #572098)
+
 * ``bzr switch`` does not die if a ConfigurableFileMerger is used.
   (Aaron Bentley, #559436)
 
