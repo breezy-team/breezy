@@ -61,6 +61,14 @@ class TestTextGeneration(TestSphinx):
     # alone. On top of that, it seems the doc tree must contain an index.txt
     # file. We may need a texinfo builder ? -- vila 20100505
 
+    def test_special_chars(self):
+        self.build_tree_contents([('index.txt', """A '@' a '{' and a '}'"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        # Note that since the input is a paragraph, we get two \n (even if the
+        # input has none)
+        self.assertFileEqual("""A '@@' a '@{' and a '@}'\n\n""", 'index.texi')
+
     def test_emphasis(self):
         self.build_tree_contents([('index.txt', """*important*"""),])
         app, out, err = self.make_sphinx()
@@ -98,7 +106,8 @@ This is a paragraph.
 
 This is another one.
 
-""", 'index.texi')
+""",
+                             'index.texi')
 
     def test_literal_block(self):
         self.build_tree_contents([('index.txt', """\
@@ -112,7 +121,8 @@ Do this::
 Do this:
 
 @samp{bzr xxx}
-""", 'index.texi')
+""",
+                             'index.texi')
 
 
 class TestDocumentAttributesGeneration(TestSphinx):
@@ -151,7 +161,7 @@ item uses two lines.
 
 @end itemize
 """,
- 'index.texi')
+                             'index.texi')
 
     def test_enumerated_list(self):
         self.build_tree_contents([('index.txt', """\
@@ -173,7 +183,7 @@ item uses two lines.
 
 @end enumerate
 """,
- 'index.texi')
+                             'index.texi')
 
 
 class TestTableGeneration(TestSphinx):
@@ -201,8 +211,9 @@ class TestTableGeneration(TestSphinx):
 @item last
 @tab The last
 @end multitable
+
 """,
- 'index.texi')
+                             'index.texi')
 
 
 class TestTocTreeGeneration(TestSphinx):
@@ -235,7 +246,7 @@ Improvements
         self.assertFileEqual("""\
 @chapter Table of Contents
 @menu
-* bzr 0.0.8:(bzr-0.0.8.texi)bzr 0.0.8. 
+* bzr 0.0.8:(bzr-0.0.8.info)bzr 0.0.8. 
 @end menu
 """,
                              'index.texi')
@@ -319,7 +330,7 @@ Far tooo deep to get a name
 No idea how to call that, but sphinx says it's a paragraph.
 
 """,
- 'index.texi')
+                             'index.texi')
 
 
 class TestFileProduction(TestSphinx):

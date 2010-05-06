@@ -31,8 +31,11 @@ class TexinfoBuilder(_text_builder.TextBuilder):
         self.writer = texinfo_writer.TexinfoWriter(self)
 
     def get_target_uri(self, docname, typ=None):
-        # This returns the targeted texinfo relpath
-        return docname + self.out_suffix
+        # FIXME: Revisit when info file generation is defined (the suffix is
+        # left here for clarity but the final version may just get rid of
+        # it). And we probalby will join several files into bigger info files
+        # anyway. -- vila 20100506
+        return docname + '.info'
 
 
 def setup(app):

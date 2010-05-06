@@ -207,7 +207,14 @@ class TexinfoTranslator(nodes.NodeVisitor):
 
     def depart_Text(self, node):
         if not self.in_toctree and not self.in_title and not self.in_table:
-            self.add_text(node.astext())
+            text = node.astext()
+            if '@' in text:
+                text = text.replace('@', '@@')
+            if '{' in text:
+                text = text.replace('{', '@{')
+            if '}' in text:
+                text = text.replace('}', '@}')
+            self.add_text(text)
 
     # Styled text
 
@@ -350,6 +357,8 @@ class TexinfoTranslator(nodes.NodeVisitor):
 
     def depart_table(self, node):
         self.add_text('@end multitable\n')
+        # Leave a blank line after a table
+        self.add_text('\n')
         self.in_table = False
 
     def visit_tgroup(self, node):
