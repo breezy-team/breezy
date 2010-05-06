@@ -114,8 +114,7 @@ class TestTrace(TestCase):
         msg = _format_exception()
         # GZ 2010-05-03: Formatting for pywintypes.error is basic, a 3-tuple
         #                with errno, function name, and locale error message
-        self.expectFailure("pywintypes.error not treated as user error",
-            self.assertContainsRe, msg,
+        self.assertContainsRe(msg,
             r"^bzr: ERROR: \(2, 'RemoveDirectory', .*\)")
 
     def test_format_unicode_error(self):
