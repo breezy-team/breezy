@@ -114,6 +114,10 @@ Internals
 Testing
 *******
 
+* Added ``bzrlib.tests.matchers`` as a place to put matchers, along with
+  our first in-tree matcher. See the module docstring for details.
+  (Robert Collins)
+
 * ``bzr selftest --parallel=subprocess`` now works correctly on win32.
    (Gordon Tyler, #551332)
 
