@@ -272,16 +272,19 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
     def create_workingtree(self, revision_id=None, from_branch=None):
         raise errors.NotLocalUrl(self.transport.base)
 
-    def find_branch_format(self):
+    def find_branch_format(self, name=None):
         """Find the branch 'format' for this bzrdir.
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
-        b = self.open_branch()
+        b = self.open_branch(name=name)
         return b._format
 
-    def get_branch_reference(self):
+    def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
+        if name is not None:
+            # XXX JRV20100304: Support opening colocated branches
+            raise errors.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
         if response[0] == 'ref':
             return response[1]
@@ -318,9 +321,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         return response
 
-    def _get_tree_branch(self):
+    def _get_tree_branch(self, name=None):
         """See BzrDir._get_tree_branch()."""
-        return None, self.open_branch()
+        return None, self.open_branch(name=name)
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
