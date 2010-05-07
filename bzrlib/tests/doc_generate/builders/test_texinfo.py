@@ -114,13 +114,35 @@ This is another one.
 Do this::
 
    bzr xxx
+   bzr yyy
 """),])
         app, out, err = self.make_sphinx()
         app.build(True, [])
         self.assertFileEqual("""\
 Do this:
 
-@samp{bzr xxx}
+@samp{bzr xxx
+bzr yyy}
+
+""",
+                             'index.texi')
+
+    def test_block_quote(self):
+        self.build_tree_contents([('index.txt', """\
+This is an ordinary paragraph, introducing a block quote.
+
+    "It is my business to know things.  That is my trade."
+
+"""),])
+        app, out, err = self.make_sphinx()
+        app.build(True, [])
+        self.assertFileEqual("""\
+This is an ordinary paragraph, introducing a block quote.
+
+@example
+"It is my business to know things.  That is my trade."
+
+@end example
 """,
                              'index.texi')
 
@@ -201,7 +223,10 @@ class TestTableGeneration(TestSphinx):
         app, out, err = self.make_sphinx()
         app.build(True, [])
         print err.getvalue()
+        # FIXME: Sphinx bug ? Why are tables enclosed in a block_quote
+        # (translated as an @example).
         self.assertFileEqual("""\
+@example
 @multitable {xxxxxxxxxxx}{xxxxxxxxxxxxxxxx}
 @headitem Prefix @tab Description
 @item first
@@ -212,6 +237,7 @@ class TestTableGeneration(TestSphinx):
 @tab The last
 @end multitable
 
+@end example
 """,
                              'index.texi')
 
@@ -246,7 +272,7 @@ Improvements
         self.assertFileEqual("""\
 @chapter Table of Contents
 @menu
-* bzr 0.0.8:(bzr-0.0.8.info)bzr 0.0.8. 
+* bzr 0.0.8: (bzr-0.0.8.info)bzr 0.0.8. 
 @end menu
 """,
                              'index.texi')
