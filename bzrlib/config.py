@@ -260,7 +260,7 @@ class Config(object):
         $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
-        If none is found, errors.NoWhoami exception is raised.
+        If no username can be found, errors.NoWhoami exception is raised.
 
         TODO: Check it's reasonably well-formed.
         """
