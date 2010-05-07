@@ -807,6 +807,14 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqualBzrdirs([baz, foo, bar],
                                 bzrdir.BzrDir.find_bzrdirs(transport))
 
+    def test_find_bzrdirs_permission_denied(self):
+        foo, bar, baz = self.make_foo_bar_baz()
+        print "foo", foo
+        print foo.user_url
+        os.chmod(urlutils.local_path_from_url(foo.user_url), 0000)
+        transport = get_transport(self.get_url())
+        self.assertEqualBzrdirs([baz], bzrdir.BzrDir.find_bzrdirs(transport))
+
     def test_find_bzrdirs_list_current(self):
         def list_current(transport):
             return [s for s in transport.list_dir('') if s != 'baz']

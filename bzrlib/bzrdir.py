@@ -382,7 +382,7 @@ class BzrDir(ControlComponent):
                 yield value
             try:
                 subdirs = list_current(current_transport)
-            except errors.NoSuchFile:
+            except (errors.NoSuchFile, errors.PermissionDenied):
                 continue
             if recurse:
                 for subdir in sorted(subdirs, reverse=True):
@@ -1946,9 +1946,8 @@ class BzrDirFormat(object):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-        except errors.NoSuchFile:
+        except (errors.NoSuchFile, errors.PermissionDenied):
             raise errors.NotBranchError(path=transport.base)
-
         try:
             return klass._formats[format_string]
         except KeyError:
