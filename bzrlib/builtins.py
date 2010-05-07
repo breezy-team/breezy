@@ -2032,11 +2032,7 @@ class cmd_modified(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
-    takes_options = ['directory',
-            Option('null',
-                   help='Write an ascii NUL (\\0) separator '
-                   'between files rather than a newline.')
-            ]
+    takes_options = ['directory', 'null']
 
     @display_command
     def run(self, null=False, directory=u'.'):
@@ -2055,11 +2051,7 @@ class cmd_added(Command):
 
     hidden = True
     _see_also = ['status', 'ls']
-    takes_options = ['directory',
-            Option('null',
-                   help='Write an ascii NUL (\\0) separator '
-                   'between files rather than a newline.')
-            ]
+    takes_options = ['directory', 'null']
 
     @display_command
     def run(self, null=False, directory=u'.'):
@@ -2539,16 +2531,16 @@ class cmd_ls(Command):
                    help='Recurse into subdirectories.'),
             Option('from-root',
                    help='Print paths relative to the root of the branch.'),
-            Option('unknown', help='Print unknown files.'),
+            Option('unknown', short_name='u',
+                help='Print unknown files.'),
             Option('versioned', help='Print versioned files.',
                    short_name='V'),
-            Option('ignored', help='Print ignored files.'),
-            Option('null',
-                   help='Write an ascii NUL (\\0) separator '
-                   'between files rather than a newline.'),
-            Option('kind',
+            Option('ignored', short_name='i',
+                help='Print ignored files.'),
+            Option('kind', short_name='k',
                    help='List entries of a particular kind: file, directory, symlink.',
                    type=unicode),
+            'null',
             'show-ids',
             'directory',
             ]

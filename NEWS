@@ -112,6 +112,10 @@ Improvements
   (case-sensitive) as false.
   (Brian de Alwis, Vincent Ladeuil)
 
+* ``bzr ls`` now supports short options for existing long options.
+  ``-k/--kind``, ``-i/--ignored``, ``-u/--unknown`` and ``-0/--null``.
+  (Parth Malwankar, #181124)
+
 * ``Config.get_user_option_as_bool`` will now warn if a value cannot
   be interpreted as a boolean.
   (Vincent Ladeuil)
