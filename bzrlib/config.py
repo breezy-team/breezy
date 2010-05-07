@@ -260,8 +260,7 @@ class Config(object):
         $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
-        If none is found, a reasonable default is (hopefully)
-        created.
+        If no username can be found, errors.NoWhoami exception is raised.
 
         TODO: Check it's reasonably well-formed.
         """
@@ -280,7 +279,7 @@ class Config(object):
         raise errors.NoWhoami()
 
     def ensure_username(self):
-        """Raise BzrCommandError if username is not set.
+        """Raise errors.NoWhoami if username is not set.
 
         This method relies on the username() function raising the error.
         """
