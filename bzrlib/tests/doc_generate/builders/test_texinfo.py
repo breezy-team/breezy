@@ -48,6 +48,38 @@ class TestSphinx(tests.TestCaseInTempDir):
             freshenv=True)
         return app, out, err
 
+    def build(self, app, all_files=True, file_names=None):
+        if file_names is None:
+            file_names = []
+        app.build(all_files, file_names)
+
+    # FIXME: something smells wrong here as we can't process a single file
+    # alone. On top of that, it seems the doc tree must contain an index.txt
+    # file. We may need a texinfo builder ? -- vila 20100505
+
+    def create_content(self, content):
+        """Put content into a single file.
+
+        This is appropriate for simple tests about the content of a single file.
+        """
+        app, out, err = self.make_sphinx()
+        self.build_tree_contents([('index.txt', content),])
+        self.build(app)
+
+    def assertContent(self, expected, end=None):
+        """Check the content of the file created with creste_content().
+
+        Most texinfo constructs can be tested this way without caring for any
+        boilerplate that texinfo may require at the beginning or the end of the
+        file.
+        """
+        if end is None:
+            # By default we test constructs that are embedded into a paragraph
+            # which always end with two \n (even if the input has none)
+            end = '\n\n'
+        self.assertFileEqual(expected + end, 'index.texi')
+
+
 class TestBuilderLoaded(TestSphinx):
 
     def test_builder_loaded(self):
@@ -57,122 +89,92 @@ class TestBuilderLoaded(TestSphinx):
 
 class TestTextGeneration(TestSphinx):
 
-    # FIXME: something smells wrong here as we can't process a single file
-    # alone. On top of that, it seems the doc tree must contain an index.txt
-    # file. We may need a texinfo builder ? -- vila 20100505
-
     def test_special_chars(self):
-        self.build_tree_contents([('index.txt', """A '@' a '{' and a '}'"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        # Note that since the input is a paragraph, we get two \n (even if the
-        # input has none)
-        self.assertFileEqual("""A '@@' a '@{' and a '@}'\n\n""", 'index.texi')
+        self.create_content("A '@' a '{' and a '}'")
+        self.assertContent("A '@@' a '@{' and a '@}'")
 
     def test_emphasis(self):
-        self.build_tree_contents([('index.txt', """*important*"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        # Note that since the input is a paragraph, we get two \n (even if the
-        # input has none)
-        self.assertFileEqual("""@emph{important}\n\n""", 'index.texi')
+        self.create_content('*important*')
+        self.assertContent('@emph{important}')
 
     def test_strong(self):
-        self.build_tree_contents([('index.txt', """**very important**"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        # Note that since the input is a paragraph, we get two \n (even if the
-        # input has none)
-        self.assertFileEqual("""@strong{very important}\n\n""", 'index.texi')
+        self.create_content('**very important**')
+        self.assertContent('@strong{very important}')
 
     def test_literal(self):
-        self.build_tree_contents([('index.txt', """the command is ``foo``"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        # Note that since the input is a paragraph, we get two \n (even if the
-        # input has none)
-        self.assertFileEqual("""the command is @code{foo}\n\n""", 'index.texi')
+        self.create_content('the command is ``foo``')
+        self.assertContent('the command is @code{foo}')
 
     def test_paragraphs(self):
-        self.build_tree_contents([('index.txt', """\
+        self.create_content('''\
 This is a paragraph.
 
 This is another one.
-"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        self.assertFileEqual("""\
+''')
+        self.assertContent('''\
 This is a paragraph.
 
-This is another one.
-
-""",
-                             'index.texi')
+This is another one.''')
 
     def test_literal_block(self):
-        self.build_tree_contents([('index.txt', """\
+        self.create_content('''\
 Do this::
 
    bzr xxx
    bzr yyy
-"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        self.assertFileEqual("""\
+''')
+        self.assertContent('''\
 Do this:
 
 @samp{bzr xxx
 bzr yyy}
 
-""",
-                             'index.texi')
+''',
+                           end='')
 
     def test_block_quote(self):
-        self.build_tree_contents([('index.txt', """\
+        self.create_content('''\
 This is an ordinary paragraph, introducing a block quote.
 
     "It is my business to know things.  That is my trade."
 
-"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        self.assertFileEqual("""\
+This is another ordinary paragraph.
+''')
+        self.assertContent('''\
 This is an ordinary paragraph, introducing a block quote.
 
 @example
 "It is my business to know things.  That is my trade."
 
 @end example
-""",
-                             'index.texi')
+
+This is another ordinary paragraph.
+
+''',
+                           # examples are not followed by an empty line
+                           end='')
 
 
 class TestDocumentAttributesGeneration(TestSphinx):
 
     def test_title(self):
-        self.build_tree_contents([('index.txt', """\
+        self.create_content('''\
 ####################
 Bazaar Release Notes
 ####################
-"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        self.assertFileEqual("""@chapter Bazaar Release Notes\n""",
-                             'index.texi')
+''')
+        self.assertContent('''@chapter Bazaar Release Notes\n''', end='')
 
 
 class TestListGeneration(TestSphinx):
 
     def test_bullet_list(self):
-        self.build_tree_contents([('index.txt', """\
+        self.create_content('''\
 * This is a bulleted list.
 * It has two items, the second
   item uses two lines.
-"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        print err.getvalue()
-        self.assertFileEqual("""\
+''')
+        self.assertContent('''\
 @itemize @bullet
 @item
 This is a bulleted list.
@@ -182,19 +184,16 @@ It has two items, the second
 item uses two lines.
 
 @end itemize
-""",
-                             'index.texi')
+''',
+                           end='')
 
     def test_enumerated_list(self):
-        self.build_tree_contents([('index.txt', """\
+        self.create_content('''\
 #. This is a numbered list.
 #. It has two items, the second
    item uses two lines.
-"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        print err.getvalue()
-        self.assertFileEqual("""\
+''')
+        self.assertContent('''\
 @enumerate
 @item
 This is a numbered list.
@@ -204,14 +203,14 @@ It has two items, the second
 item uses two lines.
 
 @end enumerate
-""",
-                             'index.texi')
+''',
+                           end='')
 
 
 class TestTableGeneration(TestSphinx):
 
     def test_table(self):
-        self.build_tree_contents([('index.txt', """\
+        self.create_content('''\
   ===========         ================
   Prefix              Description
   ===========         ================
@@ -219,13 +218,10 @@ class TestTableGeneration(TestSphinx):
   second              The second
   last                The last
   ===========         ================
-"""),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        print err.getvalue()
+''')
         # FIXME: Sphinx bug ? Why are tables enclosed in a block_quote
         # (translated as an @example).
-        self.assertFileEqual("""\
+        self.assertContent('''\
 @example
 @multitable {xxxxxxxxxxx}{xxxxxxxxxxxxxxxx}
 @headitem Prefix @tab Description
@@ -236,10 +232,7 @@ class TestTableGeneration(TestSphinx):
 @item last
 @tab The last
 @end multitable
-
-@end example
-""",
-                             'index.texi')
+@end example''')
 
 
 class TestTocTreeGeneration(TestSphinx):
@@ -268,7 +261,7 @@ Improvements
 """),
              ])
         app, out, err = self.make_sphinx()
-        app.build(True, [])
+        self.build(app)
         self.assertFileEqual("""\
 @chapter Table of Contents
 @menu
@@ -291,7 +284,7 @@ implicitly add the parent, and so on up to the root.
 class TestSections(TestSphinx):
 
     def test_sections(self):
-        self.build_tree_contents([('index.txt', '''\
+        self.create_content('''\
 ###########
 Chapter one
 ###########
@@ -329,11 +322,8 @@ thing one
 """""""""
 
 No idea how to call that, but sphinx says it's a paragraph.
-'''),])
-        app, out, err = self.make_sphinx()
-        app.build(True, [])
-        print err.getvalue()
-        self.assertFileEqual("""\
+''')
+        self.assertContent('''\
 @chapter Chapter one
 Chapter introduction.
 
@@ -353,10 +343,7 @@ Here is sus sub section one.
 Far tooo deep to get a name
 
 @heading thing one
-No idea how to call that, but sphinx says it's a paragraph.
-
-""",
-                             'index.texi')
+No idea how to call that, but sphinx says it's a paragraph.''')
 
 
 class TestFileProduction(TestSphinx):
@@ -385,7 +372,7 @@ Improvements
 """),
              ])
         app, out, err = self.make_sphinx()
-        app.build(True, [])
+        self.build(app)
         self.failUnlessExists('index.texi')
         self.failUnlessExists('content.texi')
         # FIXME: When the content of the files becomes clearer replace the

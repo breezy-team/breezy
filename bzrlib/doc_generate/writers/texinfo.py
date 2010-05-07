@@ -172,7 +172,7 @@ class TexinfoTranslator(nodes.NodeVisitor):
     def depart_block_quote(self, node):
         node.parent.collect_chunk('@example\n')
         node.parent.collect_chunk(''.join(node['chunk']))
-        node.parent.collect_chunk('@end example\n')
+        node.parent.collect_chunk('@end example\n\n')
 
     def visit_note(self, node):
         pass
@@ -269,9 +269,9 @@ class TexinfoTranslator(nodes.NodeVisitor):
         if self.in_toctree:
             self._decorate_list(node['list_item'], node.parent.collect_text)
         else:
-            # FIXME: Should respect the 'bullet' attribute
             self._decorate_list(node['list_item'], node.parent.collect_chunk,
                                 '@item\n%s',
+                                # FIXME: Should respect the 'bullet' attribute
                                 '@itemize @bullet\n', '@end itemize\n')
 
     def visit_enumerated_list(self, node):
@@ -403,8 +403,7 @@ class TexinfoTranslator(nodes.NodeVisitor):
         for r in body_rows:
             self._decorate_list(r[1:], rows.append,
                                 '@tab %s\n', '@item %s\n' % r[0])
-        # Leave a blank line after a table
-        footer = '@end multitable\n\n'
+        footer = '@end multitable\n'
         node.parent.collect_table(header + ''.join(rows) + footer)
 
     def visit_colspec(self, node):
