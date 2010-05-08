@@ -143,6 +143,10 @@ Testing
   failures on Lucid, FreeBSD and gentoo.  
   (Vincent Ladeuil, #528436)
 
+* New class ``ExecutableFeature`` for checking the availability of
+  executables on the ``PATH``. Migrated from bash_completion plugin.
+  (Martin von Gagern)
+
 bzr 2.2b2
 #########
 
