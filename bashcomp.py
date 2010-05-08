@@ -123,13 +123,17 @@ complete -F %(function_name)s -o default bzr
 	IFS=$'\\n'
 	if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
 		case $curOpt in
-			tag:*)
+			tag:|*..tag:)
 				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
 				;;
 		esac
 		case $cur in
 			[\\"\\']tag:*)
 				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//; s/^/tag:/') )
+				;;
+			[\\"\\']*..tag:*)
+				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//') )
+				fixedWords=( "${fixedWords[@]/#/${cur%%..tag:*}..tag:}" )
 				;;
 		esac
 	elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
@@ -156,7 +160,7 @@ complete -F %(function_name)s -o default bzr
             "global_options": self.global_options(),
             "debug": self.debug_output(),
         })
-        # Help Emacs terminate strings: "'
+        # Help Emacs terminate strings: "
 
     def command_names(self):
         return " ".join(self.data.all_command_aliases())
@@ -254,7 +258,10 @@ class PluginData(object):
 
     def __init__(self, name, version=None):
         if version is None:
-            version = bzrlib.plugin.plugins()[name].__version__
+            try:
+                version = bzrlib.plugin.plugins()[name].__version__
+            except:
+                version = 'unknown'
         self.name = name
         self.version = version
 

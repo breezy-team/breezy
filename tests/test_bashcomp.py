@@ -226,6 +226,18 @@ class TestBashCompletionInvoking(TestCaseWithTransport, BashCompletionMixin):
         self.complete(['bzr', 'log', '-r', "'tag:t"])
         self.assertCompletionEquals('tag:tag with spaces')
 
+    def test_revspec_tag_endrange(self):
+        self.requireFeature(SedFeature)
+        wt = self.make_branch_and_tree('.', format='dirstate-tags')
+        wt.branch.tags.set_tag('tag1', 'null:')
+        wt.branch.tags.set_tag('tag2', 'null:')
+        self.complete(['bzr', 'log', '-r', '3..tag', ':', 't'])
+        self.assertCompletionEquals('tag1', 'tag2')
+        self.complete(['bzr', 'log', '-r', '"3..tag:t'])
+        self.assertCompletionEquals('3..tag:tag1', '3..tag:tag2')
+        self.complete(['bzr', 'log', '-r', "'3..tag:t"])
+        self.assertCompletionEquals('3..tag:tag1', '3..tag:tag2')
+
 
 class TestBashCodeGen(TestCase):
 
