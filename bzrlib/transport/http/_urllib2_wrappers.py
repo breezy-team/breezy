@@ -711,7 +711,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             connect = _ConnectRequest(request)
             response = self.parent.open(connect)
             if response.code != 200:
-                raise ConnectionError("Can't connect to %s via proxy %s" % (
+                raise errors.ConnectionError("Can't connect to %s via proxy %s" % (
                         connect.proxied_host, self.host))
             # Housekeeping
             connection.cleanup_pipe()
