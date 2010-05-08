@@ -61,3 +61,34 @@ class _ChownFeature(tests.Feature):
 
 chown_feature = _ChownFeature()
 
+
+class ExecutableFeature(tests.Feature):
+    """Feature testing whether an executable of a given name is on the PATH."""
+
+    def __init__(self, name):
+        super(ExecutableFeature, self).__init__()
+        self.name = name
+
+    @property
+    def path(self):
+        try:
+            return self._path
+        except AttributeError:
+            self._path = self._get_path()
+            return self._path
+
+    def _get_path(self):
+        path = os.environ.get('PATH')
+        if path is None:
+            return None
+        for d in path.split(os.pathsep):
+            f = os.path.join(d, self.name)
+            if os.access(f, os.X_OK):
+                return f
+        return None
+
+    def available(self):
+        return self.path is not None
+
+    def feature_name(self):
+        return '%s executable' % self.name
