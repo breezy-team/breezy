@@ -30,6 +30,7 @@ import os
 import random
 import socket
 import stat
+import urllib
 
 import time
 import gio
@@ -116,11 +117,10 @@ class GioTransport(ConnectedTransport):
         if not base.startswith('gio+'):
             raise ValueError(base)
 
-        (scheme, user, password, host, port, path) = \
-            urlutils.parse_url(base[len('gio+'):])
-        self.host = host
-        self.port = port
-        self.scheme = scheme
+        (scheme, netloc, path, params, query, fragment) = \
+                urlparse.urlparse(base[len('gio+'):], allow_fragments=False)
+        if '@' in netloc:
+            user, netloc = netloc.rsplit('@', 1)
         self.mounted = 0
         #Seems it is not possible to list supported backends for GIO
         #so a hardcoded list it is then.
@@ -131,9 +131,7 @@ class GioTransport(ConnectedTransport):
                     ', '.join(gio_backends))
 
         #Remove the username and password from the url we send to GIO
-        netloc = host
-        if port:
-            netloc = "%s:%s" % (host, port)
+        #by rebuilding the url again.
         u = (scheme, netloc, path, '', '', '')
         self.url = urlparse.urlunparse(u)
 
@@ -163,34 +161,35 @@ class GioTransport(ConnectedTransport):
         #really use bzrlib.auth get_password for this
         #or possibly better gnome-keyring?
         auth = config.AuthenticationConfig()
-        host = self.host
+        (scheme, urluser, urlpassword, host, port, urlpath) = \
+           urlutils.parse_url(self.url)
         user = None
         if (flags & gio.ASK_PASSWORD_NEED_USERNAME and
                 flags & gio.ASK_PASSWORD_NEED_DOMAIN):
-            prompt = self.scheme.upper() + ' %(host)s DOMAIN\username'
-            user_and_domain = auth.get_user(self.scheme, self.host, \
-                    port=self.port, ask=True, prompt=prompt)
+            prompt = scheme.upper() + ' %(host)s DOMAIN\username'
+            user_and_domain = auth.get_user(scheme, host, \
+                    port=port, ask=True, prompt=prompt)
             (domain, user) = user_and_domain.split('\\', 1)
             op.set_username(user)
             op.set_domain(domain)
         elif flags & gio.ASK_PASSWORD_NEED_USERNAME:
-            user = auth.get_user(self.scheme, self.host, \
-                    port=self.port, ask=True)
+            user = auth.get_user(scheme, host, \
+                    port=port, ask=True)
             op.set_username(user)
         elif flags & gio.ASK_PASSWORD_NEED_DOMAIN:
             #Don't know how common this case is, but anyway
             #a DOMAIN and a username prompt should be the
             #same so I will missuse the ui_factory get_username
             #a little bit here.
-            prompt = self.scheme.upper() + ' %(host)s DOMAIN'
+            prompt = scheme.upper() + ' %(host)s DOMAIN'
             domain = ui.ui_factory.get_username(prompt=prompt)
             op.set_domain(domain)
 
         if flags & gio.ASK_PASSWORD_NEED_PASSWORD:
             if user is None:
                 user = op.get_username()
-            password = auth.get_password(self.scheme, self.host, \
-                    user, port=self.port)
+            password = auth.get_password(scheme, host, \
+                    user, port=port)
             op.set_password(password)
         op.reply(gio.MOUNT_OPERATION_HANDLED)
 
