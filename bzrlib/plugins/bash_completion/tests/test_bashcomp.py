@@ -22,29 +22,41 @@ import os
 import subprocess
 
 
-class _BashFeature(tests.Feature):
-    """Feature testing whether a bash executable is available."""
+class _ExecutableFeature(tests.Feature):
+    """Feature testing whether an executable of a given name is on the PATH."""
 
     bash_paths = ['/bin/bash', '/usr/bin/bash']
 
-    def __init__(self):
-        super(_BashFeature, self).__init__()
-        self.bash_path = None
+    def __init__(self, name):
+        super(_ExecutableFeature, self).__init__()
+        self.name = name
+
+    @property
+    def path(self):
+        try:
+            return self._path
+        except AttributeError:
+            self._path = self._get_path()
+            return self._path
+
+    def _get_path(self):
+        path = os.environ.get('PATH')
+        if path is None:
+            return None
+        for d in path.split(os.pathsep):
+            f = os.path.join(d, self.name)
+            if os.access(f, os.X_OK):
+                return f
+        return None
 
     def available(self):
-        if self.bash_path is not None:
-            return self.bash_path is not False
-        for path in self.bash_paths:
-            if os.access(path, os.X_OK):
-                self.bash_path = path
-                return True
-        self.bash_path = False
-        return False
+        return self.path is not None
 
     def feature_name(self):
-        return 'bash'
+        return '%s executable' % self.name
 
-BashFeature = _BashFeature()
+BashFeature = _ExecutableFeature('bash')
+SedFeature = _ExecutableFeature('sed')
 
 
 class BashCompletionMixin(object):
@@ -60,7 +72,7 @@ class BashCompletionMixin(object):
         """
         if self.script is None:
             self.script = self.get_script()
-        proc = subprocess.Popen([BashFeature.bash_path, '--noprofile'],
+        proc = subprocess.Popen([BashFeature.path, '--noprofile'],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -187,6 +199,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         return s.replace("$(bzr ", "$('%s' " % self.get_bzr_path())
 
     def test_revspec_tag_all(self):
+        self.requireFeature(SedFeature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
@@ -195,6 +208,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         self.assertCompletionEquals('tag1', 'tag2', '3tag')
 
     def test_revspec_tag_prefix(self):
+        self.requireFeature(SedFeature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
