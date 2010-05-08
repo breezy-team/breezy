@@ -378,6 +378,11 @@ class Request(urllib2.Request):
             port = conn_class.default_port
         self.proxied_host = '%s:%s' % (host, port)
         urllib2.Request.set_proxy(self, proxy, type)
+        # When urllib2 makes a https request with our wrapper code and a proxy,
+        # it sets Host to the https proxy, not the host we want to talk to.
+        # I'm fairly sure this is our fault, but what is the cause is an open
+        # question. -- Robert Collins May 8 2010.
+        self.add_unredirected_header('Host', self.proxied_host)
 
 
 class _ConnectRequest(Request):

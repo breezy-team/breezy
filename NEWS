@@ -101,6 +101,9 @@ Bug Fixes
   messages.
   (Parth Malwankar, #563646)
 
+* Using bzr with `lp:` urls behind an http proxy should work.
+  (Robert Collins, #558343)
+
 Improvements
 ************
 
