@@ -868,21 +868,19 @@ class ProxyHandler(urllib2.ProxyHandler):
                 print 'Will unbind %s_open for %r' % (type, proxy)
             delattr(self, '%s_open' % type)
 
+        def bind_scheme_request(proxy, scheme):
+            if proxy is None:
+                return
+            scheme_request = scheme + '_request'
+            if self._debuglevel >= 3:
+                print 'Will bind %s for %r' % (scheme_request, proxy)
+            setattr(self, scheme_request,
+                lambda request: self.set_proxy(request, scheme))
         # We are interested only by the http[s] proxies
         http_proxy = self.get_proxy_env_var('http')
+        bind_scheme_request(http_proxy, 'http')
         https_proxy = self.get_proxy_env_var('https')
-
-        if http_proxy is not None:
-            if self._debuglevel >= 3:
-                print 'Will bind http_request for %r' % http_proxy
-            setattr(self, 'http_request',
-                    lambda request: self.set_proxy(request, 'http'))
-
-        if https_proxy is not None:
-            if self._debuglevel >= 3:
-                print 'Will bind http_request for %r' % https_proxy
-            setattr(self, 'https_request',
-                    lambda request: self.set_proxy(request, 'https'))
+        bind_scheme_request(https_proxy, 'https')
 
     def get_proxy_env_var(self, name, default_to='all'):
         """Get a proxy env var.
