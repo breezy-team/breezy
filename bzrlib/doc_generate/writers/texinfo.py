@@ -21,6 +21,7 @@ from docutils import (
     writers,
     )
 
+DEBUG = 0
 
 class TexinfoWriter(writers.Writer):
 
@@ -42,14 +43,6 @@ class TexinfoWriter(writers.Writer):
 
 class TexinfoTranslator(nodes.NodeVisitor):
 
-    # Sphinx and texinfo doesn't use the same names for the section levels,
-    # since this can be confusing, here are the correspondances (sphinx ->
-    # texinfo).
-    # part -> chapter
-    # chapter -> section
-    # section -> subsection
-    # subsection -> subsubsection
-    # Additionally, sphinx defines subsubsections and paragraphs
     section_names = ['chapter', 'section', 'subsection', 'subsubsection']
     """texinfo section names differ from the sphinx ones.
 
@@ -60,12 +53,12 @@ class TexinfoTranslator(nodes.NodeVisitor):
     section    -> subsection
     subsection -> subsubsection
 
-    Additionally, sphinx defines subsubsections and paragraphs.
+    Additionally, sphinx defines subsubsections and paragraphs which are
+    handled as @heading (unnumbered).
     """
 
     def __init__(self, document, builder):
         nodes.NodeVisitor.__init__(self, document)
-        self.chunks = []
         # toctree uses some nodes for different purposes (namely:
         # compact_paragraph, bullet_list, reference, list_item) that needs to
         # know when they are proessing a toctree. The following attributes take
@@ -88,19 +81,19 @@ class TexinfoTranslator(nodes.NodeVisitor):
     # The whole document
 
     def visit_document(self, node):
-        # The debug killer trick
-        #import sys
-        #sys.stderr.write(node.pformat())
-        set_item_list_collector(node, 'chunk')
+        if DEBUG:
+            import sys
+            sys.stdout.write(node.pformat().encode('utf8'))
+        set_item_list_collector(node, 'text')
 
     def depart_document(self, node):
-        self.body = ''.join(node['chunk'])
+        self.body = ''.join(node['text'])
 
     # Layout
 
     def visit_section(self, node):
         self.section_level += 1
-        set_item_list_collector(node, 'chunk')
+        set_item_list_collector(node, 'text')
 
     def depart_section(self, node):
         try:
@@ -109,8 +102,8 @@ class TexinfoTranslator(nodes.NodeVisitor):
             # Just use @heading, it's not numbered anyway
             section_name = 'heading'
         section_cmd = '@%s %s\n' % (section_name, node['title'])
-        text = ''.join(node['chunk'])
-        node.parent.collect_chunk(section_cmd + text)
+        text = ''.join(node['text'])
+        node.parent.collect_text(section_cmd + text)
         self.section_level -= 1
 
     def visit_topic(self, node):
@@ -126,7 +119,7 @@ class TexinfoTranslator(nodes.NodeVisitor):
         # End the paragraph with a new line (or '' depending on the parent) and
         # leave a blank line after it.
         text = ''.join(node['text']) + self.paragraph_sep * 2
-        node.parent.collect_chunk(text)
+        node.parent.collect_text(text)
 
     def visit_compact_paragraph(self, node):
         set_item_list_collector(node, 'text')
@@ -137,9 +130,9 @@ class TexinfoTranslator(nodes.NodeVisitor):
 
     def depart_compact_paragraph(self, node):
         if node.has_key('toctree'):
-            node.parent.collect_chunk('@menu\n')
-            node.parent.collect_chunk(''.join(node['text']))
-            node.parent.collect_chunk('@end menu\n')
+            node.parent.collect_text('@menu\n')
+            node.parent.collect_text(''.join(node['text']))
+            node.parent.collect_text('@end menu\n')
             self.in_toctree = False
         elif self.in_toctree:
             # * FIRST-ENTRY-NAME:(FILENAME)NODENAME.     DESCRIPTION
@@ -152,48 +145,48 @@ class TexinfoTranslator(nodes.NodeVisitor):
             # XXX: What if :maxdepth: is not 1 ?
             text = '* %s: (%s)%s. %s\n' % (entry_name, file_name,
                                            node_name, description)
-            node.parent.collect_chunk(text)
+            node.parent.collect_text(text)
         else:
             # End the paragraph with a new line (or '' depending on the parent)
             # and leave a blank line after it.
             text = ''.join(node['text']) + self.paragraph_sep * 2
-            node.parent.collect_chunk(text)
+            node.parent.collect_text(text)
 
     def visit_literal_block(self, node):
         set_item_collector(node, 'text')
 
     def depart_literal_block(self, node):
         text = '@samp{%s}' % ''.join(node['text']) + self.paragraph_sep * 2
-        node.parent.collect_chunk(text)
+        node.parent.collect_text(text)
 
     def visit_block_quote(self, node):
-        set_item_list_collector(node, 'chunk')
+        set_item_list_collector(node, 'text')
 
     def depart_block_quote(self, node):
-        node.parent.collect_chunk('@example\n')
-        node.parent.collect_chunk(''.join(node['chunk']))
-        node.parent.collect_chunk('@end example\n\n')
+        node.parent.collect_text('@example\n')
+        node.parent.collect_text(''.join(node['text']))
+        node.parent.collect_text('@end example\n\n')
 
     def visit_note(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_warning(self, node):
         pass
 
     def visit_warning(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_note(self, node):
         pass
 
     def visit_footnote(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_footnote(self, node):
         pass
 
     def visit_comment(self, node):
-        raise nodes.SkipNode
+        raise nodes.SkipNode # Not implemented yet
 
     # Attributes
 
@@ -205,10 +198,10 @@ class TexinfoTranslator(nodes.NodeVisitor):
         node.parent['title'] = text
 
     def visit_label(self, node):
-        raise nodes.SkipNode
+        raise nodes.SkipNode # Not implemented yet
 
     def visit_substitution_definition(self, node):
-        raise nodes.SkipNode
+        raise nodes.SkipNode # Not implemented yet
 
     # Plain text
 
@@ -269,7 +262,7 @@ class TexinfoTranslator(nodes.NodeVisitor):
         if self.in_toctree:
             self._decorate_list(node['list_item'], node.parent.collect_text)
         else:
-            self._decorate_list(node['list_item'], node.parent.collect_chunk,
+            self._decorate_list(node['list_item'], node.parent.collect_text,
                                 '@item\n%s',
                                 # FIXME: Should respect the 'bullet' attribute
                                 '@itemize @bullet\n', '@end itemize\n')
@@ -278,65 +271,67 @@ class TexinfoTranslator(nodes.NodeVisitor):
         set_item_list_collector(node, 'list_item')
 
     def depart_enumerated_list(self, node):
-        self._decorate_list(node['list_item'], node.parent.collect_chunk,
+        self._decorate_list(node['list_item'], node.parent.collect_text,
                             '@item\n%s',
                             '@enumerate\n', '@end enumerate\n')
 
     def visit_definition_list(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_definition_list(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def visit_definition_list_item(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_definition_list_item(self, node):
         pass
 
     def visit_term(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_term(self, node):
         pass
 
     def visit_definition(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_definition(self, node):
         pass
 
     def visit_field_list(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
+
     def depart_field_list(self, node):
         pass
 
     def visit_field(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
+
     def depart_field(self, node):
         pass
 
     def visit_field_name(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_field_name(self, node):
         pass
 
     def visit_field_body(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_field_body(self, node):
         pass
 
     def visit_list_item(self, node):
-        set_item_list_collector(node, 'chunk')
+        set_item_list_collector(node, 'text')
 
     def depart_list_item(self, node):
-        text = ''.join(node['chunk'])
+        text = ''.join(node['text'])
         node.parent.collect_list_item(text)
 
     def visit_option_list(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_option_list(self, node):
         pass
@@ -380,7 +375,7 @@ class TexinfoTranslator(nodes.NodeVisitor):
         set_item_collector(node, 'table')
 
     def depart_table(self, node):
-        node.parent.collect_chunk(node['table'])
+        node.parent.collect_text(node['table'])
 
     def visit_tgroup(self, node):
         set_item_list_collector(node, 'colspec')
@@ -394,8 +389,12 @@ class TexinfoTranslator(nodes.NodeVisitor):
                             '{%s}', '@multitable ', '\n')
         # The '@headitem xxx @tab yyy...' line
         head_entries = node['head_entries']
-        self._decorate_list(head_entries[1:], header.append,
-                            ' @tab %s', '@headitem %s' % head_entries[0], '\n')
+        if head_entries is not None:
+            # Not all tables define titles for the columns... rest parser bug ?
+            # FIXME: need a test
+            self._decorate_list(head_entries[1:], header.append,
+                                ' @tab %s',
+                                '@headitem %s' % head_entries[0], '\n')
         header = ''.join(header)
         # The '@item xxx\n @tab yyy\n ...' lines
         body_rows = node['body_rows']
@@ -431,12 +430,12 @@ class TexinfoTranslator(nodes.NodeVisitor):
         node.parent.collect_row(node['entry'])
 
     def visit_entry(self, node):
-        set_item_list_collector(node, 'chunk')
+        set_item_list_collector(node, 'text')
         node['par_sep_orig'] = self.paragraph_sep
         self.paragraph_sep = ''
 
     def depart_entry(self, node):
-        node.parent.collect_entry(''.join(node['chunk']))
+        node.parent.collect_entry(''.join(node['text']))
         self.paragraph_sep = node['par_sep_orig']
 
     # References
@@ -449,32 +448,34 @@ class TexinfoTranslator(nodes.NodeVisitor):
         set_item_collector(node, 'text')
 
     def depart_reference(self, node):
-        node.parent.collect_reference((node.get('anchorname', ''),
-                                       node.get('refuri', ''),
-                                       ''.join(node['text']),
-                                       ))
+        collect = getattr(node.parent, 'collect_reference', None)
+        if collect is not None:
+            # FIXME: this handle only the toctree references so far.
+            collect((node.get('anchorname', ''),
+                     node.get('refuri', ''),
+                     ''.join(node['text']),
+                     ))
 
     def visit_footnote_reference(self, node):
-        raise nodes.SkipNode
+        raise nodes.SkipNode # Not implemented yet
 
     def visit_citation_reference(self, node):
-        raise nodes.SkipNode
+        raise nodes.SkipNode # Not implemented yet
 
     def visit_title_reference(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_title_reference(self, node):
         pass
 
     def visit_target(self, node):
-        pass
+        raise nodes.SkipNode # Not implemented yet
 
     def depart_target(self, node):
         pass
 
     def visit_image(self, node):
-        self.add_text(_('[image]'))
-        raise nodes.SkipNode
+        raise nodes.SkipNode # Not implemented yet
 
 # Helpers to collect data in parent node
 
