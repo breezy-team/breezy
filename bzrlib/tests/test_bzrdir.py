@@ -54,6 +54,7 @@ from bzrlib.tests.test_http import TestWithTransport_pycurl
 from bzrlib.transport import (
     get_transport,
     memory,
+    pathfilter,
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
@@ -809,11 +810,32 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_find_bzrdirs_permission_denied(self):
         foo, bar, baz = self.make_foo_bar_baz()
-        print "foo", foo
-        print foo.user_url
-        os.chmod(urlutils.local_path_from_url(foo.user_url), 0000)
         transport = get_transport(self.get_url())
-        self.assertEqualBzrdirs([baz], bzrdir.BzrDir.find_bzrdirs(transport))
+
+        # multiplatform chmod(0000)
+        def filter(path):
+            if path == 'foo':
+                raise errors.PermissionDenied(path)
+            return path
+        path_filter_server = pathfilter.PathFilteringServer(transport, filter)
+        path_filter_server.start_server()
+        path_filter_transport = pathfilter.PathFilteringTransport(
+            path_filter_server, '.')
+
+        found_bzr_dirs = list(bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
+        self.assertEqual(1, len(found_bzr_dirs))
+        self.assertContainsRe(found_bzr_dirs[0].user_url,
+            r'filtered-\d+:///baz/')
+
+        # TODO: ftp http ?
+
+        # smart server
+        smart_transport = self.make_smart_server('.',
+            backing_server=path_filter_server)
+        found_bzr_dirs = list(bzrdir.BzrDir.find_bzrdirs(smart_transport))
+        self.assertEqual(1, len(found_bzr_dirs))
+        self.assertEqual(smart_transport.external_url() + 'baz/',
+            found_bzr_dirs[0].user_url)
 
     def test_find_bzrdirs_list_current(self):
         def list_current(transport):
@@ -824,7 +846,6 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqualBzrdirs([foo, bar],
                                 bzrdir.BzrDir.find_bzrdirs(transport,
                                     list_current=list_current))
-
 
     def test_find_bzrdirs_evaluate(self):
         def evaluate(bzrdir):
