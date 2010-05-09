@@ -375,7 +375,7 @@ class BzrDir(ControlComponent):
             recurse = True
             try:
                 bzrdir = BzrDir.open_from_transport(current_transport)
-            except errors.NotBranchError:
+            except (errors.NotBranchError, errors.PermissionDenied):
                 pass
             else:
                 recurse, value = evaluate(bzrdir)
@@ -1946,7 +1946,7 @@ class BzrDirFormat(object):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
-        except (errors.NoSuchFile, errors.PermissionDenied):
+        except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
             return klass._formats[format_string]

@@ -813,6 +813,7 @@ class ChrootedTests(TestCaseWithTransport):
         transport = get_transport(self.get_url())
 
         # multiplatform chmod(0000)
+        # TODO: extract this into a permission_denied_filter test util method
         def filter(path):
             if path == 'foo':
                 raise errors.PermissionDenied(path)
