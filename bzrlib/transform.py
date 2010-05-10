@@ -974,6 +974,7 @@ class TreeTransformBase(object):
         revprops = commit.Commit.update_revprops(revprops, branch, authors)
         builder = branch.get_commit_builder(parent_ids,
                                             timestamp=timestamp,
+                                            timezone=timezone,
                                             committer=committer,
                                             revprops=revprops,
                                             revision_id=revision_id)

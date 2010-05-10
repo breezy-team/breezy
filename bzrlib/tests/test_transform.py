@@ -2115,7 +2115,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
 
     def test_commit_rich_revision_data(self):
         branch, tt = self.get_branch_and_transform()
-        rev_id = tt.commit(branch, 'message', timestamp=1, timezone=43200,
+        rev_id = tt.commit(branch, 'message', timestamp=1, timezone=43201,
                            committer='me <me@example.com>',
                            revprops={'foo': 'bar'}, revision_id='revid-1',
                            authors=['Author1 <author1@example.com>',
@@ -2124,7 +2124,7 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         self.assertEqual('revid-1', rev_id)
         revision = branch.repository.get_revision(rev_id)
         self.assertEqual(1, revision.timestamp)
-        self.assertEqual(43200, revision.timezone)
+        self.assertEqual(43201, revision.timezone)
         self.assertEqual('me <me@example.com>', revision.committer)
         self.assertEqual(['Author1 <author1@example.com>',
                           'Author2 <author2@example.com>'],
