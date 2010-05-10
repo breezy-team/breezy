@@ -283,15 +283,19 @@ class SocketListener(threading.Thread):
         self._socket.close()
 
     def run(self):
+        trace.mutter('SocketListener %r has started', self)
         while True:
             readable, writable_unused, exception_unused = \
                 select.select([self._socket], [], [], 0.1)
             if self._stop_event.isSet():
+                trace.mutter('SocketListener %r has stopped', self)
                 return
             if len(readable) == 0:
                 continue
             try:
                 s, addr_unused = self._socket.accept()
+                trace.mutter('SocketListener %r has accepted connection %r',
+                    self, s)
                 # because the loopback socket is inline, and transports are
                 # never explicitly closed, best to launch a new thread.
                 threading.Thread(target=self._callback, args=(s,)).start()
