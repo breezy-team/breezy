@@ -25,6 +25,7 @@ from bzrlib import (
     annotate,
     bencode,
     bzrdir,
+    commit,
     delta,
     errors,
     inventory,
@@ -927,12 +928,27 @@ class TreeTransformBase(object):
         """
         return _PreviewTree(self)
 
-    def commit(self, branch, message, merge_parents=None, strict=False):
+    def commit(self, branch, message, merge_parents=None, strict=False,
+               timestamp=None, timezone=None, committer=None, authors=None,
+               revprops=None, revision_id=None):
         """Commit the result of this TreeTransform to a branch.
 
         :param branch: The branch to commit to.
         :param message: The message to attach to the commit.
-        :param merge_parents: Additional parents specified by pending merges.
+        :param merge_parents: Additional parent revision-ids specified by
+            pending merges.
+        :param strict: If True, abort the commit if there are unversioned
+            files.
+        :param timestamp: if not None, seconds-since-epoch for the time and
+            date.  (May be a float.)
+        :param timezone: Optional timezone for timestamp, as an offset in
+            seconds.
+        :param committer: Optional committer in email-id format.
+            (e.g. "J Random Hacker <jrandom@example.com>")
+        :param authors: Optional list of authors in email-id format.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.  (Specifying a revision-id
+            may reduce performance for some non-native formats.)
         :return: The revision_id of the revision committed.
         """
         self._check_malformed()
@@ -955,7 +971,13 @@ class TreeTransformBase(object):
         if self._tree.get_revision_id() != last_rev_id:
             raise ValueError('TreeTransform not based on branch basis: %s' %
                              self._tree.get_revision_id())
-        builder = branch.get_commit_builder(parent_ids)
+        revprops = commit.Commit.update_revprops(revprops, branch, authors)
+        builder = branch.get_commit_builder(parent_ids,
+                                            timestamp=timestamp,
+                                            timezone=timezone,
+                                            committer=committer,
+                                            revprops=revprops,
+                                            revision_id=revision_id)
         preview = self.get_preview_tree()
         list(builder.record_iter_changes(preview, last_rev_id,
                                          self.iter_changes()))
