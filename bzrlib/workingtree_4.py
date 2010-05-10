@@ -53,7 +53,6 @@ import bzrlib.ui
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.filters import filtered_input_file, internal_size_sha_file_byname
 from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
-import bzrlib.mutabletree
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
     file_kind,

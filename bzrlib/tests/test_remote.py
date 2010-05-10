@@ -418,9 +418,12 @@ class Test_ClientMedium_remote_is_at_least(tests.TestCase):
         # Calling _remember_remote_is_before again with a lower value works.
         client_medium._remember_remote_is_before((1, 5))
         self.assertTrue(client_medium._is_remote_before((1, 5)))
-        # You cannot call _remember_remote_is_before with a larger value.
-        self.assertRaises(
-            AssertionError, client_medium._remember_remote_is_before, (1, 9))
+        # If you call _remember_remote_is_before with a higher value it logs a
+        # warning, and continues to remember the lower value.
+        self.assertNotContainsRe(self.get_log(), '_remember_remote_is_before')
+        client_medium._remember_remote_is_before((1, 9))
+        self.assertContainsRe(self.get_log(), '_remember_remote_is_before')
+        self.assertTrue(client_medium._is_remote_before((1, 5)))
 
 
 class TestBzrDirCloningMetaDir(TestRemote):
@@ -528,6 +531,28 @@ class TestBzrDirOpen(TestRemote):
         self.assertIsInstance(bd, RemoteBzrDir)
         self.assertFinished(client)
 
+    def test_backwards_compat_hpss_v2(self):
+        client, transport = self.make_fake_client_and_transport()
+        # Monkey-patch fake client to simulate real-world behaviour with v2
+        # server: upon first RPC call detect the protocol version, and because
+        # the version is 2 also do _remember_remote_is_before((1, 6)) before
+        # continuing with the RPC.
+        orig_check_call = client._check_call
+        def check_call(method, args):
+            client._medium._protocol_version = 2
+            client._medium._remember_remote_is_before((1, 6))
+            client._check_call = orig_check_call
+            client._check_call(method, args)
+        client._check_call = check_call
+        client.add_expected_call(
+            'BzrDir.open_2.1', ('quack/',), 'unknown', ('BzrDir.open_2.1',))
+        client.add_expected_call(
+            'BzrDir.open', ('quack/',), 'success', ('yes',))
+        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client, _force_probe=True)
+        self.assertIsInstance(bd, RemoteBzrDir)
+        self.assertFinished(client)
+
 
 class TestBzrDirOpenBranch(TestRemote):
 
@@ -584,7 +609,7 @@ class TestBzrDirOpenBranch(TestRemote):
         # _get_tree_branch is a form of open_branch, but it should only ask for
         # branch opening, not any other network requests.
         calls = []
-        def open_branch():
+        def open_branch(name=None):
             calls.append("Called")
             return "a-branch"
         transport = MemoryTransport()
@@ -1223,8 +1248,8 @@ class TestBranch_get_stacked_on_url(TestRemote):
             len(branch.repository._real_repository._fallback_repositories))
 
     def test_get_stacked_on_real_branch(self):
-        base_branch = self.make_branch('base', format='1.6')
-        stacked_branch = self.make_branch('stacked', format='1.6')
+        base_branch = self.make_branch('base')
+        stacked_branch = self.make_branch('stacked')
         stacked_branch.set_stacked_on_url('../base')
         reference_format = self.get_repo_format()
         network_name = reference_format.network_name()
@@ -1235,7 +1260,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('stacked/',),
-            'success', ('ok', '', 'no', 'no', 'yes', network_name))
+            'success', ('ok', '', 'yes', 'no', 'yes', network_name))
         # called twice, once from constructor and then again by us
         client.add_expected_call(
             'Branch.get_stacked_on_url', ('stacked/',),
@@ -2191,12 +2216,13 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         """
         # Make a repo with a fallback repo, both using a FakeClient.
         format = remote.response_tuple_to_repo_format(
-            ('yes', 'no', 'yes', 'fake-network-name'))
+            ('yes', 'no', 'yes', self.get_repo_format().network_name()))
         repo, client = self.setup_fake_client_and_repository('quack')
         repo._format = format
         fallback_repo, ignored = self.setup_fake_client_and_repository(
             'fallback')
         fallback_repo._client = client
+        fallback_repo._format = format
         repo.add_fallback_repository(fallback_repo)
         # First the client should ask the primary repo
         client.add_expected_call(

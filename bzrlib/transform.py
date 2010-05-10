@@ -36,7 +36,7 @@ from bzrlib import (
     )
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, NotVersionedError, CantMoveRoot,
+                           ReusingTransform, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
@@ -1181,7 +1181,7 @@ class DiskTreeTransform(TreeTransformBase):
             if trans_id not in self._new_contents:
                 continue
             new_path = self._limbo_name(trans_id)
-            os.rename(old_path, new_path)
+            osutils.rename(old_path, new_path)
             for descendant in self._limbo_descendants(trans_id):
                 desc_path = self._limbo_files[descendant]
                 desc_path = new_path + desc_path[len(old_path):]
@@ -2919,9 +2919,9 @@ class _FileMover(object):
         self.pending_deletions = []
 
     def rename(self, from_, to):
-        """Rename a file from one path to another.  Functions like os.rename"""
+        """Rename a file from one path to another."""
         try:
-            os.rename(from_, to)
+            osutils.rename(from_, to)
         except OSError, e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
                 raise errors.FileExists(to, str(e))
@@ -2941,7 +2941,7 @@ class _FileMover(object):
     def rollback(self):
         """Reverse all renames that have been performed"""
         for from_, to in reversed(self.past_renames):
-            os.rename(to, from_)
+            osutils.rename(to, from_)
         # after rollback, don't reuse _FileMover
         past_renames = None
         pending_deletions = None

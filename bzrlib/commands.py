@@ -1077,15 +1077,9 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     if not opt_no_aliases:
         alias_argv = get_alias(argv[0])
         if alias_argv:
-            user_encoding = osutils.get_user_encoding()
-            alias_argv = [a.decode(user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
     cmd = argv.pop(0)
-    # We want only 'ascii' command names, but the user may have typed
-    # in a Unicode name. In that case, they should just get a
-    # 'command not found' error later.
-
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
     run = cmd_obj.run_argv_aliases
     run_argv = [argv, alias_argv]

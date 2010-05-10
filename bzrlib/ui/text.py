@@ -233,6 +233,9 @@ class TextUIFactory(UIFactory):
 
     def show_warning(self, msg):
         self.clear_term()
+        if isinstance(msg, unicode):
+            te = osutils.get_terminal_encoding()
+            msg = msg.encode(te, 'replace')
         self.stderr.write("bzr: warning: %s\n" % msg)
 
     def _progress_updated(self, task):

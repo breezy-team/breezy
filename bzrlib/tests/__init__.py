@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Testing framework extensions"""
 
 # TODO: Perhaps there should be an API to find out if bzr running under the
 # test suite -- some plugins might want to avoid making intrusive changes if
@@ -111,13 +112,13 @@ from bzrlib.trace import mutter, note
 from bzrlib.tests import (
     test_server,
     TestUtil,
+    treeshape,
     )
 from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
                           )
-from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
@@ -489,13 +490,13 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        self.ui.note('ERROR: %s\n    %s\n' % (
+        self.stream.write('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
 
     def report_failure(self, test, err):
-        self.ui.note('FAIL: %s\n    %s\n' % (
+        self.stream.write('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
@@ -1312,6 +1313,14 @@ class TestCase(testtools.TestCase):
             f.close()
         self.assertEqualDiff(content, s)
 
+    def assertDocstring(self, expected_docstring, obj):
+        """Fail if obj does not have expected_docstring"""
+        if __doc__ is None:
+            # With -OO the docstring should be None instead
+            self.assertIs(obj.__doc__, None)
+        else:
+            self.assertEqual(expected_docstring, obj.__doc__)
+
     def failUnlessExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
@@ -1515,7 +1524,7 @@ class TestCase(testtools.TestCase):
             'EDITOR': None,
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
-            'EMAIL': None,
+            'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
@@ -2569,8 +2578,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
-    def build_tree_contents(self, shape):
-        build_tree_contents(shape)
+    build_tree_contents = staticmethod(treeshape.build_tree_contents)
 
     def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
@@ -3192,6 +3200,19 @@ def partition_tests(suite, count):
     return result
 
 
+def workaround_zealous_crypto_random():
+    """Crypto.Random want to help us being secure, but we don't care here.
+
+    This workaround some test failure related to the sftp server. Once paramiko
+    stop using the controversial API in Crypto.Random, we may get rid of it.
+    """
+    try:
+        from Crypto.Random import atfork
+        atfork()
+    except ImportError:
+        pass
+
+
 def fork_for_tests(suite):
     """Take suite and start up one runner per CPU by forking()
 
@@ -3212,7 +3233,7 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                os.waitpid(self.pid, os.WNOHANG)
+                os.waitpid(self.pid, 0)
 
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
@@ -3221,6 +3242,7 @@ def fork_for_tests(suite):
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
         if pid == 0:
+            workaround_zealous_crypto_random()
             try:
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
@@ -3796,7 +3818,10 @@ def _test_suite_testmod_names():
 
 
 def _test_suite_modules_to_doctest():
-    """Return the list of modules to doctest."""   
+    """Return the list of modules to doctest."""
+    if __doc__ is None:
+        # GZ 2009-03-31: No docstrings with -OO so there's nothing to doctest
+        return []
     return [
         'bzrlib',
         'bzrlib.branchbuilder',

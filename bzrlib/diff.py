@@ -17,7 +17,6 @@
 import difflib
 import os
 import re
-import shutil
 import string
 import sys
 
@@ -798,13 +797,14 @@ class DiffFromTool(DiffPath):
                 target.close()
         finally:
             source.close()
-        if not allow_write:
-            osutils.make_readonly(full_path)
         try:
             mtime = tree.get_file_mtime(file_id)
         except errors.FileTimestampUnavailable:
-            mtime = 0
-        os.utime(full_path, (mtime, mtime))
+            pass
+        else:
+            os.utime(full_path, (mtime, mtime))
+        if not allow_write:
+            osutils.make_readonly(full_path)
         return full_path
 
     def _prepare_files(self, file_id, old_path, new_path, force_temp=False,

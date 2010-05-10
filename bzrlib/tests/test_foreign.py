@@ -90,6 +90,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         self._format = _format
         self._base = a_bzrdir.transport.base
         self._ignore_fallbacks = False
+        self.bzrdir = a_bzrdir
         foreign.ForeignBranch.__init__(self, 
             DummyForeignVcsMapping(DummyForeignVcs()))
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, 

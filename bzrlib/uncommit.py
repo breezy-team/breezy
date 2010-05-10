@@ -18,8 +18,6 @@
 
 # TODO: make the guts of this methods on tree, branch.
 
-import os
-
 from bzrlib import (
     errors,
     revision as _mod_revision,
