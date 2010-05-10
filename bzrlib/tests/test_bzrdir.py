@@ -820,31 +820,28 @@ class ChrootedTests(TestCaseWithTransport):
             path_filter_server, '.')
         return (path_filter_server, path_filter_transport)
 
+    def _assert_branch_urls(self, expect_url_suffixes, actual_bzrdirs):
+        "See if each of the actual urls ends with the corresponding suffix"
+        self.assertEqual(len(expect_url_suffixes), len(actual_bzrdirs))
+        for expect_url_suffix, actual_bzrdir in zip(
+                expect_url_suffixes, actual_bzrdirs):
+            self.assertEndsWith(actual_bzrdir.user_url, expect_url_suffix)
 
     def test_find_bzrdirs_permission_denied(self):
         foo, bar, baz = self.make_foo_bar_baz()
         transport = get_transport(self.get_url())
         (path_filter_server, path_filter_transport
             ) = self.make_fake_permission_denied_transport(transport, ['foo'])
-        found_bzr_dirs = list(bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
-        self.assertEqual(1, len(found_bzr_dirs))
-        self.assertContainsRe(
-            path_filter_transport.scheme + 'baz/',
-            found_bzr_dirs[0].user_url)
 
-        found_bzr_dirs = list(bzrdir.BzrDir.find_bzrdirs(path_filter_transport)
-            )
-        self.assertEqual(1, len(found_bzr_dirs))
-        self.assertEqual(path_filter_transport.scheme + 'baz/',
-            found_bzr_dirs[0].user_url)
+        # local transport
+        self._assert_branch_urls(['baz/'], list(
+            bzrdir.BzrDir.find_bzrdirs(path_filter_transport)))
 
         # smart server
         smart_transport = self.make_smart_server('.',
             backing_server=path_filter_server)
-        found_bzr_dirs = list(bzrdir.BzrDir.find_bzrdirs(smart_transport))
-        self.assertEqual(1, len(found_bzr_dirs))
-        self.assertEqual(smart_transport.external_url() + 'baz/',
-            found_bzr_dirs[0].user_url)
+        self._assert_branch_urls(['baz/'], list(
+            bzrdir.BzrDir.find_bzrdirs(smart_transport)))
 
     def test_find_bzrdirs_list_current(self):
         def list_current(transport):
