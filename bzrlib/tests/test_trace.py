@@ -115,7 +115,7 @@ class TestTrace(TestCase):
         # GZ 2010-05-03: Formatting for pywintypes.error is basic, a 3-tuple
         #                with errno, function name, and locale error message
         self.assertContainsRe(msg,
-            r"^bzr: ERROR: \(2, 'RemoveDirectory', .*\)")
+            r"^bzr: ERROR: \(2, 'RemoveDirectory[AW]?', .*\)")
 
     def test_format_unicode_error(self):
         try:
