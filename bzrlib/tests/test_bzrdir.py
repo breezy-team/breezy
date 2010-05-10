@@ -808,27 +808,35 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqualBzrdirs([baz, foo, bar],
                                 bzrdir.BzrDir.find_bzrdirs(transport))
 
-    def test_find_bzrdirs_permission_denied(self):
-        foo, bar, baz = self.make_foo_bar_baz()
-        transport = get_transport(self.get_url())
-
+    def make_fake_permission_denied_transport(self, transport, paths):
         # multiplatform chmod(0000)
-        # TODO: extract this into a permission_denied_filter test util method
         def filter(path):
-            if path == 'foo':
+            if path in paths:
                 raise errors.PermissionDenied(path)
             return path
         path_filter_server = pathfilter.PathFilteringServer(transport, filter)
         path_filter_server.start_server()
         path_filter_transport = pathfilter.PathFilteringTransport(
             path_filter_server, '.')
+        return (path_filter_server, path_filter_transport)
 
+
+    def test_find_bzrdirs_permission_denied(self):
+        foo, bar, baz = self.make_foo_bar_baz()
+        transport = get_transport(self.get_url())
+        (path_filter_server, path_filter_transport
+            ) = self.make_fake_permission_denied_transport(transport, ['foo'])
         found_bzr_dirs = list(bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
         self.assertEqual(1, len(found_bzr_dirs))
-        self.assertContainsRe(found_bzr_dirs[0].user_url,
-            r'filtered-\d+:///baz/')
+        self.assertContainsRe(
+            path_filter_transport.scheme + 'baz/',
+            found_bzr_dirs[0].user_url)
 
-        # TODO: ftp http ?
+        found_bzr_dirs = list(bzrdir.BzrDir.find_bzrdirs(path_filter_transport)
+            )
+        self.assertEqual(1, len(found_bzr_dirs))
+        self.assertEqual(path_filter_transport.scheme + 'baz/',
+            found_bzr_dirs[0].user_url)
 
         # smart server
         smart_transport = self.make_smart_server('.',
