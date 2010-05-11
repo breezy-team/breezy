@@ -103,7 +103,7 @@ class TestRefreshData(TestCaseWithRepository):
         tree.add([''], ['root-id'])
         tree.commit('foo', rev_id='commit-in-target')
         repo = tree.branch.repository
-        token = repo.lock_write()
+        token = repo.lock_write().repository_token
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         self.addCleanup(repo.abort_write_group)
