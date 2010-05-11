@@ -75,7 +75,8 @@ Bug Fixes
 * ``bzr selftest`` should not use ui.note() since it's not unicode safe.
   (Vincent Ladeuil, #563997)
 
-* find_bzrdirs should ignore dirs that raises PermissionDenied. (Marius Kruger)
+* BzrDir.find_bzrdirs should ignore dirs that raises PermissionDenied.
+  (Marius Kruger)
 
 * Don't mention --no-strict when we just issue the warning about unclean trees.
   (Vincent Ladeuil, #401599)
