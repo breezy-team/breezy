@@ -26,6 +26,9 @@ Compatibility Breaks
   whoami``.
   (Parth Malwankar, #549310)
 
+* ``bzrlib.commands.Command`` will now raise ValueError during
+  construction if there is no __doc__ set. (Robert Collins)
+
 New Features
 ************
 
