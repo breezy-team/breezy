@@ -281,7 +281,6 @@ if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._dirstate_helpers_pyx',
                         libraries=['Ws2_32'])
     add_pyrex_extension('bzrlib._walkdirs_win32')
-    z_lib = 'zdll'
 else:
     if have_pyrex and pyrex_version_info[:3] == (0,9,4):
         # Pyrex 0.9.4.1 fails to compile this extension correctly
@@ -298,8 +297,7 @@ else:
     else:
         add_pyrex_extension('bzrlib._dirstate_helpers_pyx')
     add_pyrex_extension('bzrlib._readdir_pyx')
-    z_lib = 'z'
-add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
+add_pyrex_extension('bzrlib._chk_map_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
 if have_pyrex and pyrex_version_info < (0, 9, 6, 3):

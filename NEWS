@@ -21,6 +21,11 @@ Compatibility Breaks
   value to returning ``LogicalLockResult`` objects.
   (Robert Collins)
 
+* ``bzr`` does not try to guess the username as ``username@hostname``
+  and requires it to be explictly set. This can be set using ``bzr
+  whoami``.
+  (Parth Malwankar, #549310)
+
 New Features
 ************
 
@@ -38,6 +43,16 @@ New Features
   pack operation.
   (Parth Malwankar, #304320)
 
+* New command line option ``--authors`` to ``bzr log`` allows users to
+  select which of the apparent authors and committer should be
+  included in the log. Defaults depend on format. (Martin von Gagern, #513322)
+
+* Support ``--directory`` option for a number of additional commands:
+  added, annotate, bind, cat, cat-revision, clean-tree, deleted,
+  export, ignore, ignored, lookup-revision, ls, modified, nick,
+  re-sign, unbind, unknowns.
+  (Martin von Gagern, #527878)
+
 Bug Fixes
 *********
 
@@ -46,10 +61,21 @@ Bug Fixes
   better with sudo.
   (Martin <gzlist@googlemail.com>, Parth Malwankar, #376388)
 
+* ``bzr clean-tree`` should not delete nested bzrdirs. Required for proper
+  support of bzr-externals and scmproj plugins.
+  (Alexander Belchenko, bug #572098)
+
+* ``bzr ignore`` will no longer add duplicate patterns to .bzrignore.
+  (Gordon Tyler, #572092)
+
 * ``bzr log --exclude-common-ancestry -r X..Y`` displays the revisions that
   are part of Y ancestry but not part of X ancestry (aka the graph
   difference).
   (Vincent Ladeuil, #320119)
+
+* ``bzr rm`` should not refuse to delete directories which contained a file
+  which has been moved elsewhere in the tree after the previous commit.
+  (Marius Kruger, Daniel Watkins, #129880)
 
 * ``bzr selftest --parallel=fork`` wait for its children avoiding zombies.
   (Vincent Ladeuil, #566670)
@@ -64,12 +90,27 @@ Bug Fixes
   versions before 1.6.
   (Andrew Bennetts, #528041)
 
+* Heavyweight checkout operation now shows a message to the user indicating
+  history is being copied.
+  (Parth Malwankar, #538868)
+
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
 * Show the filenames when a file rename fails so that the error will be
   more comprehensible.
   (Martin Pool, #491763)
+
+* Unicode characters in aliases are now handled correctly and do not cause
+  UnicodeEncodeError exception. (Parth Malwankar, #529930)
+
+* Unicode commit messages that are the same as a file name no longer cause
+  UnicodeEncodeError. ``ui.text.show_warning`` now handles unicode
+  messages.
+  (Parth Malwankar, #563646)
+
+* Using bzr with `lp:` urls behind an http proxy should work.
+  (Robert Collins, #558343)
 
 Improvements
 ************
@@ -81,6 +122,10 @@ Improvements
   bzr will interpret all strings differing from 'True'
   (case-sensitive) as false.
   (Brian de Alwis, Vincent Ladeuil)
+
+* ``bzr ls`` now supports short options for existing long options.
+  ``-k/--kind``, ``-i/--ignored``, ``-u/--unknown`` and ``-0/--null``.
+  (Parth Malwankar, #181124)
 
 * ``Config.get_user_option_as_bool`` will now warn if a value cannot
   be interpreted as a boolean.
@@ -110,6 +155,14 @@ API Changes
   ``Branch.lock_write`` and ``Repository.lock_write`` are now attributes
   on the result of the lock_write. ``repository.RepositoryWriteLockResult``
   and ``branch.BranchWriteLockResult`` document this. (Robert Collins)
+
+* ``Repository.refresh_data`` may now be called in a write group on
+  pack-based repositories.  Older repositories will still raise an error
+  in this case.  Subclasses of ``Repository`` can still override
+  ``Repository._refresh_data``, but are now responsible for raising
+  ``bzrlib.repository.IsInWriteGroupError`` if they do not support
+  ``refresh_data`` during a write group.
+  (Andrew Bennetts, #574236)
 
 Internals
 *********
@@ -250,6 +303,9 @@ API Changes
 * ``bzrlib.diff.get_trees_and_branches_to_diff`` is deprecated.  Use
   ``get_trees_and_branches_to_diff_locked`` instead.
   (Andrew Bennetts)
+
+* ``TreeTransform.commit`` supports the full set of commit parameters, and
+  auto-determines branch nick if not supplied.  (Aaron Bentley)
   
 Internals
 *********

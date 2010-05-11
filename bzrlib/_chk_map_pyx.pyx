@@ -36,6 +36,7 @@ cdef extern from "Python.h":
     int PyString_CheckExact(object)
     char *PyString_AS_STRING(object s)
     Py_ssize_t PyString_GET_SIZE(object)
+    unsigned long PyInt_AsUnsignedLongMask(object) except? -1
 
     int PyDict_SetItem(object d, object k, object v) except -1
 
@@ -63,12 +64,8 @@ cdef extern from "_static_tuple_c.h":
     PyObject * StaticTuple_GET_ITEM_ptr "StaticTuple_GET_ITEM" (StaticTuple,
                                                                 Py_ssize_t)
 
-cdef extern from "zlib.h":
-    ctypedef unsigned long uLong
-    ctypedef unsigned int uInt
-    ctypedef unsigned char Bytef
-
-    uLong crc32(uLong crc, Bytef *buf, uInt len)
+cdef object crc32
+from zlib import crc32
 
 
 # Set up the StaticTuple C_API functionality
@@ -101,15 +98,10 @@ def _search_key_16(key):
     cdef Py_ssize_t num_bits
     cdef Py_ssize_t i, j
     cdef Py_ssize_t num_out_bytes
-    cdef Bytef *c_bit
-    cdef uLong c_len
-    cdef uInt crc_val
+    cdef unsigned long crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
-    cdef PyObject *bit
 
-    if not StaticTuple_CheckExact(key):
-        raise TypeError('key %r is not a StaticTuple' % (key,))
     num_bits = len(key)
     # 4 bytes per crc32, and another 1 byte between bits
     num_out_bytes = (9 * num_bits) - 1
@@ -119,15 +111,7 @@ def _search_key_16(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        # We use the _ptr variant, because GET_ITEM returns a borrowed
-        # reference, and Pyrex assumes that returned 'object' are a new
-        # reference
-        bit = StaticTuple_GET_ITEM_ptr(key, i)
-        if not PyString_CheckExact_ptr(bit):
-            raise TypeError('Bit %d of %r is not a string' % (i, key))
-        c_bit = <Bytef *>PyString_AS_STRING_ptr(bit)
-        c_len = PyString_GET_SIZE_ptr(bit)
-        crc_val = crc32(0, c_bit, c_len)
+        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
         # Hex(val) order
         sprintf(c_out, '%08X', crc_val)
         c_out = c_out + 8
@@ -139,15 +123,10 @@ def _search_key_255(key):
     cdef Py_ssize_t num_bits
     cdef Py_ssize_t i, j
     cdef Py_ssize_t num_out_bytes
-    cdef Bytef *c_bit
-    cdef uLong c_len
-    cdef uInt crc_val
+    cdef unsigned long crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
-    cdef PyObject *bit
 
-    if not StaticTuple_CheckExact(key):
-        raise TypeError('key %r is not a StaticTuple' % (key,))
     num_bits = len(key)
     # 4 bytes per crc32, and another 1 byte between bits
     num_out_bytes = (5 * num_bits) - 1
@@ -157,13 +136,7 @@ def _search_key_255(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        bit = StaticTuple_GET_ITEM_ptr(key, i)
-        if not PyString_CheckExact_ptr(bit):
-            raise TypeError('Bit %d of %r is not a string: %r'
-                            % (i, key, <object>bit))
-        c_bit = <Bytef *>PyString_AS_STRING_ptr(bit)
-        c_len = PyString_GET_SIZE_ptr(bit)
-        crc_val = crc32(0, c_bit, c_len)
+        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
         # MSB order
         c_out[0] = (crc_val >> 24) & 0xFF
         c_out[1] = (crc_val >> 16) & 0xFF

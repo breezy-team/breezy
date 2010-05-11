@@ -506,6 +506,9 @@ _merge_type_registry.register_lazy('lca', 'bzrlib.merge', 'LCAMerger',
 # Declare the standard options
 _standard_option('help', short_name='h',
                  help='Show help message.')
+_standard_option('null', short_name='0',
+                 help='Use an ASCII NUL (\\0) separator rather than '
+                      'a newline.')
 _standard_option('usage',
                  help='Show usage message and options.')
 _standard_option('verbose', short_name='v',
@@ -570,6 +573,8 @@ _global_option('kind', type=str)
 _global_option('dry-run',
                help="Show what would be done, but don't actually do anything.")
 _global_option('name-from-revision', help='The path name in the old tree.')
+_global_option('directory', short_name='d', type=unicode,
+               help='Branch to operate on, instead of working directory')
 
 diff_writer_registry = _mod_registry.Registry()
 diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')
