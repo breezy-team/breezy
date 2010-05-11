@@ -13,6 +13,14 @@ bzr 2.2b3
 Compatibility Breaks
 ********************
 
+* An API break has been made to the lock_write method of ``Branch`` and
+  ``Repository`` objects; they now return ``branch.BranchWriteLockResult``
+  and ``repository.RepositoryWriteLockResult`` objects. This makes
+  changing the API in future easier and permits some cleaner calling code.
+  The lock_read method has also changed from having no defined return
+  value to returning ``LogicalLockResult`` objects.
+  (Robert Collins)
+
 * ``bzr`` does not try to guess the username as ``username@hostname``
   and requires it to be explictly set. This can be set using ``bzr
   whoami``.
@@ -101,6 +109,9 @@ Bug Fixes
   messages.
   (Parth Malwankar, #563646)
 
+* Using bzr with `lp:` urls behind an http proxy should work.
+  (Robert Collins, #558343)
+
 Improvements
 ************
 
@@ -138,6 +149,13 @@ API Changes
   implementations.
   (Martin Pool)
 
+* Lock methods on ``Tree``, ``Branch`` and ``Repository`` are now
+  expected to return an object which can be used to unlock them. This reduces
+  duplicate code when using cleanups. The previous 'tokens's returned by
+  ``Branch.lock_write`` and ``Repository.lock_write`` are now attributes
+  on the result of the lock_write. ``repository.RepositoryWriteLockResult``
+  and ``branch.BranchWriteLockResult`` document this. (Robert Collins)
+
 * ``Repository.refresh_data`` may now be called in a write group on
   pack-based repositories.  Older repositories will still raise an error
   in this case.  Subclasses of ``Repository`` can still override
@@ -154,6 +172,9 @@ Internals
   potentially shave 5-10% time off during a large fetch. Related to bug
   #562666. (John Arbash Meinel)
 
+* ``log._get_info_for_log_files`` now takes an add_cleanup callable.
+  (Robert Collins)
+
 * ``_remember_remote_is_before`` no longer raises AssertionError when
   suboptimal network behaviour is noticed; instead it just mutters to the
   log file (and warns the user if they have set the ``hpss`` debug flag).
@@ -168,6 +189,10 @@ Internals
 
 Testing
 *******
+
+* Added ``bzrlib.tests.matchers`` as a place to put matchers, along with
+  our first in-tree matcher. See the module docstring for details.
+  (Robert Collins)
 
 * ``bzr selftest --parallel=subprocess`` now works correctly on win32.
    (Gordon Tyler, #551332)
@@ -283,6 +308,9 @@ API Changes
 * ``bzrlib.diff.get_trees_and_branches_to_diff`` is deprecated.  Use
   ``get_trees_and_branches_to_diff_locked`` instead.
   (Andrew Bennetts)
+
+* ``TreeTransform.commit`` supports the full set of commit parameters, and
+  auto-determines branch nick if not supplied.  (Aaron Bentley)
   
 Internals
 *********

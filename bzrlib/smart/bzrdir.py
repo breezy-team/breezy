@@ -429,7 +429,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             # It is returned locked, but we need to do the lock to get the lock
             # token.
             repo.unlock()
-            repo_lock_token = repo.lock_write() or ''
+            repo_lock_token = repo.lock_write().repository_token or ''
             if repo_lock_token:
                 repo.leave_lock_in_place()
             repo.unlock()

@@ -182,39 +182,14 @@ class MutableTree(tree.Tree):
                **kwargs):
         # avoid circular imports
         from bzrlib import commit
-        if revprops is None:
-            revprops = {}
         possible_master_transports=[]
-        if not 'branch-nick' in revprops:
-            revprops['branch-nick'] = self.branch._get_nick(
+        revprops = commit.Commit.update_revprops(
+                revprops,
+                self.branch,
+                kwargs.pop('authors', None),
+                kwargs.pop('author', None),
                 kwargs.get('local', False),
                 possible_master_transports)
-        authors = kwargs.pop('authors', None)
-        author = kwargs.pop('author', None)
-        if authors is not None:
-            if author is not None:
-                raise AssertionError('Specifying both author and authors '
-                        'is not allowed. Specify just authors instead')
-            if 'author' in revprops or 'authors' in revprops:
-                # XXX: maybe we should just accept one of them?
-                raise AssertionError('author property given twice')
-            if authors:
-                for individual in authors:
-                    if '\n' in individual:
-                        raise AssertionError('\\n is not a valid character '
-                                'in an author identity')
-                revprops['authors'] = '\n'.join(authors)
-        if author is not None:
-            symbol_versioning.warn('The parameter author was deprecated'
-                   ' in version 1.13. Use authors instead',
-                   DeprecationWarning)
-            if 'author' in revprops or 'authors' in revprops:
-                # XXX: maybe we should just accept one of them?
-                raise AssertionError('author property given twice')
-            if '\n' in author:
-                raise AssertionError('\\n is not a valid character '
-                        'in an author identity')
-            revprops['authors'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
         for hook in MutableTree.hooks['start_commit']:

@@ -25,6 +25,7 @@ from bzrlib.tests import (
     lock_helpers,
     per_branch,
     )
+from bzrlib.tests.matchers import *
 
 
 class TestBranchLocking(per_branch.TestCaseWithBranch):
@@ -291,7 +292,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
 
     def test_lock_write_returns_None_refuses_token(self):
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is not None:
                 # This test does not apply, because this lockable supports
@@ -304,7 +305,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
 
     def test_reentering_lock_write_raises_on_token_mismatch(self):
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this lockable refuses
@@ -321,7 +322,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
 
     def test_lock_write_with_nonmatching_token(self):
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this branch refuses
@@ -344,7 +345,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         """Test that a branch can be locked with a token, if it is already
         locked by that token."""
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this branch refuses tokens.
@@ -368,7 +369,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         # If lock_write did not physically acquire the lock (because it was
         # passed some tokens), then unlock should not physically release it.
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this lockable refuses
@@ -390,19 +391,17 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         # to lock with a token that is no longer valid (because the original
         # lock was released).
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         branch.unlock()
         if token is None:
             # This test does not apply, because this lockable refuses
             # tokens.
             return
-
-        self.assertRaises(errors.TokenMismatch,
-                          branch.lock_write, token=token)
+        self.assertRaises(errors.TokenMismatch, branch.lock_write, token=token)
 
     def test_lock_write_reenter_with_token(self):
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this lockable refuses
@@ -420,11 +419,15 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         new_branch.lock_write()
         new_branch.unlock()
 
+    def test_lock_write_returns_unlockable(self):
+        branch = self.make_branch('b')
+        self.assertThat(branch.lock_write, ReturnsUnlockable(branch))
+
     def test_leave_lock_in_place(self):
         branch = self.make_branch('b')
         # Lock the branch, then use leave_lock_in_place so that when we
         # unlock the branch the lock is still held on disk.
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this repository refuses lock
@@ -445,7 +448,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
     def test_dont_leave_lock_in_place(self):
         branch = self.make_branch('b')
         # Create a lock on disk.
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this branch refuses lock
@@ -497,6 +500,10 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         branch.lock_read()
         branch.unlock()
 
+    def test_lock_read_returns_unlockable(self):
+        branch = self.make_branch('b')
+        self.assertThat(branch.lock_read, ReturnsUnlockable(branch))
+
     def test_lock_write_locks_repo_too(self):
         if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
             # Branch format 4 is combined with the repository, so this test
@@ -522,6 +529,10 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
             branch.repository.unlock()
         finally:
             branch.unlock()
+
+    def test_lock_write_returns_unlockable(self):
+        branch = self.make_branch('b')
+        self.assertThat(branch.lock_write, ReturnsUnlockable(branch))
 
     def test_lock_and_unlock_leaves_repo_unlocked(self):
         branch = self.make_branch('b')

@@ -58,7 +58,8 @@ cdef extern from "Python.h":
 # cimport all of the definitions we will need to access
 from _static_tuple_c cimport StaticTuple,\
     import_static_tuple_c, StaticTuple_New, \
-    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
+    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
+    StaticTuple_GET_SIZE
 
 cdef extern from "_static_tuple_c.h":
     # Defined explicitly rather than cimport-ing. Trying to use cimport, the
@@ -189,6 +190,16 @@ cdef int _get_int_from_line(char **cur, char *end, char *message) except -1:
     return value
 
 
+cdef _import_globals():
+    """Set the global attributes. Done lazy to avoid recursive import loops."""
+    global _LeafNode, _InternalNode, _unknown
+
+    from bzrlib import chk_map
+    _LeafNode = chk_map.LeafNode
+    _InternalNode = chk_map.InternalNode
+    _unknown = chk_map._unknown
+
+
 def _deserialise_leaf_node(bytes, key, search_key_func=None):
     """Deserialise bytes, with key key, into a LeafNode.
 
@@ -206,10 +217,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     cdef StaticTuple entry_bits
 
     if _LeafNode is None:
-        from bzrlib import chk_map
-        _LeafNode = chk_map.LeafNode
-        _InternalNode = chk_map.InternalNode
-        _unknown = chk_map._unknown
+        _import_globals()
 
     result = _LeafNode(search_key_func=search_key_func)
     # Splitlines can split on '\r' so don't use it, split('\n') adds an
@@ -313,7 +321,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
                                                next_null - entry_start)
             Py_INCREF(entry)
             StaticTuple_SET_ITEM(entry_bits, i, entry)
-        if len(entry_bits) != width:
+        if StaticTuple_GET_SIZE(entry_bits) != width:
             raise AssertionError(
                 'Incorrect number of elements (%d vs %d)'
                 % (len(entry_bits)+1, width + 1))
@@ -349,10 +357,7 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     cdef char *prefix, *line_prefix, *next_null, *c_item_prefix
 
     if _InternalNode is None:
-        from bzrlib import chk_map
-        _LeafNode = chk_map.LeafNode
-        _InternalNode = chk_map.InternalNode
-        _unknown = chk_map._unknown
+        _import_globals()
     result = _InternalNode(search_key_func=search_key_func)
 
     if not StaticTuple_CheckExact(key):
