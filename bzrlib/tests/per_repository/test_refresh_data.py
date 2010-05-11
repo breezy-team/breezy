@@ -90,7 +90,7 @@ class TestRefreshData(TestCaseWithRepository):
 
     def test_refresh_data_after_fetch_new_data_visible(self):
         repo = self.make_repository('target')
-        token = repo.lock_write()
+        token = repo.lock_write().repository_token
         self.addCleanup(repo.unlock)
         self.fetch_new_revision_into_concurrent_instance(repo, token)
         repo.refresh_data()
@@ -103,7 +103,7 @@ class TestRefreshData(TestCaseWithRepository):
         tree.add([''], ['root-id'])
         tree.commit('foo', rev_id='commit-in-target')
         repo = tree.branch.repository
-        token = repo.lock_write()
+        token = repo.lock_write().repository_token
         self.addCleanup(repo.unlock)
         repo.start_write_group()
         self.addCleanup(repo.abort_write_group)

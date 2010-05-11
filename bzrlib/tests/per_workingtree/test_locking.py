@@ -24,6 +24,7 @@ from bzrlib import (
     lockdir,
     )
 from bzrlib.tests import TestSkipped
+from bzrlib.tests.matchers import *
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -44,6 +45,10 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
 
+    def test_lock_read_returns_unlocker(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertThat(wt.lock_read, ReturnsUnlockable(wt))
+
     def test_trivial_lock_write_unlock(self):
         """Locking for write and unlocking should work trivially."""
         wt = self.make_branch_and_tree('.')
@@ -59,6 +64,10 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
 
+    def test_lock_write_returns_unlocker(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertThat(wt.lock_write, ReturnsUnlockable(wt))
+
     def test_trivial_lock_tree_write_unlock(self):
         """Locking for tree write is ok when the branch is not locked."""
         wt = self.make_branch_and_tree('.')
@@ -73,6 +82,10 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
             wt.unlock()
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
+
+    def test_lock_tree_write_returns_unlocker(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertThat(wt.lock_tree_write, ReturnsUnlockable(wt))
 
     def test_trivial_lock_tree_write_branch_read_locked(self):
         """It is ok to lock_tree_write when the branch is read locked."""

@@ -52,6 +52,10 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
+from bzrlib import (
+    errors,
+    registry,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.inter import InterObject
 from bzrlib.inventory import (
@@ -60,11 +64,7 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
-from bzrlib.lock import _RelockDebugMixin
-from bzrlib import (
-    errors,
-    registry,
-    )
+from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
@@ -870,6 +870,23 @@ class RootCommitBuilder(CommitBuilder):
         # versioned roots do not change unless the tree found a change.
 
 
+class RepositoryWriteLockResult(LogicalLockResult):
+    """The result of write locking a repository.
+
+    :ivar repository_token: The token obtained from the underlying lock, or
+        None.
+    :ivar unlock: A callable which will unlock the lock.
+    """
+
+    def __init__(self, unlock, repository_token):
+        LogicalLockResult.__init__(self, unlock)
+        self.repository_token = repository_token
+
+    def __repr__(self):
+        return "RepositoryWriteLockResult(%s, %s)" % (self.repository_token,
+            self.unlock)
+
+
 ######################################################################
 # Repositories
 
@@ -1386,6 +1403,12 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
         data during reads, and allows a 'write_group' to be obtained. Write
         groups must be used for actual data insertion.
 
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.
+
+        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
+
         :param token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
         :returns: a token if this instance supports tokens, otherwise None.
@@ -1394,15 +1417,10 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
         :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
         :seealso: start_write_group.
-
-        A token should be passed in if you know that you have locked the object
-        some other way, and need to synchronise this object's state with that
-        fact.
-
-        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
+        :return: A RepositoryWriteLockResult.
         """
         locked = self.is_locked()
-        result = self.control_files.lock_write(token=token)
+        token = self.control_files.lock_write(token=token)
         if not locked:
             self._warn_if_deprecated()
             self._note_lock('w')
@@ -1410,9 +1428,14 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
                 # Writes don't affect fallback repos
                 repo.lock_read()
             self._refresh_data()
-        return result
+        return RepositoryWriteLockResult(self.unlock, token)
 
     def lock_read(self):
+        """Lock the repository for read operations.
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
+        """
         locked = self.is_locked()
         self.control_files.lock_read()
         if not locked:
@@ -1421,6 +1444,7 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
+        return LogicalLockResult(self.unlock)
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()

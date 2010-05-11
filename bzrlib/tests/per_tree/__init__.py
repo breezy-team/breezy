@@ -386,6 +386,7 @@ def load_tests(standard_tests, module, loader):
         'inv',
         'iter_search_rules',
         'list_files',
+        'locking',
         'path_content_summary',
         'revision_tree',
         'test_trees',
