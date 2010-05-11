@@ -856,11 +856,10 @@ class ChrootedTests(TestCaseWithTransport):
 
         try:
             branch.Branch.open(abranch_url)
-            raise Exception('should not be able to open branch with missing '
-                + 'repo')
+            self.fail('should not be able to open branch with missing repo')
         except errors.NoRepositoryPresent:
             pass
-        baz = self.make_branch('baz').bzrdir
+        self.make_branch('baz')
         self._assert_branch_urls(['baz/'], list(
             bzrdir.BzrDir.find_branches(transport)))
 
