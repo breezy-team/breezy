@@ -64,6 +64,7 @@ from bzrlib.index import (
     GraphIndex,
     InMemoryGraphIndex,
     )
+from bzrlib.lock import LogicalLockResult
 from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.repository import (
     CommitBuilder,
@@ -2341,6 +2342,10 @@ class KnitPackRepository(KnitRepository):
         return self._write_lock_count
 
     def lock_write(self, token=None):
+        """Lock the repository for writes.
+
+        :return: A bzrlib.repository.RepositoryWriteLockResult.
+        """
         locked = self.is_locked()
         if not self._write_lock_count and locked:
             raise errors.ReadOnlyError(self)
@@ -2358,6 +2363,10 @@ class KnitPackRepository(KnitRepository):
         return RepositoryWriteLockResult(self.unlock, None)
 
     def lock_read(self):
+        """Lock the repository for reads.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         locked = self.is_locked()
         if self._write_lock_count:
             self._write_lock_count += 1
@@ -2370,7 +2379,7 @@ class KnitPackRepository(KnitRepository):
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
-        return self
+        return LogicalLockResult(self.unlock)
 
     def leave_lock_in_place(self):
         # not supported - raise an error

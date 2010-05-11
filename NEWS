@@ -17,6 +17,8 @@ Compatibility Breaks
   ``Repository`` objects; they now return ``branch.BranchWriteLockResult``
   and ``repository.RepositoryWriteLockResult`` objects. This makes
   changing the API in future easier and permits some cleaner calling code.
+  The lock_read method has also changed from having no defined return
+  value to returning ``LogicalLockResult`` objects.
   (Robert Collins)
 
 New Features

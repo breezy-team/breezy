@@ -61,7 +61,7 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
-from bzrlib.lock import _RelockDebugMixin
+from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
 from bzrlib import registry
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -860,7 +860,7 @@ class RootCommitBuilder(CommitBuilder):
         # versioned roots do not change unless the tree found a change.
 
 
-class RepositoryWriteLockResult(object):
+class RepositoryWriteLockResult(LogicalLockResult):
     """The result of write locking a repository.
 
     :ivar repository_token: The token obtained from the underlying lock, or
@@ -869,10 +869,10 @@ class RepositoryWriteLockResult(object):
     """
 
     def __init__(self, unlock, repository_token):
+        LogicalLockResult.__init__(self, unlock)
         self.repository_token = repository_token
-        self.unlock = unlock
 
-    def __str__(self):
+    def __repr__(self):
         return "RepositoryWriteLockResult(%s, %s)" % (self.repository_token,
             self.unlock)
 
@@ -1434,7 +1434,7 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
-        return self
+        return LogicalLockResult(self.unlock)
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()

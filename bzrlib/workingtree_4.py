@@ -53,6 +53,7 @@ import bzrlib.ui
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.filters import filtered_input_file, internal_size_sha_file_byname
 from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
+from bzrlib.lock import LogicalLockResult
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
     file_kind,
@@ -569,8 +570,7 @@ class DirStateWorkingTree(WorkingTree3):
     def lock_read(self):
         """See Branch.lock_read, and WorkingTree.unlock.
 
-        :return: An object with an unlock method which will release the lock
-            obtained.
+        :return: A bzrlib.lock.LogicalLockResult.
         """
         self.branch.lock_read()
         try:
@@ -590,7 +590,7 @@ class DirStateWorkingTree(WorkingTree3):
         except:
             self.branch.unlock()
             raise
-        return self
+        return LogicalLockResult(self.unlock)
 
     def _lock_self_write(self):
         """This should be called after the branch is locked."""
@@ -611,13 +611,12 @@ class DirStateWorkingTree(WorkingTree3):
         except:
             self.branch.unlock()
             raise
-        return self
+        return LogicalLockResult(self.unlock)
 
     def lock_tree_write(self):
         """See MutableTree.lock_tree_write, and WorkingTree.unlock.
 
-        :return: An object with an unlock method which will release the lock
-            obtained.
+        :return: A bzrlib.lock.LogicalLockResult.
         """
         self.branch.lock_read()
         return self._lock_self_write()
@@ -625,8 +624,7 @@ class DirStateWorkingTree(WorkingTree3):
     def lock_write(self):
         """See MutableTree.lock_write, and WorkingTree.unlock.
 
-        :return: An object with an unlock method which will release the lock
-            obtained.
+        :return: A bzrlib.lock.LogicalLockResult.
         """
         self.branch.lock_write()
         return self._lock_self_write()
@@ -1896,8 +1894,7 @@ class DirStateRevisionTree(Tree):
     def lock_read(self):
         """Lock the tree for a set of operations.
 
-        :return: An object with an unlock method which will release the lock
-            obtained.
+        :return: A bzrlib.lock.LogicalLockResult.
         """
         if not self._locked:
             self._repository.lock_read()
@@ -1905,7 +1902,7 @@ class DirStateRevisionTree(Tree):
                 self._dirstate.lock_read()
                 self._dirstate_locked = True
         self._locked += 1
-        return self
+        return LogicalLockResult(self.unlock)
 
     def _must_be_locked(self):
         if not self._locked:

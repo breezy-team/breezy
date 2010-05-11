@@ -1000,8 +1000,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def lock_read(self):
         """Lock the repository for read operations.
 
-        :return: An object with an unlock method which will release the lock
-            obtained.
+        :return: A bzrlib.lock.LogicalLockResult.
         """
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
@@ -1015,7 +1014,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                 repo.lock_read()
         else:
             self._lock_count += 1
-        return self
+        return lock.LogicalLockResult(self.unlock)
 
     def _remote_lock_write(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -2396,8 +2395,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     def lock_read(self):
         """Lock the branch for read operations.
 
-        :return: An object with an unlock method which will release the lock
-            obtained.
+        :return: A bzrlib.lock.LogicalLockResult.
         """
         self.repository.lock_read()
         if not self._lock_mode:
@@ -2408,7 +2406,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self._real_branch.lock_read()
         else:
             self._lock_count += 1
-        return self
+        return lock.LogicalLockResult(self.unlock)
 
     def _remote_lock_write(self, token):
         if token is None:

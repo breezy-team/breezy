@@ -77,6 +77,7 @@ from bzrlib.workingtree_4 import (
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.lock import LogicalLockResult
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
@@ -1802,15 +1803,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         This also locks the branch, and can be unlocked via self.unlock().
 
-        :return: An object with an unlock method which will release the lock
-            obtained.
+        :return: A bzrlib.lock.LogicalLockResult.
         """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
             self._control_files.lock_read()
-            return self
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
@@ -1818,15 +1818,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def lock_tree_write(self):
         """See MutableTree.lock_tree_write, and WorkingTree.unlock.
 
-        :return: An object with an unlock method which will release the lock
-            obtained.
+        :return: A bzrlib.lock.LogicalLockResult.
         """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
             self._control_files.lock_write()
-            return self
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
@@ -1834,15 +1833,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def lock_write(self):
         """See MutableTree.lock_write, and WorkingTree.unlock.
 
-        :return: An object with an unlock method which will release the lock
-            obtained.
+        :return: A bzrlib.lock.LogicalLockResult.
         """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_write()
         try:
             self._control_files.lock_write()
-            return self
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
