@@ -35,7 +35,9 @@ cdef extern from "Python.h":
     Py_ssize_t PyTuple_GET_SIZE(object t)
     int PyString_CheckExact(object)
     char *PyString_AS_STRING(object s)
+    PyObject *PyString_FromStringAndSize_ptr "PyString_FromStringAndSize" (char *, Py_ssize_t)
     Py_ssize_t PyString_GET_SIZE(object)
+    void PyString_InternInPlace(PyObject **)
     unsigned long PyInt_AsUnsignedLongMask(object) except? -1
 
     int PyDict_SetItem(object d, object k, object v) except -1
@@ -44,6 +46,7 @@ cdef extern from "Python.h":
     void PyTuple_SET_ITEM(object t, Py_ssize_t offset, object)
 
     void Py_INCREF(object)
+    void Py_DECREF_ptr "Py_DECREF" (PyObject *)
 
     PyObject * PyTuple_GET_ITEM_ptr "PyTuple_GET_ITEM" (object t,
                                                         Py_ssize_t offset)
@@ -91,6 +94,21 @@ cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
             return <void*>pos
         pos = pos - 1
     return NULL
+
+
+cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
+    cdef PyObject *py_str
+    if size < 0:
+        raise AssertionError(
+            'tried to create a string with an invalid size: %d @0x%x'
+            % (size, <int>s))
+    py_str = PyString_FromStringAndSize_ptr(s, size)
+    PyString_InternInPlace(&py_str)
+    result = <object>py_str
+    # Casting a PyObject* to an <object> triggers an INCREF from Pyrex, so we
+    # DECREF it to avoid geting immortal strings
+    Py_DECREF_ptr(py_str)
+    return result
 
 
 def _search_key_16(key):
@@ -395,3 +413,51 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     result._node_width = len(item_prefix)
     result._search_prefix = PyString_FromStringAndSize(prefix, prefix_length)
     return result
+
+
+def _bytes_to_text_key(bytes):
+    """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
+    cdef StaticTuple key
+    cdef char *byte_str, *cur_end, *file_id_str, *byte_end
+    cdef char *revision_str
+    cdef Py_ssize_t byte_size, pos, file_id_len
+
+    if not PyString_CheckExact(bytes):
+        raise TypeError('bytes must be a string')
+    byte_str = PyString_AS_STRING(bytes)
+    byte_size = PyString_GET_SIZE(bytes)
+    byte_end = byte_str + byte_size
+    cur_end = <char*>memchr(byte_str, c':', byte_size)
+    if cur_end == NULL:
+        raise ValueError('No kind section found.')
+    if cur_end[1] != ' ':
+        raise ValueError('Kind section should end with ": "')
+    file_id_str = cur_end + 2
+    # file_id is now the data up until the next newline
+    cur_end = <char*>memchr(file_id_str, c'\n', byte_end - file_id_str)
+    if cur_end == NULL:
+        raise ValueError('no newline after file-id')
+    file_id = safe_interned_string_from_size(file_id_str,
+                                             cur_end - file_id_str)
+    # this is the end of the parent_str
+    cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
+    if cur_end == NULL:
+        raise ValueError('no newline after parent_str')
+    # end of the name str
+    cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
+    if cur_end == NULL:
+        raise ValueError('no newline after name str')
+    # the next section is the revision info
+    revision_str = cur_end + 1
+    cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
+    if cur_end == NULL:
+        # This is probably a dir: entry, which has revision as the last item
+        cur_end = byte_end
+    revision = safe_interned_string_from_size(revision_str,
+        cur_end - revision_str)
+    key = StaticTuple_New(2)
+    Py_INCREF(file_id)
+    StaticTuple_SET_ITEM(key, 0, file_id) 
+    Py_INCREF(revision)
+    StaticTuple_SET_ITEM(key, 1, revision) 
+    return StaticTuple_Intern(key)
