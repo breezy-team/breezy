@@ -1370,16 +1370,6 @@ class Branch(bzrdir.ControlComponent):
             where possible.
         :return: The tree of the created checkout
         """
-        def _is_checkout_in_shared_repo(checkout):
-            """Return true is checkout is done inside shared repo."""
-            shared = True
-            try:
-                repo = checkout.open_repository()
-                shared = repo.is_shared()
-            except errors.NoRepositoryPresent, e:
-                pass
-            return shared
-
         t = transport.get_transport(to_location)
         t.ensure_base()
         if lightweight:
@@ -1393,11 +1383,6 @@ class Branch(bzrdir.ControlComponent):
                 to_location, force_new_tree=False, format=format)
             checkout = checkout_branch.bzrdir
             checkout_branch.bind(self)
-            if _is_checkout_in_shared_repo(checkout) == False:
-                message = ('Copying history to "%s". '
-                    'To checkout without local history '
-                    'use --lightweight.' % to_location)
-                ui.ui_factory.show_message(message)
             # pull up to the specified revision_id to set the initial
             # branch tip correctly, and seed it with history.
             checkout_branch.pull(self, stop_revision=revision_id)

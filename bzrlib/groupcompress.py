@@ -33,6 +33,7 @@ from bzrlib import (
     pack,
     static_tuple,
     trace,
+    ui,
     )
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
@@ -1584,7 +1585,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         record.get_bytes_as('fulltext'))
         return result
 
-    def insert_record_stream(self, stream):
+    def insert_record_stream(self, stream, record_counter=None):
         """Insert a record stream into this container.
 
         :param stream: A stream of records to insert.
@@ -1595,11 +1596,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # test_insert_record_stream_existing_keys fail for groupcompress and
         # groupcompress-nograph, this needs to be revisited while addressing
         # 'bzr branch' performance issues.
-        for _ in self._insert_record_stream(stream, random_id=False):
+        for _ in self._insert_record_stream(stream, random_id=False,
+                record_counter=record_counter):
             pass
 
     def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
-                              reuse_blocks=True):
+                              reuse_blocks=True, record_counter=None):
         """Internal core to insert a record stream into this container.
 
         This helper function has a different interface than insert_record_stream
@@ -1650,7 +1652,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # XXX: TODO: remove this, it is just for safety checking for now
         inserted_keys = set()
         reuse_this_block = reuse_blocks
+        current_count = 0
+        pb = ui.ui_factory.nested_progress_bar()
         for record in stream:
+            if record_counter.max > 0:
+                pb.update('', record_counter.current, record_counter.max)
+            record_counter.current += 1
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
@@ -1757,6 +1764,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if len(keys_to_add):
             flush()
         self._compressor = None
+        pb.finished()
+
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.

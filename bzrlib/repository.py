@@ -73,6 +73,12 @@ from bzrlib.trace import (
 _deprecation_warning_done = False
 
 
+class RecordCounter(object):
+    def __init__(self, current, max):
+        self.current = current
+        self.max = max
+
+
 class IsInWriteGroupError(errors.InternalBzrError):
 
     _fmt = "May not refresh_data of repo %(repo)s while in a write group."
@@ -4241,7 +4247,8 @@ class StreamSink(object):
     def __init__(self, target_repo):
         self.target_repo = target_repo
 
-    def insert_stream(self, stream, src_format, resume_tokens):
+    def insert_stream(self, stream, src_format, resume_tokens,
+            key_count=0):
         """Insert a stream's content into the target repository.
 
         :param src_format: a bzr repository format.
@@ -4259,14 +4266,16 @@ class StreamSink(object):
                 is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format, is_resume)
+                return self._locked_insert_stream(stream, src_format, is_resume,
+                    key_count)
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
         finally:
             self.target_repo.unlock()
 
-    def _locked_insert_stream(self, stream, src_format, is_resume):
+    def _locked_insert_stream(self, stream, src_format, is_resume,
+            key_count=0):
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
         new_pack = None
@@ -4288,15 +4297,22 @@ class StreamSink(object):
                 pass
             else:
                 new_pack.set_write_cache_size(1024*1024)
+        current_count = 0
+        pb = ui.ui_factory.nested_progress_bar()
+        record_counter = RecordCounter(0, key_count * 11)
+        if key_count > 0:
+            pb.update('Estimated records')
+
         for substream_type, substream in stream:
             if 'stream' in debug.debug_flags:
                 mutter('inserting substream: %s', substream_type)
             if substream_type == 'texts':
-                self.target_repo.texts.insert_record_stream(substream)
+                self.target_repo.texts.insert_record_stream(substream,
+                    record_counter)
             elif substream_type == 'inventories':
                 if src_serializer == to_serializer:
                     self.target_repo.inventories.insert_record_stream(
-                        substream)
+                        substream, record_counter)
                 else:
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
@@ -4306,21 +4322,26 @@ class StreamSink(object):
             elif substream_type == 'chk_bytes':
                 # XXX: This doesn't support conversions, as it assumes the
                 #      conversion was done in the fetch code.
-                self.target_repo.chk_bytes.insert_record_stream(substream)
+                self.target_repo.chk_bytes.insert_record_stream(substream,
+                    record_counter)
             elif substream_type == 'revisions':
                 # This may fallback to extract-and-insert more often than
                 # required if the serializers are different only in terms of
                 # the inventory.
                 if src_serializer == to_serializer:
                     self.target_repo.revisions.insert_record_stream(
-                        substream)
+                        substream, record_counter)
                 else:
                     self._extract_and_insert_revisions(substream,
                         src_serializer)
             elif substream_type == 'signatures':
-                self.target_repo.signatures.insert_record_stream(substream)
+                current_count = self.target_repo.signatures.insert_record_stream(substream,
+                    record_counter)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
+        if key_count > 0:
+            pb.update('Estimated records', record_counter.max, record_counter.max)
+            pb.finished()
         # Done inserting data, and the missing_keys calculations will try to
         # read back from the inserted data, so flush the writes to the new pack
         # (if this is pack format).
