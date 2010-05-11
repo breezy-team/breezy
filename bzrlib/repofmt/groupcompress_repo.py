@@ -262,7 +262,6 @@ class GCCHKPacker(Packer):
         remaining_keys = set(keys)
         counter = [0]
         if self._gather_text_refs:
-            bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
             self._text_refs = set()
         def _get_referenced_stream(root_keys, parse_leaf_nodes=False):
             cur_keys = root_keys
@@ -289,8 +288,7 @@ class GCCHKPacker(Packer):
                     # Store is None, because we know we have a LeafNode, and we
                     # just want its entries
                     for file_id, bytes in node.iteritems(None):
-                        name_utf8, file_id, revision_id = bytes_to_info(bytes)
-                        self._text_refs.add((file_id, revision_id))
+                        self._text_refs.add(chk_map._bytes_to_text_key(bytes))
                 def next_stream():
                     stream = source_vf.get_record_stream(cur_keys,
                                                          'as-requested', True)
@@ -647,10 +645,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         chk_diff = chk_map.iter_interesting_nodes(
             chk_bytes_no_fallbacks, root_key_info.interesting_root_keys,
             root_key_info.uninteresting_root_keys)
-        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
         text_keys = set()
         try:
-            for record in _filter_text_keys(chk_diff, text_keys, bytes_to_info):
+            for record in _filter_text_keys(chk_diff, text_keys,
+                                            chk_map._bytes_to_text_key):
                 pass
         except errors.NoSuchRevision, e:
             # XXX: It would be nice if we could give a more precise error here.
@@ -1087,13 +1085,12 @@ class GroupCHKStreamSource(KnitPackStreamSource):
                 uninteresting_root_keys.add(inv.id_to_entry.key())
                 uninteresting_pid_root_keys.add(
                     inv.parent_id_basename_to_file_id.key())
-        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
         chk_bytes = self.from_repository.chk_bytes
         def _filter_id_to_entry():
             interesting_nodes = chk_map.iter_interesting_nodes(chk_bytes,
                         self._chk_id_roots, uninteresting_root_keys)
             for record in _filter_text_keys(interesting_nodes, self._text_keys,
-                    bytes_to_info):
+                    chk_map._bytes_to_text_key):
                 if record is not None:
                     yield record
             # Consumed
@@ -1187,19 +1184,13 @@ def _build_interesting_key_sets(repo, inventory_ids, parent_only_inv_ids):
     return result
 
 
-def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_info):
+def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_text_key):
     """Iterate the result of iter_interesting_nodes, yielding the records
     and adding to text_keys.
     """
+    text_keys_update = text_keys.update
     for record, items in interesting_nodes_iterable:
-        for name, bytes in items:
-            # Note: we don't care about name_utf8, because groupcompress repos
-            # are always rich-root, so there are no synthesised root records to
-            # ignore.
-            _, file_id, revision_id = bytes_to_info(bytes)
-            file_id = intern(file_id)
-            revision_id = intern(revision_id)
-            text_keys.add(StaticTuple(file_id, revision_id).intern())
+        text_keys_update([bytes_to_text_key(b) for n,b in items])
         yield record
 
 

@@ -170,6 +170,11 @@ API Changes
 Internals
 *********
 
+* ``chk_map._bytes_to_text_key`` is now an optimized function to extract
+  the (file-id, revision-id) key from a CHKInventory entry. This can
+  potentially shave 5-10% time off during a large fetch. Related to bug
+  #562666. (John Arbash Meinel)
+
 * ``log._get_info_for_log_files`` now takes an add_cleanup callable.
   (Robert Collins)
 
