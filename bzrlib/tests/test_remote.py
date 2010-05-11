@@ -2257,6 +2257,7 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         self.setup_smart_server_with_call_log()
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
+        tree.add('')
         rev1 = tree.commit('First')
         rev2 = tree.commit('Second')
         tree.unlock()
