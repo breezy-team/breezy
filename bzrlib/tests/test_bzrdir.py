@@ -24,6 +24,7 @@ import subprocess
 import sys
 
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     help_topics,
@@ -842,6 +843,26 @@ class ChrootedTests(TestCaseWithTransport):
             backing_server=path_filter_server)
         self._assert_branch_urls(['baz/'], list(
             bzrdir.BzrDir.find_bzrdirs(smart_transport)))
+
+    def test_find_bzrdirs_missing_repo(self):
+        self.vfs_transport_factory = memory.MemoryServer
+        transport = get_transport(self.get_url())
+        arepo = self.make_repository('arepo', shared=True)
+        abranch_url = arepo.user_url + '/abranch'
+        abranch = bzrdir.BzrDir.create(abranch_url).create_branch()
+
+        # effectively recursively delete arepo/.bzr
+        transport.rename('/arepo/.bzr', '/arepo/bzr.trash')
+
+        try:
+            branch.Branch.open(abranch_url)
+            raise Exception('should not be able to open branch with missing '
+                + 'repo')
+        except errors.NoRepositoryPresent:
+            pass
+        baz = self.make_branch('baz').bzrdir
+        self._assert_branch_urls(['baz/'], list(
+            bzrdir.BzrDir.find_branches(transport)))
 
     def test_find_bzrdirs_list_current(self):
         def list_current(transport):
