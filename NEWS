@@ -78,6 +78,9 @@ Bug Fixes
 * BzrDir.find_bzrdirs should ignore dirs that raises PermissionDenied.
   (Marius Kruger)
 
+* BzrDir.find_branches should ignore branches with missing repositories.
+  (Marius Kruger)
+
 * Don't mention --no-strict when we just issue the warning about unclean trees.
   (Vincent Ladeuil, #401599)
 
