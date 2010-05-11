@@ -74,9 +74,10 @@ _deprecation_warning_done = False
 
 
 class RecordCounter(object):
-    def __init__(self, current, max):
+    def __init__(self, current, key_count):
         self.current = current
-        self.max = max
+        self.key_count = key_count
+        self.max = key_count * 10
 
 
 class IsInWriteGroupError(errors.InternalBzrError):
@@ -4299,9 +4300,9 @@ class StreamSink(object):
                 new_pack.set_write_cache_size(1024*1024)
         current_count = 0
         pb = ui.ui_factory.nested_progress_bar()
-        record_counter = RecordCounter(0, key_count * 11)
+        record_counter = RecordCounter(0, key_count)
         if key_count > 0:
-            pb.update('Estimated records')
+            pb.update('Estimate')
 
         for substream_type, substream in stream:
             if 'stream' in debug.debug_flags:
@@ -4340,7 +4341,7 @@ class StreamSink(object):
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
         if key_count > 0:
-            pb.update('Estimated records', record_counter.max, record_counter.max)
+            pb.update('Estimate', record_counter.max, record_counter.max)
             pb.finished()
         # Done inserting data, and the missing_keys calculations will try to
         # read back from the inserted data, so flush the writes to the new pack
