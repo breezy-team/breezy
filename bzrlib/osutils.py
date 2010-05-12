@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import errno
 import os
 import re
 import stat
@@ -25,7 +26,6 @@ import codecs
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
-import errno
 import getpass
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
