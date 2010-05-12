@@ -361,11 +361,12 @@ class TestUnicodeShlex(tests.TestCase):
         self.assertAsTokens([(False, r'\\host\path')], r'\\host\path')
         # handling of " after the 2n and 2n+1 backslashes
         # inside and outside the quoted string
-        self.assertAsTokens([(True, u'\\'), (False, u'*.py')], u'"\\\\" *.py')
-        self.assertAsTokens([(True, u'\\\" *.py')], u'"\\\\\" *.py"')
-        self.assertAsTokens([(True, u'\\ *.py')], u'\\\\" *.py"')
-        self.assertAsTokens([(False, u'\\\"'), (False, u'*.py')],
-                            u'\\\\\" *.py')
+        self.assertAsTokens([(True, r'\\'), (False, r'*.py')], r'"\\\\" *.py')
+        self.assertAsTokens([(True, r'\\" *.py')], r'"\\\\\" *.py"')
+        self.assertAsTokens([(True, r'\\ *.py')], r'\\\\" *.py"')
+        self.assertAsTokens([(False, r'\\"'), (False, r'*.py')],
+                            r'\\\\\" *.py')
+        self.assertAsTokens([(True, u'\\\\')], u'"\\\\')
 
 
 class Test_CommandLineToArgv(tests.TestCaseInTempDir):
