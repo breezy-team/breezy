@@ -249,7 +249,7 @@ class VersionedFile(object):
         """Returns whether version is present."""
         raise NotImplementedError(self.has_version)
 
-    def insert_record_stream(self, stream):
+    def insert_record_stream(self, stream, record_counter):
         """Insert a record stream into this versioned file.
 
         :param stream: A stream of records to insert.
@@ -1009,7 +1009,7 @@ class VersionedFiles(object):
         """
         raise NotImplementedError(self.get_missing_compression_parent_keys)
 
-    def insert_record_stream(self, stream):
+    def insert_record_stream(self, stream, record_counter=None):
         """Insert a record stream into this container.
 
         :param stream: A stream of records to insert.
@@ -1251,7 +1251,7 @@ class ThunkedVersionedFiles(VersionedFiles):
                 sha1s[prefix + (suffix,)] = sha1
         return sha1s
 
-    def insert_record_stream(self, stream):
+    def insert_record_stream(self, stream, record_counter=None):
         """Insert a record stream into this container.
 
         :param stream: A stream of records to insert.

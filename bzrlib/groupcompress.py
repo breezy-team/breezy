@@ -1653,12 +1653,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
         inserted_keys = set()
         reuse_this_block = reuse_blocks
         counter = 0
-        if record_counter.max > 0:
+        if record_counter and record_counter.max > 0:
             pb = ui.ui_factory.nested_progress_bar()
             pb.update('', record_counter.current, record_counter.max)
         for record in stream:
             # update progressbar only every 51 records
-            if record_counter.max > 0:
+            if record_counter and record_counter.max > 0:
                 if counter == 51:
                     if record_counter.current > record_counter.max:
                         record_counter.max += record_counter.key_count
@@ -1666,7 +1666,9 @@ class GroupCompressVersionedFiles(VersionedFiles):
                     record_counter.current += counter
                     counter = 0
                 counter += 1
-            if record_counter.substream_type == 'revisions' and record_counter.key_count == -1:
+            if (record_counter and
+                    record_counter.substream_type == 'revisions' and
+                    record_counter.key_count == -1):
                 record_counter.current += 1
 
             # Raise an error when a record is missing.
@@ -1775,9 +1777,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if len(keys_to_add):
             flush()
         self._compressor = None
-        if record_counter.max > 0:
+        if record_counter and record_counter.max > 0:
             pb.finished()
-        if record_counter.substream_type == 'revisions' and record_counter.key_count == -1:
+        if (record_counter and
+                record_counter.substream_type == 'revisions' and
+                record_counter.key_count == -1):
             record_counter.key_count = record_counter.current
             record_counter.max = int(record_counter.current * 9.7)
 

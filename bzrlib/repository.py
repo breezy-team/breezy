@@ -43,7 +43,6 @@ from bzrlib import (
     symbol_versioning,
     trace,
     tsort,
-    ui,
     versionedfile,
     )
 from bzrlib.bundle import serializer
@@ -64,6 +63,7 @@ from bzrlib.lock import _RelockDebugMixin
 from bzrlib import (
     errors,
     registry,
+    ui,
     )
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
