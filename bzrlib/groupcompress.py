@@ -1652,21 +1652,23 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # XXX: TODO: remove this, it is just for safety checking for now
         inserted_keys = set()
         reuse_this_block = reuse_blocks
-        current_count = 0
         counter = 0
-        pb = ui.ui_factory.nested_progress_bar()
-        pb.update('', record_counter.current, record_counter.max)
+        if record_counter.max > 0:
+            pb = ui.ui_factory.nested_progress_bar()
+            pb.update('', record_counter.current, record_counter.max)
         for record in stream:
-            # update progressbar only every 50 records
+            # update progressbar only every 51 records
             if record_counter.max > 0:
-                if counter == 50:
+                if counter == 51:
                     if record_counter.current > record_counter.max:
                         record_counter.max += int(record_counter.key_count / 2)
                     pb.update('', record_counter.current, record_counter.max)
                     record_counter.current += counter
                     counter = 0
-
                 counter += 1
+            if record_counter.substream_type == 'revisions' and record_counter.key_count == -1:
+                record_counter.current += 1
+
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
@@ -1774,8 +1776,10 @@ class GroupCompressVersionedFiles(VersionedFiles):
             flush()
         self._compressor = None
         if record_counter.max > 0:
-            record_counter.current += counter
-        pb.finished()
+            pb.finished()
+        if record_counter.substream_type == 'revisions' and record_counter.key_count == -1:
+            record_counter.key_count = record_counter.current
+            record_counter.max = int(record_counter.current * 9.7)
 
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):

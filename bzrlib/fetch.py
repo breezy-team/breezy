@@ -116,7 +116,8 @@ class RepoFetcher(object):
                 self.from_repository, self.to_repository,
                 "different rich-root support")
         pb = ui.ui_factory.nested_progress_bar()
-        key_count = len(search.get_keys())
+        #key_count = len(search.get_keys())
+        #print "key_count:", key_count, "##########"
         try:
             pb.update("Get stream source")
             source = self.from_repository._get_source(
@@ -126,7 +127,7 @@ class RepoFetcher(object):
             # TODO: slow
             pb.update("Inserting stream")
             resume_tokens, missing_keys = self.sink.insert_stream(
-                stream, from_format, [], key_count)
+                stream, from_format, [])
             if self.to_repository._fallback_repositories:
                 missing_keys.update(
                     self._parent_inventories(search.get_keys()))
@@ -136,7 +137,7 @@ class RepoFetcher(object):
                 stream = source.get_stream_for_missing_keys(missing_keys)
                 pb.update("Inserting missing keys")
                 resume_tokens, missing_keys = self.sink.insert_stream(
-                    stream, from_format, resume_tokens, len(missing_keys))
+                    stream, from_format, resume_tokens)
             if missing_keys:
                 raise AssertionError(
                     "second push failed to complete a fetch %r." % (
