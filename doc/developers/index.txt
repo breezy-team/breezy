@@ -23,6 +23,7 @@ Working on Bazaar
    bug-handling
    HACKING
    testing
+   code-review
 
 * `Contributing to Bazaar Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
 
