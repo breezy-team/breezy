@@ -6,7 +6,7 @@ Bazaar Testing Guide
 The Importance of Testing
 =========================
 
-Reliability is a critical success factor for any Version Control System.
+Reliability is a critical success factor for any version control system.
 We want Bazaar to be highly reliable across multiple platforms while
 evolving over time to meet the needs of its community.
 
@@ -182,6 +182,16 @@ To run only some tests, without plugins::
 See the testrepository documentation for more details.
 
 .. _testrepository: https://launchpad.net/testrepository
+
+
+Babune continuous integration
+-----------------------------
+
+We have a Hudson continuous-integration system that automatically runs 
+tests across various platforms.  In the future we plan to add more 
+combinations including testing plugins.  See 
+<http://babune.ladeuil.net:24842/>.  (Babune = Bazaar Buildbot Network.)
+
 
 Writing Tests
 =============
