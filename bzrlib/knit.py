@@ -1549,7 +1549,8 @@ class KnitVersionedFiles(VersionedFiles):
             missing.difference_update(set(new_result))
         return result
 
-    def insert_record_stream(self, stream, record_counter=None):
+    def insert_record_stream(self, stream, stream_type=None,
+            record_counter=None):
         """Insert a record stream into this container.
 
         :param stream: A stream of records to insert.

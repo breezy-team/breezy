@@ -60,6 +60,7 @@ from bzrlib.inventory import (
     entry_factory,
     )
 from bzrlib.lock import _RelockDebugMixin
+from bzrlib.recordcounter import RecordCounter
 from bzrlib import (
     errors,
     registry,
@@ -71,14 +72,6 @@ from bzrlib.trace import (
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
-
-
-class RecordCounter(object):
-    def __init__(self, current, key_count):
-        self.current = current
-        self.key_count = key_count
-        self.max = 0
-        self.substream_type = None
 
 
 class IsInWriteGroupError(errors.InternalBzrError):
@@ -4298,30 +4291,23 @@ class StreamSink(object):
             else:
                 new_pack.set_write_cache_size(1024*1024)
         current_count = 0
-        record_counter = RecordCounter(0, -1)
+        rc = RecordCounter()
         pb = ui.ui_factory.nested_progress_bar()
-        def _gen_printer(stream):
-            count = 0
-            for s in stream:
-                count = count + 1
-                yield s
-            #print "count is:", count, "###########"
 
         for substream_type, substream in stream:
-            substream = _gen_printer(substream)
             if 'stream' in debug.debug_flags:
                 mutter('inserting substream: %s', substream_type)
             if substream_type == 'texts':
                 #print "A"
-                record_counter.substream_type = substream_type
+                rc.stream_type = substream_type
                 self.target_repo.texts.insert_record_stream(substream,
-                    record_counter)
+                    rc)
             elif substream_type == 'inventories':
                 #print "B"
                 if src_serializer == to_serializer:
-                    record_counter.substream_type = substream_type
+                    rc.stream_type = substream_type
                     self.target_repo.inventories.insert_record_stream(
-                        substream, record_counter)
+                        substream, substream_type, rc)
                 else:
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
@@ -4333,37 +4319,37 @@ class StreamSink(object):
                 # XXX: This doesn't support conversions, as it assumes the
                 #      conversion was done in the fetch code.
                 #print "D"
-                record_counter.substream_type = substream_type
+                rc.stream_type = substream_type
                 self.target_repo.chk_bytes.insert_record_stream(substream,
-                    record_counter)
+                    substream_type, rc)
             elif substream_type == 'revisions':
                 # This may fallback to extract-and-insert more often than
                 # required if the serializers are different only in terms of
                 # the inventory.
                 if src_serializer == to_serializer:
                     # To avoid eager counting of the number of revisions to
-                    # fetch we pass record_counter to revisions.insert_record_stream
-                    # which initialzed record_counter to be used with the other
+                    # fetch we pass RecordCounter to revisions.insert_record_stream
+                    # which initialzed RecordCounter to be used with the other
                     # insert_record_stream operation to provide better estimate
                     # of workload.
                     #print "E"
-                    record_counter.substream_type = substream_type
+                    rc.stream_type = substream_type
                     self.target_repo.revisions.insert_record_stream(
-                        substream, record_counter)
+                        substream, substream_type, rc)
                 else:
                     self._extract_and_insert_revisions(substream,
                         src_serializer)
             elif substream_type == 'signatures':
                 #print "F"
-                record_counter.substream_type = substream_type
+                rc.stream_type = substream_type
                 current_count = self.target_repo.signatures.insert_record_stream(substream,
-                    record_counter)
+                    substream_type, rc)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
 
         # Indicate the record copy is complete.
         # We do this as max is only an estimate
-        pb.update('', record_counter.max, record_counter.max)
+        pb.update('', rc.max, rc.max)
         pb.finished()
 
         # Done inserting data, and the missing_keys calculations will try to

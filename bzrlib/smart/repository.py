@@ -39,6 +39,7 @@ from bzrlib.smart.request import (
     SuccessfulSmartServerResponse,
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
+from bzrlib.recordcounter import RecordCounter, _gen_printer
 from bzrlib import revision as _mod_revision
 from bzrlib.versionedfile import (
     NetworkRecordStream,
@@ -501,8 +502,20 @@ def _stream_to_byte_stream(stream, src_format):
     pack_writer = pack.ContainerSerialiser()
     yield pack_writer.begin()
     yield pack_writer.bytes_record(src_format.network_name(), '')
+    key_count = 0
+    rc = RecordCounter()
+    pb = ui.ui_factory.nested_progress_bar()
     for substream_type, substream in stream:
+        counter = 0
         for record in substream:
+            counter +=1
+            if substream_type == 'revisions':
+                key_count += 1
+            elif rc.is_initialized():
+                if counter == rc.step:
+                    rc.increment(counter)
+                    pb.update('', rc.current, rc.max)
+                    counter = 0
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
             elif record.storage_kind == 'inventory-delta':
@@ -516,6 +529,10 @@ def _stream_to_byte_stream(stream, src_format):
                 # representation of the first record, which means that
                 # later records have no wire representation: we skip them.
                 yield pack_writer.bytes_record(serialised, [(substream_type,)])
+        if substream_type == 'revisions':
+            rc.setup(key_count, current=key_count, stream_type=substream_type)
+    pb.update('', rc.max, rc.max)
+    pb.finished()
     yield pack_writer.end()
 
 
