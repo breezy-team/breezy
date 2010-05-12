@@ -1661,7 +1661,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             if record_counter.max > 0:
                 if counter == 51:
                     if record_counter.current > record_counter.max:
-                        record_counter.max += int(record_counter.key_count / 2)
+                        record_counter.max += record_counter.key_count
                     pb.update('', record_counter.current, record_counter.max)
                     record_counter.current += counter
                     counter = 0
