@@ -179,11 +179,9 @@ The key tools we use to enable these practices are:
 
 * Bazaar - http://bazaar-vcs.org/
 
-* Bundle Buggy - http://bundlebuggy.aaronbentley.com/
-
 * Patch Queue Manager - https://launchpad.net/pqm/
 
-For further information, see http://bazaar-vcs.org/BzrDevelopment.
+For further information, see <http://wiki.bazaar.canonical.com/BzrDevelopment>.
 
 
 
