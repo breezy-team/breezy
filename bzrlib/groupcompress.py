@@ -1661,7 +1661,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for record in stream:
             # update progressbar only every 51 records
             if record_counter and record_counter.max > 0:
-                if counter == record_counter.step:
+                if counter == record_counter.STEP:
                     record_counter.increment(counter)
                     pb.update('', record_counter.current, record_counter.max)
                     counter = 0
@@ -1779,8 +1779,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             pb.finished()
         if stream_type == 'revisions':
             record_counter.setup(key_count,
-                record_counter.current,
-                record_counter.stream_type)
+                record_counter.current)
 
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):

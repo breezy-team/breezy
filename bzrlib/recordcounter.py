@@ -29,17 +29,15 @@ class RecordCounter(object):
         self.current = 0
         self.key_count = 0
         self.max = 0
-        self.step = 51
-        self.stream_type = None
+        self.STEP = 71
 
     def is_initialized(self):
         return self.initialized
 
-    def setup(self, key_count, current, stream_type):
+    def setup(self, key_count, current):
         self.current = current
         self.key_count = key_count
         self.max = key_count * 10.3
-        self.stream_type = stream_type
         self.initialized = True
 
     def increment(self, count):

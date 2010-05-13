@@ -124,7 +124,6 @@ class RepoFetcher(object):
                 self.to_repository._format)
             stream = source.get_stream(search)
             from_format = self.from_repository._format
-            # TODO: slow
             pb.update("Inserting stream")
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
@@ -133,7 +132,6 @@ class RepoFetcher(object):
                     self._parent_inventories(search.get_keys()))
             if missing_keys:
                 pb.update("Missing keys")
-                # TODO: slow
                 stream = source.get_stream_for_missing_keys(missing_keys)
                 pb.update("Inserting missing keys")
                 resume_tokens, missing_keys = self.sink.insert_stream(

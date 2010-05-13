@@ -4317,17 +4317,16 @@ class StreamSink(object):
         current_count = 0
         rc = RecordCounter()
         pb = ui.ui_factory.nested_progress_bar()
+        pb.update('Estimate')
 
         for substream_type, substream in stream:
             if 'stream' in debug.debug_flags:
                 mutter('inserting substream: %s', substream_type)
             if substream_type == 'texts':
-                #print "A"
                 rc.stream_type = substream_type
                 self.target_repo.texts.insert_record_stream(substream,
-                    rc)
+                    substream_type, rc)
             elif substream_type == 'inventories':
-                #print "B"
                 if src_serializer == to_serializer:
                     rc.stream_type = substream_type
                     self.target_repo.inventories.insert_record_stream(
@@ -4336,13 +4335,11 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
-                #print "C"
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':
                 # XXX: This doesn't support conversions, as it assumes the
                 #      conversion was done in the fetch code.
-                #print "D"
                 rc.stream_type = substream_type
                 self.target_repo.chk_bytes.insert_record_stream(substream,
                     substream_type, rc)
@@ -4356,7 +4353,6 @@ class StreamSink(object):
                     # which initialzed RecordCounter to be used with the other
                     # insert_record_stream operation to provide better estimate
                     # of workload.
-                    #print "E"
                     rc.stream_type = substream_type
                     self.target_repo.revisions.insert_record_stream(
                         substream, substream_type, rc)
@@ -4364,7 +4360,6 @@ class StreamSink(object):
                     self._extract_and_insert_revisions(substream,
                         src_serializer)
             elif substream_type == 'signatures':
-                #print "F"
                 rc.stream_type = substream_type
                 current_count = self.target_repo.signatures.insert_record_stream(substream,
                     substream_type, rc)
@@ -4373,7 +4368,7 @@ class StreamSink(object):
 
         # Indicate the record copy is complete.
         # We do this as max is only an estimate
-        pb.update('', rc.max, rc.max)
+        pb.update('Estimate', rc.max, rc.max)
         pb.finished()
 
         # Done inserting data, and the missing_keys calculations will try to

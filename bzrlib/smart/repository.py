@@ -512,7 +512,7 @@ def _stream_to_byte_stream(stream, src_format):
             if substream_type == 'revisions':
                 key_count += 1
             elif rc.is_initialized():
-                if counter == rc.step:
+                if counter == rc.STEP:
                     rc.increment(counter)
                     pb.update('', rc.current, rc.max)
                     counter = 0
@@ -530,7 +530,7 @@ def _stream_to_byte_stream(stream, src_format):
                 # later records have no wire representation: we skip them.
                 yield pack_writer.bytes_record(serialised, [(substream_type,)])
         if substream_type == 'revisions':
-            rc.setup(key_count, current=key_count, stream_type=substream_type)
+            rc.setup(key_count, current=key_count)
     pb.update('', rc.max, rc.max)
     pb.finished()
     yield pack_writer.end()
