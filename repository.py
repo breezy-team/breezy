@@ -118,7 +118,8 @@ class LocalGitRepository(GitRepository):
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            rev = self.get_mapping().import_commit(o)
+            rev = self.get_mapping().import_commit(o,
+                self.lookup_foreign_revision_id)
             ret.add(rev.revision_id)
         return ret
 
@@ -134,7 +135,7 @@ class LocalGitRepository(GitRepository):
                 commit = self._git[hexsha]
             except KeyError:
                 continue
-            parent_map[revision_id] = [mapping.revision_id_foreign_to_bzr(p) for p in commit.parents]
+            parent_map[revision_id] = [self.lookup_foreign_revision_id(p, mapping) for p in commit.parents]
         return parent_map
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -181,7 +182,8 @@ class LocalGitRepository(GitRepository):
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         # print "fetched revision:", git_commit_id
-        revision = mapping.import_commit(commit)
+        revision = mapping.import_commit(commit,
+            self.lookup_foreign_revision_id)
         assert revision is not None
         return revision
 

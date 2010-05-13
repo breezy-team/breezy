@@ -175,7 +175,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             head = self.repository._git.head()
         except KeyError, name:
             raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
-        basis_inv = self.repository.get_inventory(self.mapping.revision_id_foreign_to_bzr(head))
+        basis_inv = self.repository.get_inventory(self.branch.lookup_foreign_revision_id(head))
         store = self.repository._git.object_store
         fileid_map = self.mapping.get_fileid_map(store.__getitem__,
             store[head].tree)

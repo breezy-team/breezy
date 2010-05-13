@@ -67,7 +67,6 @@ from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
     mode_is_executable,
     mode_kind,
-    squash_revision,
     warn_unusual_mode,
     )
 from bzrlib.plugins.git.object_store import (
@@ -324,7 +323,8 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
     o = lookup_object(head)
-    rev = mapping.import_commit(o)
+    rev = mapping.import_commit(o,
+            lambda x: target_git_object_retriever.lookup_git_sha(x)[1][0])
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
@@ -397,10 +397,9 @@ def import_git_objects(repo, mapping, object_iter,
         except KeyError:
             continue
         if isinstance(o, Commit):
-            rev = mapping.import_commit(o)
+            rev = mapping.import_commit(o, lambda x: None)
             if repo.has_revision(rev.revision_id):
                 continue
-            squash_revision(repo, rev)
             graph.append((o.id, o.parents))
             heads.extend([p for p in o.parents if p not in checked])
         elif isinstance(o, Tag):
@@ -485,16 +484,10 @@ class InterGitNonGitRepository(InterGitRepository):
                 ret = [sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
             else:
                 ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
-            return [rev for rev in ret if not self.target.has_revision(mapping.revision_id_foreign_to_bzr(rev))]
+            return [rev for rev in ret if not self.target.has_revision(self.source.lookup_foreign_revision_id(rev))]
         (pack_hint, _) = self.fetch_objects(determine_wants, mapping, pb)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
-        if interesting_heads is not None:
-            present_interesting_heads = self.target.has_revisions(interesting_heads)
-            missing_interesting_heads = set(interesting_heads) - present_interesting_heads
-            if missing_interesting_heads:
-                raise AssertionError("Missing interesting heads: %r" %
-                    missing_interesting_heads)
         return self._refs
 
 

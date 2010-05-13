@@ -332,7 +332,7 @@ class RemoteGitBranch(GitBranch):
         raise GitSmartRemoteNotSupported()
 
     def last_revision(self):
-        return self.mapping.revision_id_foreign_to_bzr(self.head)
+        return self.lookup_foreign_revision_id(self.head)
 
     def _get_config(self):
         class EmptyConfig(object):

@@ -95,28 +95,6 @@ def warn_unusual_mode(commit, path, mode):
                  "property. ", mode, path, commit)
 
 
-def squash_revision(target_repo, rev):
-    """Remove characters that can't be stored from a revision, if necessary.
-
-    :param target_repo: Repository in which the revision will be stored
-    :param rev: Revision object, will be modified in-place
-    """
-    if not getattr(target_repo._serializer, "squashes_xml_invalid_characters", True):
-        return
-    from bzrlib.xml_serializer import escape_invalid_chars
-    rev.message, num_escaped = escape_invalid_chars(rev.message)
-    if num_escaped:
-        warn_escaped(rev.foreign_revid, num_escaped)
-    if 'author' in rev.properties:
-        rev.properties['author'], num_escaped = escape_invalid_chars(
-            rev.properties['author'])
-        if num_escaped:
-            warn_escaped(rev.foreign_revid, num_escaped)
-    rev.committer, num_escaped = escape_invalid_chars(rev.committer)
-    if num_escaped:
-        warn_escaped(rev.foreign_revid, num_escaped)
-
-
 class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
@@ -327,7 +305,7 @@ class BzrGitMapping(foreign.VcsMapping):
         """
         return deserialize_fileid_map(blob.data)
 
-    def import_commit(self, commit):
+    def import_commit(self, commit, lookup_parent_revid):
         """Convert a git commit to a bzr revision.
 
         :return: a `bzrlib.revision.Revision` object and a 
@@ -337,7 +315,7 @@ class BzrGitMapping(foreign.VcsMapping):
             raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, self,
                 self.revision_id_foreign_to_bzr(commit.id))
-        rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
+        rev.parent_ids = tuple([lookup_parent_revid(p) for p in commit.parents])
         rev.git_metadata = None
         def decode_using_encoding(rev, commit, encoding):
             rev.committer = str(commit.committer).decode(encoding)
@@ -417,8 +395,8 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         ret += self._generate_git_svn_metadata(rev, encoding)
         return ret
 
-    def import_commit(self, commit):
-        rev, file_ids = super(BzrGitMappingExperimental, self).import_commit(commit)
+    def import_commit(self, commit, lookup_parent_revid):
+        rev, file_ids = super(BzrGitMappingExperimental, self).import_commit(commit, lookup_parent_revid)
         rev.properties['converted_revision'] = "git %s\n" % commit.id
         return rev, file_ids
 
