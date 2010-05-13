@@ -77,6 +77,7 @@ from bzrlib.workingtree_4 import (
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.lock import LogicalLockResult
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
@@ -1798,34 +1799,48 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             raise errors.ObjectNotLocked(self)
 
     def lock_read(self):
-        """See Branch.lock_read, and WorkingTree.unlock."""
+        """Lock the tree for reading.
+
+        This also locks the branch, and can be unlocked via self.unlock().
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
-            return self._control_files.lock_read()
+            self._control_files.lock_read()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
 
     def lock_tree_write(self):
-        """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
 
     def lock_write(self):
-        """See MutableTree.lock_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_write()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
@@ -2637,10 +2652,14 @@ class WorkingTree2(WorkingTree):
 
         In Format2 WorkingTrees we have a single lock for the branch and tree
         so lock_tree_write() degrades to lock_write().
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
         """
         self.branch.lock_write()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return self
         except:
             self.branch.unlock()
             raise

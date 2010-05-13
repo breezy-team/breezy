@@ -1727,6 +1727,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
 
 try:
     from bzrlib._chk_map_pyx import (
+        _bytes_to_text_key,
         _search_key_16,
         _search_key_255,
         _deserialise_leaf_node,
@@ -1735,6 +1736,7 @@ try:
 except ImportError, e:
     osutils.failed_to_load_extension(e)
     from bzrlib._chk_map_py import (
+        _bytes_to_text_key,
         _search_key_16,
         _search_key_255,
         _deserialise_leaf_node,

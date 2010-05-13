@@ -772,12 +772,15 @@ write your tests.
 
 TestCase
     A base TestCase that extends the Python standard library's
-    TestCase in several ways.  It adds more assertion methods (e.g.
-    ``assertContainsRe``), ``addCleanup``, and other features (see its API
-    docs for details).  It also has a ``setUp`` that makes sure that
-    global state like registered hooks and loggers won't interfere with
-    your test.  All tests should use this base class (whether directly or
-    via a subclass).
+    TestCase in several ways.  TestCase is build on
+    ``testtools.TestCase``, which gives it support for more assertion
+    methods (e.g.  ``assertContainsRe``), ``addCleanup``, and other
+    features (see its API docs for details).  It also has a ``setUp`` that
+    makes sure that global state like registered hooks and loggers won't
+    interfere with your test.  All tests should use this base class
+    (whether directly or via a subclass).  Note that we are trying not to
+    add more assertions at this point, and instead to build up a library
+    of ``bzrlib.tests.matchers``.
 
 TestCaseWithMemoryTransport
     Extends TestCase and adds methods like ``get_transport``,

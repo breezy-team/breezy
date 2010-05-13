@@ -407,8 +407,8 @@ class Command(object):
 
     def __init__(self):
         """Construct an instance of this command."""
-        if self.__doc__ == Command.__doc__:
-            warn("No help message set for %r" % self)
+        if self.__doc__ == Command.__doc__ or not self.__doc__:
+            raise ValueError("No help message set for %r" % self)
         # List of standard options directly supported
         self.supported_std_options = []
         self._setup_run()
@@ -483,7 +483,9 @@ class Command(object):
         """
         doc = self.help()
         if doc is None:
-            raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
+            raise NotImplementedError(
+                "self.help() returned None -  no detailed help yet for %r" %
+                self.name())
 
         # Extract the summary (purpose) and sections out from the text
         purpose,sections,order = self._get_help_parts(doc)

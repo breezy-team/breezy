@@ -42,3 +42,4 @@ cdef extern from "_static_tuple_c.h":
     # not an 'object' return value.
     void *StaticTuple_GET_ITEM(StaticTuple key, Py_ssize_t offset)
     int StaticTuple_CheckExact(object)
+    Py_ssize_t StaticTuple_GET_SIZE(StaticTuple key)

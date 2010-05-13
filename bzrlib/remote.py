@@ -33,7 +33,7 @@ from bzrlib import (
     static_tuple,
     symbol_versioning,
 )
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.errors import (
@@ -43,6 +43,7 @@ from bzrlib.errors import (
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.revision import ensure_null, NULL_REVISION
+from bzrlib.repository import RepositoryWriteLockResult
 from bzrlib.trace import mutter, note, warning
 
 
@@ -272,16 +273,19 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
     def create_workingtree(self, revision_id=None, from_branch=None):
         raise errors.NotLocalUrl(self.transport.base)
 
-    def find_branch_format(self):
+    def find_branch_format(self, name=None):
         """Find the branch 'format' for this bzrdir.
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
-        b = self.open_branch()
+        b = self.open_branch(name=name)
         return b._format
 
-    def get_branch_reference(self):
+    def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
+        if name is not None:
+            # XXX JRV20100304: Support opening colocated branches
+            raise errors.NoColocatedBranchSupport(self)
         response = self._get_branch_reference()
         if response[0] == 'ref':
             return response[1]
@@ -318,9 +322,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             raise errors.UnexpectedSmartServerResponse(response)
         return response
 
-    def _get_tree_branch(self):
+    def _get_tree_branch(self, name=None):
         """See BzrDir._get_tree_branch()."""
-        return None, self.open_branch()
+        return None, self.open_branch(name=name)
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
@@ -997,6 +1001,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         pass
 
     def lock_read(self):
+        """Lock the repository for read operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
             self._note_lock('r')
@@ -1009,6 +1017,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                 repo.lock_read()
         else:
             self._lock_count += 1
+        return lock.LogicalLockResult(self.unlock)
 
     def _remote_lock_write(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -1054,7 +1063,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
-        return self._lock_token or None
+        return RepositoryWriteLockResult(self.unlock, self._lock_token or None)
 
     def leave_lock_in_place(self):
         if not self._lock_token:
@@ -2387,6 +2396,10 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._vfs_set_tags_bytes(bytes)
 
     def lock_read(self):
+        """Lock the branch for read operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         self.repository.lock_read()
         if not self._lock_mode:
             self._note_lock('r')
@@ -2396,13 +2409,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self._real_branch.lock_read()
         else:
             self._lock_count += 1
+        return lock.LogicalLockResult(self.unlock)
 
     def _remote_lock_write(self, token):
         if token is None:
             branch_token = repo_token = ''
         else:
             branch_token = token
-            repo_token = self.repository.lock_write()
+            repo_token = self.repository.lock_write().repository_token
             self.repository.unlock()
         err_context = {'token': token}
         response = self._call(
@@ -2445,7 +2459,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._lock_count += 1
             # Re-lock the repository too.
             self.repository.lock_write(self._repo_lock_token)
-        return self._lock_token or None
+        return BranchWriteLockResult(self.unlock, self._lock_token or None)
 
     def _unlock(self, branch_token, repo_token):
         err_context = {'token': str((branch_token, repo_token))}

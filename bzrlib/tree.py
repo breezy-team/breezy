@@ -582,6 +582,10 @@ class Tree(object):
             yield child.file_id
 
     def lock_read(self):
+        """Lock this tree for multiple read only operations.
+        
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         pass
 
     def revision_tree(self, revision_id):
