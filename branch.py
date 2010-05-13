@@ -442,7 +442,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 raise NoSuchRef(self.source.ref, heads.keys())
             if stop_revision is not None:
                 self._last_revid = stop_revision
-                head, mapping = self.source.repository.lookup_bzr_revision_id(
+                head, mapping = self.source.lookup_bzr_revision_id(
                     stop_revision)
             else:
                 head = heads[self.source.ref]
@@ -452,7 +452,8 @@ class InterFromGitBranch(branch.GenericInterBranch):
             return [head]
         pack_hint, head = interrepo.fetch_objects(
             determine_wants, self.source.mapping, limit=limit)
-        if pack_hint is not None and self.target.repository._format.pack_compresses:
+        if (pack_hint is not None and
+            self.target.repository._format.pack_compresses):
             self.target.repository.pack(hint=pack_hint)
         if head is not None:
             self._last_revid = self.source.lookup_foreign_revision_id(head)

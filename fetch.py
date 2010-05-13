@@ -483,7 +483,7 @@ class InterGitNonGitRepository(InterGitRepository):
             if interesting_heads is None:
                 ret = [sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
             else:
-                ret = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
+                ret = [self.source.lookup_bzr_revision_id(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
             return [rev for rev in ret if not self.target.has_revision(self.source.lookup_foreign_revision_id(rev))]
         (pack_hint, _) = self.fetch_objects(determine_wants, mapping, pb)
         if pack_hint is not None and self.target._format.pack_compresses:

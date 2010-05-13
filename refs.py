@@ -110,7 +110,10 @@ class BazaarRefsContainer(RefsContainer):
         try:
             branch = self.dir.open_branch(branch_name)
         except errors.NoColocatedBranchSupport:
-            raise
+            if branch_name == "HEAD":
+                branch = self.dir.open_branch()
+            else:
+                raise
         return branch.last_revision()
 
     def read_loose_ref(self, ref):

@@ -160,7 +160,9 @@ class LocalGitRepository(GitRepository):
         """
         if mapping is None:
             mapping = self.get_mapping()
-        return mapping.revision_id_foreign_to_bzr(foreign_revid)
+        commit = self._git[foreign_revid]
+        rev = mapping.import_commit(commit, lambda x: None)
+        return rev.revision_id
 
     def has_signature_for_revision_id(self, revision_id):
         return False
