@@ -303,6 +303,15 @@ class RemoteGitRepository(GitRepository):
         except InvalidRevisionId:
             raise NoSuchRevision(self, bzr_revid)
 
+    def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
+        """Lookup a revision id.
+
+        """
+        if mapping is None:
+            mapping = self.get_mapping()
+        # Not really an easy way to parse foreign revids here..
+        return mapping.revision_id_foreign_to_bzr(foreign_revid)
+
 
 class RemoteGitTagDict(tag.BasicTags):
 
