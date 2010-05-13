@@ -299,6 +299,7 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = commit.commit_timezone
         commit.message = self._encode_commit_message(rev, rev.message, 
             encoding)
+        assert type(commit.message) == str
         if metadata is not None:
             try:
                 mapping_registry.parse_revision_id(rev.revision_id)
@@ -311,7 +312,9 @@ class BzrGitMapping(foreign.VcsMapping):
             for k, v in rev.properties.iteritems():
                 if not k in mapping_properties:
                     metadata.properties[k] = v
-        commit.message = inject_bzr_metadata(commit.message, metadata)
+        commit.message = inject_bzr_metadata(commit.message, metadata, 
+                                             encoding)
+        assert type(commit.message) == str
         return commit
 
     def import_fileid_map(self, blob):

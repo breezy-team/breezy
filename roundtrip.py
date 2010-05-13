@@ -56,7 +56,7 @@ def parse_roundtripping_metadata(text):
     return ret
 
 
-def generate_roundtripping_metadata(metadata):
+def generate_roundtripping_metadata(metadata, encoding):
     """Serialize the roundtripping metadata.
 
     :param metadata: A `BzrGitRevisionMetadata` instance
@@ -68,7 +68,7 @@ def generate_roundtripping_metadata(metadata):
     if metadata.explicit_parent_ids:
         lines.append("parent-ids: %s\n" % " ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
-        lines.append("property-%s: %s\n" % (key, metadata.properties[key]))
+        lines.append("property-%s: %s\n" % (key.encode(encoding), metadata.properties[key].encode(encoding)))
     return "".join(lines)
 
 
@@ -84,10 +84,12 @@ def extract_bzr_metadata(message):
     return split[0], parse_roundtripping_metadata(split[1])
 
 
-def inject_bzr_metadata(message, metadata):
+def inject_bzr_metadata(message, metadata, encoding):
     if not metadata:
         return message
-    return message + "\n--BZR--\n" + generate_roundtripping_metadata(metadata)
+    rt_data = generate_roundtripping_metadata(metadata, encoding)
+    assert type(rt_data) == str
+    return message + "\n--BZR--\n" + rt_data
 
 
 def serialize_fileid_map(file_ids):

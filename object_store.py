@@ -178,14 +178,19 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes, dummy_file_name=N
         if kind[1] == "file":
             ie = tree.inventory[file_id]
             if changed_content:
-                
                 try:
                     pie = find_unchanged_parent_ie(ie, other_parent_trees)
                 except KeyError:
                     pass
                 else:
-                    shamap[ie.file_id] = idmap.lookup_blob_id(
-                        pie.file_id, pie.revision)
+                    try:
+                        shamap[ie.file_id] = idmap.lookup_blob_id(
+                            pie.file_id, pie.revision)
+                    except KeyError:
+                        # no-change merge ?
+                        blob = Blob()
+                        blob.data = tree.get_file_text(ie.file_id)
+                        shamap[ie.file_id] = blob.id
             if not file_id in shamap:
                 new_blobs.append((path[1], ie))
             new_trees[posixpath.dirname(path[1])] = parent[1]
