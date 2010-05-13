@@ -149,6 +149,18 @@ class GitBranchFormat(branch.BranchFormat):
             return LocalGitTagDict(branch)
 
 
+class GitReadLock(object):
+
+    def __init__(self, unlock):
+        self.unlock = unlock
+
+
+class GitWriteLock(object):
+
+    def __init__(self, unlock):
+        self.unlock = unlock
+
+
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
@@ -201,6 +213,7 @@ class GitBranch(ForeignBranch):
 
     def lock_write(self):
         self.control_files.lock_write()
+        return GitWriteLock(self.unlock)
 
     def get_stacked_on_url(self):
         # Git doesn't do stacking (yet...)
@@ -217,6 +230,7 @@ class GitBranch(ForeignBranch):
 
     def lock_read(self):
         self.control_files.lock_read()
+        return GitReadLock(self.unlock)
 
     def is_locked(self):
         return self.control_files.is_locked()
