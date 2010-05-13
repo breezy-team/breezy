@@ -65,6 +65,12 @@ class TextUIFactory(UIFactory):
         # hook up the signals to watch for terminal size changes
         watch_sigwinch()
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.clear_term()
+
     def be_quiet(self, state):
         if state and not self._quiet:
             self.clear_term()

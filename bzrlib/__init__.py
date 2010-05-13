@@ -142,12 +142,9 @@ def initialize(
     # in-process run_bzr calls.  If it's broken, we expect that
     # TestRunBzrSubprocess may fail.
     
-    import atexit
     import bzrlib.trace
 
     bzrlib.trace.enable_default_logging()
-    atexit.register(bzrlib.trace._flush_stdout_stderr)
-    atexit.register(bzrlib.trace._flush_trace)
 
     import bzrlib.ui
     if stdin is None:
@@ -165,5 +162,11 @@ def initialize(
         from bzrlib.symbol_versioning import suppress_deprecation_warnings
         suppress_deprecation_warnings(override=True)
 
+def clean_up():
+    import bzrlib.ui
+    bzrlib.trace._flush_stdout_stderr()
+    bzrlib.trace._flush_trace()
     import bzrlib.osutils
-    atexit.register(osutils.report_extension_load_failures)
+    bzrlib.osutils.report_extension_load_failures()
+    bzrlib.ui.ui_factory.__exit__(None, None, None)
+    bzrlib.ui.ui_factory = None

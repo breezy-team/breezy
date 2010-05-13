@@ -86,6 +86,8 @@ Bug Fixes
   history is being copied.
   (Parth Malwankar, #538868)
 
+* Progress output is cleaned up when exiting.  (Aaron Bentley)
+
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 

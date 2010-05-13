@@ -136,10 +136,13 @@ import bzrlib.trace
 
 if __name__ == '__main__':
     bzrlib.initialize()
-    exit_val = bzrlib.commands.main()
+    try:
+        exit_val = bzrlib.commands.main()
 
-    if profiling:
-        profile_imports.log_stack_info(sys.stderr)
+        if profiling:
+            profile_imports.log_stack_info(sys.stderr)
+    finally:
+        bzrlib.clean_up()
 
     # By this point we really have completed everything we want to do, and
     # there's no point doing any additional cleanup.  Abruptly exiting here
