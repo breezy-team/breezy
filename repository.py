@@ -119,7 +119,7 @@ class LocalGitRepository(GitRepository):
             if not isinstance(o, Commit):
                 continue
             rev = self.get_mapping().import_commit(o)
-            ret.append(rev.revision_id)
+            ret.add(rev.revision_id)
         return ret
 
     def get_parent_map(self, revids):

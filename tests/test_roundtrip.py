@@ -53,19 +53,19 @@ class FormatTests(TestCase):
         metadata = BzrGitRevisionMetadata()
         metadata.revision_id = "bla"
         self.assertEquals("revision-id: bla\n",
-            generate_roundtripping_metadata(metadata))
+            generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_parent_ids(self):
         metadata = BzrGitRevisionMetadata()
         metadata.explicit_parent_ids = ("foo", "bar")
         self.assertEquals("parent-ids: foo bar\n",
-            generate_roundtripping_metadata(metadata))
+            generate_roundtripping_metadata(metadata, "utf-8"))
 
     def test_properties(self):
         metadata = BzrGitRevisionMetadata()
         metadata.properties = {"foo": "bar"}
         self.assertEquals("property-foo: bar\n",
-            generate_roundtripping_metadata(metadata))
+            generate_roundtripping_metadata(metadata, "utf-8"))
 
 
 class ExtractMetadataTests(TestCase):
@@ -84,7 +84,7 @@ class GenerateMetadataTests(TestCase):
     def test_roundtrip(self):
         metadata = BzrGitRevisionMetadata()
         metadata.revision_id = "myrevid"
-        msg = inject_bzr_metadata("Foo", metadata)
+        msg = inject_bzr_metadata("Foo", metadata, "utf-8")
         self.assertEquals("""Foo
 --BZR--
 revision-id: myrevid
