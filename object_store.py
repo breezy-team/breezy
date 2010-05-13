@@ -470,7 +470,11 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 return mapping_registry.parse_revision_id(revid)[0]
             except errors.InvalidRevisionId:
-                self._update_sha_map(revid)
+                self.repository.lock_read()
+                try:
+                    self._update_sha_map(revid)
+                finally:
+                    self.repository.unlock()
                 return self._cache.idmap.lookup_commit(revid)
 
     def get_raw(self, sha):
