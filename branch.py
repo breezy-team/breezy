@@ -51,6 +51,7 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 from bzrlib.plugins.git.refs import (
+    branch_name_to_ref,
     ref_to_branch_name,
     extract_tags,
     tag_name_to_ref,
@@ -252,6 +253,10 @@ class GitBranch(ForeignBranch):
         return branch.InterBranch.get(self, target)._basic_push(
             overwrite, stop_revision)
 
+    def lookup_foreign_revision_id(self, foreign_revid):
+        return self.repository.lookup_foreign_revision_id(foreign_revid, 
+            self.mapping)
+
 
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
@@ -339,10 +344,6 @@ class LocalGitBranch(GitBranch):
 
     def supports_tags(self):
         return True
-
-    def lookup_foreign_revision_id(self, foreign_revid):
-        return self.repository.lookup_foreign_revision_id(foreign_revid, 
-            self.mapping)
     
 
 class GitBranchPullResult(branch.PullResult):
@@ -636,7 +637,8 @@ class InterToGitBranch(branch.InterBranch):
     def _get_new_refs(self, stop_revision=None):
         if stop_revision is None:
             stop_revision = self.source.last_revision()
-        refs = { self.target.ref: stop_revision }
+        refs = {
+            branch_name_to_ref(self.target.name, "refs/heads/master"): stop_revision }
         for name, revid in self.source.tags.get_tag_dict().iteritems():
             if self.source.repository.has_revision(revid):
                 refs[tag_name_to_ref(name)] = revid

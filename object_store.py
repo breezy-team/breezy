@@ -333,6 +333,15 @@ class BazaarObjectStore(BaseObjectStore):
         return self.mapping.export_commit(rev, tree_sha, parent_lookup,
             roundtrip)
 
+    def _create_fileid_map_blob(self, inv):
+        # FIXME: This can probably be a lot more efficient, 
+        # not all files necessarily have to be processed.
+        file_ids = {}
+        for (path, ie) in inv.iter_entries():
+            if self.mapping.generate_file_id(path) != ie.file_id:
+                file_ids[path] = ie.file_id
+        return self.mapping.export_fileid_map(file_ids)
+
     def _revision_to_objects(self, rev, tree, roundtrip):
         """Convert a revision to a set of git objects.
 
@@ -362,13 +371,7 @@ class BazaarObjectStore(BaseObjectStore):
                 root_tree = self[self[base_sha1].tree]
             root_ie = tree.inventory.root
         if roundtrip:
-            # FIXME: This can probably be a lot more efficient, 
-            # not all files necessarily have to be processed.
-            file_ids = {}
-            for (path, ie) in tree.inventory.iter_entries():
-                if self.mapping.generate_file_id(path) != ie.file_id:
-                    file_ids[path] = ie.file_id
-            b = self.mapping.export_fileid_map(file_ids)
+            b = self._create_fileid_map_blob(tree.inventory)
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None
@@ -448,6 +451,10 @@ class BazaarObjectStore(BaseObjectStore):
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
         tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes,
             self.mapping.BZR_DUMMY_FILE)
+        if inv.root.file_id == fileid:
+            b = self._create_fileid_map_blob(inv)
+            # If this is the root tree, add the file ids
+            tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
         _check_expected_sha(expected_sha, tree)
         return tree
 
