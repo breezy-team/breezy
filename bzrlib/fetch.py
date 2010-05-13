@@ -116,8 +116,6 @@ class RepoFetcher(object):
                 self.from_repository, self.to_repository,
                 "different rich-root support")
         pb = ui.ui_factory.nested_progress_bar()
-        #key_count = len(search.get_keys())
-        #print "key_count:", key_count, "##########"
         try:
             pb.update("Get stream source")
             source = self.from_repository._get_source(

@@ -1659,7 +1659,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             pb = ui.ui_factory.nested_progress_bar()
             pb.update('', record_counter.current, record_counter.max)
         for record in stream:
-            # update progressbar only every 51 records
+            # update progressbar only every STEP records
             if record_counter and record_counter.max > 0:
                 if counter == record_counter.STEP:
                     record_counter.increment(counter)
