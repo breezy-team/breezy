@@ -39,7 +39,7 @@ from bzrlib.smart.request import (
     SuccessfulSmartServerResponse,
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
-from bzrlib.recordcounter import RecordCounter, _gen_printer
+from bzrlib.recordcounter import RecordCounter
 from bzrlib import revision as _mod_revision
 from bzrlib.versionedfile import (
     NetworkRecordStream,
