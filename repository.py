@@ -112,15 +112,19 @@ class LocalGitRepository(GitRepository):
         self.inventories = None
         self.texts = GitTexts(self)
 
-    def all_revision_ids(self):
-        ret = set([])
+    def _iter_revision_ids(self):
         for sha in self._git.object_store:
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
             rev = self.get_mapping().import_commit(o,
                 self.lookup_foreign_revision_id)
-            ret.add(rev.revision_id)
+            yield o.id, rev.revision_id
+
+    def all_revision_ids(self):
+        ret = set([])
+        for git_sha, revid in self._iter_revision_ids():
+            ret.add(revid)
         return ret
 
     def get_parent_map(self, revids):
@@ -175,7 +179,14 @@ class LocalGitRepository(GitRepository):
             try:
                 return self._git.refs[mapping.revid_as_refname(bzr_revid)], mapping
             except KeyError:
-                raise errors.NoSuchRevision(self, bzr_revid)
+                # Update refs from Git commit objects
+                # FIXME: Hitting this a lot will be very inefficient...
+                for git_sha, bzr_revid in self._iter_revision_ids():
+                    self._git.refs[mapping.revid_as_refname(bzr_revid)] = git_sha
+                try:
+                    return self._git.refs[mapping.revid_as_refname(bzr_revid)], mapping
+                except KeyError:
+                    raise errors.NoSuchRevision(self, bzr_revid)
 
     def get_revision(self, revision_id):
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
