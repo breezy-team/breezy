@@ -116,16 +116,16 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def missing_revisions(self, stop_revisions, check_revid):
         missing = []
+        graph = self.source.get_graph()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            graph = self.source.get_graph()
             for revid, _ in graph.iter_ancestry(stop_revisions):
                 pb.update("determining revisions to fetch", len(missing))
                 if not check_revid(revid):
                     missing.append(revid)
-            return graph.iter_topo_order(missing)
         finally:
             pb.finished()
+        return graph.iter_topo_order(missing)
 
     def fetch_refs(self, refs):
         fetch_spec = PendingAncestryResult(refs.values(), self.source)
@@ -148,10 +148,11 @@ class InterToLocalGitRepository(InterToGitRepository):
         def check_revid(revid):
             if revid == NULL_REVISION:
                 return True
+            sha_id = self.source_store._lookup_revision_sha1(revid)
             try:
-                return (self.source_store._lookup_revision_sha1(revid) in self.target_store)
+                return (sha_id in self.target_store)
             except errors.NoSuchRevision:
-                # Ghost, can't dpush
+                # Ghost, can't push
                 return True
         return list(self.missing_revisions(stop_revisions, check_revid))
 

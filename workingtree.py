@@ -46,9 +46,6 @@ from bzrlib.decorators import (
 from bzrlib.plugins.git.inventory import (
     GitIndexInventory,
     )
-from bzrlib.plugins.git.mapping import (
-    GitFileIdMap,
-    )
 from bzrlib.plugins.git.tree import (
     changes_from_git_changes,
     tree_delta_from_git_changes,
@@ -180,14 +177,8 @@ class GitWorkingTree(workingtree.WorkingTree):
             raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
         basis_inv = self.repository.get_inventory(self.mapping.revision_id_foreign_to_bzr(head))
         store = self.repository._git.object_store
-        commit = store[head]
-        try:
-            file_id_map_sha = store[commit.tree][self.mapping.BZR_FILE_IDS_FILE][1]
-        except KeyError:
-            file_ids = {}
-        else:
-            file_ids = self.mapping.import_fileid_map(store[file_id_map_sha])
-        fileid_map = GitFileIdMap(file_ids, self.mapping)
+        fileid_map = self.mapping.get_fileid_map(store.__getitem__,
+            store[head].tree)
         result = GitIndexInventory(basis_inv, fileid_map, self.index, store)
         self._set_inventory(result, dirty=False)
 
@@ -241,7 +232,14 @@ class InterIndexGitTree(tree.InterTree):
         changes = self._index.changes_from_tree(
             self.source._repository._git.object_store, self.source.tree, 
             want_unchanged=want_unchanged)
+        source_fileid_map = self.source.get_fileid_map(
+            self.source._repository._git.object_store.__getitem__,
+            self.source.tree)
+        target_fileid_map = self.target.get_fileid_map(
+            self.target._repository._git.object_store.__getitem__,
+            self.target.tree)
         ret = tree_delta_from_git_changes(changes, self.target.mapping, 
+            (source_fileid_map, target_fileid_map),
             specific_file=specific_files, require_versioned=require_versioned)
         if want_unversioned:
             for e in self.target.extras():

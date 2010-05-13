@@ -28,7 +28,6 @@ from bzrlib.plugins.git.inventory import (
     GitInventory,
     )
 from bzrlib.plugins.git.mapping import (
-    GitFileIdMap,
     mode_is_executable,
     mode_kind,
     )
@@ -47,15 +46,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
         except KeyError, r:
             raise errors.NoSuchRevision(repository, revision_id)
         self.tree = commit.tree
-        try:
-            file_id_map_sha = store[self.tree][self.mapping.BZR_FILE_IDS_FILE][1]
-        except KeyError:
-            file_ids = {}
-        else:
-            file_ids = self.mapping.import_fileid_map(store[file_id_map_sha])
-        fileid_map = GitFileIdMap(file_ids, self.mapping)
-        self._inventory = GitInventory(self.tree, self.mapping, fileid_map, store, 
-                                       revision_id)
+        fileid_map = self.mapping.get_fileid_map(store.__getitem__, self.tree)
+        self._inventory = GitInventory(self.tree, self.mapping, fileid_map,
+            store, revision_id)
 
     def get_revision_id(self):
         return self._revision_id
@@ -70,8 +63,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return entry.object.data
 
 
-def tree_delta_from_git_changes(changes, mapping, specific_file=None, 
-                                require_versioned=False):
+def tree_delta_from_git_changes(changes, mapping,
+        (old_fileid_map, new_fileid_map), specific_file=None,
+        require_versioned=False):
     """Create a TreeDelta from two git trees.
     
     source and target are iterators over tuples with: 
@@ -79,18 +73,24 @@ def tree_delta_from_git_changes(changes, mapping, specific_file=None,
     """
     ret = delta.TreeDelta()
     for (oldpath, newpath), (oldmode, newmode), (oldsha, newsha) in changes:
+        if mapping.is_control_file(oldpath):
+            oldpath = None
+        if mapping.is_control_file(newpath):
+            newpath = None
+        if oldpath is None and newpath is None:
+            continue
         if oldpath is None:
-            ret.added.append((newpath, mapping.generate_file_id(newpath), mode_kind(newmode)))
+            ret.added.append((newpath, new_fileid_map.lookup_file_id(newpath.encode("utf-8")), mode_kind(newmode)))
         elif newpath is None:
-            ret.removed.append((oldpath, mapping.generate_file_id(oldpath), mode_kind(oldmode)))
+            ret.removed.append((oldpath, old_fileid_map.lookup_file_id(oldpath.encode("utf-8")), mode_kind(oldmode)))
         elif oldpath != newpath:
-            ret.renamed.append((oldpath, newpath, mapping.generate_file_id(oldpath), mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+            ret.renamed.append((oldpath, newpath, old_fileid_map.lookup_file_id(oldpath.encode("utf-8")), mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
         elif mode_kind(oldmode) != mode_kind(newmode):
-            ret.kind_changed.append((newpath, mapping.generate_file_id(newpath), mode_kind(oldmode), mode_kind(newmode)))
+            ret.kind_changed.append((newpath, new_fileid_map.lookup_file_id(newpath.encode("utf-8")), mode_kind(oldmode), mode_kind(newmode)))
         elif oldsha != newsha or oldmode != newmode:
-            ret.modified.append((newpath, mapping.generate_file_id(newpath), mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
+            ret.modified.append((newpath, new_fileid_map.lookup_file_id(newpath.encode("utf-8")), mode_kind(newmode), (oldsha != newsha), (oldmode != newmode)))
         else:
-            ret.unchanged.append((newpath, mapping.generate_file_id(newpath), mode_kind(newmode)))
+            ret.unchanged.append((newpath, new_fileid_map.lookup_file_id(newpath.encode("utf-8")), mode_kind(newmode)))
     return ret
 
 
@@ -157,7 +157,14 @@ class InterGitRevisionTrees(tree.InterTree):
             raise AssertionError
         changes = self.source._repository._git.object_store.tree_changes(
             self.source.tree, self.target.tree, want_unchanged=want_unchanged)
+        source_fileid_map = self.source.mapping.get_fileid_map(
+            self.source._repository._git.object_store.__getitem__,
+            self.source.tree)
+        target_fileid_map = self.target.mapping.get_fileid_map(
+            self.target._repository._git.object_store.__getitem__,
+            self.target.tree)
         return tree_delta_from_git_changes(changes, self.target.mapping, 
+            (source_fileid_map, target_fileid_map),
             specific_file=specific_files)
 
     def iter_changes(self, include_unchanged=False, specific_files=None,

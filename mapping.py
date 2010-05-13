@@ -266,6 +266,7 @@ class BzrGitMapping(foreign.VcsMapping):
             metadata = BzrGitRevisionMetadata()
         else:
             metadata = None
+        parents = []
         for p in rev.parent_ids:
             try:
                 git_p = parent_lookup(p)
@@ -275,7 +276,8 @@ class BzrGitMapping(foreign.VcsMapping):
                     metadata.explicit_parent_ids = rev.parent_ids
             if git_p is not None:
                 assert len(git_p) == 40, "unexpected length for %r" % git_p
-                commit.parents.append(git_p)
+                parents.append(git_p)
+        commit.parents = parents
         try:
             encoding = rev.properties['git-explicit-encoding']
         except KeyError:
@@ -374,6 +376,21 @@ class BzrGitMapping(foreign.VcsMapping):
                 rev.parent_ids = md.explicit_parent_ids
             rev.properties.update(md.properties)
         return rev
+
+    def get_fileid_map(self, lookup_object, tree_sha):
+        """Obtain a fileid map for a particular tree.
+
+        :param lookup_object: Function for looking up an object
+        :param tree_sha: SHA of the root tree
+        :return: GitFileIdMap instance
+        """
+        try:
+            file_id_map_sha = lookup_object(tree_sha)[self.BZR_FILE_IDS_FILE][1]
+        except KeyError:
+            file_ids = {}
+        else:
+            file_ids = self.import_fileid_map(lookup_object(file_id_map_sha))
+        return GitFileIdMap(file_ids, self)
 
 
 class BzrGitMappingv1(BzrGitMapping):

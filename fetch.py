@@ -65,7 +65,6 @@ from bzrlib.versionedfile import (
 
 from bzrlib.plugins.git.mapping import (
     DEFAULT_FILE_MODE,
-    GitFileIdMap,
     mode_is_executable,
     mode_kind,
     squash_revision,
@@ -340,14 +339,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
     store_updater.add_object(o, None)
-    root_tree = lookup_object(o.tree)
-    try:
-        file_id_map_sha = root_tree[mapping.BZR_FILE_IDS_FILE][1]
-    except KeyError:
-        file_ids = {}
-    else:
-        file_ids = mapping.import_fileid_map(lookup_object(file_id_map_sha))
-    lookup_file_id = GitFileIdMap(file_ids, mapping).lookup_file_id
+    lookup_file_id = mapping.get_fileid_map(lookup_object, o.tree).lookup_file_id
     inv_delta, unusual_modes = import_git_tree(repo.texts,
             mapping, "", u"", (base_tree, o.tree), base_inv, 
             None, rev.revision_id, [p.inventory for p in parent_trees],

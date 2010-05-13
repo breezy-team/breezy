@@ -329,7 +329,6 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 return self._lookup_revision_sha1(revid)
             except errors.NoSuchRevision:
-                trace.warning("Ignoring ghost parent %s", revid)
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup,
             roundtrip)
@@ -374,7 +373,8 @@ class BazaarObjectStore(BaseObjectStore):
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None
         yield "", root_tree, root_ie
-        commit_obj = self._reconstruct_commit(rev, root_tree.id, roundtrip=roundtrip)
+        commit_obj = self._reconstruct_commit(rev, root_tree.id,
+            roundtrip=roundtrip)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
                 rev.revision_id)
