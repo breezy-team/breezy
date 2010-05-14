@@ -1012,6 +1012,7 @@ class TestReadonlyHttpMixin(object):
         readonly_vf = self.get_factory()('foo', get_transport(
                 self.get_readonly_url('.')))
         self.assertEqual(['1', '2'], vf.versions())
+        self.assertEqual(['1', '2'], readonly_vf.versions())
         for version in readonly_vf.versions():
             readonly_vf.get_lines(version)
 
