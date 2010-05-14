@@ -502,21 +502,8 @@ def _stream_to_byte_stream(stream, src_format):
     pack_writer = pack.ContainerSerialiser()
     yield pack_writer.begin()
     yield pack_writer.bytes_record(src_format.network_name(), '')
-    #key_count = 0
-    #rc = RecordCounter()
-    #pb = ui.ui_factory.nested_progress_bar()
-    #pb.update('', rc.current, rc.max)
     for substream_type, substream in stream:
-        #counter = 0
         for record in substream:
-            #counter +=1
-            #if substream_type == 'revisions':
-            #    key_count += 1
-            #elif rc.is_initialized():
-            #    if counter == rc.STEP:
-            #        rc.increment(counter)
-            #        pb.update('', rc.current, rc.max)
-            #        counter = 0
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
             elif record.storage_kind == 'inventory-delta':
@@ -530,10 +517,6 @@ def _stream_to_byte_stream(stream, src_format):
                 # representation of the first record, which means that
                 # later records have no wire representation: we skip them.
                 yield pack_writer.bytes_record(serialised, [(substream_type,)])
-        #if substream_type == 'revisions':
-        #    rc.setup(key_count, current=key_count)
-    #pb.update('', rc.max, rc.max)
-    #pb.finished()
     yield pack_writer.end()
 
 
@@ -568,7 +551,7 @@ class _ByteStreamDecoder(object):
         self.current_type = None
         self.first_bytes = None
         self.byte_stream = byte_stream
-        self.record_counter = record_counter
+        self._record_counter = record_counter
         self.revisions_processed = False
         self.key_count = 0
 
@@ -578,28 +561,11 @@ class _ByteStreamDecoder(object):
         for record in self.stream_decoder.read_pending_records():
             yield record
 
-        #key_count = 0
-        #rc = RecordCounter()
-        #pb = ui.ui_factory.nested_progress_bar()
         # Pull bytes of the wire, decode them to records, yield those records.
         for bytes in self.byte_stream:
             self.stream_decoder.accept_bytes(bytes)
-            #counter = 0
             for record in self.stream_decoder.read_pending_records():
-                #if self.current_type == 'revisions':
-                #    pb.update('Estimating..', key_count)
-                #    key_count += 1
-                #elif rc.is_initialized():
-                #    if counter == rc.STEP:
-                #        rc.increment(counter)
-                #        pb.update('Estimate', rc.current, rc.max)
-                #        counter = 0
-                #    counter += 1
                 yield record
-            #if self.current_type == 'revisions':
-            #   rc.setup(key_count, current=key_count)
-        #pb.update('Estimate', rc.max, rc.max)
-        #pb.finished()
 
     def iter_substream_bytes(self):
         if self.first_bytes is not None:
@@ -619,39 +585,45 @@ class _ByteStreamDecoder(object):
 
     def record_stream(self):
         """Yield substream_type, substream from the byte stream."""
+        def wrap_and_count(pb, rc, substream):
+            """Yield records from stream while showing progress."""
+            counter = 0
+            if rc:
+                if self.current_type != 'revisions' and self.key_count != 0:
+                    # As we know the number of revisions now (in self.key_count)
+                    # we can setup and use record_counter (rc).
+                    if not rc.is_initialized():
+                        rc.setup(self.key_count, self.key_count)
+            for record in substream.read():
+                if rc:
+                    if rc.is_initialized() and counter == rc.STEP:
+                        rc.increment(counter)
+                        pb.update('Estimate', rc.current, rc.max)
+                        counter = 0
+                    if self.current_type == 'revisions':
+                        # Total records is proportional to number of revs
+                        # to fetch. With remote, we used self.key_count to
+                        # track the number of revs. Once we have the revs
+                        # counts in self.key_count, the progress bar changes
+                        # from 'Estimating..' to 'Estimate' above.
+                        self.key_count += 1
+                        if counter == rc.STEP:
+                            pb.update('Estimating..', self.key_count)
+                            counter = 0
+                counter += 1
+                yield record
+
         self.seed_state()
         pb = ui.ui_factory.nested_progress_bar()
+        rc = self._record_counter
         # Make and consume sub generators, one per substream type:
         while self.first_bytes is not None:
             substream = NetworkRecordStream(self.iter_substream_bytes())
             # after substream is fully consumed, self.current_type is set to
             # the next type, and self.first_bytes is set to the matching bytes.
-            def wrap_and_count(substream):
-                counter = 0
-                if self.record_counter:
-                    if self.current_type != 'revisions' and self.key_count != 0:
-                        if not self.record_counter.is_initialized():
-                            self.record_counter.setup(self.key_count,
-                                self.key_count)
-                for record in substream.read():
-                    if self.record_counter:
-                        if self.record_counter.is_initialized() and \
-                                counter == self.record_counter.STEP:
-                            self.record_counter.increment(counter)
-                            pb.update('Estimate', self.record_counter.current,
-                                self.record_counter.max)
-                            counter = 0
-                        if self.current_type == 'revisions':
-                            self.key_count += 1
-                            if counter == self.record_counter.STEP:
-                                pb.update('Estimating..', self.key_count)
-                                counter = 0
-                    counter += 1
-                    yield record
-
-            yield self.current_type, wrap_and_count(substream)
-        if self.record_counter:
-            pb.update('Done', self.record_counter.max, self.record_counter.max)
+            yield self.current_type, wrap_and_count(pb, rc, substream)
+        if rc:
+            pb.update('Done', rc.max, rc.max)
         pb.finished()
 
     def seed_state(self):

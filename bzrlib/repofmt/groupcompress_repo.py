@@ -1109,6 +1109,7 @@ class GroupCHKStreamSource(KnitPackStreamSource):
 
     def get_stream(self, search):
         def wrap_and_count(pb, rc, stream):
+            """Yield records from stream while showing progress."""
             count = 0
             for record in stream:
                 if count == rc.STEP:

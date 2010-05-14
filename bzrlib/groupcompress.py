@@ -33,7 +33,6 @@ from bzrlib import (
     pack,
     static_tuple,
     trace,
-    ui,
     )
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
@@ -1758,7 +1757,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if len(keys_to_add):
             flush()
         self._compressor = None
-
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
         """Iterate over the lines in the versioned files from keys.
