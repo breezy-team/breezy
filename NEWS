@@ -86,6 +86,9 @@ Bug Fixes
 * ``bzr selftest`` should not use ui.note() since it's not unicode safe.
   (Vincent Ladeuil, #563997)
 
+* CommitBuilder refuses to create revisions whose trees have no root.
+  (Aaron Bentley)
+
 * Don't mention --no-strict when we just issue the warning about unclean trees.
   (Vincent Ladeuil, #401599)
 
@@ -99,6 +102,11 @@ Bug Fixes
 
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
+
+* Selftest was failing with testtools 0.9.3, which caused an
+  AssertionError raised from a cleanUp to be reported as a Failure, not an
+  Error, breaking on of our test hygiene tests.
+  (Robert Collins, Vincent Ladeuil).
 
 * ``set_user_option`` with a dict on remote branches no longer fails with
   an AttributeError.  There is a new ``Branch.set_config_option_dict`` RPC

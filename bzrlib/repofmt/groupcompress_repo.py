@@ -862,6 +862,8 @@ class CHKInventoryRepository(KnitPackRepository):
         if basis_inv is None:
             if basis_revision_id == _mod_revision.NULL_REVISION:
                 new_inv = self._create_inv_from_null(delta, new_revision_id)
+                if new_inv.root_id is None:
+                    raise errors.RootMissing()
                 inv_lines = new_inv.to_lines()
                 return self._inventory_add_lines(new_revision_id, parents,
                     inv_lines, check_content=False), new_inv
