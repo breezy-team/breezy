@@ -97,6 +97,11 @@ Bug Fixes
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
+* Selftest was failing with testtools 0.9.3, which caused an
+  AssertionError raised from a cleanUp to be reported as a Failure, not an
+  Error, breaking on of our test hygiene tests.
+  (Robert Collins, Vincent Ladeuil).
+
 * Show the filenames when a file rename fails so that the error will be
   more comprehensible.
   (Martin Pool, #491763)
