@@ -128,11 +128,38 @@ the Bazaar trunk.  Go to
 "Propose for merging into another branch".  Select "~bzr/bzr/trunk" to hand
 your changes off to the Bazaar developers for review and merging.
 
+Alternatively, after pushing you can use the ``lp-propose`` command to 
+create the merge proposal.
+
 Using a meaningful name for your branch will help you and the reviewer(s)
 better track the submission. Use a very succint description of your submission
 and prefix it with bug number if needed (lp:~mbp/bzr/484558-merge-directory
 for example). Alternatively, you can suffix with the bug number
 (lp:~jameinel/bzr/export-file-511987).
+
+
+Review cover letters
+--------------------
+
+Please put a "cover letter" on your merge request explaining:
+
+* the reason **why** you're making this change
+
+* **how** this change achieves this purpose
+
+* anything else you may have fixed in passing
+
+* anything significant that you thought of doing, such as a more
+  extensive fix or a different approach, but didn't or couldn't do now
+
+A good cover letter makes reviewers' lives easier because they can decide
+from the letter whether they agree with the purpose and approach, and then
+assess whether the patch actually does what the cover letter says.
+Explaining any "drive-by fixes" or roads not taken may also avoid queries
+from the reviewer.  All in all this should give faster and better reviews.
+Sometimes writing the cover letter helps the submitter realize something
+else they need to do.  The size of the cover letter should be proportional
+to the size and complexity of the patch.
 
 
 Why make a local copy of bzr.dev?
