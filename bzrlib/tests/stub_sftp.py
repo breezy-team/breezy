@@ -449,7 +449,7 @@ class SFTPServer(test_server.TestServer):
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
             self._homedir = os.getcwdu()
-            # Now, get the right pathseps.
+            # Normalize the path or it will be wrongly escaped
             self._homedir = osutils.normpath(self._homedir)
         else:
             # But Linux SFTP servers should just deal in bytestreams
