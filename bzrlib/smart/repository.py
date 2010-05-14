@@ -552,7 +552,6 @@ class _ByteStreamDecoder(object):
         self.first_bytes = None
         self.byte_stream = byte_stream
         self._record_counter = record_counter
-        self.revisions_processed = False
         self.key_count = 0
 
     def iter_stream_decoder(self):
@@ -560,7 +559,6 @@ class _ByteStreamDecoder(object):
         # dequeue pending items
         for record in self.stream_decoder.read_pending_records():
             yield record
-
         # Pull bytes of the wire, decode them to records, yield those records.
         for bytes in self.byte_stream:
             self.stream_decoder.accept_bytes(bytes)
