@@ -248,7 +248,7 @@ class Weave(VersionedFile):
         """Is the versioned file marked as 'finished' ? Raise if it is."""
         if self._get_scope() != self._scope:
             raise errors.OutSideTransaction()
-        if self._access_mode != 'w':
+        if not self._access_mode in ('w', 'r+'):
             raise errors.ReadOnlyObjectDirtiedError(self)
 
     def copy(self):
