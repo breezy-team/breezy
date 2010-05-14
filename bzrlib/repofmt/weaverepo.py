@@ -591,8 +591,7 @@ class TextVersionedFiles(VersionedFiles):
         path = self._map(key)
         self._transport.put_bytes_non_atomic(path, text, create_parent_dir=True)
 
-    def insert_record_stream(self, stream, stream_type=None,
-            record_counter=None):
+    def insert_record_stream(self, stream):
         adapters = {}
         for record in stream:
             # Raise an error when a record is missing.

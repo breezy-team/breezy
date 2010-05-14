@@ -4324,13 +4324,12 @@ class StreamSink(object):
                 mutter('inserting substream: %s', substream_type)
             if substream_type == 'texts':
                 rc.stream_type = substream_type
-                self.target_repo.texts.insert_record_stream(substream,
-                    substream_type, rc)
+                self.target_repo.texts.insert_record_stream(substream)
             elif substream_type == 'inventories':
                 if src_serializer == to_serializer:
                     rc.stream_type = substream_type
                     self.target_repo.inventories.insert_record_stream(
-                        substream, substream_type, rc)
+                        substream)
                 else:
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
@@ -4341,8 +4340,7 @@ class StreamSink(object):
                 # XXX: This doesn't support conversions, as it assumes the
                 #      conversion was done in the fetch code.
                 rc.stream_type = substream_type
-                self.target_repo.chk_bytes.insert_record_stream(substream,
-                    substream_type, rc)
+                self.target_repo.chk_bytes.insert_record_stream(substream)
             elif substream_type == 'revisions':
                 # This may fallback to extract-and-insert more often than
                 # required if the serializers are different only in terms of
@@ -4354,15 +4352,14 @@ class StreamSink(object):
                     # insert_record_stream operation to provide better estimate
                     # of workload.
                     rc.stream_type = substream_type
-                    self.target_repo.revisions.insert_record_stream(
-                        substream, substream_type, rc)
+                    self.target_repo.revisions.insert_record_stream(substream)
                 else:
                     self._extract_and_insert_revisions(substream,
                         src_serializer)
             elif substream_type == 'signatures':
                 rc.stream_type = substream_type
-                current_count = self.target_repo.signatures.insert_record_stream(substream,
-                    substream_type, rc)
+                current_count = self.target_repo.signatures.insert_record_stream(
+                    substream)
             else:
                 raise AssertionError('kaboom! %s' % (substream_type,))
 

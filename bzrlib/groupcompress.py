@@ -1585,7 +1585,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
                         record.get_bytes_as('fulltext'))
         return result
 
-    def insert_record_stream(self, stream, stream_type=None, record_counter=None):
+    def insert_record_stream(self, stream):
         """Insert a record stream into this container.
 
         :param stream: A stream of records to insert.
@@ -1596,13 +1596,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # test_insert_record_stream_existing_keys fail for groupcompress and
         # groupcompress-nograph, this needs to be revisited while addressing
         # 'bzr branch' performance issues.
-        for _ in self._insert_record_stream(stream, random_id=False,
-                stream_type=stream_type, record_counter=record_counter):
+        for _ in self._insert_record_stream(stream, random_id=False):
             pass
 
     def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
-                              reuse_blocks=True, stream_type=None,
-                              record_counter=None):
+                              reuse_blocks=True):
         """Internal core to insert a record stream into this container.
 
         This helper function has a different interface than insert_record_stream
@@ -1653,22 +1651,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # XXX: TODO: remove this, it is just for safety checking for now
         inserted_keys = set()
         reuse_this_block = reuse_blocks
-        counter = 0
-        key_count = 0
-        #if record_counter and record_counter.max > 0:
-        #    pb = ui.ui_factory.nested_progress_bar()
-        #    pb.update('', record_counter.current, record_counter.max)
         for record in stream:
-            # update progressbar only every STEP records
-            #if record_counter and record_counter.max > 0:
-            #    if counter == record_counter.STEP:
-            #        record_counter.increment(counter)
-            #        pb.update('', record_counter.current, record_counter.max)
-            #        counter = 0
-            #    counter += 1
-            #if stream_type == 'revisions':
-            #    key_count += 1
-
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self)
@@ -1775,11 +1758,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if len(keys_to_add):
             flush()
         self._compressor = None
-        #if record_counter and record_counter.max > 0:
-        #    pb.finished()
-        #if stream_type == 'revisions':
-        #    record_counter.setup(key_count,
-        #        record_counter.current)
 
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):

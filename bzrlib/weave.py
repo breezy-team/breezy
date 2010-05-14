@@ -345,8 +345,7 @@ class Weave(VersionedFile):
     def get_parents_with_ghosts(self, version_id):
         raise NotImplementedError(self.get_parents_with_ghosts)
 
-    def insert_record_stream(self, stream, stream_type=None,
-            record_counter=None):
+    def insert_record_stream(self, stream):
         """Insert a record stream into this versioned file.
 
         :param stream: A stream of records to insert.
@@ -965,8 +964,7 @@ class WeaveFile(Weave):
         """See VersionedFile.get_suffixes()."""
         return [WeaveFile.WEAVE_SUFFIX]
 
-    def insert_record_stream(self, stream, stream_type=None,
-            record_counter=None):
+    def insert_record_stream(self, stream):
         super(WeaveFile, self).insert_record_stream(stream)
         self._save()
 
