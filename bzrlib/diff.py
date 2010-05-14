@@ -870,7 +870,10 @@ class DiffTree(object):
             extra_factories = []
         if external_diff_options:
             opts = external_diff_options.split()
-            def diff_file(olab, olines, nlab, nlines, to_file):
+            def diff_file(olab, olines, nlab, nlines, to_file, path_encoding=None):
+                """:param path_encoding: not used but required
+                        to match the signature of internal_diff.
+                """
                 external_diff(olab, olines, nlab, nlines, to_file, opts)
         else:
             diff_file = internal_diff
