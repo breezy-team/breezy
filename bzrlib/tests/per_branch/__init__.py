@@ -165,6 +165,7 @@ def load_tests(standard_tests, module, loader):
         'branch',
         'break_lock',
         'check',
+        'config',
         'create_checkout',
         'create_clone',
         'commit',

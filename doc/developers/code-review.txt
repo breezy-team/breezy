@@ -1,0 +1,170 @@
+The Code Review Process
+#######################
+
+All code changes coming in to Bazaar are reviewed by someone else.
+Normally changes by core contributors are reviewed by one other core
+developer, and changes from other people are reviewed by two core
+developers.  Use intelligent discretion if the patch is trivial.
+
+Good reviews do take time. They also regularly require a solid
+understanding of the overall code base. In practice, this means a small
+number of people often have a large review burden - with knowledge comes
+responsibility. No one likes their merge requests sitting in a queue going
+nowhere, so reviewing sooner rather than later is strongly encouraged.
+
+
+
+Review cover letters
+====================
+
+Please put a "cover letter" on your merge request explaining:
+
+* the reason **why** you're making this change
+
+* **how** this change achieves this purpose
+
+* anything else you may have fixed in passing
+
+* anything significant that you thought of doing, such as a more
+  extensive fix or a different approach, but didn't or couldn't do now
+
+A good cover letter makes reviewers' lives easier because they can decide
+from the letter whether they agree with the purpose and approach, and then
+assess whether the patch actually does what the cover letter says.
+Explaining any "drive-by fixes" or roads not taken may also avoid queries
+from the reviewer.  All in all this should give faster and better reviews.
+Sometimes writing the cover letter helps the submitter realize something
+else they need to do.  The size of the cover letter should be proportional
+to the size and complexity of the patch.
+
+
+Reviewing proposed changes
+==========================
+
+Anyone is welcome to review code, and reply to the thread with their
+opinion or comments.
+
+The simplest way to review a proposed change is to just read the patch on
+the list or in Bundle Buggy.  For more complex changes it may be useful
+to make a new working tree or branch from trunk, and merge the proposed
+change into it, so you can experiment with the code or look at a wider
+context.
+
+There are three main requirements for code to get in:
+
+* Doesn't reduce test coverage: if it adds new methods or commands,
+  there should be tests for them.  There is a good test framework
+  and plenty of examples to crib from, but if you are having trouble
+  working out how to test something feel free to post a draft patch
+  and ask for help.
+
+* Doesn't reduce design clarity, such as by entangling objects
+  we're trying to separate.  This is mostly something the more
+  experienced reviewers need to help check.
+
+* Improves bugs, features, speed, or code simplicity.
+
+Code that goes in should not degrade any of these aspects.  Patches are
+welcome that only cleanup the code without changing the external
+behaviour.  The core developers take care to keep the code quality high
+and understandable while recognising that perfect is sometimes the enemy
+of good.
+
+It is easy for reviews to make people notice other things which should be
+fixed but those things should not hold up the original fix being accepted.
+New things can easily be recorded in the Bug Tracker instead.
+
+It's normally much easier to review several smaller patches than one large
+one.  You might want to use ``bzr-loom`` to maintain threads of related
+work, or submit a preparatory patch that will make your "real" change
+easier.
+
+
+Checklist for reviewers
+=======================
+
+* Do you understand what the code's doing and why?
+
+* Will it perform reasonably for large inputs, both in memory size and
+  run time?  Are there some scenarios where performance should be
+  measured?
+
+* Is it tested, and are the tests at the right level?  Are there both
+  blackbox (command-line level) and API-oriented tests?
+
+* If this change will be visible to end users or API users, is it
+  appropriately documented in NEWS?
+
+* Does it meet the coding standards below?
+
+* If it changes the user-visible behaviour, does it update the help
+  strings and user documentation?
+
+* If it adds a new major concept or standard practice, does it update the
+  developer documentation?
+
+* (your ideas here...)
+
+
+Reviews on Launchpad
+====================
+
+From May 2009 on, we prefer people to propose code reviews through
+Launchpad.
+
+ * <https://launchpad.net/+tour/code-review>
+
+ * <https://help.launchpad.net/Code/Review>
+
+Anyone can propose or comment on a merge proposal just by creating a
+Launchpad account.
+
+There are two ways to create a new merge proposal: through the web
+interface or by email.
+
+
+Proposing a merge through the web
+---------------------------------
+
+To create the proposal through the web, first push your branch to Launchpad.
+For example, a branch dealing with documentation belonging to the Launchpad
+User mbp could be pushed as ::
+
+  bzr push lp:~mbp/bzr/doc
+
+Then go to the branch's web page, which in this case would be
+<https://code.launchpad.net/~mbp/bzr/doc>.  You can simplify this step by just
+running ::
+
+  bzr lp-open
+
+You can then click "Propose for merging into another branch", and enter your
+cover letter (see above) into the web form.  Typically you'll want to merge
+into ``~bzr/bzr/trunk`` which will be the default; you might also want to
+nominate merging into a release branch for a bug fix.  There is the option to
+specify a specific reviewer or type of review, and you shouldn't normally
+change those.
+
+Submitting the form takes you to the new page about the merge proposal
+containing the diff of the changes, comments by interested people, and
+controls to comment or vote on the change.
+
+Proposing a merge by mail
+-------------------------
+
+To propose a merge by mail, send a bundle to ``merge@code.launchpad.net``.
+
+You can generate a merge request like this::
+
+  bzr send -o bug-1234.diff
+
+``bzr send`` can also send mail directly if you prefer; see the help.
+
+Reviewing changes
+-----------------
+
+From <https://code.launchpad.net/bzr/+activereviews> you can see all
+currently active reviews, and choose one to comment on.  This page also
+shows proposals that are now approved and should be merged by someone with
+PQM access.
+

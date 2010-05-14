@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import errno
 import os
 import re
 import stat
@@ -25,7 +26,6 @@ import codecs
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
-import errno
 import getpass
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
@@ -361,14 +361,6 @@ def _win32_mkdtemp(*args, **kwargs):
     return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
 
 
-def _add_rename_error_details(e, old, new):
-    new_e = OSError(e.errno, "failed to rename %s to %s: %s"
-        % (old, new, e.strerror))
-    new_e.filename = old
-    new_e.to_filename = new
-    return new_e
-
-
 def _win32_rename(old, new):
     """We expect to be able to atomically replace 'new' with old.
 
@@ -376,7 +368,7 @@ def _win32_rename(old, new):
     and then deleted.
     """
     try:
-        fancy_rename(old, new, rename_func=_wrapped_rename, unlink_func=os.unlink)
+        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError, e:
         if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
             # If we try to rename a non-existant file onto cwd, we get
@@ -385,16 +377,6 @@ def _win32_rename(old, new):
             # On Linux, we seem to get EBUSY, on Mac we get EINVAL
             os.lstat(old)
         raise
-
-
-def _wrapped_rename(old, new):
-    """Rename a file or directory"""
-    try:
-        os.rename(old, new)
-    except (IOError, OSError), e:
-        # this is eventually called by all rename-like functions, so should 
-        # catch all of them
-        raise _add_rename_error_details(e, old, new)
 
 
 def _mac_getcwd():
@@ -407,8 +389,8 @@ abspath = _posix_abspath
 realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = os.path.normpath
-rename = _wrapped_rename # overridden below on win32
 getcwd = os.getcwdu
+rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split

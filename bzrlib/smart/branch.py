@@ -17,7 +17,10 @@
 """Server-side branch related request implmentations."""
 
 
-from bzrlib import errors
+from bzrlib import (
+    bencode,
+    errors,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
     FailedSmartServerResponse,
@@ -191,6 +194,23 @@ class SmartServerBranchRequestSetConfigOption(SmartServerLockedBranchRequest):
         if not section:
             section = None
         branch._get_config().set_option(value.decode('utf8'), name, section)
+        return SuccessfulSmartServerResponse(())
+
+
+class SmartServerBranchRequestSetConfigOptionDict(SmartServerLockedBranchRequest):
+    """Set an option in the branch configuration.
+    
+    New in 2.2.
+    """
+
+    def do_with_locked_branch(self, branch, value_dict, name, section):
+        utf8_dict = bencode.bdecode(value_dict)
+        value_dict = {}
+        for key, value in utf8_dict.items():
+            value_dict[key.decode('utf8')] = value.decode('utf8')
+        if not section:
+            section = None
+        branch._get_config().set_option(value_dict, name, section)
         return SuccessfulSmartServerResponse(())
 
 

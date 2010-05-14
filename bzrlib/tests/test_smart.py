@@ -802,6 +802,44 @@ class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
         branch.unlock()
 
 
+class TestSmartServerBranchRequestSetConfigOptionDict(TestLockedBranch):
+
+    def setUp(self):
+        TestLockedBranch.setUp(self)
+        # A dict with non-ascii keys and values to exercise unicode
+        # roundtripping.
+        self.encoded_value_dict = (
+            'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde')
+        self.value_dict = {
+            'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'}
+
+    def test_value_name(self):
+        branch = self.make_branch('.')
+        request = smart_branch.SmartServerBranchRequestSetConfigOptionDict(
+            branch.bzrdir.root_transport)
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        config = branch._get_config()
+        result = request.execute('', branch_token, repo_token,
+            self.encoded_value_dict, 'foo', '')
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), result)
+        self.assertEqual(self.value_dict, config.get_option('foo'))
+        # Cleanup
+        branch.unlock()
+
+    def test_value_name_section(self):
+        branch = self.make_branch('.')
+        request = smart_branch.SmartServerBranchRequestSetConfigOptionDict(
+            branch.bzrdir.root_transport)
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        config = branch._get_config()
+        result = request.execute('', branch_token, repo_token,
+            self.encoded_value_dict, 'foo', 'gam')
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), result)
+        self.assertEqual(self.value_dict, config.get_option('foo', 'gam'))
+        # Cleanup
+        branch.unlock()
+
+
 class TestSmartServerBranchRequestSetTagsBytes(TestLockedBranch):
     # Only called when the branch format and tags match [yay factory
     # methods] so only need to test straight forward cases.

@@ -2789,13 +2789,47 @@ class RemoteBranchConfig(RemoteConfig):
         medium = self._branch._client._medium
         if medium._is_remote_before((1, 14)):
             return self._vfs_set_option(value, name, section)
+        if isinstance(value, dict):
+            if medium._is_remote_before((2, 2)):
+                return self._vfs_set_option(value, name, section)
+            return self._set_config_option_dict(value, name, section)
+        else:
+            return self._set_config_option(value, name, section)
+
+    def _set_config_option(self, value, name, section):
         try:
             path = self._branch._remote_path()
             response = self._branch._client.call('Branch.set_config_option',
                 path, self._branch._lock_token, self._branch._repo_lock_token,
                 value.encode('utf8'), name, section or '')
         except errors.UnknownSmartMethod:
+            medium = self._branch._client._medium
             medium._remember_remote_is_before((1, 14))
+            return self._vfs_set_option(value, name, section)
+        if response != ():
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _serialize_option_dict(self, option_dict):
+        utf8_dict = {}
+        for key, value in option_dict.items():
+            if isinstance(key, unicode):
+                key = key.encode('utf8')
+            if isinstance(value, unicode):
+                value = value.encode('utf8')
+            utf8_dict[key] = value
+        return bencode.bencode(utf8_dict)
+
+    def _set_config_option_dict(self, value, name, section):
+        try:
+            path = self._branch._remote_path()
+            serialised_dict = self._serialize_option_dict(value)
+            response = self._branch._client.call(
+                'Branch.set_config_option_dict',
+                path, self._branch._lock_token, self._branch._repo_lock_token,
+                serialised_dict, name, section or '')
+        except errors.UnknownSmartMethod:
+            medium = self._branch._client._medium
+            medium._remember_remote_is_before((2, 2))
             return self._vfs_set_option(value, name, section)
         if response != ():
             raise errors.UnexpectedSmartServerResponse(response)

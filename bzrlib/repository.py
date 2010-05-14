@@ -289,8 +289,8 @@ class CommitBuilder(object):
 
         :param tree: The tree which is being committed.
         """
-        # NB: if there are no parents then this method is not called, so no
-        # need to guard on parents having length.
+        if len(self.parents) == 0:
+            raise errors.RootMissing()
         entry = entry_factory['directory'](tree.path2id(''), '',
             None)
         entry.revision = self._new_revision_id
@@ -1046,7 +1046,7 @@ class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
                 " id and insertion revid (%r, %r)"
                 % (inv.revision_id, revision_id))
         if inv.root is None:
-            raise AssertionError()
+            raise errors.RootMissing()
         return self._add_inventory_checked(revision_id, inv, parents)
 
     def _add_inventory_checked(self, revision_id, inv, parents):

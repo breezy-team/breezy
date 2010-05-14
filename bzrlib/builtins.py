@@ -3589,7 +3589,11 @@ class cmd_selftest(Command):
             self.additional_selftest_args['runner_class'] = SubUnitBzrRunner
             # On Windows, disable automatic conversion of '\n' to '\r\n' in
             # stdout, which would corrupt the subunit stream. 
-            if sys.platform == "win32" and sys.stdout.fileno() >= 0:
+            # FIXME: This has been fixed in subunit trunk (>0.0.5) so the
+            # following code can be deleted when it's sufficiently deployed
+            # -- vila/mgz 20100514
+            if (sys.platform == "win32"
+                and getattr(sys.stdout, 'fileno', None) is not None):
                 import msvcrt
                 msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
         if parallel:
