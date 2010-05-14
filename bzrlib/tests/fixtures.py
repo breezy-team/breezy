@@ -29,8 +29,12 @@ class UnicodeFactory(object):
     def __init__(self):
         self._counter = 0
 
-    def make_short_string(self):
+    def choose_string(self):
         """Return a new short unicode string."""
         self._counter += 1
         # use a mathematical symbol unlikely to be in 8-bit encodings
         return u"\N{SINE WAVE}%d" % self._counter
+
+    def choose_encoding(self):
+        """Return a new Python string encoding."""
+        return 'cp850'

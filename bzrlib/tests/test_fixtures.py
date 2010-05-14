@@ -16,6 +16,8 @@
 
 """Tests for test fixtures"""
 
+import codecs
+
 from bzrlib import (
     tests,
     )
@@ -28,10 +30,13 @@ class TestTestFixtures(tests.TestCase):
 
     def test_unicode_factory(self):
         unicode_factory = fixtures.UnicodeFactory()
-        ss1 = unicode_factory.make_short_string()
+        ss1 = unicode_factory.choose_short_string()
         self.assertIsInstance(ss1,
             unicode)
         # default version should return something that's not representable in
         # ascii
         self.assertRaises(UnicodeEncodeError,
             ss1.encode, 'ascii')
+
+        # the encoding chosen by the factory is supported by Python
+        codecs.lookup(unicode_factory.choose_encoding())
