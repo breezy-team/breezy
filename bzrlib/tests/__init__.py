@@ -4102,7 +4102,7 @@ def _rmtree_temp_dir(dirname, test_id=None):
             ui.ui_factory.clear_term()
             sys.stderr.write('\nWhile running: %s\n' % (test_id,))
         # Ugly, but the last thing we want here is fail, so bear with it.
-        printable_e = str(e).decode(osutils.get_user_encoding()
+        printable_e = str(e).decode(osutils.get_user_encoding(), 'replace'
                                     ).encode('ascii', 'replace')
         sys.stderr.write('Unable to remove testing dir %s\n%s'
                          % (os.path.basename(dirname), printable_e))
