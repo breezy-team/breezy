@@ -9,6 +9,26 @@ that integrates with bzr.  If you want to know about a topic that's not
 covered here, just ask us.
 
 
+Starting with bzrlib
+====================
+
+Before doing anything else with bzrlib, you should run `bzrlib.initialize`
+which sets up some global state.  
+
+
+Running bzr commands
+====================
+
+To run command-line commands in-process::
+
+  from bzrlib.commands import get_command
+  
+  cmd = get_command('version')
+  cmd.run([])
+  
+This will send output through the current UIFactory; you can redirect this
+elsewhere through the parameters to `bzrlib.initialize`.
+
 
 Manipulating the Working Tree
 =============================
