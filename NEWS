@@ -108,6 +108,11 @@ Bug Fixes
   Error, breaking on of our test hygiene tests.
   (Robert Collins, Vincent Ladeuil).
 
+* ``set_user_option`` with a dict on remote branches no longer fails with
+  an AttributeError.  There is a new ``Branch.set_config_option_dict`` RPC
+  to support this efficiently.
+  (Andrew Bennetts, #430382)
+  
 * Show the filenames when a file rename fails so that the error will be
   more comprehensible.
   (Martin Pool, #491763)
