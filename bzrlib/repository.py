@@ -4316,8 +4316,8 @@ class StreamSink(object):
                 new_pack.set_write_cache_size(1024*1024)
         current_count = 0
         rc = RecordCounter()
-        pb = ui.ui_factory.nested_progress_bar()
-        pb.update('Estimate')
+        #pb = ui.ui_factory.nested_progress_bar()
+        #pb.update('Estimate')
 
         for substream_type, substream in stream:
             if 'stream' in debug.debug_flags:
@@ -4368,8 +4368,8 @@ class StreamSink(object):
 
         # Indicate the record copy is complete.
         # We do this as max is only an estimate
-        pb.update('Estimate', rc.max, rc.max)
-        pb.finished()
+        #pb.update('Estimate', rc.max, rc.max)
+        #pb.finished()
 
         # Done inserting data, and the missing_keys calculations will try to
         # read back from the inserted data, so flush the writes to the new pack
@@ -4477,6 +4477,7 @@ class StreamSource(object):
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
+        self._record_counter = RecordCounter()
 
     def delta_on_metadata(self):
         """Return True if delta's are permitted on metadata streams.

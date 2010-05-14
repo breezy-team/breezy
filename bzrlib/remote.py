@@ -1980,7 +1980,8 @@ class RemoteStreamSource(repository.StreamSource):
         if response_tuple[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         byte_stream = response_handler.read_streamed_body()
-        src_format, stream = smart_repo._byte_stream_to_stream(byte_stream)
+        src_format, stream = smart_repo._byte_stream_to_stream(byte_stream,
+            self._record_counter)
         if src_format.network_name() != repo._format.network_name():
             raise AssertionError(
                 "Mismatched RemoteRepository and stream src %r, %r" % (

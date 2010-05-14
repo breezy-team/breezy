@@ -1655,19 +1655,19 @@ class GroupCompressVersionedFiles(VersionedFiles):
         reuse_this_block = reuse_blocks
         counter = 0
         key_count = 0
-        if record_counter and record_counter.max > 0:
-            pb = ui.ui_factory.nested_progress_bar()
-            pb.update('', record_counter.current, record_counter.max)
+        #if record_counter and record_counter.max > 0:
+        #    pb = ui.ui_factory.nested_progress_bar()
+        #    pb.update('', record_counter.current, record_counter.max)
         for record in stream:
             # update progressbar only every STEP records
-            if record_counter and record_counter.max > 0:
-                if counter == record_counter.STEP:
-                    record_counter.increment(counter)
-                    pb.update('', record_counter.current, record_counter.max)
-                    counter = 0
-                counter += 1
-            if stream_type == 'revisions':
-                key_count += 1
+            #if record_counter and record_counter.max > 0:
+            #    if counter == record_counter.STEP:
+            #        record_counter.increment(counter)
+            #        pb.update('', record_counter.current, record_counter.max)
+            #        counter = 0
+            #    counter += 1
+            #if stream_type == 'revisions':
+            #    key_count += 1
 
             # Raise an error when a record is missing.
             if record.storage_kind == 'absent':
@@ -1775,11 +1775,11 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if len(keys_to_add):
             flush()
         self._compressor = None
-        if record_counter and record_counter.max > 0:
-            pb.finished()
-        if stream_type == 'revisions':
-            record_counter.setup(key_count,
-                record_counter.current)
+        #if record_counter and record_counter.max > 0:
+        #    pb.finished()
+        #if stream_type == 'revisions':
+        #    record_counter.setup(key_count,
+        #        record_counter.current)
 
 
     def iter_lines_added_or_present_in_keys(self, keys, pb=None):
