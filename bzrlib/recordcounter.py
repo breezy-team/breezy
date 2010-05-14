@@ -42,7 +42,7 @@ class RecordCounter(object):
         # be improved but this should work well for most cases.
         return int(key_count * 10.3)
 
-    def setup(self, key_count, current):
+    def setup(self, key_count, current=0):
         """Setup RecordCounter with basic estimate of work pending.
 
         Setup self.max and self.current to reflect the amount of work

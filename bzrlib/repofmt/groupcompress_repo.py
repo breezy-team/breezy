@@ -1106,13 +1106,28 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         yield 'chk_bytes', _get_parent_id_basename_to_file_id_pages()
 
     def get_stream(self, search):
+        def wrap_and_count(pb, rc, stream):
+            count = 0
+            for record in stream:
+                if count == rc.STEP:
+                    rc.increment(count)
+                    pb.update('Estimate', rc.current, rc.max)
+                    count = 0
+                count += 1
+                yield record
+
         revision_ids = search.get_keys()
+        pb = ui.ui_factory.nested_progress_bar()
+        rc = self._record_counter
+        self._record_counter.setup(len(revision_ids))
         for stream_info in self._fetch_revision_texts(revision_ids):
-            yield stream_info
+            yield (stream_info[0],
+                wrap_and_count(pb, rc, stream_info[1]))
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
         self.from_repository.revisions.clear_cache()
         self.from_repository.signatures.clear_cache()
-        yield self._get_inventory_stream(self._revision_keys)
+        s = self._get_inventory_stream(self._revision_keys)
+        yield (s[0], wrap_and_count(pb, rc, s[1]))
         self.from_repository.inventories.clear_cache()
         # TODO: The keys to exclude might be part of the search recipe
         # For now, exclude all parents that are at the edge of ancestry, for
@@ -1121,10 +1136,13 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         parent_keys = from_repo._find_parent_keys_of_revisions(
                         self._revision_keys)
         for stream_info in self._get_filtered_chk_streams(parent_keys):
-            yield stream_info
+            yield (stream_info[0], wrap_and_count(pb, rc, stream_info[1]))
         self.from_repository.chk_bytes.clear_cache()
-        yield self._get_text_stream()
+        s = self._get_text_stream()
+        yield (s[0], wrap_and_count(pb, rc, s[1]))
         self.from_repository.texts.clear_cache()
+        pb.update('Done', rc.max, rc.max)
+        pb.finished()
 
     def get_stream_for_missing_keys(self, missing_keys):
         # missing keys can only occur when we are byte copying and not
