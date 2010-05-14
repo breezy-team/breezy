@@ -469,7 +469,7 @@ def split(url, exclude_trailing_slash=True):
     return url_base + head, tail
 
 
-def split_subsegments(url):
+def split_segment_parameters_raw(url):
     """Split the subsegment of the last segment of a URL.
 
     :param url: A relative or absolute URL
@@ -488,7 +488,7 @@ def split_segment_parameters(url):
     :param url: A relative or absolute URL
     :return: (url, segment_parameters)
     """
-    (base_url, subsegments) = split_subsegments(url)
+    (base_url, subsegments) = split_segment_parameters_raw(url)
     parameters = {}
     for subsegment in subsegments:
         (key, value) = subsegment.split("=", 1)
@@ -496,9 +496,10 @@ def split_segment_parameters(url):
     return (base_url, parameters)
 
 
-def join_subsegments(base, *subsegments):
+def join_segment_parameters_raw(base, *subsegments):
     """Create a new URL by adding subsegments to an existing one.
 
+    :note: You probably want to use join_segment_parameters instead.
     """
     if not subsegments:
         return base
@@ -523,7 +524,7 @@ def join_segment_parameters(url, parameters):
             raise errors.InvalidURLJoin("= exists in parameter key", url,
                 parameters)
         new_parameters[key] = value
-    return join_subsegments(base, 
+    return join_segment_parameters_raw(base, 
         *["%s=%s" % item for item in new_parameters.items()])
 
 
