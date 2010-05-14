@@ -1002,6 +1002,8 @@ class TestReadonlyHttpMixin(object):
         readonly_vf = self.get_factory()('foo', get_transport(
                 self.get_readonly_url('.')))
         self.assertEqual([], readonly_vf.versions())
+        import time
+        time.sleep(1)
         # now with feeling.
         vf.add_lines('1', [], ['a\n'])
         vf.add_lines('2', ['1'], ['b\n', 'a\n'])
@@ -1016,7 +1018,7 @@ class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
         return WeaveFile('foo', get_transport(self.get_url('.')), create=True,
-            get_scope=self.get_transaction, access_mode='r+')
+            get_scope=self.get_transaction)
 
     def get_factory(self):
         return WeaveFile
