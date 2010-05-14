@@ -664,7 +664,7 @@ class DiffText(DiffPath):
             from_text = _get_text(self.old_tree, from_file_id, from_path)
             to_text = _get_text(self.new_tree, to_file_id, to_path)
             self.text_differ(from_label, from_text, to_label, to_text,
-                             self.to_file)
+                             self.to_file, path_encoding=self.path_encoding)
         except errors.BinaryFile:
             self.to_file.write(
                   ("Binary files %s and %s differ\n" %
