@@ -446,11 +446,11 @@ class SFTPServer(test_server.TestServer):
                 'the local current working directory.' % (backing_server,))
         self._original_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
         ssh._ssh_vendor_manager._cached_ssh_vendor = self._vendor
-        # FIXME: the following block should certainly just be self._homedir =
-        # osutils.getcwd() but that fails badly on Unix -- vila 20100224
         if sys.platform == 'win32':
             # Win32 needs to use the UNICODE api
             self._homedir = os.getcwdu()
+            # Now, get the right pathseps.
+            self._homedir = osutils.normpath(self._homedir)
         else:
             # But Linux SFTP servers should just deal in bytestreams
             self._homedir = os.getcwd()
