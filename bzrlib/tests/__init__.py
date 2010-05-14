@@ -3700,6 +3700,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_export',
         'bzrlib.tests.test_extract',
         'bzrlib.tests.test_fetch',
+        'bzrlib.tests.test_fixtures',
         'bzrlib.tests.test_fifo_cache',
         'bzrlib.tests.test_filters',
         'bzrlib.tests.test_ftp_transport',

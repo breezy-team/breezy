@@ -201,6 +201,9 @@ Internals
 Testing
 *******
 
+* Add ``bzrlib.tests.fixtures`` to hold code for setting up objects
+  to test.  (Martin Pool)
+
 * Added ``bzrlib.tests.matchers`` as a place to put matchers, along with
   our first in-tree matcher. See the module docstring for details.
   (Robert Collins)
