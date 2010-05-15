@@ -2,15 +2,6 @@
 Bazaar Code Style Guide
 ***********************
 
-hasattr and getattr
-===================
-
-``hasattr`` should not be used because it swallows exceptions including
-``KeyboardInterrupt``.  Instead, say something like ::
-
-  if getattr(thing, 'name', None) is None
-
-
 Code layout
 ===========
 
@@ -82,29 +73,14 @@ keyword name and the value::
 
     call(1, 3, cheese=quark)
 
-In emacs::
 
-    ;(defface my-invalid-face
-    ;  '((t (:background "Red" :underline t)))
-    ;  "Face used to highlight invalid constructs or other uglyties"
-    ;  )
+hasattr and getattr
+===================
 
-    (defun my-python-mode-hook ()
-     ;; setup preferred indentation style.
-     (setq fill-column 79)
-     (setq indent-tabs-mode nil) ; no tabs, never, I will not repeat
-    ;  (font-lock-add-keywords 'python-mode
-    ;                         '(("^\\s *\t" . 'my-invalid-face) ; Leading tabs
-    ;                            ("[ \t]+$" . 'my-invalid-face)  ; Trailing spaces
-    ;                            ("^[ \t]+$" . 'my-invalid-face)); Spaces only
-    ;                          )
-     )
+``hasattr`` should not be used because it swallows exceptions including
+``KeyboardInterrupt``.  Instead, say something like ::
 
-    (add-hook 'python-mode-hook 'my-python-mode-hook)
-
-The lines beginning with ';' are comments. They can be activated
-if one want to have a strong notice of some tab/space usage
-violations.
+  if getattr(thing, 'name', None) is None
 
 
 Module Imports
@@ -191,14 +167,9 @@ Factories
 
 In some places we have variables which point to callables that construct
 new instances.  That is to say, they can be used a lot like class objects,
-but they shouldn't be *named* like classes::
-
-> I think that things named FooBar should create instances of FooBar when
-> called. Its plain confusing for them to do otherwise. When we have
-> something that is going to be used as a class - that is, checked for via
-> isinstance or other such idioms, them I would call it foo_class, so that
-> it is clear that a callable is not sufficient. If it is only used as a
-> factory, then yes, foo_factory is what I would use.
+but they shouldn't be *named* like classes.  Things called ``FooBar`` should
+create an instance of ``FooBar``.  A factory method that might create a
+``FooBar`` or might make something else should be called ``foo_factory``.
 
 
 Registries
@@ -355,3 +326,59 @@ All code should be exercised by the test suite.  See the `Bazaar Testing
 Guide <http://doc.bazaar-vcs.org/developers/testing.html>`_ for detailed
 information about writing tests.
 
+
+Assertions
+==========
+
+Do not use the Python ``assert`` statement, either in tests or elsewhere.
+A source test checks that it is not used.  It is ok to explicitly raise
+AssertionError.
+
+Rationale:
+
+ * It makes the behaviour vary depending on whether bzr is run with -O
+   or not, therefore giving a chance for bugs that occur in one case or
+   the other, several of which have already occurred: assertions with
+   side effects, code which can't continue unless the assertion passes,
+   cases where we should give the user a proper message rather than an
+   assertion failure.
+ * It's not that much shorter than an explicit if/raise.
+ * It tends to lead to fuzzy thinking about whether the check is
+   actually needed or not, and whether it's an internal error or not
+ * It tends to cause look-before-you-leap patterns.
+ * It's unsafe if the check is needed to protect the integrity of the
+   user's data.
+ * It tends to give poor messages since the developer can get by with
+   no explanatory text at all.
+ * We can't rely on people always running with -O in normal use, so we
+   can't use it for tests that are actually expensive.
+ * Expensive checks that help developers are better turned on from the
+   test suite or a -D flag.
+ * If used instead of ``self.assert*()`` in tests it makes them falsely pass with -O.
+
+emacs setup
+===========
+
+In emacs::
+
+    ;(defface my-invalid-face
+    ;  '((t (:background "Red" :underline t)))
+    ;  "Face used to highlight invalid constructs or other uglyties"
+    ;  )
+
+    (defun my-python-mode-hook ()
+     ;; setup preferred indentation style.
+     (setq fill-column 79)
+     (setq indent-tabs-mode nil) ; no tabs, never, I will not repeat
+    ;  (font-lock-add-keywords 'python-mode
+    ;                         '(("^\\s *\t" . 'my-invalid-face) ; Leading tabs
+    ;                            ("[ \t]+$" . 'my-invalid-face)  ; Trailing spaces
+    ;                            ("^[ \t]+$" . 'my-invalid-face)); Spaces only
+    ;                          )
+     )
+
+    (add-hook 'python-mode-hook 'my-python-mode-hook)
+
+The lines beginning with ';' are comments. They can be activated
+if one want to have a strong notice of some tab/space usage
+violations.
