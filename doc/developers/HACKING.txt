@@ -1054,12 +1054,6 @@ Planning Releases
 =================
 
 
-Using Releases and Milestones in Launchpad
-------------------------------------------
-
-TODO ... (Exact policies still under discussion)
-
-
 Bug Triage
 ----------
 
