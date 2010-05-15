@@ -35,8 +35,6 @@ overall Bazaar Platform. Here are some links to browse:
 
 * Bug Tracker for the core product - https://bugs.launchpad.net/bzr/
 
-* Blueprint Tracker for the core product - https://blueprints.launchpad.net/bzr/
-
 If nothing else, perhaps you'll find inspiration in how other developers
 have solved their challenges.
 
@@ -1436,34 +1434,6 @@ PQM's queue.
 
 When PQM completes processing a change, an email is sent to you with the
 results.
-
-
-Reviewing Blueprints
-====================
-
-Blueprint Tracking Using Launchpad
-----------------------------------
-
-New features typically require a fair amount of discussion, design and
-debate. For Bazaar, that information is often captured in a so-called
-"blueprint" on our Wiki. Overall tracking of blueprints and their status
-is done using Launchpad's relevant tracker,
-https://blueprints.launchpad.net/bzr/. Once a blueprint for ready for
-review, please announce it on the mailing list.
-
-Alternatively, send an email beginning with [RFC] with the proposal to the
-list. In some cases, you may wish to attach proposed code  or a proposed
-developer document if that best communicates the idea. Debate can then
-proceed using the normal merge review processes.
-
-
-Recording Blueprint Review Feedback
------------------------------------
-
-Unlike its Bug Tracker, Launchpad's Blueprint Tracker doesn't currently
-(Jun 2007) support a chronological list of comment responses. Review
-feedback can either be recorded on the Wiki hosting the blueprints or by
-using Launchpad's whiteboard feature.
 
 
 Planning Releases
