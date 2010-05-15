@@ -24,6 +24,7 @@ Working on Bazaar
    HACKING
    testing
    code-review
+   code-style
 
 * `Contributing to Bazaar Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
 
