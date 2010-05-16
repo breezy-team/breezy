@@ -36,7 +36,7 @@ cdef extern from "Python.h":
     int PyString_CheckExact(object)
     char *PyString_AS_STRING(object s)
     Py_ssize_t PyString_GET_SIZE(object)
-    unsigned long PyInt_AsUnsignedLongMask(object) except? -1
+    long PyInt_AS_LONG(object)
 
     int PyDict_SetItem(object d, object k, object v) except -1
 
@@ -96,7 +96,7 @@ def _search_key_16(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
+        crc_val = PyInt_AS_LONG(crc32(key[i]))
         # Hex(val) order
         sprintf(c_out, '%08X', crc_val)
         c_out = c_out + 8
@@ -121,7 +121,7 @@ def _search_key_255(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
+        crc_val = PyInt_AS_LONG(crc32(key[i]))
         # MSB order
         c_out[0] = (crc_val >> 24) & 0xFF
         c_out[1] = (crc_val >> 16) & 0xFF
