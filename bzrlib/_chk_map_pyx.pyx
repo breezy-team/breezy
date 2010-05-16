@@ -40,29 +40,14 @@ cdef extern from "Python.h":
 
     int PyDict_SetItem(object d, object k, object v) except -1
 
-    object PyTuple_New(Py_ssize_t count)
-    void PyTuple_SET_ITEM(object t, Py_ssize_t offset, object)
-
     void Py_INCREF(object)
 
-    PyObject * PyTuple_GET_ITEM_ptr "PyTuple_GET_ITEM" (object t,
-                                                        Py_ssize_t offset)
-    int PyString_CheckExact_ptr "PyString_CheckExact" (PyObject *p)
-    Py_ssize_t PyString_GET_SIZE_ptr "PyString_GET_SIZE" (PyObject *s)
-    char *PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *s)
     object PyString_FromStringAndSize(char*, Py_ssize_t)
 
 # cimport all of the definitions we will need to access
 from _static_tuple_c cimport StaticTuple,\
     import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
-
-cdef extern from "_static_tuple_c.h":
-    # Defined explicitly rather than cimport-ing. Trying to use cimport, the
-    # type for PyObject is a different class that happens to have the same
-    # name...
-    PyObject * StaticTuple_GET_ITEM_ptr "StaticTuple_GET_ITEM" (StaticTuple,
-                                                                Py_ssize_t)
 
 cdef object crc32
 from zlib import crc32
