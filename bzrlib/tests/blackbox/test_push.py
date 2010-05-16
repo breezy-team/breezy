@@ -661,27 +661,35 @@ class TestPushStrictMixin(object):
     _default_wd = 'local'
     _default_errors = ['Working tree ".*/local/" has uncommitted '
                        'changes \(See bzr status\)\.',]
-    _default_pushed_revid = 'modified'
+    _default_additional_error = 'Use --no-strict to force the push.\n'
+    _default_additional_warning = 'Uncommitted changes will not be pushed.'
+
 
     def assertPushFails(self, args):
-        ret = self.run_bzr_error(self._default_errors,
-                                 self._default_command + args,
-                                 working_dir=self._default_wd, retcode=3)
+        out, err = self.run_bzr_error(self._default_errors,
+                                      self._default_command + args,
+                                      working_dir=self._default_wd, retcode=3)
+        self.assertContainsRe(err, self._default_additional_error)
 
-    def assertPushSucceeds(self, args, pushed_revid=None, with_warning=False):
+    def assertPushSucceeds(self, args, with_warning=False, revid_to_push=None):
         if with_warning:
             error_regexes = self._default_errors
         else:
             error_regexes = []
-        ret = self.run_bzr(self._default_command + args,
-                           working_dir=self._default_wd,
-                           error_regexes=error_regexes)
-        if pushed_revid is None:
-            pushed_revid = self._default_pushed_revid
-        tree_to = workingtree.WorkingTree.open('to')
-        repo_to = tree_to.branch.repository
-        self.assertTrue(repo_to.has_revision(pushed_revid))
-        self.assertEqual(tree_to.branch.last_revision_info()[1], pushed_revid)
+        out, err = self.run_bzr(self._default_command + args,
+                                working_dir=self._default_wd,
+                                error_regexes=error_regexes)
+        if with_warning:
+            self.assertContainsRe(err, self._default_additional_warning)
+        else:
+            self.assertNotContainsRe(err, self._default_additional_warning)
+        branch_from = branch.Branch.open(self._default_wd)
+        if revid_to_push is None:
+            revid_to_push = branch_from.last_revision()
+        branch_to = branch.Branch.open('to')
+        repo_to = branch_to.repository
+        self.assertTrue(repo_to.has_revision(revid_to_push))
+        self.assertEqual(revid_to_push, branch_to.last_revision())
 
 
 
@@ -748,13 +756,12 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self._default_wd = 'checkout'
         self._default_errors = ["Working tree is out of date, please run"
                                 " 'bzr update'\.",]
-        self._default_pushed_revid = 'modified-in-local'
 
     def test_push_default(self):
         self.assertPushSucceeds([], with_warning=True)
 
     def test_push_with_revision(self):
-        self.assertPushSucceeds(['-r', 'revid:added'], pushed_revid='added')
+        self.assertPushSucceeds(['-r', 'revid:added'], revid_to_push='added')
 
     def test_push_no_strict(self):
         self.assertPushSucceeds(['--no-strict'])

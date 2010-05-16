@@ -1923,6 +1923,17 @@ class ReusingTransform(BzrError):
 class CantMoveRoot(BzrError):
 
     _fmt = "Moving the root directory is not supported at this time"
+    
+    
+class TransformRenameFailed(BzrError):
+
+    _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
+    
+    def __init__(self, from_path, to_path, why, errno):
+        self.from_path = from_path
+        self.to_path = to_path
+        self.why = why
+        self.errno = errno
 
 
 class BzrMoveFailedError(BzrError):
@@ -2176,7 +2187,7 @@ class CorruptRepository(BzrError):
 
     def __init__(self, repo):
         BzrError.__init__(self)
-        self.repo_path = repo.bzrdir.root_transport.base
+        self.repo_path = repo.user_url
 
 
 class InconsistentDelta(BzrError):
@@ -2754,7 +2765,7 @@ class BzrDirError(BzrError):
 
     def __init__(self, bzrdir):
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(bzrdir.root_transport.base,
+        display_url = urlutils.unescape_for_display(bzrdir.user_url,
                                                     'ascii')
         BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
 
@@ -2835,7 +2846,7 @@ class UncommittedChanges(BzrError):
             more = ' ' + more
         import bzrlib.urlutils as urlutils
         display_url = urlutils.unescape_for_display(
-            tree.bzrdir.root_transport.base, 'ascii')
+            tree.user_url, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
 
 
@@ -3133,4 +3144,11 @@ class NoColocatedBranchSupport(BzrError):
 
     def __init__(self, bzrdir):
         self.bzrdir = bzrdir
+
+class NoWhoami(BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+        "Please, set your name with the 'whoami' command.\n"
+        'E.g. bzr whoami "Your Name <name@example.com>"')
+
 

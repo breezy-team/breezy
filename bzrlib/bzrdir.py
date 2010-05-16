@@ -86,9 +86,42 @@ from bzrlib import (
     registry,
     symbol_versioning,
     )
+    
+    
+class ControlComponent(object):
+    """Abstract base class for control directory components.
+    
+    This provides interfaces that are common across bzrdirs, 
+    repositories, branches, and workingtree control directories.
+    
+    They all expose two urls and transports: the *user* URL is the 
+    one that stops above the control directory (eg .bzr) and that 
+    should normally be used in messages, and the *control* URL is
+    under that in eg .bzr/checkout and is used to read the control
+    files.
+    
+    This can be used as a mixin and is intended to fit with 
+    foreign formats.
+    """
+    
+    @property
+    def control_transport(self):
+        raise NotImplementedError
+   
+    @property
+    def control_url(self):
+        return self.control_transport.base
+    
+    @property
+    def user_transport(self):
+        raise NotImplementedError
+        
+    @property
+    def user_url(self):
+        return self.user_transport.base
+    
 
-
-class BzrDir(object):
+class BzrDir(ControlComponent):
     """A .bzr control diretory.
 
     BzrDir instances let you create or open any of the things that can be
@@ -261,8 +294,8 @@ class BzrDir(object):
                 # copied, and finally if we are copying up to a specific
                 # revision_id then we can use the pending-ancestry-result which
                 # does not require traversing all of history to describe it.
-                if (result_repo.bzrdir.root_transport.base ==
-                    result.root_transport.base and not require_stacking and
+                if (result_repo.user_url == result.user_url
+                    and not require_stacking and
                     revision_id is not None):
                     fetch_spec = graph.PendingAncestryResult(
                         [revision_id], local_repo)
@@ -458,7 +491,7 @@ class BzrDir(object):
             stop = False
             stack_on = config.get_default_stack_on()
             if stack_on is not None:
-                stack_on_pwd = found_bzrdir.root_transport.base
+                stack_on_pwd = found_bzrdir.user_url
                 stop = True
             # does it have a repository ?
             try:
@@ -466,8 +499,8 @@ class BzrDir(object):
             except errors.NoRepositoryPresent:
                 repository = None
             else:
-                if ((found_bzrdir.root_transport.base !=
-                     self.root_transport.base) and not repository.is_shared()):
+                if (found_bzrdir.user_url != self.user_url 
+                    and not repository.is_shared()):
                     # Don't look higher, can't use a higher shared repo.
                     repository = None
                     stop = True
@@ -669,7 +702,7 @@ class BzrDir(object):
             if stop:
                 return result
             next_transport = found_bzrdir.root_transport.clone('..')
-            if (found_bzrdir.root_transport.base == next_transport.base):
+            if (found_bzrdir.user_url == next_transport.base):
                 # top of the file system
                 return None
             # find the next containing bzrdir
@@ -692,7 +725,7 @@ class BzrDir(object):
                 repository = found_bzrdir.open_repository()
             except errors.NoRepositoryPresent:
                 return None, False
-            if found_bzrdir.root_transport.base == self.root_transport.base:
+            if found_bzrdir.user_url == self.user_url:
                 return repository, True
             elif repository.is_shared():
                 return repository, True
@@ -704,13 +737,18 @@ class BzrDir(object):
             raise errors.NoRepositoryPresent(self)
         return found_repo
 
-    def get_branch_reference(self):
+    def get_branch_reference(self, name=None):
         """Return the referenced URL for the branch in this bzrdir.
 
+        :param name: Optional colocated branch name
         :raises NotBranchError: If there is no Branch.
+        :raises NoColocatedBranchSupport: If a branch name was specified
+            but colocated branches are not supported.
         :return: The URL the branch in this bzrdir references if it is a
             reference branch, or None for regular branches.
         """
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         return None
 
     def get_branch_transport(self, branch_format, name=None):
@@ -814,9 +852,19 @@ class BzrDir(object):
         :param _transport: the transport this dir is based at.
         """
         self._format = _format
+        # these are also under the more standard names of 
+        # control_transport and user_transport
         self.transport = _transport.clone('.bzr')
         self.root_transport = _transport
         self._mode_check_done = False
+        
+    @property 
+    def user_transport(self):
+        return self.root_transport
+        
+    @property
+    def control_transport(self):
+        return self.transport
 
     def is_control_filename(self, filename):
         """True if filename is the name of a path which is reserved for bzrdir's.
@@ -951,8 +999,10 @@ class BzrDir(object):
                 raise errors.NotBranchError(path=url)
             a_transport = new_t
 
-    def _get_tree_branch(self):
+    def _get_tree_branch(self, name=None):
         """Return the branch and tree, if any, for this bzrdir.
+
+        :param name: Name of colocated branch to open.
 
         Return None for tree if not present or inaccessible.
         Raise NotBranchError if no branch is present.
@@ -962,9 +1012,12 @@ class BzrDir(object):
             tree = self.open_workingtree()
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             tree = None
-            branch = self.open_branch()
+            branch = self.open_branch(name=name)
         else:
-            branch = tree.branch
+            if name is not None:
+                branch = self.open_branch(name=name)
+            else:
+                branch = tree.branch
         return tree, branch
 
     @classmethod
@@ -1330,9 +1383,50 @@ class BzrDirHooks(hooks.Hooks):
         self.create_hook(hooks.HookPoint('pre_open',
             "Invoked before attempting to open a BzrDir with the transport "
             "that the open will use.", (1, 14), None))
+        self.create_hook(hooks.HookPoint('post_repo_init',
+            "Invoked after a repository has been initialized. "
+            "post_repo_init is called with a "
+            "bzrlib.bzrdir.RepoInitHookParams.",
+            (2, 2), None))
 
 # install the default hooks
 BzrDir.hooks = BzrDirHooks()
+
+
+class RepoInitHookParams(object):
+    """Object holding parameters passed to *_repo_init hooks.
+
+    There are 4 fields that hooks may wish to access:
+
+    :ivar repository: Repository created
+    :ivar format: Repository format
+    :ivar bzrdir: The bzrdir for the repository
+    :ivar shared: The repository is shared
+    """
+
+    def __init__(self, repository, format, a_bzrdir, shared):
+        """Create a group of RepoInitHook parameters.
+
+        :param repository: Repository created
+        :param format: Repository format
+        :param bzrdir: The bzrdir for the repository
+        :param shared: The repository is shared
+        """
+        self.repository = repository
+        self.format = format
+        self.bzrdir = a_bzrdir
+        self.shared = shared
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        if self.repository:
+            return "<%s for %s>" % (self.__class__.__name__,
+                self.repository)
+        else:
+            return "<%s for %s>" % (self.__class__.__name__,
+                self.bzrdir)
 
 
 class BzrDirPreSplitOut(BzrDir):
@@ -1652,13 +1746,13 @@ class BzrDirMeta1(BzrDir):
     def destroy_workingtree_metadata(self):
         self.transport.delete_tree('checkout')
 
-    def find_branch_format(self):
+    def find_branch_format(self, name=None):
         """Find the branch 'format' for this bzrdir.
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
         from bzrlib.branch import BranchFormat
-        return BranchFormat.find_format(self)
+        return BranchFormat.find_format(self, name=name)
 
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
@@ -1666,11 +1760,11 @@ class BzrDirMeta1(BzrDir):
                                      lockable_files.TransportLock)
         return temp_control._dir_mode
 
-    def get_branch_reference(self):
+    def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
         from bzrlib.branch import BranchFormat
-        format = BranchFormat.find_format(self)
-        return format.get_reference(self)
+        format = BranchFormat.find_format(self, name=name)
+        return format.get_reference(self, name=name)
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
@@ -1770,7 +1864,7 @@ class BzrDirMeta1(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        format = self.find_branch_format()
+        format = self.find_branch_format(name=name)
         self._check_supported(format, unsupported)
         return format.open(self, name=name,
             _found=True, ignore_fallbacks=ignore_fallbacks)
@@ -2651,7 +2745,7 @@ class ConvertBzrDir4To5(Converter):
             if isinstance(self.bzrdir.transport, local.LocalTransport):
                 self.bzrdir.get_workingtree_transport(None).delete('stat-cache')
             self._convert_to_weaves()
-            return BzrDir.open(self.bzrdir.root_transport.base)
+            return BzrDir.open(self.bzrdir.user_url)
         finally:
             self.pb.finished()
 
@@ -2904,7 +2998,7 @@ class ConvertBzrDir5To6(Converter):
         try:
             ui.ui_factory.note('starting upgrade from format 5 to 6')
             self._convert_to_prefixed()
-            return BzrDir.open(self.bzrdir.root_transport.base)
+            return BzrDir.open(self.bzrdir.user_url)
         finally:
             pb.finished()
 
@@ -3032,7 +3126,7 @@ class ConvertBzrDir6ToMeta(Converter):
             BzrDirMetaFormat1().get_format_string(),
             mode=self.file_mode)
         self.pb.finished()
-        return BzrDir.open(self.bzrdir.root_transport.base)
+        return BzrDir.open(self.bzrdir.user_url)
 
     def make_lock(self, name):
         """Make a lock for the new control dir name."""
@@ -3619,7 +3713,7 @@ class RepositoryAcquisitionPolicy(object):
             try:
                 stack_on = urlutils.rebase_url(self._stack_on,
                     self._stack_on_pwd,
-                    branch.bzrdir.root_transport.base)
+                    branch.user_url)
             except errors.InvalidRebaseURLs:
                 stack_on = self._get_full_stack_on()
         try:

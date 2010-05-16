@@ -609,12 +609,13 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
                 l.attempt_lock()
         test = TestDanglingLock('test_function')
         result = test.run()
+        total_failures = result.errors + result.failures
         if self._lock_check_thorough:
-            self.assertEqual(1, len(result.errors))
+            self.assertLength(1, total_failures)
         else:
             # When _lock_check_thorough is disabled, then we don't trigger a
             # failure
-            self.assertEqual(0, len(result.errors))
+            self.assertLength(0, total_failures)
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
@@ -2773,6 +2774,10 @@ class TestTestSuite(tests.TestCase):
         # Test that a plausible list of modules to doctest is returned
         # by _test_suite_modules_to_doctest.
         test_list = tests._test_suite_modules_to_doctest()
+        if __doc__ is None:
+            # When docstrings are stripped, there are no modules to doctest
+            self.assertEqual([], test_list)
+            return
         self.assertSubset([
             'bzrlib.timestamp',
             ],
@@ -2795,6 +2800,8 @@ class TestTestSuite(tests.TestCase):
         self.overrideAttr(tests, '_test_suite_testmod_names', testmod_names)
         def doctests():
             calls.append("modules_to_doctest")
+            if __doc__ is None:
+                return []
             return ['bzrlib.timestamp']
         self.overrideAttr(tests, '_test_suite_modules_to_doctest', doctests)
         expected_test_list = [
@@ -2803,11 +2810,14 @@ class TestTestSuite(tests.TestCase):
             ('bzrlib.tests.per_transport.TransportTests'
              '.test_abspath(LocalTransport,LocalURLServer)'),
             'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
-            # modules_to_doctest
-            'bzrlib.timestamp.format_highres_date',
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
+        if __doc__ is not None:
+            expected_test_list.extend([
+                # modules_to_doctest
+                'bzrlib.timestamp.format_highres_date',
+                ])
         suite = tests.test_suite()
         self.assertEqual(set(["testmod_names", "modules_to_doctest"]),
             set(calls))

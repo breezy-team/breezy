@@ -670,7 +670,7 @@ class ErrorWithBadFormat(errors.BzrError):
 
 
 class ErrorWithNoFormat(errors.BzrError):
-    """This class has a docstring but no format string."""
+    __doc__ = """This class has a docstring but no format string."""
 
 
 class TestErrorFormatting(TestCase):
@@ -712,4 +712,10 @@ class TestErrorFormatting(TestCase):
     def test_file_timestamp_unavailable(self):            
         e = errors.FileTimestampUnavailable("/path/foo")
         self.assertEquals("The filestamp for /path/foo is not available.",
+            str(e))
+            
+    def test_transform_rename_failed(self):
+        e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
+        self.assertEquals(
+            u"Failed to rename from to to: readonly file",
             str(e))

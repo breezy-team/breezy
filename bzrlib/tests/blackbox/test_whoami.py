@@ -20,6 +20,7 @@
 import os
 
 import bzrlib
+from bzrlib import osutils
 from bzrlib.branch import Branch
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -111,3 +112,11 @@ class TestWhoami(ExternalBase):
         self.assertEquals('"Branch Identity" does not seem to contain an '
                           'email address.  This is allowed, but not '
                           'recommended.\n', display)
+
+    def test_whoami_not_set(self):
+        """Ensure whoami error if username is not set.
+        """
+        osutils.set_or_unset_env('EMAIL', None)
+        osutils.set_or_unset_env('BZR_EMAIL', None)
+        out, err = self.run_bzr(['whoami'], 3)
+        self.assertContainsRe(err, 'Unable to determine your name')

@@ -407,8 +407,8 @@ class Command(object):
 
     def __init__(self):
         """Construct an instance of this command."""
-        if self.__doc__ == Command.__doc__:
-            warn("No help message set for %r" % self)
+        if self.__doc__ == Command.__doc__ or not self.__doc__:
+            raise ValueError("No help message set for %r" % self)
         # List of standard options directly supported
         self.supported_std_options = []
         self._setup_run()
@@ -483,7 +483,9 @@ class Command(object):
         """
         doc = self.help()
         if doc is None:
-            raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
+            raise NotImplementedError(
+                "self.help() returned None -  no detailed help yet for %r" %
+                self.name())
 
         # Extract the summary (purpose) and sections out from the text
         purpose,sections,order = self._get_help_parts(doc)
@@ -1077,15 +1079,9 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     if not opt_no_aliases:
         alias_argv = get_alias(argv[0])
         if alias_argv:
-            user_encoding = osutils.get_user_encoding()
-            alias_argv = [a.decode(user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
     cmd = argv.pop(0)
-    # We want only 'ascii' command names, but the user may have typed
-    # in a Unicode name. In that case, they should just get a
-    # 'command not found' error later.
-
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
     run = cmd_obj.run_argv_aliases
     run_argv = [argv, alias_argv]

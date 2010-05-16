@@ -14,20 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import errno
 import os
 import re
 import stat
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 import sys
 import time
 import codecs
-import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
-import errno
+import getpass
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
                     normpath as _nt_normpath,
@@ -39,7 +38,6 @@ import shutil
 from shutil import (
     rmtree,
     )
-import signal
 import socket
 import subprocess
 import tempfile
@@ -1132,7 +1130,7 @@ def contains_linebreaks(s):
 
 
 def relpath(base, path):
-    """Return path relative to base, or raise exception.
+    """Return path relative to base, or raise PathNotChild exception.
 
     The path may be either an absolute path or a path relative to the
     current working directory.
@@ -1140,6 +1138,9 @@ def relpath(base, path):
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
+
+    NOTE: `base` should not have a trailing slash otherwise you'll get
+    PathNotChild exceptions regardless of `path`.
     """
 
     if len(base) < MIN_ABS_PATHLENGTH:
@@ -1366,7 +1367,12 @@ def set_signal_handler(signum, handler, restart_syscall=True):
         platform or Python version.
     """
     try:
+        import signal
         siginterrupt = signal.siginterrupt
+    except ImportError:
+        # This python implementation doesn't provide signal support, hence no
+        # handler exists
+        return None
     except AttributeError:
         # siginterrupt doesn't exist on this platform, or for this version
         # of Python.
@@ -1483,18 +1489,20 @@ def _terminal_size_changed(signum, frame):
 
 
 _registered_sigwinch = False
-
 def watch_sigwinch():
-    """Register for SIGWINCH, once and only once."""
+    """Register for SIGWINCH, once and only once.
+
+    Do nothing if the signal module is not available.
+    """
     global _registered_sigwinch
     if not _registered_sigwinch:
-        if sys.platform == 'win32':
-            # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from
-            # ReadConsoleInput but I've no idea how to plug that in
-            # the current design -- vila 20091216
+        try:
+            import signal
+            if getattr(signal, "SIGWINCH", None) is not None:
+                set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
+        except ImportError:
+            # python doesn't provide signal support, nothing we can do about it
             pass
-        else:
-            set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
         _registered_sigwinch = True
 
 
@@ -1821,7 +1829,7 @@ def copy_tree(from_path, to_path, handlers={}):
             real_handlers[kind](abspath, relpath)
 
 
-def copy_ownership(dst, src=None):
+def copy_ownership_from_path(dst, src=None):
     """Copy usr/grp ownership from src file/dir to dst file/dir.
 
     If src is None, the containing directory is used as source. If chown
@@ -1841,30 +1849,6 @@ def copy_ownership(dst, src=None):
         chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
         trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
-
-
-def mkdir_with_ownership(path, ownership_src=None):
-    """Create the directory 'path' with specified ownership.
-
-    If ownership_src is given, copies (chown) usr/grp ownership
-    from 'ownership_src' to 'path'. If ownership_src is None, use the
-    containing dir ownership.
-    """
-    os.mkdir(path)
-    copy_ownership(path, ownership_src)
-
-
-def open_with_ownership(filename, mode='r', bufsize=-1, ownership_src=None):
-    """Open the file 'filename' with the specified ownership.
-
-    If ownership_src is specified, copy usr/grp ownership from ownership_src
-    to filename. If ownership_src is None, copy ownership from containing
-    directory.
-    Returns the opened file object.
-    """
-    f = open(filename, mode, bufsize)
-    copy_ownership(filename, ownership_src)
-    return f
 
 
 def path_prefix_key(path):
@@ -2301,3 +2285,15 @@ if sys.platform == 'win32':
         return os.fdopen(os.open(filename, flags), mode, bufsize)
 else:
     open_file = open
+
+
+def getuser_unicode():
+    """Return the username as unicode.
+    """
+    try:
+        user_encoding = get_user_encoding()
+        username = getpass.getuser().decode(user_encoding)
+    except UnicodeDecodeError:
+        raise errors.BzrError("Can't decode username as %s." % \
+                user_encoding)
+    return username

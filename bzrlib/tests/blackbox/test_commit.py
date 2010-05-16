@@ -18,6 +18,7 @@
 """Tests for the commit CLI of bzr."""
 
 import os
+import re
 import sys
 
 from bzrlib import (
@@ -106,6 +107,40 @@ class TestCommit(ExternalBase):
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
+
+    def test_unicode_commit_message_is_filename(self):
+        """Unicode commit message same as a filename (Bug #563646).
+        """
+        file_name = u'\N{euro sign}'
+        self.run_bzr(['init'])
+        open(file_name, 'w').write('hello world')
+        self.run_bzr(['add'])
+        out, err = self.run_bzr(['commit', '-m', file_name])
+        reflags = re.MULTILINE|re.DOTALL|re.UNICODE
+        te = osutils.get_terminal_encoding()
+        self.assertContainsRe(err.decode(te),
+            u'The commit message is a file name:',
+            flags=reflags)
+
+        # Run same test with a filename that causes encode
+        # error for the terminal encoding. We do this
+        # by forcing terminal encoding of ascii for
+        # osutils.get_terminal_encoding which is used
+        # by ui.text.show_warning
+        default_get_terminal_enc = osutils.get_terminal_encoding
+        try:
+            osutils.get_terminal_encoding = lambda: 'ascii'
+            file_name = u'foo\u1234'
+            open(file_name, 'w').write('hello world')
+            self.run_bzr(['add'])
+            out, err = self.run_bzr(['commit', '-m', file_name])
+            reflags = re.MULTILINE|re.DOTALL|re.UNICODE
+            te = osutils.get_terminal_encoding()
+            self.assertContainsRe(err.decode(te, 'replace'),
+                u'The commit message is a file name:',
+                flags=reflags)
+        finally:
+            osutils.get_terminal_encoding = default_get_terminal_enc
 
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught"""
@@ -710,3 +745,15 @@ altered in u2
         out, err = self.run_bzr_error(["empty commit message"],
             "commit tree/hello.txt", stdin="n\n")
         self.assertEqual(expected, tree.last_revision())
+
+    def test_commit_without_username(self):
+        """Ensure commit error if username is not set.
+        """
+        self.run_bzr(['init', 'foo'])
+        os.chdir('foo')
+        open('foo.txt', 'w').write('hello')
+        self.run_bzr(['add'])
+        osutils.set_or_unset_env('EMAIL', None)
+        osutils.set_or_unset_env('BZR_EMAIL', None)
+        out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
+        self.assertContainsRe(err, 'Unable to determine your name')
