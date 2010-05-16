@@ -96,6 +96,10 @@ Improvements
   less.)
   (Martin Pool, #553017)
 
+* No longer require zlib headers to build extensions, and remove the need
+  for seperate copy of zlib library on windows.
+  (John Arbash Meinel, Martin <gzlist@googlemail.com>, #66923)
+
 Documentation
 *************
 
