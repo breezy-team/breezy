@@ -4,16 +4,13 @@ Bazaar Architectural Overview
 
 This document describes the key classes and concepts within Bazaar.  It is
 intended to be useful to people working on the Bazaar codebase, or to
-people writing plugins.
+people writing plugins.  People writing plugins may also like to read the 
+guide to `Integrating with Bazaar <integrating.html>`_ for some specific
+recipes.
 
 If you have any questions, or if something seems to be incorrect, unclear
 or missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write
-to the Bazaar mailing list.  To propose a correction or addition to this
-document, send a merge request or new text to the mailing list.
-
-The current version of this document is available in the file
-``doc/developers/overview.txt`` in the source tree, and available online
-within the developer documentation, <http://doc.bazaar-vcs.org/developers/>.
+to the Bazaar mailing list.  
 
 
 Essential Domain Classes

@@ -396,3 +396,18 @@ In emacs::
 The lines beginning with ';' are comments. They can be activated
 if one want to have a strong notice of some tab/space usage
 violations.
+
+Portability Tips
+================
+
+The ``bzrlib.osutils`` module has many useful helper functions, including
+some more portable variants of functions in the standard library.
+
+In particular, don't use ``shutil.rmtree`` unless it's acceptable for it
+to fail on Windows if some files are readonly or still open elsewhere.
+Use ``bzrlib.osutils.rmtree`` instead.
+
+
+
+..
+   vim: ft=rst tw=74 ai

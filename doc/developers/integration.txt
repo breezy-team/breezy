@@ -2,11 +2,13 @@
 Integrating with Bazaar
 =======================
 
-This document provides an overview of the bzrlib api at a higher level
-than the docstrings.  It is intended to be 
-useful to someone developing either a plugin or some other piece of software
-that integrates with bzr.  If you want to know about a topic that's not 
-covered here, just ask us.
+This document provides some general observations on integrating with
+Bazaar and some recipes for typical tasks.  It is intended to be useful to
+someone developing either a plugin or some other piece of software that
+integrates with bzr.  If you want to know about a topic that's not covered
+here, just ask us.
+
+
 
 
 Starting with bzrlib
