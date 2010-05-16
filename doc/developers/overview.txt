@@ -13,24 +13,11 @@ or missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write
 to the Bazaar mailing list.  
 
 
-Essential Domain Classes
-########################
-
-The core domain objects within the bazaar model are:
-
-* Transport
-
-* Branch
-
-* Repository
-
-* WorkingTree
-
-Transports are explained below. See http://bazaar-vcs.org/Classes/
-for an introduction to the other key classes.
+Core classes
+############
 
 Transport
-#########
+=========
 
 The ``Transport`` layer handles access to local or remote directories.
 Each Transport object acts as a logical connection to a particular
@@ -43,7 +30,7 @@ working trees are always local and they are accessed through the regular
 Python file I/O mechanisms.
 
 Filenames vs URLs
-=================
+-----------------
 
 Transports work in terms of URLs.  Take note that URLs are by definition
 only ASCII - the decision of how to encode a Unicode string into a URL
@@ -80,14 +67,62 @@ elsewhere.  Information that Transports return, such as from ``list_dir``,
 is also in the form of URL components.
 
 
+WorkingTree
+===========
+
+A workingtree is a special type of Tree that's associated with a working
+directory on disk, where the user can directly modify the files. 
+
+Responsibilities:
+
+ * Maintaining a WorkingTree on disk at a file path.
+ * Maintaining the basis inventory (the inventory of the last commit done)
+ * Maintaining the working inventory.
+ * Maintaining the pending merges list.
+ * Maintaining the stat cache.
+ * Maintaining the last revision the working tree was updated to.
+ * Knows where its Branch is located.
+
+Dependencies:
+
+ * a Branch
+ * an MutableInventory
+ * local access to the working tree
+
+Branch
+======
+
+A Branch is a key user concept - its a single line of history that one or
+more people have been committing to. 
+
+A Branch is responsible for:
+
+ * Holding user preferences that are set in a Branch.
+ * Holding the 'tip': the last revision to be committed to this Branch. (And the revno of that revision.)
+ * Knowing how to open the Repository that holds its history.
+ * Allowing write locks to be taken out to prevent concurrent alterations to the branch.
+
+Depends on:
+ * URL access to its base directory.
+ * A Transport to access its files.
+ * A Repository to hold its history.
+
 Repository
-##########
+==========
 
 Repositories store committed history: file texts, revisions, inventories,
-and graph relationships between them.
+and graph relationships between them.  A repository holds a bag of
+revision data that can be pointed to by various branches:
+
+ * Maintains storage of various history data at a URL:
+   * Revisions (Must have a matching inventory)
+   * Digital Signatures
+   * Inventories for each Revision. (Must have all the file texts available).
+   * File texts
+ * Allows write locks to be taken out to prevent concurrent alterations to the repository.
 
 Stacked Repositories
-====================
+--------------------
 
 A repository can be configured to refer to a list of "fallback"
 repositories.  If a particular revision is not present in the original
