@@ -463,7 +463,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return (file_obj, stat_value)
 
     def get_file_text(self, file_id, path=None, filtered=True):
-        return self.get_file(file_id, path=path, filtered=filtered).read()
+        my_file = self.get_file(file_id, path=path, filtered=filtered)
+        try:
+            return my_file.read()
+        finally:
+            my_file.close()
 
     def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
