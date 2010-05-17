@@ -171,22 +171,22 @@ class LocalGitRepository(GitRepository):
     def has_signature_for_revision_id(self, revision_id):
         return False
 
-    def lookup_bzr_revision_id(self, bzr_revid):
+    def lookup_bzr_revision_id(self, bzr_revid, mapping=None):
         try:
             return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
         except errors.InvalidRevisionId:
-            mapping = self.get_mapping()
+            if mapping is None:
+                mapping = self.get_mapping()
             try:
                 return self._git.refs[mapping.revid_as_refname(bzr_revid)], mapping
             except KeyError:
                 # Update refs from Git commit objects
                 # FIXME: Hitting this a lot will be very inefficient...
-                for git_sha, bzr_revid in self._iter_revision_ids():
-                    self._git.refs[mapping.revid_as_refname(bzr_revid)] = git_sha
-                try:
-                    return self._git.refs[mapping.revid_as_refname(bzr_revid)], mapping
-                except KeyError:
-                    raise errors.NoSuchRevision(self, bzr_revid)
+                for git_sha, revid in self._iter_revision_ids():
+                    self._git.refs[mapping.revid_as_refname(revid)] = git_sha
+                    if revid == bzr_revid:
+                        return git_sha, mapping
+                raise errors.NoSuchRevision(self, bzr_revid)
 
     def get_revision(self, revision_id):
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
@@ -208,7 +208,7 @@ class LocalGitRepository(GitRepository):
         return (git_commit_id in self._git)
 
     def has_revisions(self, revision_ids):
-        return set((self.has_revision(revid) for revid in revision_ids))
+        return set(filter(self.has_revision, revision_ids))
 
     def get_revisions(self, revids):
         return [self.get_revision(r) for r in revids]
