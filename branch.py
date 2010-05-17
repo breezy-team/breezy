@@ -439,14 +439,17 @@ class InterFromGitBranch(branch.GenericInterBranch):
         """
         interrepo = self._get_interrepo(self.source, self.target)
         def determine_wants(heads):
-            if not self.source.ref in heads:
+            if self.source.ref is not None and not self.source.ref in heads:
                 raise NoSuchRef(self.source.ref, heads.keys())
             if stop_revision is not None:
                 self._last_revid = stop_revision
                 head, mapping = self.source.repository.lookup_bzr_revision_id(
                     stop_revision)
             else:
-                head = heads[self.source.ref]
+                if self.source.ref is not None:
+                    head = heads[self.source.ref]
+                else:
+                    head = heads["HEAD"]
                 self._last_revid = self.source.lookup_foreign_revision_id(head)
             if self.target.repository.has_revision(self._last_revid):
                 return []
