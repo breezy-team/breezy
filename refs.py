@@ -48,7 +48,7 @@ def branch_name_to_ref(name, default=None):
     if name is None:
         return default
     if name == "HEAD":
-        return "HEAD"
+        return name
     if not name.startswith("refs/"):
         return "refs/heads/%s" % name
     else:
@@ -71,7 +71,7 @@ def ref_to_branch_name(ref):
     :return: A branch name
     """
     if ref == "HEAD":
-        return "HEAD"
+        return ref
     if ref.startswith("refs/heads/"):
         return ref[len("refs/heads/"):]
     raise ValueError("unable to map ref %s back to branch name" % ref)

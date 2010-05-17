@@ -48,9 +48,6 @@ from bzrlib.plugins.git.versionedfiles import (
 from dulwich.objects import (
     Commit,
     )
-from dulwich.protocol import (
-    ZERO_SHA,
-    )
 
 
 class GitRepository(ForeignRepository):
@@ -167,6 +164,9 @@ class LocalGitRepository(GitRepository):
         """
         if mapping is None:
             mapping = self.get_mapping()
+        from dulwich.protocol import (
+            ZERO_SHA,
+            )
         if foreign_revid == ZERO_SHA:
             return revision.NULL_REVISION
         commit = self._git[foreign_revid]

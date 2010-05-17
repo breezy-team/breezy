@@ -370,7 +370,7 @@ class BazaarObjectStore(BaseObjectStore):
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
                 root_tree = self[self[base_sha1].tree]
             root_ie = tree.inventory.root
-        if roundtrip:
+        if roundtrip and self.mapping.BZR_FILE_IDS_FILE is not None:
             b = self._create_fileid_map_blob(tree.inventory)
             if b is not None:
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
@@ -451,7 +451,8 @@ class BazaarObjectStore(BaseObjectStore):
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
         tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes,
             self.mapping.BZR_DUMMY_FILE)
-        if inv.root.file_id == fileid:
+        if (inv.root.file_id == fileid and
+            self.mapping.BZR_FILE_IDS_FILE is not None):
             b = self._create_fileid_map_blob(inv)
             # If this is the root tree, add the file ids
             tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)

@@ -99,9 +99,9 @@ class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
 
-    BZR_FILE_IDS_FILE = '.bzrfileids'
+    BZR_FILE_IDS_FILE = None
 
-    BZR_DUMMY_FILE = '.bzrdummy'
+    BZR_DUMMY_FILE = None
 
     def __init__(self):
         super(BzrGitMapping, self).__init__(foreign_git)
@@ -383,6 +383,10 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
     revid_prefix = 'git-experimental'
     experimental = True
     roundtripping = True
+
+    BZR_FILE_IDS_FILE = '.bzrfileids'
+
+    BZR_DUMMY_FILE = '.bzrdummy'
 
     def _decode_commit_message(self, rev, message, encoding):
         message = self._extract_hg_metadata(rev, message)
