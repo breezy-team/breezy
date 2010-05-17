@@ -70,7 +70,7 @@ def ref_to_branch_name(ref):
     :param ref: Ref
     :return: A branch name
     """
-    if ref == "HEAD":
+    if ref in (None, "HEAD"):
         return ref
     if ref.startswith("refs/heads/"):
         return ref[len("refs/heads/"):]

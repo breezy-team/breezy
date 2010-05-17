@@ -115,7 +115,7 @@ class LocalGitDir(GitDir):
 
     def _branch_name_to_ref(self, name):
         from bzrlib.plugins.git.refs import branch_name_to_ref
-        ref = branch_name_to_ref(name, "HEAD")
+        ref = branch_name_to_ref(name, None)
         if ref == "HEAD":
             from dulwich.repo import SYMREF
             refcontents = self._git.refs.read_ref(ref)

@@ -27,6 +27,7 @@ class BranchNameRefConversionTests(tests.TestCase):
     def test_head(self):
         self.assertEquals("HEAD", refs.ref_to_branch_name("HEAD"))
         self.assertEquals("HEAD", refs.branch_name_to_ref("HEAD"))
+        self.assertEquals(None, refs.branch_name_to_ref(None))
 
     def test_tag(self):
         self.assertRaises(ValueError, refs.ref_to_branch_name, "refs/tags/FOO")
