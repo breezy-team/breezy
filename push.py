@@ -20,6 +20,9 @@ from bzrlib import (
     errors,
     ui,
     )
+from bzrlib.graph import (
+    PendingAncestryResult,
+    )
 from bzrlib.repository import (
     InterRepository,
     )
@@ -57,21 +60,22 @@ class MissingObjectsIterator(object):
         self._pending = []
         self.pb = pb
 
-    def import_revisions(self, revids):
+    def import_revisions(self, revids, roundtrip):
         for i, revid in enumerate(revids):
             if self.pb:
                 self.pb.update("pushing revisions", i, len(revids))
-            git_commit = self.import_revision(revid)
+            git_commit = self.import_revision(revid, roundtrip)
             yield (revid, git_commit)
 
-    def import_revision(self, revid):
+    def import_revision(self, revid, roundtrip):
         """Import the gist of a revision into this Git repository.
 
         """
         tree = self._object_store.tree_cache.revision_tree(revid)
         rev = self.source.get_revision(revid)
         commit = None
-        for path, obj, ie in self._object_store._revision_to_objects(rev, tree):
+        for path, obj, ie in self._object_store._revision_to_objects(rev, tree,
+            roundtrip):
             if obj.type_name == "commit":
                 commit = obj
             self._pending.append((obj, path))
@@ -102,38 +106,55 @@ class InterToGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        raise NoPushSupport()
-
 
 class InterToLocalGitRepository(InterToGitRepository):
 
+    def __init__(self, source, target):
+        super(InterToLocalGitRepository, self).__init__(source, target)
+        self.target_store = self.target._git.object_store
+        self.target_refs = self.target._git.refs
+
     def missing_revisions(self, stop_revisions, check_revid):
         missing = []
+        graph = self.source.get_graph()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            graph = self.source.get_graph()
             for revid, _ in graph.iter_ancestry(stop_revisions):
                 pb.update("determining revisions to fetch", len(missing))
                 if not check_revid(revid):
                     missing.append(revid)
-            return graph.iter_topo_order(missing)
         finally:
             pb.finished()
+        return graph.iter_topo_order(missing)
+
+    def fetch_refs(self, refs):
+        fetch_spec = PendingAncestryResult(refs.values(), self.source)
+        self.fetch(fetch_spec=fetch_spec)
 
     def dfetch_refs(self, refs):
         old_refs = self.target._git.get_refs()
-        new_refs = {}
+        new_refs = dict(old_refs)
         revidmap, gitidmap = self.dfetch(refs.values())
         for name, revid in refs.iteritems():
-            if revid in gitidmap:
+            try:
                 gitid = gitidmap[revid]
-            else:
+            except KeyError:
                 gitid = self.source_store._lookup_revision_sha1(revid)
             self.target._git.refs[name] = gitid
             new_refs[name] = gitid
         return revidmap, old_refs, new_refs
+
+    def _find_missing_revs(self, stop_revisions):
+        def check_revid(revid):
+            if revid == NULL_REVISION:
+                return True
+            sha_id = self.source_store._lookup_revision_sha1(revid)
+            try:
+                return (sha_id in self.target_store)
+            except errors.NoSuchRevision:
+                # Ghost, can't push
+                return True
+        return list(self.missing_revisions(stop_revisions, check_revid))
 
     def dfetch(self, stop_revisions):
         """Import the gist of the ancestry of a particular revision."""
@@ -141,30 +162,49 @@ class InterToLocalGitRepository(InterToGitRepository):
         revidmap = {}
         self.source.lock_read()
         try:
-            target_store = self.target._git.object_store
-            def check_revid(revid):
-                if revid == NULL_REVISION:
-                    return True
-                try:
-                    return (self.source_store._lookup_revision_sha1(revid) in target_store)
-                except errors.NoSuchRevision:
-                    # Ghost, can't dpush
-                    return True
-            todo = list(self.missing_revisions(stop_revisions, check_revid))
+            todo = self._find_missing_revs(stop_revisions)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                object_generator = MissingObjectsIterator(self.source_store, self.source, pb)
+                object_generator = MissingObjectsIterator(self.source_store,
+                    self.source, pb)
                 for old_bzr_revid, git_commit in object_generator.import_revisions(
-                    todo):
+                    todo, roundtrip=False):
                     new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
                     revidmap[old_bzr_revid] = new_bzr_revid
                     gitidmap[old_bzr_revid] = git_commit
-                target_store.add_objects(object_generator)
+                self.target_store.add_objects(object_generator)
             finally:
                 pb.finished()
         finally:
             self.source.unlock()
         return revidmap, gitidmap
+
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
+        if revision_id is not None:
+            stop_revisions = [revision_id]
+        elif fetch_spec is not None:
+            stop_revisions = fetch_spec.heads
+        else:
+            stop_revisions = self.source.all_revision_ids()
+        self.source.lock_read()
+        try:
+            todo = self._find_missing_revs(stop_revisions)
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                object_generator = MissingObjectsIterator(self.source_store,
+                    self.source, pb)
+                for (revid, git_sha) in object_generator.import_revisions(
+                    todo, roundtrip=True):
+                    try:
+                        self.mapping.revision_id_bzr_to_foreign(revid)
+                    except errors.InvalidRevisionId:
+                        self.target_refs[self.mapping.revid_as_refname(revid)] = git_sha
+                self.target_store.add_objects(object_generator)
+            finally:
+                pb.finished()
+        finally:
+            self.source.unlock()
 
     @staticmethod
     def is_compatible(source, target):
@@ -188,10 +228,14 @@ class InterToRemoteGitRepository(InterToGitRepository):
         self.source.lock_read()
         try:
             new_refs = self.target.send_pack(determine_wants,
-                    self.source_store.generate_pack_contents)
+                    self.source_store.generate_lossy_pack_contents)
         finally:
             self.source.unlock()
         return revidmap, old_refs, new_refs
+
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+            fetch_spec=None):
+        raise NoPushSupport()
 
     @staticmethod
     def is_compatible(source, target):

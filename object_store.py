@@ -48,6 +48,7 @@ from bzrlib.plugins.git.shamap import (
     )
 
 import posixpath
+import stat
 
 
 def get_object_store(repo, mapping=None):
@@ -141,11 +142,13 @@ def _check_expected_sha(expected_sha, object):
             expected_sha))
 
 
-def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
+def _tree_to_objects(tree, parent_trees, idmap, unusual_modes, dummy_file_name=None):
     """Iterate over the objects that were introduced in a revision.
 
     :param idmap: id map
     :param unusual_modes: Unusual file modes
+    :param dummy_file_name: File name to use for dummy files
+        in empty directories. None to skip empty directories
     :return: Yields (path, object, ie) entries
     """
     new_trees = {}
@@ -175,14 +178,19 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
         if kind[1] == "file":
             ie = tree.inventory[file_id]
             if changed_content:
-                
                 try:
                     pie = find_unchanged_parent_ie(ie, other_parent_trees)
                 except KeyError:
                     pass
                 else:
-                    shamap[ie.file_id] = idmap.lookup_blob_id(
-                        pie.file_id, pie.revision)
+                    try:
+                        shamap[ie.file_id] = idmap.lookup_blob_id(
+                            pie.file_id, pie.revision)
+                    except KeyError:
+                        # no-change merge ?
+                        blob = Blob()
+                        blob.data = tree.get_file_text(ie.file_id)
+                        shamap[ie.file_id] = blob.id
             if not file_id in shamap:
                 new_blobs.append((path[1], ie))
             new_trees[posixpath.dirname(path[1])] = parent[1]
@@ -243,7 +251,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
             elif ie.kind == "directory":
                 # Not all cache backends store the tree information, 
                 # calculate again from scratch
-                ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
+                ret = directory_to_tree(ie, ie_to_hexsha, unusual_modes,
+                    dummy_file_name)
                 if ret is None:
                     return ret
                 return ret.id
@@ -253,7 +262,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes):
     for path in sorted(trees.keys(), reverse=True):
         ie = tree.inventory[trees[path]]
         assert ie.kind == "directory"
-        obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes)
+        obj = directory_to_tree(ie, ie_to_hexsha, unusual_modes,
+            dummy_file_name)
         if obj is not None:
             yield path, obj, ie
             shamap[ie.file_id] = obj.id
@@ -314,34 +324,60 @@ class BazaarObjectStore(BaseObjectStore):
         self._update_sha_map()
         return iter(self._cache.idmap.sha1s())
 
-    def _reconstruct_commit(self, rev, tree_sha):
+    def _reconstruct_commit(self, rev, tree_sha, roundtrip):
         def parent_lookup(revid):
             try:
                 return self._lookup_revision_sha1(revid)
             except errors.NoSuchRevision:
-                trace.warning("Ignoring ghost parent %s", revid)
                 return None
-        return self.mapping.export_commit(rev, tree_sha, parent_lookup)
+        return self.mapping.export_commit(rev, tree_sha, parent_lookup,
+            roundtrip)
 
-    def _revision_to_objects(self, rev, tree):
+    def _create_fileid_map_blob(self, inv):
+        # FIXME: This can probably be a lot more efficient, 
+        # not all files necessarily have to be processed.
+        file_ids = {}
+        for (path, ie) in inv.iter_entries():
+            if self.mapping.generate_file_id(path) != ie.file_id:
+                file_ids[path] = ie.file_id
+        return self.mapping.export_fileid_map(file_ids)
+
+    def _revision_to_objects(self, rev, tree, roundtrip):
+        """Convert a revision to a set of git objects.
+
+        :param rev: Bazaar revision object
+        :param tree: Bazaar revision tree
+        :param roundtrip: Whether to roundtrip all Bazaar revision data
+        """
         unusual_modes = extract_unusual_modes(rev)
         present_parents = self.repository.has_revisions(rev.parent_ids)
         parent_trees = self.tree_cache.revision_trees(
             [p for p in rev.parent_ids if p in present_parents])
-        tree_sha = None
+        root_tree = None
         for path, obj, ie in _tree_to_objects(tree, parent_trees,
-                self._cache.idmap, unusual_modes):
-            yield path, obj, ie
+                self._cache.idmap, unusual_modes, self.mapping.BZR_DUMMY_FILE):
             if path == "":
-                tree_sha = obj.id
-        if tree_sha is None:
+                root_tree = obj
+                root_ie = ie
+                # Don't yield just yet
+            else:
+                yield path, obj, ie
+        if root_tree is None:
             # Pointless commit - get the tree sha elsewhere
             if not rev.parent_ids:
-                tree_sha = Tree().id
+                root_tree = Tree()
             else:
                 base_sha1 = self._lookup_revision_sha1(rev.parent_ids[0])
-                tree_sha = self[base_sha1].tree
-        commit_obj = self._reconstruct_commit(rev, tree_sha)
+                root_tree = self[self[base_sha1].tree]
+            root_ie = tree.inventory.root
+        if roundtrip:
+            b = self._create_fileid_map_blob(tree.inventory)
+            if b is not None:
+                root_tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
+                yield self.mapping.BZR_FILE_IDS_FILE, b, None
+        yield "", root_tree, root_ie
+        commit_obj = self._reconstruct_commit(rev, root_tree.id,
+            roundtrip=roundtrip)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
                 rev.revision_id)
@@ -358,7 +394,8 @@ class BazaarObjectStore(BaseObjectStore):
         rev = self.repository.get_revision(revid)
         tree = self.tree_cache.revision_tree(rev.revision_id)
         updater = self._get_updater(rev)
-        for path, obj, ie in self._revision_to_objects(rev, tree):
+        for path, obj, ie in self._revision_to_objects(rev, tree,
+            roundtrip=True):
             updater.add_object(obj, ie)
         commit_obj = updater.finish()
         return commit_obj.id
@@ -412,7 +449,12 @@ class BazaarObjectStore(BaseObjectStore):
                         [(entry.file_id, entry.revision, None)]).next().id
             else:
                 raise AssertionError("unknown entry kind '%s'" % entry.kind)
-        tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes)
+        tree = directory_to_tree(inv[fileid], get_ie_sha1, unusual_modes,
+            self.mapping.BZR_DUMMY_FILE)
+        if inv.root.file_id == fileid:
+            b = self._create_fileid_map_blob(inv)
+            # If this is the root tree, add the file ids
+            tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
         _check_expected_sha(expected_sha, tree)
         return tree
 
@@ -435,7 +477,11 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 return mapping_registry.parse_revision_id(revid)[0]
             except errors.InvalidRevisionId:
-                self._update_sha_map(revid)
+                self.repository.lock_read()
+                try:
+                    self._update_sha_map(revid)
+                finally:
+                    self.repository.unlock()
                 return self._cache.idmap.lookup_commit(revid)
 
     def get_raw(self, sha):
@@ -497,7 +543,7 @@ class BazaarObjectStore(BaseObjectStore):
                 trace.mutter('entry for %s %s in shamap: %r, but not found in '
                              'repository', type, sha, type_data)
                 raise KeyError(sha)
-            commit = self._reconstruct_commit(rev, tree_sha)
+            commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True)
             _check_expected_sha(sha, commit)
             return commit
         elif type == "blob":
@@ -520,8 +566,13 @@ class BazaarObjectStore(BaseObjectStore):
         else:
             raise AssertionError("Unknown object type '%s'" % type)
 
-    def generate_pack_contents(self, have, want, progress=None,
+    def generate_lossy_pack_contents(self, have, want, progress=None,
             get_tagged=None):
+        return self.generate_pack_contents(have, want, progress, get_tagged,
+            lossy=True)
+
+    def generate_pack_contents(self, have, want, progress=None,
+            get_tagged=None, lossy=False):
         """Iterate over the contents of a pack file.
 
         :param have: List of SHA1s of objects that should not be sent
@@ -559,7 +610,8 @@ class BazaarObjectStore(BaseObjectStore):
                 pb.update("generating git objects", i, len(todo))
                 rev = self.repository.get_revision(revid)
                 tree = self.tree_cache.revision_tree(revid)
-                for path, obj, ie in self._revision_to_objects(rev, tree):
+                for path, obj, ie in self._revision_to_objects(rev, tree,
+                    roundtrip=not lossy):
                     ret.append((obj, path))
         finally:
             pb.finished()

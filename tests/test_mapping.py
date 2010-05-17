@@ -19,6 +19,9 @@ from bzrlib.inventory import (
     InventoryDirectory,
     InventoryFile,
     )
+from bzrlib.revision import (
+    Revision,
+    )
 
 from dulwich.objects import (
     Blob,
@@ -49,6 +52,12 @@ class TestRevidConversionV1(tests.TestCase):
                          BzrGitMappingv1().revision_id_bzr_to_foreign(
                             "git-v1:"
                             "c6a4d8f1fa4ac650748e647c4b1b368f589a7356"))
+
+    def test_is_control_file(self):
+        mapping = BzrGitMappingv1()
+        self.assertTrue(mapping.is_control_file(".bzrdummy"))
+        self.assertTrue(mapping.is_control_file(".bzrfileids"))
+        self.assertFalse(mapping.is_control_file(".bzrfoo"))
 
 
 class FileidTests(tests.TestCase):
@@ -81,7 +90,8 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = "Author"
-        rev = BzrGitMappingv1().import_commit(c)
+        mapping = BzrGitMappingv1()
+        rev = mapping.import_commit(c, mapping.revision_id_foreign_to_bzr)
         self.assertEquals("Some message", rev.message)
         self.assertEquals("Committer", rev.committer)
         self.assertEquals("Author", rev.properties['author'])
@@ -102,7 +112,8 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("iso8859-1")
         c.encoding = "iso8859-1"
-        rev = BzrGitMappingv1().import_commit(c)
+        mapping = BzrGitMappingv1()
+        rev = mapping.import_commit(c, mapping.revision_id_foreign_to_bzr)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("iso8859-1", rev.properties["git-explicit-encoding"])
         self.assertTrue("git-implicit-encoding" not in rev.properties)
@@ -117,7 +128,8 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("latin1")
-        rev = BzrGitMappingv1().import_commit(c)
+        mapping = BzrGitMappingv1()
+        rev = mapping.import_commit(c, mapping.revision_id_foreign_to_bzr)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("latin1", rev.properties["git-implicit-encoding"])
         self.assertTrue("git-explicit-encoding" not in rev.properties)
@@ -132,10 +144,74 @@ class TestImportCommit(tests.TestCase):
         c.commit_timezone = 60 * 5
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("utf-8")
-        rev = BzrGitMappingv1().import_commit(c)
+        mapping = BzrGitMappingv1()
+        rev = mapping.import_commit(c, mapping.revision_id_foreign_to_bzr)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertTrue("git-explicit-encoding" not in rev.properties)
         self.assertTrue("git-implicit-encoding" not in rev.properties)
+
+
+class RoundtripRevisionsFromBazaar(tests.TestCase):
+
+    def setUp(self):
+        super(RoundtripRevisionsFromBazaar, self).setUp()
+        self.mapping = BzrGitMappingv1()
+        self._parent_map = {}
+        self._lookup_parent = self._parent_map.__getitem__
+
+    def assertRoundtripRevision(self, orig_rev):
+        commit = self.mapping.export_commit(orig_rev, "mysha",
+            self._lookup_parent, True)
+        rev = self.mapping.import_commit(commit,
+            self.mapping.revision_id_foreign_to_bzr)
+        if self.mapping.roundtripping:
+            self.assertEquals(orig_rev.revision_id, rev.revision_id)
+            self.assertEquals(orig_rev.properties, rev.properties)
+            self.assertEquals(orig_rev.committer, rev.committer)
+            self.assertEquals(orig_rev.timestamp, rev.timestamp)
+            self.assertEquals(orig_rev.timezone, rev.timezone)
+            self.assertEquals(orig_rev.message, rev.message)
+            self.assertEquals(list(orig_rev.parent_ids), list(rev.parent_ids))
+
+    def test_simple_commit(self):
+        r = Revision(self.mapping.revision_id_foreign_to_bzr("edf99e6c56495c620f20d5dacff9859ff7119261"))
+        r.message = "MyCommitMessage"
+        r.parent_ids = []
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        r.properties = {}
+        self.assertRoundtripRevision(r)
+
+    def test_revision_id(self):
+        r = Revision("myrevid")
+        r.message = "MyCommitMessage"
+        r.parent_ids = []
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        r.properties = {}
+        self.assertRoundtripRevision(r)
+
+    def test_ghost_parent(self):
+        r = Revision("myrevid")
+        r.message = "MyCommitMessage"
+        r.parent_ids = ["iamaghost"]
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        r.properties = {}
+        self.assertRoundtripRevision(r)
+
+    def test_custom_property(self):
+        r = Revision("myrevid")
+        r.message = "MyCommitMessage"
+        r.parent_ids = []
+        r.properties = {"fool": "bar"}
+        r.committer = "Jelmer Vernooij <jelmer@apache.org>"
+        r.timestamp = 453543543
+        r.timezone = 0
+        self.assertRoundtripRevision(r)
 
 
 class RoundtripRevisionsFromGit(tests.TestCase):
@@ -151,8 +227,10 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         raise NotImplementedError(self.assertRoundtripBlob)
 
     def assertRoundtripCommit(self, commit1):
-        rev = self.mapping.import_commit(commit1)
-        commit2 = self.mapping.export_commit(rev, "12341212121212", None)
+        rev = self.mapping.import_commit(commit1,
+            self.mapping.revision_id_foreign_to_bzr)
+        commit2 = self.mapping.export_commit(rev, "12341212121212", None,
+            True)
         self.assertEquals(commit1.committer, commit2.committer)
         self.assertEquals(commit1.commit_time, commit2.commit_time)
         self.assertEquals(commit1.commit_timezone, commit2.commit_timezone)
@@ -205,21 +283,28 @@ class DirectoryToTreeTests(tests.TestCase):
 
     def test_empty(self):
         ie = InventoryDirectory('foo', 'foo', 'foo')
-        t = directory_to_tree(ie, None, {})
+        t = directory_to_tree(ie, None, {}, None)
         self.assertEquals(None, t)
 
     def test_empty_dir(self):
         ie = InventoryDirectory('foo', 'foo', 'foo')
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
         ie.children['bar'] = child_ie
-        t = directory_to_tree(ie, lambda x: None, {})
+        t = directory_to_tree(ie, lambda x: None, {}, None)
         self.assertEquals(None, t)
+
+    def test_empty_dir_dummy_files(self):
+        ie = InventoryDirectory('foo', 'foo', 'foo')
+        child_ie = InventoryDirectory('bar', 'bar', 'bar')
+        ie.children['bar'] = child_ie
+        t = directory_to_tree(ie, lambda x: None, {}, ".mydummy")
+        self.assertTrue(".mydummy" in t)
 
     def test_empty_root(self):
         ie = InventoryDirectory('foo', 'foo', None)
         child_ie = InventoryDirectory('bar', 'bar', 'bar')
         ie.children['bar'] = child_ie
-        t = directory_to_tree(ie, lambda x: None, {})
+        t = directory_to_tree(ie, lambda x: None, {}, None)
         self.assertEquals(Tree(), t)
 
     def test_with_file(self):
@@ -227,7 +312,7 @@ class DirectoryToTreeTests(tests.TestCase):
         child_ie = InventoryFile('bar', 'bar', 'bar')
         ie.children['bar'] = child_ie
         b = Blob.from_string("bla")
-        t1 = directory_to_tree(ie, lambda x: b.id, {})
+        t1 = directory_to_tree(ie, lambda x: b.id, {}, None)
         t2 = Tree()
         t2.add(0100644, "bar", b.id)
         self.assertEquals(t1, t2)

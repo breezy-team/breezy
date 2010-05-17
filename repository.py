@@ -19,7 +19,6 @@
 
 from bzrlib import (
     errors,
-    graph,
     inventory,
     repository,
     revision,
@@ -43,6 +42,11 @@ from bzrlib.plugins.git.tree import (
 from bzrlib.plugins.git.versionedfiles import (
     GitRevisions,
     GitTexts,
+    )
+
+
+from dulwich.objects import (
+    Commit,
     )
 
 
@@ -91,6 +95,10 @@ class GitRepository(ForeignRepository):
         interrepo = repository.InterRepository.get(source, self)
         return interrepo.dfetch_refs(stop_revision)
 
+    def fetch_refs(self, source, stop_revision):
+        interrepo = repository.InterRepository.get(source, self)
+        return interrepo.fetch_refs(stop_revision)
+
 
 class LocalGitRepository(GitRepository):
     """Git repository on the file system."""
@@ -104,16 +112,19 @@ class LocalGitRepository(GitRepository):
         self.inventories = None
         self.texts = GitTexts(self)
 
+    def _iter_revision_ids(self):
+        for sha in self._git.object_store:
+            o = self._git.object_store[sha]
+            if not isinstance(o, Commit):
+                continue
+            rev = self.get_mapping().import_commit(o,
+                self.lookup_foreign_revision_id)
+            yield o.id, rev.revision_id
+
     def all_revision_ids(self):
         ret = set([])
-        heads = self._git.refs.as_dict('refs/heads')
-        if heads == {}:
-            return ret
-        bzr_heads = [self.get_mapping().revision_id_foreign_to_bzr(h) for h in heads.itervalues()]
-        ret = set(bzr_heads)
-        graph = self.get_graph()
-        for rev, parents in graph.iter_ancestry(bzr_heads):
-            ret.add(rev)
+        for git_sha, revid in self._iter_revision_ids():
+            ret.add(revid)
         return ret
 
     def get_parent_map(self, revids):
@@ -128,7 +139,7 @@ class LocalGitRepository(GitRepository):
                 commit = self._git[hexsha]
             except KeyError:
                 continue
-            parent_map[revision_id] = [mapping.revision_id_foreign_to_bzr(p) for p in commit.parents]
+            parent_map[revision_id] = [self.lookup_foreign_revision_id(p, mapping) for p in commit.parents]
         return parent_map
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -153,7 +164,9 @@ class LocalGitRepository(GitRepository):
         """
         if mapping is None:
             mapping = self.get_mapping()
-        return mapping.revision_id_foreign_to_bzr(foreign_revid)
+        commit = self._git[foreign_revid]
+        rev = mapping.import_commit(commit, lambda x: None)
+        return rev.revision_id
 
     def has_signature_for_revision_id(self, revision_id):
         return False
@@ -162,7 +175,18 @@ class LocalGitRepository(GitRepository):
         try:
             return mapping_registry.revision_id_bzr_to_foreign(bzr_revid)
         except errors.InvalidRevisionId:
-            raise errors.NoSuchRevision(self, bzr_revid)
+            mapping = self.get_mapping()
+            try:
+                return self._git.refs[mapping.revid_as_refname(bzr_revid)], mapping
+            except KeyError:
+                # Update refs from Git commit objects
+                # FIXME: Hitting this a lot will be very inefficient...
+                for git_sha, bzr_revid in self._iter_revision_ids():
+                    self._git.refs[mapping.revid_as_refname(bzr_revid)] = git_sha
+                try:
+                    return self._git.refs[mapping.revid_as_refname(bzr_revid)], mapping
+                except KeyError:
+                    raise errors.NoSuchRevision(self, bzr_revid)
 
     def get_revision(self, revision_id):
         git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
@@ -171,7 +195,8 @@ class LocalGitRepository(GitRepository):
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
         # print "fetched revision:", git_commit_id
-        revision = mapping.import_commit(commit)
+        revision = mapping.import_commit(commit,
+            self.lookup_foreign_revision_id)
         assert revision is not None
         return revision
 
@@ -183,11 +208,7 @@ class LocalGitRepository(GitRepository):
         return (git_commit_id in self._git)
 
     def has_revisions(self, revision_ids):
-        ret = set()
-        for revid in revision_ids:
-            if self.has_revision(revid):
-                ret.add(revid)
-        return ret
+        return set((self.has_revision(revid) for revid in revision_ids))
 
     def get_revisions(self, revids):
         return [self.get_revision(r) for r in revids]

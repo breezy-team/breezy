@@ -48,7 +48,7 @@ def branch_name_to_ref(name, default=None):
     if name is None:
         return default
     if name == "HEAD":
-        return "HEAD"
+        return default
     if not name.startswith("refs/"):
         return "refs/heads/%s" % name
     else:
@@ -110,7 +110,10 @@ class BazaarRefsContainer(RefsContainer):
         try:
             branch = self.dir.open_branch(branch_name)
         except errors.NoColocatedBranchSupport:
-            raise
+            if branch_name in ("HEAD", "master"):
+                branch = self.dir.open_branch()
+            else:
+                raise
         return branch.last_revision()
 
     def read_loose_ref(self, ref):
@@ -128,7 +131,10 @@ class BazaarRefsContainer(RefsContainer):
         for branch in self.dir.list_branches():
             repo = branch.repository
             if repo.has_revision(branch.last_revision()):
-                keys.add(branch_name_to_ref(branch.name, "HEAD"))
+                ref = branch_name_to_ref(branch.name, "refs/heads/master")
+                keys.add(ref)
+                if branch.name is None:
+                    keys.add("HEAD")
             for tag_name, revid in branch.tags.get_tag_dict().iteritems():
                 if repo.has_revision(revid):
                     keys.add(tag_name_to_ref(tag_name))

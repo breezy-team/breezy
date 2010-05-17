@@ -1,5 +1,5 @@
 # Copyright (C) 2007 Canonical Ltd
-# Copyright (C) 2008-2009 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2008-2010 Jelmer Vernooij <jelmer@samba.org>
 # Copyright (C) 2008 John Carr
 #
 # This program is free software; you can redistribute it and/or modify
@@ -45,6 +45,13 @@ from bzrlib.plugins.git.hg import (
     format_hg_metadata,
     extract_hg_metadata,
     )
+from bzrlib.plugins.git.roundtrip import (
+    extract_bzr_metadata,
+    inject_bzr_metadata,
+    BzrGitRevisionMetadata,
+    deserialize_fileid_map,
+    serialize_fileid_map,
+    )
 
 DEFAULT_FILE_MODE = stat.S_IFREG | 0644
 
@@ -88,31 +95,13 @@ def warn_unusual_mode(commit, path, mode):
                  "property. ", mode, path, commit)
 
 
-def squash_revision(target_repo, rev):
-    """Remove characters that can't be stored from a revision, if necessary.
-
-    :param target_repo: Repository in which the revision will be stored
-    :param rev: Revision object, will be modified in-place
-    """
-    if not getattr(target_repo._serializer, "squashes_xml_invalid_characters", True):
-        return
-    from bzrlib.xml_serializer import escape_invalid_chars
-    rev.message, num_escaped = escape_invalid_chars(rev.message)
-    if num_escaped:
-        warn_escaped(rev.foreign_revid, num_escaped)
-    if 'author' in rev.properties:
-        rev.properties['author'], num_escaped = escape_invalid_chars(
-            rev.properties['author'])
-        if num_escaped:
-            warn_escaped(rev.foreign_revid, num_escaped)
-    rev.committer, num_escaped = escape_invalid_chars(rev.committer)
-    if num_escaped:
-        warn_escaped(rev.foreign_revid, num_escaped)
-
-
 class BzrGitMapping(foreign.VcsMapping):
     """Class that maps between Git and Bazaar semantics."""
     experimental = False
+
+    BZR_FILE_IDS_FILE = '.bzrfileids'
+
+    BZR_DUMMY_FILE = '.bzrdummy'
 
     def __init__(self):
         super(BzrGitMapping, self).__init__(foreign_git)
@@ -143,10 +132,17 @@ class BzrGitMapping(foreign.VcsMapping):
             return ROOT_ID
         return escape_file_id(path)
 
+    def is_control_file(self, path):
+        return path in (self.BZR_FILE_IDS_FILE, self.BZR_DUMMY_FILE)
+
     def parse_file_id(self, file_id):
         if file_id == ROOT_ID:
             return ""
         return unescape_file_id(file_id)
+
+    def revid_as_refname(self, revid):
+        import urllib
+        return "refs/bzr/%s" % urllib.quote(revid)
 
     def import_unusual_file_modes(self, rev, unusual_file_modes):
         if unusual_file_modes:
@@ -211,13 +207,28 @@ class BzrGitMapping(foreign.VcsMapping):
                 [(new, old) for (old, new) in renames.iteritems()]))
         return message
 
+    def _extract_bzr_metadata(self, rev, message):
+        (message, metadata) = extract_bzr_metadata(message)
+        return message, metadata
+
     def _decode_commit_message(self, rev, message, encoding):
-        return message.decode(encoding)
+        return message.decode(encoding), BzrGitRevisionMetadata()
 
     def _encode_commit_message(self, rev, message, encoding):
         return message.encode(encoding)
 
-    def export_commit(self, rev, tree_sha, parent_lookup):
+    def export_fileid_map(self, fileid_map):
+        """Export a file id map to a fileid map.
+
+        :param fileid_map: File id map, mapping paths to file ids
+        :return: A Git blob object
+        """
+        from dulwich.objects import Blob
+        b = Blob()
+        b.set_raw_chunks(serialize_fileid_map(fileid_map))
+        return b
+
+    def export_commit(self, rev, tree_sha, parent_lookup, roundtrip):
         """Turn a Bazaar revision in to a Git commit
 
         :param tree_sha: Tree sha for the commit
@@ -228,14 +239,22 @@ class BzrGitMapping(foreign.VcsMapping):
         from dulwich.objects import Commit
         commit = Commit()
         commit.tree = tree_sha
+        if roundtrip:
+            metadata = BzrGitRevisionMetadata()
+        else:
+            metadata = None
+        parents = []
         for p in rev.parent_ids:
             try:
                 git_p = parent_lookup(p)
             except KeyError:
                 git_p = None
+                if metadata is not None:
+                    metadata.explicit_parent_ids = rev.parent_ids
             if git_p is not None:
                 assert len(git_p) == 40, "unexpected length for %r" % git_p
-                commit.parents.append(git_p)
+                parents.append(git_p)
+        commit.parents = parents
         try:
             encoding = rev.properties['git-explicit-encoding']
         except KeyError:
@@ -259,24 +278,51 @@ class BzrGitMapping(foreign.VcsMapping):
             commit.author_timezone = commit.commit_timezone
         commit.message = self._encode_commit_message(rev, rev.message, 
             encoding)
+        assert type(commit.message) == str
+        if metadata is not None:
+            try:
+                mapping_registry.parse_revision_id(rev.revision_id)
+            except errors.InvalidRevisionId:
+                metadata.revision_id = rev.revision_id
+            mapping_properties = set(
+                ['author', 'author-timezone', 'author-timezone-neg-utc',
+                 'commit-timezone-neg-utc', 'git-implicit-encoding',
+                 'git-explicit-encoding', 'author-timestamp', 'file-modes'])
+            for k, v in rev.properties.iteritems():
+                if not k in mapping_properties:
+                    metadata.properties[k] = v
+        if self.roundtripping:
+            commit.message = inject_bzr_metadata(commit.message, metadata, 
+                                                 encoding)
+        assert type(commit.message) == str
         return commit
 
-    def import_commit(self, commit):
+    def import_fileid_map(self, blob):
+        """Convert a git file id map blob.
+
+        :param blob: Git blob object with fileid map
+        :return: Dictionary mapping paths to file ids
+        """
+        return deserialize_fileid_map(blob.data)
+
+    def import_commit(self, commit, lookup_parent_revid):
         """Convert a git commit to a bzr revision.
 
-        :return: a `bzrlib.revision.Revision` object.
+        :return: a `bzrlib.revision.Revision` object and a 
+            dictionary of path -> file ids
         """
         if commit is None:
             raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, self,
                 self.revision_id_foreign_to_bzr(commit.id))
-        rev.parent_ids = tuple([self.revision_id_foreign_to_bzr(p) for p in commit.parents])
+        rev.parent_ids = tuple([lookup_parent_revid(p) for p in commit.parents])
+        rev.git_metadata = None
         def decode_using_encoding(rev, commit, encoding):
             rev.committer = str(commit.committer).decode(encoding)
             if commit.committer != commit.author:
                 rev.properties['author'] = str(commit.author).decode(encoding)
-            rev.message = self._decode_commit_message(rev, commit.message, 
-                encoding)
+            rev.message, rev.git_metadata = self._decode_commit_message(
+                rev, commit.message, encoding)
         if commit.encoding is not None:
             rev.properties['git-explicit-encoding'] = commit.encoding
             decode_using_encoding(rev, commit, commit.encoding)
@@ -300,7 +346,29 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['commit-timezone-neg-utc'] = ""
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
+        if rev.git_metadata is not None:
+            md = rev.git_metadata
+            if md.revision_id:
+                rev.revision_id = md.revision_id
+            if md.explicit_parent_ids:
+                rev.parent_ids = md.explicit_parent_ids
+            rev.properties.update(md.properties)
         return rev
+
+    def get_fileid_map(self, lookup_object, tree_sha):
+        """Obtain a fileid map for a particular tree.
+
+        :param lookup_object: Function for looking up an object
+        :param tree_sha: SHA of the root tree
+        :return: GitFileIdMap instance
+        """
+        try:
+            file_id_map_sha = lookup_object(tree_sha)[self.BZR_FILE_IDS_FILE][1]
+        except KeyError:
+            file_ids = {}
+        else:
+            file_ids = self.import_fileid_map(lookup_object(file_id_map_sha))
+        return GitFileIdMap(file_ids, self)
 
 
 class BzrGitMappingv1(BzrGitMapping):
@@ -314,11 +382,13 @@ class BzrGitMappingv1(BzrGitMapping):
 class BzrGitMappingExperimental(BzrGitMappingv1):
     revid_prefix = 'git-experimental'
     experimental = True
+    roundtripping = True
 
     def _decode_commit_message(self, rev, message, encoding):
         message = self._extract_hg_metadata(rev, message)
         message = self._extract_git_svn_metadata(rev, message)
-        return message.decode(encoding)
+        message, metadata = self._extract_bzr_metadata(rev, message)
+        return message.decode(encoding), metadata
 
     def _encode_commit_message(self, rev, message, encoding):
         ret = message.encode(encoding)
@@ -326,10 +396,10 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         ret += self._generate_git_svn_metadata(rev, encoding)
         return ret
 
-    def import_commit(self, commit):
-        rev = super(BzrGitMappingExperimental, self).import_commit(commit)
+    def import_commit(self, commit, lookup_parent_revid):
+        rev, file_ids = super(BzrGitMappingExperimental, self).import_commit(commit, lookup_parent_revid)
         rev.properties['converted_revision'] = "git %s\n" % commit.id
-        return rev
+        return rev, file_ids
 
 
 class GitMappingRegistry(VcsMappingRegistry):
@@ -447,8 +517,16 @@ def entry_mode(entry):
     return object_mode(entry.kind, entry.executable)
 
 
-def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
-    from dulwich.objects import Tree
+def directory_to_tree(entry, lookup_ie_sha1, unusual_modes, empty_file_name):
+    """Create a Git Tree object from a Bazaar directory.
+
+    :param entry: Inventory entry
+    :param lookup_ie_sha1: Lookup the Git SHA1 for a inventory entry
+    :param unusual_modes: Dictionary with unusual file modes by file ids
+    :param empty_file_name: Name to use for dummy files in empty directories,
+        None to ignore empty directories.
+    """
+    from dulwich.objects import Blob, Tree
     tree = Tree()
     for name, value in entry.children.iteritems():
         ie = entry.children[name]
@@ -461,7 +539,11 @@ def directory_to_tree(entry, lookup_ie_sha1, unusual_modes):
             tree.add(mode, name.encode("utf-8"), hexsha)
     if entry.parent_id is not None and len(tree) == 0:
         # Only the root can be an empty tree
-        return None
+        if empty_file_name is not None:
+            tree.add(stat.S_IFREG | 0644, empty_file_name, 
+                Blob().id)
+        else:
+            return None
     return tree
 
 
@@ -479,3 +561,27 @@ def parse_git_svn_id(text):
     (head, uuid) = text.rsplit(" ", 1)
     (full_url, rev) = head.rsplit("@", 1)
     return (full_url, int(rev), uuid)
+
+
+class GitFileIdMap(object):
+
+    def __init__(self, file_ids, mapping):
+        self.file_ids = file_ids
+        self.paths = None
+        self.mapping = mapping
+
+    def lookup_file_id(self, path):
+        try:
+            return self.file_ids[path]
+        except KeyError:
+            return self.mapping.generate_file_id(path)
+
+    def lookup_path(self, file_id):
+        if self.paths is None:
+            self.paths = {}
+            for k, v in self.file_ids.iteritems():
+                self.paths[v] = k
+        try:
+            return self.paths[file_id]
+        except KeyError:
+            return self.mapping.parse_file_id(file_id)

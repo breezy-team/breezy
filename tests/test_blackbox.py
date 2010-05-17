@@ -93,9 +93,9 @@ class TestGitBlackBox(ExternalBase):
         GitRepo.init(os.path.join(self.test_dir, "bla"))
         self.run_bzr(['init', 'foo'])
         self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
-        output, error = self.run_bzr(['push', '-d', 'foo', 'bla'], retcode=3)
-        self.assertEquals('bzr: ERROR: Push is not yet supported for bzr-git. Try dpush instead.\n', error)
+        output, error = self.run_bzr(['push', '-d', 'foo', 'bla'])
         self.assertEquals("", output)
+        self.assertTrue(error.endswith("Created new branch.\n"))
 
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.

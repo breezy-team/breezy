@@ -234,12 +234,14 @@ class DictCacheUpdater(CacheUpdater):
             type_data = (self.revid, self._commit.tree)
             self.cache.idmap._by_revid[self.revid] = obj.id
         elif obj.type_name in ("blob", "tree"):
-            if obj.type_name == "blob":
-                revision = ie.revision
-            else:
-                revision = self.revid
-            type_data = (ie.file_id, revision)
-            self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
+            if ie is not None:
+                if obj.type_name == "blob":
+                    revision = ie.revision
+                else:
+                    revision = self.revid
+                type_data = (ie.file_id, revision)
+                self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] =\
+                    obj.id
         else:
             raise AssertionError
         self.cache.idmap._by_sha[obj.id] = (obj.type_name, type_data)
@@ -293,9 +295,11 @@ class SqliteCacheUpdater(CacheUpdater):
             self._commit = obj
             assert ie is None
         elif obj.type_name == "tree":
-            self._trees.append((obj.id, ie.file_id, self.revid))
+            if ie is not None:
+                self._trees.append((obj.id, ie.file_id, self.revid))
         elif obj.type_name == "blob":
-            self._blobs.append((obj.id, ie.file_id, ie.revision))
+            if ie is not None:
+                self._blobs.append((obj.id, ie.file_id, ie.revision))
         else:
             raise AssertionError
 
@@ -436,9 +440,13 @@ class TdbCacheUpdater(CacheUpdater):
             self._commit = obj
             assert ie is None
         elif obj.type_name == "blob":
+            if ie is None:
+                return
             self.db["\0".join(("blob", ie.file_id, ie.revision))] = sha
             type_data = (ie.file_id, ie.revision)
         elif obj.type_name == "tree":
+            if ie is None:
+                return
             type_data = (ie.file_id, self.revid)
         else:
             raise AssertionError

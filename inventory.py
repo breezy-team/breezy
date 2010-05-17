@@ -50,7 +50,7 @@ class GitInventoryEntry(inventory.InventoryEntry):
         self.path = path
         self.revision = self._inventory.revision_id
         self.executable = executable
-        self.file_id = self._inventory.mapping.generate_file_id(
+        self.file_id = self._inventory.fileid_map.lookup_file_id(
             path.encode('utf-8'))
 
     @property
@@ -179,6 +179,8 @@ class GitInventoryDirectory(GitInventoryEntry):
         for mode, name, hexsha in self.object.entries():
             basename = name.decode("utf-8")
             child_path = osutils.pathjoin(self.path, basename)
+            if self._inventory.mapping.is_control_file(child_path):
+                continue
             executable = mode_is_executable(mode)
             kind_class = {'directory': GitInventoryDirectory,
                           'file': GitInventoryFile,
@@ -198,9 +200,10 @@ class GitInventoryDirectory(GitInventoryEntry):
 
 class GitInventory(inventory.Inventory):
 
-    def __init__(self, tree_id, mapping, store, revision_id):
+    def __init__(self, tree_id, mapping, fileid_map, store, revision_id):
         super(GitInventory, self).__init__(revision_id=revision_id)
         self.store = store
+        self.fileid_map = fileid_map
         self.mapping = mapping
         self.root = GitInventoryDirectory(self, None, tree_id, u"", u"", False)
 
@@ -228,7 +231,7 @@ class GitInventory(inventory.Inventory):
             return False
 
     def id2path(self, file_id):
-        path = self.mapping.parse_file_id(file_id)
+        path = self.fileid_map.lookup_path(file_id)
         try:
             ie = self._get_ie(path)
             assert ie.path == path
@@ -244,7 +247,7 @@ class GitInventory(inventory.Inventory):
     def __getitem__(self, file_id):
         if file_id == inventory.ROOT_ID:
             return self.root
-        path = self.mapping.parse_file_id(file_id)
+        path = self.fileid_map.lookup_path(file_id)
         try:
             return self._get_ie(path)
         except KeyError:
@@ -254,15 +257,15 @@ class GitInventory(inventory.Inventory):
 class GitIndexInventory(inventory.Inventory):
     """Inventory that retrieves its contents from an index file."""
 
-    def __init__(self, basis_inventory, mapping, index, store):
+    def __init__(self, basis_inventory, fileid_map, index, store):
         super(GitIndexInventory, self).__init__(revision_id=None, root_id=basis_inventory.root.file_id)
         self.basis_inv = basis_inventory
-        self.mapping = mapping
+        self.fileid_map = fileid_map
         self.index = index
         self._contents_read = False
         self.store = store
         self.root = self.add_path("", 'directory',
-            self.mapping.generate_file_id(""), None)
+            self.fileid_map.lookup_file_id(""), None)
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         self._read_contents()
@@ -287,7 +290,7 @@ class GitIndexInventory(inventory.Inventory):
     def id2path(self, file_id):
         if type(file_id) != str:
             raise AssertionError
-        path = self.mapping.parse_file_id(file_id)
+        path = self.fileid_map.lookup_path(file_id)
         if path in self.index:
             return path
         self._read_contents()
@@ -295,7 +298,7 @@ class GitIndexInventory(inventory.Inventory):
 
     def path2id(self, path):
         if path in self.index:
-            return self.mapping.generate_file_id(path)
+            return self.fileid_map.lookup_file_id(path)
         self._read_contents()
         return super(GitIndexInventory, self).path2id(path)
 
@@ -320,7 +323,7 @@ class GitIndexInventory(inventory.Inventory):
                 except KeyError:
                     old_ie = None
                 if old_ie is None:
-                    file_id = self.mapping.generate_file_id(path)
+                    file_id = self.fileid_map.lookup_file_id(path)
                 else:
                     file_id = old_ie.file_id
                 if type(file_id) != str:
@@ -352,7 +355,7 @@ class GitIndexInventory(inventory.Inventory):
             else:
                 parent_fid = self.add_parents(dirname)
             ie = self.add_path(dirname, 'directory',
-                    self.mapping.generate_file_id(dirname), parent_fid)
+                    self.fileid_map.lookup_file_id(dirname), parent_fid)
             if ie.file_id in self.basis_inv:
                 ie.revision = self.basis_inv[ie.file_id].revision
             file_id = ie.file_id
