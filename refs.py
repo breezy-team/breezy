@@ -48,7 +48,7 @@ def branch_name_to_ref(name, default=None):
     if name is None:
         return default
     if name == "HEAD":
-        return default
+        return "HEAD"
     if not name.startswith("refs/"):
         return "refs/heads/%s" % name
     else:
