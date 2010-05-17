@@ -333,7 +333,7 @@ class RemoteGitTagDict(tag.BasicTags):
 class RemoteGitBranch(GitBranch):
 
     def __init__(self, bzrdir, repository, name, lockfiles):
-        self._ref = None
+        self._sha = None
         super(RemoteGitBranch, self).__init__(bzrdir, repository, name,
                 lockfiles)
 
@@ -353,16 +353,15 @@ class RemoteGitBranch(GitBranch):
 
     @property
     def head(self):
-        if self._ref is not None:
-            return self._ref
+        if self._sha is not None:
+            return self._sha
         heads = self.repository.get_refs()
-        if self.name in heads:
-            self._ref = heads[self.name]
-        elif ("refs/heads/" + self.name) in heads:
-            self._ref = heads["refs/heads/" + self.name]
+        name = self.bzrdir._branch_name_to_ref(self.name, "HEAD")
+        if name in heads:
+            self._sha = heads[name]
         else:
             raise NoSuchRef(self.name)
-        return self._ref
+        return self._sha
 
     def _synchronize_history(self, destination, revision_id):
         """See Branch._synchronize_history()."""
