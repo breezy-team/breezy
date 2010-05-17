@@ -264,7 +264,8 @@ class LocalGitBranch(GitBranch):
     def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
         super(LocalGitBranch, self).__init__(bzrdir, repository, name, 
               lockfiles, tagsdict)
-        if not name in repository._git.get_refs().keys():
+        refs = repository._git.get_refs()
+        if not (name in refs.keys() or "HEAD" in refs.keys()):
             raise errors.NotBranchError(self.base)
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
@@ -311,7 +312,7 @@ class LocalGitBranch(GitBranch):
 
     def _get_head(self):
         try:
-            return self.repository._git.ref(self.ref)
+            return self.repository._git.ref(self.ref or "HEAD")
         except KeyError:
             return None
 
@@ -324,7 +325,7 @@ class LocalGitBranch(GitBranch):
 
     def _set_head(self, value):
         self._head = value
-        self.repository._git.refs[self.ref] = self._head
+        self.repository._git.refs[self.ref or "HEAD"] = self._head
         self._clear_cached_state()
 
     head = property(_get_head, _set_head)
