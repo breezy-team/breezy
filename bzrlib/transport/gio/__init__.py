@@ -23,7 +23,6 @@ Written by Mattias Eriksson <snaggen@acc.umu.se> based on the ftp transport.
 It provides the gio+XXX:// protocols where XXX is any of the protocols
 supported by gio.
 """
-
 from cStringIO import StringIO
 import getpass
 import os
@@ -31,10 +30,7 @@ import random
 import socket
 import stat
 import urllib
-
 import time
-import gio
-import glib
 import sys
 import getpass
 import urlparse
@@ -56,6 +52,15 @@ from bzrlib.transport import (
     )
 
 from bzrlib.tests.test_server import TestServer
+
+try:
+    import glib
+except ImportError, e:
+    raise errors.DependencyNotPresent('glib', e)
+try:
+    import gio
+except ImportError, e:
+    raise errors.DependencyNotPresent('gio', e)
 
 
 class GioLocalURLServer(TestServer):
@@ -392,10 +397,10 @@ class GioTransport(ConnectedTransport):
                 fin = fi.read()
                 self._pump(fin, fout)
                 fin.close()
-            #This separate except is to catch and ignore the 
-            #gio.ERROR_NOT_FOUND for the already existing file. 
+            #This separate except is to catch and ignore the
+            #gio.ERROR_NOT_FOUND for the already existing file.
             #It is valid to open a non-existing file for append.
-            #This is caused by the broken gio append_to... 
+            #This is caused by the broken gio append_to...
             except gio.Error, e:
                 if e.code != gio.ERROR_NOT_FOUND:
                     self._translate_gio_error(e, relpath)
