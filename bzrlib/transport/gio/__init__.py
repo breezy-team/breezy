@@ -34,7 +34,7 @@ import urllib
 
 import time
 import gio
-import gtk
+import glib
 import sys
 import getpass
 import urlparse
@@ -121,7 +121,6 @@ class GioTransport(ConnectedTransport):
                 urlparse.urlparse(base[len('gio+'):], allow_fragments=False)
         if '@' in netloc:
             user, netloc = netloc.rsplit('@', 1)
-        self.mounted = 0
         #Seems it is not possible to list supported backends for GIO
         #so a hardcoded list it is then.
         gio_backends = ['dav', 'file', 'ftp', 'obex', 'sftp', 'ssh', 'smb']
@@ -196,10 +195,10 @@ class GioTransport(ConnectedTransport):
     def _mount_done_cb(self, obj, res):
         try:
             obj.mount_enclosing_volume_finish(res)
-            self.mounted = 1
         except gio.Error, e:
             print "ERROR: ", e
-            self.mounted = -1
+        finally:
+            self.loop.quit()
 
     def _create_connection(self, credentials=None):
         if credentials is None:
@@ -212,10 +211,9 @@ class GioTransport(ConnectedTransport):
             mount = None
             try:
                 mount = connection.find_enclosing_mount()
-                if mount != None:
-                    self.mounted = 1
             except gio.Error, e:
                 if (e.code == gio.ERROR_NOT_MOUNTED):
+                    self.loop = glib.MainLoop()
                     ui.ui_factory.show_message('Mounting %s using GIO' % \
                             self.url)
                     op = gio.MountOperation()
@@ -226,10 +224,7 @@ class GioTransport(ConnectedTransport):
                     op.connect('ask-password', self._auth_cb)
                     m = connection.mount_enclosing_volume(op, \
                             self._mount_done_cb)
-                    while self.mounted == 0:
-                        gtk.main_iteration(block=True)
-                else:
-                    mounted = 1
+                    self.loop.run()
         except gio.Error, e:
             raise errors.TransportError(msg="Error setting up connection:"
                                         " %s" % str(e), orig_error=e)
