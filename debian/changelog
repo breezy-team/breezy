@@ -1,3 +1,11 @@
+bzr (2.1.1-1.1) unstable; urgency=low
+
+  * Non-maintainer upload with Jelmer's permission.
+  * Backport fix from bzr 2.2 that makes bzr-git and bzr-svn operations
+    work reliably again.  Closes: #582033
+
+ -- Steve Langasek <vorlon@debian.org>  Mon, 17 May 2010 13:48:25 -0700
+
 bzr (2.1.1-1) unstable; urgency=low
 
   * Remove bob2 from uploaders. Closes: #573427
