@@ -42,9 +42,10 @@ class _ExecutableFeature(Feature):
         if path is None:
             return None
         for d in path.split(os.pathsep):
-            f = os.path.join(d, self.name)
-            if os.access(f, os.X_OK):
-                return f
+            if d:
+                f = os.path.join(d, self.name)
+                if os.access(f, os.X_OK):
+                    return f
         return None
 
     def available(self):
