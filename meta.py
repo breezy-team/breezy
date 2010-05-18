@@ -23,7 +23,7 @@ bzr_commands = [ 'bash-completion' ]
 # Have a look at bzrlib._format_version_tuple for info about version 5-tuples,
 # and at http://packages.python.org/distribute/setuptools.html#specifying-your-project-s-version
 # for information about how python versions do compare with setuptools
-bzr_plugin_version = (1, 1, 1, 'dev', 0)
+bzr_plugin_version = (1, 2, 0, 'final', 0)
 
 # http://doc.bazaar.canonical.com/developers/plugin-api.html#plugin-version
 # describes another version tuple:
