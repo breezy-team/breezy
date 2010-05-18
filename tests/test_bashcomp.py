@@ -25,8 +25,6 @@ import subprocess
 class _ExecutableFeature(Feature):
     """Feature testing whether an executable of a given name is on the PATH."""
 
-    bash_paths = ['/bin/bash', '/usr/bin/bash']
-
     def __init__(self, name):
         super(_ExecutableFeature, self).__init__()
         self.name = name
