@@ -203,6 +203,10 @@ Internals
   stripped, the prefix ``__doc__ =`` should now be used.
   (Martin <gzlist@googlemail.com>)
 
+* No longer require zlib headers to build extensions, and remove the need
+  for seperate copy of zlib library on windows.
+  (John Arbash Meinel, Martin <gzlist@googlemail.com>, #66923)
+
 Testing
 *******
 
