@@ -56,6 +56,11 @@ New Features
   re-sign, unbind, unknowns.
   (Martin von Gagern, #527878)
 
+* The bash_completion plugin from the bzr-bash-completion project has
+  been merged into the tree. It provides a bash-completion command and
+  replaces the outdated ``contrib/bash/bzr`` script with a version
+  using the plugin. (Martin von Gagern, #560030)
+
 Bug Fixes
 *********
 
