@@ -28,6 +28,12 @@ class RecordCounter(object):
         self.current = 0
         self.key_count = 0
         self.max = 0
+
+        # Users of RecordCounter instance update progress bar every
+        # _STEP_ records. We choose are reasonably high number to keep
+        # display updates from being two frequent. This is an odd number
+        # to ensure that the last digit of the records fetched in
+        # fetches vs estimate ratio changes periodically.
         self.STEP = 71
 
     def is_initialized(self):
@@ -41,6 +47,20 @@ class RecordCounter(object):
         # Note: The magic number below is based of empirical data
         # based on 3 seperate projects. Estimatation can probably
         # be improved but this should work well for most cases.
+        # The project used for the estimate (with approx. numbers) were:
+        # lp:bzr with records_fetched = 7 * revs_required
+        # lp:emacs with records_fetched = 8 * revs_required
+        # bzr-svn checkout of lp:parrot = 10.63 * revs_required
+        # Hence, 10.3 was chosen as for a realistic progress bar as:
+        # 1. If records fetched is is lower than 10.3x then we simply complete
+        #    with 10.3x. Under promise, over deliver.
+        # 2. In case of remote fetch, when we start the count fetch vs estimate
+        #    display with revs_required/estimate, having a multiplier with a
+        #    decimal point produces a realistic looking _estimate_ number rather
+        #    than using something like 3125/31250 (for 10x)
+        # 3. Based on the above data, the possibility of overshooting this
+        #    factor is minimal, and in case of an overshoot the estimate value
+        #    should not need to be corrected too many times.
         return int(key_count * 10.3)
 
     def setup(self, key_count, current=0):
