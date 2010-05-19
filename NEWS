@@ -56,6 +56,11 @@ New Features
   re-sign, unbind, unknowns.
   (Martin von Gagern, #527878)
 
+* The bash_completion plugin from the bzr-bash-completion project has
+  been merged into the tree. It provides a bash-completion command and
+  replaces the outdated ``contrib/bash/bzr`` script with a version
+  using the plugin. (Martin von Gagern, #560030)
+
 Bug Fixes
 *********
 
@@ -202,6 +207,10 @@ Internals
   files loaded from disk. To ensure docstrings needed for help are never
   stripped, the prefix ``__doc__ =`` should now be used.
   (Martin <gzlist@googlemail.com>)
+
+* No longer require zlib headers to build extensions, and remove the need
+  for seperate copy of zlib library on windows.
+  (John Arbash Meinel, Martin <gzlist@googlemail.com>, #66923)
 
 Testing
 *******

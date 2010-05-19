@@ -38,21 +38,13 @@ cdef extern from "Python.h":
     PyObject *PyString_FromStringAndSize_ptr "PyString_FromStringAndSize" (char *, Py_ssize_t)
     Py_ssize_t PyString_GET_SIZE(object)
     void PyString_InternInPlace(PyObject **)
-    unsigned long PyInt_AsUnsignedLongMask(object) except? -1
+    long PyInt_AS_LONG(object)
 
     int PyDict_SetItem(object d, object k, object v) except -1
-
-    object PyTuple_New(Py_ssize_t count)
-    void PyTuple_SET_ITEM(object t, Py_ssize_t offset, object)
 
     void Py_INCREF(object)
     void Py_DECREF_ptr "Py_DECREF" (PyObject *)
 
-    PyObject * PyTuple_GET_ITEM_ptr "PyTuple_GET_ITEM" (object t,
-                                                        Py_ssize_t offset)
-    int PyString_CheckExact_ptr "PyString_CheckExact" (PyObject *p)
-    Py_ssize_t PyString_GET_SIZE_ptr "PyString_GET_SIZE" (PyObject *s)
-    char *PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *s)
     object PyString_FromStringAndSize(char*, Py_ssize_t)
 
 # cimport all of the definitions we will need to access
@@ -60,13 +52,6 @@ from _static_tuple_c cimport StaticTuple,\
     import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
     StaticTuple_GET_SIZE
-
-cdef extern from "_static_tuple_c.h":
-    # Defined explicitly rather than cimport-ing. Trying to use cimport, the
-    # type for PyObject is a different class that happens to have the same
-    # name...
-    PyObject * StaticTuple_GET_ITEM_ptr "StaticTuple_GET_ITEM" (StaticTuple,
-                                                                Py_ssize_t)
 
 cdef object crc32
 from zlib import crc32
@@ -130,7 +115,7 @@ def _search_key_16(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
+        crc_val = PyInt_AS_LONG(crc32(key[i]))
         # Hex(val) order
         sprintf(c_out, '%08X', crc_val)
         c_out = c_out + 8
@@ -155,7 +140,7 @@ def _search_key_255(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        crc_val = PyInt_AsUnsignedLongMask(crc32(key[i]))
+        crc_val = PyInt_AS_LONG(crc32(key[i]))
         # MSB order
         c_out[0] = (crc_val >> 24) & 0xFF
         c_out[1] = (crc_val >> 16) & 0xFF
