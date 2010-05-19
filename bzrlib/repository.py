@@ -43,7 +43,6 @@ from bzrlib import (
     symbol_versioning,
     trace,
     tsort,
-    ui,
     versionedfile,
     )
 from bzrlib.bundle import serializer
@@ -55,6 +54,7 @@ from bzrlib.testament import Testament
 from bzrlib import (
     errors,
     registry,
+    ui,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.inter import InterObject
@@ -64,6 +64,7 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
+from bzrlib.recordcounter import RecordCounter
 from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -4283,7 +4284,8 @@ class StreamSink(object):
                 is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format, is_resume)
+                return self._locked_insert_stream(stream, src_format,
+                    is_resume)
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
@@ -4336,8 +4338,7 @@ class StreamSink(object):
                 # required if the serializers are different only in terms of
                 # the inventory.
                 if src_serializer == to_serializer:
-                    self.target_repo.revisions.insert_record_stream(
-                        substream)
+                    self.target_repo.revisions.insert_record_stream(substream)
                 else:
                     self._extract_and_insert_revisions(substream,
                         src_serializer)
@@ -4451,6 +4452,7 @@ class StreamSource(object):
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
+        self._record_counter = RecordCounter()
 
     def delta_on_metadata(self):
         """Return True if delta's are permitted on metadata streams.
