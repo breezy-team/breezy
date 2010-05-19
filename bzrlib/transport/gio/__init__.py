@@ -130,7 +130,7 @@ class GioTransport(ConnectedTransport):
         #so a hardcoded list it is then.
         gio_backends = ['dav', 'file', 'ftp', 'obex', 'sftp', 'ssh', 'smb']
         if scheme not in gio_backends:
-            raise errors.InvalidURL(base, \
+            raise errors.InvalidURL(base,
                     extra="GIO support is only available for " + \
                     ', '.join(gio_backends))
 
@@ -171,13 +171,13 @@ class GioTransport(ConnectedTransport):
         if (flags & gio.ASK_PASSWORD_NEED_USERNAME and
                 flags & gio.ASK_PASSWORD_NEED_DOMAIN):
             prompt = scheme.upper() + ' %(host)s DOMAIN\username'
-            user_and_domain = auth.get_user(scheme, host, \
+            user_and_domain = auth.get_user(scheme, host,
                     port=port, ask=True, prompt=prompt)
             (domain, user) = user_and_domain.split('\\', 1)
             op.set_username(user)
             op.set_domain(domain)
         elif flags & gio.ASK_PASSWORD_NEED_USERNAME:
-            user = auth.get_user(scheme, host, \
+            user = auth.get_user(scheme, host,
                     port=port, ask=True)
             op.set_username(user)
         elif flags & gio.ASK_PASSWORD_NEED_DOMAIN:
@@ -192,7 +192,7 @@ class GioTransport(ConnectedTransport):
         if flags & gio.ASK_PASSWORD_NEED_PASSWORD:
             if user is None:
                 user = op.get_username()
-            password = auth.get_password(scheme, host, \
+            password = auth.get_password(scheme, host,
                     user, port=port)
             op.set_password(password)
         op.reply(gio.MOUNT_OPERATION_HANDLED)
@@ -227,7 +227,7 @@ class GioTransport(ConnectedTransport):
                     if password:
                         op.set_password(password)
                     op.connect('ask-password', self._auth_cb)
-                    m = connection.mount_enclosing_volume(op, \
+                    m = connection.mount_enclosing_volume(op,
                             self._mount_done_cb)
                     self.loop.run()
         except gio.Error, e:
@@ -285,7 +285,7 @@ class GioTransport(ConnectedTransport):
             #If we get a not mounted here it might mean
             #that a bad path has been entered (or that mount failed)
             if (e.code == gio.ERROR_NOT_MOUNTED):
-                raise errors.PathError(relpath, \
+                raise errors.PathError(relpath,
                   extra='Failed to get file, make sure the path is correct. ' \
                   + str(e))
             else:
@@ -570,7 +570,7 @@ class GioTransport(ConnectedTransport):
             raise errors.PathError(path, extra=extra)
         else:
             mutter('unable to understand error for path: %s: %s', path, err)
-            raise errors.PathError(path, \
+            raise errors.PathError(path,
                     extra="Unhandled gio error: " + str(err))
 
 
