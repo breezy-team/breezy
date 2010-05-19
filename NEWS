@@ -30,6 +30,12 @@ Bug Fixes
   errors after two window resizes.
   (Andrew Bennetts)
 
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Support Pyrex 0.9.9, required changing how we handle exceptionsin Pyrex.
+  (John Arbash Meinel, #582656)
+
 Internals
 *********
 
@@ -436,6 +442,10 @@ bzr 2.0.6
 Bug Fixes
 *********
 
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
+
 * ``bzr revert`` now only takes write lock on working tree, instead of on 
   both working tree and branch.
   (Danny van Heumen, #498409)
@@ -444,9 +454,19 @@ Bug Fixes
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
 
-* Additional merges after an unrelated branch has been merged with its
-  history no longer crash when deleted files are involved.
-  (Vincent Ladeuil, John Arbash Meinel, #375898)
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
 
 bzr 2.0.5
 #########
