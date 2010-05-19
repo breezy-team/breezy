@@ -96,8 +96,8 @@ Bug Fixes
   versions before 1.6.
   (Andrew Bennetts, #528041)
 
-* Improved progress bar for fetch. Bazaar now shows an estimate of the
-  number of records to be fetched vs actually fetched.
+* Improved progress bar for fetch (2a format only). Bazaar now shows an
+  estimate of the number of records to be fetched vs actually fetched.
   (Parth Malwankar, #374740, #538868)
 
 * Reduce peak memory by one copy of compressed text.
