@@ -108,6 +108,10 @@ Bug Fixes
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
+* ``RemoteBranch.lock_write`` raises ``ReadOnlyError`` if called during a
+  read lock, rather than causing an ``AttributeError``.
+  (Andrew Bennetts, Данило Шеган, #582781)
+
 * Selftest was failing with testtools 0.9.3, which caused an
   AssertionError raised from a cleanUp to be reported as a Failure, not an
   Error, breaking on of our test hygiene tests.

@@ -419,10 +419,6 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         new_branch.lock_write()
         new_branch.unlock()
 
-    def test_lock_write_returns_unlockable(self):
-        branch = self.make_branch('b')
-        self.assertThat(branch.lock_write, ReturnsUnlockable(branch))
-
     def test_leave_lock_in_place(self):
         branch = self.make_branch('b')
         # Lock the branch, then use leave_lock_in_place so that when we
@@ -533,6 +529,11 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
     def test_lock_write_returns_unlockable(self):
         branch = self.make_branch('b')
         self.assertThat(branch.lock_write, ReturnsUnlockable(branch))
+
+    def test_lock_write_raises_in_lock_read(self):
+        branch = self.make_branch('b')
+        branch.lock_read()
+        err = self.assertRaises(errors.ReadOnlyError, branch.lock_write)
 
     def test_lock_and_unlock_leaves_repo_unlocked(self):
         branch = self.make_branch('b')

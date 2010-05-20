@@ -2449,7 +2449,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._lock_mode = 'w'
             self._lock_count = 1
         elif self._lock_mode == 'r':
-            raise errors.ReadOnlyTransaction
+            raise errors.ReadOnlyError(self)
         else:
             if token is not None:
                 # A token was given to lock_write, and we're relocking, so
