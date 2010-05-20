@@ -1951,7 +1951,7 @@ class cmd_diff(Command):
         # GNU diff on Windows uses ANSI encoding for filenames
         path_encoding = 'utf8'
         if sys.platform == 'win32':
-            path_encoding = osutils.get_user_encoding()
+            path_encoding = 'mbcs'
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
