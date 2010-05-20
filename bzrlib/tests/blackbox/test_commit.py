@@ -698,7 +698,7 @@ altered in u2
         self.assertContainsRe(err, r'modified test\nCommitted revision 2.')
 
     def test_commit_readonly_checkout(self):
-        # https://bugs.edge.launchpad.net/bzr/+bug/129701
+        # https://bugs.launchpad.net/bzr/+bug/129701
         # "UnlockableTransport error trying to commit in checkout of readonly
         # branch"
         self.make_branch('master')

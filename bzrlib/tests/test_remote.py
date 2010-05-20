@@ -1618,7 +1618,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
     def test_get_multi_line_branch_conf(self):
         # Make sure that multiple-line branch.conf files are supported
         #
-        # https://bugs.edge.launchpad.net/bzr/+bug/354075
+        # https://bugs.launchpad.net/bzr/+bug/354075
         client = FakeClient()
         client.add_expected_call(
             'Branch.get_stacked_on_url', ('memory:///',),
