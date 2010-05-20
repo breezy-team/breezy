@@ -493,6 +493,7 @@ def report_exception(exc_info, err_file):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
     elif isinstance(exc_object, (OSError, IOError)) or (
+        # GZ 2010-05-20: Like (exc_type is pywintypes.error) but avoid import
         exc_type.__name__ == "error" and exc_type.__module__ == "pywintypes"):
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
