@@ -126,6 +126,9 @@ Bug Fixes
   more comprehensible.
   (Martin Pool, #491763)
 
+* Support Pyrex 0.9.9, required changing how we handle exceptions in Pyrex.
+  (John Arbash Meinel, #582656)
+
 * Unicode characters in aliases are now handled correctly and do not cause
   UnicodeEncodeError exception. (Parth Malwankar, #529930)
 
@@ -643,6 +646,10 @@ bzr 2.1.2
 Bug Fixes
 *********
 
+* ``bzr clean-tree`` should not delete nested bzrdirs. Required for proper
+  support of bzr-externals and scmproj plugins.
+  (Alexander Belchenko, bug #572098)
+
 * ``bzr switch`` does not die if a ConfigurableFileMerger is used.
   (Aaron Bentley, #559436)
 
@@ -655,6 +662,12 @@ Bug Fixes
   ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
   errors after two window resizes.
   (Andrew Bennetts)
+
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Support Pyrex 0.9.9, required changing how we handle exceptions in Pyrex.
+  (John Arbash Meinel, #582656)
 
 Internals
 *********
@@ -1105,11 +1118,19 @@ Bug Fixes
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
 
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
 * Repositories accessed via a smart server now reject being stacked on a
   repository in an incompatible format, as is the case when accessing them
   via other methods.  This was causing fetches from those repositories via
   a smart server (e.g. using ``bzr branch``) to receive invalid data.
   (Andrew Bennetts, #562380)
+
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
 
 bzr 2.0.5
 #########
