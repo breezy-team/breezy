@@ -29,7 +29,7 @@ from bzrlib import (
     errors,
     trace,
     )
-from bzrlib.tests import TestCaseInTempDir, TestCase, ModuleAvailableFeature
+from bzrlib.tests import features, TestCaseInTempDir, TestCase
 from bzrlib.trace import (
     mutter, mutter_callsite, report_exception,
     set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
@@ -105,7 +105,7 @@ class TestTrace(TestCase):
             r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
 
     def test_format_pywintypes_error(self):
-        self.requireFeature(ModuleAvailableFeature("pywintypes"))
+        self.requireFeature(features.pywintypes)
         import pywintypes, win32file
         try:
             win32file.RemoveDirectory('nosuchfile22222')
