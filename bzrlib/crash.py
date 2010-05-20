@@ -173,7 +173,7 @@ def _write_apport_report_to_file(exc_info):
     pr['Package'] = 'bzr'
 
     # tell apport to file directly against the bzr package using 
-    # <https://bugs.edge.launchpad.net/bzr/+bug/391015>
+    # <https://bugs.launchpad.net/bzr/+bug/391015>
     #
     # XXX: unfortunately apport may crash later if the crashdb definition
     # file isn't present

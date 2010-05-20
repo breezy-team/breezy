@@ -3245,7 +3245,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         # XXX: It's a bit ugly that the network name is here, because we'd
         # like to believe that format objects are stateless or at least
         # immutable,  However, we do at least avoid mutating the name after
-        # it's returned.  See <https://bugs.edge.launchpad.net/bzr/+bug/504102>
+        # it's returned.  See <https://bugs.launchpad.net/bzr/+bug/504102>
         self._network_name = None
 
     def __repr__(self):

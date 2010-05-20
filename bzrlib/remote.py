@@ -899,7 +899,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def _has_same_fallbacks(self, other_repo):
         """Returns true if the repositories have the same fallbacks."""
         # XXX: copied from Repository; it should be unified into a base class
-        # <https://bugs.edge.launchpad.net/bzr/+bug/401622>
+        # <https://bugs.launchpad.net/bzr/+bug/401622>
         my_fb = self._fallback_repositories
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):

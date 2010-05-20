@@ -1064,7 +1064,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertExpectedBlocks(expected_dirblocks[1:], result)
 
     def test_walkdirs_os_error(self):
-        # <https://bugs.edge.launchpad.net/bzr/+bug/338653>
+        # <https://bugs.launchpad.net/bzr/+bug/338653>
         # Pyrex readdir didn't raise useful messages if it had an error
         # reading the directory
         if sys.platform == 'win32':
