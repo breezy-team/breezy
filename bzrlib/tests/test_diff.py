@@ -33,7 +33,7 @@ from bzrlib import (
     transform,
     )
 from bzrlib.symbol_versioning import deprecated_in
-from bzrlib.tests import test_win32utils
+from bzrlib.tests import features
 
 
 class _AttribFeature(tests.Feature):
@@ -1298,7 +1298,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                          diff_obj._get_command('old-path', 'new-path'))
 
     def test_from_string_path_with_backslashes(self):
-        self.requireFeature(test_win32utils.BackslashDirSeparatorFeature)
+        self.requireFeature(features.backslashdir_feature)
         tool = 'C:\\Tools\\Diff.exe'
         diff_obj = diff.DiffFromTool.from_string(tool, None, None, None)
         self.addCleanup(diff_obj.finish)
