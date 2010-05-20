@@ -883,7 +883,7 @@ def help_as_plain_text(text):
     """Minimal converter of reStructuredText to plain text."""
     import re
     # Remove the standalone code block marker
-    text = re.sub(r"(?m)^::\n\s*\n", "", text)
+    text = re.sub(r"(?m)^\s*::\n\s*$", "", text)
     lines = text.splitlines()
     result = []
     for line in lines:
