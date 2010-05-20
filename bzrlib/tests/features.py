@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""A collection of commonly used 'Features' which bzrlib uses to skip tests."""
+
 import os
 import stat
 
@@ -25,6 +27,22 @@ apport = tests.ModuleAvailableFeature('apport')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 subunit = tests.ModuleAvailableFeature('subunit')
+
+
+class _BackslashDirSeparatorFeature(tests.Feature):
+
+    def _probe(self):
+        try:
+            os.lstat(os.getcwd() + '\\')
+        except OSError:
+            return False
+        else:
+            return True
+
+    def feature_name(self):
+        return "Filesystem treats '\\' as a directory separator."
+
+backslashdir_feature = _BackslashDirSeparatorFeature()
 
 
 class _PosixPermissionsFeature(tests.Feature):
