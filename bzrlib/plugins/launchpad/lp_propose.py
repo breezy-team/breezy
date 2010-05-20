@@ -70,7 +70,7 @@ class Proposer(object):
         if staging:
             lp_instance = 'staging'
         else:
-            lp_instance = 'edge'
+            lp_instance = 'production'
         service = lp_registration.LaunchpadService(lp_instance=lp_instance)
         self.launchpad = lp_api.login(service)
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
