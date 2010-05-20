@@ -1948,11 +1948,16 @@ class cmd_diff(Command):
          old_branch, new_branch,
          specific_files, extra_trees) = get_trees_and_branches_to_diff(
             file_list, revision, old, new, apply_view=True)
+        # GNU diff on Windows uses ANSI encoding for filenames
+        path_encoding = 'utf8'
+        if sys.platform == 'win32':
+            path_encoding = osutils.get_user_encoding()
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
-                               extra_trees=extra_trees, using=using)
+                               extra_trees=extra_trees,
+                               path_encoding=path_encoding, using=using)
 
 
 class cmd_deleted(Command):
