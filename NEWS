@@ -81,6 +81,12 @@ Bug Fixes
   difference).
   (Vincent Ladeuil, #320119)
 
+* ``bzr lp-propose`` which was switched to use production Launchpad API
+  servers a few commits ago has been reverted to use edge: there is a
+  problem with using production which isn't trivially obvious, so we've
+  filed a bug to track it, and until thats fixed will be using edge.
+  (Robert Collins, #583667)
+
 * ``bzr rm`` should not refuse to delete directories which contained a file
   which has been moved elsewhere in the tree after the previous commit.
   (Marius Kruger, Daniel Watkins, #129880)
