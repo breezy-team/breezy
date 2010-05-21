@@ -140,6 +140,11 @@ Bug Fixes
 * Using bzr with `lp:` urls behind an http proxy should work.
   (Robert Collins, #558343)
 
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
+
 Improvements
 ************
 
@@ -669,6 +674,11 @@ Bug Fixes
 * Support Pyrex 0.9.9, required changing how we handle exceptions in Pyrex.
   (John Arbash Meinel, #582656)
 
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
+
 Internals
 *********
 
@@ -1131,6 +1141,12 @@ Bug Fixes
   error. This error was caused by 2.0 not being updated when upstream
   python merged the end of run patch, which chose ``stopTestRun`` rather than
   ``done``. (Robert Collins, #571437)
+
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
+
 
 bzr 2.0.5
 #########
