@@ -307,6 +307,9 @@ cdef _read_dir(path):
         if orig_dir_fd == -1:
             raise_os_error(errno, "open: ", ".")
         if -1 == chdir(path):
+            # Ignore the return value, because we are already raising an
+            # exception
+            close(orig_dir_fd)
             raise_os_error(errno, "chdir: ", path)
     else:
         orig_dir_fd = -1
