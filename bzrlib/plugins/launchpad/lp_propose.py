@@ -81,6 +81,7 @@ class Proposer(object):
             self.target_branch = lp_api.LaunchpadBranch.from_bzr(
                 self.launchpad, target_branch)
         self.commit_message = message
+        # XXX: this is where bug lp:583638 could be tackled.
         if reviews == []:
             target_reviewer = self.target_branch.lp.reviewer
             if target_reviewer is None:
@@ -160,6 +161,24 @@ class Proposer(object):
                  'prerequisite_branch': prerequisite_branch})
         return prerequisite_branch
 
+    def call_webservice(self, call, *args, **kwargs):
+        """Make a call to the webservice, wrapping failures.
+        
+        :param call: The call to make.
+        :param *args: *args for the call.
+        :param **kwargs: **kwargs for the call.
+        :return: The result of calling call(*args, *kwargs).
+        """
+        try:
+            return call(*args, **kwargs)
+        except restful_errors.HTTPError, e:
+            error_lines = []
+            for line in e.content.splitlines():
+                if line.startswith('Traceback (most recent call last):'):
+                    break
+                error_lines.append(line)
+            raise Exception(''.join(error_lines))
+
     def create_proposal(self):
         """Perform the submission."""
         prerequisite_branch = self._get_prerequisite_branch()
@@ -175,22 +194,14 @@ class Proposer(object):
             review_types.append(review_type)
             reviewers.append(reviewer.self_link)
         initial_comment = self.get_comment(prerequisite_branch)
-        try:
-            mp = self.source_branch.lp.createMergeProposal(
-                target_branch=self.target_branch.lp,
-                prerequisite_branch=prereq,
-                initial_comment=initial_comment,
-                commit_message=self.commit_message, reviewers=reviewers,
-                review_types=review_types)
-        except restful_errors.HTTPError, e:
-            error_lines = []
-            for line in e.content.splitlines():
-                if line.startswith('Traceback (most recent call last):'):
-                    break
-                error_lines.append(line)
-            raise Exception(''.join(error_lines))
-        else:
-            webbrowser.open(canonical_url(mp))
+        mp = self.call_webservice(
+            self.source_branch.lp.createMergeProposal,
+            target_branch=self.target_branch.lp,
+            prerequisite_branch=prereq,
+            initial_comment=initial_comment,
+            commit_message=self.commit_message, reviewers=reviewers,
+            review_types=review_types)
+        webbrowser.open(canonical_url(mp))
 
 
 def modified_files(old_tree, new_tree):
