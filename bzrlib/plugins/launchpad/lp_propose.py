@@ -55,7 +55,7 @@ class Proposer(object):
     hooks = ProposeMergeHooks()
 
     def __init__(self, tree, source_branch, target_branch, message, reviews,
-                 staging=False):
+                 staging=False, approve=False):
         """Constructor.
 
         :param tree: The working tree for the source branch.
@@ -65,6 +65,10 @@ class Proposer(object):
         :param reviews: A list of tuples of reviewer, review type.
         :param staging: If True, propose the merge against staging instead of
             production.
+        :param approve: If True, mark the new proposal as approved immediately.
+            This is useful when a project permits some things to be approved
+            by the submitter (e.g. merges between release and deployment
+            branches).
         """
         self.tree = tree
         if staging:
@@ -91,6 +95,7 @@ class Proposer(object):
             self.reviews = [(self.launchpad.people[reviewer], review_type)
                             for reviewer, review_type in
                             reviews]
+        self.approve = approve
 
     def get_comment(self, prerequisite_branch):
         """Determine the initial comment for the merge proposal."""
@@ -201,6 +206,8 @@ class Proposer(object):
             initial_comment=initial_comment,
             commit_message=self.commit_message, reviewers=reviewers,
             review_types=review_types)
+        if self.approve:
+            self.call_webservice(mp.setStatus, status='Approved')
         webbrowser.open(canonical_url(mp))
 
 
