@@ -1,4 +1,4 @@
-# Copyright (C) 2004-2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -3444,8 +3444,8 @@ class cmd_selftest(Command):
     def get_transport_type(typestring):
         """Parse and return a transport specifier."""
         if typestring == "sftp":
-            from bzrlib.transport.sftp import SFTPAbsoluteServer
-            return SFTPAbsoluteServer
+            from bzrlib.tests import stub_sftp
+            return stub_sftp.SFTPAbsoluteServer
         if typestring == "memory":
             from bzrlib.transport.memory import MemoryServer
             return MemoryServer

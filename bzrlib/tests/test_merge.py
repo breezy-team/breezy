@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2841,24 +2841,86 @@ class TestLCAMultiWay(tests.TestCase):
 
 class TestConfigurableFileMerger(tests.TestCaseWithTransport):
 
-    def test_affected_files_cached(self):
-        """Ensures that the config variable is cached"""
-        class SimplePlan(_mod_merge.ConfigurableFileMerger):
+    def setUp(self):
+        super(TestConfigurableFileMerger, self).setUp()
+        self.calls = []
+
+    def get_merger_factory(self):
+        # Allows  the inner methods to access the test attributes
+        test = self
+
+        class FooMerger(_mod_merge.ConfigurableFileMerger):
             name_prefix = "foo"
-            default_files = ["my default"]
+            default_files = ['bar']
+
             def merge_text(self, params):
-                return ('not applicable', None)
+                test.calls.append('merge_text')
+                return ('not_applicable', None)
+
         def factory(merger):
-            result = SimplePlan(merger)
+            result = FooMerger(merger)
+            # Make sure we start with a clean slate
             self.assertEqual(None, result.affected_files)
+            # Track the original merger
             self.merger = result
             return result
+
+        return factory
+
+    def _install_hook(self, factory):
         _mod_merge.Merger.hooks.install_named_hook('merge_file_content',
-            factory, 'test factory')
+                                                   factory, 'test factory')
+
+    def make_builder(self):
         builder = test_merge_core.MergeBuilder(self.test_base_dir)
         self.addCleanup(builder.cleanup)
-        builder.add_file('NEWS', builder.tree_root, 'name1', 'text1', True)
-        builder.change_contents('NEWS', other='text4', this='text3')
+        return builder
+
+    def make_text_conflict(self, file_name='bar'):
+        factory = self.get_merger_factory()
+        self._install_hook(factory)
+        builder = self.make_builder()
+        builder.add_file('bar-id', builder.tree_root, file_name, 'text1', True)
+        builder.change_contents('bar-id', other='text4', this='text3')
+        return builder
+
+    def make_kind_change(self):
+        factory = self.get_merger_factory()
+        self._install_hook(factory)
+        builder = self.make_builder()
+        builder.add_file('bar-id', builder.tree_root, 'bar', 'text1', True,
+                         this=False)
+        builder.add_dir('bar-dir', builder.tree_root, 'bar-id',
+                        base=False, other=False)
+        return builder
+
+    def test_uses_this_branch(self):
+        builder = self.make_text_conflict()
+        tt = builder.make_preview_transform()
+        self.addCleanup(tt.finalize)
+
+    def test_affected_files_cached(self):
+        """Ensures that the config variable is cached"""
+        builder = self.make_text_conflict()
         conflicts = builder.merge()
         # The hook should set the variable
-        self.assertEqual(["my default"], self.merger.affected_files)
+        self.assertEqual(['bar'], self.merger.affected_files)
+        self.assertEqual(1, len(conflicts))
+
+    def test_hook_called_for_text_conflicts(self):
+        builder = self.make_text_conflict()
+        conflicts = builder.merge()
+        # The hook should call the merge_text() method
+        self.assertEqual(['merge_text'], self.calls)
+
+    def test_hook_not_called_for_kind_change(self):
+        builder = self.make_kind_change()
+        conflicts = builder.merge()
+        # The hook should not call the merge_text() method
+        self.assertEqual([], self.calls)
+
+    def test_hook_not_called_for_other_files(self):
+        builder = self.make_text_conflict('foobar')
+        conflicts = builder.merge()
+        # The hook should not call the merge_text() method
+        self.assertEqual([], self.calls)

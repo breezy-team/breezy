@@ -5,11 +5,139 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.1.0rc2 (not released yet)
-###############################
+
+bzr 2.1.1
+#########
+
+:2.1.1: 2010-03-24
+
+This is a small bugfix release.  Upgrading is recommended for anyone
+running 2.1.0 or earlier.
+
+Bug Fixes
+*********
+
+* Allow syscalls to automatically restart when ``TextUIFactory``'s
+  SIGWINCH handler is invoked, avoiding ``EINTR`` errors during blocking
+  IO, which are often poorly handled by Python's libraries and parts of
+  bzrlib.  (Andrew Bennetts, #496813)
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
+
+* Fix stub sftp test server to call os.getcwdu().
+  (Vincent Ladeuil, #526211, #526353)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
+
+* Merge correctly when this_tree is not a WorkingTree.  (Aaron Bentley)
+
+* Register SIGWINCH handler only when creating a ``TextUIFactory``; avoids
+  problems importing bzrlib from a non-main thread.
+  (Elliot Murphy, #521989)
+
+* Standardize the error handling when creating a new ``StaticTuple``
+  (problems will raise TypeError). (Matt Nordhoff, #457979)
+
+* Warn if pyrex is too old to compile the new ``SimpleSet`` and
+  ``StaticTuple`` extensions, rather than having the build fail randomly.
+  (John Arbash Meinel, #449776)
+
+Documentation
+*************
+
+* Added a link to the Desktop Guide. (Ian Clatworthy)
+
+* Added What's New in Bazaar 2.1 document. (Ian Clatworthy)
+
+* Drop Google Analytics from the core docs as they caused problems
+  in the CHM files. (Ian Clatworthy, #502010)
+
+API Changes
+***********
+
+* Added ``bzrlib.osutils.set_signal_handler``, a convenience function that
+  can set a signal handler and call ``signal.siginterrupt(signum,
+  False)`` for it, if the platform and Python version supports it.
+  (Andrew Bennetts, #496813)
+
+
+bzr 2.1.0
+#########
+
+:Codename: Strasbourg
+:2.1.0: 2010-02-11
+
+This release marks our second long-term-stable series. The Bazaar team
+has decided that we will continue to make bugfix-only 2.0.x and 2.1.x
+releases, along with 2.2 development releases. 
+
+This is a fairly incremental update, focusing on polish and bugfixing.
+There are no changes for supported disk formats. Key updates include
+reduced memory consumption for many operations, a new per-file merge
+hook, ignore patterns can now include '!' to exclude files, globbing
+support for all commands on Windows, and support for addressing home
+directories via ``bzr+ssh://host/~/`` syntax.
+
+Users are encouraged to upgrade from the 2.0 stable series.
+
+Bug Fixes
+*********
+
+* Don't require testtools to use sftp.
+  (Vincent Ladeuil, #516183)
+
+* Fix "AttributeError in Inter1and2Helper" during fetch.
+  (Martin Pool, #513432)
+
+* Ignore ``KeyError`` from ``remove_index`` during ``_abort_write_group``
+  in a pack repository, which can happen harmlessly if the abort occurs during
+  finishing the write group.  Also use ``bzrlib.cleanup`` so that any
+  other errors that occur while aborting the individual packs won't be
+  hidden by secondary failures when removing the corresponding indices.
+  (Andrew Bennetts, #423015)
+  
+* Using the ``bzrlib.chk_map`` module from within multiple threads at the
+  same time was broken due to race conditions with a module level page
+  cache. This shows up as a KeyError in the ``bzrlib.lru_cache`` code with
+  ``bzrlib.chk_map`` in the backtrace, and can be triggered without using
+  the same high level objects such as ``bzrlib.repository.Repository``
+  from different threads. chk_map now uses a thread local cache which may
+  increase memory pressure on processes using threads.
+  (Robert Collins, John Arbash Meinel, #514090)
+
+* The new ``merge_file_content`` should now be ok with tests to avoid
+  regressions.
+  (Vincent Ladeuil, #515597)
+  
+Internals
+*********
+
+* Use ``bzrlib.cleanup`` rather than less robust ``try``/``finally``
+  blocks in several places in ``bzrlib.merge``.  This avoids masking prior
+  errors when errors like ``ImmortalPendingDeletion`` occur during cleanup
+  in ``do_merge``.
+  (Andrew Bennetts, #517275)
+
+API Changes
+***********
+
+* The ``remove_index`` method of
+  ``bzrlib.repofmt.pack_repo.AggregateIndex`` no longer takes a ``pack``
+  argument.  This argument was always ignored.
+  (Andrew Bennetts, #423015)
+
+bzr 2.1.0rc2
+############
 
 :Codename: after the bubbles
 :2.1.0rc2: 2010-01-29
+
+This is a quick-turn-around to update a small issue with our new per-file
+merge hook. We expect no major changes from this to the final 2.1.0.
 
 API Changes
 ***********
@@ -21,6 +149,7 @@ API Changes
   part of this the included news_merger has been refactored into a base
   helper class ``bzrlib.merge.ConfigurableFileMerger``.
   (Robert Collins, John Arbash Meinel, #513822)
+
 
 bzr 2.1.0rc1
 ############
@@ -258,6 +387,61 @@ Testing
   tests that 'failed' - they're all just failures.
   (Martin Pool)
 
+
+bzr 2.0.5
+#########
+
+:Codename:
+:2.0.5: NOT RELEASED YET
+
+Bug Fixes
+*********
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Cope with the lockdir ``held/info`` file being empty, which seems to
+  happen fairly often if the process is suddenly interrupted while taking
+  a lock.
+  (Martin Pool, #185103)
+
+* Give the warning about potentially slow cross-format fetches much
+  earlier on in the fetch operation.  Don't show this message during
+  upgrades, and show the correct format indication for remote
+  repositories.
+  (Martin Pool, #456077, #515356, #513157)
+
+* Handle renames correctly when there are files or directories that 
+  differ only in case.  (Chris Jones, Martin Pool, #368931)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
+
+* If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
+  error, report that error rather than failing with an unhelpful
+  ``UnboundLocalError``.
+  (Andrew Bennetts, #423563)
+
+* Running ``bzr`` command without any arguments now shows bzr
+  version number along with rest of the help text.
+  (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
+
+Documentation
+*************
+
+* Added ``location-alias`` help topic.
+  (Andrew Bennetts, #337834)
 
 bzr 2.0.4
 #########
@@ -11735,38 +11919,6 @@ Enhancements
 
 * Storage of local versions: init, add, remove, rm, info, log,
   diff, status, etc.
-
-
-bzr ?.?.? (not released yet)
-############################
-
-:Codename: template
-:2.0.2: ???
-
-Compatibility Breaks
-********************
-
-New Features
-************
-
-Bug Fixes
-*********
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
-
 
 
 ..
