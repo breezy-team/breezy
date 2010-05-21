@@ -1,8 +1,9 @@
-bzr (2.2~beta2-1) experimental; urgency=low
+bzr (2.2~b2-1) experimental; urgency=low
 
   * New upstream release.
+  * Recommend python-launchpadlib. Closes: #568937
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 21 May 2010 19:10:08 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 21 May 2010 19:56:07 +0200
 
 bzr (2.1.1-1.1) unstable; urgency=low
 
