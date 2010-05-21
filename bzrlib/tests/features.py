@@ -26,6 +26,7 @@ from bzrlib.symbol_versioning import deprecated_in
 apport = tests.ModuleAvailableFeature('apport')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
+pywintypes = tests.ModuleAvailableFeature('pywintypes')
 subunit = tests.ModuleAvailableFeature('subunit')
 
 
