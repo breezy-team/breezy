@@ -120,12 +120,20 @@ do this, you will need a Launchpad account and user name, e.g.
 `your_lp_username`.  You can push your branch to Launchpad directly from
 Bazaar::
 
-  $ bzr push lp:~your_lp_username/bzr/giveback
+  $ bzr push lp:~your_lp_username/bzr/meaningful_name_here
 
 After you have pushed your branch, you will need to propose it for merging to
-the Bazaar trunk.  Go to <https://launchpad.net/your_lp_username/bzr/giveback>
-and choose "Propose for merging into another branch".  Select "~bzr/bzr/trunk"
-to hand your changes off to the Bazaar developers for review and merging.
+the Bazaar trunk.  Go to
+<https://launchpad.net/your_lp_username/bzr/meaningful_name_here> and choose
+"Propose for merging into another branch".  Select "~bzr/bzr/trunk" to hand
+your changes off to the Bazaar developers for review and merging.
+
+Using a meaningful name for your branch will help you and the reviewer(s)
+better track the submission. Use a very succint description of your submission
+and prefix it with bug number if needed (lp:~mbp/bzr/484558-merge-directory
+for example). Alternatively, you can suffix with the bug number
+(lp:~jameinel/bzr/export-file-511987).
+
 
 Why make a local copy of bzr.dev?
 ---------------------------------
@@ -689,7 +697,7 @@ Factories
 
 In some places we have variables which point to callables that construct
 new instances.  That is to say, they can be used a lot like class objects,
-but they shouldn't be *named* like classes:
+but they shouldn't be *named* like classes::
 
 > I think that things named FooBar should create instances of FooBar when
 > called. Its plain confusing for them to do otherwise. When we have
@@ -722,6 +730,8 @@ dispatched this way, e.g. ``InterRepository``.  Calling ``.get()`` on this
 class will return an ``InterObject`` instance providing the best match for
 those parameters, and this instance then has methods for operations
 between the objects.
+
+::
 
   inter = InterRepository.get(source_repo, target_repo)
   inter.fetch(revision_id)
@@ -1011,6 +1021,30 @@ finish the progress task when it exits, because it may otherwise be a long
 time until the finally block runs.
 
 
+Message guidelines
+------------------
+
+When filenames or similar variables are presented inline within a message,
+they should be enclosed in double quotes (ascii 0x22, not chiral unicode
+quotes)::
+
+  bzr: ERROR: No such file "asdf"
+
+When we print just a list of filenames there should not be any quoting:
+see `bug 544297`_.
+
+.. _bug 544297: https://bugs.launchpad.net/bugs/544297
+
+https://wiki.ubuntu.com/UnitsPolicy provides a good explanation about
+which unit should be used when. Roughly speaking, IEC standard applies
+for base-2 units and SI standard applies for base-10 units:
+
+* for network bandwidth and disk sizes, use base-10 (Mbits/s, kB/s, GB)
+
+* for RAM sizes, use base-2 (GiB, TiB)
+
+
+
 Displaying help
 ===============
 
@@ -1147,12 +1181,15 @@ user-visible changes first.  So the order should be approximately:
  * new features - should be brought to their attention
  * bug fixes - may be of interest if the bug was affecting them, and
    should include the bug number if any
- * major documentation changes
+ * major documentation changes, including fixed documentation bugs
  * changes to internal interfaces
 
 People who made significant contributions to each change are listed in
 parenthesis.  This can include reporting bugs (particularly with good
 details or reproduction recipes), submitting patches, etc.
+
+To help with merging, NEWS entries should be sorted lexicographically
+within each section.
 
 Commands
 --------

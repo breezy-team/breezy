@@ -51,7 +51,6 @@ from bzrlib.transport import (
     fakenfs,
     get_transport,
     )
-from bzrlib.transport.memory import MemoryServer
 from bzrlib import (
     bencode,
     bzrdir,
@@ -465,7 +464,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo = self.make_repository('.',
                 format=bzrdir.format_registry.get('knit')())
         inv_xml = '<inventory format="5">\n</inventory>\n'
-        inv = repo.deserialise_inventory('test-rev-id', inv_xml)
+        inv = repo._deserialise_inventory('test-rev-id', inv_xml)
         self.assertEqual('test-rev-id', inv.root.revision)
 
     def test_deserialise_uses_global_revision_id(self):
@@ -477,9 +476,9 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Arguably, the deserialise_inventory should detect a mismatch, and
         # raise an error, rather than silently using one revision_id over the
         # other.
-        self.assertRaises(AssertionError, repo.deserialise_inventory,
+        self.assertRaises(AssertionError, repo._deserialise_inventory,
             'test-rev-id', inv_xml)
-        inv = repo.deserialise_inventory('other-rev-id', inv_xml)
+        inv = repo._deserialise_inventory('other-rev-id', inv_xml)
         self.assertEqual('other-rev-id', inv.root.revision)
 
     def test_supports_external_lookups(self):

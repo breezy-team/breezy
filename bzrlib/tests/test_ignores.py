@@ -50,6 +50,18 @@ class TestParseIgnoreFile(TestCase):
     def test_parse_empty(self):
         ignored = ignores.parse_ignore_file(StringIO(''))
         self.assertEqual(set([]), ignored)
+        
+    def test_parse_non_utf8(self):
+        """Lines with non utf 8 characters should be discarded."""
+        ignored = ignores.parse_ignore_file(StringIO(
+                'utf8filename_a\n'
+                'invalid utf8\x80\n'
+                'utf8filename_b\n'
+                ))
+        self.assertEqual(set([
+                        'utf8filename_a',
+                        'utf8filename_b',
+                       ]), ignored)
 
 
 class TestUserIgnores(TestCaseInTempDir):
@@ -132,13 +144,9 @@ class TestRuntimeIgnores(TestCase):
     def setUp(self):
         TestCase.setUp(self)
 
-        orig = ignores._runtime_ignores
-        def restore():
-            ignores._runtime_ignores = orig
-        self.addCleanup(restore)
         # For the purposes of these tests, we must have no
         # runtime ignores
-        ignores._runtime_ignores = set()
+        self.overrideAttr(ignores, '_runtime_ignores', set())
 
     def test_add(self):
         """Test that we can add an entry to the list."""

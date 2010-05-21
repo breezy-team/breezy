@@ -54,13 +54,14 @@ from bzrlib.remote import (
     )
 from bzrlib.repofmt import groupcompress_repo, pack_repo
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import server, medium
+from bzrlib.smart import medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
     multiply_tests,
+    test_server,
     )
 from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
@@ -75,9 +76,9 @@ def load_tests(standard_tests, module, loader):
         standard_tests, condition_isinstance(BasicRemoteObjectTests))
     smart_server_version_scenarios = [
         ('HPSS-v2',
-            {'transport_server': server.SmartTCPServer_for_testing_v2_only}),
+         {'transport_server': test_server.SmartTCPServer_for_testing_v2_only}),
         ('HPSS-v3',
-            {'transport_server': server.SmartTCPServer_for_testing})]
+         {'transport_server': test_server.SmartTCPServer_for_testing})]
     return multiply_tests(to_adapt, smart_server_version_scenarios, result)
 
 
@@ -2008,11 +2009,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertLength(1, self.hpss_calls)
 
     def disableExtraResults(self):
-        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
-        SmartServerRepositoryGetParentMap.no_extra_results = True
-        def reset_values():
-            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
-        self.addCleanup(reset_values)
+        self.overrideAttr(SmartServerRepositoryGetParentMap,
+                          'no_extra_results', True)
 
     def test_null_cached_missing_and_stop_key(self):
         self.setup_smart_server_with_call_log()
@@ -2077,7 +2075,7 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
 
     def test_allows_new_revisions(self):
         """get_parent_map's results can be updated by commit."""
-        smart_server = server.SmartTCPServer_for_testing()
+        smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server)
         self.make_branch('branch')
         branch = Branch.open(smart_server.get_url() + '/branch')
@@ -2625,7 +2623,7 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
     """RemoteRepository.copy_content_into optimizations"""
 
     def test_copy_content_remote_to_local(self):
-        self.transport_server = server.SmartTCPServer_for_testing
+        self.transport_server = test_server.SmartTCPServer_for_testing
         src_repo = self.make_repository('repo1')
         src_repo = repository.Repository.open(self.get_url('repo1'))
         # At the moment the tarball-based copy_content_into can't write back
@@ -2944,7 +2942,7 @@ class TestStacking(tests.TestCaseWithTransport):
         stacked_branch = self.make_branch('stacked', format='1.9')
         stacked_branch.set_stacked_on_url('../base')
         # start a server looking at this
-        smart_server = server.SmartTCPServer_for_testing()
+        smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server)
         remote_bzrdir = BzrDir.open(smart_server.get_url() + '/stacked')
         # can get its branch and repository
@@ -3106,7 +3104,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         super(TestRemoteBranchEffort, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
-        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(self.smart_server, self.get_server())
         # Log all HPSS calls into self.hpss_calls.
         _SmartClient.hooks.install_named_hook(

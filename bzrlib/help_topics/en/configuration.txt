@@ -98,25 +98,67 @@ Note that the special values 'user', 'core' and 'site' should be
 used literally, they will be substituted by the corresponding,
 platform specific, values.
 
-Examples:
-^^^^^^^^^
-
-The examples below uses ':' as the separator, windows users
+The examples below use ':' as the separator, windows users
 should use ';'.
 
-Overriding the default user plugin directory:
-``BZR_PLUGIN_PATH='/path/to/my/other/plugins'``
+Overriding the default user plugin directory::
 
-Disabling the site directory while retaining the user directory:
-``BZR_PLUGIN_PATH='-site:+user'``
+  BZR_PLUGIN_PATH='/path/to/my/other/plugins'
 
-Disabling all plugins (better achieved with --no-plugins):
-``BZR_PLUGIN_PATH='-user:-core:-site'``
+Disabling the site directory while retaining the user directory::
 
-Overriding the default site plugin directory:
-``BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user``
+  BZR_PLUGIN_PATH='-site:+user'
 
+Disabling all plugins (better achieved with --no-plugins)::
 
+  BZR_PLUGIN_PATH='-user:-core:-site'
+
+Overriding the default site plugin directory::
+
+  BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user
+
+BZR_DISABLE_PLUGINS
+~~~~~~~~~~~~~~~~~~~
+
+Under special circumstances (mostly when trying to diagnose a
+bug), it's better to disable a plugin (or several) rather than
+uninstalling them completely. Such plugins can be specified in
+the ``BZR_DISABLE_PLUGINS`` environment variable.
+
+In that case, ``bzr`` will stop loading the specified plugins and
+will raise an import error if they are explicitly imported (by
+another plugin that depends on them for example).
+
+Disabling ``myplugin`` and ``yourplugin`` is achieved by::
+
+  BZR_DISABLE_PLUGINS='myplugin:yourplugin'
+
+BZR_PLUGINS_AT
+~~~~~~~~~~~~~~
+
+When adding a new feature or working on a bug in a plugin,
+developers often need to use a specific version of a given
+plugin. Since python requires that the directory containing the
+code is named like the plugin itself this make it impossible to
+use arbitrary directory names (using a two-level directory scheme
+is inconvenient). ``BZR_PLUGINS_AT`` allows such directories even
+if they don't appear in ``BZR_PLUGIN_PATH`` .
+
+Plugins specified in this environment variable takes precedence
+over the ones in ``BZR_PLUGIN_PATH``.
+
+The variable specified a list of ``plugin_name@plugin path``,
+``plugin_name`` being the name of the plugin as it appears in
+python module paths, ``plugin_path`` being the path to the
+directory containing the plugin code itself
+(i.e. ``plugins/myplugin`` not ``plugins``).  Use ':' as the list
+separator, use ';' on windows.
+
+Example:
+~~~~~~~~
+
+Using a specific version of ``myplugin``:
+``BZR_PLUGINS_AT='myplugin@/home/me/bugfixes/123456-myplugin``
 
 BZRPATH
 ~~~~~~~

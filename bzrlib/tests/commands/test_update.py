@@ -40,6 +40,6 @@ class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
         # update needs the encoding from outf to print URLs
         update.outf = tests.StringIOWrapper()
         # update calls it 'dir' where other commands calls it 'directory'
-        update.run_direct(dir='local')
+        update.run(dir='local')
         self.assertEquals(1, len(self.connections))
 

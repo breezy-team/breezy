@@ -734,11 +734,10 @@ class VersionedFileTestMixIn(object):
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
 
-        class InstrumentedProgress(progress.DummyProgress):
+        class InstrumentedProgress(progress.ProgressTask):
 
             def __init__(self):
-
-                progress.DummyProgress.__init__(self)
+                progress.ProgressTask.__init__(self)
                 self.updates = []
 
             def update(self, msg=None, current=None, total=None):
@@ -1470,7 +1469,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             transport.mkdir('.')
         files = self.factory(transport)
         if self.cleanup is not None:
-            self.addCleanup(lambda:self.cleanup(files))
+            self.addCleanup(self.cleanup, files)
         return files
 
     def get_simple_key(self, suffix):
@@ -2548,11 +2547,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
 
-        class InstrumentedProgress(progress.DummyProgress):
+        class InstrumentedProgress(progress.ProgressTask):
 
             def __init__(self):
-
-                progress.DummyProgress.__init__(self)
+                progress.ProgressTask.__init__(self)
                 self.updates = []
 
             def update(self, msg=None, current=None, total=None):

@@ -45,7 +45,6 @@ from bzrlib.repofmt import (
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 from bzrlib.smart import (
     client,
-    server,
     )
 from bzrlib.tests import (
     TestCase,
@@ -54,10 +53,10 @@ from bzrlib.tests import (
     TestSkipped,
     )
 from bzrlib.transport import (
-    fakenfs,
-    memory,
     get_transport,
+    memory,
     )
+from bzrlib.tests import test_server
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -240,7 +239,7 @@ class TestPackRepository(TestCaseWithTransport):
 
     def test_commit_write_group_returns_new_pack_names(self):
         # This test doesn't need real disk.
-        self.vfs_transport_factory = tests.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         format = self.get_format()
         repo = self.make_repository('foo', format=format)
         repo.lock_write()
@@ -277,7 +276,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
         format = self.get_format()
-        server = fakenfs.FakeNFSServer()
+        server = test_server.FakeNFSServer()
         self.start_server(server)
         transport = get_transport(server.get_url())
         bzrdir = self.get_format().initialize_on_transport(transport)
@@ -288,6 +287,23 @@ class TestPackRepository(TestCaseWithTransport):
         repo_transport.put_bytes('obsolete_packs/.nfsblahblah', 'contents')
         repo._pack_collection._clear_obsolete_packs()
         self.assertTrue(repo_transport.has('obsolete_packs/.nfsblahblah'))
+
+    def test_pack_collection_sets_sibling_indices(self):
+        """The CombinedGraphIndex objects in the pack collection are all
+        siblings of each other, so that search-order reorderings will be copied
+        to each other.
+        """
+        repo = self.make_repository('repo')
+        pack_coll = repo._pack_collection
+        indices = set([pack_coll.revision_index, pack_coll.inventory_index,
+                pack_coll.text_index, pack_coll.signature_index])
+        if pack_coll.chk_index is not None:
+            indices.add(pack_coll.chk_index)
+        combined_indices = set(idx.combined_index for idx in indices)
+        for combined_index in combined_indices:
+            self.assertEqual(
+                combined_indices.difference([combined_index]),
+                combined_index._sibling_indices)
 
     def test_pack_after_two_commits_packs_everything(self):
         format = self.get_format()
@@ -590,10 +606,6 @@ class TestPackRepository(TestCaseWithTransport):
     def prepare_for_break_lock(self):
         # Setup the global ui factory state so that a break-lock method call
         # will find usable input in the input stream.
-        old_factory = ui.ui_factory
-        def restoreFactory():
-            ui.ui_factory = old_factory
-        self.addCleanup(restoreFactory)
         ui.ui_factory = ui.CannedInputUIFactory([True])
 
     def test_break_lock_breaks_physical_lock(self):
@@ -1072,7 +1084,7 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         super(TestSmartServerAutopack, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
-        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(self.smart_server, self.get_server())
         # Log all HPSS calls into self.hpss_calls.
         client._SmartClient.hooks.install_named_hook(

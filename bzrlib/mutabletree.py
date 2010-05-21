@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -258,6 +258,39 @@ class MutableTree(tree.Tree):
             return False
 
     @needs_read_lock
+    def warn_if_changed_or_out_of_date(self, strict, opt_name, more_msg):
+        """Check the tree for uncommitted changes and branch synchronization.
+
+        If strict is None and not set in the config files, a warning is issued.
+        If strict is True, an error is raised.
+        If strict is False, no checks are done and no warning is issued.
+
+        :param strict: True, False or None, searched in branch config if None.
+
+        :param opt_name: strict option name to search in config file.
+
+        :param more_msg: Details about how to avoid the warnings.
+        """
+        if strict is None:
+            strict = self.branch.get_config().get_user_option_as_bool(opt_name)
+        if strict is not False:
+            err = None
+            if (self.has_changes()):
+                err = errors.UncommittedChanges(self, more=more_msg)
+            elif self.last_revision() != self.branch.last_revision():
+                # The tree has lost sync with its branch, there is little
+                # chance that the user is aware of it but he can still force
+                # the action with --no-strict
+                err = errors.OutOfDateTree(self, more=more_msg)
+            if err is not None:
+                if strict is None:
+                    # We don't want to interrupt the user if he expressed no
+                    # preference about strict.
+                    trace.warning('%s', err._format())
+                else:
+                    raise err
+
+    @needs_read_lock
     def last_revision(self):
         """Return the revision id of the last commit performed in this tree.
 
@@ -380,6 +413,8 @@ class MutableTree(tree.Tree):
 
         if not file_list:
             # no paths supplied: add the entire tree.
+            # FIXME: this assumes we are running in a working tree subdir :-/
+            # -- vila 20100208
             file_list = [u'.']
         # mutter("smart add of %r")
         inv = self.inventory
@@ -387,6 +422,14 @@ class MutableTree(tree.Tree):
         ignored = {}
         dirs_to_add = []
         user_dirs = set()
+        conflicts_related = set()
+        # Not all mutable trees can have conflicts
+        if getattr(self, 'conflicts', None) is not None:
+            # Collect all related files without checking whether they exist or
+            # are versioned. It's cheaper to do that once for all conflicts
+            # than trying to find the relevant conflict for each added file.
+            for c in self.conflicts():
+                conflicts_related.update(c.associated_filenames())
 
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
@@ -452,6 +495,13 @@ class MutableTree(tree.Tree):
                 continue
             if illegalpath_re.search(directory.raw_path):
                 trace.warning("skipping %r (contains \\n or \\r)" % abspath)
+                continue
+            if directory.raw_path in conflicts_related:
+                # If the file looks like one generated for a conflict, don't
+                # add it.
+                trace.warning(
+                    'skipping %s (generated to help resolve conflicts)',
+                    abspath)
                 continue
 
             if parent_ie is not None:

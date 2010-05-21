@@ -31,6 +31,7 @@ from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import (
     KnownFailure,
     HardlinkFeature,
+    test_server,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
@@ -308,8 +309,7 @@ class TestBranchStacked(ExternalBase):
 
     def test_branch_stacked_from_smart_server(self):
         # We can branch stacking on a smart server
-        from bzrlib.smart.server import SmartTCPServer_for_testing
-        self.transport_server = SmartTCPServer_for_testing
+        self.transport_server = test_server.SmartTCPServer_for_testing
         trunk = self.make_branch('mainline', format='1.9')
         out, err = self.run_bzr(
             ['branch', '--stacked', self.get_url('mainline'), 'shallow'])

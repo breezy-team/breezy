@@ -279,7 +279,7 @@ Many commands that accept URLs also accept location aliases too.  See
 
 _basic_help = \
 """Bazaar %s -- a free distributed version-control tool
-http://bazaar-vcs.org/
+http://www.bazaar.canonical.com/
 
 Basic commands:
   bzr init           makes this directory a versioned branch
@@ -406,13 +406,13 @@ protocol , such as sftp://, and that you have write permissions at the other
 end. Checkouts also work on the local file system, so that all that matters is
 file permissions.
 
-You can change the master of a checkout by using the "bind" command (see "help
-bind"). This will change the location that the commits are sent to. The bind
-command can also be used to turn a branch into a heavy checkout. If you
-would like to convert your heavy checkout into a normal branch so that every
-commit is local, you can use the "unbind" command. To see whether or not a
-branch is bound or not you can use the "info" command. If the branch is bound
-it will tell you the location of the bound branch.
+You can change the master of a checkout by using the "switch" command (see
+"help switch").  This will change the location that the commits are sent to.
+The "bind" command can also be used to turn a normal branch into a heavy
+checkout. If you would like to convert your heavy checkout into a normal
+branch so that every commit is local, you can use the "unbind" command. To see
+whether or not a branch is bound or not you can use the "info" command. If the
+branch is bound it will tell you the location of the bound branch.
 
 Related commands::
 
@@ -422,8 +422,10 @@ Related commands::
   commit      Make a commit that is sent to the master branch. If you have
               a heavy checkout then the --local option will commit to the
               checkout without sending the commit to the master
-  bind        Change the master branch that the commits in the checkout will
+  switch      Change the master branch that the commits in the checkout will
               be sent to
+  bind        Turn a standalone branch into a heavy checkout so that any
+              commits will be sent to the master branch
   unbind      Turn a heavy checkout into a standalone branch so that any
               commits are only made locally
   info        Displays whether a branch is bound or unbound. If the branch is

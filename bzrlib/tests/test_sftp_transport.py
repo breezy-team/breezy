@@ -297,23 +297,17 @@ class SSHVendorBadConnection(TestCaseWithTransport):
     def setUp(self):
         self.requireFeature(features.paramiko)
         super(SSHVendorBadConnection, self).setUp()
-        import bzrlib.transport.ssh
 
         # open a random port, so we know nobody else is using it
         # but don't actually listen on the port.
         s = socket.socket()
         s.bind(('localhost', 0))
+        self.addCleanup(s.close)
         self.bogus_url = 'sftp://%s:%s/' % s.getsockname()
 
-        orig_vendor = bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor
-        def reset():
-            bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor = orig_vendor
-            s.close()
-        self.addCleanup(reset)
-
     def set_vendor(self, vendor):
-        import bzrlib.transport.ssh
-        bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor = vendor
+        from bzrlib.transport import ssh
+        self.overrideAttr(ssh._ssh_vendor_manager, '_cached_ssh_vendor', vendor)
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""

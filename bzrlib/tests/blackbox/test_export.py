@@ -85,6 +85,15 @@ class TestExport(ExternalBase):
         self.assertEqual(['test/' + fname.encode('utf8')],
                          sorted(ball.getnames()))
 
+    def test_tar_export_unicode_basedir(self):
+        """Test for bug #413406"""
+        basedir = u'\N{euro sign}'
+        os.mkdir(basedir)
+        os.chdir(basedir)
+        self.run_bzr(['init', 'branch'])
+        os.chdir('branch')
+        self.run_bzr(['export', '--format', 'tgz', u'test.tar.gz'])
+
     def test_zip_export(self):
         tree = self.make_branch_and_tree('zip')
         self.build_tree(['zip/a'])
@@ -293,3 +302,13 @@ class TestExport(ExternalBase):
         tree.commit('more setup')
         out, err = self.run_bzr('export exported branch/subdir')
         self.assertEqual(['foo.txt'], os.listdir('exported'))
+
+    def test_dir_export_per_file_timestamps(self):
+        tree = self.example_branch()
+        self.build_tree_contents([('branch/har', 'foo')])
+        tree.add('har')
+        tree.commit('setup', timestamp=42)
+        self.run_bzr('export --per-file-timestamps t branch')
+        har_st = os.stat('t/har')
+        self.assertEquals(42, har_st.st_mtime)
+

@@ -20,7 +20,6 @@ import bz2
 import os
 import Queue
 import sys
-import tarfile
 import tempfile
 import threading
 
@@ -676,6 +675,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             temp.close()
 
     def _tarball_of_dir(self, dirname, compression, ofile):
+        import tarfile
         filename = os.path.basename(ofile.name)
         tarball = tarfile.open(fileobj=ofile, name=filename,
             mode='w|' + compression)

@@ -59,11 +59,7 @@ class BTreeTestCase(TestCaseWithTransport):
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)
-        self._original_header = btree_index._RESERVED_HEADER_BYTES
-        def restore():
-            btree_index._RESERVED_HEADER_BYTES = self._original_header
-        self.addCleanup(restore)
-        btree_index._RESERVED_HEADER_BYTES = 100
+        self.overrideAttr(btree_index, '_RESERVED_HEADER_BYTES', 100)
 
     def make_nodes(self, count, key_elements, reference_lists):
         """Generate count*key_elements sample nodes."""
@@ -103,10 +99,7 @@ class BTreeTestCase(TestCaseWithTransport):
 
     def shrink_page_size(self):
         """Shrink the default page size so that less fits in a page."""
-        old_page_size = btree_index._PAGE_SIZE
-        def cleanup():
-            btree_index._PAGE_SIZE = old_page_size
-        self.addCleanup(cleanup)
+        self.overrideAttr(btree_index, '_PAGE_SIZE')
         btree_index._PAGE_SIZE = 2048
 
 
@@ -618,6 +611,21 @@ class TestBTreeIndex(BTreeTestCase):
         size = trans.put_file('index', stream)
         return btree_index.BTreeGraphIndex(trans, 'index', size)
 
+    def make_index_with_offset(self, ref_lists=1, key_elements=1, nodes=[],
+                               offset=0):
+        builder = btree_index.BTreeBuilder(key_elements=key_elements,
+                                           reference_lists=ref_lists)
+        builder.add_nodes(nodes)
+        transport = self.get_transport('')
+        # NamedTemporaryFile dies on builder.finish().read(). weird.
+        temp_file = builder.finish()
+        content = temp_file.read()
+        del temp_file
+        size = len(content)
+        transport.put_bytes('index', (' '*offset)+content)
+        return btree_index.BTreeGraphIndex(transport, 'index', size=size,
+                                           offset=offset)
+
     def test_clear_cache(self):
         nodes = self.make_nodes(160, 2, 2)
         index = self.make_index(ref_lists=2, key_elements=2, nodes=nodes)
@@ -692,6 +700,25 @@ class TestBTreeIndex(BTreeTestCase):
         self.assertEqual([('readv', 'index', [(0, size)], False, None)],
             transport._activity)
         self.assertEqual(1173, size)
+
+    def test_with_offset_no_size(self):
+        index = self.make_index_with_offset(key_elements=1, ref_lists=1,
+                                            offset=1234,
+                                            nodes=self.make_nodes(200, 1, 1))
+        index._size = None # throw away the size info
+        self.assertEqual(200, index.key_count())
+
+    def test_with_small_offset(self):
+        index = self.make_index_with_offset(key_elements=1, ref_lists=1,
+                                            offset=1234,
+                                            nodes=self.make_nodes(200, 1, 1))
+        self.assertEqual(200, index.key_count())
+
+    def test_with_large_offset(self):
+        index = self.make_index_with_offset(key_elements=1, ref_lists=1,
+                                            offset=123456,
+                                            nodes=self.make_nodes(200, 1, 1))
+        self.assertEqual(200, index.key_count())
 
     def test__read_nodes_no_size_one_page_reads_once(self):
         self.make_index(nodes=[(('key',), 'value', ())])
@@ -1157,14 +1184,9 @@ class TestBTreeIndex(BTreeTestCase):
 
 class TestBTreeNodes(BTreeTestCase):
 
-    def restore_parser(self):
-        btree_index._btree_serializer = self.saved_parser
-
     def setUp(self):
         BTreeTestCase.setUp(self)
-        self.saved_parser = btree_index._btree_serializer
-        self.addCleanup(self.restore_parser)
-        btree_index._btree_serializer = self.parse_btree
+        self.overrideAttr(btree_index, '_btree_serializer', self.parse_btree)
 
     def test_LeafNode_1_0(self):
         node_bytes = ("type=leaf\n"

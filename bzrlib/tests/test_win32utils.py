@@ -266,12 +266,8 @@ class TestLocationsPywin32(TestLocationsCtypes):
         super(TestLocationsPywin32, self).setUp()
         # We perform the exact same tests after disabling the use of ctypes.
         # This causes the implementation to fall back to pywin32.
-        self.old_ctypes = win32utils.has_ctypes
-        win32utils.has_ctypes = False
-        self.addCleanup(self.restoreCtypes)
-
-    def restoreCtypes(self):
-        win32utils.has_ctypes = self.old_ctypes
+        self.overrideAttr(win32utils, 'has_ctypes', False)
+        # FIXME: this should be done by parametrization -- vila 100123
 
 
 class TestSetHidden(TestCaseInTempDir):
@@ -292,70 +288,15 @@ class TestSetHidden(TestCaseInTempDir):
 
 
 
-class TestUnicodeShlex(tests.TestCase):
-
-    def assertAsTokens(self, expected, line):
-        s = win32utils.UnicodeShlex(line)
-        self.assertEqual(expected, list(s))
-
-    def test_simple(self):
-        self.assertAsTokens([(False, u'foo'), (False, u'bar'), (False, u'baz')],
-                            u'foo bar baz')
-
-    def test_ignore_multiple_spaces(self):
-        self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'foo  bar')
-
-    def test_ignore_leading_space(self):
-        self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'  foo bar')
-
-    def test_ignore_trailing_space(self):
-        self.assertAsTokens([(False, u'foo'), (False, u'bar')], u'foo bar  ')
-
-    def test_posix_quotations(self):
-        self.assertAsTokens([(True, u'foo bar')], u'"foo bar"')
-        self.assertAsTokens([(False, u"'fo''o"), (False, u"b''ar'")],
-            u"'fo''o b''ar'")
-        self.assertAsTokens([(True, u'foo bar')], u'"fo""o b""ar"')
-        self.assertAsTokens([(True, u"fo'o"), (True, u"b'ar")],
-            u'"fo"\'o b\'"ar"')
-
-    def test_nested_quotations(self):
-        self.assertAsTokens([(True, u'foo"" bar')], u"\"foo\\\"\\\" bar\"")
-        self.assertAsTokens([(True, u'foo\'\' bar')], u"\"foo'' bar\"")
-
-    def test_empty_result(self):
-        self.assertAsTokens([], u'')
-        self.assertAsTokens([], u'    ')
-
-    def test_quoted_empty(self):
-        self.assertAsTokens([(True, '')], u'""')
-        self.assertAsTokens([(False, u"''")], u"''")
-
-    def test_unicode_chars(self):
-        self.assertAsTokens([(False, u'f\xb5\xee'), (False, u'\u1234\u3456')],
-                             u'f\xb5\xee \u1234\u3456')
-
-    def test_newline_in_quoted_section(self):
-        self.assertAsTokens([(True, u'foo\nbar\nbaz\n')], u'"foo\nbar\nbaz\n"')
-
-    def test_escape_chars(self):
-        self.assertAsTokens([(False, u'foo\\bar')], u'foo\\bar')
-
-    def test_escape_quote(self):
-        self.assertAsTokens([(True, u'foo"bar')], u'"foo\\"bar"')
-
-    def test_double_escape(self):
-        self.assertAsTokens([(True, u'foo\\bar')], u'"foo\\\\bar"')
-        self.assertAsTokens([(False, u'foo\\\\bar')], u"foo\\\\bar")
-
 
 class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 
-    def assertCommandLine(self, expected, line):
+    def assertCommandLine(self, expected, line, single_quotes_allowed=False):
         # Strictly speaking we should respect parameter order versus glob
         # expansions, but it's not really worth the effort here
-        self.assertEqual(expected,
-                         sorted(win32utils._command_line_to_argv(line)))
+        argv = win32utils._command_line_to_argv(line,
+                single_quotes_allowed=single_quotes_allowed)
+        self.assertEqual(expected, sorted(argv))
 
     def test_glob_paths(self):
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
@@ -371,19 +312,25 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'a/*.c'], '"a/*.c"')
         self.assertCommandLine([u"'a/*.c'"], "'a/*.c'")
+        self.assertCommandLine([u'a/*.c'], "'a/*.c'",
+            single_quotes_allowed=True)
 
     def test_slashes_changed(self):
         # Quoting doesn't change the supplied args
         self.assertCommandLine([u'a\\*.c'], '"a\\*.c"')
+        self.assertCommandLine([u'a\\*.c'], "'a\\*.c'",
+            single_quotes_allowed=True)
         # Expands the glob, but nothing matches, swaps slashes
         self.assertCommandLine([u'a/*.c'], 'a\\*.c')
         self.assertCommandLine([u'a/?.c'], 'a\\?.c')
         # No glob, doesn't touch slashes
         self.assertCommandLine([u'a\\foo.c'], 'a\\foo.c')
 
-    def test_no_single_quote_supported(self):
+    def test_single_quote_support(self):
         self.assertCommandLine(["add", "let's-do-it.txt"],
             "add let's-do-it.txt")
+        self.assertCommandLine(["add", "lets do it.txt"],
+            "add 'lets do it.txt'", single_quotes_allowed=True)
 
     def test_case_insensitive_globs(self):
         self.requireFeature(tests.CaseInsCasePresFilenameFeature)
