@@ -462,6 +462,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                 for index, line in enumerate(file_text.splitlines()):
                     if pattern in line.lower():
                         line = line.decode(_te, 'replace')
+                        if opts.show_color:
+                            line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                         s = path + (pfmt % (revno, index+1, line)) + eol_marker
                         res_append(s)
                         outf_write(s)
@@ -493,6 +495,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                 for line in file_text.splitlines():
                     if pattern in line.lower():
                         line = line.decode(_te, 'replace')
+                        if opts.show_color:
+                            line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                         s = path + (pfmt % (revno, line)) + eol_marker
                         res_append(s)
                         outf_write(s)
@@ -525,6 +529,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                 for index, line in enumerate(file_text.splitlines()):
                     if pattern in line.lower():
                         line = line.decode(_te, 'replace')
+                        if opts.show_color:
+                            line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                         s = path + (pfmt % (index+1, line)) + eol_marker
                         res_append(s)
                         outf_write(s)
@@ -556,6 +562,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                 for line in file_text.splitlines():
                     if pattern in line.lower():
                         line = line.decode(_te, 'replace')
+                        if opts.show_color:
+                            line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                         s = path + (pfmt % (line,)) + eol_marker
                         res_append(s)
                         outf_write(s)

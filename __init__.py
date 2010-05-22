@@ -194,9 +194,10 @@ class cmd_grep(Command):
 
         patternc = None
         re_flags = 0
+        if ignore_case:
+            re_flags = re.IGNORECASE
+
         if not fixed_string:
-            if ignore_case:
-                re_flags = re.IGNORECASE
             patternc = grep.compile_pattern(pattern, re_flags)
 
         if color == 'always':
@@ -208,6 +209,8 @@ class cmd_grep(Command):
 
         if show_color:
             sub_pattern = '(' + pattern + ')' # make pattern capturing
+            # sub_patternc is used for color display even for fixed_string
+            # when ignore_case is set
             sub_patternc = grep.compile_pattern(sub_pattern, re_flags)
 
         GrepOptions.verbose = verbose
