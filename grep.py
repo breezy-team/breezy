@@ -465,9 +465,12 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                         res_append(s)
                         outf_write(s)
             else: # don't ignore case
+                found_str = color_string(pattern, FG.BOLD_RED)
                 for index, line in enumerate(file_text.splitlines()):
                     if pattern in line:
                         line = line.decode(_te, 'replace')
+                        if opts.show_color == True:
+                            line = line.replace(pattern, found_str)
                         s = path + (pfmt % (revno, index+1, line)) + eol_marker
                         res_append(s)
                         outf_write(s)
@@ -491,9 +494,12 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                         res_append(s)
                         outf_write(s)
             else: # don't ignore case
+                found_str = color_string(pattern, FG.BOLD_RED)
                 for line in file_text.splitlines():
                     if pattern in line:
                         line = line.decode(_te, 'replace')
+                        if opts.show_color == True:
+                            line = line.replace(pattern, found_str)
                         s = path + (pfmt % (revno, line)) + eol_marker
                         res_append(s)
                         outf_write(s)
@@ -519,8 +525,11 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                         outf_write(s)
             else: # don't ignore case
                 for index, line in enumerate(file_text.splitlines()):
+                    found_str = color_string(pattern, FG.BOLD_RED)
                     if pattern in line:
                         line = line.decode(_te, 'replace')
+                        if opts.show_color == True:
+                            line = line.replace(pattern, found_str)
                         s = path + (pfmt % (index+1, line)) + eol_marker
                         res_append(s)
                         outf_write(s)
