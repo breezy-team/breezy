@@ -69,6 +69,7 @@ class GrepTestBase(tests.TestCaseWithTransport):
     def _mk_versioned_dir(self, path):
         self._mk_dir(path, versioned=True)
 
+
 class TestGrep(GrepTestBase):
     """Core functional tests for grep."""
 
@@ -1913,6 +1914,26 @@ class TestGrep(GrepTestBase):
 
         self.assertContainsRe(out, "^file1.txt~7$", flags=TestGrep._reflags)
         self.assertEqual(len(out.splitlines()), 1)
+
+    def test_no_tree(self):
+        """Ensure grep works without working tree.
+        """
+        wd0 = 'foobar0'
+        wd1 = 'foobar1'
+        self.make_branch_and_tree(wd0)
+        os.chdir(wd0)
+        self._mk_versioned_file('file0.txt')
+        os.chdir('..')
+        out, err = self.run_bzr(['branch', '--no-tree', wd0, wd1])
+        os.chdir(wd1)
+
+        out, err = self.run_bzr(['grep', 'line1'], 3)
+        self.assertContainsRe(err, "Cannot search working tree", flags=TestGrep._reflags)
+        self.assertEqual(out, '')
+
+        out, err = self.run_bzr(['grep', '-r', '1', 'line1'])
+        self.assertContainsRe(out, "file0.txt~1:line1", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 2) # finds line1 and line10
 
 
 class TestColorGrep(GrepTestBase):

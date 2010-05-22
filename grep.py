@@ -129,8 +129,9 @@ def is_fixed_string(s):
 
 
 def versioned_grep(opts):
-    wt, relpath = WorkingTree.open_containing('.')
-    wt.lock_read()
+    wt, branch, relpath = \
+        bzrdir.BzrDir.open_containing_tree_or_branch('.')
+    branch.lock_read()
     try:
         # res_cache is used to cache results for dir grep based on fid.
         # If the fid is does not change between results, it means that
@@ -140,18 +141,18 @@ def versioned_grep(opts):
         res_cache = {}
 
         start_rev = opts.revision[0]
-        start_revid = start_rev.as_revision_id(wt.branch)
+        start_revid = start_rev.as_revision_id(branch)
         if start_revid == None:
             start_rev = RevisionSpec_revno.from_string("revno:1")
-            start_revid = start_rev.as_revision_id(wt.branch)
-        srevno_tuple = wt.branch.revision_id_to_dotted_revno(start_revid)
+            start_revid = start_rev.as_revision_id(branch)
+        srevno_tuple = branch.revision_id_to_dotted_revno(start_revid)
 
         if len(opts.revision) == 2:
             end_rev = opts.revision[1]
-            end_revid = end_rev.as_revision_id(wt.branch)
+            end_revid = end_rev.as_revision_id(branch)
             if end_revid == None:
-                end_revno, end_revid = wt.branch.last_revision_info()
-            erevno_tuple = wt.branch.revision_id_to_dotted_revno(end_revid)
+                end_revno, end_revid = branch.last_revision_info()
+            erevno_tuple = branch.revision_id_to_dotted_revno(end_revid)
 
             grep_mainline = (_rev_on_mainline(srevno_tuple) and
                 _rev_on_mainline(erevno_tuple))
@@ -166,9 +167,9 @@ def versioned_grep(opts):
             # with _linear_view_revisions. If all revs are to be grepped we
             # use the slower _graph_view_revisions
             if opts.levels==1 and grep_mainline:
-                given_revs = _linear_view_revisions(wt.branch, start_revid, end_revid)
+                given_revs = _linear_view_revisions(branch, start_revid, end_revid)
             else:
-                given_revs = _graph_view_revisions(wt.branch, start_revid, end_revid)
+                given_revs = _graph_view_revisions(branch, start_revid, end_revid)
         else:
             # We do an optimization below. For grepping a specific revison
             # We don't need to call _graph_view_revisions which is slow.
@@ -184,7 +185,7 @@ def versioned_grep(opts):
                 continue
 
             rev = RevisionSpec_revid.from_string("revid:"+revid)
-            tree = rev.as_tree(wt.branch)
+            tree = rev.as_tree(branch)
             for path in opts.path_list:
                 path_for_id = osutils.pathjoin(relpath, path)
                 id = tree.path2id(path_for_id)
@@ -199,7 +200,7 @@ def versioned_grep(opts):
                 else:
                     versioned_file_grep(tree, id, '.', path, opts, revno)
     finally:
-        wt.unlock()
+        branch.unlock()
 
 
 def workingtree_grep(opts):
@@ -208,7 +209,8 @@ def workingtree_grep(opts):
     tree, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch('.')
     if not tree:
-        msg = 'Cannot search for pattern. Working tree not found.'
+        msg = ('Cannot search working tree. Working tree not found.\n'
+            'To search for specific revision in history use the -r option.')
         raise errors.BzrCommandError(msg)
 
     tree.lock_read()
