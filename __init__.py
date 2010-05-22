@@ -207,6 +207,7 @@ class cmd_grep(Command):
         elif color == 'auto':
             show_color = allow_color()
 
+        sub_patternc = None
         if show_color:
             sub_pattern = '(' + pattern + ')' # make pattern capturing
             # sub_patternc is used for color display even for fixed_string

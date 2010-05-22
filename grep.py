@@ -407,6 +407,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
 
     if opts.show_color:
         path = color_string(path, FG.MAGENTA)
+        color_sep = color_string(':', FG.BOLD_CYAN)
+        color_rev_sep = color_string('~', FG.BOLD_YELLOW)
 
     # for better performance we moved formatting conditionals out
     # of the core loop. hence, the core loop is somewhat duplicated
@@ -446,6 +448,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                 (opts.files_without_match and not found):
             if opts.print_revno:
                 pfmt = "~%s".encode(_te, 'replace')
+                if opts.show_color:
+                    pfmt = color_rev_sep + "%s"
                 s = path + (pfmt % (revno,)) + eol_marker
             else:
                 s = path + eol_marker
@@ -457,6 +461,10 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
     if opts.print_revno and opts.line_number:
 
         pfmt = "~%s:%d:%s".encode(_te)
+        if opts.show_color:
+            pfmt = color_rev_sep + "%s" + color_sep + "%d" + color_sep + "%s"
+            pfmt = pfmt.encode(_te)
+
         if opts.fixed_string:
             if opts.ignore_case:
                 for index, line in enumerate(file_text.splitlines()):
@@ -490,6 +498,10 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
     elif opts.print_revno and not opts.line_number:
 
         pfmt = "~%s:%s".encode(_te, 'replace')
+        if opts.show_color:
+            pfmt = color_rev_sep + "%s" + color_sep + "%s"
+            pfmt = pfmt.encode(_te)
+
         if opts.fixed_string:
             if opts.ignore_case:
                 for line in file_text.splitlines():
@@ -524,6 +536,10 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
     elif not opts.print_revno and opts.line_number:
 
         pfmt = ":%d:%s".encode(_te)
+        if opts.show_color:
+            pfmt = color_sep + "%d" + color_sep + "%s"
+            pfmt = pfmt.encode(_te)
+
         if opts.fixed_string:
             if opts.ignore_case:
                 for index, line in enumerate(file_text.splitlines()):
@@ -557,6 +573,10 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
     else:
 
         pfmt = ":%s".encode(_te)
+        if opts.show_color:
+            pfmt = color_sep + "%s"
+            pfmt = pfmt.encode(_te)
+
         if opts.fixed_string:
             if opts.ignore_case:
                 for line in file_text.splitlines():
