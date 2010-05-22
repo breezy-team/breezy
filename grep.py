@@ -23,7 +23,7 @@ import os
 import re
 import string
 
-from color import color_string, FG
+from termcolor import color_string, FG
 
 
 from bzrlib import bzrdir

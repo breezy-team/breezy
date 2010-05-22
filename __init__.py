@@ -26,7 +26,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import re
 
-import color as colorm
+from termcolor import allow_color
 import grep
 
 import bzrlib
@@ -203,7 +203,7 @@ class cmd_grep(Command):
         elif color == 'never':
             show_color = False
         elif color == 'auto':
-            show_color = colorm.allow_color()
+            show_color = allow_color()
 
         GrepOptions.verbose = verbose
         GrepOptions.ignore_case = ignore_case
