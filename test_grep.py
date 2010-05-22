@@ -18,6 +18,9 @@ import os
 import re
 import unicodedata as ud
 
+import features
+from termcolor import color_string, FG
+
 from bzrlib import tests, osutils
 
 # NOTE: As bzr-grep optimizes PATTERN search to -F/--fixed-string
@@ -25,7 +28,11 @@ from bzrlib import tests, osutils
 # specfically with patterns that have special characters so that
 # regex path is tested. alphanumeric patterns test the -F path.
 
-class TestGrep(tests.TestCaseWithTransport):
+class GrepTestBase(tests.TestCaseWithTransport):
+    """Base class for testing grep.
+
+    Provides support methods for creating directory and file revisions.
+    """
     _reflags = re.MULTILINE|re.DOTALL
 
     def _mk_file(self, path, line_prefix, total_lines, versioned):
@@ -61,6 +68,9 @@ class TestGrep(tests.TestCaseWithTransport):
 
     def _mk_versioned_dir(self, path):
         self._mk_dir(path, versioned=True)
+
+class TestGrep(GrepTestBase):
+    """Core functional tests for grep."""
 
     def test_basic_unknown_file(self):
         """Search for pattern in specfic file.
@@ -1902,5 +1912,138 @@ class TestGrep(tests.TestCaseWithTransport):
             '-L', '.ELLO'])
 
         self.assertContainsRe(out, "^file1.txt~7$", flags=TestGrep._reflags)
+        self.assertEqual(len(out.splitlines()), 1)
+
+
+class TestColorGrep(GrepTestBase):
+    """Tests for the --color option."""
+
+    _test_needs_features = [features.color_feature]
+
+    _rev_sep = color_string('~', fg=FG.BOLD_YELLOW)
+    _sep = color_string(':', fg=FG.BOLD_CYAN)
+
+    def test_color_option(self):
+        """Ensure options for color are valid.
+        """
+        out, err = self.run_bzr(['grep', '--color', 'foo', 'bar'], 3)
+        self.assertEqual(out, '')
+        self.assertContainsRe(err, 'Valid values for --color are', flags=TestGrep._reflags)
+
+    def test_ver_basic_file(self):
+        """(versioned) Search for pattern in specfic file.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        lp = 'foo is foobar'
+        self._mk_versioned_file('file0.txt', line_prefix=lp, total_lines=1)
+
+        # prepare colored result
+        foo = color_string('foo', fg=FG.BOLD_RED)
+        res = (color_string('file0.txt', fg=FG.MAGENTA)
+            + self._rev_sep + '1' + self._sep
+            + foo + ' is ' + foo + 'bar1' + '\n')
+
+        nres = (color_string('file0.txt', fg=FG.MAGENTA)
+            + self._rev_sep + '1' + self._sep + '1' + self._sep
+            + foo + ' is ' + foo + 'bar1' + '\n')
+
+        out, err = self.run_bzr(['grep', '--color',
+            'always', '-r', '1', 'foo'])
+        self.assertEqual(out, res)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-i', '--color',
+            'always', '-r', '1', 'FOO'])
+        self.assertEqual(out, res)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '--color',
+            'always', '-r', '1', 'f.o'])
+        self.assertEqual(out, res)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-i', '--color',
+            'always', '-r', '1', 'F.O'])
+        self.assertEqual(out, res)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-n', '--color',
+            'always', '-r', '1', 'foo'])
+        self.assertEqual(out, nres)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-n', '-i', '--color',
+            'always', '-r', '1', 'FOO'])
+        self.assertEqual(out, nres)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-n', '--color',
+            'always', '-r', '1', 'f.o'])
+        self.assertEqual(out, nres)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-n', '-i', '--color',
+            'always', '-r', '1', 'F.O'])
+        self.assertEqual(out, nres)
+        self.assertEqual(len(out.splitlines()), 1)
+
+    def test_wtree_basic_file(self):
+        """(wtree) Search for pattern in specfic file.
+        """
+        wd = 'foobar0'
+        self.make_branch_and_tree(wd)
+        os.chdir(wd)
+        lp = 'foo is foobar'
+        self._mk_versioned_file('file0.txt', line_prefix=lp, total_lines=1)
+
+        # prepare colored result
+        foo = color_string('foo', fg=FG.BOLD_RED)
+        res = (color_string('file0.txt', fg=FG.MAGENTA)
+            + self._sep + foo + ' is ' + foo + 'bar1' + '\n')
+
+        nres = (color_string('file0.txt', fg=FG.MAGENTA)
+            + self._sep + '1' + self._sep
+            + foo + ' is ' + foo + 'bar1' + '\n')
+
+        out, err = self.run_bzr(['grep', '--color',
+            'always', 'foo'])
+        self.assertEqual(out, res)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-i', '--color',
+            'always', 'FOO'])
+        self.assertEqual(out, res)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '--color',
+            'always', 'f.o'])
+        self.assertEqual(out, res)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-i', '--color',
+            'always', 'F.O'])
+        self.assertEqual(out, res)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-n', '--color',
+            'always', 'foo'])
+        self.assertEqual(out, nres)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-n', '-i', '--color',
+            'always', 'FOO'])
+        self.assertEqual(out, nres)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-n', '--color',
+            'always', 'f.o'])
+        self.assertEqual(out, nres)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        out, err = self.run_bzr(['grep', '-n', '-i', '--color',
+            'always', 'F.O'])
+        self.assertEqual(out, nres)
         self.assertEqual(len(out.splitlines()), 1)
 

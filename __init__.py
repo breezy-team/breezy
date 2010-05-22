@@ -26,6 +26,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import re
 
+from termcolor import allow_color
 import grep
 
 import bzrlib
@@ -37,7 +38,7 @@ from bzrlib import (
     )
 """)
 
-version_info = (0, 2, 0, 'final', 0)
+version_info = (0, 3, 0, 'dev', 0)
 
 # FIXME: _parse_levels should be shared with bzrlib.builtins. this is a copy
 # to avoid the error
@@ -51,6 +52,41 @@ def _parse_levels(s):
     except ValueError:
         msg = "The levels argument must be an integer."
         raise errors.BzrCommandError(msg)
+
+
+class GrepOptions(object):
+    """Container to pass around grep options.
+
+    This class is used as a container to pass around user option and
+    some other params (like outf) to processing functions. This makes
+    it easier to add more options as grep evolves.
+    """
+    verbose = False
+    ignore_case = False
+    no_recursive = False
+    from_root = False
+    null = False
+    levels = None
+    line_number = False
+    path_list = None
+    revision = None
+    pattern = None
+    include = None
+    exclude = None
+    fixed_string = False
+    files_with_matches = False
+    files_without_match = False
+    color = None
+
+    # derived options
+    recursive = None
+    eol_marker = None
+    patternc = None
+    sub_patternc = None
+    print_revno = None
+    fixed_string = None
+    outf = None
+    show_color = False
 
 
 class cmd_grep(Command):
@@ -85,6 +121,8 @@ class cmd_grep(Command):
     takes_options = [
         'verbose',
         'revision',
+        Option('color', type=str, argname='when',
+               help='Show match in color. WHEN is never, always or auto.'),
         ListOption('exclude', type=str, argname='glob', short_name='X',
             help="Skip files whose base name matches GLOB."),
         ListOption('include', type=str, argname='glob', short_name='I',
@@ -122,12 +160,7 @@ class cmd_grep(Command):
             from_root=False, null=False, levels=None, line_number=False,
             path_list=None, revision=None, pattern=None, include=None,
             exclude=None, fixed_string=False, files_with_matches=False,
-            files_without_match=False):
-
-        recursive = not no_recursive
-
-        if levels==None:
-            levels=1
+            files_without_match=False, color='never'):
 
         if path_list == None:
             path_list = ['.']
@@ -138,6 +171,13 @@ class cmd_grep(Command):
         if files_with_matches and files_without_match:
             raise errors.BzrCommandError('cannot specify both '
                 '-l/--files-with-matches and -L/--files-without-matches.')
+
+        if color not in ['always', 'never', 'auto']:
+            raise errors.BzrCommandError('Valid values for --color are '
+                '"always", "never" or "auto".')
+
+        if levels==None:
+            levels=1
 
         print_revno = False
         if revision != None or levels == 0:
@@ -153,23 +193,57 @@ class cmd_grep(Command):
             fixed_string = True
 
         patternc = None
+        re_flags = 0
+        if ignore_case:
+            re_flags = re.IGNORECASE
+
         if not fixed_string:
-            re_flags = 0
-            if ignore_case:
-                re_flags = re.IGNORECASE
             patternc = grep.compile_pattern(pattern, re_flags)
 
+        if color == 'always':
+            show_color = True
+        elif color == 'never':
+            show_color = False
+        elif color == 'auto':
+            show_color = allow_color()
+
+        sub_patternc = None
+        if show_color:
+            sub_pattern = '(' + pattern + ')' # make pattern capturing
+            # sub_patternc is used for color display even for fixed_string
+            # when ignore_case is set
+            sub_patternc = grep.compile_pattern(sub_pattern, re_flags)
+
+        GrepOptions.verbose = verbose
+        GrepOptions.ignore_case = ignore_case
+        GrepOptions.no_recursive = no_recursive
+        GrepOptions.from_root = from_root
+        GrepOptions.null = null
+        GrepOptions.levels = levels
+        GrepOptions.line_number = line_number
+        GrepOptions.path_list = path_list
+        GrepOptions.revision = revision
+        GrepOptions.pattern = pattern
+        GrepOptions.include = include
+        GrepOptions.exclude = exclude
+        GrepOptions.fixed_string = fixed_string
+        GrepOptions.files_with_matches = files_with_matches
+        GrepOptions.files_without_match = files_without_match
+        GrepOptions.color = color
+
+        GrepOptions.eol_marker = eol_marker
+        GrepOptions.print_revno = print_revno
+        GrepOptions.patternc = patternc
+        GrepOptions.sub_patternc = sub_patternc
+        GrepOptions.recursive = not no_recursive
+        GrepOptions.fixed_string = fixed_string
+        GrepOptions.outf = self.outf
+        GrepOptions.show_color = show_color
+
         if revision == None:
-            grep.workingtree_grep(pattern, patternc, path_list, recursive,
-                line_number, from_root, eol_marker, include, exclude,
-                verbose, fixed_string, ignore_case, files_with_matches,
-                files_without_match, self.outf)
+            grep.workingtree_grep(GrepOptions)
         else:
-            grep.versioned_grep(revision, pattern, patternc, path_list,
-                recursive, line_number, from_root, eol_marker,
-                print_revno, levels, include, exclude, verbose,
-                fixed_string, ignore_case, files_with_matches,
-                files_without_match, self.outf)
+            grep.versioned_grep(GrepOptions)
 
 
 register_command(cmd_grep)
