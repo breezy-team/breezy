@@ -18,7 +18,9 @@ import os
 import re
 import unicodedata as ud
 
+import features
 from termcolor import color_string, FG
+
 from bzrlib import tests, osutils
 
 # NOTE: As bzr-grep optimizes PATTERN search to -F/--fixed-string
@@ -1915,6 +1917,9 @@ class TestGrep(GrepTestBase):
 
 class TestColorGrep(GrepTestBase):
     """Tests for the --color option."""
+
+    _test_needs_features = [features.color_feature]
+
     _rev_sep = color_string('~', fg=FG.BOLD_YELLOW)
     _sep = color_string(':', fg=FG.BOLD_CYAN)
 
