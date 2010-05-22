@@ -207,6 +207,10 @@ def workingtree_grep(opts):
 
     tree, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch('.')
+    if not tree:
+        msg = 'Cannot search for pattern. Working tree not found.'
+        raise errors.BzrCommandError(msg)
+
     tree.lock_read()
     try:
         for path in opts.path_list:
