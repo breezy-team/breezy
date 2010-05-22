@@ -32,6 +32,26 @@ standalone python script as well.
 
 .. contents::
 
+-------------------------------
+Bundled and standalone versions
+-------------------------------
+
+This plugin has been merged_ into the main source tree of Bazaar.
+Starting with the bzr 2.3 series, a common bzr installation will
+include this plugin.
+
+There is still a standalone version available. It makes the plugin
+available for users of older bzr versions. When using both versions,
+local configuration might determine which version actually gets used,
+and some installations might even overwrite one another, so don't use
+the standalone version if you have the bundled one, unless you know
+what you are doing. Some effort will be made to keep the two versions
+reasonably in sync for some time yet.
+
+This text here documents the standalone version.
+
+.. _merged: http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/revision/5240
+
 ----------
 Installing
 ----------
@@ -180,6 +200,8 @@ History
 The plugin was created by Martin von Gagern in 2009, building on a
 static completion function of very limited scope distributed together
 with bzr.
+
+A version of it was merged into the bzr source tree in May 2010.
 
 ----------
 References
