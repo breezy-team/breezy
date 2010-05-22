@@ -2,6 +2,13 @@ bzr-grep 0.3.0-dev -
 ==================================
 * Support for --color option (POSIX only). (Parth Malwankar, #571694)
 
+* Revisions in branches with without trees can now be searched with
+  -r option. (Parth Malwankar, #584240)
+
+* Trying to search working tree for a treeless branch no longer
+  produes a stack trace but gives an error message sugging use of
+  -r option. (Parth Malwankar, #572658)
+
 bzr-grep 0.2.0-final - 30-Mar-2010
 ==================================
 * 'binary file skipped' warning is not shows without --verbose flag
