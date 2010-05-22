@@ -188,7 +188,7 @@ class LocalGitDir(GitDir):
     def create_branch(self, name=None):
         refname = self._branch_name_to_ref(name)
         from dulwich.protocol import ZERO_SHA
-        self._git.refs[refname] = ZERO_SHA
+        self._git.refs[refname or "HEAD"] = ZERO_SHA
         return self.open_branch(name)
 
     def backup_bzrdir(self):

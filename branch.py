@@ -196,7 +196,7 @@ class GitBranch(ForeignBranch):
 
         :return: Branch nick
         """
-        return self.name
+        return self.name or "HEAD"
 
     def _set_nick(self, nick):
         raise NotImplementedError
@@ -205,7 +205,7 @@ class GitBranch(ForeignBranch):
 
     def __repr__(self):
         return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
-            self.ref)
+            self.ref or "HEAD")
 
     def generate_revision_history(self, revid, old_revid=None):
         # FIXME: Check that old_revid is in the ancestry of revid

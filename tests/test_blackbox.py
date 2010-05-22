@@ -48,13 +48,13 @@ class TestGitBlackBox(ExternalBase):
         dir = BzrDir.open(self.test_dir)
         dir.create_branch()
         output, error = self.run_bzr(['nick'])
-        self.assertEquals("master\n", output)
+        self.assertEquals("HEAD\n", output)
 
     def test_info(self):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
-        self.assertTrue("Standalone branch (format: git)" in output)
+        self.assertTrue("Standalone tree (format: git)" in output)
 
     def test_branch(self):
         os.mkdir("gitbranch")
@@ -83,7 +83,7 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(['info', '-v'])
         self.assertEqual(error, '')
-        self.assertTrue("Standalone branch (format: git)" in output)
+        self.assertTrue("Standalone tree (format: git)" in output)
         self.assertTrue("control: Local Git Repository" in output)
         self.assertTrue("branch: Git Branch" in output)
         self.assertTrue("repository: Git Repository" in output)

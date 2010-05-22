@@ -64,7 +64,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         GitRepo.init('.')
         d = BzrDir.open('.')
         thebranch = d.create_branch()
-        self.assertEquals("<LocalGitBranch('file://%s/', 'refs/heads/master')>" % self.test_dir, repr(thebranch))
+        self.assertEquals("<LocalGitBranch('file://%s/', 'HEAD')>" % self.test_dir, repr(thebranch))
 
     def test_last_revision_is_null(self):
         GitRepo.init('.')

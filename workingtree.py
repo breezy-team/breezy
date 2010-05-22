@@ -232,11 +232,11 @@ class InterIndexGitTree(tree.InterTree):
         changes = self._index.changes_from_tree(
             self.source._repository._git.object_store, self.source.tree, 
             want_unchanged=want_unchanged)
-        source_fileid_map = self.source.get_fileid_map(
+        source_fileid_map = self.source.mapping.get_fileid_map(
             self.source._repository._git.object_store.__getitem__,
             self.source.tree)
-        target_fileid_map = self.target.get_fileid_map(
-            self.target._repository._git.object_store.__getitem__,
+        target_fileid_map = self.target.mapping.get_fileid_map(
+            self.target.repository._git.object_store.__getitem__,
             self.target.tree)
         ret = tree_delta_from_git_changes(changes, self.target.mapping, 
             (source_fileid_map, target_fileid_map),

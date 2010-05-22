@@ -55,8 +55,9 @@ class TestRevidConversionV1(tests.TestCase):
 
     def test_is_control_file(self):
         mapping = BzrGitMappingv1()
-        self.assertTrue(mapping.is_control_file(".bzrdummy"))
-        self.assertTrue(mapping.is_control_file(".bzrfileids"))
+        if mapping.roundtripping:
+            self.assertTrue(mapping.is_control_file(".bzrdummy"))
+            self.assertTrue(mapping.is_control_file(".bzrfileids"))
         self.assertFalse(mapping.is_control_file(".bzrfoo"))
 
 
