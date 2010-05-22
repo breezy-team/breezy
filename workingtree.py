@@ -235,9 +235,16 @@ class InterIndexGitTree(tree.InterTree):
         source_fileid_map = self.source.mapping.get_fileid_map(
             self.source._repository._git.object_store.__getitem__,
             self.source.tree)
-        target_fileid_map = self.target.mapping.get_fileid_map(
-            self.target.repository._git.object_store.__getitem__,
-            self.target.tree)
+        if self.target.mapping.BZR_FILE_IDS_FILE is not None:
+            try:
+                file_id = self.target.path2id(
+                    self.target.mapping.BZR_FILE_IDS_FILE)
+            except errors.NoSuchId:
+                target_fileid_map = {}
+            else:
+                target_fileid_map = self.import_fileid_map(Blob.from_string(self.target.file_text(file_id)))
+        else:
+            target_fileid_map = {}
         ret = tree_delta_from_git_changes(changes, self.target.mapping, 
             (source_fileid_map, target_fileid_map),
             specific_file=specific_files, require_versioned=require_versioned)
