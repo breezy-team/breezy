@@ -404,6 +404,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
         path = osutils.pathjoin(path_prefix, path)
 
     path = path.encode(_te, 'replace')
+    if opts.show_color:
+        path = color_string(path, FG.MAGENTA)
 
     # for better performance we moved formatting conditionals out
     # of the core loop. hence, the core loop is somewhat duplicated
@@ -542,7 +544,7 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                         res_append(s)
                         outf_write(s)
             else: # don't ignore case
-                found_str = color_string(pattern, FG.RED)
+                found_str = color_string(pattern, FG.BOLD_RED)
                 for line in file_text.splitlines():
                     if pattern in line:
                         line = line.decode(_te, 'replace')
