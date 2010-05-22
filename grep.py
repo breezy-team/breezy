@@ -23,6 +23,9 @@ import os
 import re
 import string
 
+from color import color_string, FG
+
+
 from bzrlib import bzrdir
 from bzrlib.workingtree import WorkingTree
 from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
@@ -539,9 +542,12 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                         res_append(s)
                         outf_write(s)
             else: # don't ignore case
+                found_str = color_string(pattern, FG.RED)
                 for line in file_text.splitlines():
                     if pattern in line:
                         line = line.decode(_te, 'replace')
+                        if opts.show_color == True:
+                            line = line.replace(pattern, found_str)
                         s = path + (pfmt % (line,)) + eol_marker
                         res_append(s)
                         outf_write(s)
