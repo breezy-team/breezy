@@ -23,7 +23,7 @@ import os
 import re
 import string
 
-from termcolor import color_string, FG
+from termcolor import color_string, re_color_string, FG
 
 
 from bzrlib import bzrdir
@@ -404,6 +404,7 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
         path = osutils.pathjoin(path_prefix, path)
 
     path = path.encode(_te, 'replace')
+
     if opts.show_color:
         path = color_string(path, FG.MAGENTA)
 
@@ -478,6 +479,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
                     line = line.decode(_te, 'replace')
+                    if opts.show_color:
+                        line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                     s = path + (pfmt % (revno, index+1, line)) + eol_marker
                     res_append(s)
                     outf_write(s)
@@ -508,6 +511,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             for line in file_text.splitlines():
                 if patternc.search(line):
                     line = line.decode(_te, 'replace')
+                    if opts.show_color:
+                        line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                     s = path + (pfmt % (revno, line)) + eol_marker
                     res_append(s)
                     outf_write(s)
@@ -537,6 +542,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
                     line = line.decode(_te, 'replace')
+                    if opts.show_color:
+                        line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                     s = path + (pfmt % (index+1, line)) + eol_marker
                     res_append(s)
                     outf_write(s)
@@ -557,7 +564,7 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                 for line in file_text.splitlines():
                     if pattern in line:
                         line = line.decode(_te, 'replace')
-                        if opts.show_color == True:
+                        if opts.show_color:
                             line = line.replace(pattern, found_str)
                         s = path + (pfmt % (line,)) + eol_marker
                         res_append(s)
@@ -566,6 +573,8 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             for line in file_text.splitlines():
                 if patternc.search(line):
                     line = line.decode(_te, 'replace')
+                    if opts.show_color:
+                        line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                     s = path + (pfmt % (line,)) + eol_marker
                     res_append(s)
                     outf_write(s)

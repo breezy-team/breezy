@@ -82,6 +82,7 @@ class GrepOptions(object):
     recursive = None
     eol_marker = None
     patternc = None
+    sub_patternc = None
     print_revno = None
     fixed_string = None
     outf = None
@@ -192,8 +193,8 @@ class cmd_grep(Command):
             fixed_string = True
 
         patternc = None
+        re_flags = 0
         if not fixed_string:
-            re_flags = 0
             if ignore_case:
                 re_flags = re.IGNORECASE
             patternc = grep.compile_pattern(pattern, re_flags)
@@ -204,6 +205,10 @@ class cmd_grep(Command):
             show_color = False
         elif color == 'auto':
             show_color = allow_color()
+
+        if show_color:
+            sub_pattern = '(' + pattern + ')' # make pattern capturing
+            sub_patternc = grep.compile_pattern(sub_pattern, re_flags)
 
         GrepOptions.verbose = verbose
         GrepOptions.ignore_case = ignore_case
@@ -221,9 +226,11 @@ class cmd_grep(Command):
         GrepOptions.files_with_matches = files_with_matches
         GrepOptions.files_without_match = files_without_match
         GrepOptions.color = color
+
         GrepOptions.eol_marker = eol_marker
-        GrepOptions.patternc = patternc
         GrepOptions.print_revno = print_revno
+        GrepOptions.patternc = patternc
+        GrepOptions.sub_patternc = sub_patternc
         GrepOptions.recursive = not no_recursive
         GrepOptions.fixed_string = fixed_string
         GrepOptions.outf = self.outf

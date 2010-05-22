@@ -14,7 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 import os
+import re
 import sys
+
 
 class FG(object):
     """Unix terminal foreground color codes (16-color)."""
@@ -37,6 +39,7 @@ class FG(object):
 
     NONE = '\033[0m'
 
+
 class BG(object):
     """Unix terminal background color codes (16-color)."""
     BLACK = '\033[40m'
@@ -50,8 +53,14 @@ class BG(object):
 
     NONE = '\033[0m'
 
-def color_string(s, fg, bg = ''):
+
+def color_string(s, fg, bg=''):
     return fg + bg + s + FG.NONE
+
+
+def re_color_string(compiled_pattern, s, fg):
+    return compiled_pattern.sub(fg + r'\1' + FG.NONE, s)
+
 
 def allow_color():
     if os.name != 'posix':
