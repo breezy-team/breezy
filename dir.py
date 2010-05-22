@@ -178,7 +178,12 @@ class LocalGitDir(GitDir):
                 pass
             else:
                 from bzrlib.plugins.git.workingtree import GitWorkingTree
-                return GitWorkingTree(self, repo, self.open_branch(), index)
+                try:
+                    branch = self.open_branch()
+                except bzr_errors.NotBranchError:
+                    pass
+                else:
+                    return GitWorkingTree(self, repo, branch, index)
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)
 
