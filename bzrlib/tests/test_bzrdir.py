@@ -809,19 +809,21 @@ class ChrootedTests(TestCaseWithTransport):
                                 bzrdir.BzrDir.find_bzrdirs(transport))
 
     def make_fake_permission_denied_transport(self, transport, paths):
-        # multiplatform chmod(0000)
+        """Create a transport that raises PermissionDenied for some paths."""
         def filter(path):
             if path in paths:
                 raise errors.PermissionDenied(path)
             return path
         path_filter_server = pathfilter.PathFilteringServer(transport, filter)
         path_filter_server.start_server()
+        self.addCleanup(path_filter_server.stop_server)
         path_filter_transport = pathfilter.PathFilteringTransport(
             path_filter_server, '.')
         return (path_filter_server, path_filter_transport)
 
-    def _assert_branch_urls(self, expect_url_suffixes, actual_bzrdirs):
-        "See if each of the actual urls ends with the corresponding suffix"
+    def assertBranchUrlsEndsWith(self, expect_url_suffixes, actual_bzrdirs):
+        """Check that each branch url ends with the corresponding suffix"""
+        actual_bzrdirs = list(actual_bzrdirs)
         self.assertEqual(len(expect_url_suffixes), len(actual_bzrdirs))
         for expect_url_suffix, actual_bzrdir in zip(
                 expect_url_suffixes, actual_bzrdirs):
@@ -834,14 +836,14 @@ class ChrootedTests(TestCaseWithTransport):
             ) = self.make_fake_permission_denied_transport(transport, ['foo'])
 
         # local transport
-        self._assert_branch_urls(['baz/'], list(
-            bzrdir.BzrDir.find_bzrdirs(path_filter_transport)))
+        self.assertBranchUrlsEndsWith(['baz/'],
+            bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
 
         # smart server
         smart_transport = self.make_smart_server('.',
             backing_server=path_filter_server)
-        self._assert_branch_urls(['baz/'], list(
-            bzrdir.BzrDir.find_bzrdirs(smart_transport)))
+        self.assertBranchUrlsEndsWith(['baz/'],
+            bzrdir.BzrDir.find_bzrdirs(smart_transport))
 
     def test_find_bzrdirs_list_current(self):
         def list_current(transport):
