@@ -20,10 +20,7 @@ import re
 
 from bzrlib import (
     merge,
-    merge3,
     )
-
-from debian_bundle import changelog
 
 class ChangeLogFileMerge(merge.ConfigurableFileMerger):
 
@@ -41,6 +38,7 @@ CL_RE = re.compile(r'^(\w[-+0-9a-z.]*) \(([^\(\) \t]+)\)((\s+[-0-9a-z]+)+)\;',
 
 def merge_changelog(this_lines, other_lines, base_lines=[]):
     """Merge a changelog file."""
+    from debian_bundle import changelog
 
     try:
         left_cl = read_changelog(this_lines)
@@ -128,6 +126,7 @@ def merge_changelog(this_lines, other_lines, base_lines=[]):
 
 def read_changelog(lines, strict=True):
     """Return a parsed changelog file."""
+    from debian_bundle import changelog
     # Note: There appears to be a bug in Changelog if you pass it an iterable
     #       of lines (like a file obj, or a list of lines). Specifically, it
     #       does not strip trailing newlines, and it adds ones back in, so you
