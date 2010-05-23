@@ -2,7 +2,7 @@ bzr-grep 0.3.0-final - 23-May-2010
 ==================================
 * Support for --color option (POSIX only). (Parth Malwankar, #571694)
 
-* Revisions in branches with without trees can now be searched with
+* Revisions in branches without trees can now be searched with
   -r option. (Parth Malwankar, #584240)
 
 * Trying to search working tree for a treeless branch no longer
