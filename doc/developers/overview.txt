@@ -119,7 +119,11 @@ revision data that can be pointed to by various branches:
    * Digital Signatures
    * Inventories for each Revision. (Must have all the file texts available).
    * File texts
- * Allows write locks to be taken out to prevent concurrent alterations to the repository.
+
+ * Synchronizes concurrent access to the repository by different
+   processes.  (Most repository implementations use a physical 
+   mutex only for a short period, and effectively support multiple readers
+   and writers.)
 
 Stacked Repositories
 --------------------
