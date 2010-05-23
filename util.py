@@ -30,8 +30,13 @@ import re
 
 from bzrlib.trace import mutter
 
-from debian_bundle import deb822
-from debian_bundle.changelog import Changelog, ChangelogParseError
+try:
+    from debian import deb822
+    from debian.changelog import Changelog, ChangelogParseError
+except ImportError:
+    # Prior to 0.1.15 the debian module was called debian_bundle
+    from debian_bundle import deb822
+    from debian_bundle.changelog import Changelog, ChangelogParseError
 
 from bzrlib import (
         bugtracker,

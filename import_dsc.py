@@ -37,8 +37,13 @@ import stat
 import subprocess
 import tempfile
 
-from debian_bundle import deb822
-from debian_bundle.changelog import Version, Changelog, VersionError
+try:
+    from debian import deb822
+    from debian.changelog import Version, Changelog, VersionError
+except ImportError:
+  # Prior to 0.1.15 the debian module was called debian_bundle
+    from debian_bundle import deb822
+    from debian_bundle.changelog import Version, Changelog, VersionError
 
 from bzrlib import (
                     bzrdir,

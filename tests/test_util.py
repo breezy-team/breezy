@@ -25,7 +25,11 @@ except ImportError:
 import os
 import shutil
 
-from debian_bundle.changelog import Changelog, Version
+try:
+    from debian.changelog import Changelog, Version
+except ImportError:
+    # Prior to 0.1.15 the debian module was called debian_bundle
+    from debian_bundle.changelog import Changelog, Version
 
 from bzrlib.plugins.builddeb.config import DebBuildConfig
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,

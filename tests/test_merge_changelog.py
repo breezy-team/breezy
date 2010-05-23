@@ -21,7 +21,11 @@
 
 import warnings
 
-from debian_bundle import changelog
+try:
+    from debian import changelog
+except ImportError:
+    # Prior to 0.1.15 the debian module was called debian_bundle
+    from debian_bundle import changelog
 
 from bzrlib import (
     memorytree,
