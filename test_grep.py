@@ -1965,6 +1965,7 @@ class TestColorGrep(GrepTestBase):
         res = (color_string('file0.txt', fg=FG.MAGENTA)
             + self._rev_sep + '1' + self._sep
             + foo + ' is ' + foo + 'bar1' + '\n')
+        txt_res = 'file0.txt~1:foo is foobar1\n'
 
         nres = (color_string('file0.txt', fg=FG.MAGENTA)
             + self._rev_sep + '1' + self._sep + '1' + self._sep
@@ -1973,6 +1974,13 @@ class TestColorGrep(GrepTestBase):
         out, err = self.run_bzr(['grep', '--color',
             'always', '-r', '1', 'foo'])
         self.assertEqual(out, res)
+        self.assertEqual(len(out.splitlines()), 1)
+
+        # auto should produce plain text result
+        # as stdout is redireched here.
+        out, err = self.run_bzr(['grep', '--color',
+            'auto', '-r', '1', 'foo'])
+        self.assertEqual(out, txt_res)
         self.assertEqual(len(out.splitlines()), 1)
 
         out, err = self.run_bzr(['grep', '-i', '--color',
