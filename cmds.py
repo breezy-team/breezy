@@ -561,7 +561,7 @@ class cmd_merge_upstream(Command):
                 else:
                     upstream_revision = upstream_branch.last_revision()
 
-            if no_tarball and revision is not None:
+            if not no_tarball and revision is not None:
                 raise BzrCommandError("--revision is not allowed when merging a tarball")
 
             if version is None:
