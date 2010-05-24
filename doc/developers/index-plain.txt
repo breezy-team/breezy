@@ -26,6 +26,8 @@ Overall developer documentation
 
 * `Code Review <code-review.html>`_.
 
+* `Bazaar Code Style Guide <code-style.html>`_.
+
 * `Writing plugins <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_
   |--| specific advice on writing Bazaar plugins. (web link)
 
