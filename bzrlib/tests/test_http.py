@@ -226,35 +226,62 @@ class RecordingServer(object):
         self._thread = threading.Thread(target=self._accept_read_and_reply)
         self._thread.setDaemon(True)
         self._thread.start()
-        self._ready.wait(5)
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread started: %s' % (self._thread.ident,)
+        self._ready.wait()
 
     def _accept_read_and_reply(self):
         self._sock.listen(1)
-        self._ready.set()
         self._sock.settimeout(5)
+        self._ready.set()
         try:
             conn, address = self._sock.accept()
             # On win32, the accepted connection will be non-blocking to start
             # with because we're using settimeout.
             conn.setblocking(True)
-            while not self.received_bytes.endswith(self._expect_body_tail):
-                self.received_bytes += conn.recv(4096)
-            conn.sendall('HTTP/1.1 200 OK\r\n')
+            if self._expect_body_tail is not None:
+                while not self.received_bytes.endswith(self._expect_body_tail):
+                    self.received_bytes += conn.recv(4096)
+                conn.sendall('HTTP/1.1 200 OK\r\n')
         except socket.timeout:
             # Make sure the client isn't stuck waiting for us to e.g. accept.
+            pass
+        try:
             self._sock.close()
         except socket.error:
             # The client may have already closed the socket.
             pass
 
+    def connect_socket(self):
+        err = socket.error('getaddrinfo returns an empty list')
+        for res in socket.getaddrinfo(self.host, self.port):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                sock.connect(sa)
+                return sock
+
+            except socket.error, err:
+                # err is now the most recent error
+                if sock is not None:
+                    sock.close()
+        raise err
+
     def stop_server(self):
         try:
-            self._sock.close()
+            # Issue a fake connection to wake up the server and allow it to
+            # finish quickly
+            fake_conn = self.connect_socket()
+            fake_conn.close()
         except socket.error:
             # We might have already closed it.  We don't care.
             pass
         self.host = None
         self.port = None
+        self._thread.join()
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread  joined: %s' % (self._thread.ident,)
 
 
 class TestAuthHeader(tests.TestCase):
@@ -323,10 +350,11 @@ class TestHTTPServer(tests.TestCase):
         server = http_server.HttpServer()
         server.start_server()
         try:
-            self.assertTrue(server._http_running)
+            self.assertTrue(server._httpd is not None)
+            self.assertTrue(server._httpd.serving is not None)
+            self.assertTrue(server._httpd.serving.isSet())
         finally:
             server.stop_server()
-        self.assertFalse(server._http_running)
 
     def test_create_http_server_one_zero(self):
         class RequestHandlerOneZero(http_server.TestingHTTPRequestHandler):
@@ -600,7 +628,7 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
 class WallRequestHandler(http_server.TestingHTTPRequestHandler):
     """Whatever request comes in, close the connection"""
 
-    def handle_one_request(self):
+    def _handle_one_request(self):
         """Handle a single HTTP request, by abruptly closing the connection"""
         self.close_connection = 1
 
@@ -1896,7 +1924,7 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
     line.
     """
 
-    def handle_one_request(self):
+    def _handle_one_request(self):
         tcs = self.server.test_case_server
         requestline = self.rfile.readline()
         headers = self.MessageClass(self.rfile, 0)
@@ -2086,7 +2114,7 @@ lalala whatever as long as itsssss
 '''
         t = self.get_transport()
         # We must send a single line of body bytes, see
-        # PredefinedRequestHandler.handle_one_request
+        # PredefinedRequestHandler._handle_one_request
         code, f = t._post('abc def end-of-body\n')
         self.assertEqual('lalala whatever as long as itsssss\n', f.read())
         self.assertActivitiesMatch()
