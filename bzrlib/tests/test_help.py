@@ -112,6 +112,12 @@ class TestCommandHelp(tests.TestCase):
                 Example 2::
 
                     cmd arg2
+
+                A code block follows.
+
+                ::
+
+                    bzr Demo something
             """
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
@@ -135,6 +141,10 @@ class TestCommandHelp(tests.TestCase):
             '    Example 2:\n'
             '\n'
             '        cmd arg2\n'
+            '\n'
+            '    A code block follows.\n'
+            '\n'
+            '        bzr Demo something\n'
             '\n')
         helptext = cmd.get_help_text(plain=False)
         self.assertEquals(helptext,
@@ -156,6 +166,12 @@ class TestCommandHelp(tests.TestCase):
             '    Example 2::\n'
             '\n'
             '        cmd arg2\n'
+            '\n'
+            '    A code block follows.\n'
+            '\n'
+            '    ::\n'
+            '\n'
+            '        bzr Demo something\n'
             '\n')
 
     def test_concise_help_text(self):
