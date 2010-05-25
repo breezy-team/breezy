@@ -3391,7 +3391,7 @@ class ProfileResult(ForwardingResult):
 #                           rather than failing tests. And no longer raise
 #                           LockContention when fctnl locks are not being used
 #                           with proper exclusion rules.
-#   -Ethreads               Will display thread indent at creation/join time to
+#   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
 selftest_debug_flags = set()
 
