@@ -201,7 +201,7 @@ class GioTransport(ConnectedTransport):
         try:
             obj.mount_enclosing_volume_finish(res)
         except gio.Error, e:
-            self._translate_gio_error(e, self.url)
+            raise errors.BzrError("Failed to mount the given location: " + str(e));
         finally:
             self.loop.quit()
 
