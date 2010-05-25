@@ -201,7 +201,7 @@ class GioTransport(ConnectedTransport):
         try:
             obj.mount_enclosing_volume_finish(res)
         except gio.Error, e:
-            print "ERROR: ", e
+            self._translate_gio_error(e, self.url)
         finally:
             self.loop.quit()
 
@@ -566,6 +566,8 @@ class GioTransport(ConnectedTransport):
             raise errors.ResourceBusy(path, extra=extra)
         elif err.code == gio.ERROR_PERMISSION_DENIED:
             raise errors.PermissionDenied(path, extra=extra)
+        elif err.code == gio.ERROR_HOST_NOT_FOUND:
+            raise errors.PathError(path, extra=extra)
         elif err.code == gio.ERROR_IS_DIRECTORY:
             raise errors.PathError(path, extra=extra)
         else:
