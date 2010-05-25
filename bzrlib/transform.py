@@ -1665,7 +1665,7 @@ class _PreviewTree(tree.Tree):
         parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
                        self._iter_parent_trees()]
         vf.add_lines((file_id, tree_revision), parent_keys,
-                     self.get_file(file_id).readlines())
+                     self.get_file_lines(file_id))
         repo = self._get_repository()
         base_vf = repo.texts
         if base_vf not in vf.fallback_versionedfiles:
@@ -2327,8 +2327,12 @@ def _content_match(tree, entry, file_id, kind, target_path):
     if entry.kind == "directory":
         return True
     if entry.kind == "file":
-        if tree.get_file(file_id).read() == file(target_path, 'rb').read():
-            return True
+        f = file(target_path, 'rb')
+        try:
+            if tree.get_file_text(file_id) == f.read():
+                return True
+        finally:
+            f.close()
     elif entry.kind == "symlink":
         if tree.get_symlink_target(file_id) == os.readlink(target_path):
             return True

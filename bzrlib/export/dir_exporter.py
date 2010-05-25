@@ -64,7 +64,14 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
                 fileobj = StringIO.StringIO(content)
             else:
                 fileobj = tree.get_file(ie.file_id)
-            osutils.pumpfile(fileobj, file(fullpath, 'wb'))
+            try:
+                outfile = file(fullpath, 'wb')
+                try:
+                    osutils.pumpfile(fileobj, outfile)
+                finally:
+                    outfile.close()
+            finally:
+                fileobj.close()
             if tree.is_executable(ie.file_id):
                 os.chmod(fullpath, 0755)
         elif ie.kind == "directory":

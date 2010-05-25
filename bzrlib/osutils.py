@@ -1818,9 +1818,11 @@ def resource_string(package, resource_name):
     base = dirname(bzrlib.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    filename = pathjoin(base, resource_relpath)
-    return open(filename, 'rU').read()
-
+    f = file(pathjoin(base, resource_relpath), "rU")
+    try:
+        return f.read()
+    finally:
+        f.close()
 
 def file_kind_from_stat_mode_thunk(mode):
     global file_kind_from_stat_mode

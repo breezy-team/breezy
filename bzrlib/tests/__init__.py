@@ -2480,7 +2480,11 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        contents = file(filename, 'r').read()
+        f = file(filename)
+        try:
+            contents = f.read()
+        finally:
+            f.close()
         if contents != expect:
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
