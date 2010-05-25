@@ -68,28 +68,25 @@ class ExecutableFeature(tests.Feature):
     def __init__(self, name):
         super(ExecutableFeature, self).__init__()
         self.name = name
+        self._path = None
 
     @property
     def path(self):
-        try:
-            return self._path
-        except AttributeError:
-            self._path = self._get_path()
-            return self._path
+        # This is a property, so accessing path ensures _probe was called
+        self.available()
+        return self._path
 
-    def _get_path(self):
+    def _probe(self):
         path = os.environ.get('PATH')
         if path is None:
-            return None
+            return False
         for d in path.split(os.pathsep):
             if d:
                 f = os.path.join(d, self.name)
                 if os.access(f, os.X_OK):
-                    return f
-        return None
-
-    def available(self):
-        return self.path is not None
+                    self._path = f
+                    return True
+        return False
 
     def feature_name(self):
         return '%s executable' % self.name
