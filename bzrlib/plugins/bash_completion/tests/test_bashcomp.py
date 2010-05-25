@@ -22,35 +22,10 @@ import os
 import subprocess
 
 
-class _BashFeature(tests.Feature):
-    """Feature testing whether a bash executable is available."""
-
-    bash_paths = ['/bin/bash', '/usr/bin/bash']
-
-    def __init__(self):
-        super(_BashFeature, self).__init__()
-        self.bash_path = None
-
-    def available(self):
-        if self.bash_path is not None:
-            return self.bash_path is not False
-        for path in self.bash_paths:
-            if os.access(path, os.X_OK):
-                self.bash_path = path
-                return True
-        self.bash_path = False
-        return False
-
-    def feature_name(self):
-        return 'bash'
-
-BashFeature = _BashFeature()
-
-
 class BashCompletionMixin(object):
     """Component for testing execution of a bash completion script."""
 
-    _test_needs_features = [BashFeature]
+    _test_needs_features = [tests.features.bash_feature]
 
     def complete(self, words, cword=-1):
         """Perform a bash completion.
@@ -60,7 +35,8 @@ class BashCompletionMixin(object):
         """
         if self.script is None:
             self.script = self.get_script()
-        proc = subprocess.Popen([BashFeature.bash_path, '--noprofile'],
+        proc = subprocess.Popen([tests.features.bash_feature.path,
+                                 '--noprofile'],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -187,6 +163,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         return s.replace("$(bzr ", "$('%s' " % self.get_bzr_path())
 
     def test_revspec_tag_all(self):
+        self.requireFeature(tests.features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
@@ -195,6 +172,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         self.assertCompletionEquals('tag1', 'tag2', '3tag')
 
     def test_revspec_tag_prefix(self):
+        self.requireFeature(tests.features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
