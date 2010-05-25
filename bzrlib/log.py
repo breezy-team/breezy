@@ -420,8 +420,11 @@ class _DefaultLogGenerator(LogGenerator):
         else:
             specific_files = None
         s = StringIO()
+        path_encoding = 'utf8'
+        if sys.platform == 'win32':
+            path_encoding = get_terminal_encoding()
         diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
-            new_label='')
+            new_label='', path_encoding=path_encoding)
         return s.getvalue()
 
     def _create_log_revision_iterator(self):
