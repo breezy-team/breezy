@@ -182,8 +182,17 @@ class SSHGitSmartTransport(GitSmartTransport):
             ret = self._client
             self._client = None
             return ret
-        return git.client.SSHGitClient(self._host, self._port, self._username,
+        location_config = config.LocationConfig(self.base)
+        client = git.client.SSHGitClient(self._host, self._port, self._username,
             thin_packs=thin_packs, report_activity=self._report_activity)
+        # Set up alternate pack program paths
+        upload_pack = location_config.get_user_option('git_upload_pack')
+        if upload_pack:
+            client.upload_pack_path = upload_pack
+        receive_pack = location_config.get_user_option('git_receive_pack')
+        if receive_pack:
+            client.receive_pack_path = receive_pack
+        return client
 
 
 class RemoteGitDir(GitDir):
