@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -702,11 +702,32 @@ class InvalidNormalization(PathError):
 # TODO: Probably this behavior of should be a common superclass
 class NotBranchError(PathError):
 
-    _fmt = 'Not a branch: "%(path)s".'
+    _fmt = 'Not a branch: "%(path)s"%(detail)s.'
 
-    def __init__(self, path):
+    def __init__(self, path, detail=None, bzrdir=None):
        import bzrlib.urlutils as urlutils
-       self.path = urlutils.unescape_for_display(path, 'ascii')
+       path = urlutils.unescape_for_display(path, 'ascii')
+       if detail is not None:
+           detail = ': ' + detail
+       self.detail = detail
+       self.bzrdir = bzrdir
+       PathError.__init__(self, path=path)
+
+    def _format(self):
+        # XXX: Ideally self.detail would be a property, but Exceptions in
+        # Python 2.4 have to be old-style classes so properties don't work.
+        # Instead we override _format.
+        if self.detail is None:
+            if self.bzrdir is not None:
+                try:
+                    self.bzrdir.open_repository()
+                except NoRepositoryPresent:
+                    self.detail = ''
+                else:
+                    self.detail = ': location is a repository'
+            else:
+                self.detail = ''
+        return PathError._format(self)
 
 
 class NoSubmitBranch(PathError):
@@ -1158,7 +1179,7 @@ class NoSuchRevisionInTree(NoSuchRevision):
 
 class InvalidRevisionSpec(BzrError):
 
-    _fmt = ("Requested revision: %(spec)r does not exist in branch:"
+    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
             " %(branch)s%(extra)s")
 
     def __init__(self, spec, branch, extra=None):
@@ -1247,8 +1268,8 @@ class NotAncestor(BzrError):
 class AmbiguousBase(BzrError):
 
     def __init__(self, bases):
-        warn("BzrError AmbiguousBase has been deprecated as of bzrlib 0.8.",
-                DeprecationWarning)
+        symbol_versioning.warn("BzrError AmbiguousBase has been deprecated "
+            "as of bzrlib 0.8.", DeprecationWarning, stacklevel=2)
         msg = ("The correct base is unclear, because %s are all equally close"
                 % ", ".join(bases))
         BzrError.__init__(self, msg)
@@ -1276,12 +1297,13 @@ class UnlistableBranch(BzrError):
 class BoundBranchOutOfDate(BzrError):
 
     _fmt = ("Bound branch %(branch)s is out of date with master branch"
-            " %(master)s.")
+            " %(master)s.%(extra_help)s")
 
     def __init__(self, branch, master):
         BzrError.__init__(self)
         self.branch = branch
         self.master = master
+        self.extra_help = ''
 
 
 class CommitToDoubleBoundBranch(BzrError):
@@ -1901,6 +1923,17 @@ class ReusingTransform(BzrError):
 class CantMoveRoot(BzrError):
 
     _fmt = "Moving the root directory is not supported at this time"
+    
+    
+class TransformRenameFailed(BzrError):
+
+    _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
+    
+    def __init__(self, from_path, to_path, why, errno):
+        self.from_path = from_path
+        self.to_path = to_path
+        self.why = why
+        self.errno = errno
 
 
 class BzrMoveFailedError(BzrError):
@@ -2154,7 +2187,7 @@ class CorruptRepository(BzrError):
 
     def __init__(self, repo):
         BzrError.__init__(self)
-        self.repo_path = repo.bzrdir.root_transport.base
+        self.repo_path = repo.user_url
 
 
 class InconsistentDelta(BzrError):
@@ -2732,7 +2765,7 @@ class BzrDirError(BzrError):
 
     def __init__(self, bzrdir):
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(bzrdir.root_transport.base,
+        display_url = urlutils.unescape_for_display(bzrdir.user_url,
                                                     'ascii')
         BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
 
@@ -2813,7 +2846,7 @@ class UncommittedChanges(BzrError):
             more = ' ' + more
         import bzrlib.urlutils as urlutils
         display_url = urlutils.unescape_for_display(
-            tree.bzrdir.root_transport.base, 'ascii')
+            tree.user_url, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
 
 
@@ -2942,12 +2975,18 @@ class UnknownRules(BzrError):
 class HookFailed(BzrError):
     """Raised when a pre_change_branch_tip hook function fails anything other
     than TipChangeRejected.
+
+    Note that this exception is no longer raised, and the import is only left
+    to be nice to code which might catch it in a plugin.
     """
 
     _fmt = ("Hook '%(hook_name)s' during %(hook_stage)s failed:\n"
             "%(traceback_text)s%(exc_value)s")
 
-    def __init__(self, hook_stage, hook_name, exc_info):
+    def __init__(self, hook_stage, hook_name, exc_info, warn=True):
+        if warn:
+            symbol_versioning.warn("BzrError HookFailed has been deprecated "
+                "as of bzrlib 2.1.", DeprecationWarning, stacklevel=2)
         import traceback
         self.hook_stage = hook_stage
         self.hook_name = hook_name
@@ -3075,3 +3114,41 @@ class LossyPushToSameVCS(BzrError):
     def __init__(self, source_branch, target_branch):
         self.source_branch = source_branch
         self.target_branch = target_branch
+
+
+class NoRoundtrippingSupport(BzrError):
+
+    _fmt = ("Roundtripping is not supported between %(source_branch)r and "
+            "%(target_branch)r.")
+
+    internal_error = True
+
+    def __init__(self, source_branch, target_branch):
+        self.source_branch = source_branch
+        self.target_branch = target_branch
+
+
+class FileTimestampUnavailable(BzrError):
+
+    _fmt = "The filestamp for %(path)s is not available."
+
+    internal_error = True
+
+    def __init__(self, path):
+        self.path = path
+
+
+class NoColocatedBranchSupport(BzrError):
+
+    _fmt = ("%(bzrdir)r does not support co-located branches.")
+
+    def __init__(self, bzrdir):
+        self.bzrdir = bzrdir
+
+class NoWhoami(BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+        "Please, set your name with the 'whoami' command.\n"
+        'E.g. bzr whoami "Your Name <name@example.com>"')
+
+

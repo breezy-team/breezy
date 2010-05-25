@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 from bzrlib import (
     branch,
     builtins,
+    tests,
     )
 from bzrlib.tests import transport_util
 
@@ -36,6 +37,8 @@ class TestUpdate(transport_util.TestCaseWithConnectionHookedTransport):
         self.start_logging_connections()
 
         update = builtins.cmd_update()
+        # update needs the encoding from outf to print URLs
+        update.outf = tests.StringIOWrapper()
         # update calls it 'dir' where other commands calls it 'directory'
         update.run(dir='local')
         self.assertEquals(1, len(self.connections))

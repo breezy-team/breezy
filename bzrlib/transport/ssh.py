@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>
+# Copyright (C) 2006-2010 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -94,7 +94,10 @@ class SSHVendorManager(object):
             try:
                 vendor = self._ssh_vendors[vendor_name]
             except KeyError:
-                raise errors.UnknownSSH(vendor_name)
+                vendor = self._get_vendor_from_path(vendor_name)
+                if vendor is None:
+                    raise errors.UnknownSSH(vendor_name)
+                vendor.executable_path = vendor_name
             return vendor
         return None
 
@@ -110,7 +113,7 @@ class SSHVendorManager(object):
             stdout = stderr = ''
         return stdout + stderr
 
-    def _get_vendor_by_version_string(self, version, args):
+    def _get_vendor_by_version_string(self, version, progname):
         """Return the vendor or None based on output from the subprocess.
 
         :param version: The output of 'ssh -V' like command.
@@ -123,25 +126,27 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
-        # Auto-detect of plink vendor disabled, on Windows recommended
-        # default ssh-client is paramiko
-        # see https://bugs.launchpad.net/bugs/414743
-        #~elif 'plink' in version and args[0] == 'plink':
-        #~    # Checking if "plink" was the executed argument as Windows
-        #~    # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
-        #~    # version.  See https://bugs.launchpad.net/bzr/+bug/107155
-        #~    trace.mutter("ssh implementation is Putty's plink.")
-        #~    vendor = PLinkSubprocessVendor()
+        # As plink user prompts are not handled currently, don't auto-detect
+        # it by inspection below, but keep this vendor detection for if a path
+        # is given in BZR_SSH. See https://bugs.launchpad.net/bugs/414743
+        elif 'plink' in version and progname == 'plink':
+            # Checking if "plink" was the executed argument as Windows
+            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
+            # version.  See https://bugs.launchpad.net/bzr/+bug/107155
+            trace.mutter("ssh implementation is Putty's plink.")
+            vendor = PLinkSubprocessVendor()
         return vendor
 
     def _get_vendor_by_inspection(self):
         """Return the vendor or None by checking for known SSH implementations."""
-        for args in (['ssh', '-V'], ['plink', '-V']):
-            version = self._get_ssh_version_string(args)
-            vendor = self._get_vendor_by_version_string(version, args)
-            if vendor is not None:
-                return vendor
-        return None
+        version = self._get_ssh_version_string(['ssh', '-V'])
+        return self._get_vendor_by_version_string(version, "ssh")
+
+    def _get_vendor_from_path(self, path):
+        """Return the vendor or None using the program at the given path"""
+        version = self._get_ssh_version_string([path, '-V'])
+        return self._get_vendor_by_version_string(version, 
+            os.path.splitext(os.path.basename(path))[0])
 
     def get_vendor(self, environment=None):
         """Find out what version of SSH is on the system.
@@ -168,12 +173,15 @@ register_default_ssh_vendor = _ssh_vendor_manager.register_default_vendor
 register_ssh_vendor = _ssh_vendor_manager.register_vendor
 
 
-def _ignore_sigint():
+def _ignore_signals():
     # TODO: This should possibly ignore SIGHUP as well, but bzr currently
     # doesn't handle it itself.
     # <https://launchpad.net/products/bzr/+bug/41433/+index>
     import signal
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    # GZ 2010-02-19: Perhaps make this check if breakin is installed instead
+    if signal.getsignal(signal.SIGQUIT) != signal.SIG_DFL:
+        signal.signal(signal.SIGQUIT, signal.SIG_IGN)
 
 
 class SocketAsChannelAdapter(object):
@@ -404,9 +412,11 @@ class SubprocessVendor(SSHVendor):
 class OpenSSHSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'ssh' executable from OpenSSH."""
 
+    executable_path = 'ssh'
+
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        args = ['ssh',
+        args = [self.executable_path,
                 '-oForwardX11=no', '-oForwardAgent=no',
                 '-oClearAllForwardings=yes', '-oProtocol=2',
                 '-oNoHostAuthenticationForLocalhost=yes']
@@ -426,9 +436,11 @@ register_ssh_vendor('openssh', OpenSSHSubprocessVendor())
 class SSHCorpSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'ssh' executable from SSH Corporation."""
 
+    executable_path = 'ssh'
+
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        args = ['ssh', '-x']
+        args = [self.executable_path, '-x']
         if port is not None:
             args.extend(['-p', str(port)])
         if username is not None:
@@ -439,15 +451,17 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
             args.extend([host] + command)
         return args
 
-register_ssh_vendor('ssh', SSHCorpSubprocessVendor())
+register_ssh_vendor('sshcorp', SSHCorpSubprocessVendor())
 
 
 class PLinkSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'plink' executable from Putty."""
 
+    executable_path = 'plink'
+
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
                                   command=None):
-        args = ['plink', '-x', '-a', '-ssh', '-2', '-batch']
+        args = [self.executable_path, '-x', '-a', '-ssh', '-2', '-batch']
         if port is not None:
             args.extend(['-P', str(port)])
         if username is not None:
@@ -504,7 +518,16 @@ def _paramiko_auth(username, password, host, port, paramiko_transport):
     except paramiko.SSHException, e:
         # Don't know what happened, but just ignore it
         pass
-    if 'password' not in supported_auth_types:
+    # We treat 'keyboard-interactive' and 'password' auth methods identically,
+    # because Paramiko's auth_password method will automatically try
+    # 'keyboard-interactive' auth (using the password as the response) if
+    # 'password' auth is not available.  Apparently some Debian and Gentoo
+    # OpenSSH servers require this.
+    # XXX: It's possible for a server to require keyboard-interactive auth that
+    # requires something other than a single password, but we currently don't
+    # support that.
+    if ('password' not in supported_auth_types and
+        'keyboard-interactive' not in supported_auth_types):
         raise errors.ConnectionError('Unable to authenticate to SSH host as'
             '\n  %s@%s\nsupported auth types: %s'
             % (username, host, supported_auth_types))
@@ -614,9 +637,19 @@ def os_specific_subprocess_params():
         # Running it in a separate process group is not good because then it
         # can't get non-echoed input of a password or passphrase.
         # <https://launchpad.net/products/bzr/+bug/40508>
-        return {'preexec_fn': _ignore_sigint,
+        return {'preexec_fn': _ignore_signals,
                 'close_fds': True,
                 }
+
+import weakref
+_subproc_weakrefs = set()
+
+def _close_ssh_proc(proc):
+    for func in [proc.stdin.close, proc.stdout.close, proc.wait]:
+        try:
+            func()
+        except OSError:
+            pass
 
 
 class SSHSubprocess(object):
@@ -624,6 +657,12 @@ class SSHSubprocess(object):
 
     def __init__(self, proc):
         self.proc = proc
+        # Add a weakref to proc that will attempt to do the same as self.close
+        # to avoid leaving processes lingering indefinitely.
+        def terminate(ref):
+            _subproc_weakrefs.remove(ref)
+            _close_ssh_proc(proc)
+        _subproc_weakrefs.add(weakref.ref(self, terminate))
 
     def send(self, data):
         return os.write(self.proc.stdin.fileno(), data)
@@ -632,9 +671,7 @@ class SSHSubprocess(object):
         return os.read(self.proc.stdout.fileno(), count)
 
     def close(self):
-        self.proc.stdin.close()
-        self.proc.stdout.close()
-        self.proc.wait()
+        _close_ssh_proc(self.proc)
 
     def get_filelike_channels(self):
         return (self.proc.stdout, self.proc.stdin)

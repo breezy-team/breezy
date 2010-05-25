@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -217,10 +217,16 @@ def joinpath(base, *args):
 # jam 20060502 Sorted to 'l' because the final target is 'local_path_from_url'
 def _posix_local_path_from_url(url):
     """Convert a url like file:///path/to/foo into /path/to/foo"""
-    if not url.startswith('file:///'):
-        raise errors.InvalidURL(url, 'local urls must start with file:///')
+    file_localhost_prefix = 'file://localhost/'
+    if url.startswith(file_localhost_prefix):
+        path = url[len(file_localhost_prefix) - 1:]
+    elif not url.startswith('file:///'):
+        raise errors.InvalidURL(
+            url, 'local urls must start with file:/// or file://localhost/')
+    else:
+        path = url[len('file://'):]
     # We only strip off 2 slashes
-    return unescape(url[len('file://'):])
+    return unescape(path)
 
 
 def _posix_local_path_to_url(path):

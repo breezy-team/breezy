@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd.
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,17 +17,26 @@
 # Original author: David Allouche
 
 from bzrlib import errors, merge, revision
-from bzrlib.branch import Branch, BranchFormat, BranchReferenceFormat
-from bzrlib.bzrdir import BzrDir
+from bzrlib.branch import Branch
 from bzrlib.trace import note
 
 
-def switch(control_dir, to_branch, force=False, quiet=False):
+def _run_post_switch_hooks(control_dir, to_branch, force, revision_id):
+    from bzrlib.branch import SwitchHookParams
+    hooks = Branch.hooks['post_switch']
+    if not hooks:
+        return
+    params = SwitchHookParams(control_dir, to_branch, force, revision_id)
+    for hook in hooks:
+        hook(params)
+
+def switch(control_dir, to_branch, force=False, quiet=False, revision_id=None):
     """Switch the branch associated with a checkout.
 
     :param control_dir: BzrDir of the checkout to change
     :param to_branch: branch that the checkout is to reference
     :param force: skip the check for local commits in a heavy checkout
+    :param revision_id: revision ID to switch to.
     """
     _check_pending_merges(control_dir, force)
     try:
@@ -36,8 +45,8 @@ def switch(control_dir, to_branch, force=False, quiet=False):
         source_repository = to_branch.repository
     _set_branch_location(control_dir, to_branch, force)
     tree = control_dir.open_workingtree()
-    _update(tree, source_repository, quiet)
-
+    _update(tree, source_repository, quiet, revision_id)
+    _run_post_switch_hooks(control_dir, to_branch, force, revision_id)
 
 def _check_pending_merges(control, force=False):
     """Check that there are no outstanding pending merges before switching.
@@ -69,7 +78,7 @@ def _set_branch_location(control, to_branch, force=False):
     branch_format = control.find_branch_format()
     if branch_format.get_reference(control) is not None:
         # Lightweight checkout: update the branch reference
-        branch_format.set_reference(control, to_branch)
+        branch_format.set_reference(control, None, to_branch)
     else:
         b = control.open_branch()
         bound_branch = b.get_bound_location()
@@ -118,7 +127,7 @@ def _any_local_commits(this_branch, possible_transports):
     return False
 
 
-def _update(tree, source_repository, quiet=False):
+def _update(tree, source_repository, quiet=False, revision_id=None):
     """Update a working tree to the latest revision of its branch.
 
     :param tree: the working tree
@@ -127,12 +136,14 @@ def _update(tree, source_repository, quiet=False):
     tree.lock_tree_write()
     try:
         to_branch = tree.branch
-        if tree.last_revision() == to_branch.last_revision():
+        if revision_id is None:
+            revision_id = to_branch.last_revision()
+        if tree.last_revision() == revision_id:
             if not quiet:
                 note("Tree is up to date at revision %d.", to_branch.revno())
             return
         base_tree = source_repository.revision_tree(tree.last_revision())
-        merge.Merge3Merger(tree, tree, base_tree, to_branch.basis_tree())
+        merge.Merge3Merger(tree, tree, base_tree, to_branch.repository.revision_tree(revision_id))
         tree.set_last_revision(to_branch.last_revision())
         if not quiet:
             note('Updated to revision %d.' % to_branch.revno())

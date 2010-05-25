@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,12 +27,11 @@ __all__ = [
 
 
 from bzrlib import (
+    cleanup,
     errors,
     ui,
-    repository,
-    repofmt,
     )
-from bzrlib.trace import mutter, note
+from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import AdapterFactory, FulltextContentFactory
 
@@ -90,26 +89,25 @@ class Reconciler(object):
             # Nothing to check here
             self.fixed_branch_history = None
             return
-        self.pb.note('Reconciling branch %s',
-                     self.branch.base)
+        ui.ui_factory.note('Reconciling branch %s' % self.branch.base)
         branch_reconciler = self.branch.reconcile(thorough=True)
         self.fixed_branch_history = branch_reconciler.fixed_history
 
     def _reconcile_repository(self):
         self.repo = self.bzrdir.find_repository()
-        self.pb.note('Reconciling repository %s',
-                     self.repo.bzrdir.root_transport.base)
+        ui.ui_factory.note('Reconciling repository %s' %
+            self.repo.user_url)
         self.pb.update("Reconciling repository", 0, 1)
         repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
         if repo_reconciler.aborted:
-            self.pb.note(
+            ui.ui_factory.note(
                 'Reconcile aborted: revision index has inconsistent parents.')
-            self.pb.note(
+            ui.ui_factory.note(
                 'Run "bzr check" for more details.')
         else:
-            self.pb.note('Reconciliation complete.')
+            ui.ui_factory.note('Reconciliation complete.')
 
 
 class BranchReconciler(object):
@@ -121,15 +119,16 @@ class BranchReconciler(object):
         self.branch = a_branch
 
     def reconcile(self):
+        operation = cleanup.OperationWithCleanups(self._reconcile)
+        self.add_cleanup = operation.add_cleanup
+        operation.run_simple()
+
+    def _reconcile(self):
         self.branch.lock_write()
-        try:
-            self.pb = ui.ui_factory.nested_progress_bar()
-            try:
-                self._reconcile_steps()
-            finally:
-                self.pb.finished()
-        finally:
-            self.branch.unlock()
+        self.add_cleanup(self.branch.unlock)
+        self.pb = ui.ui_factory.nested_progress_bar()
+        self.add_cleanup(self.pb.finished)
+        self._reconcile_steps()
 
     def _reconcile_steps(self):
         self._reconcile_revision_history()
@@ -151,13 +150,13 @@ class BranchReconciler(object):
             # set_revision_history, as this will regenerate it again.
             # Not really worth a whole BranchReconciler class just for this,
             # though.
-            self.pb.note('Fixing last revision info %s => %s',
-                         last_revno, len(real_history))
+            ui.ui_factory.note('Fixing last revision info %s => %s' % (
+                 last_revno, len(real_history)))
             self.branch.set_last_revision_info(len(real_history),
                                                last_revision_id)
         else:
             self.fixed_history = False
-            self.pb.note('revision_history ok.')
+            ui.ui_factory.note('revision_history ok.')
 
 
 class RepoReconciler(object):
@@ -193,15 +192,16 @@ class RepoReconciler(object):
         garbage_inventories: The number of inventory objects without revisions
                              that were garbage collected.
         """
+        operation = cleanup.OperationWithCleanups(self._reconcile)
+        self.add_cleanup = operation.add_cleanup
+        operation.run_simple()
+
+    def _reconcile(self):
         self.repo.lock_write()
-        try:
-            self.pb = ui.ui_factory.nested_progress_bar()
-            try:
-                self._reconcile_steps()
-            finally:
-                self.pb.finished()
-        finally:
-            self.repo.unlock()
+        self.add_cleanup(self.repo.unlock)
+        self.pb = ui.ui_factory.nested_progress_bar()
+        self.add_cleanup(self.pb.finished)
+        self._reconcile_steps()
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
@@ -238,11 +238,11 @@ class RepoReconciler(object):
         # (no garbage inventories or we are not doing a thorough check)
         if (not self.inconsistent_parents and
             (not self.garbage_inventories or not self.thorough)):
-            self.pb.note('Inventory ok.')
+            ui.ui_factory.note('Inventory ok.')
             return
         self.pb.update('Backing up inventory', 0, 0)
         self.repo._backup_inventory()
-        self.pb.note('Backup inventory created.')
+        ui.ui_factory.note('Backup inventory created.')
         new_inventories = self.repo._temp_inventories()
 
         # we have topological order of revisions and non ghost parents ready.
@@ -261,7 +261,7 @@ class RepoReconciler(object):
         self.pb.update('Writing weave')
         self.repo._activate_new_inventory()
         self.inventory = None
-        self.pb.note('Inventory regenerated.')
+        ui.ui_factory.note('Inventory regenerated.')
 
     def _new_inv_parents(self, revision_key):
         """Lookup ghost-filtered parents for revision_key."""
@@ -368,11 +368,11 @@ class KnitReconciler(RepoReconciler):
         self._check_garbage_inventories()
         self.pb.update('Checking unused inventories', 1, 3)
         if not self.garbage_inventories:
-            self.pb.note('Inventory ok.')
+            ui.ui_factory.note('Inventory ok.')
             return
         self.pb.update('Backing up inventory', 0, 0)
         self.repo._backup_inventory()
-        self.pb.note('Backup Inventory created')
+        ui.ui_factory.note('Backup Inventory created')
         # asking for '' should never return a non-empty weave
         new_inventories = self.repo._temp_inventories()
         # we have topological order of revisions and non ghost parents ready.
@@ -392,7 +392,7 @@ class KnitReconciler(RepoReconciler):
         self.pb.update('Writing weave')
         self.repo._activate_new_inventory()
         self.inventory = None
-        self.pb.note('Inventory regenerated.')
+        ui.ui_factory.note('Inventory regenerated.')
 
     def _fix_text_parents(self):
         """Fix bad versionedfile parent entries.
@@ -494,7 +494,7 @@ class PackReconciler(RepoReconciler):
     #  - lock the names list
     #  - perform a customised pack() that regenerates data as needed
     #  - unlock the names list
-    # https://bugs.edge.launchpad.net/bzr/+bug/154173
+    # https://bugs.launchpad.net/bzr/+bug/154173
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
@@ -503,23 +503,21 @@ class PackReconciler(RepoReconciler):
         collection = self.repo._pack_collection
         collection.ensure_loaded()
         collection.lock_names()
-        try:
-            packs = collection.all_packs()
-            all_revisions = self.repo.all_revision_ids()
-            total_inventories = len(list(
-                collection.inventory_index.combined_index.iter_all_entries()))
-            if len(all_revisions):
-                new_pack =  self.repo._reconcile_pack(collection, packs,
-                    ".reconcile", all_revisions, self.pb)
-                if new_pack is not None:
-                    self._discard_and_save(packs)
-            else:
-                # only make a new pack when there is data to copy.
+        self.add_cleanup(collection._unlock_names)
+        packs = collection.all_packs()
+        all_revisions = self.repo.all_revision_ids()
+        total_inventories = len(list(
+            collection.inventory_index.combined_index.iter_all_entries()))
+        if len(all_revisions):
+            new_pack =  self.repo._reconcile_pack(collection, packs,
+                ".reconcile", all_revisions, self.pb)
+            if new_pack is not None:
                 self._discard_and_save(packs)
-            self.garbage_inventories = total_inventories - len(list(
-                collection.inventory_index.combined_index.iter_all_entries()))
-        finally:
-            collection._unlock_names()
+        else:
+            # only make a new pack when there is data to copy.
+            self._discard_and_save(packs)
+        self.garbage_inventories = total_inventories - len(list(
+            collection.inventory_index.combined_index.iter_all_entries()))
 
     def _discard_and_save(self, packs):
         """Discard some packs from the repository.

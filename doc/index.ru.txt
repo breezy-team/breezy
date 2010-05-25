@@ -2,8 +2,8 @@
 Главный каталог документов Bazaar
 =================================
 
-Последняя версия этих документов доступа со страницы документации 
-на сайте Bazaar, <http://doc.bazaar-vcs.org/>. Еще больше информации 
+Последняя версия этих документов доступа со страницы документации
+на сайте Bazaar, <http://doc.bazaar.canonical.com/>. Еще больше информации
 можно получить по адресу <http://bazaar-vcs.org/Documentation>.
 
 Основная документация
@@ -19,7 +19,7 @@
 
 * `Список изменений <en/release-notes/NEWS.html>`_ (англ.)
 
-* `Каталог информации для разработчиков <developers/index-plain.html>`_ (англ.) |--| 
+* `Каталог информации для разработчиков <developers/index-plain.html>`_ (англ.) |--|
   для разработчиков Bazaar и плагинов
 
 Учебники
@@ -29,7 +29,7 @@
 
 * `Большой учебник <ru/tutorials/tutorial.html>`_
 
-* `Использование Bazaar с Launchpad 
+* `Использование Bazaar с Launchpad
   <ru/tutorials/using_bazaar_with_launchpad.html>`_
 
 * `Работа в централизованном стиле
@@ -44,9 +44,9 @@
 * `Руководство по миграции <http://bazaar-vcs.org/BzrMigration>`_
   |--| для команд переносящих историю с других систем контроля версий
 
-* `Словарь терминов <http://bazaar-vcs.org/BzrGlossary>`_ (англ.), 
-  см. также `русскую версию`__ 
-  
+* `Словарь терминов <http://bazaar-vcs.org/BzrGlossary>`_ (англ.),
+  см. также `русскую версию`__
+
 __  http://groups.google.com/group/ru_bzr/web/%D0%B3%D0%BB%D0%BE%D1%81%D1%81%D0%B0%D1%80%D0%B8%D0%B9
 
 * `Часто задаваемые вопросы <http://bazaar-vcs.org/FAQ>`_ (англ.)

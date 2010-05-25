@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@ import bz2
 import os
 import Queue
 import sys
-import tarfile
 import tempfile
 import threading
 
@@ -30,6 +29,7 @@ from bzrlib import (
     graph,
     osutils,
     pack,
+    ui,
     versionedfile,
     )
 from bzrlib.bzrdir import BzrDir
@@ -39,6 +39,7 @@ from bzrlib.smart.request import (
     SuccessfulSmartServerResponse,
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
+from bzrlib.recordcounter import RecordCounter
 from bzrlib import revision as _mod_revision
 from bzrlib.versionedfile import (
     NetworkRecordStream,
@@ -392,7 +393,7 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
         if token == '':
             token = None
         try:
-            token = repository.lock_write(token=token)
+            token = repository.lock_write(token=token).repository_token
         except errors.LockContention, e:
             return FailedSmartServerResponse(('LockContention',))
         except errors.UnlockableTransport:
@@ -544,12 +545,14 @@ class _ByteStreamDecoder(object):
     :ivar first_bytes: The first bytes to give the next NetworkRecordStream.
     """
 
-    def __init__(self, byte_stream):
+    def __init__(self, byte_stream, record_counter):
         """Create a _ByteStreamDecoder."""
         self.stream_decoder = pack.ContainerPushParser()
         self.current_type = None
         self.first_bytes = None
         self.byte_stream = byte_stream
+        self._record_counter = record_counter
+        self.key_count = 0
 
     def iter_stream_decoder(self):
         """Iterate the contents of the pack from stream_decoder."""
@@ -580,13 +583,46 @@ class _ByteStreamDecoder(object):
 
     def record_stream(self):
         """Yield substream_type, substream from the byte stream."""
+        def wrap_and_count(pb, rc, substream):
+            """Yield records from stream while showing progress."""
+            counter = 0
+            if rc:
+                if self.current_type != 'revisions' and self.key_count != 0:
+                    # As we know the number of revisions now (in self.key_count)
+                    # we can setup and use record_counter (rc).
+                    if not rc.is_initialized():
+                        rc.setup(self.key_count, self.key_count)
+            for record in substream.read():
+                if rc:
+                    if rc.is_initialized() and counter == rc.STEP:
+                        rc.increment(counter)
+                        pb.update('Estimate', rc.current, rc.max)
+                        counter = 0
+                    if self.current_type == 'revisions':
+                        # Total records is proportional to number of revs
+                        # to fetch. With remote, we used self.key_count to
+                        # track the number of revs. Once we have the revs
+                        # counts in self.key_count, the progress bar changes
+                        # from 'Estimating..' to 'Estimate' above.
+                        self.key_count += 1
+                        if counter == rc.STEP:
+                            pb.update('Estimating..', self.key_count)
+                            counter = 0
+                counter += 1
+                yield record
+
         self.seed_state()
+        pb = ui.ui_factory.nested_progress_bar()
+        rc = self._record_counter
         # Make and consume sub generators, one per substream type:
         while self.first_bytes is not None:
             substream = NetworkRecordStream(self.iter_substream_bytes())
             # after substream is fully consumed, self.current_type is set to
             # the next type, and self.first_bytes is set to the matching bytes.
-            yield self.current_type, substream.read()
+            yield self.current_type, wrap_and_count(pb, rc, substream)
+        if rc:
+            pb.update('Done', rc.max, rc.max)
+        pb.finished()
 
     def seed_state(self):
         """Prepare the _ByteStreamDecoder to decode from the pack stream."""
@@ -597,13 +633,13 @@ class _ByteStreamDecoder(object):
         list(self.iter_substream_bytes())
 
 
-def _byte_stream_to_stream(byte_stream):
+def _byte_stream_to_stream(byte_stream, record_counter=None):
     """Convert a byte stream into a format and a stream.
 
     :param byte_stream: A bytes iterator, as output by _stream_to_byte_stream.
     :return: (RepositoryFormat, stream_generator)
     """
-    decoder = _ByteStreamDecoder(byte_stream)
+    decoder = _ByteStreamDecoder(byte_stream, record_counter)
     for bytes in byte_stream:
         decoder.stream_decoder.accept_bytes(bytes)
         for record in decoder.stream_decoder.read_pending_records(max=1):
@@ -675,6 +711,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             temp.close()
 
     def _tarball_of_dir(self, dirname, compression, ofile):
+        import tarfile
         filename = os.path.basename(ofile.name)
         tarball = tarfile.open(fileobj=ofile, name=filename,
             mode='w|' + compression)

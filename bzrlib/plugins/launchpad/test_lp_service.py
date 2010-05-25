@@ -97,7 +97,7 @@ class TestURLInference(TestCase):
         web_url = service.get_web_url_from_branch_url(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
 
     def test_product_bzr_ssh_url(self):
         service = LaunchpadService(lp_instance='production')
@@ -152,7 +152,7 @@ class TestURLInference(TestCase):
             dict(urls=['http://bazaar.launchpad.net/~foo/bar/baz']))
         web_url = service.get_web_url_from_branch_url('lp:foo', factory)
         self.assertEqual(
-            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
+            'https://code.launchpad.net/~foo/bar/baz', web_url)
 
     def test_lp_branch_fault(self):
         service = LaunchpadService()

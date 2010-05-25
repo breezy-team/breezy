@@ -28,10 +28,12 @@ bzr_titles = {
         u'Bazaar User Reference': None,
         u'Bazaar Release Notes': None,
         u'Bazaar Upgrade Guide': None,
+        u"Bazaar System Administrator's Guide": None,
         u'Bazaar in five minutes': None,
         u'Bazaar Tutorial': None,
         u'Using Bazaar With Launchpad': None,
         u'Centralized Workflow Tutorial': None,
+        u"What's New in Bazaar 2.1?": None,
     }
 def bzr_title(s):
     return bzr_titles.get(s) or s
@@ -58,6 +60,8 @@ latex_documents = [
     bzr_title(u'Bazaar Release Notes'), bzr_team, 'manual'),
   ('upgrade-guide/index', 'bzr-%s-upgrade-guide.tex' % (bzr_locale,),
     bzr_title(u'Bazaar Upgrade Guide'), bzr_team, 'manual'),
+  ('admin-guide/index', 'bzr-%s-admin-guide.tex' % (bzr_locale,),
+    bzr_title(u"Bazaar System Administrator's Guide"), bzr_team, 'manual'),
   # Tutorials
   ('mini-tutorial/index', 'bzr-%s-tutorial-mini.tex' % (bzr_locale,),
     bzr_title(u'Bazaar in five minutes'), bzr_team, 'howto'),
@@ -69,12 +73,12 @@ latex_documents = [
   ('tutorials/centralized_workflow',
     'bzr-%s-tutorial-centralized.tex' % (bzr_locale,),
     bzr_title(u'Centralized Workflow Tutorial'), bzr_team, 'howto'),
+  ('whats-new/whats-new-in-2.1', 'bzr-%s-whats-new.tex' % (bzr_locale,),
+    bzr_title(u"What's New in Bazaar 2.1?"), bzr_team, 'howto'),
 ]
 
 # List of documents that shouldn't be included in the build.
 unused_docs = [
-    # Placeholder for later
-    'admin-guide/index',
     # Subtopics that get included
     'upgrade-guide/overview',
     'upgrade-guide/data_migration',
@@ -83,6 +87,7 @@ unused_docs = [
     'release-notes/NEWS',
     'user-reference/bzr_man',
     'user-guide/index-plain',
+    'admin-guide/index-plain',
     # Miscellaneous
     'user-reference/readme',
 ]

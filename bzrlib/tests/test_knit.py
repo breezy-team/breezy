@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ from bzrlib import (
     multiparent,
     osutils,
     pack,
+    tests,
     )
 from bzrlib.errors import (
     RevisionAlreadyPresent,
@@ -69,19 +70,8 @@ from bzrlib.versionedfile import (
     )
 
 
-class _CompiledKnitFeature(Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._knit_load_data_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._knit_load_data_pyx'
-
-CompiledKnitFeature = _CompiledKnitFeature()
+compiled_knit_feature = tests.ModuleAvailableFeature(
+                            'bzrlib._knit_load_data_pyx')
 
 
 class KnitContentTestsMixin(object):
@@ -872,12 +862,8 @@ class LowLevelKnitIndexTests(TestCase):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
         from bzrlib._knit_load_data_py import _load_data_py
-        knit._load_data = _load_data_py
+        self.overrideAttr(knit, '_load_data', _load_data_py)
         allow_writes = lambda: 'w' in mode
         return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
 
@@ -1308,18 +1294,15 @@ class LowLevelKnitIndexTests(TestCase):
 
 class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
-    _test_needs_features = [CompiledKnitFeature]
+    _test_needs_features = [compiled_knit_feature]
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
         from bzrlib._knit_load_data_pyx import _load_data_c
-        knit._load_data = _load_data_c
+        self.overrideAttr(knit, '_load_data', _load_data_c)
         allow_writes = lambda: mode == 'w'
-        return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
+        return _KndxIndex(transport, mapper, lambda:None,
+                          allow_writes, lambda:True)
 
 
 class Test_KnitAnnotator(TestCaseWithMemoryTransport):

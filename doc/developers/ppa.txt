@@ -38,7 +38,7 @@ Every package is first uploaded into the beta ppa.  For final release
 versions it is also copied to the main PPA.
 
 The packaging information is kept in branches of bzr on Launchpad, named
-like 
+like
 <https://code.launchpad.net/~bzr/bzr/packaging-hardy>.
 or
 <lp:~bzr/bzr/packaging-hardy>.  These branches are intended to be used
@@ -46,8 +46,8 @@ with the ``bzr-builddeb`` plugin.
 
 Preconditions
 -------------
-  
-* You must have a Launchpad account and be a member of the teams 
+
+* You must have a Launchpad account and be a member of the teams
   that own these PPAs (``~bzr``, ``~bzr-beta-ppa``).
 
 * You must have a GPG key registered to your Launchpad account.
@@ -75,7 +75,7 @@ Preconditions
 
     [DEFAULT]
     default_host_main = notspecified
-  
+
 * Configure ``bzr-builddeb`` to sign the package, which is required for
   Launchpad to build it.  Put this in ``~/.bazaar/builddeb.conf`` ::
 
@@ -189,7 +189,7 @@ Long Form
       dch -v '1.17~rc1-1~bazaar1~hardy1' -D hardy
 
    dch will default to the distro you're working in and this isn't checked
-   against the version number (which is just our convention), so make sure 
+   against the version number (which is just our convention), so make sure
    to specify it.
 
    Make sure you have the correct email address for yourself (you may need
@@ -197,9 +197,9 @@ Long Form
    distribution.  It should look something like this::
 
        bzr (1.17~rc1-1~bazaar1~hardy1) hardy; urgency=low
-     
+
         * New upstream release.
-     
+
        -- John Sample <sample@example.com>  Mon, 31 Mar 2008 12:36:27 +1100
 
    If you need to upload the package again to fix a problem, normally you
@@ -251,7 +251,7 @@ Long Form
 Packaging bzr-svn
 ~~~~~~~~~~~~~~~~~
 
-bzr-svn uses a packaging branch that contains both the source 
+bzr-svn uses a packaging branch that contains both the source
 (including any changes against upstream) and the ``debian/`` directory.
 
 To build bzr-svn:

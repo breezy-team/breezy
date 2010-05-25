@@ -59,6 +59,19 @@ BZR_EDITOR
 
 Path to the editor Bazaar should use for commit messages, etc.
 
+BZR_LOG
+~~~~~~~
+
+Location of the Bazaar log file. You can check the current location by
+running ``bzr version``.
+
+The log file contains debug information that is useful for diagnosing or
+reporting problems with Bazaar.
+
+Setting this to ``NUL`` on Windows or ``/dev/null`` on other platforms
+will disable logging.
+
+
 BZR_PLUGIN_PATH
 ~~~~~~~~~~~~~~~
 
@@ -98,25 +111,67 @@ Note that the special values 'user', 'core' and 'site' should be
 used literally, they will be substituted by the corresponding,
 platform specific, values.
 
-Examples:
-^^^^^^^^^
-
-The examples below uses ':' as the separator, windows users
+The examples below use ':' as the separator, windows users
 should use ';'.
 
-Overriding the default user plugin directory:
-``BZR_PLUGIN_PATH='/path/to/my/other/plugins'``
+Overriding the default user plugin directory::
 
-Disabling the site directory while retaining the user directory:
-``BZR_PLUGIN_PATH='-site:+user'``
+  BZR_PLUGIN_PATH='/path/to/my/other/plugins'
 
-Disabling all plugins (better achieved with --no-plugins):
-``BZR_PLUGIN_PATH='-user:-core:-site'``
+Disabling the site directory while retaining the user directory::
 
-Overriding the default site plugin directory:
-``BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user``
+  BZR_PLUGIN_PATH='-site:+user'
 
+Disabling all plugins (better achieved with --no-plugins)::
 
+  BZR_PLUGIN_PATH='-user:-core:-site'
+
+Overriding the default site plugin directory::
+
+  BZR_PLUGIN_PATH='/path/to/my/site/plugins:-site':+user
+
+BZR_DISABLE_PLUGINS
+~~~~~~~~~~~~~~~~~~~
+
+Under special circumstances (mostly when trying to diagnose a
+bug), it's better to disable a plugin (or several) rather than
+uninstalling them completely. Such plugins can be specified in
+the ``BZR_DISABLE_PLUGINS`` environment variable.
+
+In that case, ``bzr`` will stop loading the specified plugins and
+will raise an import error if they are explicitly imported (by
+another plugin that depends on them for example).
+
+Disabling ``myplugin`` and ``yourplugin`` is achieved by::
+
+  BZR_DISABLE_PLUGINS='myplugin:yourplugin'
+
+BZR_PLUGINS_AT
+~~~~~~~~~~~~~~
+
+When adding a new feature or working on a bug in a plugin,
+developers often need to use a specific version of a given
+plugin. Since python requires that the directory containing the
+code is named like the plugin itself this make it impossible to
+use arbitrary directory names (using a two-level directory scheme
+is inconvenient). ``BZR_PLUGINS_AT`` allows such directories even
+if they don't appear in ``BZR_PLUGIN_PATH`` .
+
+Plugins specified in this environment variable takes precedence
+over the ones in ``BZR_PLUGIN_PATH``.
+
+The variable specified a list of ``plugin_name@plugin path``,
+``plugin_name`` being the name of the plugin as it appears in
+python module paths, ``plugin_path`` being the path to the
+directory containing the plugin code itself
+(i.e. ``plugins/myplugin`` not ``plugins``).  Use ':' as the list
+separator, use ';' on windows.
+
+Example:
+~~~~~~~~
+
+Using a specific version of ``myplugin``:
+``BZR_PLUGINS_AT='myplugin@/home/me/bugfixes/123456-myplugin``
 
 BZRPATH
 ~~~~~~~
@@ -272,7 +327,7 @@ The syntax of the file obeys the same rules as the others except for the
 variable policies which don't apply.
 
 For more information on the possible uses of the authentication configuration
-file see `Authentication Settings`_.
+file see :doc:`authentication-help`.
 
 
 Common variable options
@@ -428,6 +483,18 @@ public_branch
 A publically-accessible version of this branch (implying that this version is
 not publically-accessible).  Used (and set) by ``bzr send``.
 
+suppress_warnings
+~~~~~~~~~~~~~~~~~
+
+A list of strings, each string represent a warning that can be emitted by
+bzr. Mentioning a warning in this list tells bzr to not emit it.
+
+Valid values:
+
+* ``format_deprecation``:
+    whether the format deprecation warning is shown on repositories that are
+    using deprecated formats.
+
 
 Branch type specific options
 ----------------------------
@@ -441,9 +508,11 @@ append_revisions_only
 ~~~~~~~~~~~~~~~~~~~~~
 
 If set to "True" then revisions can only be appended to the log, not
-removed.  A branch with this setting enabled can only pull from
-another branch if the other branch's log is a longer version of its
-own.  This is normally set by ``bzr init --append-revisions-only``.
+removed.  A branch with this setting enabled can only pull from another
+branch if the other branch's log is a longer version of its own.  This is
+normally set by ``bzr init --append-revisions-only``. If you set it
+manually, use either 'True' or 'False' (case-sensitive) to maintain
+compatibility with previous bzr versions (older than 2.2).
 
 parent_location
 ~~~~~~~~~~~~~~~
@@ -463,6 +532,13 @@ push_strict
 
 If present, defines the ``--strict`` option default value for checking
 uncommitted changes before pushing.
+
+dpush_strict
+~~~~~~~~~~~~
+
+If present, defines the ``--strict`` option default value for checking
+uncommitted changes before pushing into a different VCS without any
+custom bzr metadata.
 
 bound_location
 ~~~~~~~~~~~~~~

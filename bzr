@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,11 +23,8 @@ import sys
 import warnings
 
 # update this on each release
-_script_version = (2, 1, 0)
+_script_version = (2, 2, 0)
 
-if __doc__ is None:
-    print "bzr does not support python -OO."
-    sys.exit(2)
 try:
     version_info = sys.version_info
 except AttributeError:
@@ -138,15 +135,11 @@ import bzrlib.trace
 
 
 if __name__ == '__main__':
-    bzrlib.trace.enable_default_logging()
+    bzrlib.initialize()
     exit_val = bzrlib.commands.main()
 
     if profiling:
         profile_imports.log_stack_info(sys.stderr)
-
-    # run anything registered by atexit, because it won't be run in the normal
-    # way
-    sys.exitfunc()
 
     # By this point we really have completed everything we want to do, and
     # there's no point doing any additional cleanup.  Abruptly exiting here
@@ -155,18 +148,7 @@ if __name__ == '__main__':
     # are just about to be discarded anyhow.  This does mean that atexit hooks
     # won't run but we don't use them.  Also file buffers won't be flushed,
     # but our policy is to always close files from a finally block. -- mbp 20070215
-    try:
-        sys.stdout.flush()
-        sys.stderr.flush()
-    except IOError, e:
-        import errno
-        if e.errno in [errno.EINVAL, errno.EPIPE]:
-            pass
-        else:
-            raise
-    if bzrlib.trace._trace_file:
-        # this is also _bzr_log
-        bzrlib.trace._trace_file.flush()
+    sys.exitfunc()
     os._exit(exit_val)
 else:
     raise ImportError("The bzr script cannot be imported.")

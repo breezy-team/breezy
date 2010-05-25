@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,25 +40,25 @@ def _parse_revision_str(revstr):
     each revision specifier supplied.
 
     >>> _parse_revision_str('234')
-    [<RevisionSpec_revno 234>]
+    [<RevisionSpec_dwim 234>]
     >>> _parse_revision_str('234..567')
-    [<RevisionSpec_revno 234>, <RevisionSpec_revno 567>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec_dwim 567>]
     >>> _parse_revision_str('..')
     [<RevisionSpec None>, <RevisionSpec None>]
     >>> _parse_revision_str('..234')
-    [<RevisionSpec None>, <RevisionSpec_revno 234>]
+    [<RevisionSpec None>, <RevisionSpec_dwim 234>]
     >>> _parse_revision_str('234..')
-    [<RevisionSpec_revno 234>, <RevisionSpec None>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec None>]
     >>> _parse_revision_str('234..456..789') # Maybe this should be an error
-    [<RevisionSpec_revno 234>, <RevisionSpec_revno 456>, <RevisionSpec_revno 789>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec_dwim 456>, <RevisionSpec_dwim 789>]
     >>> _parse_revision_str('234....789') #Error ?
-    [<RevisionSpec_revno 234>, <RevisionSpec None>, <RevisionSpec_revno 789>]
+    [<RevisionSpec_dwim 234>, <RevisionSpec None>, <RevisionSpec_dwim 789>]
     >>> _parse_revision_str('revid:test@other.com-234234')
     [<RevisionSpec_revid revid:test@other.com-234234>]
     >>> _parse_revision_str('revid:test@other.com-234234..revid:test@other.com-234235')
     [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revid revid:test@other.com-234235>]
     >>> _parse_revision_str('revid:test@other.com-234234..23')
-    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_revid revid:test@other.com-234234>, <RevisionSpec_dwim 23>]
     >>> _parse_revision_str('date:2005-04-12')
     [<RevisionSpec_date date:2005-04-12>]
     >>> _parse_revision_str('date:2005-04-12 12:24:33')
@@ -68,27 +68,23 @@ def _parse_revision_str(revstr):
     >>> _parse_revision_str('date:2005-04-12,12:24:33')
     [<RevisionSpec_date date:2005-04-12,12:24:33>]
     >>> _parse_revision_str('-5..23')
-    [<RevisionSpec_revno -5>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_dwim -5>, <RevisionSpec_dwim 23>]
     >>> _parse_revision_str('-5')
-    [<RevisionSpec_revno -5>]
+    [<RevisionSpec_dwim -5>]
     >>> _parse_revision_str('123a')
-    Traceback (most recent call last):
-      ...
-    NoSuchRevisionSpec: No namespace registered for string: '123a'
+    [<RevisionSpec_dwim 123a>]
     >>> _parse_revision_str('abc')
-    Traceback (most recent call last):
-      ...
-    NoSuchRevisionSpec: No namespace registered for string: 'abc'
+    [<RevisionSpec_dwim abc>]
     >>> _parse_revision_str('branch:../branch2')
     [<RevisionSpec_branch branch:../branch2>]
     >>> _parse_revision_str('branch:../../branch2')
     [<RevisionSpec_branch branch:../../branch2>]
     >>> _parse_revision_str('branch:../../branch2..23')
-    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_branch branch:../../branch2>, <RevisionSpec_dwim 23>]
     >>> _parse_revision_str('branch:..\\\\branch2')
     [<RevisionSpec_branch branch:..\\branch2>]
     >>> _parse_revision_str('branch:..\\\\..\\\\branch2..23')
-    [<RevisionSpec_branch branch:..\\..\\branch2>, <RevisionSpec_revno 23>]
+    [<RevisionSpec_branch branch:..\\..\\branch2>, <RevisionSpec_dwim 23>]
     """
     # TODO: Maybe move this into revisionspec.py
     revs = []
@@ -104,7 +100,7 @@ def _parse_change_str(revstr):
     parent of the revision.
 
     >>> _parse_change_str('123')
-    (<RevisionSpec_before before:123>, <RevisionSpec_revno 123>)
+    (<RevisionSpec_before before:123>, <RevisionSpec_dwim 123>)
     >>> _parse_change_str('123..124')
     Traceback (most recent call last):
       ...
@@ -280,7 +276,7 @@ class ListOption(Option):
         parser.add_option(action='callback',
                           callback=self._optparse_callback,
                           type='string', metavar=self.argname.upper(),
-                          help=self.help, default=[],
+                          help=self.help, dest=self._param_name, default=[],
                           *option_strings)
 
     def _optparse_callback(self, option, opt, value, parser):
@@ -365,10 +361,10 @@ class RegistryOption(Option):
 
         name, help, value_switches and enum_switch are passed to the
         RegistryOption constructor.  Any other keyword arguments are treated
-        as values for the option, and they value is treated as the help.
+        as values for the option, and their value is treated as the help.
         """
         reg = _mod_registry.Registry()
-        for name, switch_help in kwargs.iteritems():
+        for name, switch_help in sorted(kwargs.items()):
             name = name.replace('_', '-')
             reg.register(name, name, help=switch_help)
             if not value_switches:
@@ -534,6 +530,9 @@ _global_option('message', type=unicode,
                short_name='m',
                help='Message string.')
 _global_option('no-recurse')
+_global_option('null', short_name='0',
+                 help='Use an ASCII NUL (\\0) separator rather than '
+                      'a newline.')
 _global_option('profile',
                help='Show performance profiling information.')
 _global_option('revision',
@@ -574,6 +573,8 @@ _global_option('kind', type=str)
 _global_option('dry-run',
                help="Show what would be done, but don't actually do anything.")
 _global_option('name-from-revision', help='The path name in the old tree.')
+_global_option('directory', short_name='d', type=unicode,
+               help='Branch to operate on, instead of working directory')
 
 diff_writer_registry = _mod_registry.Registry()
 diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')

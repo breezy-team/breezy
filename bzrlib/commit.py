@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,42 +49,28 @@
 # TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
 # the rest of the code; add a deprecation of the old name.
 
-import os
-import re
-import sys
-import time
-
-from cStringIO import StringIO
-
 from bzrlib import (
     debug,
     errors,
     revision,
     trace,
     tree,
-    xml_serializer,
     )
 from bzrlib.branch import Branch
+from bzrlib.cleanup import OperationWithCleanups
 import bzrlib.config
 from bzrlib.errors import (BzrError, PointlessCommit,
                            ConflictsInTree,
                            StrictCommitFailed
                            )
 from bzrlib.osutils import (get_user_encoding,
-                            kind_marker, isdir,isfile, is_inside_any,
-                            is_inside_or_parent_of_any,
+                            is_inside_any,
                             minimum_path_selection,
-                            quotefn, sha_file, split_lines,
                             splitpath,
                             )
-from bzrlib.testament import Testament
-from bzrlib.trace import mutter, note, warning, is_quiet
+from bzrlib.trace import mutter, note, is_quiet
 from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
-from bzrlib.symbol_versioning import (deprecated_passed,
-        deprecated_function,
-        DEPRECATED_PARAMETER)
-from bzrlib.workingtree import WorkingTree
 from bzrlib.urlutils import unescape_for_display
 import bzrlib.ui
 
@@ -146,6 +132,12 @@ class ReportCommitToLog(NullCommitReporter):
 
     def completed(self, revno, rev_id):
         self._note('Committed revision %d.', revno)
+        # self._note goes to the console too; so while we want to log the
+        # rev_id, we can't trivially only log it. (See bug 526425). Long
+        # term we should rearrange the reporting structure, but for now
+        # we just mutter seperately. We mutter the revid and revno together
+        # so that concurrent bzr invocations won't lead to confusion.
+        mutter('Committed revid %s as revno %d.', rev_id, revno)
 
     def deleted(self, path):
         self._note('deleted %s', path)
@@ -181,6 +173,43 @@ class Commit(object):
         """
         self.reporter = reporter
         self.config = config
+
+    @staticmethod
+    def update_revprops(revprops, branch, authors=None, author=None,
+                        local=False, possible_master_transports=None):
+        if revprops is None:
+            revprops = {}
+        if possible_master_transports is None:
+            possible_master_transports = []
+        if not 'branch-nick' in revprops:
+            revprops['branch-nick'] = branch._get_nick(
+                local,
+                possible_master_transports)
+        if authors is not None:
+            if author is not None:
+                raise AssertionError('Specifying both author and authors '
+                        'is not allowed. Specify just authors instead')
+            if 'author' in revprops or 'authors' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
+            if authors:
+                for individual in authors:
+                    if '\n' in individual:
+                        raise AssertionError('\\n is not a valid character '
+                                'in an author identity')
+                revprops['authors'] = '\n'.join(authors)
+        if author is not None:
+            symbol_versioning.warn('The parameter author was deprecated'
+                   ' in version 1.13. Use authors instead',
+                   DeprecationWarning)
+            if 'author' in revprops or 'authors' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
+            if '\n' in author:
+                raise AssertionError('\\n is not a valid character '
+                        'in an author identity')
+            revprops['authors'] = author
+        return revprops
 
     def commit(self,
                message=None,
@@ -234,6 +263,32 @@ class Commit(object):
             commit. Pending changes to excluded files will be ignored by the
             commit.
         """
+        operation = OperationWithCleanups(self._commit)
+        self.revprops = revprops or {}
+        # XXX: Can be set on __init__ or passed in - this is a bit ugly.
+        self.config = config or self.config
+        return operation.run(
+               message=message,
+               timestamp=timestamp,
+               timezone=timezone,
+               committer=committer,
+               specific_files=specific_files,
+               rev_id=rev_id,
+               allow_pointless=allow_pointless,
+               strict=strict,
+               verbose=verbose,
+               working_tree=working_tree,
+               local=local,
+               reporter=reporter,
+               message_callback=message_callback,
+               recursive=recursive,
+               exclude=exclude,
+               possible_master_transports=possible_master_transports)
+
+    def _commit(self, operation, message, timestamp, timezone, committer,
+            specific_files, rev_id, allow_pointless, strict, verbose,
+            working_tree, local, reporter, message_callback, recursive,
+            exclude, possible_master_transports):
         mutter('preparing to commit')
 
         if working_tree is None:
@@ -262,7 +317,6 @@ class Commit(object):
             self.exclude = []
         self.local = local
         self.master_branch = None
-        self.master_locked = False
         self.recursive = recursive
         self.rev_id = None
         # self.specific_files is None to indicate no filter, or any iterable to
@@ -274,7 +328,6 @@ class Commit(object):
             self.specific_files = None
             
         self.allow_pointless = allow_pointless
-        self.revprops = revprops
         self.message_callback = message_callback
         self.timestamp = timestamp
         self.timezone = timezone
@@ -283,6 +336,7 @@ class Commit(object):
         self.verbose = verbose
 
         self.work_tree.lock_write()
+        operation.add_cleanup(self.work_tree.unlock)
         self.parents = self.work_tree.get_parent_ids()
         # We can use record_iter_changes IFF iter_changes is compatible with
         # the command line parameters, and the repository has fast delta
@@ -293,119 +347,118 @@ class Commit(object):
             (self.branch.repository._format.fast_deltas or
              len(self.parents) < 2))
         self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        operation.add_cleanup(self.pb.finished)
         self.basis_revid = self.work_tree.last_revision()
         self.basis_tree = self.work_tree.basis_tree()
         self.basis_tree.lock_read()
+        operation.add_cleanup(self.basis_tree.unlock)
+        # Cannot commit with conflicts present.
+        if len(self.work_tree.conflicts()) > 0:
+            raise ConflictsInTree
+
+        # Setup the bound branch variables as needed.
+        self._check_bound_branch(operation, possible_master_transports)
+
+        # Check that the working tree is up to date
+        old_revno, new_revno = self._check_out_of_date_tree()
+
+        # Complete configuration setup
+        if reporter is not None:
+            self.reporter = reporter
+        elif self.reporter is None:
+            self.reporter = self._select_reporter()
+        if self.config is None:
+            self.config = self.branch.get_config()
+
+        self._set_specific_file_ids()
+
+        # Setup the progress bar. As the number of files that need to be
+        # committed in unknown, progress is reported as stages.
+        # We keep track of entries separately though and include that
+        # information in the progress bar during the relevant stages.
+        self.pb_stage_name = ""
+        self.pb_stage_count = 0
+        self.pb_stage_total = 5
+        if self.bound_branch:
+            self.pb_stage_total += 1
+        self.pb.show_pct = False
+        self.pb.show_spinner = False
+        self.pb.show_eta = False
+        self.pb.show_count = True
+        self.pb.show_bar = True
+
+        self._gather_parents()
+        # After a merge, a selected file commit is not supported.
+        # See 'bzr help merge' for an explanation as to why.
+        if len(self.parents) > 1 and self.specific_files is not None:
+            raise errors.CannotCommitSelectedFileMerge(self.specific_files)
+        # Excludes are a form of selected file commit.
+        if len(self.parents) > 1 and self.exclude:
+            raise errors.CannotCommitSelectedFileMerge(self.exclude)
+
+        # Collect the changes
+        self._set_progress_stage("Collecting changes", counter=True)
+        self.builder = self.branch.get_commit_builder(self.parents,
+            self.config, timestamp, timezone, committer, self.revprops, rev_id)
+
         try:
-            # Cannot commit with conflicts present.
-            if len(self.work_tree.conflicts()) > 0:
-                raise ConflictsInTree
-
-            # Setup the bound branch variables as needed.
-            self._check_bound_branch(possible_master_transports)
-
-            # Check that the working tree is up to date
-            old_revno, new_revno = self._check_out_of_date_tree()
-
-            # Complete configuration setup
-            if reporter is not None:
-                self.reporter = reporter
-            elif self.reporter is None:
-                self.reporter = self._select_reporter()
-            if self.config is None:
-                self.config = self.branch.get_config()
-
-            self._set_specific_file_ids()
-
-            # Setup the progress bar. As the number of files that need to be
-            # committed in unknown, progress is reported as stages.
-            # We keep track of entries separately though and include that
-            # information in the progress bar during the relevant stages.
-            self.pb_stage_name = ""
-            self.pb_stage_count = 0
-            self.pb_stage_total = 5
+            self.builder.will_record_deletes()
+            # find the location being committed to
             if self.bound_branch:
-                self.pb_stage_total += 1
-            self.pb.show_pct = False
-            self.pb.show_spinner = False
-            self.pb.show_eta = False
-            self.pb.show_count = True
-            self.pb.show_bar = True
+                master_location = self.master_branch.base
+            else:
+                master_location = self.branch.base
 
-            self._gather_parents()
-            # After a merge, a selected file commit is not supported.
-            # See 'bzr help merge' for an explanation as to why.
-            if len(self.parents) > 1 and self.specific_files is not None:
-                raise errors.CannotCommitSelectedFileMerge(self.specific_files)
-            # Excludes are a form of selected file commit.
-            if len(self.parents) > 1 and self.exclude:
-                raise errors.CannotCommitSelectedFileMerge(self.exclude)
+            # report the start of the commit
+            self.reporter.started(new_revno, self.rev_id, master_location)
 
-            # Collect the changes
-            self._set_progress_stage("Collecting changes", counter=True)
-            self.builder = self.branch.get_commit_builder(self.parents,
-                self.config, timestamp, timezone, committer, revprops, rev_id)
+            self._update_builder_with_changes()
+            self._check_pointless()
 
-            try:
-                self.builder.will_record_deletes()
-                # find the location being committed to
-                if self.bound_branch:
-                    master_location = self.master_branch.base
-                else:
-                    master_location = self.branch.base
+            # TODO: Now the new inventory is known, check for conflicts.
+            # ADHB 2006-08-08: If this is done, populate_new_inv should not add
+            # weave lines, because nothing should be recorded until it is known
+            # that commit will succeed.
+            self._set_progress_stage("Saving data locally")
+            self.builder.finish_inventory()
 
-                # report the start of the commit
-                self.reporter.started(new_revno, self.rev_id, master_location)
+            # Prompt the user for a commit message if none provided
+            message = message_callback(self)
+            self.message = message
 
-                self._update_builder_with_changes()
-                self._check_pointless()
+            # Add revision data to the local branch
+            self.rev_id = self.builder.commit(self.message)
 
-                # TODO: Now the new inventory is known, check for conflicts.
-                # ADHB 2006-08-08: If this is done, populate_new_inv should not add
-                # weave lines, because nothing should be recorded until it is known
-                # that commit will succeed.
-                self._set_progress_stage("Saving data locally")
-                self.builder.finish_inventory()
+        except Exception, e:
+            mutter("aborting commit write group because of exception:")
+            trace.log_exception_quietly()
+            note("aborting commit write group: %r" % (e,))
+            self.builder.abort()
+            raise
 
-                # Prompt the user for a commit message if none provided
-                message = message_callback(self)
-                self.message = message
+        self._process_pre_hooks(old_revno, new_revno)
 
-                # Add revision data to the local branch
-                self.rev_id = self.builder.commit(self.message)
+        # Upload revision data to the master.
+        # this will propagate merged revisions too if needed.
+        if self.bound_branch:
+            self._set_progress_stage("Uploading data to master branch")
+            # 'commit' to the master first so a timeout here causes the
+            # local branch to be out of date
+            self.master_branch.import_last_revision_info(
+                self.branch.repository, new_revno, self.rev_id)
 
-            except Exception, e:
-                mutter("aborting commit write group because of exception:")
-                trace.log_exception_quietly()
-                note("aborting commit write group: %r" % (e,))
-                self.builder.abort()
-                raise
+        # and now do the commit locally.
+        self.branch.set_last_revision_info(new_revno, self.rev_id)
 
-            self._process_pre_hooks(old_revno, new_revno)
-
-            # Upload revision data to the master.
-            # this will propagate merged revisions too if needed.
-            if self.bound_branch:
-                self._set_progress_stage("Uploading data to master branch")
-                # 'commit' to the master first so a timeout here causes the
-                # local branch to be out of date
-                self.master_branch.import_last_revision_info(
-                    self.branch.repository, new_revno, self.rev_id)
-
-            # and now do the commit locally.
-            self.branch.set_last_revision_info(new_revno, self.rev_id)
-
-            # Make the working tree be up to date with the branch. This
-            # includes automatic changes scheduled to be made to the tree, such
-            # as updating its basis and unversioning paths that were missing.
-            self.work_tree.unversion(self.deleted_ids)
-            self._set_progress_stage("Updating the working tree")
-            self.work_tree.update_basis_by_delta(self.rev_id,
-                 self.builder.get_basis_delta())
-            self.reporter.completed(new_revno, self.rev_id)
-            self._process_post_hooks(old_revno, new_revno)
-        finally:
-            self._cleanup()
+        # Make the working tree be up to date with the branch. This
+        # includes automatic changes scheduled to be made to the tree, such
+        # as updating its basis and unversioning paths that were missing.
+        self.work_tree.unversion(self.deleted_ids)
+        self._set_progress_stage("Updating the working tree")
+        self.work_tree.update_basis_by_delta(self.rev_id,
+             self.builder.get_basis_delta())
+        self.reporter.completed(new_revno, self.rev_id)
+        self._process_post_hooks(old_revno, new_revno)
         return self.rev_id
 
     def _select_reporter(self):
@@ -433,7 +486,7 @@ class Commit(object):
             return
         raise PointlessCommit()
 
-    def _check_bound_branch(self, possible_master_transports=None):
+    def _check_bound_branch(self, operation, possible_master_transports=None):
         """Check to see if the local branch is bound.
 
         If it is bound, then most of the commit will actually be
@@ -474,7 +527,7 @@ class Commit(object):
         # so grab the lock
         self.bound_branch = self.branch
         self.master_branch.lock_write()
-        self.master_locked = True
+        operation.add_cleanup(self.master_branch.unlock)
 
     def _check_out_of_date_tree(self):
         """Check that the working tree is up to date.
@@ -564,42 +617,6 @@ class Commit(object):
                 hook(hook_local, hook_master,
                      old_revno, old_revid, new_revno, self.rev_id,
                      tree_delta, future_tree)
-
-    def _cleanup(self):
-        """Cleanup any open locks, progress bars etc."""
-        cleanups = [self._cleanup_bound_branch,
-                    self.basis_tree.unlock,
-                    self.work_tree.unlock,
-                    self.pb.finished]
-        found_exception = None
-        for cleanup in cleanups:
-            try:
-                cleanup()
-            # we want every cleanup to run no matter what.
-            # so we have a catchall here, but we will raise the
-            # last encountered exception up the stack: and
-            # typically this will be useful enough.
-            except Exception, e:
-                found_exception = e
-        if found_exception is not None:
-            # don't do a plan raise, because the last exception may have been
-            # trashed, e is our sure-to-work exception even though it loses the
-            # full traceback. XXX: RBC 20060421 perhaps we could check the
-            # exc_info and if its the same one do a plain raise otherwise
-            # 'raise e' as we do now.
-            raise e
-
-    def _cleanup_bound_branch(self):
-        """Executed at the end of a try/finally to cleanup a bound branch.
-
-        If the branch wasn't bound, this is a no-op.
-        If it was, it resents self.branch to the local branch, instead
-        of being the master.
-        """
-        if not self.bound_branch:
-            return
-        if self.master_locked:
-            self.master_branch.unlock()
 
     def _gather_parents(self):
         """Record the parents of a merge for merge detection."""

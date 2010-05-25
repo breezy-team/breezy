@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ from bzrlib import (
     knit,
     osutils,
     pack,
+    static_tuple,
     trace,
     )
 from bzrlib.btree_index import BTreeBuilder
@@ -119,13 +120,8 @@ class GroupCompressBlock(object):
         :param num_bytes: Ensure that we have extracted at least num_bytes of
             content. If None, consume everything
         """
-        # TODO: If we re-use the same content block at different times during
-        #       get_record_stream(), it is possible that the first pass will
-        #       get inserted, triggering an extract/_ensure_content() which
-        #       will get rid of _z_content. And then the next use of the block
-        #       will try to access _z_content (to send it over the wire), and
-        #       fail because it is already extracted. Consider never releasing
-        #       _z_content because of this.
+        if self._content_length is None:
+            raise AssertionError('self._content_length should never be None')
         if num_bytes is None:
             num_bytes = self._content_length
         elif (self._content_length is not None
@@ -148,7 +144,10 @@ class GroupCompressBlock(object):
                 self._content = pylzma.decompress(self._z_content)
             elif self._compressor_name == 'zlib':
                 # Start a zlib decompressor
-                if num_bytes is None:
+                if num_bytes * 4 > self._content_length * 3:
+                    # If we are requesting more that 3/4ths of the content,
+                    # just extract the whole thing in a single pass
+                    num_bytes = self._content_length
                     self._content = zlib.decompress(self._z_content)
                 else:
                     self._z_content_decompressor = zlib.decompressobj()
@@ -156,6 +155,8 @@ class GroupCompressBlock(object):
                     # that the rest of the code is simplified
                     self._content = self._z_content_decompressor.decompress(
                         self._z_content, num_bytes + _ZLIB_DECOMP_WINDOW)
+                    if not self._z_content_decompressor.unconsumed_tail:
+                        self._z_content_decompressor = None
             else:
                 raise AssertionError('Unknown compressor: %r'
                                      % self._compressor_name)
@@ -163,45 +164,28 @@ class GroupCompressBlock(object):
         # 'unconsumed_tail'
 
         # Do we have enough bytes already?
-        if num_bytes is not None and len(self._content) >= num_bytes:
-            return
-        if num_bytes is None and self._z_content_decompressor is None:
-            # We must have already decompressed everything
+        if len(self._content) >= num_bytes:
             return
         # If we got this far, and don't have a decompressor, something is wrong
         if self._z_content_decompressor is None:
             raise AssertionError(
                 'No decompressor to decompress %d bytes' % num_bytes)
         remaining_decomp = self._z_content_decompressor.unconsumed_tail
-        if num_bytes is None:
-            if remaining_decomp:
-                # We don't know how much is left, but we'll decompress it all
-                self._content += self._z_content_decompressor.decompress(
-                    remaining_decomp)
-                # Note: There's what I consider a bug in zlib.decompressobj
-                #       If you pass back in the entire unconsumed_tail, only
-                #       this time you don't pass a max-size, it doesn't
-                #       change the unconsumed_tail back to None/''.
-                #       However, we know we are done with the whole stream
-                self._z_content_decompressor = None
-            # XXX: Why is this the only place in this routine we set this?
-            self._content_length = len(self._content)
-        else:
-            if not remaining_decomp:
-                raise AssertionError('Nothing left to decompress')
-            needed_bytes = num_bytes - len(self._content)
-            # We always set max_size to 32kB over the minimum needed, so that
-            # zlib will give us as much as we really want.
-            # TODO: If this isn't good enough, we could make a loop here,
-            #       that keeps expanding the request until we get enough
-            self._content += self._z_content_decompressor.decompress(
-                remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
-            if len(self._content) < num_bytes:
-                raise AssertionError('%d bytes wanted, only %d available'
-                                     % (num_bytes, len(self._content)))
-            if not self._z_content_decompressor.unconsumed_tail:
-                # The stream is finished
-                self._z_content_decompressor = None
+        if not remaining_decomp:
+            raise AssertionError('Nothing left to decompress')
+        needed_bytes = num_bytes - len(self._content)
+        # We always set max_size to 32kB over the minimum needed, so that
+        # zlib will give us as much as we really want.
+        # TODO: If this isn't good enough, we could make a loop here,
+        #       that keeps expanding the request until we get enough
+        self._content += self._z_content_decompressor.decompress(
+            remaining_decomp, needed_bytes + _ZLIB_DECOMP_WINDOW)
+        if len(self._content) < num_bytes:
+            raise AssertionError('%d bytes wanted, only %d available'
+                                 % (num_bytes, len(self._content)))
+        if not self._z_content_decompressor.unconsumed_tail:
+            # The stream is finished
+            self._z_content_decompressor = None
 
     def _parse_bytes(self, bytes, pos):
         """Read the various lengths from the header.
@@ -1282,6 +1266,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
         else:
             return self.get_record_stream(keys, 'unordered', True)
 
+    def clear_cache(self):
+        """See VersionedFiles.clear_cache()"""
+        self._group_cache.clear()
+        self._index._graph_index.clear_cache()
+        self._index._int_cache.clear()
+
     def _check_add(self, key, lines, random_id, check_content):
         """check that version_id and lines are safe to add."""
         version_id = key[-1]
@@ -1641,6 +1631,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         keys_to_add = []
         def flush():
             bytes = self._compressor.flush().to_bytes()
+            self._compressor = GroupCompressor()
             index, start, length = self._access.add_raw_records(
                 [(None, len(bytes))], bytes)[0]
             nodes = []
@@ -1649,7 +1640,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
             self._index.add_records(nodes, random_id=random_id)
             self._unadded_refs = {}
             del keys_to_add[:]
-            self._compressor = GroupCompressor()
 
         last_prefix = None
         max_fulltext_len = 0
@@ -1757,8 +1747,13 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 key = record.key
             self._unadded_refs[key] = record.parents
             yield found_sha1
-            keys_to_add.append((key, '%d %d' % (start_point, end_point),
-                (record.parents,)))
+            as_st = static_tuple.StaticTuple.from_sequence
+            if record.parents is not None:
+                parents = as_st([as_st(p) for p in record.parents])
+            else:
+                parents = None
+            refs = static_tuple.StaticTuple(parents)
+            keys_to_add.append((key, '%d %d' % (start_point, end_point), refs))
         if len(keys_to_add):
             flush()
         self._compressor = None
@@ -1844,6 +1839,9 @@ class _GCGraphIndex(object):
         self.has_graph = parents
         self._is_locked = is_locked
         self._inconsistency_fatal = inconsistency_fatal
+        # GroupCompress records tend to have the same 'group' start + offset
+        # repeated over and over, this creates a surplus of ints
+        self._int_cache = {}
         if track_external_parent_refs:
             self._key_dependencies = knit._KeyRefs(
                 track_new_keys=track_new_keys)
@@ -1885,8 +1883,11 @@ class _GCGraphIndex(object):
         if not random_id:
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
-                if node_refs != keys[key][1]:
-                    details = '%s %s %s' % (key, (value, node_refs), keys[key])
+                # Sometimes these are passed as a list rather than a tuple
+                node_refs = static_tuple.as_tuples(node_refs)
+                passed = static_tuple.as_tuples(keys[key])
+                if node_refs != passed[1]:
+                    details = '%s %s %s' % (key, (value, node_refs), passed)
                     if self._inconsistency_fatal:
                         raise errors.KnitCorrupt(self, "inconsistent details"
                                                  " in add_records: %s" %
@@ -2025,11 +2026,24 @@ class _GCGraphIndex(object):
         """Convert an index value to position details."""
         bits = node[2].split(' ')
         # It would be nice not to read the entire gzip.
+        # start and stop are put into _int_cache because they are very common.
+        # They define the 'group' that an entry is in, and many groups can have
+        # thousands of objects.
+        # Branching Launchpad, for example, saves ~600k integers, at 12 bytes
+        # each, or about 7MB. Note that it might be even more when you consider
+        # how PyInt is allocated in separate slabs. And you can't return a slab
+        # to the OS if even 1 int on it is in use. Note though that Python uses
+        # a LIFO when re-using PyInt slots, which probably causes more
+        # fragmentation.
         start = int(bits[0])
+        start = self._int_cache.setdefault(start, start)
         stop = int(bits[1])
+        stop = self._int_cache.setdefault(stop, stop)
         basis_end = int(bits[2])
         delta_end = int(bits[3])
-        return node[0], start, stop, basis_end, delta_end
+        # We can't use StaticTuple here, because node[0] is a BTreeGraphIndex
+        # instance...
+        return (node[0], start, stop, basis_end, delta_end)
 
     def scan_unvalidated_index(self, graph_index):
         """Inform this _GCGraphIndex that there is an unvalidated index.

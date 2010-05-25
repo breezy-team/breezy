@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,8 @@ class Serializer_v5(xml6.Serializer_v6):
     format_num = '5'
     root_id = inventory.ROOT_ID
 
-    def _unpack_inventory(self, elt, revision_id, entry_cache=None):
+    def _unpack_inventory(self, elt, revision_id, entry_cache=None,
+                          return_from_cache=False):
         """Construct from XML Element
         """
         root_id = elt.get('file_id') or inventory.ROOT_ID
@@ -54,7 +55,8 @@ class Serializer_v5(xml6.Serializer_v6):
         unpack_entry = self._unpack_entry
         byid = inv._byid
         for e in elt:
-            ie = unpack_entry(e, entry_cache=entry_cache)
+            ie = unpack_entry(e, entry_cache=entry_cache,
+                              return_from_cache=return_from_cache)
             parent_id = ie.parent_id
             if parent_id is None:
                 ie.parent_id = parent_id = root_id

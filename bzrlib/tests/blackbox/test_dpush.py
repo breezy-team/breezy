@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,48 +20,54 @@
 
 import os
 
-from bzrlib.branch import (
-    Branch,
-    InterBranch,
+from bzrlib import (
+    branch,
+    bzrdir,
+    foreign,
+    tests,
+    workingtree,
     )
-from bzrlib.bzrdir import (
-    BzrDirFormat,
+from bzrlib.tests import (
+    blackbox,
+    test_foreign,
     )
-from bzrlib.foreign import (
-    ForeignBranch,
-    ForeignRepository,
-    )
-from bzrlib.repository import (
-    Repository,
-    )
-from bzrlib.tests.blackbox import (
-    ExternalBase,
-    )
-from bzrlib.tests.test_foreign import (
-    DummyForeignVcsDirFormat,
-    InterToDummyVcsBranch,
-    )
+from bzrlib.tests.blackbox import test_push
 
 
-class TestDpush(ExternalBase):
+def load_tests(standard_tests, module, loader):
+    """Multiply tests for the dpush command."""
+    result = loader.suiteClass()
+
+    # one for each king of change
+    changes_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestDpushStrictWithChanges,
+                )))
+    changes_scenarios = [
+        ('uncommitted',
+         dict(_changes_type= '_uncommitted_changes')),
+        ('pending-merges',
+         dict(_changes_type= '_pending_merges')),
+        ('out-of-sync-trees',
+         dict(_changes_type= '_out_of_sync_trees')),
+        ]
+    tests.multiply_tests(changes_tests, changes_scenarios, result)
+    # No parametrization for the remaining tests
+    result.addTests(remaining_tests)
+
+    return result
+
+
+class TestDpush(blackbox.ExternalBase):
 
     def setUp(self):
-        BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
-        InterBranch.register_optimiser(InterToDummyVcsBranch)
-        self.addCleanup(self.unregister_format)
         super(TestDpush, self).setUp()
-
-    def unregister_format(self):
-        try:
-            BzrDirFormat.unregister_control_format(DummyForeignVcsDirFormat)
-        except ValueError:
-            pass
-        InterBranch.unregister_optimiser(InterToDummyVcsBranch)
+        test_foreign.register_dummy_foreign_for_test(self)
 
     def make_dummy_builder(self, relpath):
-        builder = self.make_branch_builder(relpath, 
-                format=DummyForeignVcsDirFormat())
-        builder.build_snapshot('revid', None, 
+        builder = self.make_branch_builder(
+            relpath, format=test_foreign.DummyForeignVcsDirFormat())
+        builder.build_snapshot('revid', None,
             [('add', ('', 'TREE_ROOT', 'directory', None)),
              ('add', ('foo', 'fooid', 'file', 'bar'))])
         return builder
@@ -85,9 +91,9 @@ class TestDpush(ExternalBase):
         self.check_output("", "status dc")
 
     def test_dpush_new(self):
-        branch = self.make_dummy_builder('d').get_branch()
+        b = self.make_dummy_builder('d').get_branch()
 
-        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
+        dc = b.bzrdir.sprout('dc', force_new_repo=True)
         self.build_tree_contents([("dc/foofile", "blaaaa")])
         dc_tree = dc.open_workingtree()
         dc_tree.add("foofile")
@@ -98,25 +104,27 @@ class TestDpush(ExternalBase):
         self.check_output("", "status dc")
 
     def test_dpush_wt_diff(self):
-        branch = self.make_dummy_builder('d').get_branch()
+        b = self.make_dummy_builder('d').get_branch()
 
-        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
+        dc = b.bzrdir.sprout('dc', force_new_repo=True)
         self.build_tree_contents([("dc/foofile", "blaaaa")])
         dc_tree = dc.open_workingtree()
         dc_tree.add("foofile")
         newrevid = dc_tree.commit('msg')
 
         self.build_tree_contents([("dc/foofile", "blaaaal")])
-        self.check_output("", "dpush -d dc d")
+        self.check_output("", "dpush -d dc d --no-strict")
         self.assertFileEqual("blaaaal", "dc/foofile")
+        # if the dummy vcs wasn't that dummy we could uncomment the line below
+        # self.assertFileEqual("blaaaa", "d/foofile")
         self.check_output('modified:\n  foofile\n', "status dc")
 
     def test_diverged(self):
         builder = self.make_dummy_builder('d')
 
-        branch = builder.get_branch()
+        b = builder.get_branch()
 
-        dc = branch.bzrdir.sprout('dc', force_new_repo=True)
+        dc = b.bzrdir.sprout('dc', force_new_repo=True)
         dc_tree = dc.open_workingtree()
 
         self.build_tree_contents([("dc/foo", "bar")])
@@ -128,3 +136,42 @@ class TestDpush(ExternalBase):
         output, error = self.run_bzr("dpush -d dc d", retcode=3)
         self.assertEquals(output, "")
         self.assertContainsRe(error, "have diverged")
+
+
+class TestDpushStrictMixin(object):
+
+    def setUp(self):
+        test_foreign.register_dummy_foreign_for_test(self)
+        # Create an empty branch where we will be able to push
+        self.foreign = self.make_branch(
+            'to', format=test_foreign.DummyForeignVcsDirFormat())
+
+    def set_config_push_strict(self, value):
+        # set config var (any of bazaar.conf, locations.conf, branch.conf
+        # should do)
+        conf = self.tree.branch.get_config()
+        conf.set_user_option('dpush_strict', value)
+
+    _default_command = ['dpush', '../to']
+
+
+class TestDpushStrictWithoutChanges(TestDpushStrictMixin,
+                                    test_push.TestPushStrictWithoutChanges):
+
+    def setUp(self):
+        test_push.TestPushStrictWithoutChanges.setUp(self)
+        TestDpushStrictMixin.setUp(self)
+
+
+class TestDpushStrictWithChanges(TestDpushStrictMixin,
+                                 test_push.TestPushStrictWithChanges):
+
+    _changes_type = None # Set by load_tests
+
+    def setUp(self):
+        test_push.TestPushStrictWithChanges.setUp(self)
+        TestDpushStrictMixin.setUp(self)
+
+    def test_push_with_revision(self):
+        raise tests.TestNotApplicable('dpush does not handle --revision')
+

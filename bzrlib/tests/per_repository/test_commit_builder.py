@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,24 +16,21 @@
 
 """Tests for repository commit builder."""
 
-from copy import copy
-import errno
 import os
-import sys
 
 from bzrlib import (
     errors,
+    graph,
     inventory,
     osutils,
     repository,
     revision as _mod_revision,
     tests,
     )
-from bzrlib.graph import Graph
-from bzrlib.tests.per_repository import test_repository
+from bzrlib.tests import per_repository
 
 
-class TestCommitBuilder(test_repository.TestCaseWithRepository):
+class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_get_commit_builder(self):
         branch = self.make_branch('.')
@@ -195,6 +192,23 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # anyway.
         self.assertEqual(revision_id,
             tree.branch.repository.get_inventory(revision_id).revision_id)
+
+    def test_commit_without_root_errors(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            def do_commit():
+                try:
+                    list(builder.record_iter_changes(
+                        tree, tree.last_revision(), []))
+                    builder.finish_inventory()
+                except:
+                    builder.abort()
+                    raise
+            self.assertRaises(errors.RootMissing, do_commit)
+        finally:
+            tree.unlock()
 
     def test_commit_without_root_or_record_iter_changes_errors(self):
         tree = self.make_branch_and_tree(".")
@@ -894,7 +908,13 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
                 self.assertTrue(version_recorded)
             else:
                 self.assertFalse(version_recorded)
+            self.assertIs(None, builder.new_inventory)
             builder.finish_inventory()
+            inv_key = (builder._new_revision_id,)
+            inv_sha1 = tree.branch.repository.inventories.get_sha1s(
+                            [inv_key])[inv_key]
+            self.assertEqual(inv_sha1, builder.inv_sha1)
+            self.assertIs(None, builder.new_inventory)
             new_inventory = builder.revision_tree().inventory
             new_entry = new_inventory[file_id]
             if delta_against_basis:
@@ -918,8 +938,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # (closest to a public per-file graph API we have today)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        graph = dict(Graph(tree.branch.repository.texts).iter_ancestry([tip]))
-        self.assertEqual(expected_graph, graph)
+        g = dict(graph.Graph(tree.branch.repository.texts).iter_ancestry([tip]))
+        self.assertEqual(expected_graph, g)
 
     def test_last_modified_revision_after_content_file_changes(self):
         # altering a file changes the last modified.

@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,12 +27,17 @@ from bzrlib import (
     errors,
     osutils,
     patches,
+    patiencediff,
     shelf,
     textfile,
     trace,
     ui,
     workingtree,
 )
+
+
+class UseEditor(Exception):
+    """Use an editor instead of selecting hunks."""
 
 
 class ShelfReporter(object):
@@ -143,6 +148,9 @@ class Shelver(object):
         if reporter is None:
             reporter = ShelfReporter()
         self.reporter = reporter
+        config = self.work_tree.branch.get_config()
+        self.change_editor = config.get_change_editor(target_tree, work_tree)
+        self.work_tree.lock_tree_write()
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
@@ -168,11 +176,10 @@ class Shelver(object):
             target_tree = builtins._get_one_revision_tree('shelf2', revision,
                 tree.branch, tree)
             files = builtins.safe_relpath_files(tree, file_list)
-        except:
+            return klass(tree, target_tree, diff_writer, all, all, files,
+                         message, destroy)
+        finally:
             tree.unlock()
-            raise
-        return klass(tree, target_tree, diff_writer, all, all, files, message,
-                     destroy)
 
     def run(self):
         """Interactively shelve the changes."""
@@ -211,6 +218,12 @@ class Shelver(object):
             shutil.rmtree(self.tempdir)
             creator.finalize()
 
+    def finalize(self):
+        if self.change_editor is not None:
+            self.change_editor.finish()
+        self.work_tree.unlock()
+
+
     def get_parsed_patch(self, file_id, invert=False):
         """Return a parsed version of a file's patch.
 
@@ -239,13 +252,19 @@ class Shelver(object):
         :param message: The message to prompt a user with.
         :return: A character.
         """
+        if not sys.stdin.isatty():
+            # Since there is no controlling terminal we will hang when trying
+            # to prompt the user, better abort now.  See
+            # https://code.launchpad.net/~bialix/bzr/shelve-no-tty/+merge/14905
+            # for more context.
+            raise errors.BzrError("You need a controlling terminal.")
         sys.stdout.write(message)
         char = osutils.getchar()
         sys.stdout.write("\r" + ' ' * len(message) + '\r')
         sys.stdout.flush()
         return char
 
-    def prompt_bool(self, question, long=False):
+    def prompt_bool(self, question, long=False, allow_editor=False):
         """Prompt the user with a yes/no question.
 
         This may be overridden by self.auto.  It may also *set* self.auto.  It
@@ -255,13 +274,20 @@ class Shelver(object):
         """
         if self.auto:
             return True
+        editor_string = ''
         if long:
-            prompt = ' [(y)es, (N)o, (f)inish, or (q)uit]'
+            if allow_editor:
+                editor_string = '(E)dit manually, '
+            prompt = ' [(y)es, (N)o, %s(f)inish, or (q)uit]' % editor_string
         else:
-            prompt = ' [yNfq?]'
+            if allow_editor:
+                editor_string = 'e'
+            prompt = ' [yN%sfq?]' % editor_string
         char = self.prompt(question + prompt)
         if char == 'y':
             return True
+        elif char == 'e' and allow_editor:
+            raise UseEditor
         elif char == 'f':
             self.auto = True
             return True
@@ -273,6 +299,23 @@ class Shelver(object):
             return False
 
     def handle_modify_text(self, creator, file_id):
+        """Handle modified text, by using hunk selection or file editing.
+
+        :param creator: A ShelfCreator.
+        :param file_id: The id of the file that was modified.
+        :return: The number of changes.
+        """
+        work_tree_lines = self.work_tree.get_file_lines(file_id)
+        try:
+            lines, change_count = self._select_hunks(creator, file_id,
+                                                     work_tree_lines)
+        except UseEditor:
+            lines, change_count = self._edit_file(file_id, work_tree_lines)
+        if change_count != 0:
+            creator.shelve_lines(file_id, lines)
+        return change_count
+
+    def _select_hunks(self, creator, file_id, work_tree_lines):
         """Provide diff hunk selection for modified text.
 
         If self.reporter.invert_diff is True, the diff is inverted so that
@@ -280,13 +323,14 @@ class Shelver(object):
 
         :param creator: a ShelfCreator
         :param file_id: The id of the file to shelve.
+        :param work_tree_lines: Line contents of the file in the working tree.
         :return: number of shelved hunks.
         """
         if self.reporter.invert_diff:
-            target_lines = self.work_tree.get_file_lines(file_id)
+            target_lines = work_tree_lines
         else:
             target_lines = self.target_tree.get_file_lines(file_id)
-        textfile.check_text_lines(self.work_tree.get_file_lines(file_id))
+        textfile.check_text_lines(work_tree_lines)
         textfile.check_text_lines(target_lines)
         parsed = self.get_parsed_patch(file_id, self.reporter.invert_diff)
         final_hunks = []
@@ -295,7 +339,9 @@ class Shelver(object):
             self.diff_writer.write(parsed.get_header())
             for hunk in parsed.hunks:
                 self.diff_writer.write(str(hunk))
-                selected = self.prompt_bool(self.reporter.vocab['hunk'])
+                selected = self.prompt_bool(self.reporter.vocab['hunk'],
+                                            allow_editor=(self.change_editor
+                                                          is not None))
                 if not self.reporter.invert_diff:
                     selected = (not selected)
                 if selected:
@@ -304,32 +350,50 @@ class Shelver(object):
                 else:
                     offset -= (hunk.mod_range - hunk.orig_range)
         sys.stdout.flush()
-        if not self.reporter.invert_diff and (
-            len(parsed.hunks) == len(final_hunks)):
-            return 0
-        if self.reporter.invert_diff and len(final_hunks) == 0:
-            return 0
-        patched = patches.iter_patched_from_hunks(target_lines, final_hunks)
-        creator.shelve_lines(file_id, list(patched))
         if self.reporter.invert_diff:
-            return len(final_hunks)
-        return len(parsed.hunks) - len(final_hunks)
+            change_count = len(final_hunks)
+        else:
+            change_count = len(parsed.hunks) - len(final_hunks)
+        patched = patches.iter_patched_from_hunks(target_lines,
+                                                  final_hunks)
+        lines = list(patched)
+        return lines, change_count
+
+    def _edit_file(self, file_id, work_tree_lines):
+        """
+        :param file_id: id of the file to edit.
+        :param work_tree_lines: Line contents of the file in the working tree.
+        :return: (lines, change_region_count), where lines is the new line
+            content of the file, and change_region_count is the number of
+            changed regions.
+        """
+        lines = osutils.split_lines(self.change_editor.edit_file(file_id))
+        return lines, self._count_changed_regions(work_tree_lines, lines)
+
+    @staticmethod
+    def _count_changed_regions(old_lines, new_lines):
+        matcher = patiencediff.PatienceSequenceMatcher(None, old_lines,
+                                                       new_lines)
+        blocks = matcher.get_matching_blocks()
+        return len(blocks) - 2
 
 
 class Unshelver(object):
     """Unshelve changes into a working tree."""
 
     @classmethod
-    def from_args(klass, shelf_id=None, action='apply', directory='.'):
+    def from_args(klass, shelf_id=None, action='apply', directory='.',
+                  write_diff_to=None):
         """Create an unshelver from commandline arguments.
 
-        The returned shelver wil have a tree that is locked and should
+        The returned shelver will have a tree that is locked and should
         be unlocked.
 
         :param shelf_id: Integer id of the shelf, as a string.
         :param action: action to perform.  May be 'apply', 'dry-run',
-            'delete'.
+            'delete', 'preview'.
         :param directory: The directory to unshelve changes into.
+        :param write_diff_to: See Unshelver.__init__().
         """
         tree, path = workingtree.WorkingTree.open_containing(directory)
         tree.lock_tree_write()
@@ -344,24 +408,32 @@ class Unshelver(object):
                 shelf_id = manager.last_shelf()
                 if shelf_id is None:
                     raise errors.BzrCommandError('No changes are shelved.')
-                trace.note('Unshelving changes with id "%d".' % shelf_id)
             apply_changes = True
             delete_shelf = True
             read_shelf = True
+            show_diff = False
             if action == 'dry-run':
                 apply_changes = False
                 delete_shelf = False
-            if action == 'delete-only':
+            elif action == 'preview':
+                apply_changes = False
+                delete_shelf = False
+                show_diff = True
+            elif action == 'delete-only':
                 apply_changes = False
                 read_shelf = False
+            elif action == 'keep':
+                apply_changes = True
+                delete_shelf = False
         except:
             tree.unlock()
             raise
         return klass(tree, manager, shelf_id, apply_changes, delete_shelf,
-                     read_shelf)
+                     read_shelf, show_diff, write_diff_to)
 
     def __init__(self, tree, manager, shelf_id, apply_changes=True,
-                 delete_shelf=True, read_shelf=True):
+                 delete_shelf=True, read_shelf=True, show_diff=False,
+                 write_diff_to=None):
         """Constructor.
 
         :param tree: The working tree to unshelve into.
@@ -371,6 +443,11 @@ class Unshelver(object):
             working tree.
         :param delete_shelf: If True, delete the changes from the shelf.
         :param read_shelf: If True, read the changes from the shelf.
+        :param show_diff: If True, show the diff that would result from
+            unshelving the changes.
+        :param write_diff_to: A file-like object where the diff will be
+            written to. If None, ui.ui_factory.make_output_stream() will
+            be used.
         """
         self.tree = tree
         manager = tree.get_shelf_manager()
@@ -379,6 +456,8 @@ class Unshelver(object):
         self.apply_changes = apply_changes
         self.delete_shelf = delete_shelf
         self.read_shelf = read_shelf
+        self.show_diff = show_diff
+        self.write_diff_to = write_diff_to
 
     def run(self):
         """Perform the unshelving operation."""
@@ -386,26 +465,36 @@ class Unshelver(object):
         cleanups = [self.tree.unlock]
         try:
             if self.read_shelf:
+                trace.note('Using changes with id "%d".' % self.shelf_id)
                 unshelver = self.manager.get_unshelver(self.shelf_id)
                 cleanups.append(unshelver.finalize)
                 if unshelver.message is not None:
                     trace.note('Message: %s' % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                task = ui.ui_factory.nested_progress_bar()
-                try:
-                    merger = unshelver.make_merger(task)
-                    merger.change_reporter = change_reporter
-                    if self.apply_changes:
-                        merger.do_merge()
-                    else:
-                        self.show_changes(merger)
-                finally:
-                    task.finished()
+                merger = unshelver.make_merger(None)
+                merger.change_reporter = change_reporter
+                if self.apply_changes:
+                    merger.do_merge()
+                elif self.show_diff:
+                    self.write_diff(merger)
+                else:
+                    self.show_changes(merger)
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
+                trace.note('Deleted changes with id "%d".' % self.shelf_id)
         finally:
             for cleanup in reversed(cleanups):
                 cleanup()
+
+    def write_diff(self, merger):
+        """Write this operation's diff to self.write_diff_to."""
+        tree_merger = merger.make_merger()
+        tt = tree_merger.make_preview_transform()
+        new_tree = tt.get_preview_tree()
+        if self.write_diff_to is None:
+            self.write_diff_to = ui.ui_factory.make_output_stream()
+        diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to)
+        tt.finalize()
 
     def show_changes(self, merger):
         """Show the changes that this operation specifies."""

@@ -948,6 +948,39 @@ class TestIterChanges(TestCaseWithTwoTrees):
                            (False, True))],
                          self.do_iter_changes(tree1, tree2))
 
+    def test_file_becomes_unversionable_bug_438569(self):
+        # This isn't strictly a intertree problem, but its the intertree code
+        # path that triggers all stat cache updates on both xml and dirstate
+        # trees.
+        # In bug 438569, a file becoming a fifo causes an assert. Fifo's are
+        # not versionable or diffable. For now, we simply stop cold when they
+        # are detected (because we don't know how far through the code the 
+        # assumption 'fifo's do not exist' goes). In future we could report 
+        # the kind change and have commit refuse to go futher, or something
+        # similar. One particular reason for choosing this approach is that
+        # there is no minikind for 'fifo' in dirstate today, so we can't 
+        # actually update records that way.
+        # To add confusion, the totally generic code path works - but it
+        # doesn't update persistent metadata. So this test permits InterTrees
+        # to either work, or fail with BadFileKindError.
+        self.requireFeature(tests.OsFifoFeature)
+        tree1 = self.make_branch_and_tree('1')
+        self.build_tree(['1/a'])
+        tree1.set_root_id('root-id')
+        tree1.add(['a'], ['a-id'])
+        tree2 = self.make_branch_and_tree('2')
+        os.mkfifo('2/a')
+        tree2.add(['a'], ['a-id'], ['file'])
+        try:
+            tree1, tree2 = self.mutable_trees_to_test_trees(self, tree1, tree2)
+        except (KeyError,):
+            raise tests.TestNotApplicable(
+                "Cannot represent a FIFO in this case %s" % self.id())
+        try:
+            self.do_iter_changes(tree1, tree2)
+        except errors.BadFileKindError:
+            pass
+
     def test_missing_in_target(self):
         """Test with the target files versioned but absent from disk."""
         tree1 = self.make_branch_and_tree('1')

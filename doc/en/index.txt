@@ -10,9 +10,11 @@ Table of Contents
 .. toctree::
    :maxdepth: 1
 
+   whats-new/whats-new-in-2.2
    user-guide/index
    tutorials/index
    quick-reference/index
    release-notes/index
    upgrade-guide/index
    user-reference/index
+   admin-guide/index

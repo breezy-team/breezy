@@ -6,18 +6,13 @@ system. While this works well, and makes it very easy to discover
 branches there are several situations where it might be useful to also
 support multiple branches under the same file system directory.
 
-There is an experimental implementation for Bazaar available as a plugin
-at http://people.samba.org/bzr/jelmer/bzr-local-branches/trunk. This was
-the original proof-of-concept and doesn't yet use the API documented
-here.
-
 Rationale
 ---------
 
 Allowing multiple branches to live under the same directory in the file
 system means that it is possible to very easily share the same working
 tree and repository between those branches, without having a lot of fs
-infrastructure. 
+infrastructure.
 
 Git and Mercurial (can) store multiple branches under a single directory
 in the file system - per repository, so to speak. In order for this to
@@ -46,57 +41,71 @@ Implementation
 UI Changes
 ~~~~~~~~~~
 
-Bazaar URLs need to have some way to specify a colocated branch other
-than the current HEAD. Several options have been discussed, each with 
-its own advantages and disadvantages: This was discussed on the mailing
-list, most notably the use of a ";branch=NAME" suffix as well as a special
-separation character (+, =, etc), but no final conclusion was reached. 
+Bazaar URLs need to have some way to address colocated branches in 
+directories that contain multiple branches. 
 
-https://lists.ubuntu.com/archives/bazaar/2008q4/050105.html
+Per RFC3986 we have picked the comma (",") to allow the specification of 
+colocated branch names. Comma's in path names would have to be 
+urlencoded at first to avoid ambiguity, though perhaps it would be 
+possible to support heuristics later when interpreting user-specified URLs.
+
+An example URL would be:
+
+ bzr://bazaar.launchpad.net/~jelmer/bzr/bzr.dev,colo-urls
+
+The segment after the comma will initially be interpreted as a colocated 
+branch name but we would like to keep the option to allow 
+key=value style specifications in the future and DWIM for segments that 
+do not contain an =. Following the RFC the comma would be interpreted within
+the scope of a path segment. In other words, in the URL:
+
+ git://git.debian.org/pkg-python-debian/python-debian.git,unstable/README
+
+unstable is interpreted as the colocated branch living in the python-debian.git
+control directory; README is a path inside of the branch.
+
+Control directories will also have the notion of an "active" branch. This is 
+the branch that is being used by a working tree, if present and the branch 
+that will be used if no explicit colocated branch is specified. The 
+active branch support makes it easier to deal with existing bzrdirs and 
+is useful when accessing foreign control directories that have the concept 
+as well.
+
+A new command 'bzr rmbranch' needs to be added to make it possible to 
+remove colocated branches, as this won't be possible by simple 
+directory removal, at least not of a user-visible directory.
 
 Code Changes
 ~~~~~~~~~~~~
 
-BzrDir should support a BzrDir.supports_colocated_branches() call as well as 
-BzrDir.colocated_branches property that contains a colocated branch container,
-that can be used to add / remove colocated branches as well as change the 
-currently active colocated branch. 
+BzrDirFormat will need a supports_colocated_branches property that 
+indicates whether a format supports the creation, removal and accessing of 
+colocated branches.
 
-::
+Several methods on BzrDir will need to be updated to take an option branch_name 
+parameter. If this parameter is not specified or None, the active branch 
+will be used.
 
-	class ColocatedBranchContainer(object):
+The methods that will have to be extended are:
 
-	   def get_active_branch_name(self):
-		  """Returns the name of the currently active branch.
+ * BzrDir.open_branch()
+ * BzrDir.create_branch()
+ * BzrDir.destroy_branch()
+ * BzrDir.get_branch_transport()
 
-		  This can be None if no branch is currently active.
-		  """
+ * BranchFormat.initialise()
+ * BranchFormat.open()
 
-	   def get_active_branch(self):
-		  """Returns the currently active branches' Branch object."""
+A new BzrDir.list_branches() method will return all colocated branches 
+present in a control directory. 
 
-	   def get_branch(self, name):
-		  """Returns the Branch object for the specified branch."""
+Any URL interpreting methods (e.g. Branch.open) will need to be updated 
+to extract a colocated branch name and need to pass that into the 
+relevant methods.
 
-	   def available_branches(self):
-		  """Returns a set with the names of the available branches."""
-
-	   def set_active_branch(self, name):
-		  """Set the currently active branch."""
-
-	   def destroy_branch(self, name):
-		 """Destroy the specified branch.
-			
-		This will remove the branch from disk.""" 
-
-If the particular BzrDir implementation doesn't support colocated
-branches, it can just return a dummy container that just contains a
-HEAD branch. 
-
-Looms can of course return a container with all their threads.
-
-BzrDir.find_branches() should take into account the colocated branches
-when iterating over its branches.
+Existing callers of BzrDir.{create,open,destroy}_branch() need to 
+be updated to pass in branch names and optionally be changed to use 
+BzrDir.list_branches().
 
 Schema Changes
 --------------
@@ -106,13 +115,15 @@ provides the right infrastructure it doesn't have to support this
 feature in its own file formats.
 
 Eventually, Bazaar could easily support colocated branches by just
-creating a new branch transport for each colocated branch and have a 
+creating a new branch transport for each colocated branch and have a
 "regular" branch live there. This would require something like
-BzrDirMeta2 though.
+BzrDirMeta2 though. An example of this is implemented in the 
+lp:bzr-colocated plugin
 
-Unresolved Issues
------------------
+Further integration
+-------------------
 
- * What about colocated looms ?
- * What character to use to name colocated branches in URLs?
+Loggerhead and Launchpad need to be updated to show colocated branches
+(perhaps in a similar way as they would show tags?).
 
+qbzr/bzr-gtk need to be updated to support colocated branches.

@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,22 +14,69 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""A collection of commonly used 'Features' which bzrlib uses to skip tests."""
 
-from bzrlib.tests import Feature
+import os
+import stat
+
+from bzrlib import tests
+from bzrlib.symbol_versioning import deprecated_in
 
 
-class _ApportFeature(Feature):
-    
+apport = tests.ModuleAvailableFeature('apport')
+paramiko = tests.ModuleAvailableFeature('paramiko')
+pycurl = tests.ModuleAvailableFeature('pycurl')
+pywintypes = tests.ModuleAvailableFeature('pywintypes')
+subunit = tests.ModuleAvailableFeature('subunit')
+
+
+class _BackslashDirSeparatorFeature(tests.Feature):
+
     def _probe(self):
         try:
-            import apport
-        except ImportError, e:
+            os.lstat(os.getcwd() + '\\')
+        except OSError:
             return False
         else:
             return True
 
     def feature_name(self):
-        return 'apport'
+        return "Filesystem treats '\\' as a directory separator."
+
+backslashdir_feature = _BackslashDirSeparatorFeature()
 
 
-ApportFeature = _ApportFeature()
+class _PosixPermissionsFeature(tests.Feature):
+
+    def _probe(self):
+        def has_perms():
+            # create temporary file and check if specified perms are maintained.
+            import tempfile
+
+            write_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+            f = tempfile.mkstemp(prefix='bzr_perms_chk_')
+            fd, name = f
+            os.close(fd)
+            os.chmod(name, write_perms)
+
+            read_perms = os.stat(name).st_mode & 0777
+            os.unlink(name)
+            return (write_perms == read_perms)
+
+        return (os.name == 'posix') and has_perms()
+
+    def feature_name(self):
+        return 'POSIX permissions support'
+
+
+posix_permissions_feature = _PosixPermissionsFeature()
+
+
+class _ChownFeature(tests.Feature):
+    """os.chown is supported"""
+
+    def _probe(self):
+        return os.name == 'posix' and hasattr(os, 'chown')
+
+chown_feature = _ChownFeature()
+

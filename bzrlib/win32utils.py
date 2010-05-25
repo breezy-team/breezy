@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,10 +19,12 @@
 Only one dependency: ctypes should be installed.
 """
 
+import glob
 import os
 import struct
 import sys
 
+from bzrlib import cmdline
 
 # Windows version
 if sys.platform == 'win32':
@@ -133,7 +135,8 @@ def debug_memory_win32api(message='', short=True):
                 'WorkingSetSize': mem_struct.WorkingSetSize,
                 'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
                 'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
-                'QuotaPeakNonPagedPoolUsage': mem_struct.QuotaPeakNonPagedPoolUsage,
+                'QuotaPeakNonPagedPoolUsage':
+                    mem_struct.QuotaPeakNonPagedPoolUsage,
                 'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
                 'PagefileUsage': mem_struct.PagefileUsage,
                 'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
@@ -150,19 +153,21 @@ def debug_memory_win32api(message='', short=True):
                    ' or win32process')
         return
     if short:
-        trace.note('WorkingSize %7dKB'
-                   '\tPeakWorking %7dKB\t%s',
+        # using base-2 units (see HACKING.txt).
+        trace.note('WorkingSize %7dKiB'
+                   '\tPeakWorking %7dKiB\t%s',
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
                    message)
         return
     if message:
         trace.note('%s', message)
-    trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
-    trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
+    trace.note('WorkingSize       %8d KiB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d KiB', info['PeakWorkingSetSize'] / 1024)
+    trace.note('PagefileUsage     %8d KiB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d KiB',
+               info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d KiB', info.get('PrivateUsage', 0) / 1024)
     trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
 
 
@@ -178,14 +183,15 @@ def get_console_size(defaultx=80, defaulty=25):
         return (defaultx, defaulty)
 
     # To avoid problem with redirecting output via pipe
-    # need to use stderr instead of stdout
+    # we need to use stderr instead of stdout
     h = ctypes.windll.kernel32.GetStdHandle(WIN32_STDERR_HANDLE)
     csbi = ctypes.create_string_buffer(22)
     res = ctypes.windll.kernel32.GetConsoleScreenBufferInfo(h, csbi)
 
     if res:
         (bufx, bufy, curx, cury, wattr,
-        left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", csbi.raw)
+        left, top, right, bottom, maxx, maxy) = struct.unpack(
+            "hhhhHhhhhhh", csbi.raw)
         sizex = right - left + 1
         sizey = bottom - top + 1
         return (sizex, sizey)
@@ -388,7 +394,6 @@ def get_host_name():
 
 
 def _ensure_unicode(s):
-    from bzrlib import osutils
     if s and type(s) != unicode:
         from bzrlib import osutils
         s = s.decode(osutils.get_user_encoding())
@@ -409,7 +414,8 @@ def get_host_name_unicode():
 
 
 def _ensure_with_dir(path):
-    if not os.path.split(path)[0] or path.startswith(u'*') or path.startswith(u'?'):
+    if (not os.path.split(path)[0] or path.startswith(u'*')
+        or path.startswith(u'?')):
         return u'./' + path, True
     else:
         return path, False
@@ -420,6 +426,26 @@ def _undo_ensure_with_dir(path, corrected):
     else:
         return path
 
+
+
+def glob_one(possible_glob):
+    """Same as glob.glob().
+
+    work around bugs in glob.glob()
+    - Python bug #1001604 ("glob doesn't return unicode with ...")
+    - failing expansion for */* with non-iso-8859-* chars
+    """
+    corrected_glob, corrected = _ensure_with_dir(possible_glob)
+    glob_files = glob.glob(corrected_glob)
+
+    if not glob_files:
+        # special case to let the normal code path handle
+        # files that do not exist, etc.
+        glob_files = [possible_glob]
+    elif corrected:
+        glob_files = [_undo_ensure_with_dir(elem, corrected)
+                      for elem in glob_files]
+    return [elem.replace(u'\\', u'/') for elem in glob_files]
 
 
 def glob_expand(file_list):
@@ -435,25 +461,10 @@ def glob_expand(file_list):
     """
     if not file_list:
         return []
-    import glob
     expanded_file_list = []
     for possible_glob in file_list:
-        # work around bugs in glob.glob()
-        # - Python bug #1001604 ("glob doesn't return unicode with ...")
-        # - failing expansion for */* with non-iso-8859-* chars
-        possible_glob, corrected = _ensure_with_dir(possible_glob)
-        glob_files = glob.glob(possible_glob)
-
-        if glob_files == []:
-            # special case to let the normal code path handle
-            # files that do not exists
-            expanded_file_list.append(
-                _undo_ensure_with_dir(possible_glob, corrected))
-        else:
-            glob_files = [_undo_ensure_with_dir(elem, corrected) for elem in glob_files]
-            expanded_file_list += glob_files
-
-    return [elem.replace(u'\\', u'/') for elem in expanded_file_list]
+        expanded_file_list.extend(glob_one(possible_glob))
+    return expanded_file_list
 
 
 def get_app_path(appname):
@@ -511,30 +522,52 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
+def _command_line_to_argv(command_line, single_quotes_allowed=False):
+    """Convert a Unicode command line into a list of argv arguments.
+
+    It performs wildcard expansion to make wildcards act closer to how they
+    work in posix shells, versus how they work by default on Windows. Quoted
+    arguments are left untouched.
+
+    :param command_line: The unicode string to split into an arg list.
+    :param single_quotes_allowed: Whether single quotes are accepted as quoting
+                                  characters like double quotes. False by
+                                  default.
+    :return: A list of unicode strings.
+    """
+    s = cmdline.Splitter(command_line, single_quotes_allowed=single_quotes_allowed)
+    # Now that we've split the content, expand globs if necessary
+    # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
+    #       '**/' style globs
+    args = []
+    for is_quoted, arg in s:
+        if is_quoted or not glob.has_magic(arg):
+            args.append(arg)
+        else:
+            args.extend(glob_one(arg))
+    return args
+
+
 if has_ctypes and winver != 'Windows 98':
     def get_unicode_argv():
-        LPCWSTR = ctypes.c_wchar_p
-        INT = ctypes.c_int
-        POINTER = ctypes.POINTER
-        prototype = ctypes.WINFUNCTYPE(LPCWSTR)
-        GetCommandLine = prototype(("GetCommandLineW",
-                                    ctypes.windll.kernel32))
-        prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
-        CommandLineToArgv = prototype(("CommandLineToArgvW",
-                                       ctypes.windll.shell32))
-        c = INT(0)
-        pargv = CommandLineToArgv(GetCommandLine(), ctypes.byref(c))
+        prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
+        GetCommandLineW = prototype(("GetCommandLineW",
+                                     ctypes.windll.kernel32))
+        command_line = GetCommandLineW()
+        if command_line is None:
+            raise ctypes.WinError()
         # Skip the first argument, since we only care about parameters
-        argv = [pargv[i] for i in range(1, c.value)]
+        argv = _command_line_to_argv(command_line)[1:]
         if getattr(sys, 'frozen', None) is None:
             # Invoked via 'python.exe' which takes the form:
             #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
             # we need to get only BZR_OPTIONS part,
-            # so let's using sys.argv[1:] as reference to get the tail
-            # of unicode argv
-            tail_len = len(sys.argv[1:])
-            ix = len(argv) - tail_len
-            argv = argv[ix:]
+            # We already removed 'python.exe' so we remove everything up to and
+            # including the first non-option ('-') argument.
+            for idx in xrange(len(argv)):
+                if argv[idx][:1] != '-':
+                    break
+            argv = argv[idx+1:]
         return argv
 else:
     get_unicode_argv = None

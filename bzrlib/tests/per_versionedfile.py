@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -734,11 +734,10 @@ class VersionedFileTestMixIn(object):
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
 
-        class InstrumentedProgress(progress.DummyProgress):
+        class InstrumentedProgress(progress.ProgressTask):
 
             def __init__(self):
-
-                progress.DummyProgress.__init__(self)
+                progress.ProgressTask.__init__(self)
                 self.updates = []
 
             def update(self, msg=None, current=None, total=None):
@@ -1000,13 +999,20 @@ class TestReadonlyHttpMixin(object):
         # we should be able to read from http with a versioned file.
         vf = self.get_file()
         # try an empty file access
-        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        readonly_vf = self.get_factory()('foo', get_transport(
+                self.get_readonly_url('.')))
         self.assertEqual([], readonly_vf.versions())
+
+    def test_readonly_http_works_with_feeling(self):
+        # we should be able to read from http with a versioned file.
+        vf = self.get_file()
         # now with feeling.
         vf.add_lines('1', [], ['a\n'])
         vf.add_lines('2', ['1'], ['b\n', 'a\n'])
-        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        readonly_vf = self.get_factory()('foo', get_transport(
+                self.get_readonly_url('.')))
         self.assertEqual(['1', '2'], vf.versions())
+        self.assertEqual(['1', '2'], readonly_vf.versions())
         for version in readonly_vf.versions():
             readonly_vf.get_lines(version)
 
@@ -1470,7 +1476,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             transport.mkdir('.')
         files = self.factory(transport)
         if self.cleanup is not None:
-            self.addCleanup(lambda:self.cleanup(files))
+            self.addCleanup(self.cleanup, files)
         return files
 
     def get_simple_key(self, suffix):
@@ -1580,6 +1586,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             files.get_parent_map(keys), require_fulltext=True)
         # All texts should be output.
         self.assertEqual(set(keys), seen)
+
+    def test_clear_cache(self):
+        files = self.get_versionedfiles()
+        files.clear_cache()
 
     def test_construct(self):
         """Each parameterised test can be constructed on a transport."""
@@ -2434,6 +2444,43 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         else:
             self.assertIdenticalVersionedFile(source, files)
 
+    def test_insert_record_stream_long_parent_chain_out_of_order(self):
+        """An out of order stream can either error or work."""
+        if not self.graph:
+            raise TestNotApplicable('ancestry info only relevant with graph.')
+        # Create a reasonably long chain of records based on each other, where
+        # most will be deltas.
+        source = self.get_versionedfiles('source')
+        parents = ()
+        keys = []
+        content = [('same same %d\n' % n) for n in range(500)]
+        for letter in 'abcdefghijklmnopqrstuvwxyz':
+            key = ('key-' + letter,)
+            if self.key_length == 2:
+                key = ('prefix',) + key
+            content.append('content for ' + letter + '\n')
+            source.add_lines(key, parents, content)
+            keys.append(key)
+            parents = (key,)
+        # Create a stream of these records, excluding the first record that the
+        # rest ultimately depend upon, and insert it into a new vf.
+        streams = []
+        for key in reversed(keys):
+            streams.append(source.get_record_stream([key], 'unordered', False))
+        deltas = chain(*streams[:-1])
+        files = self.get_versionedfiles()
+        try:
+            files.insert_record_stream(deltas)
+        except RevisionNotPresent:
+            # Must not have corrupted the file.
+            files.check()
+        else:
+            # Must only report either just the first key as a missing parent,
+            # no key as missing (for nodelta scenarios).
+            missing = set(files.get_missing_compression_parent_keys())
+            missing.discard(keys[0])
+            self.assertEqual(set(), missing)
+
     def get_knit_delta_source(self):
         """Get a source that can produce a stream with knit delta records,
         regardless of this test's scenario.
@@ -2507,11 +2554,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
 
-        class InstrumentedProgress(progress.DummyProgress):
+        class InstrumentedProgress(progress.ProgressTask):
 
             def __init__(self):
-
-                progress.DummyProgress.__init__(self)
+                progress.ProgressTask.__init__(self)
                 self.updates = []
 
             def update(self, msg=None, current=None, total=None):

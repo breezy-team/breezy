@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.osutils import sha_string
-from bzrlib.tests.test__groupcompress import CompiledGroupCompressFeature
+from bzrlib.tests.test__groupcompress import compiled_groupcompress_feature
 
 
 def load_tests(standard_tests, module, loader):
@@ -39,7 +39,7 @@ def load_tests(standard_tests, module, loader):
     scenarios = [
         ('python', {'compressor': groupcompress.PythonGroupCompressor}),
         ]
-    if CompiledGroupCompressFeature.available():
+    if compiled_groupcompress_feature.available():
         scenarios.append(('C',
             {'compressor': groupcompress.PyrexGroupCompressor}))
     return tests.multiply_tests(to_adapt, scenarios, result)
@@ -135,7 +135,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
 
 class TestPyrexGroupCompressor(TestGroupCompressor):
 
-    _test_needs_features = [CompiledGroupCompressFeature]
+    _test_needs_features = [compiled_groupcompress_feature]
     compressor = groupcompress.PyrexGroupCompressor
 
     def test_stats(self):
@@ -418,8 +418,12 @@ class TestGroupCompressBlock(tests.TestCase):
         # And the decompressor is finalized
         self.assertIs(None, block._z_content_decompressor)
 
-    def test_partial_decomp_no_known_length(self):
+    def test__ensure_all_content(self):
         content_chunks = []
+        # We need a sufficient amount of data so that zlib.decompress has
+        # partial decompression to work with. Most auto-generated data
+        # compresses a bit too well, we want a combination, so we combine a sha
+        # hash with compressible data.
         for i in xrange(2048):
             next_content = '%d\nThis is a bit of duplicate text\n' % (i,)
             content_chunks.append(next_content)
@@ -433,30 +437,13 @@ class TestGroupCompressBlock(tests.TestCase):
         block._z_content = z_content
         block._z_content_length = len(z_content)
         block._compressor_name = 'zlib'
-        block._content_length = None # Don't tell the decompressed length
+        block._content_length = 158634
         self.assertIs(None, block._content)
-        block._ensure_content(100)
-        self.assertIsNot(None, block._content)
-        # We have decompressed at least 100 bytes
-        self.assertTrue(len(block._content) >= 100)
-        # We have not decompressed the whole content
-        self.assertTrue(len(block._content) < 158634)
-        self.assertEqualDiff(content[:len(block._content)], block._content)
-        # ensuring content that we already have shouldn't cause any more data
-        # to be extracted
-        cur_len = len(block._content)
-        block._ensure_content(cur_len - 10)
-        self.assertEqual(cur_len, len(block._content))
-        # Now we want a bit more content
-        cur_len += 10
-        block._ensure_content(cur_len)
-        self.assertTrue(len(block._content) >= cur_len)
-        self.assertTrue(len(block._content) < 158634)
-        self.assertEqualDiff(content[:len(block._content)], block._content)
-        # And now lets finish
-        block._ensure_content()
+        # The first _ensure_content got all of the required data
+        block._ensure_content(158634)
         self.assertEqualDiff(content, block._content)
-        # And the decompressor is finalized
+        # And we should have released the _z_content_decompressor since it was
+        # fully consumed
         self.assertIs(None, block._z_content_decompressor)
 
     def test__dump(self):
@@ -472,7 +459,8 @@ class TestGroupCompressBlock(tests.TestCase):
                          ], block._dump())
 
 
-class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
+class TestCaseWithGroupCompressVersionedFiles(
+        tests.TestCaseWithMemoryTransport):
 
     def make_test_vf(self, create_graph, keylength=1, do_cleanup=True,
                      dir='.', inconsistency_fatal=True):
@@ -744,6 +732,17 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                               " in add_records:"
                               " \('b',\) \('42 32 0 8', \(\(\),\)\) \('74 32"
                               " 0 8', \(\(\('a',\),\),\)\)")
+
+    def test_clear_cache(self):
+        vf = self.make_source_with_b(True, 'source')
+        vf.writer.end()
+        for record in vf.get_record_stream([('a',), ('b',)], 'unordered',
+                                           True):
+            pass
+        self.assertTrue(len(vf._group_cache) > 0)
+        vf.clear_cache()
+        self.assertEqual(0, len(vf._group_cache))
+
 
 
 class StubGCVF(object):

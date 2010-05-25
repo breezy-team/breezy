@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -197,9 +197,8 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
                          'Will continue to try until %s, unless '
-                         'you press Ctrl-C\n'
-                         'If you\'re sure that it\'s not being '
-                         'modified, use bzr break-lock %s',
+                         'you press Ctrl-C.\n'
+                         'See "bzr help break-lock" for more.',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -420,9 +419,8 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
                          'Will continue to try until %s, unless '
-                         'you press Ctrl-C\n'
-                         'If you\'re sure that it\'s not being '
-                         'modified, use bzr break-lock %s',
+                         'you press Ctrl-C.\n'
+                         'See "bzr help break-lock" for more.',
                          self._logged_reports[0][0])
         args = self._logged_reports[0][1]
         self.assertEqual('Unable to obtain', args[0])
@@ -435,9 +433,8 @@ class TestLockDir(TestCaseWithTransport):
         self.assertEqual('%s %s\n'
                          '%s\n%s\n'
                          'Will continue to try until %s, unless '
-                         'you press Ctrl-C\n'
-                         'If you\'re sure that it\'s not being '
-                         'modified, use bzr break-lock %s',
+                         'you press Ctrl-C.\n'
+                         'See "bzr help break-lock" for more.',
                          self._logged_reports[1][0])
         args = self._logged_reports[1][1]
         self.assertEqual('Lock owner changed for', args[0])
@@ -668,6 +665,25 @@ class TestLockDir(TestCaseWithTransport):
         self.assertRaises(errors.LockContention, ld2.attempt_lock)
         # no kibble
         check_dir(['held'])
+
+    def test_no_lockdir_info(self):
+        """We can cope with empty info files."""
+        # This seems like a fairly common failure case - see
+        # <https://bugs.launchpad.net/bzr/+bug/185103> and all its dupes.
+        # Processes are often interrupted after opening the file
+        # before the actual contents are committed.
+        t = self.get_transport()
+        t.mkdir('test_lock')
+        t.mkdir('test_lock/held')
+        t.put_bytes('test_lock/held/info', '')
+        lf = LockDir(t, 'test_lock')
+        info = lf.peek()
+        formatted_info = lf._format_lock_info(info)
+        self.assertEquals(
+            ['lock %s' % t.abspath('test_lock'),
+             'held by <unknown> on host <unknown> [process #<unknown>]',
+             'locked (unknown)'],
+            formatted_info)
 
 
 class TestLockDirHooks(TestCaseWithTransport):

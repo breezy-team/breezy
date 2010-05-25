@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,12 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Export a Tree to a non-versioned directory.
-"""
+"""Export a bzrlib.tree.Tree to a new or empty directory."""
 
 import errno
 import os
-import StringIO
+import time
 
 from bzrlib import errors, osutils
 from bzrlib.export import _export_iter_entries
@@ -30,17 +29,15 @@ from bzrlib.filters import (
 from bzrlib.trace import mutter
 
 
-def dir_exporter(tree, dest, root, subdir, filtered=False):
+def dir_exporter(tree, dest, root, subdir, filtered=False,
+                 per_file_timestamps=False):
     """Export this tree to a new directory.
 
-    `dest` should not exist, and will be created holding the
-    contents of this tree.
-
-    TODO: To handle subdirectories we need to create the
-           directories first.
+    `dest` should either not exist or should be empty. If it does not exist it
+    will be created holding the contents of this tree.
 
     :note: If the export fails, the destination directory will be
-           left in a half-assed state.
+           left in an incompletely exported state: export is not transactional.
     """
     mutter('export version %r', tree)
     try:
@@ -52,28 +49,17 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
                 raise errors.BzrError("Can't export tree to non-empty directory.")
         else:
             raise
+    # Iterate everything, building up the files we will want to export, and
+    # creating the directories and symlinks that we need.
+    # This tracks (file_id, (destination_path, executable))
+    # This matches the api that tree.iter_files_bytes() wants
+    # Note in the case of revision trees, this does trigger a double inventory
+    # lookup, hopefully it isn't too expensive.
+    to_fetch = []
     for dp, ie in _export_iter_entries(tree, subdir):
         fullpath = osutils.pathjoin(dest, dp)
         if ie.kind == "file":
-            if filtered:
-                chunks = tree.get_file_lines(ie.file_id)
-                filters = tree._content_filter_stack(dp)
-                context = ContentFilterContext(dp, tree, ie)
-                contents = filtered_output_bytes(chunks, filters, context)
-                content = ''.join(contents)
-                fileobj = StringIO.StringIO(content)
-            else:
-                fileobj = tree.get_file(ie.file_id)
-            try:
-                outfile = file(fullpath, 'wb')
-                try:
-                    osutils.pumpfile(fileobj, outfile)
-                finally:
-                    outfile.close()
-            finally:
-                fileobj.close()
-            if tree.is_executable(ie.file_id):
-                os.chmod(fullpath, 0755)
+            to_fetch.append((ie.file_id, (dp, tree.is_executable(ie.file_id))))
         elif ie.kind == "directory":
             os.mkdir(fullpath)
         elif ie.kind == "symlink":
@@ -87,3 +73,27 @@ def dir_exporter(tree, dest, root, subdir, filtered=False):
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
                (ie.file_id, ie.kind))
+    # The data returned here can be in any order, but we've already created all
+    # the directories
+    flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | getattr(os, 'O_BINARY', 0)
+    now = time.time()
+    for (relpath, executable), chunks in tree.iter_files_bytes(to_fetch):
+        if filtered:
+            filters = tree._content_filter_stack(relpath)
+            context = ContentFilterContext(relpath, tree, ie)
+            chunks = filtered_output_bytes(chunks, filters, context)
+        fullpath = osutils.pathjoin(dest, relpath)
+        # We set the mode and let the umask sort out the file info
+        mode = 0666
+        if executable:
+            mode = 0777
+        out = os.fdopen(os.open(fullpath, flags, mode), 'wb')
+        try:
+            out.writelines(chunks)
+        finally:
+            out.close()
+        if per_file_timestamps:
+            mtime = tree.get_file_mtime(tree.path2id(relpath), relpath)
+        else:
+            mtime = now
+        os.utime(fullpath, (mtime, mtime))

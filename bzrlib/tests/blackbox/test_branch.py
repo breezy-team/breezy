@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import (
     KnownFailure,
     HardlinkFeature,
+    test_server,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
@@ -171,15 +172,7 @@ class TestBranch(ExternalBase):
         out, err = self.run_bzr(['branch', 'source', 'target', '--hardlink'])
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
-        same_file = (source_stat == target_stat)
-        if same_file:
-            pass
-        else:
-            # https://bugs.edge.launchpad.net/bzr/+bug/408193
-            self.assertContainsRe(err, "hardlinking working copy files is "
-                "not currently supported")
-            raise KnownFailure("--hardlink doesn't work in formats "
-                "that support content filtering (#408193)")
+        self.assertEqual(source_stat, target_stat)
 
     def test_branch_standalone(self):
         shared_repo = self.make_repository('repo', shared=True)
@@ -216,6 +209,43 @@ class TestBranch(ExternalBase):
         out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
         self.assertEqual('bzr: ERROR: Already a branch: "b".\n', err)
+
+    def test_branch_bind(self):
+        self.example_branch('a')
+        out, err = self.run_bzr('branch a b --bind')
+        self.assertEndsWith(err, "New branch bound to a\n")
+        b = branch.Branch.open('b')
+        self.assertEndsWith(b.get_bound_location(), '/a/')
+
+    def test_branch_with_post_branch_init_hook(self):
+        calls = []
+        branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        self.example_branch('a')
+        self.assertLength(1, calls)
+        self.run_bzr('branch a b')
+        self.assertLength(2, calls)
+
+    def test_checkout_with_post_branch_init_hook(self):
+        calls = []
+        branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        self.example_branch('a')
+        self.assertLength(1, calls)
+        self.run_bzr('checkout a b')
+        self.assertLength(2, calls)
+
+    def test_lightweight_checkout_with_post_branch_init_hook(self):
+        calls = []
+        branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        self.example_branch('a')
+        self.assertLength(1, calls)
+        self.run_bzr('checkout --lightweight a b')
+        self.assertLength(2, calls)
 
 
 class TestBranchStacked(ExternalBase):
@@ -309,8 +339,7 @@ class TestBranchStacked(ExternalBase):
 
     def test_branch_stacked_from_smart_server(self):
         # We can branch stacking on a smart server
-        from bzrlib.smart.server import SmartTCPServer_for_testing
-        self.transport_server = SmartTCPServer_for_testing
+        self.transport_server = test_server.SmartTCPServer_for_testing
         trunk = self.make_branch('mainline', format='1.9')
         out, err = self.run_bzr(
             ['branch', '--stacked', self.get_url('mainline'), 'shallow'])
@@ -326,6 +355,8 @@ class TestBranchStacked(ExternalBase):
             '  Packs 5 (adds stacking support, requires bzr 1.6)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
+            'Doing on-the-fly conversion from RepositoryFormatKnitPack1() to RepositoryFormatKnitPack5().\n'
+            'This may take some time. Upgrade the repositories to the same format for better performance.\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 
@@ -339,6 +370,8 @@ class TestBranchStacked(ExternalBase):
             '  Packs 5 rich-root (adds stacking support, requires bzr 1.6.1)\n'
             'Source branch format does not support stacking, using format:\n'
             '  Branch format 7\n'
+            'Doing on-the-fly conversion from RepositoryFormatKnitPack4() to RepositoryFormatKnitPack5RichRoot().\n'
+            'This may take some time. Upgrade the repositories to the same format for better performance.\n'
             'Created new stacked branch referring to %s.\n' % (trunk.base,),
             err)
 

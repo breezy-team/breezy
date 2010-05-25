@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@ import os
 
 from bzrlib import shelf
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.script import ScriptRunner
+
 
 class TestShelveList(TestCaseWithTransport):
 
@@ -64,6 +66,27 @@ class TestShelveList(TestCaseWithTransport):
         self.run_bzr('shelve --all --destroy')
         self.failIfExists('file')
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
+
+    def test_unshelve_keep(self):
+        # https://bugs.launchpad.net/bzr/+bug/492091
+        tree = self.make_branch_and_tree('.')
+        # shelve apparently unhappy working with a tree with no root yet
+        tree.commit('make root')
+        self.build_tree(['file'])
+
+        sr = ScriptRunner()
+        sr.run_script(self, '''
+$ bzr add file
+$ bzr shelve --all -m Foo
+$ bzr shelve --list
+  1: Foo
+$ bzr unshelve --keep
+$ bzr shelve --list
+  1: Foo
+$ cat file
+contents of file
+''')
+
 
 
 class TestShelveRelpath(TestCaseWithTransport):

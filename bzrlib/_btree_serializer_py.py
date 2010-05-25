@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,27 +17,33 @@
 
 """B+Tree index parsing."""
 
+from bzrlib import static_tuple
+
+
 def _parse_leaf_lines(bytes, key_length, ref_list_length):
     lines = bytes.split('\n')
     nodes = []
+    as_st = static_tuple.StaticTuple.from_sequence
+    stuple = static_tuple.StaticTuple
     for line in lines[1:]:
         if line == '':
             return nodes
         elements = line.split('\0', key_length)
         # keys are tuples
-        key = tuple(elements[:key_length])
+        key = as_st(elements[:key_length]).intern()
         line = elements[-1]
         references, value = line.rsplit('\0', 1)
         if ref_list_length:
             ref_lists = []
             for ref_string in references.split('\t'):
-                ref_lists.append(tuple([
-                    tuple(ref.split('\0')) for ref in ref_string.split('\r') if ref
-                    ]))
-            ref_lists = tuple(ref_lists)
-            node_value = (value, ref_lists)
+                ref_list = as_st([as_st(ref.split('\0')).intern()
+                                  for ref in ref_string.split('\r') if ref])
+                ref_lists.append(ref_list)
+            ref_lists = as_st(ref_lists)
+            node_value = stuple(value, ref_lists)
         else:
-            node_value = (value, ())
+            node_value = stuple(value, stuple())
+        # No need for StaticTuple here as it is put into a dict
         nodes.append((key, node_value))
     return nodes
 

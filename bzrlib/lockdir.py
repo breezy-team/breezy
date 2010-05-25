@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -110,8 +110,10 @@ from bzrlib import (
     debug,
     errors,
     lock,
+    osutils,
     )
 import bzrlib.config
+from bzrlib.decorators import only_raises
 from bzrlib.errors import (
         DirectoryNotEmpty,
         FileExists,
@@ -240,9 +242,17 @@ class LockDir(lock.Lock):
         # incorrect.  It's possible some other servers or filesystems will
         # have a similar bug allowing someone to think they got the lock
         # when it's already held.
+        #
+        # See <https://bugs.launchpad.net/bzr/+bug/498378> for one case.
+        #
+        # Strictly the check is unnecessary and a waste of time for most
+        # people, but probably worth trapping if something is wrong.
         info = self.peek()
         self._trace("after locking, info=%r", info)
-        if info['nonce'] != self.nonce:
+        if info is None:
+            raise LockFailed(self, "lock was renamed into place, but "
+                "now is missing!")
+        if info.get('nonce') != self.nonce:
             self._trace("rename succeeded, "
                 "but lock is still held by someone else")
             raise LockContention(self)
@@ -286,6 +296,7 @@ class LockDir(lock.Lock):
                                             info_bytes)
         return tmpname
 
+    @only_raises(LockNotHeld, LockBroken)
     def unlock(self):
         """Release a held lock
         """
@@ -414,12 +425,12 @@ class LockDir(lock.Lock):
 
         peek() reads the info file of the lock holder, if any.
         """
-        return self._parse_info(self.transport.get(path))
+        return self._parse_info(self.transport.get_bytes(path))
 
     def peek(self):
         """Check if the lock is held by anyone.
 
-        If it is held, this returns the lock info structure as a rio Stanza,
+        If it is held, this returns the lock info structure as a dict
         which contains some information about the current lock holder.
         Otherwise returns None.
         """
@@ -436,9 +447,9 @@ class LockDir(lock.Lock):
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
         try:
-            user = config.user_email()
-        except errors.NoEmailInUsername:
             user = config.username()
+        except errors.NoWhoami:
+            user = osutils.getuser_unicode()
         s = rio.Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
@@ -447,11 +458,15 @@ class LockDir(lock.Lock):
                    )
         return s.to_string()
 
-    def _parse_info(self, info_file):
-        try:
-            return rio.read_stanza(info_file.readlines()).as_dict()
-        finally:
-            info_file.close()
+    def _parse_info(self, info_bytes):
+        stanza = rio.read_stanza(osutils.split_lines(info_bytes))
+        if stanza is None:
+            # see bug 185013; we fairly often end up with the info file being
+            # empty after an interruption; we could log a message here but
+            # there may not be much we can say
+            return {}
+        else:
+            return stanza.as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -525,19 +540,22 @@ class LockDir(lock.Lock):
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
                 lock_url = self.transport.abspath(self.path)
+                # See <https://bugs.launchpad.net/bzr/+bug/250451>
+                # the URL here is sometimes not one that is useful to the
+                # user, perhaps being wrapped in a lp-%d or chroot decorator,
+                # especially if this error is issued from the server.
                 self._report_function('%s %s\n'
-                                      '%s\n' # held by
-                                      '%s\n' # locked ... ago
-                                      'Will continue to try until %s, unless '
-                                      'you press Ctrl-C\n'
-                                      'If you\'re sure that it\'s not being '
-                                      'modified, use bzr break-lock %s',
-                                      start,
-                                      formatted_info[0],
-                                      formatted_info[1],
-                                      formatted_info[2],
-                                      deadline_str,
-                                      lock_url)
+                    '%s\n' # held by
+                    '%s\n' # locked ... ago
+                    'Will continue to try until %s, unless '
+                    'you press Ctrl-C.\n'
+                    'See "bzr help break-lock" for more.',
+                    start,
+                    formatted_info[0],
+                    formatted_info[1],
+                    formatted_info[2],
+                    deadline_str,
+                    )
 
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
@@ -599,11 +617,16 @@ class LockDir(lock.Lock):
     def _format_lock_info(self, info):
         """Turn the contents of peek() into something for the user"""
         lock_url = self.transport.abspath(self.path)
-        delta = time.time() - int(info['start_time'])
+        start_time = info.get('start_time')
+        if start_time is None:
+            time_ago = '(unknown)'
+        else:
+            time_ago = format_delta(time.time() - int(info['start_time']))
         return [
             'lock %s' % (lock_url,),
-            'held by %(user)s on host %(hostname)s [process #%(pid)s]' % info,
-            'locked %s' % (format_delta(delta),),
+            'held by %s on host %s [process #%s]' %
+                tuple([info.get(x, '<unknown>') for x in ['user', 'hostname', 'pid']]),
+            'locked %s' % (time_ago,),
             ]
 
     def validate_token(self, token):

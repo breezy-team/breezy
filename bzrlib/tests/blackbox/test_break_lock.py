@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ class TestBreakLock(ExternalBase):
         local_branch.bind(self.master_branch)
         checkoutdir = bzrlib.bzrdir.BzrDir.create('checkout')
         bzrlib.branch.BranchReferenceFormat().initialize(
-            checkoutdir, local_branch)
+            checkoutdir, target_branch=local_branch)
         self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):

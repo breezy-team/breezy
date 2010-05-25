@@ -3,18 +3,18 @@ Indice de Documentacion de Bazaar
 ==================================
 
 Las ultimas versiones de estos documentos se encuentran disponibles
-en la pagina de  Bazaar, http://doc.bazaar-vcs.org.
+en la pagina de  Bazaar, http://doc.bazaar.canonical.com/.
 
 Documentacion Principal
 =======================
 
-* `Mini Tutorial <es/mini-tutorial/index.html>`_ 
+* `Mini Tutorial <es/mini-tutorial/index.html>`_
 
 * `Referencia Rapida <es/_static/es/bzr-es-quick-reference.svg>`_
 
-* `Guia de Usuario <es/user-guide/index-plain.html>`_ 
+* `Guia de Usuario <es/user-guide/index-plain.html>`_
 
-* `Referencia <en/user-reference/bzr_man.html>`_ 
+* `Referencia <en/user-reference/bzr_man.html>`_
 
 * `Notas sobre la Version <en/release-notes/NEWS.html>`_
 
@@ -26,7 +26,7 @@ Otra Documentacion
 
 Mudandose a Bazaar (enlances web):
 
-* `Guias de Mudanzas <http://bazaar-vcs.org/BzrSwitching>`_ 
+* `Guias de Mudanzas <http://bazaar-vcs.org/BzrSwitching>`_
   - para los usuarios que se mudan de otros SCV
 
 * `Guias de Migracion <http://bazaar-vcs.org/BzrMigration>`_

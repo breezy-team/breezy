@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,16 +38,12 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestNonAscii, self).setUp()
-        self._orig_encoding = osutils._cached_user_encoding
+        self._check_can_encode_paths()
 
-        osutils._cached_user_encoding = self.encoding
+        self.overrideAttr(osutils, '_cached_user_encoding', self.encoding)
         email = self.info['committer'] + ' <joe@foo.com>'
         os.environ['BZR_EMAIL'] = email.encode(osutils.get_user_encoding())
         self.create_base()
-
-    def tearDown(self):
-        osutils._cached_user_encoding = self._orig_encoding
-        super(TestNonAscii, self).tearDown()
 
     def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,
                        working_dir=None):
@@ -98,7 +94,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
                     ' using encoding "%s"'
                     % (path, fs_enc))
 
-    def create_base(self):
+    def _check_can_encode_paths(self):
         fs_enc = osutils._fs_enc
         terminal_enc = osutils.get_terminal_encoding()
         fname = self.info['filename']
@@ -118,6 +114,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
                     ' (even though it is valid in filesystem encoding "%s")'
                     % (thing, terminal_enc, fs_enc))
 
+    def create_base(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree_contents([('a', 'foo\n')])
         wt.add('a')
@@ -128,6 +125,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         wt.add('b')
         wt.commit(self.info['message'])
 
+        fname = self.info['filename']
         self.build_tree_contents([(fname, 'unicode filename\n')])
         wt.add(fname)
         wt.commit(u'And a unicode file\n')

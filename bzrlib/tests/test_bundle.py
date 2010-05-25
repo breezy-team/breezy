@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1039,7 +1039,7 @@ class BundleTester(object):
         bundle = read_bundle(self.create_bundle_text('null:', 'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
-        inv_text = repo.get_inventory_xml('rev2')
+        inv_text = repo._get_inventory_xml('rev2')
         self.assertNotContainsRe(inv_text, 'format="5"')
         self.assertContainsRe(inv_text, 'format="7"')
 
@@ -1065,8 +1065,8 @@ class BundleTester(object):
 
     def test_inv_hash_across_serializers(self):
         repo = self.make_repo_with_installed_revisions()
-        recorded_inv_sha1 = repo.get_inventory_sha1('rev2')
-        xml = repo.get_inventory_xml('rev2')
+        recorded_inv_sha1 = repo.get_revision('rev2').inventory_sha1
+        xml = repo._get_inventory_xml('rev2')
         self.assertEqual(osutils.sha_string(xml), recorded_inv_sha1)
 
     def test_across_models_incompatible(self):
@@ -1820,7 +1820,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
             def look_up(self, name, url):
                 return 'source'
         directories.register('foo:', FooService, 'Testing directory service')
-        self.addCleanup(lambda: directories.remove('foo:'))
+        self.addCleanup(directories.remove, 'foo:')
         self.build_tree_contents([('./foo:bar', out.getvalue())])
         self.assertRaises(errors.NotABundle, read_mergeable_from_url,
                           'foo:bar')
@@ -1850,7 +1850,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
 class _DisconnectingTCPServer(object):
     """A TCP server that immediately closes any connection made to it."""
 
-    def setUp(self):
+    def start_server(self):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind(('127.0.0.1', 0))
         self.sock.listen(1)
@@ -1868,7 +1868,7 @@ class _DisconnectingTCPServer(object):
     def get_url(self):
         return 'bzr://127.0.0.1:%d/' % (self.port,)
 
-    def tearDown(self):
+    def stop_server(self):
         try:
             # make sure the thread dies by connecting to the listening socket,
             # just in case the test failed to do so.
@@ -1879,4 +1879,3 @@ class _DisconnectingTCPServer(object):
             pass
         self.sock.close()
         self.thread.join()
-

@@ -58,9 +58,13 @@ bzrlib/_knit_load_data_pyx.c
 bzrlib/_known_graph_pyx.c
 bzrlib/_readdir_pyx.c
 bzrlib/_rio_pyx.c
+bzrlib/_simple_set_pyx.c
+bzrlib/_simple_set_pyx.h
+bzrlib/_simple_set_pyx_api.h
 bzrlib/_walkdirs_win32.c
 # built extension modules
 bzrlib/_*.dll
 bzrlib/_*.so
 bzrlib/_*.pyd
 ./.ccache
+.testrepository

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -69,9 +69,11 @@ from bzrlib import (
     lru_cache,
     pack,
     progress,
+    static_tuple,
     trace,
     tsort,
     tuned_gzip,
+    ui,
     )
 """)
 from bzrlib import (
@@ -1710,10 +1712,12 @@ class KnitVersionedFiles(VersionedFiles):
             # There were index entries buffered at the end of the stream,
             # So these need to be added (if the index supports holding such
             # entries for later insertion)
+            all_entries = []
             for key in buffered_index_entries:
                 index_entries = buffered_index_entries[key]
-                self._index.add_records(index_entries,
-                    missing_compression_parents=True)
+                all_entries.extend(index_entries)
+            self._index.add_records(
+                all_entries, missing_compression_parents=True)
 
     def get_missing_compression_parent_keys(self):
         """Return an iterable of keys of missing compression parents.
@@ -1752,7 +1756,7 @@ class KnitVersionedFiles(VersionedFiles):
         :return: An iterator over (line, key).
         """
         if pb is None:
-            pb = progress.DummyProgress()
+            pb = ui.ui_factory.nested_progress_bar()
         keys = set(keys)
         total = len(keys)
         done = False
@@ -2365,7 +2369,7 @@ class _KndxIndex(object):
     FLAGS is a comma separated list of flags about the record. Values include
         no-eol, line-delta, fulltext.
     BYTE_OFFSET is the ascii representation of the byte offset in the data file
-        that the the compressed data starts at.
+        that the compressed data starts at.
     LENGTH is the ascii representation of the length of the data file.
     PARENT_ID a utf-8 revision id prefixed by a '.' that is a parent of
         REVISION_ID.
@@ -2942,10 +2946,15 @@ class _KnitGraphIndex(object):
         if not random_id:
             present_nodes = self._get_entries(keys)
             for (index, key, value, node_refs) in present_nodes:
+                parents = node_refs[:1]
+                # Sometimes these are passed as a list rather than a tuple
+                passed = static_tuple.as_tuples(keys[key])
+                passed_parents = passed[1][:1]
                 if (value[0] != keys[key][0][0] or
-                    node_refs[:1] != keys[key][1][:1]):
+                    parents != passed_parents):
+                    node_refs = static_tuple.as_tuples(node_refs)
                     raise KnitCorrupt(self, "inconsistent details in add_records"
-                        ": %s %s" % ((value, node_refs), keys[key]))
+                        ": %s %s" % ((value, node_refs), passed))
                 del keys[key]
         result = []
         if self._parents:

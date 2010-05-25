@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -486,6 +486,14 @@ class TestMove(TestCaseWithTransport):
                                 retcode=3)
         self.assertEqual('bzr: ERROR: --after cannot be specified with'
                          ' --auto.\n', err)
+
+    def test_mv_quiet(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['aaa'])
+        tree.add(['aaa'])
+        out, err = self.run_bzr('mv --quiet aaa bbb')
+        self.assertEqual(out, '')
+        self.assertEqual(err, '')
 
     def test_mv_readonly_lightweight_checkout(self):
         branch = self.make_branch('foo')

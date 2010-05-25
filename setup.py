@@ -37,10 +37,10 @@ META_INFO = {
     'version':      bzrlib.__version__,
     'author':       'Canonical Ltd',
     'author_email': 'bazaar@lists.canonical.com',
-    'url':          'http://www.bazaar-vcs.org/',
+    'url':          'http://bazaar.canonical.com/',
     'description':  'Friendly distributed version control system',
     'license':      'GNU GPL v2',
-    'download_url': 'http://bazaar-vcs.org/Download',
+    'download_url': 'https://launchpad.net/bzr/+download',
     'long_description': get_long_description(),
     'classifiers': [
         'Development Status :: 6 - Mature',
@@ -167,7 +167,13 @@ from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
-    from Pyrex.Distutils import build_ext
+    try:
+        from Pyrex.Distutils import build_ext
+        from Pyrex.Compiler.Version import version as pyrex_version
+    except ImportError:
+        print "No Pyrex, trying Cython..."
+        from Cython.Distutils import build_ext
+        from Cython.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
@@ -180,7 +186,7 @@ except ImportError:
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
-    from Pyrex.Compiler.Version import version as pyrex_version
+    pyrex_version_info = tuple(map(int, pyrex_version.split('.')))
 
 
 class build_ext_if_possible(build_ext):
@@ -265,7 +271,6 @@ def add_pyrex_extension(module_name, libraries=None, extra_source=[]):
 
 add_pyrex_extension('bzrlib._annotator_pyx')
 add_pyrex_extension('bzrlib._bencode_pyx')
-add_pyrex_extension('bzrlib._btree_serializer_pyx')
 add_pyrex_extension('bzrlib._chunks_to_lines_pyx')
 add_pyrex_extension('bzrlib._groupcompress_pyx',
                     extra_source=['bzrlib/diff-delta.c'])
@@ -276,13 +281,14 @@ if sys.platform == 'win32':
     add_pyrex_extension('bzrlib._dirstate_helpers_pyx',
                         libraries=['Ws2_32'])
     add_pyrex_extension('bzrlib._walkdirs_win32')
-    z_lib = 'zdll'
 else:
-    if have_pyrex and pyrex_version == '0.9.4.1':
+    if have_pyrex and pyrex_version_info[:3] == (0,9,4):
         # Pyrex 0.9.4.1 fails to compile this extension correctly
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
         # which is NULL safe with PY_DECREF which is not.)
+        # <https://bugs.edge.launchpad.net/bzr/+bug/449372>
+        # <https://bugs.edge.launchpad.net/bzr/+bug/276868>
         print 'Cannot build extension "bzrlib._dirstate_helpers_pyx" using'
         print 'your version of pyrex "%s". Please upgrade your pyrex' % (
             pyrex_version,)
@@ -291,10 +297,24 @@ else:
     else:
         add_pyrex_extension('bzrlib._dirstate_helpers_pyx')
     add_pyrex_extension('bzrlib._readdir_pyx')
-    z_lib = 'z'
-add_pyrex_extension('bzrlib._chk_map_pyx', libraries=[z_lib])
+add_pyrex_extension('bzrlib._chk_map_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
+if have_pyrex and pyrex_version_info < (0, 9, 6, 3):
+    print
+    print 'Your Pyrex/Cython version %s is too old to build the simple_set' % (
+        pyrex_version)
+    print 'and static_tuple extensions.'
+    print 'Please upgrade to at least Pyrex 0.9.6.3'
+    print
+    # TODO: Should this be a fatal error?
+else:
+    # We only need 0.9.6.3 to build _simple_set_pyx, but static_tuple depends
+    # on simple_set
+    add_pyrex_extension('bzrlib._simple_set_pyx')
+    ext_modules.append(Extension('bzrlib._static_tuple_c',
+                                 ['bzrlib/_static_tuple_c.c']))
+add_pyrex_extension('bzrlib._btree_serializer_pyx')
 
 
 if unavailable_files:
@@ -327,9 +347,6 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # Ensure tbzrlib itself is on sys.path
     sys.path.append(tbzr_root)
 
-    # Ensure our COM "entry-point" is on sys.path
-    sys.path.append(os.path.join(tbzr_root, "shellext", "python"))
-
     packages.append("tbzrlib")
 
     # collect up our icons.
@@ -356,17 +373,6 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
 
     excludes.extend("""pywin pywin.dialogs pywin.dialogs.list
                        win32ui crawler.Crawler""".split())
-
-    # NOTE: We still create a DLL version of the Python implemented shell
-    # extension for testing purposes - but it is *not* registered by
-    # default - our C++ one is instead.  To discourage people thinking
-    # this DLL is still necessary, its called 'tbzr_old.dll'
-    tbzr = dict(
-        modules=["tbzr"],
-        create_exe = False, # we only want a .dll
-        dest_base = 'tbzr_old',
-    )
-    com_targets.append(tbzr)
 
     # tbzrcache executables - a "console" version for debugging and a
     # GUI version that is generally used.
@@ -398,8 +404,7 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     console_targets.append(tracer)
 
     # The C++ implemented shell extensions.
-    dist_dir = os.path.join(tbzr_root, "shellext", "cpp", "tbzrshellext",
-                            "build", "dist")
+    dist_dir = os.path.join(tbzr_root, "shellext", "build")
     data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x86.dll')]))
     data_files.append(('', [os.path.join(dist_dir, 'tbzrshellext_x64.dll')]))
 
@@ -408,6 +413,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     # PyQt4 itself still escapes the plugin detection code for some reason...
     packages.append('PyQt4')
     excludes.append('PyQt4.elementtree.ElementTree')
+    excludes.append('PyQt4.uic.port_v3')
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
     packages.append('docutils') # html formatting
@@ -462,6 +468,7 @@ def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
 
 def get_svn_py2exe_info(includes, excludes, packages):
     packages.append('subvertpy')
+    packages.append('sqlite3')
 
 
 if 'bdist_wininst' in sys.argv:
@@ -545,7 +552,7 @@ elif 'py2exe' in sys.argv:
                                      version = version_str,
                                      description = META_INFO['description'],
                                      author = META_INFO['author'],
-                                     copyright = "(c) Canonical Ltd, 2005-2009",
+                                     copyright = "(c) Canonical Ltd, 2005-2010",
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
@@ -564,7 +571,7 @@ elif 'py2exe' in sys.argv:
     if sys.version.startswith('2.4'):
         # adding elementtree package
         additional_packages.add('elementtree')
-    elif sys.version.startswith('2.5'):
+    elif sys.version.startswith('2.6') or sys.version.startswith('2.5'):
         additional_packages.add('xml.etree')
     else:
         import warnings
@@ -616,7 +623,11 @@ elif 'py2exe' in sys.argv:
             excludes.extend(["bzrlib.plugins." + d for d in dirs])
         x = []
         for i in files:
-            if os.path.splitext(i)[1] not in [".py", ".pyd", ".dll", ".mo"]:
+            # Throw away files we don't want packaged. Note that plugins may
+            # have data files with all sorts of extensions so we need to
+            # be conservative here about what we ditch.
+            ext = os.path.splitext(i)[1]
+            if ext.endswith('~') or ext in [".pyc", ".swp"]:
                 continue
             if i == '__init__.py' and root == 'bzrlib/plugins':
                 continue
@@ -636,7 +647,6 @@ elif 'py2exe' in sys.argv:
                        'tools/win32/bzr_postinstall.py',
                        ]
     gui_targets = []
-    com_targets = []
     data_files = topics_files + plugins_files
 
     if 'qbzr' in plugins:
@@ -687,7 +697,6 @@ elif 'py2exe' in sys.argv:
     setup(options=options_list,
           console=console_targets,
           windows=gui_targets,
-          com_server=com_targets,
           zipfile='lib/library.zip',
           data_files=data_files,
           cmdclass={'install_data': install_data_with_bytecompile},
@@ -700,6 +709,19 @@ else:
         # generate and install bzr.1 only with plain install, not the
         # easy_install one
         DATA_FILES = [('man/man1', ['bzr.1'])]
+
+    if sys.platform != 'win32':
+        # see https://wiki.kubuntu.org/Apport/DeveloperHowTo
+        #
+        # checking the paths and hardcoding the check for root is a bit gross,
+        # but I don't see a cleaner way to find out the locations in a way
+        # that's going to align with the hardcoded paths in apport.
+        if os.geteuid() == 0:
+            DATA_FILES += [
+                ('/usr/share/apport/package-hooks',
+                    ['apport/source_bzr.py']),
+                ('/etc/apport/crashdb.conf.d/',
+                    ['apport/bzr-crashdb.conf']),]
 
     # std setup
     ARGS = {'scripts': ['bzr'],

@@ -5,7 +5,7 @@ bzr commit
 ----------
 
 When the working tree state is satisfactory, it can be **committed** to
-the branch, creating a new revision holding a snapshot of that state.  
+the branch, creating a new revision holding a snapshot of that state.
 
 The **commit** command takes a message describing the changes in the
 revision.  It also records your userid, the current time and timezone, and

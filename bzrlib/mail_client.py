@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -89,7 +89,7 @@ class MailClient(object):
 
 
 class Editor(MailClient):
-    """DIY mail client that uses commit message editor"""
+    __doc__ = """DIY mail client that uses commit message editor"""
 
     supports_body = True
 
@@ -230,13 +230,13 @@ class BodyExternalMailClient(MailClient):
 
 
 class ExternalMailClient(BodyExternalMailClient):
-    """An external mail client."""
+    __doc__ = """An external mail client."""
 
     supports_body = False
 
 
 class Evolution(BodyExternalMailClient):
-    """Evolution mail client."""
+    __doc__ = """Evolution mail client."""
 
     _client_commands = ['evolution']
 
@@ -258,7 +258,7 @@ mail_client_registry.register('evolution', Evolution,
 
 
 class Mutt(BodyExternalMailClient):
-    """Mutt mail client."""
+    __doc__ = """Mutt mail client."""
 
     _client_commands = ['mutt']
 
@@ -286,7 +286,7 @@ mail_client_registry.register('mutt', Mutt,
 
 
 class Thunderbird(BodyExternalMailClient):
-    """Mozilla Thunderbird (or Icedove)
+    __doc__ = """Mozilla Thunderbird (or Icedove)
 
     Note that Thunderbird 1.5 is buggy and does not support setting
     "to" simultaneously with including a attachment.
@@ -321,7 +321,7 @@ mail_client_registry.register('thunderbird', Thunderbird,
 
 
 class KMail(ExternalMailClient):
-    """KDE mail client."""
+    __doc__ = """KDE mail client."""
 
     _client_commands = ['kmail']
 
@@ -341,7 +341,7 @@ mail_client_registry.register('kmail', KMail,
 
 
 class Claws(ExternalMailClient):
-    """Claws mail client."""
+    __doc__ = """Claws mail client."""
 
     supports_body = True
 
@@ -387,7 +387,7 @@ mail_client_registry.register('claws', Claws,
 
 
 class XDGEmail(BodyExternalMailClient):
-    """xdg-email attempts to invoke the user's preferred mail client"""
+    __doc__ = """xdg-email attempts to invoke the user's preferred mail client"""
 
     _client_commands = ['xdg-email']
 
@@ -409,7 +409,7 @@ mail_client_registry.register('xdg-email', XDGEmail,
 
 
 class EmacsMail(ExternalMailClient):
-    """Call emacsclient to have a mail buffer.
+    __doc__ = """Call emacsclient to have a mail buffer.
 
     This only work for emacs >= 22.1 due to recent -e/--eval support.
 
@@ -519,7 +519,7 @@ mail_client_registry.register('emacsclient', EmacsMail,
 
 
 class MAPIClient(BodyExternalMailClient):
-    """Default Windows mail client launched using MAPI."""
+    __doc__ = """Default Windows mail client launched using MAPI."""
 
     def _compose(self, prompt, to, subject, attach_path, mime_subtype,
                  extension, body=None):
@@ -539,8 +539,67 @@ mail_client_registry.register('mapi', MAPIClient,
                               help=MAPIClient.__doc__)
 
 
+class MailApp(BodyExternalMailClient):
+    __doc__ = """Use MacOS X's Mail.app for sending email messages.
+
+    Although it would be nice to use appscript, it's not installed
+    with the shipped Python installations.  We instead build an
+    AppleScript and invoke the script using osascript(1).  We don't
+    use the _encode_safe() routines as it's not clear what encoding
+    osascript expects the script to be in.
+    """
+
+    _client_commands = ['osascript']
+
+    def _get_compose_commandline(self, to, subject, attach_path, body=None,
+                                from_=None):
+       """See ExternalMailClient._get_compose_commandline"""
+
+       fd, self.temp_file = tempfile.mkstemp(prefix="bzr-send-",
+                                         suffix=".scpt")
+       try:
+           os.write(fd, 'tell application "Mail"\n')
+           os.write(fd, 'set newMessage to make new outgoing message\n')
+           os.write(fd, 'tell newMessage\n')
+           if to is not None:
+               os.write(fd, 'make new to recipient with properties'
+                   ' {address:"%s"}\n' % to)
+           if from_ is not None:
+               # though from_ doesn't actually seem to be used
+               os.write(fd, 'set sender to "%s"\n'
+                   % sender.replace('"', '\\"'))
+           if subject is not None:
+               os.write(fd, 'set subject to "%s"\n'
+                   % subject.replace('"', '\\"'))
+           if body is not None:
+               # FIXME: would be nice to prepend the body to the
+               # existing content (e.g., preserve signature), but
+               # can't seem to figure out the right applescript
+               # incantation.
+               os.write(fd, 'set content to "%s\\n\n"\n' %
+                   body.replace('"', '\\"').replace('\n', '\\n'))
+
+           if attach_path is not None:
+               # FIXME: would be nice to first append a newline to
+               # ensure the attachment is on a new paragraph, but
+               # can't seem to figure out the right applescript
+               # incantation.
+               os.write(fd, 'tell content to make new attachment'
+                   ' with properties {file name:"%s"}'
+                   ' at after the last paragraph\n'
+                   % self._encode_path(attach_path, 'attachment'))
+           os.write(fd, 'set visible to true\n')
+           os.write(fd, 'end tell\n')
+           os.write(fd, 'end tell\n')
+       finally:
+           os.close(fd) # Just close the handle but do not remove the file.
+       return [self.temp_file]
+mail_client_registry.register('mail.app', MailApp,
+                              help=MailApp.__doc__)
+
+
 class DefaultMail(MailClient):
-    """Default mail handling.  Tries XDGEmail (or MAPIClient on Windows),
+    __doc__ = """Default mail handling.  Tries XDGEmail (or MAPIClient on Windows),
     falls back to Editor"""
 
     supports_body = True
@@ -575,3 +634,5 @@ class DefaultMail(MailClient):
 mail_client_registry.register('default', DefaultMail,
                               help=DefaultMail.__doc__)
 mail_client_registry.default_key = 'default'
+
+

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,6 +38,7 @@ Densely packed upper nodes.
 """
 
 import heapq
+import threading
 
 from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
@@ -50,18 +51,40 @@ from bzrlib import (
     lru_cache,
     osutils,
     registry,
+    static_tuple,
     trace,
     )
+from bzrlib.static_tuple import StaticTuple
 
 # approx 4MB
 # If each line is 50 bytes, and you have 255 internal pages, with 255-way fan
 # out, it takes 3.1MB to cache the layer.
 _PAGE_CACHE_SIZE = 4*1024*1024
-# We are caching bytes so len(value) is perfectly accurate
-_page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
+# Per thread caches for 2 reasons:
+# - in the server we may be serving very different content, so we get less
+#   cache thrashing.
+# - we avoid locking on every cache lookup.
+_thread_caches = threading.local()
+# The page cache.
+_thread_caches.page_cache = None
+
+def _get_cache():
+    """Get the per-thread page cache.
+
+    We need a function to do this because in a new thread the _thread_caches
+    threading.local object does not have the cache initialized yet.
+    """
+    page_cache = getattr(_thread_caches, 'page_cache', None)
+    if page_cache is None:
+        # We are caching bytes so len(value) is perfectly accurate
+        page_cache = lru_cache.LRUSizeCache(_PAGE_CACHE_SIZE)
+        _thread_caches.page_cache = page_cache
+    return page_cache
+
 
 def clear_cache():
-    _page_cache.clear()
+    _get_cache().clear()
+
 
 # If a ChildNode falls below this many bytes, we check for a remap
 _INTERESTING_NEW_SIZE = 50
@@ -82,6 +105,8 @@ search_key_registry.register('plain', _search_key_plain)
 
 class CHKMap(object):
     """A persistent map from string to string backed by a CHK store."""
+
+    __slots__ = ('_store', '_root_node', '_search_key_func')
 
     def __init__(self, store, root_key, search_key_func=None):
         """Create a CHKMap object.
@@ -112,8 +137,9 @@ class CHKMap(object):
         """
         delete_count = 0
         # Check preconditions first.
-        new_items = set([key for (old, key, value) in delta if key is not None
-            and old is None])
+        as_st = StaticTuple.from_sequence
+        new_items = set([as_st(key) for (old, key, value) in delta
+                         if key is not None and old is None])
         existing_new = list(self.iteritems(key_filter=new_items))
         if existing_new:
             raise errors.InconsistentDeltaDelta(delta,
@@ -133,7 +159,7 @@ class CHKMap(object):
 
     def _ensure_root(self):
         """Ensure that the root node is an object not a key."""
-        if type(self._root_node) is tuple:
+        if type(self._root_node) is StaticTuple:
             # Demand-load the root
             self._root_node = self._get_node(self._root_node)
 
@@ -147,7 +173,7 @@ class CHKMap(object):
         :param node: A tuple key or node object.
         :return: A node object.
         """
-        if type(node) is tuple:
+        if type(node) is StaticTuple:
             bytes = self._read_bytes(node)
             return _deserialise(bytes, node,
                 search_key_func=self._search_key_func)
@@ -156,11 +182,11 @@ class CHKMap(object):
 
     def _read_bytes(self, key):
         try:
-            return _page_cache[key]
+            return _get_cache()[key]
         except KeyError:
             stream = self._store.get_record_stream([key], 'unordered', True)
             bytes = stream.next().get_bytes_as('fulltext')
-            _page_cache[key] = bytes
+            _get_cache()[key] = bytes
             return bytes
 
     def _dump_tree(self, include_keys=False):
@@ -194,7 +220,7 @@ class CHKMap(object):
             for key, value in sorted(node._items.iteritems()):
                 # Don't use prefix nor indent here to line up when used in
                 # tests in conjunction with assertEqualDiff
-                result.append('      %r %r' % (key, value))
+                result.append('      %r %r' % (tuple(key), value))
         return result
 
     @classmethod
@@ -218,6 +244,9 @@ class CHKMap(object):
         root_key = klass._create_directly(store, initial_value,
             maximum_size=maximum_size, key_width=key_width,
             search_key_func=search_key_func)
+        if type(root_key) is not StaticTuple:
+            raise AssertionError('we got a %s instead of a StaticTuple'
+                                 % (type(root_key),))
         return root_key
 
     @classmethod
@@ -238,9 +267,11 @@ class CHKMap(object):
         node = LeafNode(search_key_func=search_key_func)
         node.set_maximum_size(maximum_size)
         node._key_width = key_width
-        node._items = dict(initial_value)
+        as_st = StaticTuple.from_sequence
+        node._items = dict([(as_st(key), val) for key, val
+                                               in initial_value.iteritems()])
         node._raw_size = sum([node._key_value_len(key, value)
-                              for key,value in initial_value.iteritems()])
+                              for key,value in node._items.iteritems()])
         node._len = len(node._items)
         node._compute_search_prefix()
         node._compute_serialised_prefix()
@@ -482,11 +513,14 @@ class CHKMap(object):
     def iteritems(self, key_filter=None):
         """Iterate over the entire CHKMap's contents."""
         self._ensure_root()
+        if key_filter is not None:
+            as_st = StaticTuple.from_sequence
+            key_filter = [as_st(key) for key in key_filter]
         return self._root_node.iteritems(self._store, key_filter=key_filter)
 
     def key(self):
         """Return the key for this map."""
-        if type(self._root_node) is tuple:
+        if type(self._root_node) is StaticTuple:
             return self._root_node
         else:
             return self._root_node._key
@@ -501,6 +535,7 @@ class CHKMap(object):
         :param key: A key to map.
         :param value: The value to assign to key.
         """
+        key = StaticTuple.from_sequence(key)
         # Need a root object.
         self._ensure_root()
         prefix, node_details = self._root_node.map(self._store, key, value)
@@ -517,12 +552,15 @@ class CHKMap(object):
     def _node_key(self, node):
         """Get the key for a node whether it's a tuple or node."""
         if type(node) is tuple:
+            node = StaticTuple.from_sequence(node)
+        if type(node) is StaticTuple:
             return node
         else:
             return node._key
 
     def unmap(self, key, check_remap=True):
         """remove key from the map."""
+        key = StaticTuple.from_sequence(key)
         self._ensure_root()
         if type(self._root_node) is InternalNode:
             unmapped = self._root_node.unmap(self._store, key,
@@ -542,7 +580,7 @@ class CHKMap(object):
 
         :return: The key of the root node.
         """
-        if type(self._root_node) is tuple:
+        if type(self._root_node) is StaticTuple:
             # Already saved.
             return self._root_node
         keys = list(self._root_node.serialise(self._store))
@@ -555,6 +593,10 @@ class Node(object):
     :ivar _raw_size: The total size of the serialized key:value data, before
         adding the header bytes, and without prefix compression.
     """
+
+    __slots__ = ('_key', '_len', '_maximum_size', '_key_width',
+                 '_raw_size', '_items', '_search_prefix', '_search_key_func'
+                )
 
     def __init__(self, key_width=1):
         """Create a node.
@@ -650,11 +692,12 @@ class LeafNode(Node):
         the key/value pairs.
     """
 
+    __slots__ = ('_common_serialised_prefix',)
+
     def __init__(self, search_key_func=None):
         Node.__init__(self)
         # All of the keys in this leaf node share this common prefix
         self._common_serialised_prefix = None
-        self._serialise_key = '\x00'.join
         if search_key_func is None:
             self._search_key_func = _search_key_plain
         else:
@@ -698,6 +741,7 @@ class LeafNode(Node):
         :param bytes: The bytes of the node.
         :param key: The key that the serialised node has.
         """
+        key = static_tuple.expect_static_tuple(key)
         return _deserialise_leaf_node(bytes, key,
                                       search_key_func=search_key_func)
 
@@ -843,6 +887,8 @@ class LeafNode(Node):
                 raise AssertionError('%r must be known' % self._search_prefix)
             return self._search_prefix, [("", self)]
 
+    _serialise_key = '\x00'.join
+
     def serialise(self, store):
         """Serialise the LeafNode to store.
 
@@ -873,11 +919,11 @@ class LeafNode(Node):
             lines.append(serialized[prefix_len:])
             lines.extend(value_lines)
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = ("sha1:" + sha1,)
+        self._key = StaticTuple("sha1:" + sha1,).intern()
         bytes = ''.join(lines)
         if len(bytes) != self._current_size():
             raise AssertionError('Invalid _current_size')
-        _page_cache.add(self._key, bytes)
+        _get_cache().add(self._key, bytes)
         return [self._key]
 
     def refs(self):
@@ -947,6 +993,8 @@ class InternalNode(Node):
         LeafNode or InternalNode.
     """
 
+    __slots__ = ('_node_width',)
+
     def __init__(self, prefix='', search_key_func=None):
         Node.__init__(self)
         # The size of an internalnode with default values and no children.
@@ -994,6 +1042,7 @@ class InternalNode(Node):
         :param key: The key that the serialised node has.
         :return: An InternalNode instance.
         """
+        key = static_tuple.expect_static_tuple(key)
         return _deserialise_internal_node(bytes, key,
                                           search_key_func=search_key_func)
 
@@ -1024,7 +1073,7 @@ class InternalNode(Node):
             # for whatever we are missing
             shortcut = True
             for prefix, node in self._items.iteritems():
-                if node.__class__ is tuple:
+                if node.__class__ is StaticTuple:
                     keys[node] = (prefix, None)
                 else:
                     yield node, None
@@ -1059,7 +1108,7 @@ class InternalNode(Node):
                     # A given key can only match 1 child node, if it isn't
                     # there, then we can just return nothing
                     return
-                if node.__class__ is tuple:
+                if node.__class__ is StaticTuple:
                     keys[node] = (search_prefix, [key])
                 else:
                     # This is loaded, and the only thing that can match,
@@ -1092,7 +1141,7 @@ class InternalNode(Node):
                         # We can ignore this one
                         continue
                     node_key_filter = prefix_to_keys[search_prefix]
-                    if node.__class__ is tuple:
+                    if node.__class__ is StaticTuple:
                         keys[node] = (search_prefix, node_key_filter)
                     else:
                         yield node, node_key_filter
@@ -1107,7 +1156,7 @@ class InternalNode(Node):
                         if sub_prefix in length_filter:
                             node_key_filter.extend(prefix_to_keys[sub_prefix])
                     if node_key_filter: # this key matched something, yield it
-                        if node.__class__ is tuple:
+                        if node.__class__ is StaticTuple:
                             keys[node] = (prefix, node_key_filter)
                         else:
                             yield node, node_key_filter
@@ -1116,7 +1165,7 @@ class InternalNode(Node):
             found_keys = set()
             for key in keys:
                 try:
-                    bytes = _page_cache[key]
+                    bytes = _get_cache()[key]
                 except KeyError:
                     continue
                 else:
@@ -1147,7 +1196,7 @@ class InternalNode(Node):
                     prefix, node_key_filter = keys[record.key]
                     node_and_filters.append((node, node_key_filter))
                     self._items[prefix] = node
-                    _page_cache.add(record.key, bytes)
+                    _get_cache().add(record.key, bytes)
                 for info in node_and_filters:
                     yield info
 
@@ -1245,7 +1294,7 @@ class InternalNode(Node):
         :return: An iterable of the keys inserted by this operation.
         """
         for node in self._items.itervalues():
-            if type(node) is tuple:
+            if type(node) is StaticTuple:
                 # Never deserialised.
                 continue
             if node._key is not None:
@@ -1262,7 +1311,7 @@ class InternalNode(Node):
         lines.append('%s\n' % (self._search_prefix,))
         prefix_len = len(self._search_prefix)
         for prefix, node in sorted(self._items.items()):
-            if type(node) is tuple:
+            if type(node) is StaticTuple:
                 key = node[0]
             else:
                 key = node._key[0]
@@ -1272,8 +1321,8 @@ class InternalNode(Node):
                     % (serialised, self._search_prefix))
             lines.append(serialised[prefix_len:])
         sha1, _, _ = store.add_lines((None,), (), lines)
-        self._key = ("sha1:" + sha1,)
-        _page_cache.add(self._key, ''.join(lines))
+        self._key = StaticTuple("sha1:" + sha1,).intern()
+        _get_cache().add(self._key, ''.join(lines))
         yield self._key
 
     def _search_key(self, key):
@@ -1307,7 +1356,7 @@ class InternalNode(Node):
             raise AssertionError("unserialised nodes have no refs.")
         refs = []
         for value in self._items.itervalues():
-            if type(value) is tuple:
+            if type(value) is StaticTuple:
                 refs.append(value)
             else:
                 refs.append(value.key())
@@ -1427,6 +1476,12 @@ class CHKMapDifference(object):
 
     def __init__(self, store, new_root_keys, old_root_keys,
                  search_key_func, pb=None):
+        # TODO: Should we add a StaticTuple barrier here? It would be nice to
+        #       force callers to use StaticTuple, because there will often be
+        #       lots of keys passed in here. And even if we cast it locally,
+        #       that just meanst that we will have *both* a StaticTuple and a
+        #       tuple() in memory, referring to the same object. (so a net
+        #       increase in memory, not a decrease.)
         self._store = store
         self._new_root_keys = new_root_keys
         self._old_root_keys = old_root_keys
@@ -1434,11 +1489,16 @@ class CHKMapDifference(object):
         # All uninteresting chks that we have seen. By the time they are added
         # here, they should be either fully ignored, or queued up for
         # processing
+        # TODO: This might grow to a large size if there are lots of merge
+        #       parents, etc. However, it probably doesn't scale to O(history)
+        #       like _processed_new_refs does.
         self._all_old_chks = set(self._old_root_keys)
         # All items that we have seen from the old_root_keys
         self._all_old_items = set()
         # These are interesting items which were either read, or already in the
         # interesting queue (so we don't need to walk them again)
+        # TODO: processed_new_refs becomes O(all_chks), consider switching to
+        #       SimpleSet here.
         self._processed_new_refs = set()
         self._search_key_func = search_key_func
 
@@ -1451,11 +1511,12 @@ class CHKMapDifference(object):
         self._state = None
 
     def _read_nodes_from_store(self, keys):
-        # We chose not to use _page_cache, because we think in terms of records
-        # to be yielded. Also, we expect to touch each page only 1 time during
-        # this code. (We may want to evaluate saving the raw bytes into the
-        # page cache, which would allow a working tree update after the fetch
-        # to not have to read the bytes again.)
+        # We chose not to use _get_cache(), because we think in
+        # terms of records to be yielded. Also, we expect to touch each page
+        # only 1 time during this code. (We may want to evaluate saving the
+        # raw bytes into the page cache, which would allow a working tree
+        # update after the fetch to not have to read the bytes again.)
+        as_st = StaticTuple.from_sequence
         stream = self._store.get_record_stream(keys, 'unordered', True)
         for record in stream:
             if self._pb is not None:
@@ -1468,10 +1529,18 @@ class CHKMapDifference(object):
             if type(node) is InternalNode:
                 # Note we don't have to do node.refs() because we know that
                 # there are no children that have been pushed into this node
+                # Note: Using as_st() here seemed to save 1.2MB, which would
+                #       indicate that we keep 100k prefix_refs around while
+                #       processing. They *should* be shorter lived than that...
+                #       It does cost us ~10s of processing time
+                #prefix_refs = [as_st(item) for item in node._items.iteritems()]
                 prefix_refs = node._items.items()
                 items = []
             else:
                 prefix_refs = []
+                # Note: We don't use a StaticTuple here. Profiling showed a
+                #       minor memory improvement (0.8MB out of 335MB peak 0.2%)
+                #       But a significant slowdown (15s / 145s, or 10%)
                 items = node._items.items()
             yield record, node, prefix_refs, items
 
@@ -1485,6 +1554,10 @@ class CHKMapDifference(object):
                                 if p_r[1] not in all_old_chks]
             new_refs = [p_r[1] for p_r in prefix_refs]
             all_old_chks.update(new_refs)
+            # TODO: This might be a good time to turn items into StaticTuple
+            #       instances and possibly intern them. However, this does not
+            #       impact 'initial branch' performance, so I'm not worrying
+            #       about this yet
             self._all_old_items.update(items)
             # Queue up the uninteresting references
             # Don't actually put them in the 'to-read' queue until we have
@@ -1543,6 +1616,9 @@ class CHKMapDifference(object):
             #       current design allows for this, as callers will do the work
             #       to make the results unique. We might profile whether we
             #       gain anything by ensuring unique return values for items
+            # TODO: This might be a good time to cast to StaticTuple, as
+            #       self._new_item_queue will hold the contents of multiple
+            #       records for an extended lifetime
             new_items = [item for item in items
                                if item not in self._all_old_items]
             self._new_item_queue.extend(new_items)
@@ -1573,16 +1649,31 @@ class CHKMapDifference(object):
         if new_items:
             yield None, new_items
         refs = refs.difference(all_old_chks)
+        processed_new_refs.update(refs)
         while refs:
+            # TODO: Using a SimpleSet for self._processed_new_refs and
+            #       saved as much as 10MB of peak memory. However, it requires
+            #       implementing a non-pyrex version.
             next_refs = set()
             next_refs_update = next_refs.update
             # Inlining _read_nodes_from_store improves 'bzr branch bzr.dev'
             # from 1m54s to 1m51s. Consider it.
             for record, _, p_refs, items in self._read_nodes_from_store(refs):
-                items = [item for item in items
-                         if item not in all_old_items]
+                if all_old_items:
+                    # using the 'if' check saves about 145s => 141s, when
+                    # streaming initial branch of Launchpad data.
+                    items = [item for item in items
+                             if item not in all_old_items]
                 yield record, items
                 next_refs_update([p_r[1] for p_r in p_refs])
+                del p_refs
+            # set1.difference(set/dict) walks all of set1, and checks if it
+            # exists in 'other'.
+            # set1.difference(iterable) walks all of iterable, and does a
+            # 'difference_update' on a clone of set1. Pick wisely based on the
+            # expected sizes of objects.
+            # in our case it is expected that 'new_refs' will always be quite
+            # small.
             next_refs = next_refs.difference(all_old_chks)
             next_refs = next_refs.difference(processed_new_refs)
             processed_new_refs.update(next_refs)
@@ -1595,6 +1686,7 @@ class CHKMapDifference(object):
         self._old_queue = []
         all_old_chks = self._all_old_chks
         for record, _, prefix_refs, items in self._read_nodes_from_store(refs):
+            # TODO: Use StaticTuple here?
             self._all_old_items.update(items)
             refs = [r for _,r in prefix_refs if r not in all_old_chks]
             self._old_queue.extend(refs)
@@ -1635,6 +1727,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
 
 try:
     from bzrlib._chk_map_pyx import (
+        _bytes_to_text_key,
         _search_key_16,
         _search_key_255,
         _deserialise_leaf_node,
@@ -1643,6 +1736,7 @@ try:
 except ImportError, e:
     osutils.failed_to_load_extension(e)
     from bzrlib._chk_map_py import (
+        _bytes_to_text_key,
         _search_key_16,
         _search_key_255,
         _deserialise_leaf_node,
@@ -1650,3 +1744,22 @@ except ImportError, e:
         )
 search_key_registry.register('hash-16-way', _search_key_16)
 search_key_registry.register('hash-255-way', _search_key_255)
+
+
+def _check_key(key):
+    """Helper function to assert that a key is properly formatted.
+
+    This generally shouldn't be used in production code, but it can be helpful
+    to debug problems.
+    """
+    if type(key) is not StaticTuple:
+        raise TypeError('key %r is not StaticTuple but %s' % (key, type(key)))
+    if len(key) != 1:
+        raise ValueError('key %r should have length 1, not %d' % (key, len(key),))
+    if type(key[0]) is not str:
+        raise TypeError('key %r should hold a str, not %r'
+                        % (key, type(key[0])))
+    if not key[0].startswith('sha1:'):
+        raise ValueError('key %r should point to a sha1:' % (key,))
+
+

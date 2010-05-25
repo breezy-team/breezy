@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ if getattr(sys, '_bzr_lazy_regex', False):
 IGNORE_FILENAME = ".bzrignore"
 
 
-__copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
+__copyright__ = "Copyright 2005-2010 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
@@ -44,10 +44,10 @@ __copyright__ = "Copyright 2005, 2006, 2007, 2008, 2009 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (2, 1, 0, 'dev', 0)
+version_info = (2, 2, 0, 'dev', 1)
 
-# API compatibility version: bzrlib is currently API compatible with 1.15.
-api_minimum_version = (2, 1, 0)
+# API compatibility version
+api_minimum_version = (2, 2, 0)
 
 
 def _format_version_tuple(version_info):
@@ -68,7 +68,7 @@ def _format_version_tuple(version_info):
     >>> print _format_version_tuple((1, 1, 1, 'candidate', 2))
     1.1.1rc2
     >>> print bzrlib._format_version_tuple((2, 1, 0, 'beta', 1))
-    2.1.0b1
+    2.1b1
     >>> print _format_version_tuple((1, 4, 0))
     1.4.0
     >>> print _format_version_tuple((1, 4))
@@ -100,6 +100,8 @@ def _format_version_tuple(version_info):
     elif release_type == 'dev':
         sub_string = 'dev' + str(sub)
     elif release_type in ('alpha', 'beta'):
+        if version_info[2] == 0:
+            main_version = '%d.%d' % version_info[:2]
         sub_string = release_type[0] + str(sub)
     elif release_type == 'candidate':
         sub_string = 'rc' + str(sub)
@@ -116,3 +118,52 @@ version_string = __version__
 def test_suite():
     import tests
     return tests.test_suite()
+
+
+def initialize(
+    setup_ui=True,
+    stdin=None, stdout=None, stderr=None):
+    """Set up everything needed for normal use of bzrlib.
+
+    Most applications that embed bzrlib, including bzr itself, should call
+    this function to initialize various subsystems.  
+
+    More options may be added in future so callers should use named arguments.
+
+    :param setup_ui: If true (default) use a terminal UI; otherwise 
+        something else must be put into `bzrlib.ui.ui_factory`.
+    :param stdin, stdout, stderr: If provided, use these for terminal IO;
+        otherwise use the files in `sys`.
+    """
+    # TODO: mention this in a guide to embedding bzrlib
+    #
+    # NB: This function tweaks so much global state it's hard to test it in
+    # isolation within the same interpreter.  It's not reached on normal
+    # in-process run_bzr calls.  If it's broken, we expect that
+    # TestRunBzrSubprocess may fail.
+    
+    import atexit
+    import bzrlib.trace
+
+    bzrlib.trace.enable_default_logging()
+    atexit.register(bzrlib.trace._flush_stdout_stderr)
+    atexit.register(bzrlib.trace._flush_trace)
+
+    import bzrlib.ui
+    if stdin is None:
+        stdin = sys.stdin
+    if stdout is None:
+        stdout = sys.stdout
+    if stderr is None:
+        stderr = sys.stderr
+
+    if setup_ui:
+        bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
+            stdin, stdout, stderr)
+
+    if bzrlib.version_info[3] == 'final':
+        from bzrlib.symbol_versioning import suppress_deprecation_warnings
+        suppress_deprecation_warnings(override=True)
+
+    import bzrlib.osutils
+    atexit.register(osutils.report_extension_load_failures)

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,10 +17,9 @@
 """bzr upgrade logic."""
 
 
-from bzrlib.bzrdir import BzrDir, BzrDirFormat, format_registry
+from bzrlib.bzrdir import BzrDir, format_registry
 import bzrlib.errors as errors
 from bzrlib.remote import RemoteBzrDir
-from bzrlib.transport import get_transport
 import bzrlib.ui as ui
 
 
@@ -29,26 +28,29 @@ class Convert(object):
     def __init__(self, url, format=None):
         self.format = format
         self.bzrdir = BzrDir.open_unsupported(url)
+        # XXX: Change to cleanup
+        warning_id = 'cross_format_fetch'
+        saved_warning = warning_id in ui.ui_factory.suppressed_warnings
         if isinstance(self.bzrdir, RemoteBzrDir):
             self.bzrdir._ensure_real()
             self.bzrdir = self.bzrdir._real_bzrdir
         if self.bzrdir.root_transport.is_readonly():
             raise errors.UpgradeReadonly
         self.transport = self.bzrdir.root_transport
-        self.pb = ui.ui_factory.nested_progress_bar()
+        ui.ui_factory.suppressed_warnings.add(warning_id)
         try:
             self.convert()
         finally:
-            self.pb.finished()
+            if not saved_warning:
+                ui.ui_factory.suppressed_warnings.remove(warning_id)
 
     def convert(self):
         try:
             branch = self.bzrdir.open_branch()
-            if branch.bzrdir.root_transport.base != \
-                self.bzrdir.root_transport.base:
-                self.pb.note("This is a checkout. The branch (%s) needs to be "
-                             "upgraded separately.",
-                             branch.bzrdir.root_transport.base)
+            if branch.user_url != self.bzrdir.user_url:
+                ui.ui_factory.note("This is a checkout. The branch (%s) needs to be "
+                             "upgraded separately." %
+                             branch.user_url)
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
             # might not be a format we can open without upgrading; see e.g.
@@ -72,12 +74,13 @@ class Convert(object):
             raise errors.BzrError("cannot upgrade from bzrdir format %s" %
                            self.bzrdir._format)
         self.bzrdir.check_conversion_target(format)
-        self.pb.note('starting upgrade of %s', self.transport.base)
+        ui.ui_factory.note('starting upgrade of %s' % self.transport.base)
+
         self.bzrdir.backup_bzrdir()
         while self.bzrdir.needs_format_conversion(format):
             converter = self.bzrdir._format.get_converter(format)
-            self.bzrdir = converter.convert(self.bzrdir, self.pb)
-        self.pb.note("finished")
+            self.bzrdir = converter.convert(self.bzrdir, None)
+        ui.ui_factory.note("finished")
 
 
 def upgrade(url, format=None):

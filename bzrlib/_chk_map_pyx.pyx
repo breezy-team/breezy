@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,43 +29,46 @@ cdef extern from *:
 
 cdef extern from "Python.h":
     ctypedef int Py_ssize_t # Required for older pyrex versions
-    struct _PyObject:
+    ctypedef struct PyObject:
         pass
-    ctypedef _PyObject PyObject
     int PyTuple_CheckExact(object p)
     Py_ssize_t PyTuple_GET_SIZE(object t)
     int PyString_CheckExact(object)
     char *PyString_AS_STRING(object s)
+    PyObject *PyString_FromStringAndSize_ptr "PyString_FromStringAndSize" (char *, Py_ssize_t)
     Py_ssize_t PyString_GET_SIZE(object)
+    void PyString_InternInPlace(PyObject **)
+    long PyInt_AS_LONG(object)
 
     int PyDict_SetItem(object d, object k, object v) except -1
 
-    object PyTuple_New(Py_ssize_t count)
-    void PyTuple_SET_ITEM(object t, Py_ssize_t offset, object)
-
     void Py_INCREF(object)
+    void Py_DECREF_ptr "Py_DECREF" (PyObject *)
 
-    PyObject * PyTuple_GET_ITEM_ptr "PyTuple_GET_ITEM" (object t,
-                                                        Py_ssize_t offset)
-    int PyString_CheckExact_ptr "PyString_CheckExact" (PyObject *p)
-    Py_ssize_t PyString_GET_SIZE_ptr "PyString_GET_SIZE" (PyObject *s)
-    char *PyString_AS_STRING_ptr "PyString_AS_STRING" (PyObject *s)
     object PyString_FromStringAndSize(char*, Py_ssize_t)
 
-cdef extern from "zlib.h":
-    ctypedef unsigned long uLong
-    ctypedef unsigned int uInt
-    ctypedef unsigned char Bytef
+# cimport all of the definitions we will need to access
+from _static_tuple_c cimport StaticTuple,\
+    import_static_tuple_c, StaticTuple_New, \
+    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
+    StaticTuple_GET_SIZE
 
-    uLong crc32(uLong crc, Bytef *buf, uInt len)
+cdef object crc32
+from zlib import crc32
 
 
+# Set up the StaticTuple C_API functionality
+import_static_tuple_c()
+
+cdef object _LeafNode
 _LeafNode = None
+cdef object _InternalNode
 _InternalNode = None
+cdef object _unknown
 _unknown = None
 
 # We shouldn't just copy this from _dirstate_helpers_pyx
-cdef void* _my_memrchr(void *s, int c, size_t n):
+cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
     cdef char *pos
     cdef char *start
@@ -79,21 +82,31 @@ cdef void* _my_memrchr(void *s, int c, size_t n):
     return NULL
 
 
+cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
+    cdef PyObject *py_str
+    if size < 0:
+        raise AssertionError(
+            'tried to create a string with an invalid size: %d @0x%x'
+            % (size, <int>s))
+    py_str = PyString_FromStringAndSize_ptr(s, size)
+    PyString_InternInPlace(&py_str)
+    result = <object>py_str
+    # Casting a PyObject* to an <object> triggers an INCREF from Pyrex, so we
+    # DECREF it to avoid geting immortal strings
+    Py_DECREF_ptr(py_str)
+    return result
+
+
 def _search_key_16(key):
     """See chk_map._search_key_16."""
     cdef Py_ssize_t num_bits
     cdef Py_ssize_t i, j
     cdef Py_ssize_t num_out_bytes
-    cdef Bytef *c_bit
-    cdef uLong c_len
-    cdef uInt crc_val
+    cdef unsigned long crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
-    cdef PyObject *bit
 
-    if not PyTuple_CheckExact(key):
-        raise TypeError('key %r is not a tuple' % (key,))
-    num_bits = PyTuple_GET_SIZE(key)
+    num_bits = len(key)
     # 4 bytes per crc32, and another 1 byte between bits
     num_out_bytes = (9 * num_bits) - 1
     out = PyString_FromStringAndSize(NULL, num_out_bytes)
@@ -102,15 +115,7 @@ def _search_key_16(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        # We use the _ptr variant, because GET_ITEM returns a borrowed
-        # reference, and Pyrex assumes that returned 'object' are a new
-        # reference
-        bit = PyTuple_GET_ITEM_ptr(key, i)
-        if not PyString_CheckExact_ptr(bit):
-            raise TypeError('Bit %d of %r is not a string' % (i, key))
-        c_bit = <Bytef *>PyString_AS_STRING_ptr(bit)
-        c_len = PyString_GET_SIZE_ptr(bit)
-        crc_val = crc32(0, c_bit, c_len)
+        crc_val = PyInt_AS_LONG(crc32(key[i]))
         # Hex(val) order
         sprintf(c_out, '%08X', crc_val)
         c_out = c_out + 8
@@ -122,16 +127,11 @@ def _search_key_255(key):
     cdef Py_ssize_t num_bits
     cdef Py_ssize_t i, j
     cdef Py_ssize_t num_out_bytes
-    cdef Bytef *c_bit
-    cdef uLong c_len
-    cdef uInt crc_val
+    cdef unsigned long crc_val
     cdef Py_ssize_t out_off
     cdef char *c_out
-    cdef PyObject *bit
 
-    if not PyTuple_CheckExact(key):
-        raise TypeError('key %r is not a tuple' % (key,))
-    num_bits = PyTuple_GET_SIZE(key)
+    num_bits = len(key)
     # 4 bytes per crc32, and another 1 byte between bits
     num_out_bytes = (5 * num_bits) - 1
     out = PyString_FromStringAndSize(NULL, num_out_bytes)
@@ -140,13 +140,7 @@ def _search_key_255(key):
         if i > 0:
             c_out[0] = c'\x00'
             c_out = c_out + 1
-        bit = PyTuple_GET_ITEM_ptr(key, i)
-        if not PyString_CheckExact_ptr(bit):
-            raise TypeError('Bit %d of %r is not a string: %r' % (i, key,
-            <object>bit))
-        c_bit = <Bytef *>PyString_AS_STRING_ptr(bit)
-        c_len = PyString_GET_SIZE_ptr(bit)
-        crc_val = crc32(0, c_bit, c_len)
+        crc_val = PyInt_AS_LONG(crc32(key[i]))
         # MSB order
         c_out[0] = (crc_val >> 24) & 0xFF
         c_out[1] = (crc_val >> 16) & 0xFF
@@ -181,6 +175,16 @@ cdef int _get_int_from_line(char **cur, char *end, char *message) except -1:
     return value
 
 
+cdef _import_globals():
+    """Set the global attributes. Done lazy to avoid recursive import loops."""
+    global _LeafNode, _InternalNode, _unknown
+
+    from bzrlib import chk_map
+    _LeafNode = chk_map.LeafNode
+    _InternalNode = chk_map.InternalNode
+    _unknown = chk_map._unknown
+
+
 def _deserialise_leaf_node(bytes, key, search_key_func=None):
     """Deserialise bytes, with key key, into a LeafNode.
 
@@ -195,12 +199,10 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
     cdef char *prefix, *value_start, *prefix_tail
     cdef char *next_null, *last_null, *line_start
     cdef char *c_entry, *entry_start
+    cdef StaticTuple entry_bits
 
     if _LeafNode is None:
-        from bzrlib import chk_map
-        _LeafNode = chk_map.LeafNode
-        _InternalNode = chk_map.InternalNode
-        _unknown = chk_map._unknown
+        _import_globals()
 
     result = _LeafNode(search_key_func=search_key_func)
     # Splitlines can split on '\r' so don't use it, split('\n') adds an
@@ -265,12 +267,14 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
             if next_line == NULL:
                 raise ValueError('missing trailing newline')
             cur = next_line + 1
-        entry_bits = PyTuple_New(width)
+        entry_bits = StaticTuple_New(width)
         for i from 0 <= i < num_prefix_bits:
+            # TODO: Use PyList_GetItem, or turn prefix_bits into a
+            #       tuple/StaticTuple
             entry = prefix_bits[i]
             # SET_ITEM 'steals' a reference
             Py_INCREF(entry)
-            PyTuple_SET_ITEM(entry_bits, i, entry)
+            StaticTuple_SET_ITEM(entry_bits, i, entry)
         value = PyString_FromStringAndSize(value_start, next_line - value_start)
         # The next entry bit needs the 'tail' from the prefix, and first part
         # of the line
@@ -288,7 +292,7 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
             memcpy(c_entry + prefix_tail_len, line_start, next_null - line_start)
         Py_INCREF(entry)
         i = num_prefix_bits
-        PyTuple_SET_ITEM(entry_bits, i, entry)
+        StaticTuple_SET_ITEM(entry_bits, i, entry)
         while next_null != last_null: # We have remaining bits
             i = i + 1
             if i > width:
@@ -301,11 +305,12 @@ def _deserialise_leaf_node(bytes, key, search_key_func=None):
             entry = PyString_FromStringAndSize(entry_start,
                                                next_null - entry_start)
             Py_INCREF(entry)
-            PyTuple_SET_ITEM(entry_bits, i, entry)
-        if len(entry_bits) != width:
+            StaticTuple_SET_ITEM(entry_bits, i, entry)
+        if StaticTuple_GET_SIZE(entry_bits) != width:
             raise AssertionError(
                 'Incorrect number of elements (%d vs %d)'
                 % (len(entry_bits)+1, width + 1))
+        entry_bits = StaticTuple_Intern(entry_bits)
         PyDict_SetItem(items, entry_bits, value)
     if len(items) != length:
         raise ValueError("item count (%d) mismatch for key %s,"
@@ -337,12 +342,11 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     cdef char *prefix, *line_prefix, *next_null, *c_item_prefix
 
     if _InternalNode is None:
-        from bzrlib import chk_map
-        _LeafNode = chk_map.LeafNode
-        _InternalNode = chk_map.InternalNode
-        _unknown = chk_map._unknown
+        _import_globals()
     result = _InternalNode(search_key_func=search_key_func)
 
+    if not StaticTuple_CheckExact(key):
+        raise TypeError('key %r is not a StaticTuple' % (key,))
     if not PyString_CheckExact(bytes):
         raise TypeError('bytes must be a plain string not %s' % (type(bytes),))
 
@@ -384,7 +388,8 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
         memcpy(c_item_prefix + prefix_length, cur, next_null - cur)
         flat_key = PyString_FromStringAndSize(next_null + 1,
                                               next_line - next_null - 1)
-        PyDict_SetItem(items, item_prefix, (flat_key,))
+        flat_key = StaticTuple(flat_key).intern()
+        PyDict_SetItem(items, item_prefix, flat_key)
         cur = next_line + 1
     assert len(items) > 0
     result._items = items
@@ -399,3 +404,50 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     result._search_prefix = PyString_FromStringAndSize(prefix, prefix_length)
     return result
 
+
+def _bytes_to_text_key(bytes):
+    """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
+    cdef StaticTuple key
+    cdef char *byte_str, *cur_end, *file_id_str, *byte_end
+    cdef char *revision_str
+    cdef Py_ssize_t byte_size, pos, file_id_len
+
+    if not PyString_CheckExact(bytes):
+        raise TypeError('bytes must be a string')
+    byte_str = PyString_AS_STRING(bytes)
+    byte_size = PyString_GET_SIZE(bytes)
+    byte_end = byte_str + byte_size
+    cur_end = <char*>memchr(byte_str, c':', byte_size)
+    if cur_end == NULL:
+        raise ValueError('No kind section found.')
+    if cur_end[1] != c' ':
+        raise ValueError('Kind section should end with ": "')
+    file_id_str = cur_end + 2
+    # file_id is now the data up until the next newline
+    cur_end = <char*>memchr(file_id_str, c'\n', byte_end - file_id_str)
+    if cur_end == NULL:
+        raise ValueError('no newline after file-id')
+    file_id = safe_interned_string_from_size(file_id_str,
+                                             cur_end - file_id_str)
+    # this is the end of the parent_str
+    cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
+    if cur_end == NULL:
+        raise ValueError('no newline after parent_str')
+    # end of the name str
+    cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
+    if cur_end == NULL:
+        raise ValueError('no newline after name str')
+    # the next section is the revision info
+    revision_str = cur_end + 1
+    cur_end = <char*>memchr(cur_end + 1, c'\n', byte_end - cur_end - 1)
+    if cur_end == NULL:
+        # This is probably a dir: entry, which has revision as the last item
+        cur_end = byte_end
+    revision = safe_interned_string_from_size(revision_str,
+        cur_end - revision_str)
+    key = StaticTuple_New(2)
+    Py_INCREF(file_id)
+    StaticTuple_SET_ITEM(key, 0, file_id) 
+    Py_INCREF(revision)
+    StaticTuple_SET_ITEM(key, 1, revision) 
+    return StaticTuple_Intern(key)

@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,8 +33,8 @@ import medusa.ftp_server
 from bzrlib import (
     tests,
     trace,
-    transport,
     )
+from bzrlib.tests import test_server
 
 
 class test_filesystem(medusa.filesys.os_filesystem):
@@ -210,8 +210,10 @@ class ftp_server(medusa.ftp_server.ftp_server):
         trace.mutter('ftp_server %s: %s', type, message)
 
 
-class FTPTestServer(transport.Server):
+class FTPTestServer(test_server.TestServer):
     """Common code for FTP server facilities."""
+
+    no_unicode_support = True
 
     def __init__(self):
         self._root = None
@@ -233,9 +235,9 @@ class FTPTestServer(transport.Server):
         """This is used by medusa.ftp_server to log connections, etc."""
         self.logs.append(message)
 
-    def setUp(self, vfs_server=None):
-        from bzrlib.transport.local import LocalURLServer
-        if not (vfs_server is None or isinstance(vfs_server, LocalURLServer)):
+    def start_server(self, vfs_server=None):
+        if not (vfs_server is None or isinstance(vfs_server,
+                                                 test_server.LocalURLServer)):
             raise AssertionError(
                 "FTPServer currently assumes local transport, got %s" % vfs_server)
         self._root = os.getcwdu()
@@ -255,8 +257,7 @@ class FTPTestServer(transport.Server):
         self._async_thread.setDaemon(True)
         self._async_thread.start()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
         self._ftp_server.close()
         asyncore.close_all()
         self._async_thread.join()

@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2004-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,11 +36,16 @@ class TestCatRevision(blackbox.ExternalBase):
         wt.commit('Commit two', rev_id='a@r-0-2')
         wt.commit('Commit three', rev_id='a@r-0-3')
 
-        revs = {
-            1:r.get_revision_xml('a@r-0-1'),
-            2:r.get_revision_xml('a@r-0-2'),
-            3:r.get_revision_xml('a@r-0-3'),
-        }
+        r.lock_read()
+        try:
+            revs = {}
+            for i in (1, 2, 3):
+                revid = "a@r-0-%d" % i
+                stream = r.revisions.get_record_stream([(revid,)], 'unordered', 
+                                                       False) 
+                revs[i] = stream.next().get_bytes_as('fulltext')
+        finally:
+            r.unlock()
 
         self.check_output(revs[1], 'cat-revision a@r-0-1')
         self.check_output(revs[2], 'cat-revision a@r-0-2')
@@ -59,4 +64,10 @@ class TestCatRevision(blackbox.ExternalBase):
         err = self.run_bzr('cat-revision abcd', retcode=3)[1]
         self.assertContainsRe(err, 'The repository .* contains no revision abcd.')
 
-
+    def test_cat_revision_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('a')
+        tree.commit('This revision', rev_id='abcd')
+        output, errors = self.run_bzr(['cat-revision', '-d', 'a', u'abcd'])
+        self.assertContainsRe(output, 'This revision')
+        self.assertEqual('', errors)

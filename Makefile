@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,7 +39,10 @@ extensions:
 check: docs check-nodocs
 
 check-nodocs: extensions
-	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
+	# Generate a stream for PQM to watch.
+	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	# Check that there were no errors reported.
+	subunit-stats < selftest.log
 
 # Run Python style checker (apt-get install pyflakes)
 #
@@ -114,6 +117,7 @@ docs-sphinx: html-sphinx
 clean-sphinx:
 	cd doc/en && make clean
 	cd doc/es && make clean
+	cd doc/ja && make clean
 	cd doc/ru && make clean
 	cd doc/developers && make clean
 
@@ -122,6 +126,8 @@ SPHINX_DEPENDENCIES = \
         doc/en/user-reference/index.txt \
 	doc/es/Makefile \
 	doc/es/make.bat \
+	doc/ja/Makefile \
+	doc/ja/make.bat \
 	doc/ru/Makefile \
 	doc/ru/make.bat \
 	doc/developers/Makefile \
@@ -144,6 +150,7 @@ html-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make html
 	cd doc/es && make html
 	cd doc/ru && make html
+	cd doc/ja && make html
 	cd doc/developers && make html
 
 # Build the PDF docs using Sphinx. This requires numerous LaTeX
@@ -154,6 +161,7 @@ html-sphinx: $(SPHINX_DEPENDENCIES)
 pdf-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make latex
 	cd doc/es && make latex
+	cd doc/ja && make latex
 	cd doc/developers && make latex
 	cd doc/en/_build/latex && make all-pdf
 	cd doc/es/_build/latex && make all-pdf
@@ -166,19 +174,21 @@ chm-sphinx: $(SPHINX_DEPENDENCIES)
 	cd doc/en && make htmlhelp
 	cd doc/es && make htmlhelp
 	cd doc/ru && make htmlhelp
+	cd doc/ja && make htmlhelp
 	cd doc/developers && make htmlhelp
 
 
 ### Documentation Website ###
 
 # Where to build the website
-DOC_WEBSITE_BUILD := build_doc_website
+DOC_WEBSITE_BUILD = build_doc_website
 
 # Build and package docs into a website, complete with downloads.
 doc-website: html-sphinx pdf-sphinx
 	$(PYTHON) tools/package_docs.py doc/en $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/es $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/ru $(DOC_WEBSITE_BUILD)
+	$(PYTHON) tools/package_docs.py doc/ja $(DOC_WEBSITE_BUILD)
 	$(PYTHON) tools/package_docs.py doc/developers $(DOC_WEBSITE_BUILD)
 
 
@@ -188,33 +198,38 @@ doc-website: html-sphinx pdf-sphinx
 # support our "plain" html documentation so that Sphinx is not a hard
 # dependency for packagers on older platforms.
 
-rst2html := $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript --halt=warning
+rst2html = $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=superscript --halt=warning
 
 # translate txt docs to html
-derived_txt_files := \
-	doc/en/user-reference/bzr_man.txt \
+derived_txt_files = \
 	doc/en/release-notes/NEWS.txt
-txt_all := \
+txt_all = \
 	doc/en/tutorials/tutorial.txt \
 	doc/en/tutorials/using_bazaar_with_launchpad.txt \
 	doc/en/tutorials/centralized_workflow.txt \
         $(wildcard doc/es/tutorials/*.txt) \
-        $(wildcard doc/ru/tutorials/*.txt) \
+		$(wildcard doc/ru/tutorials/*.txt) \
+	doc/ja/tutorials/tutorial.txt \
+	doc/ja/tutorials/using_bazaar_with_launchpad.txt \
+	doc/ja/tutorials/centralized_workflow.txt \
 	$(wildcard doc/*/mini-tutorial/index.txt) \
 	$(wildcard doc/*/user-guide/index-plain.txt) \
+	doc/en/admin-guide/index-plain.txt \
 	$(wildcard doc/es/guia-usario/*.txt) \
 	$(derived_txt_files) \
 	doc/en/upgrade-guide/index.txt \
 	doc/index.txt \
 	$(wildcard doc/index.*.txt)
-txt_nohtml := \
+txt_nohtml = \
 	doc/en/user-guide/index.txt \
 	doc/es/user-guide/index.txt \
-	doc/ru/user-guide/index.txt
-txt_files := $(filter-out $(txt_nohtml), $(txt_all))
-htm_files := $(patsubst %.txt, %.html, $(txt_files)) 
+	doc/ja/user-guide/index.txt \
+	doc/ru/user-guide/index.txt \
+	doc/en/admin-guide/index.txt
+txt_files = $(filter-out $(txt_nohtml), $(txt_all))
+htm_files = $(patsubst %.txt, %.html, $(txt_files)) 
 
-non_txt_files := \
+non_txt_files = \
        doc/default.css \
        $(wildcard doc/*/bzr-en-quick-reference.svg) \
        $(wildcard doc/*/bzr-en-quick-reference.png) \
@@ -229,7 +244,7 @@ non_txt_files := \
 
 # doc/developers/*.txt files that should *not* be individually
 # converted to HTML
-dev_txt_nohtml := \
+dev_txt_nohtml = \
 	doc/developers/add.txt \
 	doc/developers/annotate.txt \
 	doc/developers/bundle-creation.txt \
@@ -255,9 +270,9 @@ dev_txt_nohtml := \
 	doc/developers/status.txt \
 	doc/developers/uncommit.txt
 
-dev_txt_all := $(wildcard $(addsuffix /*.txt, doc/developers))
-dev_txt_files := $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
-dev_htm_files := $(patsubst %.txt, %.html, $(dev_txt_files)) 
+dev_txt_all = $(wildcard $(addsuffix /*.txt, doc/developers))
+dev_txt_files = $(filter-out $(dev_txt_nohtml), $(dev_txt_all))
+dev_htm_files = $(patsubst %.txt, %.html, $(dev_txt_files)) 
 
 doc/en/user-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/user-guide)) 
 	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
@@ -268,6 +283,9 @@ doc/en/user-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/user-g
 #doc/ru/user-guide/index.html: $(wildcard $(addsuffix /*.txt, doc/ru/user-guide)) 
 #	$(rst2html) --stylesheet=../../default.css $(dir $@)index.txt $@
 #
+doc/en/admin-guide/index-plain.html: $(wildcard $(addsuffix /*.txt, doc/en/admin-guide)) 
+	$(rst2html) --stylesheet=../../default.css $(dir $@)index-plain.txt $@
+
 doc/developers/%.html: doc/developers/%.txt
 	$(rst2html) --stylesheet=../default.css $< $@
 
@@ -279,9 +297,6 @@ doc/index.%.html: doc/index.%.txt
 
 %.html: %.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
-
-doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
@@ -299,7 +314,7 @@ ALL_DOCS = $(derived_web_docs) $(MAN_PAGES)
 docs-plain: $(ALL_DOCS)
 
 # produce a tree containing just the final docs, ready for uploading to the web
-HTMLDIR := html_docs
+HTMLDIR = html_docs
 html-plain: docs-plain
 	$(PYTHON) tools/win32/ostools.py copytree $(WEB_DOCS) $(HTMLDIR)
 
@@ -325,7 +340,7 @@ doc/developers/performance.png: doc/developers/performance.dot
 # These are files that need to be copied into the build location to boostrap
 # the build process.
 # Note that the path is relative to tools/win32
-BUILDOUT_FILES := buildout.cfg \
+BUILDOUT_FILES = buildout.cfg \
 	buildout-templates/bin/build-installer.bat.in \
 	ostools.py bootstrap.py
 
@@ -394,7 +409,7 @@ clean-win32: clean-docs
 
 ### Packaging Targets ###
 
-.PHONY: dist dist-upload-escudero check-dist-tarball
+.PHONY: dist check-dist-tarball
 
 # build a distribution source tarball
 #
@@ -409,7 +424,7 @@ dist:
 	$(MAKE) clean && \
 	$(MAKE) && \
 	bzr export $$expdir && \
-	cp bzrlib/*.c $$expdir/bzrlib/. && \
+	cp bzrlib/*.c bzrlib/*.h $$expdir/bzrlib/. && \
 	tar cfz $$tarball -C $$expbasedir bzr-$$version && \
 	gpg --detach-sign $$tarball && \
 	rm -rf $$expbasedir
@@ -422,18 +437,3 @@ check-dist-tarball:
 	tar Cxz $$tmpdir -f $$tarball && \
 	$(MAKE) -C $$tmpdir/bzr-$$version check && \
 	rm -rf $$tmpdir
-
-
-# upload previously built tarball to the download directory on bazaar-vcs.org,
-# and verify that it can be downloaded ok.
-dist-upload-escudero:
-	version=`./bzr version --short` && \
-	tarball=../bzr-$$version.tar.gz && \
-	scp $$tarball $$tarball.sig \
-	    escudero.ubuntu.com:/srv/bazaar.canonical.com/www/releases/src \
-		&& \
-	echo verifying over http... && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz \
-		| diff -s - $$tarball && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz.sig \
-		| diff -s - $$tarball.sig 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -96,8 +96,7 @@ garbage""")
         # Override the thresold to force the warning emission
         conn._range_warning_thresold = 6 # There are 7 bytes pending
         conn.cleanup_pipe()
-        self.assertContainsRe(self._get_log(keep_log_file=True),
-                              'Got a 200 response when asking')
+        self.assertContainsRe(self.get_log(), 'Got a 200 response when asking')
 
 
 class TestRangeFileMixin(object):

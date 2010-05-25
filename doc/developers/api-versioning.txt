@@ -86,8 +86,8 @@ the API versioning API, you should compare ``bzrlib.version_info[0:3]``
 with ``(0, 18, 0)``.
 
 +------------+---------------+
-| API        | Covers        | 
-+============+===============+ 
+| API        | Covers        |
++============+===============+
 | bzrlib     | All of bzrlib |
 +------------+---------------+
 

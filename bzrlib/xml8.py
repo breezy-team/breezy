@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ from bzrlib.xml_serializer import (
     XMLSerializer,
     escape_invalid_chars,
     )
-from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
+from bzrlib.inventory import InventoryEntry
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 
@@ -371,7 +371,8 @@ class Serializer_v8(XMLSerializer):
             prop_elt.tail = '\n'
         top_elt.tail = '\n'
 
-    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None):
+    def _unpack_inventory(self, elt, revision_id=None, entry_cache=None,
+                          return_from_cache=False):
         """Construct from XML Element"""
         if elt.tag != 'inventory':
             raise errors.UnexpectedInventoryFormat('Root tag is %r' % elt.tag)
@@ -384,12 +385,13 @@ class Serializer_v8(XMLSerializer):
             revision_id = cache_utf8.encode(revision_id)
         inv = inventory.Inventory(root_id=None, revision_id=revision_id)
         for e in elt:
-            ie = self._unpack_entry(e, entry_cache=entry_cache)
+            ie = self._unpack_entry(e, entry_cache=entry_cache,
+                                    return_from_cache=return_from_cache)
             inv.add(ie)
         self._check_cache_size(len(inv), entry_cache)
         return inv
 
-    def _unpack_entry(self, elt, entry_cache=None):
+    def _unpack_entry(self, elt, entry_cache=None, return_from_cache=False):
         elt_get = elt.get
         file_id = elt_get('file_id')
         revision = elt_get('revision')
@@ -433,9 +435,10 @@ class Serializer_v8(XMLSerializer):
                 pass
             else:
                 # Only copying directory entries drops us 2.85s => 2.35s
-                # if cached_ie.kind == 'directory':
-                #     return cached_ie.copy()
-                # return cached_ie
+                if return_from_cache:
+                    if cached_ie.kind == 'directory':
+                        return cached_ie.copy()
+                    return cached_ie
                 return cached_ie.copy()
 
         kind = elt.tag

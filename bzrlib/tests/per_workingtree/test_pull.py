@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -56,3 +56,15 @@ class TestPull(TestCaseWithWorkingTree):
         tree_b.pull(tree_a.branch)
         self.assertFileEqual('contents of from/file\n', 'to/file')
 
+    def test_pull_changes_root_id(self):
+        tree = self.make_branch_and_tree('from')
+        tree.set_root_id('first_root_id')
+        self.build_tree(['from/file'])
+        tree.add(['file'])
+        tree.commit('first')
+        to_tree = tree.bzrdir.sprout('to').open_workingtree()
+        self.assertEqual('first_root_id', to_tree.get_root_id())
+        tree.set_root_id('second_root_id')
+        tree.commit('second')
+        to_tree.pull(tree.branch)
+        self.assertEqual('second_root_id', to_tree.get_root_id())

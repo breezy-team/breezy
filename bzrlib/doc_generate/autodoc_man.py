@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -171,7 +171,7 @@ man_preamble = """\
 man_head = """\
 .TH bzr 1 "%(datestamp)s" "%(version)s" "Bazaar"
 .SH "NAME"
-Bazaar (%(bzrcmd)s) - next-generation distributed version control
+%(bzrcmd)s - Bazaar next-generation distributed version control
 .SH "SYNOPSIS"
 .B "%(bzrcmd)s"
 .I "command"
@@ -241,7 +241,7 @@ commit = commit --strict
 .br
 log10 = log --short -r -10..-1
 .SH "SEE ALSO"
-.UR http://www.bazaar-vcs.org/
-.BR http://www.bazaar-vcs.org/
+.UR http://www.bazaar.canonical.com/
+.BR http://www.bazaar.canonical.com/
 """
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ cdef extern from "Python.h":
 
     void Py_INCREF(object)
 
+from collections import deque
 import gc
 
 from bzrlib import errors, revision
@@ -192,7 +193,7 @@ cdef class KnownGraph:
     """This is a class which assumes we already know the full graph."""
 
     cdef public object _nodes
-    cdef object _known_heads
+    cdef public object _known_heads
     cdef public int do_cache
 
     def __init__(self, parent_map, do_cache=True):
@@ -232,6 +233,28 @@ cdef class KnownGraph:
             node = <_KnownGraphNode>temp_node
         return node
 
+    cdef _populate_parents(self, _KnownGraphNode node, parent_keys):
+        cdef Py_ssize_t num_parent_keys, pos
+        cdef _KnownGraphNode parent_node
+
+        num_parent_keys = len(parent_keys)
+        # We know how many parents, so we pre allocate the tuple
+        parent_nodes = PyTuple_New(num_parent_keys)
+        for pos from 0 <= pos < num_parent_keys:
+            # Note: it costs us 10ms out of 40ms to lookup all of these
+            #       parents, it doesn't seem to be an allocation overhead,
+            #       but rather a lookup overhead. There doesn't seem to be
+            #       a way around it, and that is one reason why
+            #       KnownGraphNode maintains a direct pointer to the parent
+            #       node.
+            # We use [] because parent_keys may be a tuple or list
+            parent_node = self._get_or_create_node(parent_keys[pos])
+            # PyTuple_SET_ITEM will steal a reference, so INCREF first
+            Py_INCREF(parent_node)
+            PyTuple_SET_ITEM(parent_nodes, pos, parent_node)
+            PyList_Append(parent_node.children, node)
+        node.parents = parent_nodes
+
     def _initialize_nodes(self, parent_map):
         """Populate self._nodes.
 
@@ -242,7 +265,7 @@ cdef class KnownGraph:
           child keys,
         """
         cdef PyObject *temp_key, *temp_parent_keys, *temp_node
-        cdef Py_ssize_t pos, pos2, num_parent_keys
+        cdef Py_ssize_t pos
         cdef _KnownGraphNode node
         cdef _KnownGraphNode parent_node
 
@@ -253,24 +276,8 @@ cdef class KnownGraph:
         while PyDict_Next(parent_map, &pos, &temp_key, &temp_parent_keys):
             key = <object>temp_key
             parent_keys = <object>temp_parent_keys
-            num_parent_keys = len(parent_keys)
             node = self._get_or_create_node(key)
-            # We know how many parents, so we pre allocate the tuple
-            parent_nodes = PyTuple_New(num_parent_keys)
-            for pos2 from 0 <= pos2 < num_parent_keys:
-                # Note: it costs us 10ms out of 40ms to lookup all of these
-                #       parents, it doesn't seem to be an allocation overhead,
-                #       but rather a lookup overhead. There doesn't seem to be
-                #       a way around it, and that is one reason why
-                #       KnownGraphNode maintains a direct pointer to the parent
-                #       node.
-                # We use [] because parent_keys may be a tuple or list
-                parent_node = self._get_or_create_node(parent_keys[pos2])
-                # PyTuple_SET_ITEM will steal a reference, so INCREF first
-                Py_INCREF(parent_node)
-                PyTuple_SET_ITEM(parent_nodes, pos2, parent_node)
-                PyList_Append(parent_node.children, node)
-            node.parents = parent_nodes
+            self._populate_parents(node, parent_keys)
 
     def _find_tails(self):
         cdef PyObject *temp_node
@@ -333,6 +340,76 @@ cdef class KnownGraph:
                     # We have queued this node, we don't need to track it
                     # anymore
                     child.seen = 0
+
+    def add_node(self, key, parent_keys):
+        """Add a new node to the graph.
+
+        If this fills in a ghost, then the gdfos of all children will be
+        updated accordingly.
+        
+        :param key: The node being added. If this is a duplicate, this is a
+            no-op.
+        :param parent_keys: The parents of the given node.
+        :return: None (should we return if this was a ghost, etc?)
+        """
+        cdef PyObject *maybe_node
+        cdef _KnownGraphNode node, parent_node, child_node
+        cdef long parent_gdfo, next_gdfo
+
+        maybe_node = PyDict_GetItem(self._nodes, key)
+        if maybe_node != NULL:
+            node = <_KnownGraphNode>maybe_node
+            if node.parents is None:
+                # We are filling in a ghost
+                self._populate_parents(node, parent_keys)
+                # We can't trust cached heads anymore
+                self._known_heads.clear()
+            else: # Ensure that the parent_key list matches
+                existing_parent_keys = []
+                for parent_node in node.parents:
+                    existing_parent_keys.append(parent_node.key)
+                # Make sure we use a list for the comparison, in case it was a
+                # tuple, etc
+                parent_keys = list(parent_keys)
+                if existing_parent_keys == parent_keys:
+                    # Exact match, nothing more to do
+                    return
+                else:
+                    raise ValueError('Parent key mismatch, existing node %s'
+                        ' has parents of %s not %s'
+                        % (key, existing_parent_keys, parent_keys))
+        else:
+            node = _KnownGraphNode(key)
+            PyDict_SetItem(self._nodes, key, node)
+            self._populate_parents(node, parent_keys)
+        parent_gdfo = 0
+        for parent_node in node.parents:
+            if parent_node.gdfo == -1:
+                # This is a newly introduced ghost, so it gets gdfo of 1
+                parent_node.gdfo = 1
+            if parent_gdfo < parent_node.gdfo:
+                parent_gdfo = parent_node.gdfo
+        node.gdfo = parent_gdfo + 1
+        # Now fill the gdfo to all children
+        # Note that this loop is slightly inefficient, in that we may visit the
+        # same child (and its decendents) more than once, however, it is
+        # 'efficient' in that we only walk to nodes that would be updated,
+        # rather than all nodes
+        # We use a deque rather than a simple list stack, to go for BFD rather
+        # than DFD. So that if a longer path is possible, we walk it before we
+        # get to the final child
+        pending = deque([node])
+        pending_popleft = pending.popleft
+        pending_append = pending.append
+        while pending:
+            node = pending_popleft()
+            next_gdfo = node.gdfo + 1
+            for child_node in node.children:
+                if child_node.gdfo < next_gdfo:
+                    # This child is being updated, we need to check its
+                    # children
+                    child_node.gdfo = next_gdfo
+                    pending_append(child_node)
 
     def heads(self, keys):
         """Return the heads from amongst keys.
@@ -626,7 +703,7 @@ cdef class _MergeSortNode:
             self._revno_first, self._revno_second, self._revno_last,
             self.is_first_child, self.seen_by_child)
 
-    cdef int has_pending_parents(self):
+    cdef int has_pending_parents(self): # cannot_raise
         if self.left_pending_parent is not None or self.pending_parents:
             return 1
         return 0
