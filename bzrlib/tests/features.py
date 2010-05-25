@@ -90,3 +90,7 @@ class ExecutableFeature(tests.Feature):
 
     def feature_name(self):
         return '%s executable' % self.name
+
+
+bash_feature = ExecutableFeature('bash')
+sed_feature = ExecutableFeature('sed')

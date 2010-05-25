@@ -22,14 +22,10 @@ import os
 import subprocess
 
 
-BashFeature = tests.features.ExecutableFeature('bash')
-SedFeature = tests.features.ExecutableFeature('sed')
-
-
 class BashCompletionMixin(object):
     """Component for testing execution of a bash completion script."""
 
-    _test_needs_features = [BashFeature]
+    _test_needs_features = [tests.features.bash_feature]
 
     def complete(self, words, cword=-1):
         """Perform a bash completion.
@@ -39,7 +35,8 @@ class BashCompletionMixin(object):
         """
         if self.script is None:
             self.script = self.get_script()
-        proc = subprocess.Popen([BashFeature.path, '--noprofile'],
+        proc = subprocess.Popen([tests.features.bash_feature.path,
+                                 '--noprofile'],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -166,7 +163,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         return s.replace("$(bzr ", "$('%s' " % self.get_bzr_path())
 
     def test_revspec_tag_all(self):
-        self.requireFeature(SedFeature)
+        self.requireFeature(tests.features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
@@ -175,7 +172,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         self.assertCompletionEquals('tag1', 'tag2', '3tag')
 
     def test_revspec_tag_prefix(self):
-        self.requireFeature(SedFeature)
+        self.requireFeature(tests.features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
