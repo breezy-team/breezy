@@ -3836,8 +3836,12 @@ class cmd_merge(Command):
     def _do_preview(self, merger):
         from bzrlib.diff import show_diff_trees
         result_tree = self._get_preview(merger)
+        path_encoding = 'utf8'
+        if sys.platform == 'win32':
+            path_encoding = 'mbcs'
         show_diff_trees(merger.this_tree, result_tree, self.outf,
-                        old_label='', new_label='')
+                        old_label='', new_label='',
+                        path_encoding=path_encoding)
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
         merger.change_reporter = change_reporter
