@@ -200,10 +200,10 @@ class GioTransport(ConnectedTransport):
     def _mount_done_cb(self, obj, res):
         try:
             obj.mount_enclosing_volume_finish(res)
-        except gio.Error, e:
-            raise errors.BzrError("Failed to mount the given location: " + str(e));
-        finally:
             self.loop.quit()
+        except gio.Error, e:
+            self.loop.quit()
+            raise errors.BzrError("Failed to mount the given location: " + str(e));
 
     def _create_connection(self, credentials=None):
         if credentials is None:
