@@ -471,6 +471,7 @@ class TestingHTTPServerMixin:
             # die, let's shutdown the socket if we can.
             sock.shutdown(socket.SHUT_RDWR)
         except (socket.error, select.error), e:
+            print 'exception in shutdown_client_socket: %r' % (e,)
             if e[0] in (errno.EBADF, errno.ENOTCONN):
                 # Right, the socket is already down
                 pass
