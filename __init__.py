@@ -167,12 +167,13 @@ from bzrlib import (
     errors,
     globbing,
     ignores,
-    revisionspec,
-    transport,
     osutils,
+    revision,
+    revisionspec,
+    trace,
+    transport,
     urlutils,
     workingtree,
-    revision
     )
 """)
 
