@@ -471,11 +471,11 @@ class TestingHTTPServerMixin:
             # die, let's shutdown the socket if we can.
             sock.shutdown(socket.SHUT_RDWR)
         except (socket.error, select.error), e:
-            print 'exception in shutdown_client_socket: %r' % (e,)
             if e[0] in (errno.EBADF, errno.ENOTCONN):
                 # Right, the socket is already down
                 pass
             else:
+                print 'exception in shutdown_client_socket: %r' % (e,)
                 raise
 
 
@@ -671,7 +671,6 @@ class HttpServer(transport.Server):
         started = threading.Event()
         self._http_thread = test_server.ThreadWithException(
             event=started, target=self._http_start, args=(started,))
-        self._http_thread.setDaemon(True)
         self._http_thread.start()
         # Wait for the server thread to start (i.e release the lock)
         started.wait()

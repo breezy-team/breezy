@@ -51,6 +51,7 @@ from bzrlib.tests import (
     features,
     http_server,
     http_utils,
+    test_server,
     )
 from bzrlib.transport import (
     http,
@@ -223,8 +224,8 @@ class RecordingServer(object):
         self._sock.bind(('127.0.0.1', 0))
         self.host, self.port = self._sock.getsockname()
         self._ready = threading.Event()
-        self._thread = threading.Thread(target=self._accept_read_and_reply)
-        self._thread.setDaemon(True)
+        self._thread = test_server.ThreadWithException(
+            event=self._ready, target=self._accept_read_and_reply)
         self._thread.start()
         if 'threads' in tests.selftest_debug_flags:
             print 'Thread started: %s' % (self._thread.ident,)
@@ -232,20 +233,12 @@ class RecordingServer(object):
 
     def _accept_read_and_reply(self):
         self._sock.listen(1)
-        self._sock.settimeout(5)
         self._ready.set()
-        try:
-            conn, address = self._sock.accept()
-            # On win32, the accepted connection will be non-blocking to start
-            # with because we're using settimeout.
-            conn.setblocking(True)
-            if self._expect_body_tail is not None:
-                while not self.received_bytes.endswith(self._expect_body_tail):
-                    self.received_bytes += conn.recv(4096)
-                conn.sendall('HTTP/1.1 200 OK\r\n')
-        except socket.timeout:
-            # Make sure the client isn't stuck waiting for us to e.g. accept.
-            pass
+        conn, address = self._sock.accept()
+        if self._expect_body_tail is not None:
+            while not self.received_bytes.endswith(self._expect_body_tail):
+                self.received_bytes += conn.recv(4096)
+            conn.sendall('HTTP/1.1 200 OK\r\n')
         try:
             self._sock.close()
         except socket.error:

@@ -239,26 +239,27 @@ class ThreadWithException(threading.Thread):
     def __init__(self, *args, **kwargs):
         # There are cases where the calling thread must wait, yet, if an
         # exception occurs the event should be set so the caller is not
-        # blocked.
+        # blocked. The main example is a calling thread that want to wait for
+        # the called thread to be in a given state before continuing.
         try:
             event = kwargs.pop('event')
         except KeyError:
             # If the caller didn't pass a specific event, create our own
             event = threading.Event()
         super(ThreadWithException, self).__init__(*args, **kwargs)
-        self.running = event
+        self.ready = event
         self.exception = None
 
     def run(self):
         """Overrides Thread.run to capture any exception."""
-        self.running.clear()
+        self.ready.clear()
         try:
             super(ThreadWithException, self).run()
         except Exception, e:
             self.exception = sys.exc_info()
         finally:
             # Make sure the calling thread is released
-            self.running.set()
+            self.ready.set()
 
 
     def join(self, *args, **kwargs):
