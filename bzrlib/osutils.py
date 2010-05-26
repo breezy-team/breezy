@@ -1942,6 +1942,13 @@ def get_user_encoding(use_cache=True):
     return user_encoding
 
 
+def get_diff_header_encoding():
+    if sys.platform == 'win32':
+        return 'mbcs'
+    else:
+        return 'utf8'
+
+
 def get_host_name():
     """Return the current unicode host name.
 
