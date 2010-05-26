@@ -237,15 +237,29 @@ class ThreadWithException(threading.Thread):
     """
 
     def __init__(self, *args, **kwargs):
+        # There are cases where the calling thread must wait, yet, if an
+        # exception occurs the event should be set so the caller is not
+        # blocked.
+        try:
+            event = kwargs.pop('event')
+        except KeyError:
+            # If the caller didn't pass a specific event, create our own
+            event = threading.Event()
         super(ThreadWithException, self).__init__(*args, **kwargs)
+        self.running = event
         self.exception = None
 
     def run(self):
         """Overrides Thread.run to capture any exception."""
+        self.running.clear()
         try:
             super(ThreadWithException, self).run()
         except Exception, e:
             self.exception = sys.exc_info()
+        finally:
+            # Make sure the calling thread is released
+            self.running.set()
+
 
     def join(self, *args, **kwargs):
         """Overrides Thread.join to raise any exception caught.
@@ -260,7 +274,8 @@ class ThreadWithException(threading.Thread):
         # means it didn't encounter an exception.
         super(ThreadWithException, self).join(*args, **kwargs)
         if self.exception is not None:
-            raise self.exception
+            exc_class, exc_value, exc_tb = self.exception
+            raise exc_class, exc_value, exc_tb
 
 
 class SmartTCPServer_for_testing(server.SmartTCPServer):

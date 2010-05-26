@@ -340,21 +340,16 @@ class TestHTTPServer(tests.TestCase):
 
     def test_force_invalid_protocol(self):
         server = http_server.HttpServer(protocol_version='HTTP/0.1')
-        try:
-            self.assertRaises(httplib.UnknownProtocol, server.start_server)
-        except:
-            server.stop_server()
-            self.fail('HTTP Server creation did not raise UnknownProtocol')
+        self.addCleanup(server.stop_server)
+        self.assertRaises(httplib.UnknownProtocol, server.start_server)
 
     def test_server_start_and_stop(self):
         server = http_server.HttpServer()
+        self.addCleanup(server.stop_server)
         server.start_server()
-        try:
-            self.assertTrue(server._httpd is not None)
-            self.assertTrue(server._httpd.serving is not None)
-            self.assertTrue(server._httpd.serving.isSet())
-        finally:
-            server.stop_server()
+        self.assertTrue(server._httpd is not None)
+        self.assertTrue(server._httpd.serving is not None)
+        self.assertTrue(server._httpd.serving.isSet())
 
     def test_create_http_server_one_zero(self):
         class RequestHandlerOneZero(http_server.TestingHTTPRequestHandler):

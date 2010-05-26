@@ -626,24 +626,10 @@ class HttpServer(transport.Server):
 
     def _http_start(self, started):
         """Server thread main entry point. """
-        server = None
-        try:
-            server = self._get_httpd()
-            self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
-                                                   self.host, self.port)
-        except:
-            # Whatever goes wrong, we save the exception for the main
-            # thread. Note that since we are running in a thread, no signal
-            # can be received, so we don't care about KeyboardInterrupt.
-            self._http_exception = sys.exc_info()
-
-        if server is not None:
-            # From now on, exceptions are taken care of by the
-            # SocketServer.BaseServer or the request handler.
-            server.serve(started)
-        if not started.isSet():
-            # Hmm, something went wrong, but we can release the caller anyway
-            started.set()
+        server = self._get_httpd()
+        self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
+                                               self.host, self.port)
+        server.serve(started)
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)
@@ -679,35 +665,37 @@ class HttpServer(transport.Server):
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
         self._http_base_url = None
+        self.logs = []
 
         # Create the server thread
         started = threading.Event()
-        self._http_thread = threading.Thread(target=self._http_start,
-                                             args = (started,))
+        self._http_thread = test_server.ThreadWithException(
+            event=started, target=self._http_start, args=(started,))
         self._http_thread.setDaemon(True)
-        self._http_exception = None
         self._http_thread.start()
         # Wait for the server thread to start (i.e release the lock)
         started.wait()
-        self._http_thread.name = self._http_base_url
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Thread started: %s' % (self._http_thread.name,)
+        if self._httpd is None:
+            if 'threads' in tests.selftest_debug_flags:
+                print 'Server %s:% start failed ' % (self.host, self.port)
+        else:
+            self._http_thread.name = self._http_base_url
+            if 'threads' in tests.selftest_debug_flags:
+                print 'Thread started: %s' % (self._http_thread.name,)
 
-
-        if self._http_exception is not None:
-            # Something went wrong during server start
-            exc_class, exc_value, exc_tb = self._http_exception
-            raise exc_class, exc_value, exc_tb
-        self.logs = []
+        # If an exception occured during the server start, it will get raised
+        self._http_thread.join(timeout=0)
 
     def stop_server(self):
         """See bzrlib.transport.Server.tearDown."""
-        self._httpd.shutdown()
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Try    joining: %s' % (self._http_thread.name,)
-        self._httpd.join_thread(self._http_thread)
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Thread  joined: %s' % (self._http_thread.name,)
+        if self._httpd is not None:
+            # The server has been started successfully, shut it down now
+            self._httpd.shutdown()
+            if 'threads' in tests.selftest_debug_flags:
+                print 'Try    joining: %s' % (self._http_thread.name,)
+            self._httpd.join_thread(self._http_thread)
+            if 'threads' in tests.selftest_debug_flags:
+                print 'Thread  joined: %s' % (self._http_thread.name,)
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""
