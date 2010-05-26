@@ -64,6 +64,10 @@ New Features
 Bug Fixes
 *********
 
+* Alias information shown by ``bzr help`` is now accurate. This
+  was showing an internal object name for some plugin aliases.
+  (Parth Malwankar, #584650)
+
 * ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
   group ownership from the containing directory. This allow bzr to work
   better with sudo.
