@@ -248,7 +248,12 @@ class ThreadWithException(threading.Thread):
             self.exception = sys.exc_info()
 
     def join(self, *args, **kwargs):
-        """Overrides Thread.join to raise any exception caught."""
+        """Overrides Thread.join to raise any exception caught.
+
+
+        Calling join(timeout=0) will raise the caught exception or return None
+        is the thread is still alive.
+        """
         # Note that we don't care about the timeout parameter here: either the
         # thread has raised an exception and it should be raised (and join()
         # should succeed whatever the timeout is) or it's still alive which
