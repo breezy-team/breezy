@@ -498,9 +498,7 @@ class Unshelver(object):
         new_tree = tt.get_preview_tree()
         if self.write_diff_to is None:
             self.write_diff_to = ui.ui_factory.make_output_stream()
-        path_encoding = 'utf8'
-        if sys.platform == 'win32':
-            path_encoding = 'mbcs'
+        path_encoding = osutils.get_diff_header_encoding()
         diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to,
             path_encoding=path_encoding)
         tt.finalize()

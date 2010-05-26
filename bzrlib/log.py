@@ -70,6 +70,7 @@ from bzrlib import (
     diff,
     errors,
     foreign,
+    osutils,
     repository as _mod_repository,
     revision as _mod_revision,
     revisionspec,
@@ -420,9 +421,7 @@ class _DefaultLogGenerator(LogGenerator):
         else:
             specific_files = None
         s = StringIO()
-        path_encoding = 'utf8'
-        if sys.platform == 'win32':
-            path_encoding = get_terminal_encoding()
+        path_encoding = osutils.get_diff_header_encoding()
         diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
             new_label='', path_encoding=path_encoding)
         return s.getvalue()

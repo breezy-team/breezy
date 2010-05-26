@@ -1949,9 +1949,7 @@ class cmd_diff(Command):
          specific_files, extra_trees) = get_trees_and_branches_to_diff(
             file_list, revision, old, new, apply_view=True)
         # GNU diff on Windows uses ANSI encoding for filenames
-        path_encoding = 'utf8'
-        if sys.platform == 'win32':
-            path_encoding = 'mbcs'
+        path_encoding = osutils.get_diff_header_encoding()
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
@@ -3836,9 +3834,7 @@ class cmd_merge(Command):
     def _do_preview(self, merger):
         from bzrlib.diff import show_diff_trees
         result_tree = self._get_preview(merger)
-        path_encoding = 'utf8'
-        if sys.platform == 'win32':
-            path_encoding = 'mbcs'
+        path_encoding = osutils.get_diff_header_encoding()
         show_diff_trees(merger.this_tree, result_tree, self.outf,
                         old_label='', new_label='',
                         path_encoding=path_encoding)
