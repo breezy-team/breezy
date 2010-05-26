@@ -276,9 +276,7 @@ A hook of type *xxx* of class *yyy* needs to be registered using::
 
   yyy.hooks.install_named_hook("xxx", ...)
 
-See `Using hooks`_ in the User Guide for examples.
-
-.. _Using hooks: ../user-guide/hooks.html
+See :doc:`Using hooks<../user-guide/hooks>` in the User Guide for examples.
 
 The class that contains each hook is given before the hooks it supplies. For
 instance, BranchHooks as the class is the hooks class for
