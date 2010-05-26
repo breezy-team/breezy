@@ -18,6 +18,7 @@
 
 import errno
 import os.path
+import select
 import socket
 import sys
 import threading
@@ -174,6 +175,7 @@ class SmartTCPServer(object):
             None, handler.serve, name=thread_name)
         connection_thread.setDaemon(True)
         connection_thread.start()
+        return connection_thread
 
     def start_background_thread(self, thread_name_suffix=''):
         self._started.clear()

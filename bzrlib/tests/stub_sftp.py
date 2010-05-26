@@ -527,7 +527,7 @@ class SFTPServerWithoutSSH(SFTPServer):
                 raise
         except Exception, e:
             # This typically seems to happen during interpreter shutdown, so
-            # most of the useful ways to report this error are won't work.
+            # most of the useful ways to report this error won't work.
             # Writing the exception type, and then the text of the exception,
             # seems to be the best we can do.
             import sys

@@ -3567,15 +3567,17 @@ class cmd_selftest(Command):
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
-        from bzrlib.tests import selftest
-        import bzrlib.benchmarks as benchmarks
-        from bzrlib.benchmarks import tree_creator
+        from bzrlib import (
+            benchmarks,
+            tests,
+            )
 
         # Make deprecation warnings visible, unless -Werror is set
         symbol_versioning.activate_deprecation_warnings(override=False)
 
         if cache_dir is not None:
-            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
+            benchmarks.tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(
+                cache_dir)
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
@@ -3627,7 +3629,7 @@ class cmd_selftest(Command):
                           "starting_with": starting_with
                           }
         selftest_kwargs.update(self.additional_selftest_args)
-        result = selftest(**selftest_kwargs)
+        result = tests.selftest(**selftest_kwargs)
         return int(not result)
 
 

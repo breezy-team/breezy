@@ -114,11 +114,6 @@ from bzrlib.tests import (
     TestUtil,
     treeshape,
     )
-from bzrlib.tests.http_server import HttpServer
-from bzrlib.tests.TestUtil import (
-                          TestSuite,
-                          TestLoader,
-                          )
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
@@ -846,6 +841,8 @@ class TestCase(testtools.TestCase):
         # going away but leak one) but it seems less likely than the actual
         # false positives (the test see threads going away and does not leak).
         if leaked_threads > 0:
+            if 'threads' in selftest_debug_flags:
+                print '%s is leaking, active is now %d' % (self.id(), active)
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
@@ -2725,9 +2722,10 @@ class ChrootedTestCase(TestCaseWithTransport):
     """
 
     def setUp(self):
+        from bzrlib.tests import http_server
         super(ChrootedTestCase, self).setUp()
         if not self.vfs_transport_factory == memory.MemoryServer:
-            self.transport_readonly_server = HttpServer
+            self.transport_readonly_server = http_server.HttpServer
 
 
 def condition_id_re(pattern):
@@ -3055,7 +3053,7 @@ def identity_decorator(suite):
     return suite
 
 
-class TestDecorator(TestSuite):
+class TestDecorator(TestUtil.TestSuite):
     """A decorator for TestCase/TestSuite objects.
     
     Usually, subclasses should override __iter__(used when flattening test
@@ -3064,7 +3062,7 @@ class TestDecorator(TestSuite):
     """
 
     def __init__(self, suite):
-        TestSuite.__init__(self)
+        TestUtil.TestSuite.__init__(self)
         self.addTest(suite)
 
     def countTestCases(self):
@@ -3237,7 +3235,7 @@ def fork_for_tests(suite):
 
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
-        process_suite = TestSuite()
+        process_suite = TestUtil.TestSuite()
         process_suite.addTests(process_tests)
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
@@ -3393,6 +3391,8 @@ class ProfileResult(ForwardingResult):
 #                           rather than failing tests. And no longer raise
 #                           LockContention when fctnl locks are not being used
 #                           with proper exclusion rules.
+#   -Ethreads               Will display thread ident at creation/join time to
+#                           help track thread leaks
 selftest_debug_flags = set()
 
 
@@ -3981,7 +3981,7 @@ def multiply_tests(tests, scenarios, result):
     ...     bzrlib.tests.test_sampler.DemoTest('test_nothing'),
     ...     [('one', dict(param=1)),
     ...      ('two', dict(param=2))],
-    ...     TestSuite())
+    ...     TestUtil.TestSuite())
     >>> tests = list(iter_suite_tests(r))
     >>> len(tests)
     2

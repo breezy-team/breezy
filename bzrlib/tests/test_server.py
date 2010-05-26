@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2010 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -13,6 +13,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+import socket
+import select
+
 
 from bzrlib import (
     transport,
@@ -233,6 +237,9 @@ class SmartTCPServer_for_testing(server.SmartTCPServer):
         super(SmartTCPServer_for_testing, self).__init__(None)
         self.client_path_extra = None
         self.thread_name_suffix = thread_name_suffix
+        # We collect the sockets/threads used by the clients so we can
+        # close/join them when shutting down
+        self.clients = []
 
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
@@ -265,8 +272,41 @@ class SmartTCPServer_for_testing(server.SmartTCPServer):
         self.root_client_path = self.client_path_extra = client_path_extra
         self.start_background_thread(self.thread_name_suffix)
 
+    def serve_conn(self, conn, thread_name_suffix):
+        conn_thread = super(SmartTCPServer_for_testing, self).serve_conn(
+            conn, thread_name_suffix)
+        self.clients.append((conn, conn_thread))
+        return conn_thread
+
+    def shutdown_client(self, client_socket):
+        """Properly shutdown a client socket.
+
+        Under some circumstances (as in bug #383920), we need to force the
+        shutdown as python delays it until gc occur otherwise and the client
+        may hang.
+
+        This should be called only when no other thread is trying to use the
+        socket.
+        """
+        try:
+            # The request process has been completed, the thread is about to
+            # die, let's shutdown the socket if we can.
+            client_socket.shutdown(socket.SHUT_RDWR)
+        except (socket.error, select.error), e:
+            if e[0] in (errno.EBADF, errno.ENOTCONN):
+                # Right, the socket is already down
+                pass
+            else:
+                raise
+
     def stop_server(self):
         self.stop_background_thread()
+        # Let's close all our pending clients too
+        for sock, thread in self.clients:
+            self.shutdown_client(sock)
+            thread.join()
+            del thread
+        self.clients = []
         self.chroot_server.stop_server()
 
     def get_url(self):

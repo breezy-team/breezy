@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,18 +30,24 @@ class TestingHTTPSServerMixin:
         self.key_file = key_file
         self.cert_file = cert_file
 
-    def get_request (self):
-        """Get the request and client address from the socket.
+    def _get_ssl_request (self, sock, addr):
+        """Wrap the socket with SSL"""
+        ssl_sock = ssl.wrap_socket(sock, server_side=True,
+                                   keyfile=self.key_file,
+                                   certfile=self.cert_file,
+                                   do_handshake_on_connect=False)
+        return ssl_sock, addr
 
-        This is called in response to a connection issued to the server, we
-        wrap the socket with SSL.
+    def verify_request(self, request, client_address):
+        """Verify the request.
+
+        Return True if we should proceed with this request, False if we should
+        not even touch a single byte in the socket !
         """
-        sock, addr = self.socket.accept()
-        sslconn = ssl.wrap_socket(sock, server_side=True,
-                                  keyfile=self.key_file,
-                                  certfile=self.cert_file)
-        return sslconn, addr
-
+        serving = self.serving is not None and self.serving.isSet()
+        if serving:
+            request.do_handshake()
+        return serving
 
 class TestingHTTPSServer(TestingHTTPSServerMixin,
                          http_server.TestingHTTPServer):
@@ -52,6 +58,10 @@ class TestingHTTPSServer(TestingHTTPSServerMixin,
         http_server.TestingHTTPServer.__init__(
             self, server_address, request_handler_class, test_case_server)
 
+    def _get_request (self):
+        sock, addr = http_server.TestingHTTPServer._get_request(self)
+        return self._get_ssl_request(sock, addr)
+
 
 class TestingThreadingHTTPSServer(TestingHTTPSServerMixin,
                                   http_server.TestingThreadingHTTPServer):
@@ -61,6 +71,10 @@ class TestingThreadingHTTPSServer(TestingHTTPSServerMixin,
         TestingHTTPSServerMixin.__init__(self, key_file, cert_file)
         http_server.TestingThreadingHTTPServer.__init__(
             self, server_address, request_handler_class, test_case_server)
+
+    def _get_request (self):
+        sock, addr = http_server.TestingThreadingHTTPServer._get_request(self)
+        return self._get_ssl_request(sock, addr)
 
 
 class HTTPSServer(http_server.HttpServer):
@@ -73,7 +87,7 @@ class HTTPSServer(http_server.HttpServer):
                          }
 
     # Provides usable defaults since an https server requires both a
-    # private key and certificate to work.
+    # private key and a certificate to work.
     def __init__(self, request_handler=http_server.TestingHTTPRequestHandler,
                  protocol_version=None,
                  key_file=ssl_certs.build_path('server_without_pass.key'),
