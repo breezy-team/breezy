@@ -16,6 +16,8 @@
 
 import socket
 import select
+import sys
+import threading
 
 
 from bzrlib import (
@@ -225,6 +227,35 @@ class TestingChrootServer(chroot.ChrootServer):
 
     def get_bogus_url(self):
         raise NotImplementedError
+
+
+class ThreadWithException(threading.Thread):
+    """A catching exception thread.
+
+    If an exception occurs during the thread execution, it's caught and
+    re-raised when the thread is joined().
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(ThreadWithException, self).__init__(*args, **kwargs)
+        self.exception = None
+
+    def run(self):
+        """Overrides Thread.run to capture any exception."""
+        try:
+            super(ThreadWithException, self).run()
+        except Exception, e:
+            self.exception = sys.exc_info()
+
+    def join(self, *args, **kwargs):
+        """Overrides Thread.join to raise any exception caught."""
+        # Note that we don't care about the timeout parameter here: either the
+        # thread has raised an exception and it should be raised (and join()
+        # should succeed whatever the timeout is) or it's still alive which
+        # means it didn't encounter an exception.
+        super(ThreadWithException, self).join(*args, **kwargs)
+        if self.exception is not None:
+            raise self.exception
 
 
 class SmartTCPServer_for_testing(server.SmartTCPServer):

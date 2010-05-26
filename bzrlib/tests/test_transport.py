@@ -989,3 +989,25 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # And the rest are threads
         for t in started[1:]:
             t.join()
+
+
+class TestThreadWithException(tests.TestCase):
+
+    def test_start_and_join_smoke_test(self):
+        def do_nothing():
+            pass
+
+        tt = test_server.ThreadWithException(target=do_nothing)
+        tt.start()
+        tt.join()
+
+    def test_exception_is_re_raised(self):
+        class MyException(Exception):
+            pass
+
+        def raise_my_exception():
+            raise MyException()
+
+        tt = test_server.ThreadWithException(target=raise_my_exception)
+        tt.start()
+        self.assertRaises(MyException, tt.join)
