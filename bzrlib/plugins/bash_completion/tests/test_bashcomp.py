@@ -181,7 +181,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         self.assertCompletionEquals('tag1', 'tag2')
 
     def test_revspec_tag_spaces(self):
-        self.requireFeature(SedFeature)
+        self.requireFeature(tests.features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag with spaces', 'null:')
         self.complete(['bzr', 'log', '-r', 'tag', ':', 't'])
@@ -192,7 +192,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         self.assertCompletionEquals('tag:tag with spaces')
 
     def test_revspec_tag_endrange(self):
-        self.requireFeature(SedFeature)
+        self.requireFeature(tests.features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
