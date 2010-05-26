@@ -20,6 +20,12 @@ Bug Fixes
 * ``bzr switch`` does not die if a ConfigurableFileMerger is used.
   (Aaron Bentley, #559436)
 
+* Do not register a SIGWINCH signal handler, instead just poll for the
+  terminal width as needed.  This avoids the "Interrupted System Call"
+  problems that occur on POSIX with all currently released versions of
+  Python.
+  (Andrew Bennetts, #583941)
+
 * Fixed ``AssertionError`` when accessing smart servers running Bazaar
   versions before 1.6.
   (Andrew Bennetts, #528041)
@@ -27,7 +33,7 @@ Bug Fixes
 * Reset ``siginterrupt`` flag to False every time we handle a signal
   installed with ``set_signal_handler(..., restart_syscall=True)`` (from
   ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
-  errors after two window resizes.
+  errors compared to registering ``signal.signal`` directly.
   (Andrew Bennetts)
 
 * Reduce peak memory by one copy of compressed text.

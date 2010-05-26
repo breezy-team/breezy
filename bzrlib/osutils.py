@@ -1416,24 +1416,23 @@ def terminal_width():
         pass
 
     isatty = getattr(sys.stdout, 'isatty', None)
-    if  isatty is None or not isatty():
+    if isatty is None or not isatty():
         # Don't guess, setting BZR_COLUMNS is the recommended way to override.
         return None
 
-    # If COLUMNS is set, take it, the terminal knows better (even inside a
-    # given terminal, the application can decide to set COLUMNS to a lower
-    # value (splitted screen) or a bigger value (scroll bars))
+    # If the OS knows how wide the terminal is, use that.
+    width, height = _terminal_size(None, None)
+    if width is not None and width > 0:
+        return width
+
+    # If COLUMNS is set, use it.
     try:
         return int(os.environ['COLUMNS'])
     except (KeyError, ValueError):
         pass
 
-    width, height = _terminal_size(None, None)
-    if width <= 0:
-        # Consider invalid values as meaning no width
-        return None
-
-    return width
+    # Return None if the width could not be determined.
+    return None
 
 
 def _win32_terminal_size(width, height):
@@ -1464,29 +1463,6 @@ if sys.platform == 'win32':
     _terminal_size = _win32_terminal_size
 else:
     _terminal_size = _ioctl_terminal_size
-
-
-def _terminal_size_changed(signum, frame):
-    """Set COLUMNS upon receiving a SIGnal for WINdow size CHange."""
-    width, height = _terminal_size(None, None)
-    if width is not None:
-        os.environ['COLUMNS'] = str(width)
-
-
-_registered_sigwinch = False
-
-def watch_sigwinch():
-    """Register for SIGWINCH, once and only once."""
-    global _registered_sigwinch
-    if not _registered_sigwinch:
-        if sys.platform == 'win32':
-            # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from
-            # ReadConsoleInput but I've no idea how to plug that in
-            # the current design -- vila 20091216
-            pass
-        else:
-            set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
-        _registered_sigwinch = True
 
 
 def supports_executable():
