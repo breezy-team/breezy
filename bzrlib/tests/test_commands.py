@@ -84,6 +84,11 @@ class TestCommands(tests.TestCase):
             pass
         self.assertRaises(ValueError, cmd_foo)
 
+    def test_builtin_command_names(self):
+        cmds = commands.builtin_command_names()
+        self.assertTrue(len(cmds) > 0)
+        self.assertTrue('diff' in cmds)
+
 
 class TestGetAlias(tests.TestCase):
 
@@ -338,6 +343,7 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
+
 
 class TestDeprecations(tests.TestCase):
 
