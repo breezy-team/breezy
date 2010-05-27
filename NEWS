@@ -8,7 +8,11 @@ Bazaar Release Notes
 bzr 2.1.2
 #########
 
-:2.1.2: NOT RELEASED YET
+:2.1.2: 2010-05-28
+
+This release fixes two critical networking issues with older servers and
+with interrupted system call errors when pushing or pulling.  We recommend
+upgrading to anyone running a 2.1.x version of bzr.
 
 Bug Fixes
 *********
