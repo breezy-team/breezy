@@ -20,6 +20,11 @@ New Features
 Bug Fixes
 *********
 
+* Final fix for 'no help for command' issue. We now show a clean message
+  when a command has no help, document how to set help more clearly, and
+  test that all commands available to the test suite have help.
+  (Robert Collins, #177500)
+
 Improvements
 ************
 
