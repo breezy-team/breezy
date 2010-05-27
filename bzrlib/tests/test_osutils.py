@@ -1928,6 +1928,18 @@ class TestFailedToLoadExtension(tests.TestCase):
 
 class TestTerminalWidth(tests.TestCase):
 
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self._orig_terminal_size_state = osutils._terminal_size_state
+        self._orig_first_terminal_size = osutils._first_terminal_size
+        self.addCleanup(self.restore_osutils_globals)
+        osutils._terminal_size_state = 'no_data'
+        osutils._first_terminal_size = None
+
+    def restore_osutils_globals(self):
+        osutils._terminal_size_state = self._orig_terminal_size_state
+        osutils._first_terminal_size = self._orig_first_terminal_size
+        
     def replace_stdout(self, new):
         orig_stdout = sys.stdout
         def restore():

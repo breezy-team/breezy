@@ -1385,6 +1385,12 @@ This is defined so that higher levels can share a common fallback value when
 terminal_width() returns None.
 """
 
+# Keep some state so that terminal_width can detect if _terminal_size has
+# returned a different size since the process started.  See docstring and
+# comments of terminal_width for details.
+# _terminal_size_state has 3 possible values: no_data, unchanged, and changed.
+_terminal_size_state = 'no_data'
+_first_terminal_size = None
 
 def terminal_width():
     """Return terminal width.
@@ -1394,20 +1400,34 @@ def terminal_width():
     The rules are:
     - if BZR_COLUMNS is set, returns its value
     - if there is no controlling terminal, returns None
+    - query the OS, if the queried size has changed since the last query,
+      return its value,
     - if COLUMNS is set, returns its value,
+    - if the OS has a value (even though it's never changed), return its value.
 
     From there, we need to query the OS to get the size of the controlling
     terminal.
 
-    Unices:
+    On Unices we query the OS by:
     - get termios.TIOCGWINSZ
     - if an error occurs or a negative value is obtained, returns None
 
-    Windows:
-    
+    On Windows we query the OS by:
     - win32utils.get_console_size() decides,
     - returns None on error (provided default value)
     """
+    # Note to implementors: if changing the rules for determining the width,
+    # make sure you've considered the behaviour in these cases:
+    #  - M-x shell in emacs, where $COLUMNS is set and TIOCGWINSZ returns 0,0.
+    #  - bzr log | less, in bash, where $COLUMNS not set and TIOCGWINSZ returns
+    #    0,0.
+    #  - (add more interesting cases here, if you find any)
+    # Some programs implement "Use $COLUMNS (if set) until SIGWINCH occurs",
+    # but we don't want to register a signal handler because it is impossible
+    # to do so without risking EINTR errors in Python <= 2.6.5 (see
+    # <http://bugs.python.org/issue8354>).  Instead we check TIOCGWINSZ every
+    # time so we can notice if the reported size has changed, which should have
+    # a similar effect.
 
     # If BZR_COLUMNS is set, take it, user is always right
     try:
@@ -1416,24 +1436,39 @@ def terminal_width():
         pass
 
     isatty = getattr(sys.stdout, 'isatty', None)
-    if  isatty is None or not isatty():
+    if isatty is None or not isatty():
         # Don't guess, setting BZR_COLUMNS is the recommended way to override.
         return None
 
-    # If COLUMNS is set, take it, the terminal knows better (even inside a
-    # given terminal, the application can decide to set COLUMNS to a lower
-    # value (splitted screen) or a bigger value (scroll bars))
+    # Query the OS
+    width, height = os_size = _terminal_size(None, None)
+    global _first_terminal_size, _terminal_size_state
+    if _terminal_size_state == 'no_data':
+        _first_terminal_size = os_size
+        _terminal_size_state = 'unchanged'
+    elif (_terminal_size_state == 'unchanged' and
+          _first_terminal_size != os_size):
+        _terminal_size_state = 'changed'
+
+    # If the OS claims to know how wide the terminal is, and this value has
+    # ever changed, use that.
+    if _terminal_size_state == 'changed':
+        if width is not None and width > 0:
+            return width
+
+    # If COLUMNS is set, use it.
     try:
         return int(os.environ['COLUMNS'])
     except (KeyError, ValueError):
         pass
 
-    width, height = _terminal_size(None, None)
-    if width <= 0:
-        # Consider invalid values as meaning no width
-        return None
+    # Finally, use an unchanged size from the OS, if we have one.
+    if _terminal_size_state == 'unchanged':
+        if width is not None and width > 0:
+            return width
 
-    return width
+    # The width could not be determined.
+    return None
 
 
 def _win32_terminal_size(width, height):
@@ -1464,29 +1499,6 @@ if sys.platform == 'win32':
     _terminal_size = _win32_terminal_size
 else:
     _terminal_size = _ioctl_terminal_size
-
-
-def _terminal_size_changed(signum, frame):
-    """Set COLUMNS upon receiving a SIGnal for WINdow size CHange."""
-    width, height = _terminal_size(None, None)
-    if width is not None:
-        os.environ['COLUMNS'] = str(width)
-
-
-_registered_sigwinch = False
-
-def watch_sigwinch():
-    """Register for SIGWINCH, once and only once."""
-    global _registered_sigwinch
-    if not _registered_sigwinch:
-        if sys.platform == 'win32':
-            # Martin (gz) mentioned WINDOW_BUFFER_SIZE_RECORD from
-            # ReadConsoleInput but I've no idea how to plug that in
-            # the current design -- vila 20091216
-            pass
-        else:
-            set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
-        _registered_sigwinch = True
 
 
 def supports_executable():
