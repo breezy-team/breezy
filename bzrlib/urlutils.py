@@ -497,13 +497,18 @@ def split_segment_parameters(url):
 
 
 def join_segment_parameters_raw(base, *subsegments):
-    """Create a new URL by adding subsegments to an existing one.
+    """Create a new URL by adding subsegments to an existing one. 
+
+    This adds the specified subsegments to the last path in the specified
+    base URL. The subsegments should be bytestrings.
 
     :note: You probably want to use join_segment_parameters instead.
     """
     if not subsegments:
         return base
     for subsegment in subsegments:
+        if type(subsegment) is not str:
+            raise TypeError("Subsegment %r is not a bytestring" % subsegment)
         if "," in subsegment:
             raise errors.InvalidURLJoin(", exists in subsegments",
                                         base, subsegments)
@@ -513,13 +518,21 @@ def join_segment_parameters_raw(base, *subsegments):
 def join_segment_parameters(url, parameters):
     """Create a new URL by adding segment parameters to an existing one.
 
+    The parameters of the last segment in the URL will be updated; if a
+    parameter with the same key already exists it will be overwritten.
+
     :param url: A URL, as string
-    :param parameters: Dictionary of parameters
+    :param parameters: Dictionary of parameters, keys and values as bytestrings
     """
     (base, existing_parameters) = split_segment_parameters(url)
     new_parameters = {}
     new_parameters.update(existing_parameters)
     for key, value in parameters.iteritems():
+        if type(key) is not str:
+            raise TypeError("parameter key %r is not a bytestring" % key)
+        if type(value) is not str:
+            raise TypeError("parameter value %r for %s is not a bytestring" %
+                (key, value))
         if "=" in key:
             raise errors.InvalidURLJoin("= exists in parameter key", url,
                 parameters)

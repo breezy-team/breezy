@@ -284,6 +284,8 @@ class TestUrlToPath(TestCase):
         self.assertEquals("/somedir,exist=some/path,bla,bar",
             join_segment_parameters_raw("/somedir,exist=some/path",
                 "bla", "bar"))
+        self.assertRaises(TypeError, join_segment_parameters_raw, 
+            "/somepath", 42)
 
     def test_join_segment_parameters(self):
         join_segment_parameters = urlutils.join_segment_parameters
@@ -310,6 +312,8 @@ class TestUrlToPath(TestCase):
                 {"key1": "val1"}))
         self.assertEquals("/,key1=val1,key2=val2",
             join_segment_parameters("/,key1=val1", {"key2": "val2"}))
+        self.assertRaises(TypeError,
+            join_segment_parameters, "/,key1=val1", {"foo": 42})
 
     def test_function_type(self):
         if sys.platform == 'win32':
