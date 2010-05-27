@@ -26,6 +26,11 @@ New Features
   pack operation.
   (Parth Malwankar, #304320)
 
+* A new transport based on GIO (the gnome i/o library) provides access to
+  samba shares, webdav using gio+smb and gio+dav. It is also possible to
+  use gio for some already existing transport methods as gio+file,
+  gio+sftp, gio+ftp. 
+
 Bug Fixes
 *********
 
