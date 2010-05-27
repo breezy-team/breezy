@@ -525,7 +525,7 @@ def join_segment_parameters(url, parameters):
                 parameters)
         new_parameters[key] = value
     return join_segment_parameters_raw(base, 
-        *["%s=%s" % item for item in new_parameters.items()])
+        *["%s=%s" % item for item in sorted(new_parameters.items())])
 
 
 def _win32_strip_local_trailing_slash(url):
