@@ -536,70 +536,49 @@ class UnicodeShlex(object):
         # self._quote_match = re.compile(u'[\'"]').match
         self._escape_match = lambda x: None # Never matches
         self._escape = '\\'
-        # State can be
-        #   ' ' - after whitespace, starting a new token
-        #   'a' - after text, currently working on a token
-        #   '"' - after ", currently in a "-delimited quoted section
-        #   "\" - after '\', checking the next char
-        self._state = ' '
         self._token = [] # Current token being parsed
 
     def _get_token(self):
         # Were there quote chars as part of this token?
-        quoted = False
-        quoted_state = None
+        quoted = None   # state:
+                        #  None - the string is not quoted
+                        #  empty string ('') - there was quoted substring
+                        #  double quote (") - we're inside quoted chunk
+        number_of_backslashes = 0
         for nextchar in self._input_iter:
-            if self._state == ' ':
-                if self._whitespace_match(nextchar):
-                    # if self._token: return token
-                    continue
-                elif nextchar in self._quote_chars:
-                    self._state = nextchar # quoted state
-                elif self._word_match(nextchar):
+            if self._whitespace_match(nextchar):
+                if quoted:
                     self._token.append(nextchar)
-                    self._state = 'a'
-                else:
-                    raise AssertionError('wtttf?')
-            elif self._state in self._quote_chars:
-                quoted = True
-                if nextchar == self._state: # End of quote
-                    self._state = 'a' # posix allows 'foo'bar to translate to
-                                      # foobar
-                elif self._state == '"' and nextchar == self._escape:
-                    quoted_state = self._state
-                    self._state = nextchar
-                else:
-                    self._token.append(nextchar)
-            elif self._state == self._escape:
-                if nextchar == '\\':
-                    self._token.append('\\')
-                elif nextchar == '"':
-                    self._token.append(nextchar)
-                else:
-                    self._token.append('\\' + nextchar)
-                self._state = quoted_state
-            elif self._state == 'a':
-                if self._whitespace_match(nextchar):
-                    if self._token:
-                        break # emit this token
+                elif self._token:
+                    break
+            elif nextchar == '\\':
+                number_of_backslashes += 1
+            elif nextchar in self._quote_chars:
+                if number_of_backslashes:
+                    self._token.append('\\'*(number_of_backslashes/2))
+                    if number_of_backslashes % 2:
+                        self._token.append('"')
                     else:
-                        continue # no token to emit
-                elif nextchar in self._quote_chars:
-                    # Start a new quoted section
-                    self._state = nextchar
-                # escape?
-                elif (self._word_match(nextchar)
-                      or nextchar in self._quote_chars
-                      # or whitespace_split?
-                      ):
-                    self._token.append(nextchar)
+                        if quoted:
+                            quoted = ''
+                        else:
+                            quoted = nextchar
+                    number_of_backslashes = 0
+                elif nextchar == quoted:
+                    # end of quoted string
+                    quoted = ''
                 else:
-                    raise AssertionError('state == "a", char: %r'
-                                         % (nextchar,))
+                    quoted = nextchar
             else:
-                raise AssertionError('unknown state: %r' % (self._state,))
+                if number_of_backslashes:
+                    self._token.append('\\'*number_of_backslashes)
+                    number_of_backslashes = 0
+                self._token.append(nextchar)
+        if number_of_backslashes > 0:
+            self._token.append('\\'*number_of_backslashes)
         result = ''.join(self._token)
         self._token = []
+        quoted = quoted is not None
         if not quoted and result == '':
             result = None
         return quoted, result

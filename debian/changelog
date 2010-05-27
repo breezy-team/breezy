@@ -1,3 +1,9 @@
+bzr (2.1.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 27 May 2010 21:58:49 +0200
+
 bzr (2.1.1-1.1) unstable; urgency=low
 
   * Non-maintainer upload with Jelmer's permission.

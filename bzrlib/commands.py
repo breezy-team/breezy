@@ -386,7 +386,7 @@ class Command(object):
         # List of standard options directly supported
         self.supported_std_options = []
         self._operation = cleanup.OperationWithCleanups(self.run)
-    
+
     def add_cleanup(self, cleanup_func, *args, **kwargs):
         """Register a function to call after self.run returns or raises.
 
@@ -406,7 +406,7 @@ class Command(object):
         resources (such as writing results to self.outf).
         """
         self._operation.cleanup_now()
-        
+
     @deprecated_method(deprecated_in((2, 1, 0)))
     def _maybe_expand_globs(self, file_list):
         """Glob expand file_list if the platform does not do that itself.
