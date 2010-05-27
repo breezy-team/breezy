@@ -1743,6 +1743,9 @@ register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 
+register_transport_proto('gio+', help="Access using any GIO supported protocols.")
+register_lazy_transport('gio+', 'bzrlib.transport.gio_transport', 'GioTransport')
+
 try:
     import kerberos
     kerberos_available = True
