@@ -304,21 +304,22 @@ class GioTransport(ConnectedTransport):
         f = None
         fout = None
         try:
-            f = self._get_GIO(tmppath)
-            fout = f.create()
-            closed = False
-            length = self._pump(fp, fout)
-            fout.close()
-            closed = True
-            self.stat(tmppath)
-            dest = self._get_GIO(relpath)
-            f.move(dest, flags=gio.FILE_COPY_OVERWRITE)
-            f = None
-            if mode is not None:
-                self._setmode(relpath, mode)
-            return length
-        except gio.Error, e:
-            self._translate_gio_error(e, relpath)
+            try:
+                f = self._get_GIO(tmppath)
+                fout = f.create()
+                closed = False
+                length = self._pump(fp, fout)
+                fout.close()
+                closed = True
+                self.stat(tmppath)
+                dest = self._get_GIO(relpath)
+                f.move(dest, flags=gio.FILE_COPY_OVERWRITE)
+                f = None
+                if mode is not None:
+                    self._setmode(relpath, mode)
+                return length
+            except gio.Error, e:
+                self._translate_gio_error(e, relpath)
         finally:
             if not closed and fout is not None:
                 fout.close()
