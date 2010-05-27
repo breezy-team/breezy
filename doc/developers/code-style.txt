@@ -84,8 +84,12 @@ the ``-3`` option of Python2.6.)
 
 Specifically:
 
- * don't use the ``with`` statement
- * don't ``from . import``
+ * Don't use the ``with`` statement.
+
+ * Don't ``from . import``.
+
+ * Don't use ``try/except/finally``, which is not supported in Python2.4,
+   use separate nested ``try/except`` and ``try/finally`` blocks.
 
 
 hasattr and getattr
