@@ -30,6 +30,7 @@ New Features
   samba shares, webdav using gio+smb and gio+dav. It is also possible to
   use gio for some already existing transport methods as gio+file,
   gio+sftp, gio+ftp. 
+  (Mattias Eriksson)
 
 Bug Fixes
 *********
