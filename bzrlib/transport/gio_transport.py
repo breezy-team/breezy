@@ -304,6 +304,7 @@ class GioTransport(ConnectedTransport):
         f = None
         fout = None
         try:
+            closed = True
             try:
                 f = self._get_GIO(tmppath)
                 fout = f.create()
