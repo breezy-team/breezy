@@ -3,7 +3,6 @@
 
 """Import upstream source into a branch"""
 
-from bz2 import BZ2File
 import errno
 import os
 from StringIO import StringIO

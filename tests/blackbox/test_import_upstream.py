@@ -19,12 +19,6 @@
 
 """Tests for import-upstream."""
 
-import os
-import shutil
-import subprocess
-import tarfile
-
-from bzrlib import tests
 from debian_bundle.changelog import Version
 
 from bzrlib.plugins.builddeb.tests.blackbox.test_import_dsc import TestBaseImportDsc
