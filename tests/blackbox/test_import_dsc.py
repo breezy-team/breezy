@@ -23,7 +23,6 @@ import shutil
 import subprocess
 import tarfile
 
-from bzrlib import tests
 from bzrlib.transport import get_transport
 
 from bzrlib.plugins.builddeb.tests import BuilddebTestCase

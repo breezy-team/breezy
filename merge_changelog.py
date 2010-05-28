@@ -20,7 +20,6 @@ import re
 
 from bzrlib import (
     merge,
-    merge3,
     )
 
 from debian_bundle import changelog
