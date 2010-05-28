@@ -31,6 +31,10 @@ Improvements
 Documentation
 *************
 
+* Improved our release checklist to have a bit less churn and leave things
+  ready-to-go for the next action (including other people doing
+  development). (Robert Collins)
+
 API Changes
 ***********
 
