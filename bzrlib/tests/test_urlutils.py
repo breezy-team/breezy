@@ -270,6 +270,51 @@ class TestUrlToPath(TestCase):
         self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '..')
         self.assertRaises(InvalidURLJoin, urlutils.joinpath, '/', '/..')
 
+    def test_join_segment_parameters_raw(self):
+        join_segment_parameters_raw = urlutils.join_segment_parameters_raw
+        self.assertEquals("/somedir/path", 
+            join_segment_parameters_raw("/somedir/path"))
+        self.assertEquals("/somedir/path,rawdata", 
+            join_segment_parameters_raw("/somedir/path", "rawdata"))
+        self.assertRaises(InvalidURLJoin,
+            join_segment_parameters_raw, "/somedir/path",
+                "rawdata1,rawdata2,rawdata3")
+        self.assertEquals("/somedir/path,bla,bar",
+            join_segment_parameters_raw("/somedir/path", "bla", "bar"))
+        self.assertEquals("/somedir,exist=some/path,bla,bar",
+            join_segment_parameters_raw("/somedir,exist=some/path",
+                "bla", "bar"))
+        self.assertRaises(TypeError, join_segment_parameters_raw, 
+            "/somepath", 42)
+
+    def test_join_segment_parameters(self):
+        join_segment_parameters = urlutils.join_segment_parameters
+        self.assertEquals("/somedir/path", 
+            join_segment_parameters("/somedir/path", {}))
+        self.assertEquals("/somedir/path,key1=val1", 
+            join_segment_parameters("/somedir/path", {"key1": "val1"}))
+        self.assertRaises(InvalidURLJoin,
+            join_segment_parameters, "/somedir/path",
+            {"branch": "brr,brr,brr"})
+        self.assertRaises(InvalidURLJoin,
+            join_segment_parameters, "/somedir/path", {"key1=val1": "val2"})
+        self.assertEquals("/somedir/path,key1=val1,key2=val2",
+            join_segment_parameters("/somedir/path", {
+                "key1": "val1", "key2": "val2"}))
+        self.assertEquals("/somedir/path,key1=val1,key2=val2",
+            join_segment_parameters("/somedir/path,key1=val1", {
+                "key2": "val2"}))
+        self.assertEquals("/somedir/path,key1=val2",
+            join_segment_parameters("/somedir/path,key1=val1", {
+                "key1": "val2"}))
+        self.assertEquals("/somedir,exist=some/path,key1=val1",
+            join_segment_parameters("/somedir,exist=some/path",
+                {"key1": "val1"}))
+        self.assertEquals("/,key1=val1,key2=val2",
+            join_segment_parameters("/,key1=val1", {"key2": "val2"}))
+        self.assertRaises(TypeError,
+            join_segment_parameters, "/,key1=val1", {"foo": 42})
+
     def test_function_type(self):
         if sys.platform == 'win32':
             self.assertEqual(urlutils._win32_local_path_to_url, urlutils.local_path_to_url)
@@ -411,6 +456,53 @@ class TestUrlToPath(TestCase):
             split('path/to/foo/', exclude_trailing_slash=False))
         self.assertEqual(('path/..', 'foo'), split('path/../foo'))
         self.assertEqual(('../path', 'foo'), split('../path/foo'))
+
+    def test_split_segment_parameters_raw(self):
+        split_segment_parameters_raw = urlutils.split_segment_parameters_raw
+        self.assertEquals(("/some/path", []),
+            split_segment_parameters_raw("/some/path"))
+        self.assertEquals(("/some/path", ["tip"]),
+            split_segment_parameters_raw("/some/path,tip"))
+        self.assertEquals(("/some,dir/path", ["tip"]),
+            split_segment_parameters_raw("/some,dir/path,tip"))
+        self.assertEquals(("/somedir/path", ["heads%2Ftip"]),
+            split_segment_parameters_raw("/somedir/path,heads%2Ftip"))
+        self.assertEquals(("/somedir/path", ["heads%2Ftip", "bar"]),
+            split_segment_parameters_raw("/somedir/path,heads%2Ftip,bar"))
+        self.assertEquals(("/", ["key1=val1"]),
+            split_segment_parameters_raw(",key1=val1"))
+        self.assertEquals(("foo/", ["key1=val1"]),
+            split_segment_parameters_raw("foo/,key1=val1"))
+        self.assertEquals(("foo/base,la=bla/other/elements", []),
+            split_segment_parameters_raw("foo/base,la=bla/other/elements"))
+        self.assertEquals(("foo/base,la=bla/other/elements", ["a=b"]),
+            split_segment_parameters_raw("foo/base,la=bla/other/elements,a=b"))
+
+    def test_split_segment_parameters(self):
+        split_segment_parameters = urlutils.split_segment_parameters
+        self.assertEquals(("/some/path", {}),
+            split_segment_parameters("/some/path"))
+        self.assertEquals(("/some/path", {"branch": "tip"}),
+            split_segment_parameters("/some/path,branch=tip"))
+        self.assertEquals(("/some,dir/path", {"branch": "tip"}),
+            split_segment_parameters("/some,dir/path,branch=tip"))
+        self.assertEquals(("/somedir/path", {"ref": "heads%2Ftip"}),
+            split_segment_parameters("/somedir/path,ref=heads%2Ftip"))
+        self.assertEquals(("/somedir/path",
+            {"ref": "heads%2Ftip", "key1": "val1"}),
+            split_segment_parameters(
+                "/somedir/path,ref=heads%2Ftip,key1=val1"))
+        self.assertEquals(("/somedir/path", {"ref": "heads%2F=tip"}),
+            split_segment_parameters("/somedir/path,ref=heads%2F=tip"))
+        self.assertEquals(("/", {"key1": "val1"}),
+            split_segment_parameters(",key1=val1"))
+        self.assertEquals(("foo/", {"key1": "val1"}),
+            split_segment_parameters("foo/,key1=val1"))
+        self.assertEquals(("foo/base,key1=val1/other/elements", {}),
+            split_segment_parameters("foo/base,key1=val1/other/elements"))
+        self.assertEquals(("foo/base,key1=val1/other/elements",
+            {"key2": "val2"}), split_segment_parameters(
+                "foo/base,key1=val1/other/elements,key2=val2"))
 
     def test_win32_strip_local_trailing_slash(self):
         strip = urlutils._win32_strip_local_trailing_slash

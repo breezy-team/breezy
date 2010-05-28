@@ -111,6 +111,12 @@ _bzr_logger = logging.getLogger('bzr')
 
 
 def note(*args, **kwargs):
+    """Output a note to the user.
+
+    Takes the same parameters as logging.info.
+
+    :return: None
+    """
     # FIXME note always emits utf-8, regardless of the terminal encoding
     #
     # FIXME: clearing the ui and then going through the abstract logging
@@ -492,7 +498,9 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif isinstance(exc_object, (OSError, IOError)):
+    elif isinstance(exc_object, (OSError, IOError)) or (
+        # GZ 2010-05-20: Like (exc_type is pywintypes.error) but avoid import
+        exc_type.__name__ == "error" and exc_type.__module__ == "pywintypes"):
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)

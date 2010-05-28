@@ -669,7 +669,7 @@ class TestLockDir(TestCaseWithTransport):
     def test_no_lockdir_info(self):
         """We can cope with empty info files."""
         # This seems like a fairly common failure case - see
-        # <https://bugs.edge.launchpad.net/bzr/+bug/185103> and all its dupes.
+        # <https://bugs.launchpad.net/bzr/+bug/185103> and all its dupes.
         # Processes are often interrupted after opening the file
         # before the actual contents are committed.
         t = self.get_transport()

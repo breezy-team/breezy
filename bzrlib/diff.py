@@ -706,7 +706,7 @@ class DiffText(DiffPath):
         """
         def _get_text(tree, file_id, path):
             if file_id is not None:
-                return tree.get_file(file_id, path).readlines()
+                return tree.get_file_lines(file_id, path)
             else:
                 return []
         try:

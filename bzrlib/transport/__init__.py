@@ -539,6 +539,9 @@ class Transport(object):
 
         This function will only be defined for Transports which have a
         physical local filesystem representation.
+
+        :raises errors.NotLocalUrl: When no local path representation is
+            available.
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
 
@@ -1739,6 +1742,9 @@ register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+
+register_transport_proto('gio+', help="Access using any GIO supported protocols.")
+register_lazy_transport('gio+', 'bzrlib.transport.gio_transport', 'GioTransport')
 
 try:
     import kerberos

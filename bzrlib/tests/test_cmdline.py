@@ -17,7 +17,9 @@
 
 from bzrlib import (
     cmdline,
-    tests)
+    tests,
+    )
+from bzrlib.tests.features import backslashdir_feature
 
 class TestSplitter(tests.TestCase):
 
@@ -91,3 +93,24 @@ class TestSplitter(tests.TestCase):
             u'"x x" "y y"')
         self.assertAsTokens([(True, u'x x'), (True, u'y y')],
             u'"x x" \'y y\'', single_quotes_allowed=True)
+
+    def test_n_backslashes_handling(self):
+        # https://bugs.launchpad.net/bzr/+bug/528944
+        # actually we care about the doubled backslashes when they're
+        # represents UNC paths.
+        # But in fact there is too much weird corner cases
+        # (see https://bugs.launchpad.net/tortoisebzr/+bug/569050)
+        # so to reproduce every bit of windows command-line handling
+        # could be not worth of efforts?
+        self.requireFeature(backslashdir_feature)
+        self.assertAsTokens([(True, r'\\host\path')], r'"\\host\path"')
+        self.assertAsTokens([(False, r'\\host\path')], r'\\host\path')
+        # handling of " after the 2n and 2n+1 backslashes
+        # inside and outside the quoted string
+        self.assertAsTokens([(True, r'\\'), (False, r'*.py')], r'"\\\\" *.py')
+        self.assertAsTokens([(True, r'\\" *.py')], r'"\\\\\" *.py"')
+        self.assertAsTokens([(True, r'\\ *.py')], r'\\\\" *.py"')
+        self.assertAsTokens([(False, r'\\"'), (False, r'*.py')],
+                            r'\\\\\" *.py')
+        self.assertAsTokens([(True, u'\\\\')], u'"\\\\')
+

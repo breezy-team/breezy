@@ -77,6 +77,7 @@ from bzrlib.workingtree_4 import (
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.lock import LogicalLockResult
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
@@ -462,7 +463,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return (file_obj, stat_value)
 
     def get_file_text(self, file_id, path=None, filtered=True):
-        return self.get_file(file_id, path=path, filtered=filtered).read()
+        my_file = self.get_file(file_id, path=path, filtered=filtered)
+        try:
+            return my_file.read()
+        finally:
+            my_file.close()
 
     def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
@@ -522,7 +527,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         # Now we have the parents of this content
         annotator = self.branch.repository.texts.get_annotator()
-        text = self.get_file(file_id).read()
+        text = self.get_file_text(file_id)
         this_key =(file_id, default_revision)
         annotator.add_special_text(this_key, file_parent_keys, text)
         annotations = [(key[-1], line)
@@ -1798,34 +1803,48 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             raise errors.ObjectNotLocked(self)
 
     def lock_read(self):
-        """See Branch.lock_read, and WorkingTree.unlock."""
+        """Lock the tree for reading.
+
+        This also locks the branch, and can be unlocked via self.unlock().
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
-            return self._control_files.lock_read()
+            self._control_files.lock_read()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
 
     def lock_tree_write(self):
-        """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
 
     def lock_write(self):
-        """See MutableTree.lock_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_write()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
@@ -1956,8 +1975,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_info, file_infos in\
-                self.walkdirs(directory):
+            for parent_info, file_infos in self.walkdirs(directory):
                 for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.path2id(relpath) or self.is_ignored(relpath):
@@ -1998,8 +2016,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                             # ... but not ignored
                             has_changed_files = True
                             break
-                    elif content_change and (kind[1] is not None):
-                        # Versioned and changed, but not deleted
+                    elif (content_change and (kind[1] is not None) and
+                            osutils.is_inside_any(files, path[1])):
+                        # Versioned and changed, but not deleted, and still
+                        # in one of the dirs to be deleted.
                         has_changed_files = True
                         break
 
@@ -2636,10 +2656,14 @@ class WorkingTree2(WorkingTree):
 
         In Format2 WorkingTrees we have a single lock for the branch and tree
         so lock_tree_write() degrades to lock_write().
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
         """
         self.branch.lock_write()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return self
         except:
             self.branch.unlock()
             raise

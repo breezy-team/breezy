@@ -37,8 +37,6 @@ from bzrlib import (
 
 """)
 
-from bzrlib.osutils import watch_sigwinch
-
 from bzrlib.ui import (
     UIFactory,
     NullProgressView,
@@ -62,8 +60,6 @@ class TextUIFactory(UIFactory):
         self.stderr = stderr
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
-        # hook up the signals to watch for terminal size changes
-        watch_sigwinch()
 
     def be_quiet(self, state):
         if state and not self._quiet:
@@ -157,7 +153,7 @@ class TextUIFactory(UIFactory):
         """Construct and return a new ProgressView subclass for this UI.
         """
         # with --quiet, never any progress view
-        # <https://bugs.edge.launchpad.net/bzr/+bug/320035>.  Otherwise if the
+        # <https://bugs.launchpad.net/bzr/+bug/320035>.  Otherwise if the
         # user specifically requests either text or no progress bars, always
         # do that.  otherwise, guess based on $TERM and tty presence.
         if self.is_quiet():
@@ -233,6 +229,9 @@ class TextUIFactory(UIFactory):
 
     def show_warning(self, msg):
         self.clear_term()
+        if isinstance(msg, unicode):
+            te = osutils.get_terminal_encoding()
+            msg = msg.encode(te, 'replace')
         self.stderr.write("bzr: warning: %s\n" % msg)
 
     def _progress_updated(self, task):
