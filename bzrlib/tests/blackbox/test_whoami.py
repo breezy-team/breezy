@@ -120,3 +120,56 @@ class TestWhoami(ExternalBase):
         osutils.set_or_unset_env('BZR_EMAIL', None)
         out, err = self.run_bzr(['whoami'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
+
+    def test_whoami_directory(self):
+        """Test --directory option"""
+        wt = self.make_branch_and_tree('subdir')
+        c = wt.branch.get_config()
+        c.set_user_option('email', 'Branch Identity <branch@identi.ty>')
+        bzr_email = os.environ.get('BZR_EMAIL')
+        if bzr_email is not None:
+            del os.environ['BZR_EMAIL']
+        try:
+            out, err = self.run_bzr("whoami --directory subdir")
+            self.assertEquals('Branch Identity <branch@identi.ty>\n', out)
+            self.run_bzr(['whoami', '--directory', 'subdir', '--branch',
+                          'Changed Identity <changed@identi.ty>'])
+            self.assertEquals('Changed Identity <changed@identi.ty>',
+                              c.get_user_option('email'))
+        finally:
+            if bzr_email is not None:
+                os.environ['BZR_EMAIL'] = bzr_email
+
+    def test_whoami_remote_directory(self):
+        """Test --directory option"""
+        wt = self.make_branch_and_tree('subdir')
+        c = wt.branch.get_config()
+        c.set_user_option('email', 'Branch Identity <branch@identi.ty>')
+        bzr_email = os.environ.get('BZR_EMAIL')
+        if bzr_email is not None:
+            del os.environ['BZR_EMAIL']
+        try:
+            url = self.get_readonly_url() + '/subdir'
+            out, err = self.run_bzr(['whoami', '--directory', url])
+            self.assertEquals('Branch Identity <branch@identi.ty>\n', out)
+            url = self.get_url('subdir')
+            self.run_bzr(['whoami', '--directory', url, '--branch',
+                          'Changed Identity <changed@identi.ty>'])
+            self.assertEquals('Changed Identity <changed@identi.ty>',
+                              c.get_user_option('email'))
+        finally:
+            if bzr_email is not None:
+                os.environ['BZR_EMAIL'] = bzr_email
+
+    def test_whoami_nonbranch_directory(self):
+        """Test --directory mentioning a non-branch directory"""
+        wt = self.build_tree(['subdir/'])
+        bzr_email = os.environ.get('BZR_EMAIL')
+        if bzr_email is not None:
+            del os.environ['BZR_EMAIL']
+        try:
+            out, err = self.run_bzr("whoami --directory subdir", retcode=3)
+            self.assertContainsRe(err, 'ERROR: Not a branch')
+        finally:
+            if bzr_email is not None:
+                os.environ['BZR_EMAIL'] = bzr_email

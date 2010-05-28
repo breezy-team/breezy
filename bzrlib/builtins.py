@@ -3309,7 +3309,8 @@ class cmd_whoami(Command):
 
             bzr whoami "Frank Chu <fchu@example.com>"
     """
-    takes_options = [ Option('email',
+    takes_options = [ 'directory',
+                      Option('email',
                              help='Display email address only.'),
                       Option('branch',
                              help='Set identity for the current branch instead of '
@@ -3319,13 +3320,16 @@ class cmd_whoami(Command):
     encoding_type = 'replace'
 
     @display_command
-    def run(self, email=False, branch=False, name=None):
+    def run(self, email=False, branch=False, name=None, directory=None):
         if name is None:
-            # use branch if we're inside one; otherwise global config
-            try:
-                c = Branch.open_containing('.')[0].get_config()
-            except errors.NotBranchError:
-                c = config.GlobalConfig()
+            if directory is None:
+                # use branch if we're inside one; otherwise global config
+                try:
+                    c = Branch.open_containing(u'.')[0].get_config()
+                except errors.NotBranchError:
+                    c = config.GlobalConfig()
+            else:
+                c = Branch.open(directory).get_config()
             if email:
                 self.outf.write(c.user_email() + '\n')
             else:
@@ -3341,7 +3345,10 @@ class cmd_whoami(Command):
 
         # use global config unless --branch given
         if branch:
-            c = Branch.open_containing('.')[0].get_config()
+            if directory is None:
+                c = Branch.open_containing(u'.')[0].get_config()
+            else:
+                c = Branch.open(directory).get_config()
         else:
             c = config.GlobalConfig()
         c.set_user_option('email', name)

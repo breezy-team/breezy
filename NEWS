@@ -18,8 +18,8 @@ New Features
 ************
 
 * Support ``--directory`` option for a number of additional commands:
-  conflicts, merge-directive, missing, resolve, shelve, switch, unshelve.
-  (Martin von Gagern, #527878)
+  conflicts, merge-directive, missing, resolve, shelve, switch,
+  unshelve, whoami. (Martin von Gagern, #527878)
 
 Bug Fixes
 *********
