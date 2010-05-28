@@ -779,10 +779,12 @@ class cmd_import_upstream(Command):
     import and the tip of the upstream branch if you supply one.
     """
 
+    takes_options = ['revision']
+
     takes_args = ['version', 'location', 'upstream_branch?']
 
-    def run(self, version, location, upstream_branch=None):
-        # TODO: support -r, search for similarity etc.
+    def run(self, version, location, upstream_branch=None, revision=None):
+        # TODO: search for similarity etc.
         version = version.encode('utf8')
         branch, _ = Branch.open_containing('.')
         if upstream_branch is None:
@@ -810,7 +812,7 @@ class cmd_import_upstream(Command):
             parents = []
         if parents:
             # See bug lp:309682
-            db.upstream_branch.repository.fetch(branch.repository, parents[0])
+            upstream.repository.fetch(branch.repository, parents[0])
             db.extract_upstream_tree(parents[0], tempdir)
         else:
             db._create_empty_upstream_tree(tempdir)
@@ -818,8 +820,15 @@ class cmd_import_upstream(Command):
         tree.lock_read()
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
+        if revision is None:
+            upstream_revid = None
+        elif len(revision) == 1:
+            upstream_revid = revision[0].in_history(upstream).rev_id
+        else:
+            raise BzrCommandError('bzr import-upstream --revision takes exactly'
+                                  ' one revision specifier.')
         tag_name, _ = db.import_upstream_tarball(location, version, parents,
-            upstream_branch=upstream)
+            upstream_branch=upstream, upstream_revision=upstream_revid)
         self.outf.write('Imported %s as tag:%s.\n' % (location, tag_name))
 
 
