@@ -115,21 +115,27 @@ class AptSource(UpstreamSource):
             apt_pkg = _apt_pkg
         apt_pkg.init()
 
+        def get_fn(obj, new_name, old_name):
+            try:
+                return getattr(obj, new_name)
+            except AttributeError:
+                return getattr(obj, old_name)
+
         # Handle the case where the apt.sources file contains no source
         # URIs (LP:375897)
         try:
-            get_sources = getattr(apt_pkg, 'SourceRecords',
-                    getattr(apt_pkg, 'GetPkgSrcRecords', None))
+            get_sources = get_fn(apt_pkg, 'SourceRecords',
+                "GetPkgSrcRecords")
             sources = get_sources()
         except SystemError:
             raise PackageVersionNotPresent(package, upstream_version, self)
 
-        restart = getattr(sources, 'restart', getattr(sources, 'Restart', None))
+        restart = get_fn(sources, 'restart', 'Restart')
         restart()
         note("Using apt to look for the upstream tarball.")
-        lookup = getattr(sources, 'lookup', getattr(sources, 'Lookup', None))
+        lookup = get_fn(sources, 'lookup', 'Lookup')
         while lookup(package):
-            version = getattr(sources, 'version', getattr(sources, 'Version', None))
+            version = get_fn(sources, 'version', 'Version')
             if upstream_version == Version(version).upstream_version:
                 if self._run_apt_source(package, version, target_dir):
                     return
