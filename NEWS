@@ -112,6 +112,12 @@ New Features
   replaces the outdated ``contrib/bash/bzr`` script with a version
   using the plugin. (Martin von Gagern, #560030)
 
+* A new transport based on GIO (the gnome i/o library) provides access to
+  samba shares, webdav using gio+smb and gio+dav. It is also possible to
+  use gio for some already existing transport methods as gio+file,
+  gio+sftp, gio+ftp. 
+  (Mattias Eriksson)
+
 Bug Fixes
 *********
 
