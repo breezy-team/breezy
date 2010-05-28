@@ -4289,6 +4289,7 @@ class cmd_missing(Command):
     _see_also = ['merge', 'pull']
     takes_args = ['other_branch?']
     takes_options = [
+        'directory',
         Option('reverse', 'Reverse the order of revisions.'),
         Option('mine-only',
                'Display changes in the local branch only.'),
@@ -4316,7 +4317,8 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False, revision=None, my_revision=None):
+            include_merges=False, revision=None, my_revision=None,
+            directory=u'.'):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
@@ -4335,7 +4337,7 @@ class cmd_missing(Command):
         elif theirs_only:
             restrict = 'remote'
 
-        local_branch = Branch.open_containing(u".")[0]
+        local_branch = Branch.open_containing(directory)[0]
         self.add_cleanup(local_branch.lock_read().unlock)
 
         parent = local_branch.get_parent()
@@ -5012,6 +5014,7 @@ class cmd_merge_directive(Command):
     _see_also = ['send']
 
     takes_options = [
+        'directory',
         RegistryOption.from_kwargs('patch-type',
             'The type of patch to include in the directive.',
             title='Patch type',
@@ -5030,14 +5033,15 @@ class cmd_merge_directive(Command):
     encoding_type = 'exact'
 
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
-            sign=False, revision=None, mail_to=None, message=None):
+            sign=False, revision=None, mail_to=None, message=None,
+            directory=u'.'):
         from bzrlib.revision import ensure_null, NULL_REVISION
         include_patch, include_bundle = {
             'plain': (False, False),
             'diff': (True, False),
             'bundle': (True, True),
             }[patch_type]
-        branch = Branch.open('.')
+        branch = Branch.open(directory)
         stored_submit_branch = branch.get_submit_branch()
         if submit_branch is None:
             submit_branch = stored_submit_branch
@@ -5531,7 +5535,8 @@ class cmd_switch(Command):
     """
 
     takes_args = ['to_location?']
-    takes_options = [Option('force',
+    takes_options = ['directory',
+                     Option('force',
                         help='Switch even if local commits will be lost.'),
                      'revision',
                      Option('create-branch', short_name='b',
@@ -5540,16 +5545,16 @@ class cmd_switch(Command):
                     ]
 
     def run(self, to_location=None, force=False, create_branch=False,
-            revision=None):
+            revision=None, directory=u'.'):
         from bzrlib import switch
-        tree_location = '.'
+        tree_location = directory
         revision = _get_one_revision('switch', revision)
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
         if to_location is None:
             if revision is None:
                 raise errors.BzrCommandError('You must supply either a'
                                              ' revision or a location')
-            to_location = '.'
+            to_location = tree_location
         try:
             branch = control_dir.open_branch()
             had_explicit_nick = branch.get_config().has_explicit_nickname()
@@ -5830,6 +5835,7 @@ class cmd_shelve(Command):
     takes_args = ['file*']
 
     takes_options = [
+        'directory',
         'revision',
         Option('all', help='Shelve all changes.'),
         'message',
@@ -5844,7 +5850,7 @@ class cmd_shelve(Command):
     _see_also = ['unshelve']
 
     def run(self, revision=None, all=False, file_list=None, message=None,
-            writer=None, list=False, destroy=False):
+            writer=None, list=False, destroy=False, directory=u'.'):
         if list:
             return self.run_for_list()
         from bzrlib.shelf_ui import Shelver
@@ -5852,7 +5858,7 @@ class cmd_shelve(Command):
             writer = bzrlib.option.diff_writer_registry.get()
         try:
             shelver = Shelver.from_args(writer(sys.stdout), revision, all,
-                file_list, message, destroy=destroy)
+                file_list, message, destroy=destroy, directory=directory)
             try:
                 shelver.run()
             finally:
@@ -5886,6 +5892,7 @@ class cmd_unshelve(Command):
 
     takes_args = ['shelf_id?']
     takes_options = [
+        'directory',
         RegistryOption.from_kwargs(
             'action', help="The action to perform.",
             enum_switch=False, value_switches=True,
@@ -5899,9 +5906,9 @@ class cmd_unshelve(Command):
     ]
     _see_also = ['shelve']
 
-    def run(self, shelf_id=None, action='apply'):
+    def run(self, shelf_id=None, action='apply', directory=u'.'):
         from bzrlib.shelf_ui import Unshelver
-        unshelver = Unshelver.from_args(shelf_id, action)
+        unshelver = Unshelver.from_args(shelf_id, action, directory=directory)
         try:
             unshelver.run()
         finally:
