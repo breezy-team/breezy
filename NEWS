@@ -26,6 +26,9 @@ Bug Fixes
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
 
+* Raise ValueError instead of a string exception.
+  (John Arbash Meinel, #586926)
+
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
