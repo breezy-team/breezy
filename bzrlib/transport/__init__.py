@@ -47,8 +47,6 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_method,
-        deprecated_function,
         DEPRECATED_PARAMETER,
         )
 from bzrlib.trace import (
@@ -281,6 +279,8 @@ class Transport(object):
     as an argument (ie always iterate, never index)
 
     :ivar base: Base URL for the transport; should always end in a slash.
+    :ivar segment_parameters: Segment parameters for the last element in the
+        path
     """
 
     # implementations can override this if it is more efficient
@@ -297,6 +297,7 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
+        self.segment_parameters = urlutils.split_segment_parameters(base)[1]
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.

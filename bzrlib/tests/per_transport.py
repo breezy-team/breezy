@@ -1765,3 +1765,13 @@ class TransportTests(TestTransportImplementation):
         # also raise a special error
         self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
                               transport.readv, 'a', [(12,2)])
+
+    def test_segment_parameters(self):
+        """Segment parameters should be stripped and stored in
+        transport.segmnet_parameters."""
+        base_url = self._server.get_url()
+        url = urlutils.join_segment_parameters(base_url, {"key1": "val1",
+            "key2": "val2"})
+        transport = get_transport(url)
+        self.assertEquals({"key1": "val1", "key2": "val2"},
+            transport.segment_parameters, "URL was %s" % url)

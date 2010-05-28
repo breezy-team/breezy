@@ -156,6 +156,15 @@ class TransportDecorator(Transport):
         """See Transport.rmdir."""
         return self._decorated.rmdir(relpath)
 
+    def _get_segment_parameters(self):
+        return self._decorated.segment_parameters
+
+    def _set_segment_parameters(self, value):
+        self._decorated.segment_parameters = value
+
+    segment_parameters = property(_get_segment_parameters,
+        _set_segment_parameters, "See Transport.segment_parameters")
+
     def stat(self, relpath):
         """See Transport.stat()."""
         return self._decorated.stat(relpath)
