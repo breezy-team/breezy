@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for win32utils."""
+
 import os
 import sys
 
@@ -29,23 +31,8 @@ from bzrlib.tests import (
     TestSkipped,
     UnicodeFilenameFeature,
     )
+from bzrlib.tests.features import backslashdir_feature
 from bzrlib.win32utils import glob_expand, get_app_path
-
-
-class _BackslashDirSeparatorFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            os.lstat(os.getcwd() + '\\')
-        except OSError:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return "Filesystem treats '\\' as a directory separator."
-
-BackslashDirSeparatorFeature = _BackslashDirSeparatorFeature()
 
 
 class _RequiredModuleFeature(Feature):
@@ -121,7 +108,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_backslash_globbing(self):
-        self.requireFeature(BackslashDirSeparatorFeature)
+        self.requireFeature(backslashdir_feature)
         self.build_ascii_tree()
         self._run_testset([
             [[u'd\\'], [u'd/']],
@@ -164,7 +151,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_unicode_backslashes(self):
-        self.requireFeature(BackslashDirSeparatorFeature)
+        self.requireFeature(backslashdir_feature)
         self.build_unicode_tree()
         self._run_testset([
             # no wildcards
@@ -287,8 +274,6 @@ class TestSetHidden(TestCaseInTempDir):
         win32utils.set_file_attr_hidden(path)
 
 
-
-
 class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 
     def assertCommandLine(self, expected, line, single_quotes_allowed=False):
@@ -338,6 +323,6 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.assertCommandLine([u'A/b.c'], 'A/B*')
 
     def test_backslashes(self):
-        self.requireFeature(BackslashDirSeparatorFeature)
+        self.requireFeature(backslashdir_feature)
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'a/b.c'], 'a\\b*')

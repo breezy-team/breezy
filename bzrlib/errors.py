@@ -1923,6 +1923,17 @@ class ReusingTransform(BzrError):
 class CantMoveRoot(BzrError):
 
     _fmt = "Moving the root directory is not supported at this time"
+    
+    
+class TransformRenameFailed(BzrError):
+
+    _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
+    
+    def __init__(self, from_path, to_path, why, errno):
+        self.from_path = from_path
+        self.to_path = to_path
+        self.why = why
+        self.errno = errno
 
 
 class BzrMoveFailedError(BzrError):
@@ -3133,4 +3144,11 @@ class NoColocatedBranchSupport(BzrError):
 
     def __init__(self, bzrdir):
         self.bzrdir = bzrdir
+
+class NoWhoami(BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+        "Please, set your name with the 'whoami' command.\n"
+        'E.g. bzr whoami "Your Name <name@example.com>"')
+
 

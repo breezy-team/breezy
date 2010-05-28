@@ -257,12 +257,10 @@ class Config(object):
 
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-        $BZR_EMAIL can be set to override this (as well as the
-        deprecated $BZREMAIL), then
+        $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
-        If none is found, a reasonable default is (hopefully)
-        created.
+        If no username can be found, errors.NoWhoami exception is raised.
 
         TODO: Check it's reasonably well-formed.
         """
@@ -278,11 +276,14 @@ class Config(object):
         if v:
             return v.decode(osutils.get_user_encoding())
 
-        name, email = _auto_user_id()
-        if name:
-            return '%s <%s>' % (name, email)
-        else:
-            return email
+        raise errors.NoWhoami()
+
+    def ensure_username(self):
+        """Raise errors.NoWhoami if username is not set.
+
+        This method relies on the username() function raising the error.
+        """
+        self.username()
 
     def signature_checking(self):
         """What is the current policy for signature checking?."""
@@ -476,6 +477,14 @@ class IniBasedConfig(Config):
     def _get_nickname(self):
         return self.get_user_option('nickname')
 
+    def _write_config_file(self):
+        f = file(self._get_filename(), "wb")
+        try:
+            osutils.copy_ownership_from_path(f.name)
+            self._get_parser().write(f)
+        finally:
+            f.close()
+
 
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
@@ -516,13 +525,6 @@ class GlobalConfig(IniBasedConfig):
         ensure_config_dir_exists(conf_dir)
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
-
-    def _write_config_file(self):
-        path = self._get_filename()
-        f = open(path, 'wb')
-        osutils.copy_ownership_from_path(path)
-        self._get_parser().write(f)
-        f.close()
 
 
 class LocationConfig(IniBasedConfig):
@@ -663,7 +665,7 @@ class LocationConfig(IniBasedConfig):
         self._get_parser()[location][option]=value
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
-        self._get_parser().write(file(self._get_filename(), 'wb'))
+        self._write_config_file()
 
 
 class BranchConfig(Config):
@@ -899,79 +901,6 @@ def xdg_cache_dir():
         return os.path.expanduser('~/.cache')
 
 
-def _auto_user_id():
-    """Calculate automatic user identification.
-
-    Returns (realname, email).
-
-    Only used when none is set in the environment or the id file.
-
-    This previously used the FQDN as the default domain, but that can
-    be very slow on machines where DNS is broken.  So now we simply
-    use the hostname.
-    """
-    import socket
-
-    if sys.platform == 'win32':
-        name = win32utils.get_user_name_unicode()
-        if name is None:
-            raise errors.BzrError("Cannot autodetect user name.\n"
-                                  "Please, set your name with command like:\n"
-                                  'bzr whoami "Your Name <name@domain.com>"')
-        host = win32utils.get_host_name_unicode()
-        if host is None:
-            host = socket.gethostname()
-        return name, (name + '@' + host)
-
-    try:
-        import pwd
-        uid = os.getuid()
-        try:
-            w = pwd.getpwuid(uid)
-        except KeyError:
-            raise errors.BzrCommandError('Unable to determine your name.  '
-                'Please use "bzr whoami" to set it.')
-
-        # we try utf-8 first, because on many variants (like Linux),
-        # /etc/passwd "should" be in utf-8, and because it's unlikely to give
-        # false positives.  (many users will have their user encoding set to
-        # latin-1, which cannot raise UnicodeError.)
-        try:
-            gecos = w.pw_gecos.decode('utf-8')
-            encoding = 'utf-8'
-        except UnicodeError:
-            try:
-                encoding = osutils.get_user_encoding()
-                gecos = w.pw_gecos.decode(encoding)
-            except UnicodeError:
-                raise errors.BzrCommandError('Unable to determine your name.  '
-                   'Use "bzr whoami" to set it.')
-        try:
-            username = w.pw_name.decode(encoding)
-        except UnicodeError:
-            raise errors.BzrCommandError('Unable to determine your name.  '
-                'Use "bzr whoami" to set it.')
-
-        comma = gecos.find(',')
-        if comma == -1:
-            realname = gecos
-        else:
-            realname = gecos[:comma]
-        if not realname:
-            realname = username
-
-    except ImportError:
-        import getpass
-        try:
-            user_encoding = osutils.get_user_encoding()
-            realname = username = getpass.getuser().decode(user_encoding)
-        except UnicodeDecodeError:
-            raise errors.BzrError("Can't decode username as %s." % \
-                    user_encoding)
-
-    return realname, (username + '@' + socket.gethostname())
-
-
 def parse_username(username):
     """Parse e-mail username and return a (name, address) tuple."""
     match = re.match(r'(.*?)\s*<?([\w+.-]+@[\w+.-]+)>?', username)
@@ -1063,7 +992,11 @@ class AuthenticationConfig(object):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
-        self._get_config().write(file(self._filename, 'wb'))
+        f = file(self._filename, 'wb')
+        try:
+            self._get_config().write(f)
+        finally:
+            f.close()
 
     def _set_option(self, section_name, option_name, value):
         """Set an authentication configuration option"""
@@ -1517,7 +1450,11 @@ class TransportConfig(object):
             return StringIO()
 
     def _get_configobj(self):
-        return ConfigObj(self._get_config_file(), encoding='utf-8')
+        f = self._get_config_file()
+        try:
+            return ConfigObj(f, encoding='utf-8')
+        finally:
+            f.close()
 
     def _set_configobj(self, configobj):
         out_file = StringIO()

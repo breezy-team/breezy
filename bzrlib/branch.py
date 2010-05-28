@@ -49,7 +49,7 @@ from bzrlib.tag import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.inter import InterObject
-from bzrlib.lock import _RelockDebugMixin
+from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
 from bzrlib import registry
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -283,10 +283,20 @@ class Branch(bzrdir.ControlComponent):
         new_history.reverse()
         return new_history
 
-    def lock_write(self):
+    def lock_write(self, token=None):
+        """Lock the branch for write operations.
+
+        :param token: A token to permit reacquiring a previously held and
+            preserved lock.
+        :return: A BranchWriteLockResult.
+        """
         raise NotImplementedError(self.lock_write)
 
     def lock_read(self):
+        """Lock the branch for read operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         raise NotImplementedError(self.lock_read)
 
     def unlock(self):
@@ -1346,6 +1356,8 @@ class Branch(bzrdir.ControlComponent):
         """
         # XXX: Fix the bzrdir API to allow getting the branch back from the
         # clone call. Or something. 20090224 RBC/spiv.
+        # XXX: Should this perhaps clone colocated branches as well, 
+        # rather than just the default branch? 20100319 JRV
         if revision_id is None:
             revision_id = self.last_revision()
         dir_to = self.bzrdir.clone_on_transport(to_transport,
@@ -1521,7 +1533,7 @@ class BranchFormat(object):
         """Return the current default format."""
         return klass._default_format
 
-    def get_reference(self, a_bzrdir):
+    def get_reference(self, a_bzrdir, name=None):
         """Get the target reference of the branch in a_bzrdir.
 
         format probing must have been completed before calling
@@ -1529,12 +1541,13 @@ class BranchFormat(object):
         in a_bzrdir is correct.
 
         :param a_bzrdir: The bzrdir to get the branch data from.
+        :param name: Name of the colocated branch to fetch
         :return: None if the branch is not a reference branch.
         """
         return None
 
     @classmethod
-    def set_reference(self, a_bzrdir, to_branch):
+    def set_reference(self, a_bzrdir, name, to_branch):
         """Set the target reference of the branch in a_bzrdir.
 
         format probing must have been completed before calling
@@ -1542,6 +1555,7 @@ class BranchFormat(object):
         in a_bzrdir is correct.
 
         :param a_bzrdir: The bzrdir to set the branch reference for.
+        :param name: Name of colocated branch to set, None for default
         :param to_branch: branch that the checkout is to reference
         """
         raise NotImplementedError(self.set_reference)
@@ -2157,14 +2171,14 @@ class BranchReferenceFormat(BranchFormat):
         """See BranchFormat.get_format_description()."""
         return "Checkout reference format 1"
 
-    def get_reference(self, a_bzrdir):
+    def get_reference(self, a_bzrdir, name=None):
         """See BranchFormat.get_reference()."""
-        transport = a_bzrdir.get_branch_transport(None)
+        transport = a_bzrdir.get_branch_transport(None, name=name)
         return transport.get_bytes('location')
 
-    def set_reference(self, a_bzrdir, to_branch):
+    def set_reference(self, a_bzrdir, name, to_branch):
         """See BranchFormat.set_reference()."""
-        transport = a_bzrdir.get_branch_transport(None)
+        transport = a_bzrdir.get_branch_transport(None, name=name)
         location = transport.put_bytes('location', to_branch.base)
 
     def initialize(self, a_bzrdir, name=None, target_branch=None):
@@ -2221,7 +2235,7 @@ class BranchReferenceFormat(BranchFormat):
                 raise AssertionError("wrong format %r found for %r" %
                     (format, self))
         if location is None:
-            location = self.get_reference(a_bzrdir)
+            location = self.get_reference(a_bzrdir, name)
         real_bzrdir = bzrdir.BzrDir.open(
             location, possible_transports=possible_transports)
         result = real_bzrdir.open_branch(name=name, 
@@ -2263,6 +2277,23 @@ _legacy_formats = [BzrBranchFormat4(),
     ]
 network_format_registry.register(
     _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
+
+
+class BranchWriteLockResult(LogicalLockResult):
+    """The result of write locking a branch.
+
+    :ivar branch_token: The token obtained from the underlying branch lock, or
+        None.
+    :ivar unlock: A callable which will unlock the lock.
+    """
+
+    def __init__(self, unlock, branch_token):
+        LogicalLockResult.__init__(self, unlock)
+        self.branch_token = branch_token
+
+    def __repr__(self):
+        return "BranchWriteLockResult(%s, %s)" % (self.branch_token,
+            self.unlock)
 
 
 class BzrBranch(Branch, _RelockDebugMixin):
@@ -2324,6 +2355,12 @@ class BzrBranch(Branch, _RelockDebugMixin):
         return self.control_files.is_locked()
 
     def lock_write(self, token=None):
+        """Lock the branch for write operations.
+
+        :param token: A token to permit reacquiring a previously held and
+            preserved lock.
+        :return: A BranchWriteLockResult.
+        """
         if not self.is_locked():
             self._note_lock('w')
         # All-in-one needs to always unlock/lock.
@@ -2335,13 +2372,18 @@ class BzrBranch(Branch, _RelockDebugMixin):
         else:
             took_lock = False
         try:
-            return self.control_files.lock_write(token=token)
+            return BranchWriteLockResult(self.unlock,
+                self.control_files.lock_write(token=token))
         except:
             if took_lock:
                 self.repository.unlock()
             raise
 
     def lock_read(self):
+        """Lock the branch for read operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._note_lock('r')
         # All-in-one needs to always unlock/lock.
@@ -2354,6 +2396,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             took_lock = False
         try:
             self.control_files.lock_read()
+            return LogicalLockResult(self.unlock)
         except:
             if took_lock:
                 self.repository.unlock()

@@ -102,4 +102,4 @@ class TestImportTariffs(TestCaseWithTransport):
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
         #
-        # See https://bugs.edge.launchpad.net/bzr/+bug/553017
+        # See https://bugs.launchpad.net/bzr/+bug/553017

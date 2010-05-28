@@ -112,13 +112,13 @@ from bzrlib.trace import mutter, note
 from bzrlib.tests import (
     test_server,
     TestUtil,
+    treeshape,
     )
 from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
                           )
-from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
@@ -749,7 +749,7 @@ class TestUIFactory(TextUIFactory):
     # XXX: Should probably unify more with CannedInputUIFactory or a
     # particular configuration of TextUIFactory, or otherwise have a clearer
     # idea of how they're supposed to be different.
-    # See https://bugs.edge.launchpad.net/bzr/+bug/408213
+    # See https://bugs.launchpad.net/bzr/+bug/408213
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
@@ -1524,7 +1524,7 @@ class TestCase(testtools.TestCase):
             'EDITOR': None,
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
-            'EMAIL': None,
+            'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
@@ -2482,7 +2482,11 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        contents = file(filename, 'r').read()
+        f = file(filename)
+        try:
+            contents = f.read()
+        finally:
+            f.close()
         if contents != expect:
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
@@ -2578,8 +2582,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
-    def build_tree_contents(self, shape):
-        build_tree_contents(shape)
+    build_tree_contents = staticmethod(treeshape.build_tree_contents)
 
     def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
@@ -3734,6 +3737,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_lru_cache',
         'bzrlib.tests.test_lsprof',
         'bzrlib.tests.test_mail_client',
+        'bzrlib.tests.test_matchers',
         'bzrlib.tests.test_memorytree',
         'bzrlib.tests.test_merge',
         'bzrlib.tests.test_merge3',
@@ -4101,8 +4105,11 @@ def _rmtree_temp_dir(dirname, test_id=None):
         if test_id != None:
             ui.ui_factory.clear_term()
             sys.stderr.write('\nWhile running: %s\n' % (test_id,))
+        # Ugly, but the last thing we want here is fail, so bear with it.
+        printable_e = str(e).decode(osutils.get_user_encoding(), 'replace'
+                                    ).encode('ascii', 'replace')
         sys.stderr.write('Unable to remove testing dir %s\n%s'
-                         % (os.path.basename(dirname), e))
+                         % (os.path.basename(dirname), printable_e))
 
 
 class Feature(object):

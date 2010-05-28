@@ -170,7 +170,7 @@ class TestInventory(per_tree.TestCaseWithTree):
                          work_tree.get_canonical_inventory_path('Dir/None'))
 
     def test_canonical_tree_name_mismatch(self):
-        # see <https://bugs.edge.launchpad.net/bzr/+bug/368931>
+        # see <https://bugs.launchpad.net/bzr/+bug/368931>
         # some of the trees we want to use can only exist on a disk, not in
         # memory - therefore we can only test this if the filesystem is
         # case-sensitive.

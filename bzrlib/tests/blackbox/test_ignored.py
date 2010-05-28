@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,3 +38,11 @@ class TestIgnored(ExternalBase):
         out, err = self.run_bzr('ignored')
         self.assertEqual('', out)
         self.assertEqual('', err)
+
+    def test_ignored_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/README', 'contents'),
+                                  ('a/.bzrignore', 'README')])
+        out, err = self.run_bzr(['ignored', '--directory=a'])
+        self.assertStartsWith(out, 'README')

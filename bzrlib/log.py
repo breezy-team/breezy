@@ -1341,7 +1341,7 @@ class LogFormatter(object):
 
     def __init__(self, to_file, show_ids=False, show_timezone='original',
                  delta_format=None, levels=None, show_advice=False,
-                 to_exact_file=None):
+                 to_exact_file=None, author_list_handler=None):
         """Create a LogFormatter.
 
         :param to_file: the file to output to
@@ -1355,6 +1355,8 @@ class LogFormatter(object):
           let the log formatter decide.
         :param show_advice: whether to show advice at the end of the
           log or not
+        :param author_list_handler: callable generating a list of
+          authors to display for a given revision
         """
         self.to_file = to_file
         # 'exact' stream used to show diff, it should print content 'as is'
@@ -1375,6 +1377,7 @@ class LogFormatter(object):
         self.levels = levels
         self._show_advice = show_advice
         self._merge_count = 0
+        self._author_list_handler = author_list_handler
 
     def get_levels(self):
         """Get the number of levels to display or 0 for all."""
@@ -1412,10 +1415,41 @@ class LogFormatter(object):
         return address
 
     def short_author(self, rev):
-        name, address = config.parse_username(rev.get_apparent_authors()[0])
-        if name:
-            return name
-        return address
+        return self.authors(rev, 'first', short=True, sep=', ')
+
+    def authors(self, rev, who, short=False, sep=None):
+        """Generate list of authors, taking --authors option into account.
+
+        The caller has to specify the name of a author list handler,
+        as provided by the author list registry, using the ``who``
+        argument.  That name only sets a default, though: when the
+        user selected a different author list generation using the
+        ``--authors`` command line switch, as represented by the
+        ``author_list_handler`` constructor argument, that value takes
+        precedence.
+
+        :param rev: The revision for which to generate the list of authors.
+        :param who: Name of the default handler.
+        :param short: Whether to shorten names to either name or address.
+        :param sep: What separator to use for automatic concatenation.
+        """
+        if self._author_list_handler is not None:
+            # The user did specify --authors, which overrides the default
+            author_list_handler = self._author_list_handler
+        else:
+            # The user didn't specify --authors, so we use the caller's default
+            author_list_handler = author_list_registry.get(who)
+        names = author_list_handler(rev)
+        if short:
+            for i in range(len(names)):
+                name, address = config.parse_username(names[i])
+                if name:
+                    names[i] = name
+                else:
+                    names[i] = address
+        if sep is not None:
+            names = sep.join(names)
+        return names
 
     def merge_marker(self, revision):
         """Get the merge marker to include in the output or '' if none."""
@@ -1523,7 +1557,7 @@ class LongLogFormatter(LogFormatter):
         lines.extend(self.custom_properties(revision.rev))
 
         committer = revision.rev.committer
-        authors = revision.rev.get_apparent_authors()
+        authors = self.authors(revision.rev, 'all')
         if authors != [committer]:
             lines.append('author: %s' % (", ".join(authors),))
         lines.append('committer: %s' % (committer,))
@@ -1703,7 +1737,8 @@ class GnuChangelogLogFormatter(LogFormatter):
                                self.show_timezone,
                                date_fmt='%Y-%m-%d',
                                show_offset=False)
-        committer_str = revision.rev.get_apparent_authors()[0].replace (' <', '  <')
+        committer_str = self.authors(revision.rev, 'first', sep=', ')
+        committer_str = committer_str.replace(' <', '  <')
         to_file.write('%s  %s\n\n' % (date_str,committer_str))
 
         if revision.delta is not None and revision.delta.has_changed():
@@ -1772,6 +1807,34 @@ def log_formatter(name, *args, **kwargs):
         return log_formatter_registry.make_formatter(name, *args, **kwargs)
     except KeyError:
         raise errors.BzrCommandError("unknown log formatter: %r" % name)
+
+
+def author_list_all(rev):
+    return rev.get_apparent_authors()[:]
+
+
+def author_list_first(rev):
+    lst = rev.get_apparent_authors()
+    try:
+        return [lst[0]]
+    except IndexError:
+        return []
+
+
+def author_list_committer(rev):
+    return [rev.committer]
+
+
+author_list_registry = registry.Registry()
+
+author_list_registry.register('all', author_list_all,
+                              'All authors')
+
+author_list_registry.register('first', author_list_first,
+                              'The first author')
+
+author_list_registry.register('committer', author_list_committer,
+                              'The committer')
 
 
 def show_one_log(revno, rev, delta, verbose, to_file, show_timezone):
@@ -1930,7 +1993,7 @@ def show_flat_log(repository, history, last_revno, lf):
         lf.log_revision(lr)
 
 
-def _get_info_for_log_files(revisionspec_list, file_list):
+def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
     """Find file-ids and kinds given a list of files and a revision range.
 
     We search for files at the end of the range. If not found there,
@@ -1940,6 +2003,8 @@ def _get_info_for_log_files(revisionspec_list, file_list):
     :param file_list: the list of paths given on the command line;
       the first of these can be a branch location or a file path,
       the remainder must be file paths
+    :param add_cleanup: When the branch returned is read locked,
+      an unlock call will be queued to the cleanup.
     :return: (branch, info_list, start_rev_info, end_rev_info) where
       info_list is a list of (relative_path, file_id, kind) tuples where
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
@@ -1947,7 +2012,7 @@ def _get_info_for_log_files(revisionspec_list, file_list):
     """
     from builtins import _get_revision_range, safe_relpath_files
     tree, b, path = bzrdir.BzrDir.open_containing_tree_or_branch(file_list[0])
-    b.lock_read()
+    add_cleanup(b.lock_read().unlock)
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive
     # filesystem and/or they might be in silly locations (like another branch).

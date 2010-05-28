@@ -314,26 +314,17 @@ class GioTransport(ConnectedTransport):
                 self.stat(tmppath)
                 dest = self._get_GIO(relpath)
                 f.move(dest, flags=gio.FILE_COPY_OVERWRITE)
-
+                f = None
                 if mode is not None:
                     self._setmode(relpath, mode)
                 return length
             except gio.Error, e:
                 self._translate_gio_error(e, relpath)
-        except Exception, e:
-            import traceback
-            mutter(traceback.format_exc())
-
-            try:
-                if not closed and fout is not None:
-                    fout.close()
-                if f is not None:
-                    f.delete()
-            except:
-                # raise the saved except
-                raise e
-            # raise the original with its traceback if we can.
-            raise
+        finally:
+            if not closed and fout is not None:
+                fout.close()
+            if f is not None and f.query_exists():
+                f.delete()
 
     def mkdir(self, relpath, mode=None):
         """Create a directory at the given path."""

@@ -23,12 +23,10 @@ also see this file.
 """
 
 from stat import S_ISDIR
-from StringIO import StringIO
 import sys
 
 import bzrlib
-from bzrlib.errors import (NotBranchError,
-                           NoSuchFile,
+from bzrlib.errors import (NoSuchFile,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
@@ -36,31 +34,23 @@ from bzrlib import (
     graph,
     tests,
     )
-from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
-from bzrlib.index import GraphIndex, InMemoryGraphIndex
+from bzrlib.index import GraphIndex
 from bzrlib.repository import RepositoryFormat
-from bzrlib.smart import server
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    TestSkipped,
-    test_knit,
     )
 from bzrlib.transport import (
-    fakenfs,
     get_transport,
     )
 from bzrlib import (
-    bencode,
     bzrdir,
     errors,
     inventory,
     osutils,
-    progress,
     repository,
     revision as _mod_revision,
-    symbol_versioning,
     upgrade,
     versionedfile,
     workingtree,

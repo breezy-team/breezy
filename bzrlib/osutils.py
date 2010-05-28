@@ -14,20 +14,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import errno
 import os
 import re
 import stat
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
+from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 import sys
 import time
 import codecs
-import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
-import errno
+import getpass
 from ntpath import (abspath as _nt_abspath,
                     join as _nt_join,
                     normpath as _nt_normpath,
@@ -362,14 +361,6 @@ def _win32_mkdtemp(*args, **kwargs):
     return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
 
 
-def _add_rename_error_details(e, old, new):
-    new_e = OSError(e.errno, "failed to rename %s to %s: %s"
-        % (old, new, e.strerror))
-    new_e.filename = old
-    new_e.to_filename = new
-    return new_e
-
-
 def _win32_rename(old, new):
     """We expect to be able to atomically replace 'new' with old.
 
@@ -377,7 +368,7 @@ def _win32_rename(old, new):
     and then deleted.
     """
     try:
-        fancy_rename(old, new, rename_func=_wrapped_rename, unlink_func=os.unlink)
+        fancy_rename(old, new, rename_func=os.rename, unlink_func=os.unlink)
     except OSError, e:
         if e.errno in (errno.EPERM, errno.EACCES, errno.EBUSY, errno.EINVAL):
             # If we try to rename a non-existant file onto cwd, we get
@@ -386,16 +377,6 @@ def _win32_rename(old, new):
             # On Linux, we seem to get EBUSY, on Mac we get EINVAL
             os.lstat(old)
         raise
-
-
-def _wrapped_rename(old, new):
-    """Rename a file or directory"""
-    try:
-        os.rename(old, new)
-    except (IOError, OSError), e:
-        # this is eventually called by all rename-like functions, so should 
-        # catch all of them
-        raise _add_rename_error_details(e, old, new)
 
 
 def _mac_getcwd():
@@ -408,8 +389,8 @@ abspath = _posix_abspath
 realpath = _posix_realpath
 pathjoin = os.path.join
 normpath = os.path.normpath
-rename = _wrapped_rename # overridden below on win32
 getcwd = os.getcwdu
+rename = os.rename
 dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
@@ -1149,7 +1130,7 @@ def contains_linebreaks(s):
 
 
 def relpath(base, path):
-    """Return path relative to base, or raise exception.
+    """Return path relative to base, or raise PathNotChild exception.
 
     The path may be either an absolute path or a path relative to the
     current working directory.
@@ -1157,6 +1138,9 @@ def relpath(base, path):
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
+
+    NOTE: `base` should not have a trailing slash otherwise you'll get
+    PathNotChild exceptions regardless of `path`.
     """
 
     if len(base) < MIN_ABS_PATHLENGTH:
@@ -1416,6 +1400,12 @@ This is defined so that higher levels can share a common fallback value when
 terminal_width() returns None.
 """
 
+# Keep some state so that terminal_width can detect if _terminal_size has
+# returned a different size since the process started.  See docstring and
+# comments of terminal_width for details.
+# _terminal_size_state has 3 possible values: no_data, unchanged, and changed.
+_terminal_size_state = 'no_data'
+_first_terminal_size = None
 
 def terminal_width():
     """Return terminal width.
@@ -1425,20 +1415,34 @@ def terminal_width():
     The rules are:
     - if BZR_COLUMNS is set, returns its value
     - if there is no controlling terminal, returns None
+    - query the OS, if the queried size has changed since the last query,
+      return its value,
     - if COLUMNS is set, returns its value,
+    - if the OS has a value (even though it's never changed), return its value.
 
     From there, we need to query the OS to get the size of the controlling
     terminal.
 
-    Unices:
+    On Unices we query the OS by:
     - get termios.TIOCGWINSZ
     - if an error occurs or a negative value is obtained, returns None
 
-    Windows:
-    
+    On Windows we query the OS by:
     - win32utils.get_console_size() decides,
     - returns None on error (provided default value)
     """
+    # Note to implementors: if changing the rules for determining the width,
+    # make sure you've considered the behaviour in these cases:
+    #  - M-x shell in emacs, where $COLUMNS is set and TIOCGWINSZ returns 0,0.
+    #  - bzr log | less, in bash, where $COLUMNS not set and TIOCGWINSZ returns
+    #    0,0.
+    #  - (add more interesting cases here, if you find any)
+    # Some programs implement "Use $COLUMNS (if set) until SIGWINCH occurs",
+    # but we don't want to register a signal handler because it is impossible
+    # to do so without risking EINTR errors in Python <= 2.6.5 (see
+    # <http://bugs.python.org/issue8354>).  Instead we check TIOCGWINSZ every
+    # time so we can notice if the reported size has changed, which should have
+    # a similar effect.
 
     # If BZR_COLUMNS is set, take it, user is always right
     try:
@@ -1447,24 +1451,39 @@ def terminal_width():
         pass
 
     isatty = getattr(sys.stdout, 'isatty', None)
-    if  isatty is None or not isatty():
+    if isatty is None or not isatty():
         # Don't guess, setting BZR_COLUMNS is the recommended way to override.
         return None
 
-    # If COLUMNS is set, take it, the terminal knows better (even inside a
-    # given terminal, the application can decide to set COLUMNS to a lower
-    # value (splitted screen) or a bigger value (scroll bars))
+    # Query the OS
+    width, height = os_size = _terminal_size(None, None)
+    global _first_terminal_size, _terminal_size_state
+    if _terminal_size_state == 'no_data':
+        _first_terminal_size = os_size
+        _terminal_size_state = 'unchanged'
+    elif (_terminal_size_state == 'unchanged' and
+          _first_terminal_size != os_size):
+        _terminal_size_state = 'changed'
+
+    # If the OS claims to know how wide the terminal is, and this value has
+    # ever changed, use that.
+    if _terminal_size_state == 'changed':
+        if width is not None and width > 0:
+            return width
+
+    # If COLUMNS is set, use it.
     try:
         return int(os.environ['COLUMNS'])
     except (KeyError, ValueError):
         pass
 
-    width, height = _terminal_size(None, None)
-    if width <= 0:
-        # Consider invalid values as meaning no width
-        return None
+    # Finally, use an unchanged size from the OS, if we have one.
+    if _terminal_size_state == 'unchanged':
+        if width is not None and width > 0:
+            return width
 
-    return width
+    # The width could not be determined.
+    return None
 
 
 def _win32_terminal_size(width, height):
@@ -1495,31 +1514,6 @@ if sys.platform == 'win32':
     _terminal_size = _win32_terminal_size
 else:
     _terminal_size = _ioctl_terminal_size
-
-
-def _terminal_size_changed(signum, frame):
-    """Set COLUMNS upon receiving a SIGnal for WINdow size CHange."""
-    width, height = _terminal_size(None, None)
-    if width is not None:
-        os.environ['COLUMNS'] = str(width)
-
-
-_registered_sigwinch = False
-def watch_sigwinch():
-    """Register for SIGWINCH, once and only once.
-
-    Do nothing if the signal module is not available.
-    """
-    global _registered_sigwinch
-    if not _registered_sigwinch:
-        try:
-            import signal
-            if getattr(signal, "SIGWINCH", None) is not None:
-                set_signal_handler(signal.SIGWINCH, _terminal_size_changed)
-        except ImportError:
-            # python doesn't provide signal support, nothing we can do about it
-            pass
-        _registered_sigwinch = True
 
 
 def supports_executable():
@@ -2094,9 +2088,11 @@ def resource_string(package, resource_name):
     base = dirname(bzrlib.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    filename = pathjoin(base, resource_relpath)
-    return open(filename, 'rU').read()
-
+    f = file(pathjoin(base, resource_relpath), "rU")
+    try:
+        return f.read()
+    finally:
+        f.close()
 
 def file_kind_from_stat_mode_thunk(mode):
     global file_kind_from_stat_mode
@@ -2301,3 +2297,15 @@ if sys.platform == 'win32':
         return os.fdopen(os.open(filename, flags), mode, bufsize)
 else:
     open_file = open
+
+
+def getuser_unicode():
+    """Return the username as unicode.
+    """
+    try:
+        user_encoding = get_user_encoding()
+        username = getpass.getuser().decode(user_encoding)
+    except UnicodeDecodeError:
+        raise errors.BzrError("Can't decode username as %s." % \
+                user_encoding)
+    return username

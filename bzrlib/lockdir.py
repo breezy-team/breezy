@@ -243,7 +243,7 @@ class LockDir(lock.Lock):
         # have a similar bug allowing someone to think they got the lock
         # when it's already held.
         #
-        # See <https://bugs.edge.launchpad.net/bzr/+bug/498378> for one case.
+        # See <https://bugs.launchpad.net/bzr/+bug/498378> for one case.
         #
         # Strictly the check is unnecessary and a waste of time for most
         # people, but probably worth trapping if something is wrong.
@@ -447,9 +447,9 @@ class LockDir(lock.Lock):
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
         try:
-            user = config.user_email()
-        except errors.NoEmailInUsername:
             user = config.username()
+        except errors.NoWhoami:
+            user = osutils.getuser_unicode()
         s = rio.Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
@@ -540,7 +540,7 @@ class LockDir(lock.Lock):
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
                 lock_url = self.transport.abspath(self.path)
-                # See <https://bugs.edge.launchpad.net/bzr/+bug/250451>
+                # See <https://bugs.launchpad.net/bzr/+bug/250451>
                 # the URL here is sometimes not one that is useful to the
                 # user, perhaps being wrapped in a lp-%d or chroot decorator,
                 # especially if this error is issued from the server.

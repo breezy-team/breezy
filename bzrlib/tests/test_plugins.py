@@ -842,8 +842,8 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom('non-standard-dir')
-        self.assertEqual('non-standard-dir/__init__.py',
-                         bzrlib.plugins.test_foo.__file__)
+        self.assertIsSameRealPath('non-standard-dir/__init__.py',
+                                  bzrlib.plugins.test_foo.__file__)
 
         # Try importing again now that the source has been compiled
         self._unregister_plugin('test_foo')
@@ -854,8 +854,8 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
             suffix = 'pyc'
         else:
             suffix = 'pyo'
-        self.assertEqual('non-standard-dir/__init__.%s' % suffix,
-                         bzrlib.plugins.test_foo.__file__)
+        self.assertIsSameRealPath('non-standard-dir/__init__.%s' % suffix,
+                                  bzrlib.plugins.test_foo.__file__)
 
     def test_submodule_loading(self):
         # We create an additional directory under the one for test_foo
@@ -866,8 +866,8 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertEqual('bzrlib.plugins.test_foo',
                          bzrlib.plugins.test_foo.__package__)
         import bzrlib.plugins.test_foo.test_bar
-        self.assertEqual('non-standard-dir/test_bar/__init__.py',
-                         bzrlib.plugins.test_foo.test_bar.__file__)
+        self.assertIsSameRealPath('non-standard-dir/test_bar/__init__.py',
+                                  bzrlib.plugins.test_foo.test_bar.__file__)
 
     def test_loading_from___init__only(self):
         # We rename the existing __init__.py file to ensure that we don't load
