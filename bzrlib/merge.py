@@ -1071,7 +1071,6 @@ class Merge3Merger(object):
                           ))
         return result
 
-
     def fix_root(self):
         try:
             self.tt.final_kind(self.tt.root)
@@ -1750,6 +1749,156 @@ class Diff3Merger(Merge3Merger):
             osutils.rmtree(temp_dir)
 
 
+class MergeIntoMerger(Merger):
+    """Merger that understands other_tree will be merged into a subdir.
+
+    This also changes the Merger api so that it uses real Branch, revision_id,
+    and RevisonTree objects, rather than using revision specs.
+    """
+
+    target_subdir = ''
+
+    def __init__(self, this_tree, other_branch, other_tree, target_subdir,
+            source_subpath):
+        """Create a new MergeIntoMerger object.
+
+        :param this_tree: The tree that we will be merging into.
+        :param other_branch: The Branch we will be merging from.
+        :param other_tree: The RevisionTree object we want to merge.
+        :param target_subdir: The relative path where we want to merge
+            other_tree into this_tree
+        :param source_subpath: XXX
+        """
+        # It is assumed that we are merging a tree that is not in our current
+        # ancestry, which means we are using the "EmptyTree" as our basis.
+        null_ancestor_tree = this_tree.branch.repository.revision_tree(
+                                _mod_revision.NULL_REVISION)
+        super(MergeIntoMerger, self).__init__(
+            this_branch=this_tree.branch,
+            this_tree=this_tree,
+            other_tree=other_tree,
+            base_tree=null_ancestor_tree,
+            )
+        self._target_subdir = target_subdir
+        self._source_subpath = source_subpath
+        self.other_branch = other_branch
+        self.other_rev_id = other_tree.get_revision_id()
+        self.other_basis = self.other_rev_id
+        self.base_is_ancestor = True
+        self.backup_files = True
+        self.merge_type = Merge3Merger
+        self.show_base = False
+        self.reprocess = False
+        self.interesting_ids = None
+        self.merge_type = Wrapper(Merge3MergeIntoMerger,
+                                  target_subdir=self._target_subdir,
+                                  source_subpath=self._source_subpath)
+        self._finish_init()
+
+    def _finish_init(self):
+        """Now that member variables are set, finish initializing."""
+
+        # This is usually done in set_other(), but we already set it as part of
+        # the constructor.
+        self.this_branch.fetch(self.other_branch,
+                               last_revision=self.other_basis)
+
+
+class Wrapper(object):
+    """Wrap a class to provide extra parameters."""
+
+    # Merger.do_merge() sets up its own set of parameters to pass to the
+    # 'merge_type' member. And it is difficult override do_merge without
+    # re-writing the whole thing, so instead we create a wrapper which will
+    # pass the extra parameters.
+
+    def __init__(self, merge_type, **kwargs):
+        self._extra_kwargs = kwargs
+        self._merge_type = merge_type
+
+    def __call__(self, *args, **kwargs):
+        kwargs.update(self._extra_kwargs)
+        return self._merge_type(*args, **kwargs)
+
+    def __getattr__(self, name):
+        return getattr(self._merge_type, name)
+
+
+class Merge3MergeIntoMerger(Merge3Merger):
+
+    # Parameters specific to the merge-into merger:
+    # Path from source to merge (i.e. paths outside this will be excluded)
+    _source_subpath = None
+    # Path to give _source_subpath in the target
+    _target_subdir = None
+
+    def __init__(self, *args, **kwargs):
+        trace.mutter('**kwargs: %r', kwargs)
+        # All of the interesting work happens during Merge3Merger.__init__(),
+        # so we have have to hack in to get our extra parameters set.
+        self._source_subpath = kwargs.pop('source_subpath')
+        self._target_subdir = kwargs.pop('target_subdir')
+        super(Merge3MergeIntoMerger, self).__init__(*args, **kwargs)
+
+    def _compute_transform(self):
+        # XXX: fix duplication with base class's _compute_transform
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            entries = self._entries_to_incorporate()
+            entries = list(entries)
+            for num, (entry, parent_id) in enumerate(entries):
+                child_pb.update('Preparing file merge', num, len(entries))
+                trace.mutter('adding %r (%s) to %s', entry.name, entry.file_id, parent_id)
+                parent_trans_id = self.tt.trans_id_file_id(parent_id)
+                trace.mutter('parent_trans_id: %s', parent_trans_id)
+                trans_id = transform.new_by_entry(self.tt, entry,
+                    parent_trans_id, self.other_tree)
+                trace.mutter('trans_id: %s', trans_id)
+                #trace.mutter('tt: %r', self.tt.__dict__)
+        finally:
+            child_pb.finished()
+        trace.mutter('new_paths: %r', self.tt.new_paths())
+        # self.fix_root()
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            fs_conflicts = transform.resolve_conflicts(self.tt, child_pb,
+                lambda t, c: transform.conflict_pass(t, c, self.other_tree))
+        finally:
+            child_pb.finished()
+        if self.change_reporter is not None:
+            from bzrlib import delta
+            delta.report_changes(
+                self.tt.iter_changes(), self.change_reporter)
+#        self.cook_conflicts(fs_conflicts)
+#        for conflict in self.cooked_conflicts:
+#            trace.warning(conflict)
+
+    def _entries_to_incorporate(self):
+        # yields pairs of (inventory_entry, new_parent)
+        other_inv = self.other_tree.inventory
+        subdir_id = other_inv.path2id(self._source_subpath)
+        trace.mutter('source_subpath: %r, subdir_id: %r', self._source_subpath,
+                subdir_id)
+        subdir = other_inv[subdir_id]
+        parent_in_target = osutils.dirname(self._target_subdir)
+        target_id = self.this_tree.inventory.path2id(parent_in_target)
+        if target_id is None:
+            raise AssertionError('_target_subdir %r not present?' %
+                    (self._target_subdir,))
+        name_in_target = osutils.basename(self._target_subdir)
+        # XXX: what if subpath in other exists in targetdir of this?
+        # Presumably we should arrange for a name conflict.
+        # XXX: what if a file in other has the same file-id as something in
+        # this?  Presumably conflict of some sort.  Definitely an edge case.
+        # XXX: verify that this DTRT when source_subpath is a file (or other
+        # non-directory entry)
+        merge_into_root = subdir.copy()
+        merge_into_root.name = name_in_target
+        yield (merge_into_root, target_id)
+        for ignored_path, entry in other_inv.iter_entries_by_dir(subdir_id):
+            yield (entry, entry.parent_id)
+
+
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False,
                 merge_type=Merge3Merger,
@@ -1763,10 +1912,11 @@ def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 change_reporter=None):
     """Primary interface for merging.
 
-        typical use is probably
-        'merge_inner(branch, branch.get_revision_tree(other_revision),
-                     branch.get_revision_tree(base_revision))'
-        """
+    Typical use is probably::
+
+        merge_inner(branch, branch.get_revision_tree(other_revision),
+                    branch.get_revision_tree(base_revision))
+    """
     if this_tree is None:
         raise errors.BzrError("bzrlib.merge.merge_inner requires a this_tree "
                               "parameter as of bzrlib version 0.8.")
