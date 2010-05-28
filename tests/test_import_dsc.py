@@ -23,8 +23,13 @@ import os
 import shutil
 import tarfile
 
-from debian_bundle.changelog import Version
-from debian_bundle import deb822
+try:
+    from debian.changelog import Version
+    from debian import deb822
+except ImportError:
+    # Prior to 0.1.15 the debian module was called debian_bundle
+    from debian_bundle.changelog import Version
+    from debian_bundle import deb822
 
 from bzrlib import (
   tests,

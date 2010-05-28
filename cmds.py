@@ -28,7 +28,11 @@ import subprocess
 import tempfile
 import urlparse
 
-from debian_bundle.changelog import Version
+try:
+    from debian.changelog import Version
+except ImportError:
+    # Prior to 0.1.15 the debian module was called debian_bundle
+    from debian_bundle.changelog import Version
 
 from bzrlib import (
     urlutils,

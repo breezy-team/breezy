@@ -28,7 +28,11 @@ import doctest
 import os
 from unittest import TestSuite
 
-from debian_bundle.changelog import Version, Changelog
+try:
+    from debian.changelog import Version, Changelog
+except ImportError:
+    # Prior to 0.1.15 the debian module was called debian_bundle
+    from debian_bundle.changelog import Version, Changelog
 
 from bzrlib.tests import TestUtil, multiply_tests, TestCaseWithTransport
 
