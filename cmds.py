@@ -80,9 +80,13 @@ from bzrlib.plugins.builddeb.tagging import (
         upstream_tag_version,
         )
 from bzrlib.plugins.builddeb.upstream import (
+        AptSource,
+        GetOrigSourceSource,
+        PristineTarSource,
+        SelfSplitSource,
+        UScanSource,
         UpstreamProvider,
         UpstreamBranchSource,
-        get_upstream_sources,
         )
 from bzrlib.plugins.builddeb.util import (
         debuild_config,
@@ -368,17 +372,28 @@ class cmd_builddeb(Command):
             result_dir, build_dir, orig_dir = self._get_dirs(config, branch,
                     is_local, result_dir or result, build_dir, orig_dir)
 
-            upstream_branch, upstream_revision = \
-                    self._get_upstream_branch(merge, export_upstream,
-                            export_upstream_revision, config,
-                            changelog.version)
-            upstream_provider = UpstreamProvider(
-                    changelog.package, changelog.version,
-                    orig_dir, get_upstream_sources(tree, branch,
-                    larstiq=larstiq, upstream_branch=upstream_branch,
-                    upstream_revision_map={
-                        changelog.version.upstream_version:upstream_revision
-                    }, allow_split=split))
+            upstream_sources = [
+                PristineTarSource(tree, branch), 
+                AptSource(),
+                ]
+            if merge:
+                upstream_branch, upstream_revision = self._get_upstream_branch(
+                    merge, export_upstream, export_upstream_revision, config,
+                    changelog.version)
+                upstream_sources.append(UpstreamBranchSource(upstream_branch,
+                    {changelog.version.upstream_version: upstream_revision}))
+            elif not native and config.upstream_branch:
+                upstream_branch = Branch.open(config.upstream_branch)
+                upstream_sources.append(UpstreamBranchSource(upstream_branch))
+            upstream_sources.extend([
+                GetOrigSourceSource(tree, larstiq), 
+                UScanSource(tree, larstiq),
+                ])
+            if split:
+                upstream_sources.append(SelfSplitSource(tree))
+ 
+            upstream_provider = UpstreamProvider(changelog.package,
+                changelog.version, orig_dir, upstream_sources)
 
             if merge:
                 distiller_cls = MergeModeDistiller
@@ -877,9 +892,13 @@ class cmd_bd_do(Command):
         orig_dir = config.orig_dir
         if orig_dir is None:
             orig_dir = default_orig_dir
+
         upstream_provider = UpstreamProvider(changelog.package, 
                 changelog.version.upstream_version, orig_dir, 
-                get_upstream_sources(t, t.branch, larstiq=larstiq))
+                [PristineTarSource(t, t.branch),
+                 AptSource(),
+                 GetOrigSourceSource(t, larstiq),
+                 UScanSource(t, larstiq) ])
 
         distiller = MergeModeDistiller(t, upstream_provider,
                 larstiq=larstiq)
