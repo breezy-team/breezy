@@ -2291,9 +2291,6 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     for num, _unused in enumerate(wt.all_file_ids()):
         if num > 0:  # more than just a root
             raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
-    existing_files = set()
-    for dir, files in wt.walkdirs():
-        existing_files.update(f[0] for f in files)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
@@ -2323,8 +2320,12 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                 precomputed_delta = []
             else:
                 precomputed_delta = None
-            for num, (tree_path, entry) in \
-                enumerate(tree.inventory.iter_entries_by_dir()):
+            tree_entries = list(enumerate(tree.inventory.iter_entries_by_dir()))
+            if tree_entries:
+                existing_files = set()
+                for dir, files in wt.walkdirs():
+                    existing_files.update(f[0] for f in files)
+            for num, (tree_path, entry) in tree_entries:
                 pb.update("Building tree", num - len(deferred_contents), total)
                 if entry.parent_id is None:
                     continue
