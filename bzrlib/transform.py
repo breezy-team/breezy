@@ -21,8 +21,6 @@ import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import itertools
-
 from bzrlib import (
     annotate,
     bencode,
