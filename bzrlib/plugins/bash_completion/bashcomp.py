@@ -131,7 +131,7 @@ complete -F %(function_name)s -o default bzr
 				;;
 			[\\"\\']*..tag:*)
 				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//') )
-				fixedWords=( "${fixedWords[@]/#/${cur%%..tag:*}..tag:}" )
+				fixedWords=( $(for i in "${fixedWords[@]}"; do echo "${cur%%..tag:*}..tag:${i}"; done) )
 				;;
 		esac
 	elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
