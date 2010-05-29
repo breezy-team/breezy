@@ -21,6 +21,8 @@ import time
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import itertools
+
 from bzrlib import (
     annotate,
     bencode,
@@ -2320,12 +2322,25 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                 precomputed_delta = []
             else:
                 precomputed_delta = None
-            tree_entries = list(enumerate(tree.inventory.iter_entries_by_dir()))
-            if tree_entries:
+
+            # Check if tree inventory has any entries. If so, we populate
+            # existing_files with the directory content. If there are no
+            # entries we skip populating existing_files as its not used.
+            # This improves performance and unncessary work on large
+            # directory trees. (#501307)
+            tree_entries = tree.inventory.iter_entries_by_dir()
+            walk_tree = False
+            try:
+                tree_entries = itertools.chain([tree_entries.next()],
+                    tree_entries)
+                walk_tree = True
+            except StopIteration:
+                pass
+            if walk_tree:
                 existing_files = set()
                 for dir, files in wt.walkdirs():
                     existing_files.update(f[0] for f in files)
-            for num, (tree_path, entry) in tree_entries:
+            for num, (tree_path, entry) in enumerate(tree_entries):
                 pb.update("Building tree", num - len(deferred_contents), total)
                 if entry.parent_id is None:
                     continue
