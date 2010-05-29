@@ -2320,7 +2320,6 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                 precomputed_delta = []
             else:
                 precomputed_delta = None
-
             # Check if tree inventory has content. If so, we populate
             # existing_files with the directory content. If there are no
             # entries we skip populating existing_files as its not used.
@@ -2331,7 +2330,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                 for dir, files in wt.walkdirs():
                     existing_files.update(f[0] for f in files)
             for num, (tree_path, entry) in \
-                    enumerate(tree.inventory.iter_entries_by_dir()):
+                enumerate(tree.inventory.iter_entries_by_dir()):
                 pb.update("Building tree", num - len(deferred_contents), total)
                 if entry.parent_id is None:
                     continue
