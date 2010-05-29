@@ -264,9 +264,9 @@ nvuQES5C9BMHjF39LZiGH1iLQy7FgdHyoP+eodI7
 
 class SocketListener(threading.Thread):
 
-    def __init__(self, callback):
+    def __init__(self, connection_callback):
         threading.Thread.__init__(self)
-        self._callback = callback
+        self._connection_callback = connection_callback
         self._socket = socket.socket()
         self._socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._socket.bind(('localhost', 0))
@@ -298,7 +298,8 @@ class SocketListener(threading.Thread):
                     self, s)
                 # because the loopback socket is inline, and transports are
                 # never explicitly closed, best to launch a new thread.
-                threading.Thread(target=self._callback, args=(s,)).start()
+                threading.Thread(target=self._connection_callback,
+                                 args=(s,)).start()
             except socket.error, x:
                 sys.excepthook(*sys.exc_info())
                 trace.warning('Socket error during accept() '
@@ -417,6 +418,9 @@ class SFTPServer(test_server.TestServer):
         decorator.
         """
         if self.add_latency > 0.000001:
+            # FIXME: We appear to use SocketDelay for the server socket only, I
+            # don't think that gets magically propagated to client
+            # sockets... -- vila 20100526
             sock = SocketDelay(sock, self.add_latency)
         return self._run_server(sock)
 
@@ -432,9 +436,9 @@ class SFTPServer(test_server.TestServer):
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                          StubSFTPServer, root=self._root,
                                          home=self._server_homedir)
-        event = threading.Event()
-        ssh_server.start_server(event, server)
-        event.wait(5.0)
+        ready = threading.Event()
+        ssh_server.start_server(ready, server)
+        ready.wait(5.0)
 
     def start_server(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local

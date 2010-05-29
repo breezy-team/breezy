@@ -624,7 +624,7 @@ class HttpServer(transport.Server):
             self.host, self.port = self._httpd.server_address
         return self._httpd
 
-    def _http_start(self, started):
+    def run_server(self, started):
         """Server thread main entry point. """
         server = self._get_httpd()
         self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
@@ -670,7 +670,7 @@ class HttpServer(transport.Server):
         # Create the server thread
         started = threading.Event()
         self._http_thread = test_server.ThreadWithException(
-            event=started, target=self._http_start, args=(started,))
+            event=started, target=self.run_server, args=(started,))
         self._http_thread.start()
         # Wait for the server thread to start (i.e release the lock)
         started.wait()
