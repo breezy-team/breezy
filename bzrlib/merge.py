@@ -1763,8 +1763,6 @@ class MergeIntoMerger(Merger):
     and RevisonTree objects, rather than using revision specs.
     """
 
-    target_subdir = ''
-
     def __init__(self, this_tree, other_branch, other_tree, target_subdir,
             source_subpath):
         """Create a new MergeIntoMerger object.
