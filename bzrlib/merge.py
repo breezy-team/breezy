@@ -1769,12 +1769,16 @@ class MergeIntoMerger(Merger):
             source_subpath):
         """Create a new MergeIntoMerger object.
 
+        source_subpath in other_tree will be effectively copied to
+        target_subdir in this_tree.
+
         :param this_tree: The tree that we will be merging into.
         :param other_branch: The Branch we will be merging from.
         :param other_tree: The RevisionTree object we want to merge.
         :param target_subdir: The relative path where we want to merge
             other_tree into this_tree
-        :param source_subpath: XXX
+        :param source_subpath: The relative path specifying the subtree of
+            other_tree to merge into this_tree.
         """
         # It is assumed that we are merging a tree that is not in our current
         # ancestry, which means we are using the "EmptyTree" as our basis.
@@ -1800,15 +1804,10 @@ class MergeIntoMerger(Merger):
         self.merge_type = Wrapper(Merge3MergeIntoMerger,
                                   target_subdir=self._target_subdir,
                                   source_subpath=self._source_subpath)
-        self._finish_init()
-
-    def _finish_init(self):
-        """Now that member variables are set, finish initializing."""
-
-        # This is usually done in set_other(), but we already set it as part of
-        # the constructor.
-        self.this_branch.fetch(self.other_branch,
-                               last_revision=self.other_basis)
+        # This is usually done in set_*(), but we already set it as part
+        # of the constructor.
+        self._maybe_fetch(self.other_branch, self.this_branch,
+            self.other_basis)
 
 
 class Wrapper(object):
