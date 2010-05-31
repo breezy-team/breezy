@@ -532,9 +532,13 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
         """Start a new thread to process the request."""
         client = self.clients.pop()
         started = threading.Event()
-        t = threading.Thread(target = self.process_request_thread,
-                             args = (started, request, client_address))
+        t = test_server.ThreadWithException(
+            event=started,
+            target = self.process_request_thread,
+            args = (started, request, client_address))
         t.name = '%s -> %s' % (client_address, self.server_address)
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread for: %s started' % (threading.currentThread().name,)
         client.append(t)
         self.clients.append(client)
         if self.daemon_threads:
