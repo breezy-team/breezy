@@ -25,6 +25,10 @@ Bug Fixes
   test that all commands available to the test suite have help.
   (Robert Collins, #177500)
 
+* Most of the leaked threads during selftest are now fixed, allowing the
+  full test suite to pass on gentoo.
+  (Vincent Ladeuil, #392127)
+
 Improvements
 ************
 
@@ -43,6 +47,10 @@ Internals
 
 Testing
 *******
+
+* HTTP test servers wont't leak threads (and sockets) anymore. They won't
+  hang on AIX anymore either.
+ (Vincent Ladeuil, #405745)
 
 
 bzr 2.2b3
@@ -182,10 +190,6 @@ Bug Fixes
   estimate of the number of records to be fetched vs actually fetched.
   (Parth Malwankar, #374740, #538868)
 
-* Most of the leaked threads during selftest are now fixed, allowing the
-  full test suite to pass on gentoo.
-  (Vincent Ladeuil, #392127)
-
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
@@ -320,9 +324,6 @@ Testing
 
 * ``bzr selftest --parallel=subprocess`` now works correctly on win32.
    (Gordon Tyler, #551332)
-
-* HTTP test servers will leak less threads (and sockets) and will not hang on
-  AIX anymore. (Vincent Ladeuil, #405745)
 
 * Workaround ``Crypto.Random`` check leading to spurious test
   failures on Lucid, FreeBSD and gentoo.  
