@@ -832,6 +832,7 @@ class TestCase(testtools.TestCase):
 
     def _check_leaked_threads(self):
         active = threading.activeCount()
+        self.assertEqual(1, active, '%r is leaking thread(s)' % self.id())
         leaked_threads = active - TestCase._active_threads
         TestCase._active_threads = active
         # If some tests make the number of threads *decrease*, we'll consider
