@@ -18,7 +18,7 @@
 
 from bzrlib import (
     inventory,
-    merge_into,
+    #merge_into,
     tests,
     )
 
