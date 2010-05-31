@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import errno
+import inspect
 import sys
 
 from bzrlib import (
@@ -32,6 +33,17 @@ from bzrlib.tests import TestSkipped
 
 
 class TestCommands(tests.TestCase):
+
+    def test_all_commands_have_help(self):
+        commands._register_builtin_commands()
+        commands_without_help = set()
+        base_doc = inspect.getdoc(commands.Command)
+        for cmd_name in commands.all_command_names():
+            cmd = commands.get_cmd_object(cmd_name)
+            cmd_help = cmd.help()
+            if not cmd_help or cmd_help == base_doc:
+                commands_without_help.append(cmd_name)
+        self.assertLength(0, commands_without_help)
 
     def test_display_command(self):
         """EPIPE message is selectively suppressed"""
@@ -78,11 +90,6 @@ class TestCommands(tests.TestCase):
     def test_help_not_hidden(self):
         c = self.get_command([option.Option('foo', hidden=False)])
         self.assertContainsRe(c.get_help_text(), '--foo')
-
-    def test_no_help_init_failure(self):
-        class cmd_foo(commands.Command):
-            pass
-        self.assertRaises(ValueError, cmd_foo)
 
 
 class TestGetAlias(tests.TestCase):

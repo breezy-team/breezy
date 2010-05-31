@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -278,7 +278,11 @@ class BundleInfo(object):
         if rev.revision_id != revision_id:
             raise AssertionError()
         if sha1 != rev.inventory_sha1:
-            open(',,bogus-inv', 'wb').write(s)
+            f = open(',,bogus-inv', 'wb')
+            try:
+                f.write(s)
+            finally:
+                f.close()
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
