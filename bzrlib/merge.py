@@ -856,6 +856,13 @@ class Merge3Merger(object):
         finally:
             child_pb.finished()
         self.fix_root()
+        self._finish_transform()
+
+    def _finish_transform(self):
+        """Finalize the transform and report the changes.
+
+        This is the second half of _compute_transform.
+        """
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             fs_conflicts = transform.resolve_conflicts(self.tt, child_pb,
@@ -1852,20 +1859,7 @@ class Merge3MergeIntoMerger(Merge3Merger):
                     parent_trans_id, self.other_tree)
         finally:
             child_pb.finished()
-        # self.fix_root()
-        child_pb = ui.ui_factory.nested_progress_bar()
-        try:
-            fs_conflicts = transform.resolve_conflicts(self.tt, child_pb,
-                lambda t, c: transform.conflict_pass(t, c, self.other_tree))
-        finally:
-            child_pb.finished()
-        if self.change_reporter is not None:
-            from bzrlib import delta
-            delta.report_changes(
-                self.tt.iter_changes(), self.change_reporter)
-#        self.cook_conflicts(fs_conflicts)
-#        for conflict in self.cooked_conflicts:
-#            trace.warning(conflict)
+        self._finish_transform()
 
     def _entries_to_incorporate(self):
         # yields pairs of (inventory_entry, new_parent)
