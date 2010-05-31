@@ -315,6 +315,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return path
 
 
+# FIXME: This should be called TestingServerInAThread
 class TestingHTTPServerMixin:
 
     def __init__(self, test_case_server):
@@ -415,7 +416,7 @@ class TestingHTTPServerMixin:
             # concerned. We used to hang here.
             raise AssertionError('thread %s hung' % (thread.name,))
 
-    def shutdown(self):
+    def shutdown_server(self):
         """Stops the serve() loop.
 
         Blocks until the loop has finished. This must be called while serve()
@@ -470,6 +471,7 @@ class TestingHTTPServerMixin:
             # The request process has been completed, the thread is about to
             # die, let's shutdown the socket if we can.
             sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
         except (socket.error, select.error), e:
             if e[0] in (errno.EBADF, errno.ENOTCONN):
                 # Right, the socket is already down
@@ -479,6 +481,7 @@ class TestingHTTPServerMixin:
                 raise
 
 
+# FIXME: TestingHTTPServerMixin shouldn't be first -- vila 20100531
 class TestingHTTPServer(TestingHTTPServerMixin, SocketServer.TCPServer):
 
     def __init__(self, server_address, request_handler_class,
@@ -495,6 +498,7 @@ class TestingHTTPServer(TestingHTTPServerMixin, SocketServer.TCPServer):
         TestingHTTPServerMixin.server_bind(self)
 
 
+# FIXME: TestingHTTPServerMixin shouldn't be first -- vila 20100531
 class TestingThreadingHTTPServer(TestingHTTPServerMixin,
                                  SocketServer.ThreadingTCPServer,
                                  ):
@@ -550,8 +554,8 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
         TestingHTTPServerMixin.shutdown_client(self, client)
         if len(client) == 3:
             # The thread has been created only if the request is processed but
-            # after the connection is inited. This could happne when the server
-            # is shut down.
+            # after the connection is inited. This could happen during server
+            # shutdown.
             sock, addr, thread = client
             if 'threads' in tests.selftest_debug_flags:
                 print 'Try    joining: %s' % (thread.name,)
@@ -693,7 +697,7 @@ class HttpServer(transport.Server):
         """See bzrlib.transport.Server.tearDown."""
         if self._httpd is not None:
             # The server has been started successfully, shut it down now
-            self._httpd.shutdown()
+            self._httpd.shutdown_server()
             if 'threads' in tests.selftest_debug_flags:
                 print 'Try    joining: %s' % (self._http_thread.name,)
             self._httpd.join_thread(self._http_thread)
