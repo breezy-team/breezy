@@ -80,6 +80,10 @@ Compatibility Breaks
   construction if there is no __doc__ set. (Note, this will be reverted in
   2.2b4) (Robert Collins)
 
+* The source tree no longer contains a contrib/zsh/_bzr completion
+  script. The new file contrib/zsh/README suggests alternatives.
+  (Martin von Gagern, #560030)
+
 New Features
 ************
 
