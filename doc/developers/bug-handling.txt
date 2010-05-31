@@ -303,6 +303,9 @@ newformat
 performance
     bugs about performance problems.
 
+regression
+    bugs which represent an aspect of bzr becoming accidentally less good than it was.
+
 test
     needs changes to the test framework
 
