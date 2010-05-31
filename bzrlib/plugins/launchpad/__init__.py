@@ -310,6 +310,8 @@ class cmd_lp_propose_merge(Command):
                             help='Propose the merge on staging.'),
                      Option('message', short_name='m', type=unicode,
                             help='Commit message.'),
+                     Option('approve',
+                            help='Mark the proposal as approved immediately.'),
                      ListOption('review', short_name='R', type=unicode,
                             help='Requested reviewer and optional type.')]
 
@@ -318,7 +320,7 @@ class cmd_lp_propose_merge(Command):
     aliases = ['lp-submit', 'lp-propose']
 
     def run(self, submit_branch=None, review=None, staging=False,
-            message=None):
+            message=None, approve=False):
         from bzrlib.plugins.launchpad import lp_propose
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             '.')
@@ -338,7 +340,7 @@ class cmd_lp_propose_merge(Command):
         else:
             target = _mod_branch.Branch.open(submit_branch)
         proposer = lp_propose.Proposer(tree, branch, target, message,
-                                       reviews, staging)
+                                       reviews, staging, approve=approve)
         proposer.check_proposal()
         proposer.create_proposal()
 

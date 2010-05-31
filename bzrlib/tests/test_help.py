@@ -112,6 +112,12 @@ class TestCommandHelp(tests.TestCase):
                 Example 2::
 
                     cmd arg2
+
+                A code block follows.
+
+                ::
+
+                    bzr Demo something
             """
         cmd = cmd_Demo()
         helptext = cmd.get_help_text()
@@ -122,7 +128,6 @@ class TestCommandHelp(tests.TestCase):
             '\n'
             'Options:\n'
             '  --usage        Show usage message and options.\n'
-            '  -0, --null     Use an ASCII NUL (\\0) separator rather than a newline.\n'
             '  -v, --verbose  Display more information.\n'
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'
@@ -135,6 +140,10 @@ class TestCommandHelp(tests.TestCase):
             '    Example 2:\n'
             '\n'
             '        cmd arg2\n'
+            '\n'
+            '    A code block follows.\n'
+            '\n'
+            '        bzr Demo something\n'
             '\n')
         helptext = cmd.get_help_text(plain=False)
         self.assertEquals(helptext,
@@ -143,7 +152,6 @@ class TestCommandHelp(tests.TestCase):
             '\n'
             ':Options:\n'
             '  --usage        Show usage message and options.\n'
-            '  -0, --null     Use an ASCII NUL (\\0) separator rather than a newline.\n'
             '  -v, --verbose  Display more information.\n'
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'
@@ -156,6 +164,12 @@ class TestCommandHelp(tests.TestCase):
             '    Example 2::\n'
             '\n'
             '        cmd arg2\n'
+            '\n'
+            '    A code block follows.\n'
+            '\n'
+            '    ::\n'
+            '\n'
+            '        bzr Demo something\n'
             '\n')
 
     def test_concise_help_text(self):
@@ -179,7 +193,6 @@ class TestCommandHelp(tests.TestCase):
             '\n'
             'Options:\n'
             '  --usage        Show usage message and options.\n'
-            '  -0, --null     Use an ASCII NUL (\\0) separator rather than a newline.\n'
             '  -v, --verbose  Display more information.\n'
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'
@@ -199,7 +212,6 @@ class TestCommandHelp(tests.TestCase):
             '\n'
             'Options:\n'
             '  --usage        Show usage message and options.\n'
-            '  -0, --null     Use an ASCII NUL (\\0) separator rather than a newline.\n'
             '  -v, --verbose  Display more information.\n'
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'
@@ -234,7 +246,6 @@ class TestCommandHelp(tests.TestCase):
             '\n'
             'Options:\n'
             '  --usage        Show usage message and options.\n'
-            '  -0, --null     Use an ASCII NUL (\\0) separator rather than a newline.\n'
             '  -v, --verbose  Display more information.\n'
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'
@@ -278,7 +289,6 @@ class TestCommandHelp(tests.TestCase):
             '\n'
             'Options:\n'
             '  --usage        Show usage message and options.\n'
-            '  -0, --null     Use an ASCII NUL (\\0) separator rather than a newline.\n'
             '  -v, --verbose  Display more information.\n'
             '  -q, --quiet    Only display errors and warnings.\n'
             '  -h, --help     Show help message.\n'

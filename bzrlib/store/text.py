@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -118,7 +118,9 @@ class TextStore(bzrlib.store.TransportStore):
         # so buffer them in a StringIO instead
         if getattr(f, 'tell', None) is not None:
             return gzip.GzipFile(mode='rb', fileobj=f)
-        else:
+        try:
             from cStringIO import StringIO
             sio = StringIO(f.read())
             return gzip.GzipFile(mode='rb', fileobj=sio)
+        finally:
+            f.close()

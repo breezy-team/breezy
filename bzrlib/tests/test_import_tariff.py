@@ -96,6 +96,7 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.remote',
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
+            'kerberos',
             'smtplib',
             'tarfile',
             ])
