@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
+    cmdline,
     commands,
     config,
     help_topics,
@@ -293,7 +294,7 @@ class DataCollector(object):
 
     def aliases(self):
         for alias, expansion in config.GlobalConfig().get_aliases().iteritems():
-            for token in commands.shlex_split_unicode(expansion):
+            for token in cmdline.split(expansion):
                 if not token.startswith("-"):
                     self.user_aliases.setdefault(token, set()).add(alias)
                     break
