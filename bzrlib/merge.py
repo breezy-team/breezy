@@ -1833,7 +1833,6 @@ class Merge3MergeIntoMerger(Merge3Merger):
     _target_subdir = None
 
     def __init__(self, *args, **kwargs):
-        trace.mutter('**kwargs: %r', kwargs)
         # All of the interesting work happens during Merge3Merger.__init__(),
         # so we have have to hack in to get our extra parameters set.
         self._source_subpath = kwargs.pop('source_subpath')
@@ -1848,16 +1847,11 @@ class Merge3MergeIntoMerger(Merge3Merger):
             entries = list(entries)
             for num, (entry, parent_id) in enumerate(entries):
                 child_pb.update('Preparing file merge', num, len(entries))
-                trace.mutter('adding %r (%s) to %s', entry.name, entry.file_id, parent_id)
                 parent_trans_id = self.tt.trans_id_file_id(parent_id)
-                trace.mutter('parent_trans_id: %s', parent_trans_id)
                 trans_id = transform.new_by_entry(self.tt, entry,
                     parent_trans_id, self.other_tree)
-                trace.mutter('trans_id: %s', trans_id)
-                #trace.mutter('tt: %r', self.tt.__dict__)
         finally:
             child_pb.finished()
-        trace.mutter('new_paths: %r', self.tt.new_paths())
         # self.fix_root()
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
