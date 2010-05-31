@@ -1847,7 +1847,6 @@ class Merge3MergeIntoMerger(Merge3Merger):
         super(Merge3MergeIntoMerger, self).__init__(*args, **kwargs)
 
     def _compute_transform(self):
-        # XXX: fix duplication with base class's _compute_transform
         child_pb = ui.ui_factory.nested_progress_bar()
         try:
             entries = self._entries_to_incorporate()
