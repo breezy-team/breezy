@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -118,7 +118,10 @@ def _read_weave_v5(f, w):
 
     from weave import WeaveFormatError
 
-    lines = iter(f.readlines())
+    try:
+        lines = iter(f.readlines())
+    finally:
+        f.close()
 
     try:
         l = lines.next()

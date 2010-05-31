@@ -469,6 +469,78 @@ def split(url, exclude_trailing_slash=True):
     return url_base + head, tail
 
 
+def split_segment_parameters_raw(url):
+    """Split the subsegment of the last segment of a URL.
+
+    :param url: A relative or absolute URL
+    :return: (url, subsegments)
+    """
+    (parent_url, child_dir) = split(url)
+    subsegments = child_dir.split(",")
+    if len(subsegments) == 1:
+        return (url, [])
+    return (join(parent_url, subsegments[0]), subsegments[1:])
+
+
+def split_segment_parameters(url):
+    """Split the segment parameters of the last segment of a URL.
+
+    :param url: A relative or absolute URL
+    :return: (url, segment_parameters)
+    """
+    (base_url, subsegments) = split_segment_parameters_raw(url)
+    parameters = {}
+    for subsegment in subsegments:
+        (key, value) = subsegment.split("=", 1)
+        parameters[key] = value
+    return (base_url, parameters)
+
+
+def join_segment_parameters_raw(base, *subsegments):
+    """Create a new URL by adding subsegments to an existing one. 
+
+    This adds the specified subsegments to the last path in the specified
+    base URL. The subsegments should be bytestrings.
+
+    :note: You probably want to use join_segment_parameters instead.
+    """
+    if not subsegments:
+        return base
+    for subsegment in subsegments:
+        if type(subsegment) is not str:
+            raise TypeError("Subsegment %r is not a bytestring" % subsegment)
+        if "," in subsegment:
+            raise errors.InvalidURLJoin(", exists in subsegments",
+                                        base, subsegments)
+    return ",".join((base,) + subsegments)
+
+
+def join_segment_parameters(url, parameters):
+    """Create a new URL by adding segment parameters to an existing one.
+
+    The parameters of the last segment in the URL will be updated; if a
+    parameter with the same key already exists it will be overwritten.
+
+    :param url: A URL, as string
+    :param parameters: Dictionary of parameters, keys and values as bytestrings
+    """
+    (base, existing_parameters) = split_segment_parameters(url)
+    new_parameters = {}
+    new_parameters.update(existing_parameters)
+    for key, value in parameters.iteritems():
+        if type(key) is not str:
+            raise TypeError("parameter key %r is not a bytestring" % key)
+        if type(value) is not str:
+            raise TypeError("parameter value %r for %s is not a bytestring" %
+                (key, value))
+        if "=" in key:
+            raise errors.InvalidURLJoin("= exists in parameter key", url,
+                parameters)
+        new_parameters[key] = value
+    return join_segment_parameters_raw(base, 
+        *["%s=%s" % item for item in sorted(new_parameters.items())])
+
+
 def _win32_strip_local_trailing_slash(url):
     """Strip slashes after the drive letter"""
     if len(url) > WIN32_MIN_ABS_FILEURL_LENGTH:
