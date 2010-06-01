@@ -1,6 +1,6 @@
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.revision import Revision
-from bzrlib.plugins.stats import get_revisions_and_committers, collapse_by_person
+from bzrlib.plugins.stats.cmds import get_revisions_and_committers, collapse_by_person
 
 
 class TestGetRevisionsAndCommitters(TestCaseWithTransport):

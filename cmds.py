@@ -15,8 +15,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """A Simple bzr plugin to generate statistics about the history."""
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
 from bzrlib import (
     branch,
     commands,
@@ -29,13 +27,8 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.plugins.stats.classify import classify_delta
-""")
 
-from bzrlib import _format_version_tuple
 from itertools import izip
-
-version_info = (0, 1, 0, 'dev', 0)
-__version__ = _format_version_tuple(version_info)
 
 
 def collapse_by_person(revisions, canonical_committer):
@@ -287,9 +280,6 @@ class cmd_committer_statistics(commands.Command):
         display_info(info, self.outf, fetch_class_stats)
 
 
-commands.register_command(cmd_committer_statistics)
-
-
 class cmd_ancestor_growth(commands.Command):
     """Figure out the ancestor graph for LOCATION"""
 
@@ -321,9 +311,6 @@ class cmd_ancestor_growth(commands.Command):
                     self.outf.write('%4d, %4d\n' % (revno, cur_parents))
         finally:
             a_branch.unlock()
-
-
-commands.register_command(cmd_ancestor_growth)
 
 
 def gather_class_stats(repository, revs):
@@ -429,17 +416,3 @@ class cmd_credits(commands.Command):
             display_credits(credits, self.outf)
         finally:
             a_branch.unlock()
-
-
-commands.register_command(cmd_credits)
-
-
-def load_tests(basic_tests, module, loader):
-    testmod_names = [__name__ + '.' + x for x in [
-        'test_classify',
-        'test_stats',
-        ]]
-    suite = loader.suiteClass()
-    suite.addTest(loader.loadTestsFromModuleNames(testmod_names))
-    return suite
-
