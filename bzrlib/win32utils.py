@@ -535,12 +535,29 @@ def _command_line_to_argv(command_line, single_quotes_allowed=False):
                                   default.
     :return: A list of unicode strings.
     """
+    # First, spit the command line
     s = cmdline.Splitter(command_line, single_quotes_allowed=single_quotes_allowed)
-    # Now that we've split the content, expand globs if necessary
+    
+    
+    arguments = []
+    arguments.extend(s)
+    # Now make sure that the length of sys.argv agree with what we're ben given as a command line
+    # we do this by simply counting the number of arguments. The counts should agree no matter
+    # what encoding sys.argv is in (AFAIK) 
+    # TODO: What if len(arguments) < len (sys.argv)
+    arguments = arguments[len(arguments) - len(sys.argv):]
+    
+    # Now process globs; or metachars in the command line
+    argv = process_metachars_in_commandline(arguments)
+    return argv
+
+
+def process_metachars_in_commandline(raw_args):
+    # expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs
     args = []
-    for is_quoted, arg in s:
+    for is_quoted, arg in raw_args:
         if is_quoted or not glob.has_magic(arg):
             args.append(arg)
         else:
@@ -558,16 +575,7 @@ if has_ctypes and winver != 'Windows 98':
             raise ctypes.WinError()
         # Skip the first argument, since we only care about parameters
         argv = _command_line_to_argv(command_line)[1:]
-        if getattr(sys, 'frozen', None) is None:
-            # Invoked via 'python.exe' which takes the form:
-            #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
-            # we need to get only BZR_OPTIONS part,
-            # We already removed 'python.exe' so we remove everything up to and
-            # including the first non-option ('-') argument.
-            for idx in xrange(len(argv)):
-                if argv[idx][:1] != '-':
-                    break
-            argv = argv[idx+1:]
+            
         return argv
 else:
     get_unicode_argv = None
