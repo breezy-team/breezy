@@ -25,6 +25,10 @@ Bug Fixes
   test that all commands available to the test suite have help.
   (Robert Collins, #177500)
 
+* Explicitly removing ``--profile-imports`` option from parsed command-line
+  arguments on Windows, because bzr script does the same.
+  (Alexander Belchenko, #588277)
+
 Improvements
 ************
 
