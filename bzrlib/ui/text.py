@@ -37,8 +37,6 @@ from bzrlib import (
 
 """)
 
-from bzrlib.osutils import watch_sigwinch
-
 from bzrlib.ui import (
     UIFactory,
     NullProgressView,
@@ -62,8 +60,6 @@ class TextUIFactory(UIFactory):
         self.stderr = stderr
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
-        # hook up the signals to watch for terminal size changes
-        watch_sigwinch()
 
     def be_quiet(self, state):
         if state and not self._quiet:

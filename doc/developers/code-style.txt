@@ -84,8 +84,12 @@ the ``-3`` option of Python2.6.)
 
 Specifically:
 
- * don't use the ``with`` statement
- * don't ``from . import``
+ * Don't use the ``with`` statement.
+
+ * Don't ``from . import``.
+
+ * Don't use ``try/except/finally``, which is not supported in Python2.4,
+   use separate nested ``try/except`` and ``try/finally`` blocks.
 
 
 hasattr and getattr
@@ -337,7 +341,7 @@ Test coverage
 =============
 
 All code should be exercised by the test suite.  See the `Bazaar Testing
-Guide <http://doc.bazaar-vcs.org/developers/testing.html>`_ for detailed
+Guide <http://doc.bazaar.canonical.com/developers/testing.html>`_ for detailed
 information about writing tests.
 
 
@@ -407,7 +411,17 @@ In particular, don't use ``shutil.rmtree`` unless it's acceptable for it
 to fail on Windows if some files are readonly or still open elsewhere.
 Use ``bzrlib.osutils.rmtree`` instead.
 
+Using the ``open(..).read(..)`` or ``open(..).write(..)`` style chaining
+of methods for reading or writing file content relies on garbage collection
+to close the file which may keep the file open for an undefined period of
+time. This may break some follow up operations like rename on Windows.
+Use ``try/finally`` to explictly close the file. E.g.::
 
+    f = open('foo.txt', 'w')
+    try:
+        f.write(s)
+    finally:
+        f.close()
 
 ..
    vim: ft=rst tw=74 ai

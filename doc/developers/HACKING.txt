@@ -12,8 +12,7 @@ the Bazaar mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
 The latest developer documentation can be found online at
-http://doc.bazaar-vcs.org/developers/.
-
+http://doc.bazaar.canonical.com/developers/.
 
 Getting Started
 ###############
@@ -29,7 +28,7 @@ perhaps someone else has already fixed it?
 To answer these questions and more, take a moment to explore the
 overall Bazaar Platform. Here are some links to browse:
 
-* The Plugins page on the Wiki - http://bazaar-vcs.org/BzrPlugins
+* The Plugins page on the Wiki - http://wiki.bazaar.canonical.com/BzrPlugins
 
 * The Bazaar product family on Launchpad - https://launchpad.net/bazaar
 
@@ -53,7 +52,7 @@ Planning and Discussing Changes
 
 There is a very active community around Bazaar. Mostly we meet on IRC
 (#bzr on irc.freenode.net) and on the mailing list. To join the Bazaar
-community, see http://bazaar-vcs.org/BzrSupport.
+community, see http://wiki.bazaar.canonical.com/BzrSupport.
 
 If you are planning to make a change, it's a very good idea to mention it
 on the IRC channel and/or on the mailing list. There are many advantages
@@ -202,7 +201,7 @@ The key tools we use to enable these practices are:
 
 * Launchpad - https://launchpad.net/
 
-* Bazaar - http://bazaar-vcs.org/
+* Bazaar - http://bazaar.canonical.com/
 
 * Patch Queue Manager - https://launchpad.net/pqm/
 
@@ -215,7 +214,7 @@ Preparing a Sandbox for Making Changes to Bazaar
 ================================================
 
 Bazaar supports many ways of organising your work. See
-http://bazaar-vcs.org/SharedRepositoryLayouts for a summary of the
+http://wiki.bazaar.canonical.com/SharedRepositoryLayouts for a summary of the
 popular alternatives.
 
 Of course, the best choice for you will depend on numerous factors:
@@ -292,7 +291,7 @@ Automatically-generated API reference information is available at
 <http://starship.python.net/crew/mwh/bzrlibapi/>.
 
 See also the `Bazaar Architectural Overview
-<http://doc.bazaar-vcs.org/developers/overview.html>`_.
+<http://doc.bazaar.canonical.com/developers/overview.html>`_.
 
 
 Core Topics
@@ -824,8 +823,7 @@ and no longer including the .py file.
 Making Installers for OS Windows
 ================================
 To build a win32 installer, see the instructions on the wiki page:
-http://bazaar-vcs.org/BzrWin32Installer
-
+http://wiki.bazaar.canonical.com/BzrWin32Installer
 
 Core Developer Tasks
 ####################
@@ -844,7 +842,7 @@ stuff covered above, "core" developers have responsibility for:
 * reviewing changes
 * reviewing blueprints
 * planning releases
-* managing releases (see `Releasing Bazaar <http://doc.bazaar-vcs.org/developers/releasing.html>`_)
+* managing releases (see `Releasing Bazaar <http://doc.bazaar.canonical.com/developers/releasing.html>`_)
 
 .. note::
   Removing barriers to community participation is a key reason for adopting
@@ -896,7 +894,7 @@ An Overview of PQM
 Of the many workflows supported by Bazaar, the one adopted for Bazaar
 development itself is known as "Decentralized with automatic gatekeeper".
 To repeat the explanation of this given on
-http://bazaar-vcs.org/Workflows:
+http://wiki.bazaar.canonical.com/Workflows:
 
 .. pull-quote::
   In this workflow, each developer has their own branch or
