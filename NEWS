@@ -28,7 +28,7 @@ Bug Fixes
 * Explicitly removing ``--profile-imports`` option from parsed command-line
   arguments on Windows, because bzr script does the same.
   (Alexander Belchenko, #588277)
-
+  
 Improvements
 ************
 
@@ -46,6 +46,8 @@ API Changes
 
 Internals
 *********
+
+* Improved ``bzrlib.urlutils`` to handle lp:foo/bar URLs. (Gordon Tyler)
 
 Testing
 *******
