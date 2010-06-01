@@ -570,7 +570,7 @@ if has_ctypes and winver != 'Windows 98':
             argv = argv[idx+1:]
         # we should remove '--profile-imports' option as well (bug #588277)
         # see bzr script ~ line 54
-        if '--profile-imports' in argv:
+        if '--profile-imports' in argv and '--profile-imports' not in sys.argv:
             argv.remove('--profile-imports')
         return argv
 else:
