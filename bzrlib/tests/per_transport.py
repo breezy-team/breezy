@@ -1265,7 +1265,7 @@ class TransportTests(TestTransportImplementation):
         self.assertIs(t._get_connection(), c._get_connection())
 
         # Temporary failure, we need to create a new dummy connection
-        new_connection = object()
+        new_connection = None
         t._set_connection(new_connection)
         # Check that both transports use the same connection
         self.assertIs(new_connection, t._get_connection())

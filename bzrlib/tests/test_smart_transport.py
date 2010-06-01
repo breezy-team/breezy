@@ -41,7 +41,6 @@ from bzrlib.smart import (
         vfs,
 )
 from bzrlib.tests import (
-    test_server,
     test_smart,
     )
 from bzrlib.transport import (
@@ -972,8 +971,7 @@ class TestSmartTCPServer(tests.TestCase):
                 return self.base
             def get_bytes(self, path):
                 raise Exception("some random exception from inside server")
-        smart_server = test_server.SmartTCPServer_for_testing(
-            backing_transport=FlakyTransport())
+        smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
         smart_server.start_background_thread('-' + self.id())
         try:
             transport = remote.RemoteTCPTransport(smart_server.get_url())
@@ -1015,8 +1013,7 @@ class SmartTCPTests(tests.TestCase):
             self.real_backing_transport = self.backing_transport
             self.backing_transport = transport.get_transport(
                 "readonly+" + self.backing_transport.abspath('.'))
-        self.server = test_server.SmartTCPServer_for_testing(
-            self.backing_transport)
+        self.server = server.SmartTCPServer(self.backing_transport)
         # XXX: Shouldn't we calling self.server.start_server below instead of
         # start_background_thread ? -- vila 20100531
         self.server.start_background_thread('-' + self.id())

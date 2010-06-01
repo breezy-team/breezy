@@ -831,7 +831,6 @@ class TestCase(testtools.TestCase):
 
     def _check_leaked_threads(self):
         active = threading.activeCount()
-        self.assertEqual(1, active, '%r is leaking thread(s)' % self.id())
         leaked_threads = active - TestCase._active_threads
         TestCase._active_threads = active
         # If some tests make the number of threads *decrease*, we'll consider
@@ -2432,6 +2431,15 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
+        # Ensure that ConnectedTransport doesn't leak sockets
+        def get_transport_with_cleanup(*args, **kwargs):
+            t = self._orig_get_transport(*args, **kwargs)
+            if isinstance(t, _mod_transport.ConnectedTransport):
+                self.addCleanup(t.disconnect)
+            return t
+
+        self._orig_get_transport = self.overrideAttr(
+            _mod_transport, 'get_transport', get_transport_with_cleanup)
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()

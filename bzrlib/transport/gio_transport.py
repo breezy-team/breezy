@@ -235,7 +235,13 @@ class GioTransport(ConnectedTransport):
                                         " %s" % str(e), orig_error=e)
         return connection, (user, password)
 
+    def disconnect(self):
+        # FIXME: Nothing seems to be necessary here, which sounds a bit strange
+        # -- vila 20100601
+        pass
+
     def _reconnect(self):
+        # FIXME: This doesn't seem to be used -- vila 20100601
         """Create a new connection with the previously used credentials"""
         credentials = self._get_credentials()
         connection, credentials = self._create_connection(credentials)

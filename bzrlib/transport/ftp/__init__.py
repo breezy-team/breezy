@@ -164,6 +164,11 @@ class FtpTransport(ConnectedTransport):
         connection, credentials = self._create_connection(credentials)
         self._set_connection(connection, credentials)
 
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
+
     def _translate_ftp_error(self, err, path, extra=None,
                               unknown_exc=FtpPathError):
         """Try to translate an ftplib exception to a bzrlib exception.

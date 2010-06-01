@@ -1286,6 +1286,12 @@ class Transport(object):
         # should be asked to ConnectedTransport only.
         return None
 
+    def disconnect(self):
+        # This is really needed for ConnectedTransport only, but it's easier to
+        # have Transport do nothing than testing that the disconnect should be
+        # asked to ConnectedTransport only.
+        pass
+
     def _redirected_to(self, source, target):
         """Returns a transport suitable to re-issue a redirected request.
 
@@ -1549,6 +1555,13 @@ class ConnectedTransport(Transport):
             # unrelated) but we share the connection.
             transport = self.__class__(other_base, _from_transport=self)
         return transport
+
+    def disconnect(self):
+        """Disconnect the transport.
+
+        If and when required the transport willl reconnect automatically.
+        """
+        raise NotImplementedError(self.disconnect)
 
 
 # We try to recognize an url lazily (ignoring user, password, etc)
