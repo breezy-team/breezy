@@ -25,6 +25,12 @@ Bug Fixes
   test that all commands available to the test suite have help.
   (Robert Collins, #177500)
 
+* Show unicode filenames in diff headers using terminal encoding on Windows,
+  and still use UTF-8 on other platforms. (Alexander Belchenko, Bug #382699)
+  NOTE: If user need to save diff to file then user need to change encoding
+  of the terminal to ANSI encoding with command ``chcp XXX`` 
+  (e.g. ``chcp 1251`` for Russian Windows).
+
 Improvements
 ************
 
