@@ -44,7 +44,7 @@ check-random::
 	$(MAKE) check TEST_OPTIONS="--random=now --verbose --one"
 
 show-plugins::
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(BZR) plugins
+	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) BZR_PLUGINS_AT=git@$(shell pwd) $(BZR) plugins -v
 
 lint::
 	$(PYLINT) -f parseable *.py */*.py

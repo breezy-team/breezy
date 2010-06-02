@@ -70,7 +70,8 @@ from bzrlib.send import (
 
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only
-    sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), '_lib')))
+    sys.path.append(os.path.normpath(
+        os.path.join(os.path.dirname(__file__), '_lib')))
 
 _versions_checked = False
 def lazy_check_versions():
@@ -85,7 +86,9 @@ def lazy_check_versions():
             "bzr-git: Please install dulwich, https://launchpad.net/dulwich")
     else:
         if dulwich_version < dulwich_minimum_version:
-            raise bzr_errors.DependencyNotPresent("dulwich", "bzr-git: Dulwich is too old; at least %d.%d.%d is required" % dulwich_minimum_version)
+            raise bzr_errors.DependencyNotPresent("dulwich",
+                "bzr-git: Dulwich is too old; at least %d.%d.%d is required" %
+                    dulwich_minimum_version)
 
 bzrdir.format_registry.register_lazy('git',
     "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
@@ -134,7 +137,8 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         from bzrlib.transport.local import LocalTransport
         if isinstance(transport, LocalTransport):
             import dulwich
-            gitrepo = dulwich.repo.Repo(transport.local_abspath(".").encode(osutils._fs_enc))
+            path = transport.local_abspath(".").encode(osutils._fs_enc)
+            gitrepo = dulwich.repo.Repo(path)
         else:
             from bzrlib.plugins.git.transportgit import TransportRepo
             gitrepo = TransportRepo(transport)
@@ -145,7 +149,8 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         try:
-            if not transport.has_any(['info/refs', '.git/branches', 'branches']):
+            if not transport.has_any(['info/refs', '.git/branches',
+                                      'branches']):
                 raise bzr_errors.NotBranchError(path=transport.base)
         except bzr_errors.NoSuchFile:
             raise bzr_errors.NotBranchError(path=transport.base)
@@ -273,19 +278,20 @@ transport_server_registry.register_lazy('git',
     'Git Smart server protocol over TCP. (default port: 9418)')
 
 
-from bzrlib.repository import network_format_registry as repository_network_format_registry
+from bzrlib.repository import (
+    network_format_registry as repository_network_format_registry,
+    )
 repository_network_format_registry.register_lazy('git',
     'bzrlib.plugins.git.repository', 'GitRepositoryFormat')
 
-from bzrlib.bzrdir import network_format_registry as bzrdir_network_format_registry
+from bzrlib.bzrdir import (
+    network_format_registry as bzrdir_network_format_registry,
+    )
 bzrdir_network_format_registry.register('git', GitBzrDirFormat)
 
 
 def get_rich_root_format(stacked=False):
-    if stacked:
-        return bzrdir.format_registry.make_bzrdir("1.9-rich-root")
-    else:
-        return bzrdir.format_registry.make_bzrdir("default-rich-root")
+    return bzrdir.format_registry.make_bzrdir("default-rich-root")
 
 send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
                                    'send_git', 'Git am-style diff format')

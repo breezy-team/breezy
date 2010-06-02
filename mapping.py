@@ -22,14 +22,11 @@ import base64
 import stat
 
 from bzrlib import (
+    bencode,
     errors,
     foreign,
     trace,
     )
-try:
-    from bzrlib import bencode
-except ImportError:
-    from bzrlib.util import bencode
 from bzrlib.inventory import (
     ROOT_ID,
     )
