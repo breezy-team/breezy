@@ -421,27 +421,37 @@ def _make_line_writer(opts):
         format = "%s%%(path)s%s%%(line)s%s" % (path_start, sep, eol)
 
     def _line_writer(**kwargs):
-        """Write formatted line from arguments given from underlying opts"""
+        """Write formatted line from arguments given by underlying opts"""
         line = format % kwargs
         write(line)
-        # GZ 2010-06-02: Need to return line for the 'res_cache' hack for
+        # GZ 2010-06-02: Need to return line for the 'res_cache' hack to
         #                avoiding checking the same file twice, clean this
         #                up later by changing that mechanism.
         return line
-    return _line_writer
+    if not opts.show_color:
+        return _line_writer
+
+    if not opts.fixed_string:
+        sub = re.compile(pattern.join(("((?:",")+)")), patternc.flags).sub
+        highlight = color_string("\\1", FG.BOLD_RED)
+        def _line_writer_regexp_highlighted(line, **kwargs):
+            """Write formatted line with matched pattern highlighted"""
+            return _line_writer(line=sub(highlight, line), **kwargs)
+        return _line_writer_regexp_highlighted
+
+    highlighted = color_string(pattern, FG.BOLD_RED)
+    def _line_writer_fixed_highlighted(line, **kwargs):
+        """Write formatted line with string searched for highlighted"""
+        return _line_writer(line=line.replace(pattern, highlighted), **kwargs)
+    return _line_writer_fixed_highlighted
 
 
 def _file_grep(file_text, path, opts, revno, path_prefix=None):
     res = []
     res_append = res.append
 
-    _te = _terminal_encoding
-    _ue = _user_encoding
-
-    # GZ 2010-06-02: Delete the below
-    pattern = opts.pattern.encode(_ue, 'replace')
+    pattern = opts.pattern.encode(_user_encoding, 'replace')
     patternc = opts.patternc
-    eol_marker = opts.eol_marker
 
     # test and skip binary files
     if '\x00' in file_text[:1024]:
@@ -453,7 +463,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None):
         # user has passed a dir arg, show that as result prefix
         path = osutils.pathjoin(path_prefix, path)
 
-    path = path.encode(_te, 'replace')
+    path = path.encode(_terminal_encoding, 'replace')
 
     writeline = opts.line_writer
 
@@ -479,33 +489,23 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None):
 
     if opts.line_number:
         if opts.fixed_string:
-            found_str = color_string(pattern, FG.BOLD_RED)
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:
-                    if opts.show_color:
-                        line = line.replace(pattern, found_str)
                     res_append(writeline(path=path, revno=revno,
                         lineno=index+1, line=line))
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
-                    if opts.show_color:
-                        line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                     res_append(writeline(path=path, revno=revno,
                         lineno=index+1, line=line))
     else:
         if opts.fixed_string:
-            found_str = color_string(pattern, FG.BOLD_RED)
             for line in file_text.splitlines():
                 if pattern in line:
-                    if opts.show_color:
-                        line = line.replace(pattern, found_str)
                     res_append(writeline(path=path, revno=revno, line=line))
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
-                    if opts.show_color:
-                        line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                     res_append(writeline(path=path, revno=revno, line=line))
     return res
 

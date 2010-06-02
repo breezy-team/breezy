@@ -212,13 +212,6 @@ class cmd_grep(Command):
         elif color == 'auto':
             show_color = allow_color()
 
-        sub_patternc = None
-        if show_color:
-            sub_pattern = '(' + pattern + ')' # make pattern capturing
-            # sub_patternc is used for color display even for fixed_string
-            # when ignore_case is set
-            sub_patternc = grep.compile_pattern(sub_pattern, re_flags)
-
         GrepOptions.verbose = verbose
         GrepOptions.ignore_case = ignore_case
         GrepOptions.no_recursive = no_recursive
@@ -239,7 +232,6 @@ class cmd_grep(Command):
         GrepOptions.eol_marker = eol_marker
         GrepOptions.print_revno = print_revno
         GrepOptions.patternc = patternc
-        GrepOptions.sub_patternc = sub_patternc
         GrepOptions.recursive = not no_recursive
         GrepOptions.fixed_string = fixed_string
         GrepOptions.outf = self.outf
