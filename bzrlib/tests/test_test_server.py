@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import errno
 import socket
 import SocketServer
 
@@ -36,8 +37,15 @@ class TCPClient(object):
 
     def disconnect(self):
         if self.sock is not None:
-            self.sock.shutdown(socket.SHUT_RDWR)
-            self.sock.close()
+            try:
+                self.sock.shutdown(socket.SHUT_RDWR)
+                self.sock.close()
+            except socket.error, e:
+                if e[0] in (errno.EBADF, errno.ENOTCONN):
+                    # Right, the socket is already down
+                    pass
+                else:
+                    raise
             self.sock = None
 
     def write(self, s):
@@ -64,13 +72,15 @@ class TCPConnectionHandler(SocketServer.StreamRequestHandler):
         else:
             raise ValueError('[%s] not understood' % req)
 
-
 class TestTestingServerInAThread(tests.TestCase):
 
-    def get_server(self):
+    def get_server(self, server_class=None, connection_handler_class=None):
+        if server_class is None:
+            server_class = test_server.TestingTCPServer
+        if connection_handler_class is None:
+            connection_handler_class = TCPConnectionHandler
         server =  test_server.TestingTCPServerInAThread(
-            ('localhost', 0), test_server.TestingTCPServer,
-            TCPConnectionHandler)
+            ('localhost', 0), server_class, connection_handler_class)
         server.start_server()
         self.addCleanup(server.stop_server)
         return server
@@ -90,7 +100,6 @@ class TestTestingServerInAThread(tests.TestCase):
         client = self.get_client()
         self.assertRaises(socket.error, client.connect, server.server_address)
 
-
     def test_client_talks_server_respond(self):
         server = self.get_server()
         client = self.get_client()
@@ -98,3 +107,43 @@ class TestTestingServerInAThread(tests.TestCase):
         self.assertIs(None, client.write('ping\n'))
         resp = client.read()
         self.assertEquals('pong\n', resp)
+
+    def test_server_fails_to_start(self):
+        class CantStart(Exception):
+            pass
+
+        class CantStartServer(test_server.TestingTCPServer):
+
+            def server_bind(self):
+                raise CantStart()
+
+        # The exception is raised in the main thread
+        self.assertRaises(CantStart,
+                          self.get_server, server_class=CantStartServer)
+
+    def test_server_fails_while_serving_or_stoping(self):
+        class ServerFailure(Exception):
+            pass
+
+        class FailingConnectionHandler(TCPConnectionHandler):
+
+            def handle(self):
+                raise ServerFailure()
+
+        server = self.get_server(
+            connection_handler_class=FailingConnectionHandler)
+        # The server won't fail until a client connect
+        client = self.get_client()
+        client.connect(server.server_address)
+        try:
+            # Now we must force the server to answer by sending the request and
+            # waiting for some answer. But since we don't control when the
+            # server thread will be given cycles, we don't control either
+            # whether our reads or writes may hang.
+            client.sock.settimeout(0.1)
+            client.write('ping\n')
+            client.read()
+        except socket.error:
+            pass
+        # Now the server has raise the exception in its own thread
+        self.assertRaises(ServerFailure, server.stop_server)

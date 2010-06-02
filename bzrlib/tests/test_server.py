@@ -249,8 +249,11 @@ class ThreadWithException(threading.Thread):
             # If the caller didn't pass a specific event, create our own
             event = threading.Event()
         super(ThreadWithException, self).__init__(*args, **kwargs)
-        self.ready = event
+        self.set_event(event)
         self.exception = None
+
+    def set_event(self, event):
+        self.ready = event
 
     def run(self):
         """Overrides Thread.run to capture any exception."""
@@ -269,7 +272,7 @@ class ThreadWithException(threading.Thread):
 
 
         Calling join(timeout=0) will raise the caught exception or return None
-        is the thread is still alive.
+        if the thread is still alive.
         """
         # Note that we don't care about the timeout parameter here: either the
         # thread has raised an exception and it should be raised (and join()
@@ -334,6 +337,11 @@ class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
         if sys.version < (2, 5):
             self.server_address = self.socket.getsockname()
 
+    def handle_error(self, request, client_address):
+        # Stop serving and re-raise the last exception seen
+        self.serving.clear()
+        raise
+
 
 class TestingTCPServerInAThread(object):
 
@@ -341,10 +349,18 @@ class TestingTCPServerInAThread(object):
         self.server_class = server_class
         self.request_handler_class = request_handler_class
         self.server_address = server_address
+        self.server = None
 
     def create_server(self):
         return self.server_class(self.server_address,
                                  self.request_handler_class)
+
+    def pending_exception(self):
+        """Re-raise the exception raised by the server in its own thread.
+
+        This does nothing if no exception occurred.
+        """
+        self._server_thread.join(timeout=0)
 
     def start_server(self):
         self.server = self.create_server()
@@ -356,18 +372,16 @@ class TestingTCPServerInAThread(object):
         # Get the real address, especially the port
         self.server_address = self.server.server_address
         # If an exception occured during the server start, it will get raised
-        self._server_thread.join(timeout=0)
+        self.pending_exception()
+        # From now on, we'll use a different event to ensure the server can set
+        # its exception
+        self._server_thread.set_event(self.server.stopped)
 
     def run_server(self):
         self.server.serve()
 
     def stop_server(self):
         if self.server is None:
-            return
-        if self.server.serving is None:
-            # If the server wasn't properly started, there is nothing to
-            # shutdown.
-            self.server = None
             return
         # The server has been started successfully, shut it down now
         # As soon as we stop serving, no more connection are accepted except
@@ -390,8 +404,13 @@ class TestingTCPServerInAThread(object):
             # will not process a single byte on that socket to avoid
             # complications (SSL starts with a handshake for example).
             last_conn.close()
-        # Make sure we can be called twice safely
-        self.server = None
+        try:
+            # Check for any exception that could have occurred in the server
+            # thread
+            self._server_thread.join()
+        finally:
+            # Make sure we can be called twice safely
+            self.server = None
 
 
 class SmartTCPServer_for_testing(server.SmartTCPServer):
