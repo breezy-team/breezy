@@ -84,12 +84,12 @@ the ``-3`` option of Python2.6.)
 
 Specifically:
 
- * Don't use the ``with`` statement.
+* Don't use the ``with`` statement.
 
- * Don't ``from . import``.
+* Don't ``from . import``.
 
- * Don't use ``try/except/finally``, which is not supported in Python2.4,
-   use separate nested ``try/except`` and ``try/finally`` blocks.
+* Don't use ``try/except/finally``, which is not supported in Python2.4,
+  use separate nested ``try/except`` and ``try/finally`` blocks.
 
 
 hasattr and getattr
@@ -152,32 +152,49 @@ immediately when the object apparently becomes unreferenced, or at some
 later time, or possibly never at all.  Therefore we have restrictions on
 what can be done inside them.
 
- 0. If you think you need to use a ``__del__`` method ask another
-    developer for alternatives.  If you do need to use one, explain
-    why in a comment.
+0. If you think you need to use a ``__del__`` method ask another
+   developer for alternatives.  If you do need to use one, explain
+   why in a comment.
 
- 1. Never rely on a ``__del__`` method running.  If there is code that
-    must run, do it from a ``finally`` block instead.
+1. Never rely on a ``__del__`` method running.  If there is code that
+   must run, do it from a ``finally`` block instead.
 
- 2. Never ``import`` from inside a ``__del__`` method, or you may crash the
-    interpreter!!
+2. Never ``import`` from inside a ``__del__`` method, or you may crash the
+   interpreter!!
 
- 3. In some places we raise a warning from the destructor if the object
-    has not been cleaned up or closed.  This is considered OK: the warning
-    may not catch every case but it's still useful sometimes.
+3. In some places we raise a warning from the destructor if the object
+   has not been cleaned up or closed.  This is considered OK: the warning
+   may not catch every case but it's still useful sometimes.
 
 
 Cleanup methods
 ===============
 
-Often when something has failed later code, including cleanups invoked
-from ``finally`` blocks, will fail too.  These secondary failures are
-generally uninteresting compared to the original exception.  So use the
-``only_raises`` decorator (from ``bzrlib.decorators``) for methods that
-are typically called in ``finally`` blocks, such as ``unlock`` methods.
-For example, ``@only_raises(LockNotHeld, LockBroken)``.  All errors that
-are unlikely to be a knock-on failure from a previous failure should be
-allowed.
+Often when something has failed later code will fail too, including
+cleanups invoked from ``finally`` blocks.  These secondary failures are
+generally uninteresting compared to the original exception.  ``bzrlib``
+has some facilities you can use to mitigate this.
+
+* In ``Command`` subclasses, prefer the ``add_cleanup`` method to using
+  ``try``/``finally`` blocks.  E.g. to acquire a lock and ensure it will
+  always be released when the command is done::
+
+    self.add_cleanup(branch.lock_read().unlock)
+
+  This also avoids heavily indented code. It also makes it easier to notice
+  mismatched lock/unlock pairs (and other kinds of resource
+  acquire/release) because there isn't a large block of code separating
+  them.
+
+* Use the ``only_raises`` decorator (from ``bzrlib.decorators``) when
+  defining methods that are typically called in ``finally`` blocks, such
+  as ``unlock`` methods.  For example, ``@only_raises(LockNotHeld,
+  LockBroken)``.  All errors that are unlikely to be a knock-on failure
+  from a previous failure should be allowed.
+
+* Consider using the ``OperationWithCleanups`` helper from
+  ``bzrlib.cleanup`` anywhere else you have a ``finally`` block that
+  might fail.
 
 
 Factories
@@ -354,25 +371,26 @@ AssertionError.
 
 Rationale:
 
- * It makes the behaviour vary depending on whether bzr is run with -O
-   or not, therefore giving a chance for bugs that occur in one case or
-   the other, several of which have already occurred: assertions with
-   side effects, code which can't continue unless the assertion passes,
-   cases where we should give the user a proper message rather than an
-   assertion failure.
- * It's not that much shorter than an explicit if/raise.
- * It tends to lead to fuzzy thinking about whether the check is
-   actually needed or not, and whether it's an internal error or not
- * It tends to cause look-before-you-leap patterns.
- * It's unsafe if the check is needed to protect the integrity of the
-   user's data.
- * It tends to give poor messages since the developer can get by with
-   no explanatory text at all.
- * We can't rely on people always running with -O in normal use, so we
-   can't use it for tests that are actually expensive.
- * Expensive checks that help developers are better turned on from the
-   test suite or a -D flag.
- * If used instead of ``self.assert*()`` in tests it makes them falsely pass with -O.
+* It makes the behaviour vary depending on whether bzr is run with -O
+  or not, therefore giving a chance for bugs that occur in one case or
+  the other, several of which have already occurred: assertions with
+  side effects, code which can't continue unless the assertion passes,
+  cases where we should give the user a proper message rather than an
+  assertion failure.
+* It's not that much shorter than an explicit if/raise.
+* It tends to lead to fuzzy thinking about whether the check is
+  actually needed or not, and whether it's an internal error or not
+* It tends to cause look-before-you-leap patterns.
+* It's unsafe if the check is needed to protect the integrity of the
+  user's data.
+* It tends to give poor messages since the developer can get by with
+  no explanatory text at all.
+* We can't rely on people always running with -O in normal use, so we
+  can't use it for tests that are actually expensive.
+* Expensive checks that help developers are better turned on from the
+  test suite or a -D flag.
+* If used instead of ``self.assert*()`` in tests it makes them falsely
+  pass with -O.
 
 emacs setup
 ===========
