@@ -412,28 +412,16 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
         # While printing files with matches we only have two case
         # print file name or print file name with revno.
         found = False
-        if opts.print_revno:
-            if opts.fixed_string:
-                for line in file_text.splitlines():
-                    if pattern in line:
-                        found = True
-                        break
-            else:
-                for line in file_text.splitlines():
-                    if patternc.search(line):
-                        found = True
-                        break
+        if opts.fixed_string:
+            for line in file_text.splitlines():
+                if pattern in line:
+                    found = True
+                    break
         else:
-            if opts.fixed_string:
-                for line in file_text.splitlines():
-                    if pattern in line:
-                        found = True
-                        break
-            else:
-                for line in file_text.splitlines():
-                    if patternc.search(line):
-                        found = True
-                        break
+            for line in file_text.splitlines():
+                if patternc.search(line):
+                    found = True
+                    break
         if (opts.files_with_matches and found) or \
                 (opts.files_without_match and not found):
             if opts.print_revno:
