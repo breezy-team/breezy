@@ -453,10 +453,6 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
 
     writeline = _make_line_writer(opts)
 
-    # for better performance we moved formatting conditionals out
-    # of the core loop. hence, the core loop is somewhat duplicated
-    # for various combinations of formatting options.
-
     if opts.files_with_matches or opts.files_without_match:
         # While printing files with matches we only have two case
         # print file name or print file name with revno.
@@ -477,13 +473,13 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
         return res # return from files_with|without_matches
 
 
-    if opts.print_revno and opts.line_number:
+    if opts.line_number:
         if opts.fixed_string:
             found_str = color_string(pattern, FG.BOLD_RED)
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:
                     line = line.decode(_te, 'replace')
-                    if opts.show_color == True:
+                    if opts.show_color:
                         line = line.replace(pattern, found_str)
                     res_append(writeline(path=path, revno=revno,
                         lineno=index+1, line=line))
@@ -495,43 +491,6 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                         line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                     res_append(writeline(path=path, revno=revno,
                         lineno=index+1, line=line))
-
-    elif opts.print_revno and not opts.line_number:
-        if opts.fixed_string:
-            found_str = color_string(pattern, FG.BOLD_RED)
-            for line in file_text.splitlines():
-                if pattern in line:
-                    line = line.decode(_te, 'replace')
-                    if opts.show_color == True:
-                        line = line.replace(pattern, found_str)
-                    res_append(writeline(path=path, revno=revno, line=line))
-        else:
-            for line in file_text.splitlines():
-                if patternc.search(line):
-                    line = line.decode(_te, 'replace')
-                    if opts.show_color:
-                        line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
-                    res_append(writeline(path=path, revno=revno, line=line))
-
-    elif not opts.print_revno and opts.line_number:
-        if opts.fixed_string:
-            for index, line in enumerate(file_text.splitlines()):
-                found_str = color_string(pattern, FG.BOLD_RED)
-                if pattern in line:
-                    line = line.decode(_te, 'replace')
-                    if opts.show_color == True:
-                        line = line.replace(pattern, found_str)
-                    res_append(writeline(path=path, lineno=index+1,
-                        line=line))
-        else:
-            for index, line in enumerate(file_text.splitlines()):
-                if patternc.search(line):
-                    line = line.decode(_te, 'replace')
-                    if opts.show_color:
-                        line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
-                    res_append(writeline(path=path, lineno=index+1,
-                        line=line))
-
     else:
         if opts.fixed_string:
             found_str = color_string(pattern, FG.BOLD_RED)
@@ -540,14 +499,13 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                     line = line.decode(_te, 'replace')
                     if opts.show_color:
                         line = line.replace(pattern, found_str)
-                    res_append(writeline(path=path, line=line))
+                    res_append(writeline(path=path, revno=revno, line=line))
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
                     line = line.decode(_te, 'replace')
                     if opts.show_color:
                         line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
-                    res_append(writeline(path=path, line=line))
-
+                    res_append(writeline(path=path, revno=revno, line=line))
     return res
 
