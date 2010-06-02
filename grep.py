@@ -478,7 +478,6 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             found_str = color_string(pattern, FG.BOLD_RED)
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:
-                    line = line.decode(_te, 'replace')
                     if opts.show_color:
                         line = line.replace(pattern, found_str)
                     res_append(writeline(path=path, revno=revno,
@@ -486,7 +485,6 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
-                    line = line.decode(_te, 'replace')
                     if opts.show_color:
                         line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                     res_append(writeline(path=path, revno=revno,
@@ -496,14 +494,12 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             found_str = color_string(pattern, FG.BOLD_RED)
             for line in file_text.splitlines():
                 if pattern in line:
-                    line = line.decode(_te, 'replace')
                     if opts.show_color:
                         line = line.replace(pattern, found_str)
                     res_append(writeline(path=path, revno=revno, line=line))
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
-                    line = line.decode(_te, 'replace')
                     if opts.show_color:
                         line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
                     res_append(writeline(path=path, revno=revno, line=line))
