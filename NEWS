@@ -48,9 +48,9 @@ Internals
 Testing
 *******
 
-* HTTP test servers wont't leak threads (and sockets) anymore. They won't
-  hang on AIX anymore either.
- (Vincent Ladeuil, #405745)
+* HTTP test servers would not leak threads (and sockets) anymore. They
+  won't hang on AIX anymore either.
+  (Vincent Ladeuil, #405745)
 
 
 bzr 2.2b3
