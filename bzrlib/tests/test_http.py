@@ -245,27 +245,11 @@ class RecordingServer(object):
             # The client may have already closed the socket.
             pass
 
-    def connect_socket(self):
-        err = socket.error('getaddrinfo returns an empty list')
-        for res in socket.getaddrinfo(self.host, self.port):
-            af, socktype, proto, canonname, sa = res
-            sock = None
-            try:
-                sock = socket.socket(af, socktype, proto)
-                sock.connect(sa)
-                return sock
-
-            except socket.error, err:
-                # err is now the most recent error
-                if sock is not None:
-                    sock.close()
-        raise err
-
     def stop_server(self):
         try:
             # Issue a fake connection to wake up the server and allow it to
             # finish quickly
-            fake_conn = self.connect_socket()
+            fake_conn = osutils.connect_socket((self.host, self.port))
             fake_conn.close()
         except socket.error:
             # We might have already closed it.  We don't care.

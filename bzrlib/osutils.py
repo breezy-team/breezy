@@ -2030,6 +2030,28 @@ def send_all(sock, bytes, report_activity=None):
             sent_total += sent
             report_activity(sent, 'write')
 
+# socket.create_connection() is not available before python2.6, so we provide
+# it for earlier versions
+if getattr(socket, 'create_connection', None) is not None:
+    connect_socket = socket.create_connection
+else:
+    # We don't use nor handle the timeout though
+    def connect_socket(address, timeout=None):
+        err = socket.error('getaddrinfo returns an empty list')
+        for res in socket.getaddrinfo(host, port):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                sock.connect(sa)
+                return sock
+
+            except socket.error, err:
+                # 'err' is now the most recent error
+                if sock is not None:
+                    sock.close()
+        raise err
+
 
 def dereference_path(path):
     """Determine the real path to a file.

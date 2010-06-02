@@ -31,6 +31,7 @@ import urllib
 import urlparse
 
 from bzrlib import (
+    osutils,
     tests,
     transport,
     )
@@ -392,22 +393,6 @@ class TestingHTTPServerMixin:
             print 'Closed   %r' % (self.server_address,)
         self.is_shut_down.set()
 
-    def connect_socket(self):
-        err = socket.error('getaddrinfo returns an empty list')
-        for res in socket.getaddrinfo(*self.server_address):
-            af, socktype, proto, canonname, sa = res
-            sock = None
-            try:
-                sock = socket.socket(af, socktype, proto)
-                sock.connect(sa)
-                return sock
-
-            except socket.error, err:
-                # 'err' is now the most recent error
-                if sock is not None:
-                    sock.close()
-        raise err
-
     def join_thread(self, thread, timeout=2):
         thread.join(timeout)
         if thread.isAlive():
@@ -432,7 +417,7 @@ class TestingHTTPServerMixin:
         # The server is listening for a last connection, let's give it:
         last_conn = None
         try:
-            last_conn = self.connect_socket()
+            last_conn = osutils.connect_socket(self.server_address)
         except socket.error, e:
             # But ignore connection errors as the point is to unblock the
             # server thread, it may happen that it's not blocked or even not
