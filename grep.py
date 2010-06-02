@@ -375,14 +375,57 @@ def _file_grep_list_only_wtree(file, relpath, path, opts, path_prefix=None):
         opts.outf.write(s)
 
 
+def _make_line_writer(opts):
+    """Precalculate formatting and return function for writing output lines
+
+    The idea here is to do this work only once per run, and return a function
+    that will do the minimum amount possible for each match.
+
+    It may be best to add another step that also preformats things that don't
+    change across a file like the path and revno to leave the line writer
+    even smaller.
+    """
+    write = opts.outf.write
+    pattern = opts.pattern.encode(_user_encoding, 'replace')
+    patternc = opts.patternc
+    eol = opts.eol_marker
+
+    if opts.show_color:
+        path_start = FG.MAGENTA
+        sep = color_string(':', FG.BOLD_CYAN)
+        rev_sep = color_string('~', FG.BOLD_YELLOW)
+    else:
+        path_start = ""
+        sep = ":"
+        rev_sep = "~"
+
+    if opts.files_with_matches or opts.files_without_match:
+        if opts.print_revno:
+            format = "%s%%(path)s%s%%(revno)s%s" % (path_start, rev_sep, eol)
+        else:
+            format = "%s%%(path)s%s" % (path_start, eol)
+ 
+    def _line_writer(**kwargs):
+        """Write formatted line from arguments given from underlying opts"""
+        line = format % kwargs
+        write(line)
+        # GZ 2010-06-02: Need to return line for the 'res_cache' hack for
+        #                avoiding checking the same file twice, clean this
+        #                up later by changing that mechanism.
+        return line
+    return _line_writer
+
+
 def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
     res = []
     res_append = res.append
+    # GZ 2010-06-02: Delete the below
     outf_write = opts.outf.write
 
     _te = _terminal_encoding
     _ue = _user_encoding
 
+    # GZ 2010-06-02: Delete the below
     pattern = opts.pattern.encode(_ue, 'replace')
     patternc = opts.patternc
     eol_marker = opts.eol_marker
@@ -399,6 +442,7 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
 
     path = path.encode(_te, 'replace')
 
+    # GZ 2010-06-02: Delete the below
     if opts.show_color:
         path = color_string(path, FG.MAGENTA)
         color_sep = color_string(':', FG.BOLD_CYAN)
@@ -412,6 +456,7 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
         # While printing files with matches we only have two case
         # print file name or print file name with revno.
         found = False
+        writeline = _make_line_writer(opts)
         if opts.fixed_string:
             for line in file_text.splitlines():
                 if pattern in line:
@@ -424,15 +469,7 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
                     break
         if (opts.files_with_matches and found) or \
                 (opts.files_without_match and not found):
-            if opts.print_revno:
-                pfmt = "~%s".encode(_te, 'replace')
-                if opts.show_color:
-                    pfmt = color_rev_sep + "%s"
-                s = path + (pfmt % (revno,)) + eol_marker
-            else:
-                s = path + eol_marker
-            res_append(s)
-            outf_write(s)
+            res_append(writeline(path=path, revno=revno))
         return res # return from files_with|without_matches
 
 
