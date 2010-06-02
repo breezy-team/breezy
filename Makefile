@@ -1,4 +1,5 @@
 DEBUGGER ?= 
+BZR_OPTIONS ?= 
 BZR ?= $(shell which bzr)
 PYTHON ?= $(shell which python)
 SETUP ?= ./setup.py
@@ -6,7 +7,7 @@ PYDOCTOR ?= pydoctor
 CTAGS ?= ctags
 PYLINT ?= pylint
 RST2HTML ?= rst2html
-TESTS ?= bzrlib.tests.per_foreign_vcs.*Git bzrlib.plugins.git
+TESTS ?= -s bp.git
 
 all:: build 
 
@@ -31,7 +32,7 @@ $(TMP_PLUGINS_DIR)/git: $(TMP_PLUGINS_DIR)
 	ln -sf .. $@
 
 check:: build-inplace $(TMP_PLUGINS_DIR)/git
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) selftest $(TEST_OPTIONS) $(TESTS)
+	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) $(TESTS)
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
@@ -52,3 +53,6 @@ tags::
 	$(CTAGS) -R .
 
 ctags:: tags
+
+coverage::
+	$(MAKE) check BZR_OPTIONS="--coverage coverage"
