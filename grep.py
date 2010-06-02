@@ -179,6 +179,9 @@ def versioned_grep(opts):
             start_rev_tuple = (start_revid, start_revno, 0)
             given_revs = [start_rev_tuple]
 
+        # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
+        opts.line_writer = staticmethod(_make_line_writer(opts))
+
         for revid, revno, merge_depth in given_revs:
             if opts.levels == 1 and merge_depth != 0:
                 # with level=1 show only top level
@@ -213,6 +216,9 @@ def workingtree_grep(opts):
             'To search for specific revision in history use the -r option.')
         raise errors.BzrCommandError(msg)
 
+    # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
+    opts.line_writer = staticmethod(_make_line_writer(opts))
+
     tree.lock_read()
     try:
         for path in opts.path_list:
@@ -220,7 +226,7 @@ def workingtree_grep(opts):
                 path_prefix = path
                 dir_grep(tree, path, relpath, opts, revno, path_prefix)
             else:
-                _file_grep(open(path).read(), '.', path, opts, revno)
+                _file_grep(open(path).read(), path, opts, revno)
     finally:
         tree.unlock()
 
@@ -294,17 +300,15 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix, res_cache={}):
                     # Optimize for wtree list-only as we don't need to read the
                     # entire file
                     file = codecs.open(path_for_file, 'r', buffering=4096)
-                    _file_grep_list_only_wtree(file, rpath, fp, opts,
-                        path_prefix)
+                    _file_grep_list_only_wtree(file, fp, opts, path_prefix)
                 else:
                     file_text = codecs.open(path_for_file, 'r').read()
-                    _file_grep(file_text, rpath, fp,
-                        opts, revno, path_prefix)
+                    _file_grep(file_text, fp, opts, revno, path_prefix)
 
     if revno != None: # grep versioned files
         for (path, fid), chunks in tree.iter_files_bytes(to_grep):
             path = _make_display_path(relpath, path)
-            res = _file_grep(chunks[0], rpath, path, opts, revno, path_prefix)
+            res = _file_grep(chunks[0], path, opts, revno, path_prefix)
             file_rev = tree.inventory[fid].revision
             dir_res[file_rev] = res
     return dir_res
@@ -331,7 +335,7 @@ def versioned_file_grep(tree, id, relpath, path, opts, revno, path_prefix = None
 
     path = _make_display_path(relpath, path)
     file_text = tree.get_file_text(id)
-    _file_grep(file_text, relpath, path, opts, revno, path_prefix)
+    _file_grep(file_text, path, opts, revno, path_prefix)
 
 
 def _path_in_glob_list(path, glob_list):
@@ -343,7 +347,7 @@ def _path_in_glob_list(path, glob_list):
     return present
 
 
-def _file_grep_list_only_wtree(file, relpath, path, opts, path_prefix=None):
+def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
     # test and skip binary files
     if '\x00' in file.read(1024):
         if opts.verbose:
@@ -415,7 +419,7 @@ def _make_line_writer(opts):
             path_start, sep, sep, eol)
     else:
         format = "%s%%(path)s%s%%(line)s%s" % (path_start, sep, eol)
- 
+
     def _line_writer(**kwargs):
         """Write formatted line from arguments given from underlying opts"""
         line = format % kwargs
@@ -427,7 +431,7 @@ def _make_line_writer(opts):
     return _line_writer
 
 
-def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
+def _file_grep(file_text, path, opts, revno, path_prefix=None):
     res = []
     res_append = res.append
 
@@ -451,7 +455,7 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
 
     path = path.encode(_te, 'replace')
 
-    writeline = _make_line_writer(opts)
+    writeline = opts.line_writer
 
     if opts.files_with_matches or opts.files_without_match:
         # While printing files with matches we only have two case
