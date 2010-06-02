@@ -29,6 +29,9 @@ Bug Fixes
   arguments on Windows, because bzr script does the same.
   (Alexander Belchenko, #588277)
 
+* ``bzr pull`` now works when a lp: URL is explicitly defined as the parent
+  or pull location in locations.conf or branch.conf. (Gordon Tyler)
+
 Improvements
 ************
 
