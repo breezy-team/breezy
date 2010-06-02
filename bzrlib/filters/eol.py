@@ -25,7 +25,7 @@ import re, sys
 from bzrlib.errors import BzrError
 
 
-# Real Linux/Unix/OSX newline - \n without \r before it
+# Real Unix newline - \n without \r before it
 _LINUX_NL_RE = re.compile(r'(?<!\r)\n')
 
 
