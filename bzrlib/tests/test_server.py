@@ -287,15 +287,24 @@ class ThreadWithException(threading.Thread):
 class TestingTCPServerMixin:
     """Mixin to support running SocketServer.TCPServer in a thread.
 
-
     Tests are connecting from the main thread, the server has to be run in a
     separate thread.
     """
 
-    def __init__(self):
+    def __init__(self, sibling_class):
+        self.sibling_class = sibling_class
         self.started = threading.Event()
         self.serving = threading.Event()
         self.stopped = threading.Event()
+
+    def server_bind(self):
+        # We need to override the SocketServer bind, yet, we still want to use
+        # it so we need to use the sibling class to call it explicitly
+        self.sibling_class.server_bind(self)
+        # The following has been fixed in 2.5 so we need to provide it for
+        # older python versions.
+        if sys.version < (2, 5):
+            self.server_address = self.socket.getsockname()
 
     def serve(self):
         self.serving.set()
@@ -326,16 +335,9 @@ class TestingTCPServerMixin:
 class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
 
     def __init__(self, server_address, request_handler_class):
-        TestingTCPServerMixin.__init__(self)
+        TestingTCPServerMixin.__init__(self, SocketServer.TCPServer)
         SocketServer.TCPServer.__init__(self, server_address,
                                         request_handler_class)
-
-    def server_bind(self):
-        SocketServer.TCPServer.server_bind(self)
-        # The following has been fixed in 2.5 so we need to provide it for
-        # older python versions.
-        if sys.version < (2, 5):
-            self.server_address = self.socket.getsockname()
 
     def handle_error(self, request, client_address):
         # Stop serving and re-raise the last exception seen
@@ -343,7 +345,17 @@ class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
         raise
 
 
+class TestingThreadingTCPServer(TestingTCPServerMixin,
+                                SocketServer.ThreadingTCPServer):
+
+    def __init__(self, server_address, request_handler_class):
+        TestingTCPServerMixin.__init__(self, SocketServer.ThreadingTCPServer)
+        SocketServer.TCPServer.__init__(self, server_address,
+                                        request_handler_class)
+
+
 class TestingTCPServerInAThread(object):
+    """A server in a thread that re-raise thread exceptions."""
 
     def __init__(self, server_address, server_class, request_handler_class):
         self.server_class = server_class
@@ -411,6 +423,11 @@ class TestingTCPServerInAThread(object):
         finally:
             # Make sure we can be called twice safely
             self.server = None
+
+class TestingThreadingTCPServerInAThread(TestingTCPServerInAThread):
+    """A socket server in a thread which spawn one thread for each connection"""
+
+    pass
 
 
 class SmartTCPServer_for_testing(server.SmartTCPServer):

@@ -74,12 +74,14 @@ class TCPConnectionHandler(SocketServer.StreamRequestHandler):
 
 class TestTestingServerInAThread(tests.TestCase):
 
+    server_in_thread_class = test_server.TestingTCPServerInAThread
+
     def get_server(self, server_class=None, connection_handler_class=None):
         if server_class is None:
             server_class = test_server.TestingTCPServer
         if connection_handler_class is None:
             connection_handler_class = TCPConnectionHandler
-        server =  test_server.TestingTCPServerInAThread(
+        server =  self.server_in_thread_class(
             ('localhost', 0), server_class, connection_handler_class)
         server.start_server()
         self.addCleanup(server.stop_server)
@@ -147,3 +149,8 @@ class TestTestingServerInAThread(tests.TestCase):
             pass
         # Now the server has raise the exception in its own thread
         self.assertRaises(ServerFailure, server.stop_server)
+
+class TestTestingThreadingServerInAThread(TestTestingServerInAThread):
+
+    server_in_thread_class = test_server.TestingThreadingTCPServerInAThread
+
