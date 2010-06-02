@@ -307,6 +307,15 @@ class TestingTCPServerMixin:
         self.server_close()
         self.stopped.set()
 
+    def verify_request(self, request, client_address):
+        """Verify the request.
+
+        Return True if we should proceed with this request, False if we should
+        not even touch a single byte in the socket ! This is used to stop the
+        server with a dummy last connection.
+        """
+        return self.serving.isSet()
+
     def stop_clients(self):
         pass
 
