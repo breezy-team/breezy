@@ -188,9 +188,14 @@ class cmd_grep(Command):
         if null:
             eol_marker = '\0'
 
-        # if the pattern isalnum, implicitly switch to fixed_string for faster grep
-        if grep.is_fixed_string(pattern):
+        if not ignore_case and grep.is_fixed_string(pattern):
+            # if the pattern isalnum, implicitly use to -F for faster grep
             fixed_string = True
+        elif ignore_case and fixed_string:
+            # GZ 2010-06-02: Fall back to regexp rather than lowercasing
+            #                pattern and text which will cause pain later
+            fixed_string = False
+            pattern = re.escape(pattern)
 
         patternc = None
         re_flags = 0

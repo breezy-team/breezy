@@ -355,19 +355,10 @@ def _file_grep_list_only_wtree(file, relpath, path, opts, path_prefix=None):
     found = False
     if opts.fixed_string:
         pattern = opts.pattern.encode(_user_encoding, 'replace')
-        if opts.fixed_string and opts.ignore_case:
-            pattern = opts.pattern.lower()
-        if opts.ignore_case:
-            for line in file:
-                line = line.lower()
-                if pattern in line:
-                    found = True
-                    break
-        else: # don't ignore case
-            for line in file:
-                if pattern in line:
-                    found = True
-                    break
+        for line in file:
+            if pattern in line:
+                found = True
+                break
     else: # not fixed_string
         for line in file:
             if opts.patternc.search(line):
@@ -395,9 +386,6 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
     pattern = opts.pattern.encode(_ue, 'replace')
     patternc = opts.patternc
     eol_marker = opts.eol_marker
-
-    if opts.fixed_string and opts.ignore_case:
-        pattern = opts.pattern.lower()
 
     # test and skip binary files
     if '\x00' in file_text[:1024]:
@@ -427,8 +415,6 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
         if opts.print_revno:
             if opts.fixed_string:
                 for line in file_text.splitlines():
-                    if opts.ignore_case:
-                        line = line.lower()
                     if pattern in line:
                         found = True
                         break
@@ -440,8 +426,6 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
         else:
             if opts.fixed_string:
                 for line in file_text.splitlines():
-                    if opts.ignore_case:
-                        line = line.lower()
                     if pattern in line:
                         found = True
                         break
@@ -472,25 +456,15 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             pfmt = pfmt.encode(_te)
 
         if opts.fixed_string:
-            if opts.ignore_case:
-                for index, line in enumerate(file_text.splitlines()):
-                    if pattern in line.lower():
-                        line = line.decode(_te, 'replace')
-                        if opts.show_color:
-                            line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
-                        s = path + (pfmt % (revno, index+1, line)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
-            else: # don't ignore case
-                found_str = color_string(pattern, FG.BOLD_RED)
-                for index, line in enumerate(file_text.splitlines()):
-                    if pattern in line:
-                        line = line.decode(_te, 'replace')
-                        if opts.show_color == True:
-                            line = line.replace(pattern, found_str)
-                        s = path + (pfmt % (revno, index+1, line)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
+            found_str = color_string(pattern, FG.BOLD_RED)
+            for index, line in enumerate(file_text.splitlines()):
+                if pattern in line:
+                    line = line.decode(_te, 'replace')
+                    if opts.show_color == True:
+                        line = line.replace(pattern, found_str)
+                    s = path + (pfmt % (revno, index+1, line)) + eol_marker
+                    res_append(s)
+                    outf_write(s)
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
@@ -509,25 +483,15 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             pfmt = pfmt.encode(_te)
 
         if opts.fixed_string:
-            if opts.ignore_case:
-                for line in file_text.splitlines():
-                    if pattern in line.lower():
-                        line = line.decode(_te, 'replace')
-                        if opts.show_color:
-                            line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
-                        s = path + (pfmt % (revno, line)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
-            else: # don't ignore case
-                found_str = color_string(pattern, FG.BOLD_RED)
-                for line in file_text.splitlines():
-                    if pattern in line:
-                        line = line.decode(_te, 'replace')
-                        if opts.show_color == True:
-                            line = line.replace(pattern, found_str)
-                        s = path + (pfmt % (revno, line)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
+            found_str = color_string(pattern, FG.BOLD_RED)
+            for line in file_text.splitlines():
+                if pattern in line:
+                    line = line.decode(_te, 'replace')
+                    if opts.show_color == True:
+                        line = line.replace(pattern, found_str)
+                    s = path + (pfmt % (revno, line)) + eol_marker
+                    res_append(s)
+                    outf_write(s)
 
         else:
             for line in file_text.splitlines():
@@ -547,25 +511,15 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             pfmt = pfmt.encode(_te)
 
         if opts.fixed_string:
-            if opts.ignore_case:
-                for index, line in enumerate(file_text.splitlines()):
-                    if pattern in line.lower():
-                        line = line.decode(_te, 'replace')
-                        if opts.show_color:
-                            line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
-                        s = path + (pfmt % (index+1, line)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
-            else: # don't ignore case
-                for index, line in enumerate(file_text.splitlines()):
-                    found_str = color_string(pattern, FG.BOLD_RED)
-                    if pattern in line:
-                        line = line.decode(_te, 'replace')
-                        if opts.show_color == True:
-                            line = line.replace(pattern, found_str)
-                        s = path + (pfmt % (index+1, line)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
+            for index, line in enumerate(file_text.splitlines()):
+                found_str = color_string(pattern, FG.BOLD_RED)
+                if pattern in line:
+                    line = line.decode(_te, 'replace')
+                    if opts.show_color == True:
+                        line = line.replace(pattern, found_str)
+                    s = path + (pfmt % (index+1, line)) + eol_marker
+                    res_append(s)
+                    outf_write(s)
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
@@ -584,25 +538,15 @@ def _file_grep(file_text, relpath, path, opts, revno, path_prefix=None):
             pfmt = pfmt.encode(_te)
 
         if opts.fixed_string:
-            if opts.ignore_case:
-                for line in file_text.splitlines():
-                    if pattern in line.lower():
-                        line = line.decode(_te, 'replace')
-                        if opts.show_color:
-                            line = re_color_string(opts.sub_patternc, line, FG.BOLD_RED)
-                        s = path + (pfmt % (line,)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
-            else: # don't ignore case
-                found_str = color_string(pattern, FG.BOLD_RED)
-                for line in file_text.splitlines():
-                    if pattern in line:
-                        line = line.decode(_te, 'replace')
-                        if opts.show_color:
-                            line = line.replace(pattern, found_str)
-                        s = path + (pfmt % (line,)) + eol_marker
-                        res_append(s)
-                        outf_write(s)
+            found_str = color_string(pattern, FG.BOLD_RED)
+            for line in file_text.splitlines():
+                if pattern in line:
+                    line = line.decode(_te, 'replace')
+                    if opts.show_color:
+                        line = line.replace(pattern, found_str)
+                    s = path + (pfmt % (line,)) + eol_marker
+                    res_append(s)
+                    outf_write(s)
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
