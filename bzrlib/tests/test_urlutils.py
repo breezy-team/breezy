@@ -195,6 +195,20 @@ class TestUrlToPath(TestCase):
             dirname('path/to/foo/', exclude_trailing_slash=False))
         self.assertEqual('path/..', dirname('path/../foo'))
         self.assertEqual('../path', dirname('../path/foo'))
+    
+    def test_is_url(self):
+        self.assertTrue(urlutils.is_url('http://foo/bar'))
+        self.assertTrue(urlutils.is_url('bzr+ssh://foo/bar'))
+        self.assertTrue(urlutils.is_url('lp:foo/bar'))
+        self.assertTrue(urlutils.is_url('file:///foo/bar'))
+        self.assertFalse(urlutils.is_url(''))
+        self.assertFalse(urlutils.is_url('foo'))
+        self.assertFalse(urlutils.is_url('foo/bar'))
+        self.assertFalse(urlutils.is_url('/foo'))
+        self.assertFalse(urlutils.is_url('/foo/bar'))
+        self.assertFalse(urlutils.is_url('C:/'))
+        self.assertFalse(urlutils.is_url('C:/foo'))
+        self.assertTrue(urlutils.is_url('C:/foo/bar'))
 
     def test_join(self):
         def test(expected, *args):
