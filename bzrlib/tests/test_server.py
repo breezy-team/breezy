@@ -15,12 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import socket
+import SocketServer
 import select
 import sys
 import threading
 
 
 from bzrlib import (
+    osutils,
     transport,
     urlutils,
     )
@@ -238,7 +240,7 @@ class ThreadWithException(threading.Thread):
 
     def __init__(self, *args, **kwargs):
         # There are cases where the calling thread must wait, yet, if an
-        # exception occurs the event should be set so the caller is not
+        # exception occurs, the event should be set so the caller is not
         # blocked. The main example is a calling thread that want to wait for
         # the called thread to be in a given state before continuing.
         try:
@@ -277,6 +279,110 @@ class ThreadWithException(threading.Thread):
         if self.exception is not None:
             exc_class, exc_value, exc_tb = self.exception
             raise exc_class, exc_value, exc_tb
+
+
+class TestingTCPServerMixin:
+    """Mixin to support running SocketServer.TCPServer in a thread.
+
+
+    Tests are connecting from the main thread, the server has to be run in a
+    separate thread.
+    """
+
+    def __init__(self):
+        self.started = threading.Event()
+        self.serving = threading.Event()
+        self.stopped = threading.Event()
+
+    def serve(self):
+        self.serving.set()
+        self.stopped.clear()
+        # We are listening and ready to accept connections
+        self.started.set()
+        while self.serving.isSet():
+            # Really a connection but the python framework is generic and
+            # call them requests
+            self.handle_request()
+        # Let's close the listening socket
+        self.server_close()
+        self.stopped.set()
+
+    def stop_clients(self):
+        pass
+
+
+class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
+
+    def __init__(self, server_address, request_handler_class):
+        TestingTCPServerMixin.__init__(self)
+        SocketServer.TCPServer.__init__(self, server_address,
+                                        request_handler_class)
+
+    def server_bind(self):
+        SocketServer.TCPServer.server_bind(self)
+        # The following has been fixed in 2.5 so we need to provide it for
+        # older python versions.
+        if sys.version < (2, 5):
+            self.server_address = self.socket.getsockname()
+
+
+class TestingTCPServerInAThread(object):
+
+    def __init__(self, server_address, server_class, request_handler_class):
+        self.server_class = server_class
+        self.request_handler_class = request_handler_class
+        self.server_address = server_address
+
+    def create_server(self):
+        return self.server_class(self.server_address,
+                                 self.request_handler_class)
+
+    def start_server(self):
+        self.server = self.create_server()
+        self._server_thread = ThreadWithException(
+            event=self.server.started, target=self.run_server)
+        self._server_thread.start()
+        # Wait for the server thread to start (i.e release the lock)
+        self.server.started.wait()
+        # Get the real address, especially the port
+        self.server_address = self.server.server_address
+        # If an exception occured during the server start, it will get raised
+        self._server_thread.join(timeout=0)
+
+    def run_server(self):
+        self.server.serve()
+
+    def stop_server(self):
+        if self.server is None:
+            return
+        if self.server.serving is None:
+            # If the server wasn't properly started, there is nothing to
+            # shutdown.
+            self.server = None
+            return
+        # The server has been started successfully, shut it down now
+        # As soon as we stop serving, no more connection are accepted except
+        # one to get out of the blocking listen.
+        self.server.serving.clear()
+        # The server is listening for a last connection, let's give it:
+        last_conn = None
+        try:
+            last_conn = osutils.connect_socket(self.server.server_address)
+        except socket.error, e:
+            # But ignore connection errors as the point is to unblock the
+            # server thread, it may happen that it's not blocked or even not
+            # started.
+            pass
+        self.server.stop_clients()
+        # Now we wait for the thread running self.server.serve() to finish
+        self.server.stopped.wait()
+        if last_conn is not None:
+            # Close the last connection without trying to use it. The server
+            # will not process a single byte on that socket to avoid
+            # complications (SSL starts with a handshake for example).
+            last_conn.close()
+        # Make sure we can be called twice safely
+        self.server = None
 
 
 class SmartTCPServer_for_testing(server.SmartTCPServer):

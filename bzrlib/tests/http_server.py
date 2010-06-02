@@ -316,7 +316,6 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         return path
 
 
-# FIXME: This should be called TestingServerInAThread
 class TestingHTTPServerMixin:
 
     def __init__(self, test_case_server):
@@ -466,7 +465,6 @@ class TestingHTTPServerMixin:
                 raise
 
 
-# FIXME: TestingHTTPServerMixin shouldn't be first -- vila 20100531
 class TestingHTTPServer(TestingHTTPServerMixin, SocketServer.TCPServer):
 
     def __init__(self, server_address, request_handler_class,
@@ -483,7 +481,6 @@ class TestingHTTPServer(TestingHTTPServerMixin, SocketServer.TCPServer):
         TestingHTTPServerMixin.server_bind(self)
 
 
-# FIXME: TestingHTTPServerMixin shouldn't be first -- vila 20100531
 class TestingThreadingHTTPServer(TestingHTTPServerMixin,
                                  SocketServer.ThreadingTCPServer,
                                  ):
