@@ -1962,12 +1962,12 @@ class TestColorGrep(GrepTestBase):
 
         # prepare colored result
         foo = color_string('foo', fg=FG.BOLD_RED)
-        res = (color_string('file0.txt', fg=FG.MAGENTA)
+        res = (FG.MAGENTA + 'file0.txt'
             + self._rev_sep + '1' + self._sep
             + foo + ' is ' + foo + 'bar1' + '\n')
         txt_res = 'file0.txt~1:foo is foobar1\n'
 
-        nres = (color_string('file0.txt', fg=FG.MAGENTA)
+        nres = (FG.MAGENTA + 'file0.txt'
             + self._rev_sep + '1' + self._sep + '1' + self._sep
             + foo + ' is ' + foo + 'bar1' + '\n')
 
@@ -2029,10 +2029,10 @@ class TestColorGrep(GrepTestBase):
 
         # prepare colored result
         foo = color_string('foo', fg=FG.BOLD_RED)
-        res = (color_string('file0.txt', fg=FG.MAGENTA)
+        res = (FG.MAGENTA + 'file0.txt'
             + self._sep + foo + ' is ' + foo + 'bar1' + '\n')
 
-        nres = (color_string('file0.txt', fg=FG.MAGENTA)
+        nres = (FG.MAGENTA + 'file0.txt'
             + self._sep + '1' + self._sep
             + foo + ' is ' + foo + 'bar1' + '\n')
 
