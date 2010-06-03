@@ -98,9 +98,7 @@ class TestMergeInto(TestMergeIntoBase):
     def test_subdir(self):
         """Merge a branch into a subdirectory of an existing directory."""
         project_wt, lib_wt = self.setup_two_branches()
-
         self.do_merge_into('lib1', 'project/dir/lib1')
-
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
         # The r1-lib1 revision should be merged into this one
@@ -121,10 +119,8 @@ class TestMergeInto(TestMergeIntoBase):
         be allocated to let the merge happen.
         """
         project_wt, lib_wt = self.setup_two_branches(custom_root_ids=False)
-
         root_id = project_wt.path2id('')
         self.do_merge_into('lib1', 'project/lib1')
-
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
         # The r1-lib1 revision should be merged into this one
