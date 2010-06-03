@@ -22,6 +22,7 @@ from bzrlib import (
     debug,
     decorators,
     errors,
+    generate_ids,
     graph as _mod_graph,
     hooks,
     merge3,
@@ -1872,15 +1873,24 @@ class Merge3MergeIntoMerger(Merge3Merger):
         name_in_target = osutils.basename(self._target_subdir)
         # XXX: what if subpath in other exists in targetdir of this?
         # Presumably we should arrange for a name conflict.
-        # XXX: what if a file in other has the same file-id as something in
-        # this?  Presumably conflict of some sort.  Definitely an edge case.
         # XXX: verify that this DTRT when source_subpath is a file (or other
         # non-directory entry)
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
+        if merge_into_root.file_id in self.this_tree.inventory:
+            # give the root a new file-id
+            # XXX: what if something other than the root has the same file-id
+            # as something in this_tree?  Presumably conflict of some sort.
+            # Definitely an edge case.
+            merge_into_root.file_id = generate_ids.gen_file_id(name_in_target)
         yield (merge_into_root, target_id)
         for ignored_path, entry in other_inv.iter_entries_by_dir(subdir_id):
-            yield (entry, entry.parent_id)
+            parent_id = entry.parent_id
+            if parent_id == subdir.file_id:
+                # The root's parent ID has changed, so make sure children of
+                # the root refer to the new ID.
+                parent_id = merge_into_root.file_id
+            yield (entry, parent_id)
 
 
 def merge_into_helper(location, subdir=None, add_cleanup=None):
