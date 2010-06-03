@@ -92,6 +92,13 @@ class TestTestingServerInAThread(tests.TestCase):
         self.addCleanup(client.disconnect)
         return client
 
+    def get_server_connection(self, server, conn_rank):
+        return server.server.clients[conn_rank]
+
+    def assertClientAddr(self, client, server, conn_rank):
+        conn = self.get_server_connection(server, conn_rank)
+        self.assertEquals(client.sock.getsockname(), conn[1])
+
     def test_start_stop(self):
         server = self.get_server()
         client = self.get_client()
@@ -108,6 +115,7 @@ class TestTestingServerInAThread(tests.TestCase):
         client.connect(server.server_address)
         self.assertIs(None, client.write('ping\n'))
         resp = client.read()
+        self.assertClientAddr(client, server, 0)
         self.assertEquals('pong\n', resp)
 
     def test_server_fails_to_start(self):

@@ -296,6 +296,9 @@ class TestingTCPServerMixin:
         self.started = threading.Event()
         self.serving = threading.Event()
         self.stopped = threading.Event()
+        # We collect the resources used by the clients so we can release them
+        # when shutting down
+        self.clients = []
 
     def server_bind(self):
         # We need to override the SocketServer bind, yet, we still want to use
@@ -323,10 +326,15 @@ class TestingTCPServerMixin:
         """Verify the request.
 
         Return True if we should proceed with this request, False if we should
-        not even touch a single byte in the socket ! This is used to stop the
-        server with a dummy last connection.
+        not even touch a single byte in the socket ! This is useful when we
+        stop the server with a dummy last connection.
         """
         return self.serving.isSet()
+
+    def handle_error(self, request, client_address):
+        # Stop serving and re-raise the last exception seen
+        self.serving.clear()
+        raise
 
     def stop_clients(self):
         pass
@@ -339,10 +347,13 @@ class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
         SocketServer.TCPServer.__init__(self, server_address,
                                         request_handler_class)
 
-    def handle_error(self, request, client_address):
-        # Stop serving and re-raise the last exception seen
-        self.serving.clear()
-        raise
+    def get_request(self):
+        """Get the request and client address from the socket."""
+        sock, addr = self.sibling_class.get_request(self)
+        self.clients.append((sock, addr))
+        return sock, addr
+
+    # The following methods are called by the main thread
 
 
 class TestingThreadingTCPServer(TestingTCPServerMixin,
@@ -352,6 +363,34 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         TestingTCPServerMixin.__init__(self, SocketServer.ThreadingTCPServer)
         SocketServer.TCPServer.__init__(self, server_address,
                                         request_handler_class)
+
+    def get_request (self):
+        """Get the request and client address from the socket."""
+        sock, addr = self.sibling_class.get_request(self)
+        # The thread is not create yet, it will be updated in process_request
+        self.clients.append((sock, addr, None))
+        return sock, addr
+
+    def process_request_thread(self, stopped, request, client_address):
+        SocketServer.ThreadingTCPServer.process_request_thread(
+            self, request, client_address)
+        self.close_request(request)
+        stopped.set()
+
+    def process_request(self, request, client_address):
+        """Start a new thread to process the request."""
+        stopped = threading.Event()
+        t = test_server.ThreadWithException(
+            event=stopped,
+            target = self.process_request_thread,
+            args = (stopped, request, client_address))
+        t.name = '%s -> %s' % (client_address, self.server_address)
+        if 'threads' in tests.selftest_debug_flags:
+            print 'Thread for: %s started' % (threading.currentThread().name,)
+        # Update the client description
+        self.clients.pop()
+        self.clients.append((request, client_address, t))
+        t.start()
 
 
 class TestingTCPServerInAThread(object):
@@ -408,6 +447,8 @@ class TestingTCPServerInAThread(object):
             # server thread, it may happen that it's not blocked or even not
             # started.
             pass
+        # We don't have to wait for the server to shut down to start shutting
+        # down the clients, so let's start now.
         self.server.stop_clients()
         # Now we wait for the thread running self.server.serve() to finish
         self.server.stopped.wait()
@@ -423,6 +464,7 @@ class TestingTCPServerInAThread(object):
         finally:
             # Make sure we can be called twice safely
             self.server = None
+
 
 class TestingThreadingTCPServerInAThread(TestingTCPServerInAThread):
     """A socket server in a thread which spawn one thread for each connection"""
