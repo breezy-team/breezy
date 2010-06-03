@@ -117,8 +117,8 @@ class TestMergeInto(TestMergeIntoBase):
             ], project_wt)
 
     def test_newdir_with_repeat_roots(self):
-        """If the file-id of the dir to be merged already exists it a new ID
-        will be allocated to let the merge happen.
+        """If the file-id of the dir to be merged already exists a new ID will
+        be allocated to let the merge happen.
         """
         project_wt, lib_wt = self.setup_two_branches(custom_root_ids=False)
 
