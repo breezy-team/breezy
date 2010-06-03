@@ -24,6 +24,19 @@ from bzrlib import (
     )
 from bzrlib.tests import test_server
 
+
+def load_tests(basic_tests, module, loader):
+    suite = loader.suiteClass()
+    server_tests, remaining_tests = tests.split_suite_by_condition(
+        basic_tests, tests.condition_isinstance(TestTCPServerInAThread))
+    server_scenarios = [ (name, {'server_class': getattr(test_server, name)})
+                         for name in
+                         ('TestingTCPServer', 'TestingThreadingTCPServer')]
+    tests.multiply_tests(server_tests, server_scenarios, suite)
+    suite.addTest(remaining_tests)
+    return suite
+
+
 class TCPClient(object):
 
     def __init__(self):
@@ -75,7 +88,8 @@ class TCPConnectionHandler(SocketServer.StreamRequestHandler):
 
 class TestTCPServerInAThread(tests.TestCase):
 
-    server_class = test_server.TestingTCPServer
+    # Set by load_tests()
+    server_class = None
 
     def get_server(self, server_class=None, connection_handler_class=None):
         if server_class is not None:
@@ -159,7 +173,4 @@ class TestTCPServerInAThread(tests.TestCase):
         # Now the server has raise the exception in its own thread
         self.assertRaises(ServerFailure, server.stop_server)
 
-class TestThreadingTCPServerInAThread(TestTCPServerInAThread):
-
-    server_class = test_server.TestingThreadingTCPServer
 

@@ -452,7 +452,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
             t.join()
 
 
-class TestingTCPServerInAThread(object):
+class TestingTCPServerInAThread(transport.Server):
     """A server in a thread that re-raise thread exceptions."""
 
     def __init__(self, server_address, server_class, request_handler_class):
@@ -460,6 +460,9 @@ class TestingTCPServerInAThread(object):
         self.request_handler_class = request_handler_class
         self.server_address = server_address
         self.server = None
+
+    def __repr__(self):
+        return "%s%r" % (self.__class__.__name__, self.server_address)
 
     def create_server(self):
         return self.server_class(self.server_address,
