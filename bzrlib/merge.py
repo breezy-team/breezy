@@ -1803,10 +1803,16 @@ class MergeIntoMerger(Merger):
         self.merge_type = Wrapper(Merge3MergeIntoMerger,
                                   target_subdir=self._target_subdir,
                                   source_subpath=self._source_subpath)
-        # This is usually done in set_*(), but we already set it as part
-        # of the constructor.
-        self._maybe_fetch(self.other_branch, self.this_branch,
-            self.other_basis)
+        if self._source_subpath != '':
+            # If this isn't a partial merge make sure the revisions will be
+            # present.
+            self._maybe_fetch(self.other_branch, self.this_branch,
+                self.other_basis)
+
+    def set_pending(self):
+        if self._source_subpath != '':
+            return
+        Merger.set_pending(self)
 
 
 class Wrapper(object):

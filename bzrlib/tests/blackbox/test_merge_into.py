@@ -35,18 +35,18 @@ class TestMergeInto(TestMergeIntoBase):
         try:
             new_lib1_id = project_wt.path2id('lib1')
             # The lib-1 revision should be merged into this one
-            self.assertEqual(['project-1', 'lib-1'],
+            self.assertEqual(['r1-project', 'r1-lib1'],
                              project_wt.get_parent_ids())
             files = [(path, ie.kind, ie.file_id)
                      for path, ie in project_wt.iter_entries_by_dir()]
             exp_files = [('', 'directory', 'project-root-id'),
-                         ('README', 'file', 'readme-id'),
-                         ('dir', 'directory', 'dir-id'),
+                         ('README', 'file', 'project-README-id'),
+                         ('dir', 'directory', 'project-dir-id'),
                          ('lib1', 'directory', new_lib1_id),
-                         ('dir/file.c', 'file', 'file.c-id'),
-                         ('lib1/Makefile', 'file', 'makefile-lib-id'),
-                         ('lib1/README', 'file', 'readme-lib-id'),
-                         ('lib1/foo.c', 'file', 'foo.c-lib-id'),
+                         ('dir/file.c', 'file', 'project-file.c-id'),
+                         ('lib1/Makefile', 'file', 'lib1-Makefile-id'),
+                         ('lib1/README', 'file', 'lib1-README-id'),
+                         ('lib1/foo.c', 'file', 'lib1-foo.c-id'),
                         ]
             self.assertEqual(exp_files, files)
         finally:
@@ -61,18 +61,18 @@ class TestMergeInto(TestMergeIntoBase):
         try:
             new_lib1_id = project_wt.path2id('lib1')
             # The lib-1 revision should be merged into this one
-            self.assertEqual(['project-1', 'lib-1'],
+            self.assertEqual(['r1-project', 'r1-lib1'],
                              project_wt.get_parent_ids())
             files = [(path, ie.kind, ie.file_id)
                      for path, ie in project_wt.iter_entries_by_dir()]
             exp_files = [('', 'directory', 'project-root-id'),
-                         ('README', 'file', 'readme-id'),
-                         ('dir', 'directory', 'dir-id'),
+                         ('README', 'file', 'project-README-id'),
+                         ('dir', 'directory', 'project-dir-id'),
                          ('lib1', 'directory', new_lib1_id),
-                         ('dir/file.c', 'file', 'file.c-id'),
-                         ('lib1/Makefile', 'file', 'makefile-lib-id'),
-                         ('lib1/README', 'file', 'readme-lib-id'),
-                         ('lib1/foo.c', 'file', 'foo.c-lib-id'),
+                         ('dir/file.c', 'file', 'project-file.c-id'),
+                         ('lib1/Makefile', 'file', 'lib1-Makefile-id'),
+                         ('lib1/README', 'file', 'lib1-README-id'),
+                         ('lib1/foo.c', 'file', 'lib1-foo.c-id'),
                         ]
             self.assertEqual(exp_files, files)
         finally:
