@@ -1883,6 +1883,33 @@ class Merge3MergeIntoMerger(Merge3Merger):
             yield (entry, entry.parent_id)
 
 
+def merge_into_helper(location, subdir=None, add_cleanup=None):
+    # Open and lock the various tree and branch objects
+    from bzrlib import workingtree
+    import os
+    if not subdir: # default to same name as source dir
+        subdir = os.path.basename(location)
+    wt, subdir_relpath = workingtree.WorkingTree.open_containing(subdir)
+    wt.lock_write()
+    add_cleanup(wt.unlock)
+    branch_to_merge, subdir_to_merge = _mod_branch.Branch.open_containing(
+        location)
+    branch_to_merge.lock_read()
+    add_cleanup(branch_to_merge.unlock)
+    other_tree = branch_to_merge.basis_tree()
+    other_tree.lock_read()
+    add_cleanup(other_tree.unlock)
+    # Perform the merge
+    merger = MergeIntoMerger(this_tree=wt, other_tree=other_tree,
+        other_branch=branch_to_merge, target_subdir=subdir_relpath,
+        source_subpath=subdir_to_merge)
+    merger.set_base_revision(
+        _mod_revision.NULL_REVISION, branch_to_merge)
+    conflicts = merger.do_merge()
+    merger.set_pending()
+    return conflicts
+
+
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
                 backup_files=False,
                 merge_type=Merge3Merger,

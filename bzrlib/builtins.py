@@ -4042,40 +4042,21 @@ class cmd_merge(Command):
 class cmd_merge_into(Command):
     """Merge a branch into a subdirectory of the current one.
 
-    LOCATION is the branch that will be merged into this one.
-    SUBDIR is the subdirectory that will be used for merging.
-      (defaults to basename of LOCATION)
+    LOCATION is the branch, or subdirectory of a branch, that will be merged into
+       another.
+    MERGE-AS is the subdirectory to merge it into.
+      (defaults to basename of LOCATION in the current working directory)
 
     After running 'bzr merge-into OTHER SUBDIR' all of the files from OTHER will be
     present underneath the subdirectory SUBDIR.
     """
 
-    takes_args = ['location', 'subdir?', 'only?']
+    takes_args = ['location', 'merge_as?']
     takes_options = []
 
-    def run(self, location, subdir=None, only=None):
-        # Open and lock the various tree and branch objects
-        if not subdir: # default to same name as source dir
-            subdir = os.path.basename(location)
-        wt, subdir_relpath = WorkingTree.open_containing(subdir)
-        wt.lock_write()
-        self.add_cleanup(wt.unlock)
-        branch_to_merge = Branch.open(location)
-        branch_to_merge.lock_read()
-        self.add_cleanup(branch_to_merge.unlock)
-        other_tree = branch_to_merge.basis_tree()
-        other_tree.lock_read()
-        self.add_cleanup(other_tree.unlock)
-        if only is None:
-            only = ''
-        # Perform the merge
-        merger = _mod_merge.MergeIntoMerger(this_tree=wt,
-                other_tree=other_tree, other_branch=branch_to_merge,
-                target_subdir=subdir_relpath, source_subpath=only)
-        merger.set_base_revision(
-            _mod_revision.NULL_REVISION, branch_to_merge)
-        conflicts = merger.do_merge()
-        merger.set_pending()
+    def run(self, location, merge_as=None):
+        conflicts = _mod_merge.merge_into_helper(
+            location, merge_as, self.add_cleanup)
         # Report the results
         if not conflicts:
             self.outf.write('merge-into successful\n')

@@ -17,8 +17,9 @@
 """Whitebox testing for merge_into functionality."""
 
 from bzrlib import (
+    cleanup,
     inventory,
-    #merge_into,
+    merge,
     tests,
     )
 
@@ -54,14 +55,17 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
 
         return project_wt, lib_wt
 
+    def do_merge_into(self, location, merge_as=None):
+        operation = cleanup.OperationWithCleanups(merge.merge_into_helper)
+        return operation.run_simple(location, merge_as, operation.add_cleanup)
+
 
 class TestMergeInto(TestMergeIntoBase):
 
     def test_merge_into_newdir_with_unique_roots(self):
         project_wt, lib_wt = self.setup_two_branches()
 
-        merge_into.merge_into_helper('lib1', 'lib1',
-                                     this_location='project')
+        self.do_merge_into('lib1', 'project/lib1')
 
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
@@ -85,8 +89,7 @@ class TestMergeInto(TestMergeIntoBase):
     def test_merge_into_subdir(self):
         project_wt, lib_wt = self.setup_two_branches()
 
-        merge_into.merge_into_helper('lib1', 'dir/lib1',
-                                     this_location='project')
+        self.do_merge_into('lib1', 'project/dir/lib1')
 
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
@@ -111,8 +114,7 @@ class TestMergeInto(TestMergeIntoBase):
         project_wt, lib_wt = self.setup_two_branches(custom_root_ids=False)
 
         root_id = project_wt.path2id('')
-        merge_into.merge_into_helper('lib1', 'lib1',
-                                     this_location='project')
+        self.do_merge_into('lib1', 'project/lib1')
 
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
