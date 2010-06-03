@@ -1862,8 +1862,6 @@ class Merge3MergeIntoMerger(Merge3Merger):
         # yields pairs of (inventory_entry, new_parent)
         other_inv = self.other_tree.inventory
         subdir_id = other_inv.path2id(self._source_subpath)
-        trace.mutter('source_subpath: %r, subdir_id: %r', self._source_subpath,
-                subdir_id)
         subdir = other_inv[subdir_id]
         parent_in_target = osutils.dirname(self._target_subdir)
         target_id = self.this_tree.inventory.path2id(parent_in_target)
@@ -1871,8 +1869,6 @@ class Merge3MergeIntoMerger(Merge3Merger):
             raise AssertionError('_target_subdir %r not present?' %
                     (self._target_subdir,))
         name_in_target = osutils.basename(self._target_subdir)
-        # XXX: what if subpath in other exists in targetdir of this?
-        # Presumably we should arrange for a name conflict.
         # XXX: verify that this DTRT when source_subpath is a file (or other
         # non-directory entry)
         merge_into_root = subdir.copy()
@@ -1884,6 +1880,9 @@ class Merge3MergeIntoMerger(Merge3Merger):
             # Definitely an edge case.
             merge_into_root.file_id = generate_ids.gen_file_id(name_in_target)
         yield (merge_into_root, target_id)
+        if subdir.kind != 'directory':
+            # No children, so we are done.
+            return
         for ignored_path, entry in other_inv.iter_entries_by_dir(subdir_id):
             parent_id = entry.parent_id
             if parent_id == subdir.file_id:

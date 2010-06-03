@@ -71,6 +71,7 @@ class TestMergeInto(TestMergeIntoBase):
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
         new_lib1_id = project_wt.path2id('lib1')
+        self.assertNotEqual(None, new_lib1_id)
         # The lib-1 revision should be merged into this one
         self.assertEqual(['project-1', 'lib-1'],
                          project_wt.get_parent_ids())
@@ -96,6 +97,7 @@ class TestMergeInto(TestMergeIntoBase):
         project_wt.lock_read()
         self.addCleanup(project_wt.unlock)
         new_lib1_id = project_wt.path2id('dir/lib1')
+        self.assertNotEqual(None, new_lib1_id)
         # The lib-1 revision should be merged into this one
         self.assertEqual(['project-1', 'lib-1'],
                          project_wt.get_parent_ids())
@@ -127,6 +129,7 @@ class TestMergeInto(TestMergeIntoBase):
         self.assertEqual(['project-1', 'lib-1'],
                          project_wt.get_parent_ids())
         new_lib1_id = project_wt.path2id('lib1')
+        self.assertNotEqual(None, new_lib1_id)
         files = [(path, ie.kind, ie.file_id)
                  for path, ie in project_wt.iter_entries_by_dir()]
         exp_files = [('', 'directory', root_id),
@@ -139,3 +142,50 @@ class TestMergeInto(TestMergeIntoBase):
                      ('lib1/foo.c', 'file', 'foo.c-lib-id'),
                     ]
         self.assertEqual(exp_files, files)
+
+    def test_name_conflict(self):
+        """When the target directory name already exists a conflict is
+        generated and the original directory is renamed to foo.moved.
+        """
+        project_wt, lib_wt = self.setup_two_branches()
+        conflicts = self.do_merge_into('lib1', 'project/dir')
+        self.assertEqual(1, conflicts)
+        project_wt.lock_read()
+        self.addCleanup(project_wt.unlock)
+        new_lib1_id = project_wt.path2id('dir')
+        self.assertNotEqual(None, new_lib1_id)
+        # The lib-1 revision should be merged into this one
+        self.assertEqual(['project-1', 'lib-1'],
+                         project_wt.get_parent_ids())
+        files = [(path, ie.kind, ie.file_id)
+                 for path, ie in project_wt.iter_entries_by_dir()]
+        exp_files = [('', 'directory', 'project-root-id'),
+                     ('README', 'file', 'readme-id'),
+                     ('dir', 'directory', new_lib1_id),
+                     ('dir.moved', 'directory', 'dir-id'),
+                     ('dir/Makefile', 'file', 'makefile-lib-id'),
+                     ('dir/README', 'file', 'readme-lib-id'),
+                     ('dir/foo.c', 'file', 'foo.c-lib-id'),
+                     ('dir.moved/file.c', 'file', 'file.c-id'),
+                    ]
+        self.assertEqual(exp_files, files)
+
+    def test_merge_just_file(self):
+        """An edge case: merge just one file, not a whole dir."""
+        project_wt, lib_wt = self.setup_two_branches()
+        conflicts = self.do_merge_into('lib1/foo.c', 'project/foo.c')
+        project_wt.lock_read()
+        self.addCleanup(project_wt.unlock)
+        # The lib-1 revision should be merged into this one
+        self.assertEqual(['project-1', 'lib-1'],
+                         project_wt.get_parent_ids())
+        files = [(path, ie.kind, ie.file_id)
+                 for path, ie in project_wt.iter_entries_by_dir()]
+        exp_files = [('', 'directory', 'project-root-id'),
+                     ('README', 'file', 'readme-id'),
+                     ('dir', 'directory', 'dir-id'),
+                     ('foo.c', 'file', 'foo.c-lib-id'),
+                     ('dir/file.c', 'file', 'file.c-id'),
+                    ]
+        self.assertEqual(exp_files, files)
+
