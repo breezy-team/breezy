@@ -1,11 +1,11 @@
 Installing Bazaar
 =================
 
-Linux
------
+GNU/Linux
+---------
 
-Bazaar packages are available for most popular Linux distributions
-including Ubuntu/Debian, Red Hat and Gentoo.
+Bazaar packages are available for most popular GNU/Linux distributions
+including Ubuntu, Debian, Red Hat and Gentoo.
 See http://bazaar-vcs.org/Download for the latest instructions.
 
 Windows

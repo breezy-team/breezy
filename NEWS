@@ -3950,8 +3950,8 @@ Internals
   can have a large effect on ``bzr checkout`` times. (John Arbash Meinel)
 
 * selftest now supports a --parallel option, with values of 'fork' or
-  'subprocess' to run the test suite in parallel. Currently only linux
-  machine work, other platforms need patches submitted. (Robert Collins,
+  'subprocess' to run the test suite in parallel. Currently only Linux
+  machines work, other platforms need patches submitted. (Robert Collins,
   Vincent Ladeuil)
 
 * ``tests.run_suite`` has a new parameter ``suite_decorators``, a list of 
@@ -6705,7 +6705,7 @@ Changes
 
 * bzr main script cannot be imported (Benjamin Peterson)
 
-* On Linux bzr additionally looks for plugins in arch-independent site
+* On GNU/Linux bzr additionally looks for plugins in arch-independent site
   directory. (Toshio Kuratomi)
 
 * The ``set_rh`` branch hook is now deprecated. Please migrate
@@ -7048,7 +7048,7 @@ Changes
 
 * BZR_LOG environment variable controls location of .bzr.log trace file.
   User can suppress writing messages to .bzr.log by using '/dev/null'
-  filename (on Linux) or 'NUL' (on Windows). If BZR_LOG variable
+  filename (on Unix) or 'NUL' (on Windows). If BZR_LOG variable
   is not defined but BZR_HOME is defined then default location
   for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
   (Alexander Belchenko, #106117)

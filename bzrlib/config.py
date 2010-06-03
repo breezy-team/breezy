@@ -843,7 +843,6 @@ def config_dir():
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
-        # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")

@@ -278,7 +278,7 @@ def _win32_local_path_to_url(path):
     # on non-win32 platform
     # FIXME: It turns out that on nt, ntpath.abspath uses nt._getfullpathname
     #       which actually strips trailing space characters.
-    #       The worst part is that under linux ntpath.abspath has different
+    #       The worst part is that on linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
     if path == '/':
         return 'file:///'
