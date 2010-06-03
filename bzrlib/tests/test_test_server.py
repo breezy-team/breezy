@@ -72,17 +72,18 @@ class TCPConnectionHandler(SocketServer.StreamRequestHandler):
         else:
             raise ValueError('[%s] not understood' % req)
 
-class TestTestingServerInAThread(tests.TestCase):
 
-    server_in_thread_class = test_server.TestingTCPServerInAThread
+class TestTCPServerInAThread(tests.TestCase):
+
+    server_class = test_server.TestingTCPServer
 
     def get_server(self, server_class=None, connection_handler_class=None):
-        if server_class is None:
-            server_class = test_server.TestingTCPServer
+        if server_class is not None:
+            self.server_class = server_class
         if connection_handler_class is None:
             connection_handler_class = TCPConnectionHandler
-        server =  self.server_in_thread_class(
-            ('localhost', 0), server_class, connection_handler_class)
+        server =  test_server.TestingTCPServerInAThread(
+            ('localhost', 0), self.server_class, connection_handler_class)
         server.start_server()
         self.addCleanup(server.stop_server)
         return server
@@ -158,7 +159,7 @@ class TestTestingServerInAThread(tests.TestCase):
         # Now the server has raise the exception in its own thread
         self.assertRaises(ServerFailure, server.stop_server)
 
-class TestTestingThreadingServerInAThread(TestTestingServerInAThread):
+class TestThreadingTCPServerInAThread(TestTCPServerInAThread):
 
-    server_in_thread_class = test_server.TestingThreadingTCPServerInAThread
+    server_class = test_server.TestingThreadingTCPServer
 
