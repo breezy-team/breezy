@@ -289,10 +289,6 @@ from bzrlib.bzrdir import (
     )
 bzrdir_network_format_registry.register('git', GitBzrDirFormat)
 
-
-def get_rich_root_format(stacked=False):
-    return bzrdir.format_registry.make_bzrdir("default-rich-root")
-
 send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
                                    'send_git', 'Git am-style diff format')
 

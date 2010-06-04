@@ -28,9 +28,6 @@ from bzrlib.option import (
     Option,
     )
 
-from bzrlib.plugins.git import (
-    get_rich_root_format,
-    )
 
 class cmd_git_import(Command):
     """Import all branches from a git repository.
@@ -69,11 +66,10 @@ class cmd_git_import(Command):
         source_repo = Repository.open(src_location)
         if not isinstance(source_repo, GitRepository):
             raise BzrCommandError("%r is not a git repository" % src_location)
-        format = get_rich_root_format()
         try:
             target_bzrdir = BzrDir.open(dest_location)
         except NotBranchError:
-            target_bzrdir = BzrDir.create(dest_location, format=format)
+            target_bzrdir = BzrDir.create(dest_location)
         try:
             target_repo = target_bzrdir.find_repository()
         except NoRepositoryPresent:

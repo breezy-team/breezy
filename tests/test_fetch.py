@@ -43,9 +43,6 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     )
 
-from bzrlib.plugins.git import (
-    get_rich_root_format,
-    )
 from bzrlib.plugins.git.fetch import (
     import_git_blob,
     import_git_tree,
@@ -67,7 +64,7 @@ class RepositoryFetchTests:
 
     def clone_git_repo(self, from_url, to_url, revision_id=None):
         oldrepos = self.open_git_repo(from_url)
-        dir = BzrDir.create(to_url, get_rich_root_format())
+        dir = BzrDir.create(to_url)
         newrepos = dir.create_repository()
         oldrepos.copy_content_into(newrepos, revision_id=revision_id)
         return newrepos

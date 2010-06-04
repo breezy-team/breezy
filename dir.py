@@ -29,7 +29,6 @@ LockWarner = getattr(lockable_files, "_LockWarner", None)
 
 from bzrlib.plugins.git import (
     LocalGitBzrDirFormat,
-    get_rich_root_format,
     )
 
 
@@ -77,7 +76,7 @@ class GitDir(bzrdir.BzrDir):
         return True
 
     def cloning_metadir(self, stacked=False):
-        return get_rich_root_format(stacked)
+        return bzrdir.format_registry.make_bzrdir("default")
 
     def _branch_name_to_ref(self, name):
         raise NotImplementedError(self._branch_name_to_ref)

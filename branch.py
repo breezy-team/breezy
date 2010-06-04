@@ -40,9 +40,6 @@ from bzrlib.trace import (
     mutter,
     )
 
-from bzrlib.plugins.git import (
-    get_rich_root_format,
-    )
 from bzrlib.plugins.git.config import (
     GitBranchConfig,
     )
@@ -182,7 +179,7 @@ class GitBranch(ForeignBranch):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        return get_rich_root_format()
+        return bzrdir.format_registry.make_bzrdir("default")
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
@@ -294,7 +291,7 @@ class LocalGitBranch(GitBranch):
         :return: WorkingTree object of checkout.
         """
         checkout_branch = bzrdir.BzrDir.create_branch_convenience(
-            to_location, force_new_tree=False, format=get_rich_root_format())
+            to_location, force_new_tree=False)
         checkout = checkout_branch.bzrdir
         checkout_branch.bind(self)
         # pull up to the specified revision_id to set the initial
