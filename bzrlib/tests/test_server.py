@@ -347,6 +347,7 @@ class TestingTCPServerMixin:
     def handle_error(self, request, client_address):
         # Stop serving and re-raise the last exception seen
         self.serving.clear()
+        self.sibling_class.handle_error(self, request, client_address)
         raise
 
     # The following methods are called by the main thread
@@ -458,14 +459,14 @@ class TestingTCPServerInAThread(transport.Server):
     def __init__(self, server_address, server_class, request_handler_class):
         self.server_class = server_class
         self.request_handler_class = request_handler_class
-        self.server_address = server_address
+        self.host, self.port = server_address
         self.server = None
 
     def __repr__(self):
-        return "%s%r" % (self.__class__.__name__, self.server_address)
+        return "%s(%s:%s)" % (self.__class__.__name__, self.host, self.port)
 
     def create_server(self):
-        return self.server_class(self.server_address,
+        return self.server_class((self.host, self.port),
                                  self.request_handler_class)
 
     def start_server(self):
@@ -476,8 +477,8 @@ class TestingTCPServerInAThread(transport.Server):
         # Wait for the server thread to start (i.e release the lock)
         self.server.started.wait()
         # Get the real address, especially the port
-        self.server_address = self.server.server_address
-        self._server_thread.name = self.server_address
+        self.host, self.port = self.server.server_address
+        self._server_thread.name = '(%s:%s)' % (self.host, self.port)
         # If an exception occured during the server start, it will get raised,
         # otherwise, the server is blocked on its accept() call.
         self._server_thread.pending_exception()
@@ -499,7 +500,7 @@ class TestingTCPServerInAThread(transport.Server):
             # The server is listening for a last connection, let's give it:
             last_conn = None
             try:
-                last_conn = osutils.connect_socket(self.server.server_address)
+                last_conn = osutils.connect_socket((self.host, self.port))
             except socket.error, e:
                 # But ignore connection errors as the point is to unblock the
                 # server thread, it may happen that it's not blocked or even

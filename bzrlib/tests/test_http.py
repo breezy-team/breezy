@@ -308,25 +308,20 @@ class TestHTTPServer(tests.TestCase):
 
             protocol_version = 'HTTP/0.1'
 
-        server = http_server.HttpServer(BogusRequestHandler)
-        try:
-            self.assertRaises(httplib.UnknownProtocol, server.start_server)
-        except:
-            server.stop_server()
-            self.fail('HTTP Server creation did not raise UnknownProtocol')
+        self.assertRaises(httplib.UnknownProtocol,
+                          http_server.HttpServer, BogusRequestHandler)
 
     def test_force_invalid_protocol(self):
-        server = http_server.HttpServer(protocol_version='HTTP/0.1')
-        self.addCleanup(server.stop_server)
-        self.assertRaises(httplib.UnknownProtocol, server.start_server)
+        self.assertRaises(httplib.UnknownProtocol,
+                          http_server.HttpServer, protocol_version='HTTP/0.1')
 
     def test_server_start_and_stop(self):
         server = http_server.HttpServer()
         self.addCleanup(server.stop_server)
         server.start_server()
-        self.assertTrue(server._httpd is not None)
-        self.assertTrue(server._httpd.serving is not None)
-        self.assertTrue(server._httpd.serving.isSet())
+        self.assertTrue(server.server is not None)
+        self.assertTrue(server.server.serving is not None)
+        self.assertTrue(server.server.serving.isSet())
 
     def test_create_http_server_one_zero(self):
         class RequestHandlerOneZero(http_server.TestingHTTPRequestHandler):
@@ -335,7 +330,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneZero)
         self.start_server(server)
-        self.assertIsInstance(server._httpd, http_server.TestingHTTPServer)
+        self.assertIsInstance(server.server, http_server.TestingHTTPServer)
 
     def test_create_http_server_one_one(self):
         class RequestHandlerOneOne(http_server.TestingHTTPRequestHandler):
@@ -344,7 +339,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneOne)
         self.start_server(server)
-        self.assertIsInstance(server._httpd,
+        self.assertIsInstance(server.server,
                               http_server.TestingThreadingHTTPServer)
 
     def test_create_http_server_force_one_one(self):
@@ -355,7 +350,7 @@ class TestHTTPServer(tests.TestCase):
         server = http_server.HttpServer(RequestHandlerOneZero,
                                         protocol_version='HTTP/1.1')
         self.start_server(server)
-        self.assertIsInstance(server._httpd,
+        self.assertIsInstance(server.server,
                               http_server.TestingThreadingHTTPServer)
 
     def test_create_http_server_force_one_zero(self):
@@ -366,7 +361,7 @@ class TestHTTPServer(tests.TestCase):
         server = http_server.HttpServer(RequestHandlerOneOne,
                                         protocol_version='HTTP/1.0')
         self.start_server(server)
-        self.assertIsInstance(server._httpd,
+        self.assertIsInstance(server.server,
                               http_server.TestingHTTPServer)
 
 
@@ -1792,7 +1787,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         self.assertEqual(expected_reply_body, reply_body)
 
     def test_smart_http_server_post_request_handler(self):
-        httpd = self.get_readonly_server()._get_httpd()
+        httpd = self.get_readonly_server().server
 
         socket = SampleSocket(
             'POST /.bzr/smart %s \r\n' % self._protocol_version
@@ -1837,6 +1832,7 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
         self.assertRaises(errors.SmartProtocolError,
                           t.get_smart_medium().send_http_smart_request,
                           'whatever')
+
 
 class Test_redirected_to(tests.TestCase):
 
