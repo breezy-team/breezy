@@ -466,10 +466,28 @@ Internals
   Command is now transient and only exists for the duration of ``run()``.
   (Robert Collins)
 
-bzr 2.2.0b1
-###########
+bzr 2.2b1
+#########
 
-:2.2.0b1: 2010-04-01
+:2.2b1: 2010-04-01
+
+This is the first beta of the 2.2 series, leading up to a 2.2.0
+release in July or August.  Beta releases are suitable for everyday use
+but may cause some incompatibilities with plugins.  Some plugins may need
+small updates to work with 2.2b1.
+
+2.2b1 includes some changes to make merge conflicts easier to understand
+and resolve.  It also removes some old unnecessary code, and loads
+somewhat less code at startup.  It starts adding a common infrastructure
+for dealing with colocated named branches, which can be implemented in
+various ways in either bzr native or foreign formats.   On Ubuntu and
+other platforms with the apport bug-reporting library, there's an easier
+path to report problems with bzr.  We plan to continue with these themes
+through the 2.2 series.
+
+Over thirty bugs have been fixed, including in the log command, exporting
+to tarballs, restarting interrupted system calls, portability of compiled
+extensions, making backups during upgrade, and locking on ftp.
 
 Compatibility Breaks
 ********************
