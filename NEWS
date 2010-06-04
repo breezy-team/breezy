@@ -17,6 +17,10 @@ Compatibility Breaks
 New Features
 ************
 
+* Added ``bzr merge-into`` command for incorporating a branch (or
+  subdirectory of) as a subdirectory of another branch.
+  (Andrew Bennetts)
+
 Bug Fixes
 *********
 

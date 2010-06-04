@@ -1877,6 +1877,8 @@ class Merge3MergeIntoMerger(Merge3Merger):
         other_inv = self.other_tree.inventory
         subdir_id = other_inv.path2id(self._source_subpath)
         if subdir_id is None:
+            # XXX: The error would be clearer if it gave the URL of the source
+            # branch, but we don't have a reference to that here.
             raise PathNotInTree(self._source_subpath)
         subdir = other_inv[subdir_id]
         parent_in_target = osutils.dirname(self._target_subdir)
@@ -1889,9 +1891,10 @@ class Merge3MergeIntoMerger(Merge3Merger):
         merge_into_root.name = name_in_target
         if merge_into_root.file_id in self.this_tree.inventory:
             # Give the root a new file-id.
-            # XXX: what if something other than the root has the same file-id
-            # as something in this_tree?  Presumably conflict of some sort.
-            # Definitely an edge case.
+            # XXX: what to do if something other than the root has the same
+            # file-id as something in this_tree?  Ideally make a conflict of
+            # some sort?  Shouldn't occur with unrelated branches, so it's
+            # hopefully an uncommon edge case.
             merge_into_root.file_id = generate_ids.gen_file_id(name_in_target)
         yield (merge_into_root, target_id)
         if subdir.kind != 'directory':
