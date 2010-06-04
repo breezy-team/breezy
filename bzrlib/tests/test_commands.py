@@ -91,6 +91,15 @@ class TestCommands(tests.TestCase):
         c = self.get_command([option.Option('foo', hidden=False)])
         self.assertContainsRe(c.get_help_text(), '--foo')
 
+    def test_no_help_init_failure(self):
+        class cmd_foo(commands.Command):
+            pass
+        self.assertRaises(ValueError, cmd_foo)
+
+    def test_builtin_command_names(self):
+        cmds = commands.builtin_command_names()
+        self.assertTrue(len(cmds) > 0)
+        self.assertTrue('diff' in cmds)
 
 class TestGetAlias(tests.TestCase):
 
@@ -345,6 +354,7 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
+
 
 class TestDeprecations(tests.TestCase):
 
