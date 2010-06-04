@@ -1660,8 +1660,6 @@ def walkdirs(top, prefix=""):
         except OSError, e:
             if not _is_error_enotdir(e):
                 raise
-        except errors.BzrBadParameterNotUnicode, e:
-            raise errors.BzrFilenameNotUTF8(e.param)
         else:
             for name in names:
                 abspath = top_slash + name
