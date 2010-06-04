@@ -77,3 +77,11 @@ class TestMergeInto(TestMergeIntoBase):
             self.assertEqual(exp_files, files)
         finally:
             project_wt.unlock()
+
+    def test_no_such_source_path(self):
+        dest_wt = self.setup_simple_branch('dest')
+        two_file_wt = self.setup_simple_branch('src', ['dir/'])
+        out, err = self.run_bzr(
+            'merge-into ../src/no-such-dir', working_dir='dest', retcode=3)
+        self.assertEqual('', out)
+        self.assertContainsRe(err, 'ERROR: Tree does not contain no-such-dir')

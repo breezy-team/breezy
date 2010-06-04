@@ -22,7 +22,6 @@ from bzrlib import (
     branch as _mod_branch,
     conflicts as _mod_conflicts,
     debug,
-    errors,
     generate_ids,
     graph as _mod_graph,
     merge3,
@@ -41,6 +40,7 @@ from bzrlib.cleanup import OperationWithCleanups
 """)
 from bzrlib import (
     decorators,
+    errors,
     hooks,
     )
 from bzrlib.symbol_versioning import (
@@ -1762,6 +1762,14 @@ class Diff3Merger(Merge3Merger):
             osutils.rmtree(temp_dir)
 
 
+class PathNotInTree(errors.BzrError):
+
+    _fmt = """Tree does not contain %(path)s."""
+
+    def __init__(self, path):
+        errors.BzrError.__init__(self, path=path)
+
+
 class MergeIntoMerger(Merger):
     """Merger that understands other_tree will be merged into a subdir.
 
@@ -1841,12 +1849,7 @@ class Wrapper(object):
 
 
 class Merge3MergeIntoMerger(Merge3Merger):
-
-    # Parameters specific to the merge-into merger:
-    # Path from source to merge (i.e. paths outside this will be excluded)
-    _source_subpath = None
-    # Path to give _source_subpath in the target
-    _target_subdir = None
+    """Merger that incorporates a tree (or part of a tree) into another."""
 
     def __init__(self, *args, **kwargs):
         # All of the interesting work happens during Merge3Merger.__init__(),
@@ -1870,9 +1873,11 @@ class Merge3MergeIntoMerger(Merge3Merger):
         self._finish_transform()
 
     def _entries_to_incorporate(self):
-        # yields pairs of (inventory_entry, new_parent)
+        """Yields pairs of (inventory_entry, new_parent)."""
         other_inv = self.other_tree.inventory
         subdir_id = other_inv.path2id(self._source_subpath)
+        if subdir_id is None:
+            raise PathNotInTree(self._source_subpath)
         subdir = other_inv[subdir_id]
         parent_in_target = osutils.dirname(self._target_subdir)
         target_id = self.this_tree.inventory.path2id(parent_in_target)
@@ -1883,7 +1888,7 @@ class Merge3MergeIntoMerger(Merge3Merger):
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
         if merge_into_root.file_id in self.this_tree.inventory:
-            # give the root a new file-id
+            # Give the root a new file-id.
             # XXX: what if something other than the root has the same file-id
             # as something in this_tree?  Presumably conflict of some sort.
             # Definitely an edge case.

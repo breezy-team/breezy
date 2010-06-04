@@ -62,6 +62,7 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
         return project_wt, lib_wt
 
     def do_merge_into(self, location, merge_as=None):
+        """Invoke merge_into_helper."""
         operation = cleanup.OperationWithCleanups(merge.merge_into_helper)
         return operation.run_simple(location, merge_as, operation.add_cleanup)
 
@@ -191,3 +192,16 @@ class TestMergeInto(TestMergeIntoBase):
             [('', 'dest-root-id'), ('file1.txt', 'two-file-file1.txt-id')],
             dest_wt)
 
+    def test_no_such_source_path(self):
+        """PathNotInTree is raised if the specified path in the source tree
+        does not exist.
+        """
+        dest_wt = self.setup_simple_branch('dest')
+        two_file_wt = self.setup_simple_branch('src', ['dir/'])
+        self.assertRaises(merge.PathNotInTree, self.do_merge_into,
+            'src/no-such-dir', 'dest/foo')
+        dest_wt.lock_read()
+        self.addCleanup(dest_wt.unlock)
+        # The dest tree is unmodified.
+        self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
+        self.assertTreeEntriesEqual([('', 'dest-root-id')], dest_wt)

@@ -4058,8 +4058,11 @@ class cmd_merge_into(Command):
     takes_options = []
 
     def run(self, location, merge_as=None):
-        conflicts = _mod_merge.merge_into_helper(
-            location, merge_as, self.add_cleanup)
+        try:
+            conflicts = _mod_merge.merge_into_helper(
+                location, merge_as, self.add_cleanup)
+        except _mod_merge.PathNotInTree, e:
+            raise errors.BzrCommandError(str(e))
         # Report the results
         if not conflicts:
             self.outf.write('merge-into successful\n')
