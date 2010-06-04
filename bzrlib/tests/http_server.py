@@ -404,8 +404,8 @@ class HttpServer(test_server.TestingTCPServerInAThread):
         self.logs = []
 
     def create_server(self):
-            return self.server_class(
-                (self.host, self.port), self.request_handler_class, self)
+        return self.server_class(
+            (self.host, self.port), self.request_handler_class, self)
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)

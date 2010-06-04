@@ -304,6 +304,7 @@ class TestingTCPServerMixin:
     separate thread.
     """
 
+    # FIXME: sibling_class is a hack -- vila 20100604
     def __init__(self, sibling_class):
         self.sibling_class = sibling_class
         self.started = threading.Event()
@@ -334,6 +335,20 @@ class TestingTCPServerMixin:
         # Let's close the listening socket
         self.server_close()
         self.stopped.set()
+
+    def handle_request(self):
+        """Handle one request.
+
+        The python version swallows some socket exceptions and we don't use
+        timeout, so we override to better control the server behavior.
+        """
+        request, client_address = self.get_request()
+        if self.verify_request(request, client_address):
+            try:
+                self.process_request(request, client_address)
+            except:
+                self.handle_error(request, client_address)
+                self.close_request(request)
 
     def verify_request(self, request, client_address):
         """Verify the request.
