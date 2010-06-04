@@ -3145,8 +3145,11 @@ class cmd_commit(Command):
         def get_message(commit_obj):
             """Callback to get commit message"""
             if file:
-                my_message = codecs.open(
-                    file, 'rt', osutils.get_user_encoding()).read()
+                f = codecs.open(file, 'rt', osutils.get_user_encoding())
+                try:
+                    my_message = f.read()
+                finally:
+                    f.close()
             elif message is not None:
                 my_message = message
             else:
@@ -5151,7 +5154,7 @@ class cmd_send(Command):
     given, in which case it is sent to a file.
 
     Mail is sent using your preferred mail program.  This should be transparent
-    on Windows (it uses MAPI).  On Linux, it requires the xdg-email utility.
+    on Windows (it uses MAPI).  On Unix, it requires the xdg-email utility.
     If the preferred client can't be found (or used), your editor will be used.
 
     To use a specific mail program, set the mail_client configuration option.

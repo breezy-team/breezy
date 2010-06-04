@@ -520,7 +520,7 @@ class Tree(object):
             parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
                 self._iter_parent_trees()]
             vf.add_lines((file_id, last_revision), parent_keys,
-                         self.get_file(file_id).readlines())
+                         self.get_file_lines(file_id))
             repo = self.branch.repository
             base_vf = repo.texts
         else:

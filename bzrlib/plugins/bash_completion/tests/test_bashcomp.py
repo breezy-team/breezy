@@ -16,41 +16,17 @@
 
 import bzrlib
 from bzrlib import commands, tests
+from bzrlib.tests import features
 from bzrlib.plugins.bash_completion.bashcomp import *
 
 import os
 import subprocess
 
 
-class _BashFeature(tests.Feature):
-    """Feature testing whether a bash executable is available."""
-
-    bash_paths = ['/bin/bash', '/usr/bin/bash']
-
-    def __init__(self):
-        super(_BashFeature, self).__init__()
-        self.bash_path = None
-
-    def available(self):
-        if self.bash_path is not None:
-            return self.bash_path is not False
-        for path in self.bash_paths:
-            if os.access(path, os.X_OK):
-                self.bash_path = path
-                return True
-        self.bash_path = False
-        return False
-
-    def feature_name(self):
-        return 'bash'
-
-BashFeature = _BashFeature()
-
-
 class BashCompletionMixin(object):
     """Component for testing execution of a bash completion script."""
 
-    _test_needs_features = [BashFeature]
+    _test_needs_features = [features.bash_feature]
 
     def complete(self, words, cword=-1):
         """Perform a bash completion.
@@ -60,7 +36,8 @@ class BashCompletionMixin(object):
         """
         if self.script is None:
             self.script = self.get_script()
-        proc = subprocess.Popen([BashFeature.bash_path, '--noprofile'],
+        proc = subprocess.Popen([features.bash_feature.path,
+                                 '--noprofile'],
                                 stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE)
@@ -187,6 +164,7 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         return s.replace("$(bzr ", "$('%s' " % self.get_bzr_path())
 
     def test_revspec_tag_all(self):
+        self.requireFeature(features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
@@ -195,12 +173,36 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
         self.assertCompletionEquals('tag1', 'tag2', '3tag')
 
     def test_revspec_tag_prefix(self):
+        self.requireFeature(features.sed_feature)
         wt = self.make_branch_and_tree('.', format='dirstate-tags')
         wt.branch.tags.set_tag('tag1', 'null:')
         wt.branch.tags.set_tag('tag2', 'null:')
         wt.branch.tags.set_tag('3tag', 'null:')
         self.complete(['bzr', 'log', '-r', 'tag', ':', 't'])
         self.assertCompletionEquals('tag1', 'tag2')
+
+    def test_revspec_tag_spaces(self):
+        self.requireFeature(features.sed_feature)
+        wt = self.make_branch_and_tree('.', format='dirstate-tags')
+        wt.branch.tags.set_tag('tag with spaces', 'null:')
+        self.complete(['bzr', 'log', '-r', 'tag', ':', 't'])
+        self.assertCompletionEquals(r'tag\ with\ spaces')
+        self.complete(['bzr', 'log', '-r', '"tag:t'])
+        self.assertCompletionEquals('tag:tag with spaces')
+        self.complete(['bzr', 'log', '-r', "'tag:t"])
+        self.assertCompletionEquals('tag:tag with spaces')
+
+    def test_revspec_tag_endrange(self):
+        self.requireFeature(features.sed_feature)
+        wt = self.make_branch_and_tree('.', format='dirstate-tags')
+        wt.branch.tags.set_tag('tag1', 'null:')
+        wt.branch.tags.set_tag('tag2', 'null:')
+        self.complete(['bzr', 'log', '-r', '3..tag', ':', 't'])
+        self.assertCompletionEquals('tag1', 'tag2')
+        self.complete(['bzr', 'log', '-r', '"3..tag:t'])
+        self.assertCompletionEquals('3..tag:tag1', '3..tag:tag2')
+        self.complete(['bzr', 'log', '-r', "'3..tag:t"])
+        self.assertCompletionEquals('3..tag:tag1', '3..tag:tag2')
 
 
 class TestBashCodeGen(tests.TestCase):
@@ -248,10 +250,10 @@ class TestBashCodeGen(tests.TestCase):
         cg = BashCodeGen(data)
         self.assertEqualDiff('''\
 \tbar|baz)
-\t\tcmdOpts='--opt'
+\t\tcmdOpts=( --opt )
 \t\t;;
 \tfoo)
-\t\tcmdOpts=''
+\t\tcmdOpts=(  )
 \t\t;;
 ''', cg.command_cases())
 
@@ -270,9 +272,9 @@ class TestBashCodeGen(tests.TestCase):
 \tcmd)
 \t\t# plugin "plugger 1.0"
 \t\t# Some error message
-\t\tcmdOpts='--bar=that --bar=this --foo'
+\t\tcmdOpts=( --bar=that --bar=this --foo )
 \t\tcase $curOpt in
-\t\t\t--bar) optEnums='that this' ;;
+\t\t\t--bar) optEnums=( that this ) ;;
 \t\tesac
 \t\t;;
 ''', cg.command_case(cmd))
@@ -294,6 +296,12 @@ class TestDataCollector(tests.TestCase):
         dc = DataCollector()
         dc.commands()
         self.assertSubset(['init', 'init-repo', 'init-repository'],
+                           dc.data.all_command_aliases())
+
+    def test_commands_from_plugins(self):
+        dc = DataCollector()
+        dc.commands()
+        self.assertSubset(['bash-completion'],
                            dc.data.all_command_aliases())
 
     def test_commit_dashm(self):

@@ -12,8 +12,7 @@ the Bazaar mailing list.  To propose a correction or addition to this
 document, send a merge request or new text to the mailing list.
 
 The latest developer documentation can be found online at
-http://doc.bazaar-vcs.org/developers/.
-
+http://doc.bazaar.canonical.com/developers/.
 
 Getting Started
 ###############
@@ -29,13 +28,11 @@ perhaps someone else has already fixed it?
 To answer these questions and more, take a moment to explore the
 overall Bazaar Platform. Here are some links to browse:
 
-* The Plugins page on the Wiki - http://bazaar-vcs.org/BzrPlugins
+* The Plugins page on the Wiki - http://wiki.bazaar.canonical.com/BzrPlugins
 
 * The Bazaar product family on Launchpad - https://launchpad.net/bazaar
 
 * Bug Tracker for the core product - https://bugs.launchpad.net/bzr/
-
-* Blueprint Tracker for the core product - https://blueprints.launchpad.net/bzr/
 
 If nothing else, perhaps you'll find inspiration in how other developers
 have solved their challenges.
@@ -55,7 +52,7 @@ Planning and Discussing Changes
 
 There is a very active community around Bazaar. Mostly we meet on IRC
 (#bzr on irc.freenode.net) and on the mailing list. To join the Bazaar
-community, see http://bazaar-vcs.org/BzrSupport.
+community, see http://wiki.bazaar.canonical.com/BzrSupport.
 
 If you are planning to make a change, it's a very good idea to mention it
 on the IRC channel and/or on the mailing list. There are many advantages
@@ -128,11 +125,38 @@ the Bazaar trunk.  Go to
 "Propose for merging into another branch".  Select "~bzr/bzr/trunk" to hand
 your changes off to the Bazaar developers for review and merging.
 
+Alternatively, after pushing you can use the ``lp-propose`` command to 
+create the merge proposal.
+
 Using a meaningful name for your branch will help you and the reviewer(s)
 better track the submission. Use a very succint description of your submission
 and prefix it with bug number if needed (lp:~mbp/bzr/484558-merge-directory
 for example). Alternatively, you can suffix with the bug number
 (lp:~jameinel/bzr/export-file-511987).
+
+
+Review cover letters
+--------------------
+
+Please put a "cover letter" on your merge request explaining:
+
+* the reason **why** you're making this change
+
+* **how** this change achieves this purpose
+
+* anything else you may have fixed in passing
+
+* anything significant that you thought of doing, such as a more
+  extensive fix or a different approach, but didn't or couldn't do now
+
+A good cover letter makes reviewers' lives easier because they can decide
+from the letter whether they agree with the purpose and approach, and then
+assess whether the patch actually does what the cover letter says.
+Explaining any "drive-by fixes" or roads not taken may also avoid queries
+from the reviewer.  All in all this should give faster and better reviews.
+Sometimes writing the cover letter helps the submitter realize something
+else they need to do.  The size of the cover letter should be proportional
+to the size and complexity of the patch.
 
 
 Why make a local copy of bzr.dev?
@@ -177,7 +201,7 @@ The key tools we use to enable these practices are:
 
 * Launchpad - https://launchpad.net/
 
-* Bazaar - http://bazaar-vcs.org/
+* Bazaar - http://bazaar.canonical.com/
 
 * Patch Queue Manager - https://launchpad.net/pqm/
 
@@ -190,7 +214,7 @@ Preparing a Sandbox for Making Changes to Bazaar
 ================================================
 
 Bazaar supports many ways of organising your work. See
-http://bazaar-vcs.org/SharedRepositoryLayouts for a summary of the
+http://wiki.bazaar.canonical.com/SharedRepositoryLayouts for a summary of the
 popular alternatives.
 
 Of course, the best choice for you will depend on numerous factors:
@@ -267,364 +291,7 @@ Automatically-generated API reference information is available at
 <http://starship.python.net/crew/mwh/bzrlibapi/>.
 
 See also the `Bazaar Architectural Overview
-<http://doc.bazaar-vcs.org/developers/overview.html>`_.
-
-
-Coding Style Guidelines
-#######################
-
-hasattr and getattr
-===================
-
-``hasattr`` should not be used because it swallows exceptions including
-``KeyboardInterrupt``.  Instead, say something like ::
-
-  if getattr(thing, 'name', None) is None
-
-
-Code layout
-===========
-
-Please write PEP-8__ compliant code.
-
-__ http://www.python.org/peps/pep-0008.html
-
-One often-missed requirement is that the first line of docstrings
-should be a self-contained one-sentence summary.
-
-We use 4 space indents for blocks, and never use tab characters.  (In vim,
-``set expandtab``.)
-
-Trailing white space should be avoided, but is allowed.
-You should however not make lots of unrelated white space changes.
-
-Unix style newlines (LF) are used.
-
-Each file must have a newline at the end of it.
-
-Lines should be no more than 79 characters if at all possible.
-Lines that continue a long statement may be indented in either of
-two ways:
-
-within the parenthesis or other character that opens the block, e.g.::
-
-    my_long_method(arg1,
-                   arg2,
-                   arg3)
-
-or indented by four spaces::
-
-    my_long_method(arg1,
-        arg2,
-        arg3)
-
-The first is considered clearer by some people; however it can be a bit
-harder to maintain (e.g. when the method name changes), and it does not
-work well if the relevant parenthesis is already far to the right.  Avoid
-this::
-
-     self.legbone.kneebone.shinbone.toebone.shake_it(one,
-                                                     two,
-                                                     three)
-
-but rather ::
-
-     self.legbone.kneebone.shinbone.toebone.shake_it(one,
-         two,
-         three)
-
-or ::
-
-     self.legbone.kneebone.shinbone.toebone.shake_it(
-         one, two, three)
-
-For long lists, we like to add a trailing comma and put the closing
-character on the following line.  This makes it easier to add new items in
-future::
-
-    from bzrlib.goo import (
-        jam,
-        jelly,
-        marmalade,
-        )
-
-There should be spaces between function parameters, but not between the
-keyword name and the value::
-
-    call(1, 3, cheese=quark)
-
-In emacs::
-
-    ;(defface my-invalid-face
-    ;  '((t (:background "Red" :underline t)))
-    ;  "Face used to highlight invalid constructs or other uglyties"
-    ;  )
-
-    (defun my-python-mode-hook ()
-     ;; setup preferred indentation style.
-     (setq fill-column 79)
-     (setq indent-tabs-mode nil) ; no tabs, never, I will not repeat
-    ;  (font-lock-add-keywords 'python-mode
-    ;                         '(("^\\s *\t" . 'my-invalid-face) ; Leading tabs
-    ;                            ("[ \t]+$" . 'my-invalid-face)  ; Trailing spaces
-    ;                            ("^[ \t]+$" . 'my-invalid-face)); Spaces only
-    ;                          )
-     )
-
-    (add-hook 'python-mode-hook 'my-python-mode-hook)
-
-The lines beginning with ';' are comments. They can be activated
-if one want to have a strong notice of some tab/space usage
-violations.
-
-
-Module Imports
-==============
-
-* Imports should be done at the top-level of the file, unless there is
-  a strong reason to have them lazily loaded when a particular
-  function runs.  Import statements have a cost, so try to make sure
-  they don't run inside hot functions.
-
-* Module names should always be given fully-qualified,
-  i.e. ``bzrlib.hashcache`` not just ``hashcache``.
-
-
-Naming
-======
-
-Functions, methods or members that are relatively private are given
-a leading underscore prefix.  Names without a leading underscore are
-public not just across modules but to programmers using bzrlib as an
-API.
-
-We prefer class names to be concatenated capital words (``TestCase``)
-and variables, methods and functions to be lowercase words joined by
-underscores (``revision_id``, ``get_revision``).
-
-For the purposes of naming some names are treated as single compound
-words: "filename", "revno".
-
-Consider naming classes as nouns and functions/methods as verbs.
-
-Try to avoid using abbreviations in names, because there can be
-inconsistency if other people use the full name.
-
-
-Standard Names
-==============
-
-``revision_id`` not ``rev_id`` or ``revid``
-
-Functions that transform one thing to another should be named ``x_to_y``
-(not ``x2y`` as occurs in some old code.)
-
-
-Destructors
-===========
-
-Python destructors (``__del__``) work differently to those of other
-languages.  In particular, bear in mind that destructors may be called
-immediately when the object apparently becomes unreferenced, or at some
-later time, or possibly never at all.  Therefore we have restrictions on
-what can be done inside them.
-
- 0. If you think you need to use a ``__del__`` method ask another
-    developer for alternatives.  If you do need to use one, explain
-    why in a comment.
-
- 1. Never rely on a ``__del__`` method running.  If there is code that
-    must run, do it from a ``finally`` block instead.
-
- 2. Never ``import`` from inside a ``__del__`` method, or you may crash the
-    interpreter!!
-
- 3. In some places we raise a warning from the destructor if the object
-    has not been cleaned up or closed.  This is considered OK: the warning
-    may not catch every case but it's still useful sometimes.
-
-
-Cleanup methods
-===============
-
-Often when something has failed later code, including cleanups invoked
-from ``finally`` blocks, will fail too.  These secondary failures are
-generally uninteresting compared to the original exception.  So use the
-``only_raises`` decorator (from ``bzrlib.decorators``) for methods that
-are typically called in ``finally`` blocks, such as ``unlock`` methods.
-For example, ``@only_raises(LockNotHeld, LockBroken)``.  All errors that
-are unlikely to be a knock-on failure from a previous failure should be
-allowed.
-
-
-Factories
-=========
-
-In some places we have variables which point to callables that construct
-new instances.  That is to say, they can be used a lot like class objects,
-but they shouldn't be *named* like classes::
-
-> I think that things named FooBar should create instances of FooBar when
-> called. Its plain confusing for them to do otherwise. When we have
-> something that is going to be used as a class - that is, checked for via
-> isinstance or other such idioms, them I would call it foo_class, so that
-> it is clear that a callable is not sufficient. If it is only used as a
-> factory, then yes, foo_factory is what I would use.
-
-
-Registries
-==========
-
-Several places in Bazaar use (or will use) a registry, which is a
-mapping from names to objects or classes.  The registry allows for
-loading in registered code only when it's needed, and keeping
-associated information such as a help string or description.
-
-
-InterObject and multiple dispatch
-=================================
-
-The ``InterObject`` provides for two-way `multiple dispatch`__: matching
-up for example a source and destination repository to find the right way
-to transfer data between them.
-
-.. __: http://en.wikipedia.org/wiki/Multiple_dispatch
-
-There is a subclass ``InterObject`` classes for each type of object that is
-dispatched this way, e.g. ``InterRepository``.  Calling ``.get()`` on this
-class will return an ``InterObject`` instance providing the best match for
-those parameters, and this instance then has methods for operations
-between the objects.
-
-::
-
-  inter = InterRepository.get(source_repo, target_repo)
-  inter.fetch(revision_id)
-
-``InterRepository`` also acts as a registry-like object for its
-subclasses, and they can be added through ``.register_optimizer``.  The
-right one to run is selected by asking each class, in reverse order of
-registration, whether it ``.is_compatible`` with the relevant objects.
-
-Lazy Imports
-============
-
-To make startup time faster, we use the ``bzrlib.lazy_import`` module to
-delay importing modules until they are actually used. ``lazy_import`` uses
-the same syntax as regular python imports. So to import a few modules in a
-lazy fashion do::
-
-  from bzrlib.lazy_import import lazy_import
-  lazy_import(globals(), """
-  import os
-  import subprocess
-  import sys
-  import time
-
-  from bzrlib import (
-     errors,
-     transport,
-     revision as _mod_revision,
-     )
-  import bzrlib.transport
-  import bzrlib.xml5
-  """)
-
-At this point, all of these exist as a ``ImportReplacer`` object, ready to
-be imported once a member is accessed. Also, when importing a module into
-the local namespace, which is likely to clash with variable names, it is
-recommended to prefix it as ``_mod_<module>``. This makes it clearer that
-the variable is a module, and these object should be hidden anyway, since
-they shouldn't be imported into other namespaces.
-
-While it is possible for ``lazy_import()`` to import members of a module
-when using the ``from module import member`` syntax, it is recommended to
-only use that syntax to load sub modules ``from module import submodule``.
-This is because variables and classes can frequently be used without
-needing a sub-member for example::
-
-  lazy_import(globals(), """
-  from module import MyClass
-  """)
-
-  def test(x):
-      return isinstance(x, MyClass)
-
-This will incorrectly fail, because ``MyClass`` is a ``ImportReplacer``
-object, rather than the real class.
-
-It also is incorrect to assign ``ImportReplacer`` objects to other variables.
-Because the replacer only knows about the original name, it is unable to
-replace other variables. The ``ImportReplacer`` class will raise an
-``IllegalUseOfScopeReplacer`` exception if it can figure out that this
-happened. But it requires accessing a member more than once from the new
-variable, so some bugs are not detected right away.
-
-
-The Null revision
-=================
-
-The null revision is the ancestor of all revisions.  Its revno is 0, its
-revision-id is ``null:``, and its tree is the empty tree.  When referring
-to the null revision, please use ``bzrlib.revision.NULL_REVISION``.  Old
-code sometimes uses ``None`` for the null revision, but this practice is
-being phased out.
-
-
-Object string representations
-=============================
-
-Python prints objects using their ``__repr__`` method when they are
-written to logs, exception tracebacks, or the debugger.  We want
-objects to have useful representations to help in determining what went
-wrong.
-
-If you add a new class you should generally add a ``__repr__`` method
-unless there is an adequate method in a parent class.  There should be a
-test for the repr.
-
-Representations should typically look like Python constructor syntax, but
-they don't need to include every value in the object and they don't need
-to be able to actually execute.  They're to be read by humans, not
-machines.  Don't hardcode the classname in the format, so that we get the
-correct value if the method is inherited by a subclass.  If you're
-printing attributes of the object, including strings, you should normally
-use ``%r`` syntax (to call their repr in turn).
-
-Try to avoid the representation becoming more than one or two lines long.
-(But balance this against including useful information, and simplicity of
-implementation.)
-
-Because repr methods are often called when something has already gone
-wrong, they should be written somewhat more defensively than most code.
-The object may be half-initialized or in some other way in an illegal
-state.  The repr method shouldn't raise an exception, or it may hide the
-(probably more useful) underlying exception.
-
-Example::
-
-    def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__,
-                           self._transport)
-
-
-Exception handling
-==================
-
-A bare ``except`` statement will catch all exceptions, including ones that
-really should terminate the program such as ``MemoryError`` and
-``KeyboardInterrupt``.  They should rarely be used unless the exception is
-later re-raised.  Even then, think about whether catching just
-``Exception`` (which excludes system errors in Python2.5 and later) would
-be better.
-
-
-Test coverage
-=============
-
-All code should be exercised by the test suite.  See the `Bazaar Testing
-Guide <http://doc.bazaar-vcs.org/developers/testing.html>`_ for detailed
-information about writing tests.
+<http://doc.bazaar.canonical.com/developers/overview.html>`_.
 
 
 Core Topics
@@ -891,35 +558,6 @@ Exception strings should start with a capital letter and should not have a
 final fullstop.  If long, they may contain newlines to break the text.
 
 
-Assertions
-==========
-
-Do not use the Python ``assert`` statement, either in tests or elsewhere.
-A source test checks that it is not used.  It is ok to explicitly raise
-AssertionError.
-
-Rationale:
-
- * It makes the behaviour vary depending on whether bzr is run with -O
-   or not, therefore giving a chance for bugs that occur in one case or
-   the other, several of which have already occurred: assertions with
-   side effects, code which can't continue unless the assertion passes,
-   cases where we should give the user a proper message rather than an
-   assertion failure.
- * It's not that much shorter than an explicit if/raise.
- * It tends to lead to fuzzy thinking about whether the check is
-   actually needed or not, and whether it's an internal error or not
- * It tends to cause look-before-you-leap patterns.
- * It's unsafe if the check is needed to protect the integrity of the
-   user's data.
- * It tends to give poor messages since the developer can get by with
-   no explanatory text at all.
- * We can't rely on people always running with -O in normal use, so we
-   can't use it for tests that are actually expensive.
- * Expensive checks that help developers are better turned on from the
-   test suite or a -D flag.
- * If used instead of ``self.assert*()`` in tests it makes them falsely pass with -O.
-
 
 Documenting Changes
 ===================
@@ -1143,17 +781,6 @@ that cannot be printed in the current encoding stays an escaped URL, but
 valid characters are generated where possible.
 
 
-Portability Tips
-================
-
-The ``bzrlib.osutils`` module has many useful helper functions, including
-some more portable variants of functions in the standard library.
-
-In particular, don't use ``shutil.rmtree`` unless it's acceptable for it
-to fail on Windows if some files are readonly or still open elsewhere.
-Use ``bzrlib.osutils.rmtree`` instead.
-
-
 C Extension Modules
 ===================
 
@@ -1196,8 +823,7 @@ and no longer including the .py file.
 Making Installers for OS Windows
 ================================
 To build a win32 installer, see the instructions on the wiki page:
-http://bazaar-vcs.org/BzrWin32Installer
-
+http://wiki.bazaar.canonical.com/BzrWin32Installer
 
 Core Developer Tasks
 ####################
@@ -1216,7 +842,7 @@ stuff covered above, "core" developers have responsibility for:
 * reviewing changes
 * reviewing blueprints
 * planning releases
-* managing releases (see `Releasing Bazaar <http://doc.bazaar-vcs.org/developers/releasing.html>`_)
+* managing releases (see `Releasing Bazaar <http://doc.bazaar.canonical.com/developers/releasing.html>`_)
 
 .. note::
   Removing barriers to community participation is a key reason for adopting
@@ -1243,7 +869,7 @@ and reviewed, you can keep others informed of where you're spending your
 energy by emailing the **bazaar-commits** list implicitly. To do this,
 install and configure the Email plugin. One way to do this is add these
 configuration settings to your central configuration file (e.g.
-``~/.bazaar/bazaar.conf`` on Linux)::
+``~/.bazaar/bazaar.conf``)::
 
   [DEFAULT]
   email = Joe Smith <joe.smith@internode.on.net>
@@ -1268,7 +894,7 @@ An Overview of PQM
 Of the many workflows supported by Bazaar, the one adopted for Bazaar
 development itself is known as "Decentralized with automatic gatekeeper".
 To repeat the explanation of this given on
-http://bazaar-vcs.org/Workflows:
+http://wiki.bazaar.canonical.com/Workflows:
 
 .. pull-quote::
   In this workflow, each developer has their own branch or
@@ -1411,42 +1037,8 @@ When PQM completes processing a change, an email is sent to you with the
 results.
 
 
-Reviewing Blueprints
-====================
-
-Blueprint Tracking Using Launchpad
-----------------------------------
-
-New features typically require a fair amount of discussion, design and
-debate. For Bazaar, that information is often captured in a so-called
-"blueprint" on our Wiki. Overall tracking of blueprints and their status
-is done using Launchpad's relevant tracker,
-https://blueprints.launchpad.net/bzr/. Once a blueprint for ready for
-review, please announce it on the mailing list.
-
-Alternatively, send an email beginning with [RFC] with the proposal to the
-list. In some cases, you may wish to attach proposed code  or a proposed
-developer document if that best communicates the idea. Debate can then
-proceed using the normal merge review processes.
-
-
-Recording Blueprint Review Feedback
------------------------------------
-
-Unlike its Bug Tracker, Launchpad's Blueprint Tracker doesn't currently
-(Jun 2007) support a chronological list of comment responses. Review
-feedback can either be recorded on the Wiki hosting the blueprints or by
-using Launchpad's whiteboard feature.
-
-
 Planning Releases
 =================
-
-
-Using Releases and Milestones in Launchpad
-------------------------------------------
-
-TODO ... (Exact policies still under discussion)
 
 
 Bug Triage

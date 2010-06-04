@@ -5,10 +5,77 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.2b4
+#########
+
+:Codename: Monkey Magic
+:2.2b4: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* Final fix for 'no help for command' issue. We now show a clean message
+  when a command has no help, document how to set help more clearly, and
+  test that all commands available to the test suite have help.
+  (Robert Collins, #177500)
+
+* Explicitly removing ``--profile-imports`` option from parsed command-line
+  arguments on Windows, because bzr script does the same.
+  (Alexander Belchenko, #588277)
+
+Improvements
+************
+
+* Use lazy imports in ``bzrlib/merge.py`` so that plugins like ``news_merge``
+  do not cause modules to be loaded unnecessarily just because the plugin
+  registers a merge hook.  This improves ``bzr rocks`` time by about 25%
+  in a default installation (with just the core plugins).
+  (Andrew Bennetts)
+
+Documentation
+*************
+
+* Added ``regression`` tag to our tags list. (Robert Collins)
+
+* Improved our release checklist to have a bit less churn and leave things
+  ready-to-go for the next action (including other people doing
+  development). (Robert Collins)
+
+API Changes
+***********
+
+* ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
+  2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
+  ``bzrlib.patiencediff`` instead.
+  (Andrew Bennetts)
+
+Internals
+*********
+
+Testing
+*******
+
+
 bzr 2.2b3
 #########
 
-:2.2b3: NOT RELEASED YET
+:2.2b3: 2010-05-28
+
+This third beta in the 2.2 series brings with it all the goodness of 2.1.2
+and 2.0.6 (though it preceeds 2.0.6 slightly). Of particular note for
+users are compatibility fixes with bzr 1.5 and below servers, a hopeful
+end to the EINTR errors caused by SIGWINCH interactions, a shiny new
+bash completion script and bzr will no longer guess at identity details -
+it was too unreliable in reality. Use ``bzr whoami`` on every new install.
+For developers we have some API changes which may impact plugins as well
+as a bunch of our regular improvements to internal clarity and test
+support.
 
 Compatibility Breaks
 ********************
@@ -27,7 +94,12 @@ Compatibility Breaks
   (Parth Malwankar, #549310)
 
 * ``bzrlib.commands.Command`` will now raise ValueError during
-  construction if there is no __doc__ set. (Robert Collins)
+  construction if there is no __doc__ set. (Note, this will be reverted in
+  2.2b4) (Robert Collins)
+
+* The source tree no longer contains a contrib/zsh/_bzr completion
+  script. The new file contrib/zsh/README suggests alternatives.
+  (Martin von Gagern, #560030)
 
 New Features
 ************
@@ -61,8 +133,18 @@ New Features
   replaces the outdated ``contrib/bash/bzr`` script with a version
   using the plugin. (Martin von Gagern, #560030)
 
+* A new transport based on GIO (the gnome i/o library) provides access to
+  samba shares, webdav using gio+smb and gio+dav. It is also possible to
+  use gio for some already existing transport methods as gio+file,
+  gio+sftp, gio+ftp. 
+  (Mattias Eriksson)
+
 Bug Fixes
 *********
+
+* Alias information shown by ``bzr help`` is now accurate. This
+  was showing an internal object name for some plugin aliases.
+  (Parth Malwankar, #584650)
 
 * ``.bazaar``, ``.bazaar/bazaar.conf`` and ``.bzr.log`` inherit user and
   group ownership from the containing directory. This allow bzr to work
@@ -81,6 +163,12 @@ Bug Fixes
   difference).
   (Vincent Ladeuil, #320119)
 
+* ``bzr lp-propose`` which was switched to use production Launchpad API
+  servers a few commits ago has been reverted to use edge: there is a
+  problem with using production which isn't trivially obvious, so we've
+  filed a bug to track it, and until thats fixed will be using edge.
+  (Robert Collins, #583667)
+
 * ``bzr rm`` should not refuse to delete directories which contained a file
   which has been moved elsewhere in the tree after the previous commit.
   (Marius Kruger, Daniel Watkins, #129880)
@@ -93,6 +181,12 @@ Bug Fixes
 
 * CommitBuilder refuses to create revisions whose trees have no root.
   (Aaron Bentley)
+
+* Do not register a SIGWINCH signal handler, instead just poll for the
+  terminal width as needed.  This avoids the "Interrupted System Call"
+  problems that occur on POSIX with all currently released versions of
+  Python.
+  (Andrew Bennetts, #583941)
 
 * Don't mention --no-strict when we just issue the warning about unclean trees.
   (Vincent Ladeuil, #401599)
@@ -163,6 +257,12 @@ Improvements
 * ``Config.get_user_option_as_bool`` will now warn if a value cannot
   be interpreted as a boolean.
   (Vincent Ladeuil)
+
+* The all-in-one Windows installer will now be built with docstrings stripped
+  from the library zip, reducing the size and slightly improving cold startup
+  time. Bundled plugins are unchanged for the moment, but if adding other new
+  plugins to an all-in-one installation, ensure they are compiled and
+  installed with -O1 or help may not work. (Martin [gz])
 
 Documentation
 *************
@@ -238,6 +338,10 @@ Testing
   failures on Lucid, FreeBSD and gentoo.  
   (Vincent Ladeuil, #528436)
 
+* New class ``ExecutableFeature`` for checking the availability of
+  executables on the ``PATH``. Migrated from bash_completion plugin.
+  (Martin von Gagern)
+
 bzr 2.2b2
 #########
 
@@ -297,7 +401,7 @@ Bug Fixes
 * Reset ``siginterrupt`` flag to False every time we handle a signal
   installed with ``set_signal_handler(..., restart_syscall=True)`` (from
   ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
-  errors after two window resizes.
+  errors compared to registering ``signal.signal`` directly.
   (Andrew Bennetts)
 
 * When invoked with a range revision, ``bzr log`` doesn't show revisions
@@ -646,7 +750,11 @@ Testing
 bzr 2.1.2
 #########
 
-:2.1.2: NOT RELEASED YET
+:2.1.2: 2010-05-28
+
+This release fixes two critical networking issues with older servers and
+with interrupted system call errors when pushing or pulling.  We recommend
+upgrading to anyone running a 2.1.x version of bzr.
 
 Bug Fixes
 *********
@@ -658,6 +766,12 @@ Bug Fixes
 * ``bzr switch`` does not die if a ConfigurableFileMerger is used.
   (Aaron Bentley, #559436)
 
+* Do not register a SIGWINCH signal handler, instead just poll for the
+  terminal width as needed.  This avoids the "Interrupted System Call"
+  problems that occur on POSIX with all currently released versions of
+  Python.
+  (Andrew Bennetts, #583941)
+
 * Fixed ``AssertionError`` when accessing smart servers running Bazaar
   versions before 1.6.
   (Andrew Bennetts, #528041)
@@ -665,7 +779,7 @@ Bug Fixes
 * Reset ``siginterrupt`` flag to False every time we handle a signal
   installed with ``set_signal_handler(..., restart_syscall=True)`` (from
   ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
-  errors after two window resizes.
+  errors compared to registering ``signal.signal`` directly.
   (Andrew Bennetts)
 
 * Reduce peak memory by one copy of compressed text.
@@ -3847,8 +3961,8 @@ Internals
   can have a large effect on ``bzr checkout`` times. (John Arbash Meinel)
 
 * selftest now supports a --parallel option, with values of 'fork' or
-  'subprocess' to run the test suite in parallel. Currently only linux
-  machine work, other platforms need patches submitted. (Robert Collins,
+  'subprocess' to run the test suite in parallel. Currently only Linux
+  machines work, other platforms need patches submitted. (Robert Collins,
   Vincent Ladeuil)
 
 * ``tests.run_suite`` has a new parameter ``suite_decorators``, a list of 
@@ -6602,7 +6716,7 @@ Changes
 
 * bzr main script cannot be imported (Benjamin Peterson)
 
-* On Linux bzr additionally looks for plugins in arch-independent site
+* On GNU/Linux bzr additionally looks for plugins in arch-independent site
   directory. (Toshio Kuratomi)
 
 * The ``set_rh`` branch hook is now deprecated. Please migrate
@@ -6945,7 +7059,7 @@ Changes
 
 * BZR_LOG environment variable controls location of .bzr.log trace file.
   User can suppress writing messages to .bzr.log by using '/dev/null'
-  filename (on Linux) or 'NUL' (on Windows). If BZR_LOG variable
+  filename (on Unix) or 'NUL' (on Windows). If BZR_LOG variable
   is not defined but BZR_HOME is defined then default location
   for .bzr.log trace file is ``$BZR_HOME/.bzr.log``.
   (Alexander Belchenko, #106117)

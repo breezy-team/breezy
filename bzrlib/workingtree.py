@@ -527,7 +527,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         # Now we have the parents of this content
         annotator = self.branch.repository.texts.get_annotator()
-        text = self.get_file(file_id).read()
+        text = self.get_file_text(file_id)
         this_key =(file_id, default_revision)
         annotator.add_special_text(this_key, file_parent_keys, text)
         annotations = [(key[-1], line)

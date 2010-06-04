@@ -17,6 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from bzrlib import (
+    cmdline,
     commands,
     config,
     help_topics,
@@ -65,12 +66,13 @@ complete -F %(function_name)s -o default bzr
 {
 	local cur cmds cmdIdx cmd cmdOpts fixedWords i globalOpts
 	local curOpt optEnums
+	local IFS=$' \\n'
 
 	COMPREPLY=()
 	cur=${COMP_WORDS[COMP_CWORD]}
 
 	cmds='%(cmds)s'
-	globalOpts='%(global_options)s'
+	globalOpts=( %(global_options)s )
 
 	# do ordinary expansion if we are anywhere after a -- argument
 	for ((i = 1; i < COMP_CWORD; ++i)); do
@@ -88,7 +90,7 @@ complete -F %(function_name)s -o default bzr
 
 	# complete command name if we are not already past the command
 	if [[ $COMP_CWORD -le cmdIdx ]]; then
-		COMPREPLY=( $( compgen -W "$cmds $globalOpts" -- $cur ) )
+		COMPREPLY=( $( compgen -W "$cmds ${globalOpts[*]}" -- $cur ) )
 		return 0
 	fi
 
@@ -106,32 +108,45 @@ complete -F %(function_name)s -o default bzr
 		fi
 	fi
 %(debug)s
-	cmdOpts=
-	optEnums=
-	fixedWords=
+	cmdOpts=( )
+	optEnums=( )
+	fixedWords=( )
 	case $cmd in
 %(cases)s\
 	*)
-		cmdOpts='--help -h'
+		cmdOpts=(--help -h)
 		;;
 	esac
 
-	if [[ -z $fixedWords ]] && [[ -z $optEnums ]] && [[ $cur != -* ]]; then
+	IFS=$'\\n'
+	if [[ ${#fixedWords[@]} -eq 0 ]] && [[ ${#optEnums[@]} -eq 0 ]] && [[ $cur != -* ]]; then
 		case $curOpt in
-			tag:*)
-				fixedWords="$(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//')"
+			tag:|*..tag:)
+				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//; s/ /\\\\\\\\ /g;') )
 				;;
 		esac
-	elif [[ $cur == = ]] && [[ -n $optEnums ]]; then
+		case $cur in
+			[\\"\\']tag:*)
+				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//; s/^/tag:/') )
+				;;
+			[\\"\\']*..tag:*)
+				fixedWords=( $(bzr tags 2>/dev/null | sed 's/  *[^ ]*$//') )
+				fixedWords=( $(for i in "${fixedWords[@]}"; do echo "${cur%%..tag:*}..tag:${i}"; done) )
+				;;
+		esac
+	elif [[ $cur == = ]] && [[ ${#optEnums[@]} -gt 0 ]]; then
 		# complete directly after "--option=", list all enum values
-		COMPREPLY=( $optEnums )
+		COMPREPLY=( "${optEnums[@]}" )
 		return 0
 	else
-		fixedWords="$cmdOpts $globalOpts $optEnums $fixedWords"
+		fixedWords=( "${cmdOpts[@]}"
+		             "${globalOpts[@]}"
+		             "${optEnums[@]}"
+		             "${fixedWords[@]}" )
 	fi
 
-	if [[ -n $fixedWords ]]; then
-		COMPREPLY=( $( compgen -W "$fixedWords" -- $cur ) )
+	if [[ ${#fixedWords[@]} -gt 0 ]]; then
+		COMPREPLY=( $( compgen -W "${fixedWords[*]}" -- $cur ) )
 	fi
 
 	return 0
@@ -143,6 +158,7 @@ complete -F %(function_name)s -o default bzr
             "global_options": self.global_options(),
             "debug": self.debug_output(),
         })
+        # Help Emacs terminate strings: "
 
     def command_names(self):
         return " ".join(self.data.all_command_aliases())
@@ -195,15 +211,15 @@ complete -F %(function_name)s -o default bzr
             if option.registry_keys:
                 for key in option.registry_keys:
                     options.append("%s=%s" % (option, key))
-                enums.append("%s) optEnums='%s' ;;" %
+                enums.append("%s) optEnums=( %s ) ;;" %
                              (option, ' '.join(option.registry_keys)))
             else:
                 options.append(str(option))
-        case += "\t\tcmdOpts='%s'\n" % " ".join(options)
+        case += "\t\tcmdOpts=( %s )\n" % " ".join(options)
         if command.fixed_words:
             fixed_words = command.fixed_words
             if isinstance(fixed_words, list):
-                fixed_words = "'%s'" + ' '.join(fixed_words)
+                fixed_words = "( %s )" + ' '.join(fixed_words)
             case += "\t\tfixedWords=%s\n" % fixed_words
         if enums:
             case += "\t\tcase $curOpt in\n\t\t\t"
@@ -240,7 +256,10 @@ class PluginData(object):
 
     def __init__(self, name, version=None):
         if version is None:
-            version = bzrlib.plugin.plugins()[name].__version__
+            try:
+                version = bzrlib.plugin.plugins()[name].__version__
+            except:
+                version = 'unknown'
         self.name = name
         self.version = version
 
@@ -293,7 +312,7 @@ class DataCollector(object):
 
     def aliases(self):
         for alias, expansion in config.GlobalConfig().get_aliases().iteritems():
-            for token in commands.shlex_split_unicode(expansion):
+            for token in cmdline.split(expansion):
                 if not token.startswith("-"):
                     self.user_aliases.setdefault(token, set()).add(alias)
                     break
@@ -334,7 +353,7 @@ class DataCollector(object):
             cmd_data.options.extend(self.option(opt))
 
         if 'help' == name or 'help' in cmd.aliases:
-            cmd_data.fixed_words = ('"$cmds %s"' %
+            cmd_data.fixed_words = ('($cmds %s)' %
                 " ".join(sorted(help_topics.topic_registry.keys())))
 
         return cmd_data

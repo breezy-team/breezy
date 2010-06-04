@@ -55,7 +55,7 @@ class Proposer(object):
     hooks = ProposeMergeHooks()
 
     def __init__(self, tree, source_branch, target_branch, message, reviews,
-                 staging=False):
+                 staging=False, approve=False):
         """Constructor.
 
         :param tree: The working tree for the source branch.
@@ -65,12 +65,16 @@ class Proposer(object):
         :param reviews: A list of tuples of reviewer, review type.
         :param staging: If True, propose the merge against staging instead of
             production.
+        :param approve: If True, mark the new proposal as approved immediately.
+            This is useful when a project permits some things to be approved
+            by the submitter (e.g. merges between release and deployment
+            branches).
         """
         self.tree = tree
         if staging:
             lp_instance = 'staging'
         else:
-            lp_instance = 'production'
+            lp_instance = 'edge'
         service = lp_registration.LaunchpadService(lp_instance=lp_instance)
         self.launchpad = lp_api.login(service)
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
@@ -81,6 +85,7 @@ class Proposer(object):
             self.target_branch = lp_api.LaunchpadBranch.from_bzr(
                 self.launchpad, target_branch)
         self.commit_message = message
+        # XXX: this is where bug lp:583638 could be tackled.
         if reviews == []:
             target_reviewer = self.target_branch.lp.reviewer
             if target_reviewer is None:
@@ -90,6 +95,7 @@ class Proposer(object):
             self.reviews = [(self.launchpad.people[reviewer], review_type)
                             for reviewer, review_type in
                             reviews]
+        self.approve = approve
 
     def get_comment(self, prerequisite_branch):
         """Determine the initial comment for the merge proposal."""
@@ -160,6 +166,24 @@ class Proposer(object):
                  'prerequisite_branch': prerequisite_branch})
         return prerequisite_branch
 
+    def call_webservice(self, call, *args, **kwargs):
+        """Make a call to the webservice, wrapping failures.
+        
+        :param call: The call to make.
+        :param *args: *args for the call.
+        :param **kwargs: **kwargs for the call.
+        :return: The result of calling call(*args, *kwargs).
+        """
+        try:
+            return call(*args, **kwargs)
+        except restful_errors.HTTPError, e:
+            error_lines = []
+            for line in e.content.splitlines():
+                if line.startswith('Traceback (most recent call last):'):
+                    break
+                error_lines.append(line)
+            raise Exception(''.join(error_lines))
+
     def create_proposal(self):
         """Perform the submission."""
         prerequisite_branch = self._get_prerequisite_branch()
@@ -175,22 +199,16 @@ class Proposer(object):
             review_types.append(review_type)
             reviewers.append(reviewer.self_link)
         initial_comment = self.get_comment(prerequisite_branch)
-        try:
-            mp = self.source_branch.lp.createMergeProposal(
-                target_branch=self.target_branch.lp,
-                prerequisite_branch=prereq,
-                initial_comment=initial_comment,
-                commit_message=self.commit_message, reviewers=reviewers,
-                review_types=review_types)
-        except restful_errors.HTTPError, e:
-            error_lines = []
-            for line in e.content.splitlines():
-                if line.startswith('Traceback (most recent call last):'):
-                    break
-                error_lines.append(line)
-            raise Exception(''.join(error_lines))
-        else:
-            webbrowser.open(canonical_url(mp))
+        mp = self.call_webservice(
+            self.source_branch.lp.createMergeProposal,
+            target_branch=self.target_branch.lp,
+            prerequisite_branch=prereq,
+            initial_comment=initial_comment,
+            commit_message=self.commit_message, reviewers=reviewers,
+            review_types=review_types)
+        if self.approve:
+            self.call_webservice(mp.setStatus, status='Approved')
+        webbrowser.open(canonical_url(mp))
 
 
 def modified_files(old_tree, new_tree):
