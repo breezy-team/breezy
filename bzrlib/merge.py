@@ -1880,8 +1880,6 @@ class Merge3MergeIntoMerger(Merge3Merger):
             raise AssertionError('_target_subdir %r not present?' %
                     (self._target_subdir,))
         name_in_target = osutils.basename(self._target_subdir)
-        # XXX: verify that this DTRT when source_subpath is a file (or other
-        # non-directory entry)
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
         if merge_into_root.file_id in self.this_tree.inventory:
