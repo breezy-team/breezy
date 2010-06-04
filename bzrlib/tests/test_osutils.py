@@ -24,6 +24,7 @@ import socket
 import stat
 import sys
 import time
+import shutil
 
 from bzrlib import (
     errors,
@@ -1082,6 +1083,36 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEquals(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\./test-unreadable")
+
+
+    def test_walkdirs_encoding_error(self):
+        # <https://bugs.launchpad.net/bzr/+bug/488519>
+        # walkdirs didn't raise a useful message when the filenames
+        # were not the encoding specified at _fs_enc
+        tree = [
+            '.bzr',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '1file'
+            ]
+
+        self.build_tree(tree)
+
+        # rename the 1file to a latin-1 filename
+        shutil.move("./1file", "\xe8file")
+
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'UTF-8'
+
+        # this should raise on error
+        def attempt():
+            for dirdetail, dirblock in osutils.walkdirs('.'):
+                pass
+
+        self.assertRaises(errors.BadFilenameEncoding, attempt)
 
     def test__walkdirs_utf8(self):
         tree = [
