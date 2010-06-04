@@ -1233,6 +1233,18 @@ def canonical_relpaths(base, paths):
     # but for now, we haven't optimized...
     return [canonical_relpath(base, p) for p in paths]
 
+def filename_decode(filename):
+    """Try to decode the the filename as the filesystem encoding or 
+    raise a errors.BzrFilenameWrongEncoding error if it can't be decoded"""
+    if type(filename) == str:
+        try:
+            return filename.decode(_fs_enc)
+        except UnicodeDecodeError:
+            raise errors.BadFilenameEncoding(filename, _fs_enc)
+        
+    else:
+        return filename
+
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 
@@ -1644,7 +1656,7 @@ def walkdirs(top, prefix=""):
         dirblock = []
         append = dirblock.append
         try:
-            names = sorted(map(safe_unicode, _listdir(top)))
+            names = sorted(map(filename_decode, _listdir(top)))
         except OSError, e:
             if not _is_error_enotdir(e):
                 raise
