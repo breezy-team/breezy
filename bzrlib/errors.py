@@ -1915,6 +1915,10 @@ class BzrBadParameterNotUnicode(BzrBadParameter):
     _fmt = "Parameter %(param)s is neither unicode nor utf8."
 
 
+class BzrFilenameNotUTF8(BzrBadParameter):
+    _fmt = "Filename '%(param)s' is not utf8."
+
+    
 class ReusingTransform(BzrError):
 
     _fmt = "Attempt to reuse a transform that has already been applied."
