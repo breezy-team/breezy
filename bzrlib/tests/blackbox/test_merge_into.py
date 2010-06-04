@@ -78,7 +78,7 @@ class TestMergeInto(TestMergeIntoBase):
         finally:
             project_wt.unlock()
 
-    def test_no_such_source_path(self):
+    def test_no_such_source_subdir(self):
         dest_wt = self.setup_simple_branch('dest')
         two_file_wt = self.setup_simple_branch('src', ['dir/'])
         out, err = self.run_bzr(
