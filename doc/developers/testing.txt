@@ -430,7 +430,7 @@ We want to avoid loading code unnecessarily, for reasons including:
   dependencies and only needed for particular cases.  If they're loaded in
   other cases then bzr may break for people who don't have those modules.
   
-`test_import_tarrif` allows us to check that removal of imports doesn't
+`test_import_tariff` allows us to check that removal of imports doesn't
 regress.
 
 This is done by running the command in a subprocess with
