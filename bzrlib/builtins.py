@@ -491,7 +491,7 @@ class cmd_remove_tree(Command):
     takes_options = [
         Option('force',
                help='Remove the working tree even if it has '
-                    'uncommitted changes.'),
+                    'uncommitted or shelved changes.'),
         ]
 
     def run(self, location_list, force=False):
@@ -511,6 +511,8 @@ class cmd_remove_tree(Command):
             if not force:
                 if (working.has_changes()):
                     raise errors.UncommittedChanges(working)
+                if working.get_shelf_manager().last_shelf() is not None:
+                    raise errors.ShelvedChanges(working)
 
             if working.user_url != working.branch.user_url:
                 raise errors.BzrCommandError("You cannot remove the working tree"
