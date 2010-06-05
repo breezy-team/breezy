@@ -315,12 +315,10 @@ def versioned_file_grep(tree, id, relpath, path, opts, revno, path_prefix = None
 
 
 def _path_in_glob_list(path, glob_list):
-    present = False
     for glob in glob_list:
         if fnmatch(path, glob):
-            present = True
-            break
-    return present
+            return True
+    return False
 
 
 def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
@@ -328,7 +326,7 @@ def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
     if '\x00' in file.read(1024):
         if opts.verbose:
             trace.warning("Binary file '%s' skipped." % path)
-            return
+        return
 
     file.seek(0) # search from beginning
 
@@ -409,7 +407,7 @@ class _Outputter(object):
                 parts.extend([sep, "%(lineno)s"])
             parts.extend([sep, "%(line)s"])
         parts.append(opts.eol_marker)
-        self._format_perline = "".join(parts).replace("%%", "%")
+        self._format_perline = "".join(parts)
 
     def _get_writer_plain(self, path, revno, cache_id):
         """Get function for writing uncoloured output"""
@@ -459,8 +457,6 @@ class _Outputter(object):
 
 
 def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
-    pattern = opts.pattern.encode(_user_encoding, 'replace')
-
     # test and skip binary files
     if '\x00' in file_text[:1024]:
         if opts.verbose:
@@ -472,6 +468,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         path = osutils.pathjoin(path_prefix, path)
 
     path = path.encode(_terminal_encoding, 'replace')
+    pattern = opts.pattern.encode(_user_encoding, 'replace')
 
     writeline = opts.outputter.get_writer(path, revno, cache_id)
 
@@ -493,10 +490,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         if (opts.files_with_matches and found) or \
                 (opts.files_without_match and not found):
             writeline()
-        return
-
-
-    if opts.fixed_string:
+    elif opts.fixed_string:
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:
@@ -515,4 +509,3 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
             for line in file_text.splitlines():
                 if search(line):
                     writeline(line=line)
-
