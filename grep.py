@@ -398,26 +398,33 @@ class _Outputter(object):
         parts = [path_start, "%(path)s"]
         if opts.print_revno:
             parts.extend([rev_sep, "%(revno)s"])
+        mid = len(parts)
         if not opts.files_with_matches and not opts.files_without_match:
             if opts.line_number:
                 parts.extend([sep, "%%(lineno)s"])
             parts.extend([sep, "%%(line)s"])
         parts.append(opts.eol_marker)
         self._format_string = "".join(parts)
+        if use_cache:
+            self._format_initial = "".join(parts[:mid])
+            self._format_perline = "".join(parts[mid:]).replace("%%", "%")
 
     def _get_writer_plain(self, path, revno, cache_id):
         """Get function for writing uncoloured output"""
-        format = self._format_string % {"path":path, "revno":revno}
         write = self.outf.write
         if self.cache is not None and cache_id is not None:
             result_list = []
             self.cache[cache_id] = path, result_list
             add_to_cache = result_list.append
+            per_line = self._format_perline
+            start = self._format_initial % {"path":path, "revno":revno}
             def _line_cache_and_writer(**kwargs):
                 """Write formatted line and cache arguments"""
-                add_to_cache(kwargs)
-                write(format % kwargs)
+                end = per_line % kwargs
+                add_to_cache(end)
+                write(start + end)
             return _line_cache_and_writer
+        format = self._format_string % {"path":path, "revno":revno}
         def _line_writer(**kwargs):
             """Write formatted line from arguments given by underlying opts"""
             write(format % kwargs)
@@ -426,10 +433,10 @@ class _Outputter(object):
     def write_cached_lines(self, cache_id, revno):
         """Write cached results out again for new revision"""
         cached_path, cached_matches = self.cache[cache_id]
-        format = self._format_string % {"path":cached_path, "revno":revno}
+        start = self._format_initial % {"path":cached_path, "revno":revno}
         write = self.outf.write
-        for match in cached_matches:
-            write(format % match)
+        for end in cached_matches:
+            write(start + end)
 
     def _get_writer_regexp_highlighted(self, path, revno, cache_id):
         """Get function for writing output with regexp match highlighted"""
