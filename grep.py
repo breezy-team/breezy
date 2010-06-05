@@ -133,13 +133,6 @@ def versioned_grep(opts):
         bzrdir.BzrDir.open_containing_tree_or_branch('.')
     branch.lock_read()
     try:
-        # res_cache is used to cache results for dir grep based on fid.
-        # If the fid is does not change between results, it means that
-        # the result will be the same apart from revno. In such a case
-        # we avoid getting file chunks from repo and grepping. The result
-        # is just printed by replacing old revno with new one.
-        res_cache = {}
-
         start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
         if start_revid == None:
@@ -180,7 +173,7 @@ def versioned_grep(opts):
             given_revs = [start_rev_tuple]
 
         # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
-        opts.outputter = _Outputter(opts)
+        opts.outputter = _Outputter(opts, use_cache=True)
 
         for revid, revno, merge_depth in given_revs:
             if opts.levels == 1 and merge_depth != 0:
@@ -198,9 +191,10 @@ def versioned_grep(opts):
 
                 if osutils.isdir(path):
                     path_prefix = path
-                    res_cache = dir_grep(tree, path, relpath, opts,
-                        revno, path_prefix, res_cache)
+                    dir_grep(tree, path, relpath, opts, revno, path_prefix)
                 else:
+                    # GZ 2010-06-05: Temp hack to stop issues, why no caching?
+                    opts.outputter._cache_id = None
                     versioned_file_grep(tree, id, '.', path, opts, revno)
     finally:
         branch.unlock()
@@ -239,11 +233,7 @@ def _skip_file(include, exclude, path):
     return False
 
 
-def dir_grep(tree, path, relpath, opts, revno, path_prefix, res_cache={}):
-    _revno_pattern = re.compile("\~[0-9.]+:")
-    _revno_pattern_list_only = re.compile("\~[0-9.]+")
-    dir_res = {}
-
+def dir_grep(tree, path, relpath, opts, revno, path_prefix):
     # setup relpath to open files relative to cwd
     rpath = relpath
     if relpath:
@@ -257,7 +247,10 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix, res_cache={}):
 
     to_grep = []
     to_grep_append = to_grep.append
-    outf_write = opts.outf.write
+    # GZ 2010-06-05: The cache dict used to be recycled every call to dir_grep
+    #                and hits manually refilled. Could do this again if it was
+    #                for a good reason, otherwise cache might want purging.
+    outputter = opts.outputter
     for fp, fc, fkind, fid, entry in tree.list_files(include_root=False,
         from_dir=from_dir, recursive=opts.recursive):
 
@@ -269,25 +262,15 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix, res_cache={}):
                 # If old result is valid, print results immediately.
                 # Otherwise, add file info to to_grep so that the
                 # loop later will get chunks and grep them
-                file_rev = tree.inventory[fid].revision
-                old_res = res_cache.get(file_rev)
-                if old_res != None:
-                    res = []
-                    res_append = res.append
-
-                    if opts.files_with_matches or opts.files_without_match:
-                        new_rev = '~' + revno
-                    else:
-                        new_rev = ('~%s:' % (revno,))
-
-                    for line in old_res:
-                        if opts.files_with_matches or opts.files_without_match:
-                            s = _revno_pattern_list_only.sub(new_rev, line)
-                        else:
-                            s = _revno_pattern.sub(new_rev, line)
-                        res_append(s)
-                        outf_write(s)
-                    dir_res[file_rev] = res
+                cache_hit = outputter.cache.get(tree.inventory[fid].revision)
+                if cache_hit is not None:
+                    # GZ 2010-06-05: Not really sure caching and re-outputting
+                    #                the old path is really the right thing,
+                    #                but it's what the old code seemed to do
+                    cached_path, cached_matches = cache_hit
+                    writer = outputter.get_writer(cached_path, revno, None)
+                    for match in cached_matches:
+                        writer(**match)
                 else:
                     to_grep_append((fid, (fp, fid)))
             else:
@@ -308,10 +291,8 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix, res_cache={}):
     if revno != None: # grep versioned files
         for (path, fid), chunks in tree.iter_files_bytes(to_grep):
             path = _make_display_path(relpath, path)
-            res = _file_grep(chunks[0], path, opts, revno, path_prefix)
-            file_rev = tree.inventory[fid].revision
-            dir_res[file_rev] = res
-    return dir_res
+            _file_grep(chunks[0], path, opts, revno, path_prefix,
+                tree.inventory[fid].revision)
 
 
 def _make_display_path(relpath, path):
@@ -385,8 +366,17 @@ class _Outputter(object):
     The idea here is to do this work only once per run, and finally return a
     function that will do the minimum amount possible for each match.
     """
-    def __init__(self, opts):
+    def __init__(self, opts, use_cache=False):
         self.outf = opts.outf
+        if use_cache:
+            # self.cache is used to cache results for dir grep based on fid.
+            # If the fid is does not change between results, it means that
+            # the result will be the same apart from revno. In such a case
+            # we avoid getting file chunks from repo and grepping. The result
+            # is just printed by replacing old revno with new one.
+            self.cache = {}
+        else:
+            self.cache = None
 
         if opts.show_color:
             pat = opts.pattern.encode(_user_encoding, 'replace')
@@ -418,32 +408,36 @@ class _Outputter(object):
         parts.append(opts.eol_marker)
         self._format_string = "".join(parts)
 
-    def _get_writer_plain(self, path, revno):
+    def _get_writer_plain(self, path, revno, cache_id):
         """Get function for writing uncoloured output"""
         format = self._format_string % {"path":path, "revno":revno}
         write = self.outf.write
+        if self.cache is not None and cache_id is not None:
+            result_list = []
+            self.cache[cache_id] = path, result_list
+            add_to_cache = result_list.append
+            def _line_cache_and_writer(**kwargs):
+                """Write formatted line and cache arguments"""
+                add_to_cache(kwargs)
+                write(format % kwargs)
+            return _line_cache_and_writer
         def _line_writer(**kwargs):
             """Write formatted line from arguments given by underlying opts"""
-            line = format % kwargs
-            write(line)
-            # GZ 2010-06-02: Need to return line for the 'res_cache' hack to
-            #                avoiding checking the same file twice, clean this
-            #                up later by changing that mechanism.
-            return line
+            write(format % kwargs)
         return _line_writer
 
-    def _get_writer_regexp_highlighted(self, path, revno):
+    def _get_writer_regexp_highlighted(self, path, revno, cache_id):
         """Get function for writing output with regexp match highlighted"""
-        _line_writer = self._get_writer_plain(path, revno)
+        _line_writer = self._get_writer_plain(path, revno, cache_id)
         sub, highlight = self._sub, self._highlight
         def _line_writer_regexp_highlighted(line, **kwargs):
             """Write formatted line with matched pattern highlighted"""
             return _line_writer(line=sub(highlight, line), **kwargs)
         return _line_writer_regexp_highlighted
 
-    def _get_writer_fixed_highlighted(self, path, revno):
+    def _get_writer_fixed_highlighted(self, path, revno, cache_id):
         """Get function for writing output with search string highlighted"""
-        _line_writer = self._get_writer_plain(path, revno)
+        _line_writer = self._get_writer_plain(path, revno, cache_id)
         old, new = self._old, self._new
         def _line_writer_fixed_highlighted(line, **kwargs):
             """Write formatted line with string searched for highlighted"""
@@ -451,10 +445,7 @@ class _Outputter(object):
         return _line_writer_fixed_highlighted
 
 
-def _file_grep(file_text, path, opts, revno, path_prefix=None):
-    res = []
-    res_append = res.append
-
+def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
     pattern = opts.pattern.encode(_user_encoding, 'replace')
     patternc = opts.patternc
 
@@ -462,7 +453,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None):
     if '\x00' in file_text[:1024]:
         if opts.verbose:
             trace.warning("Binary file '%s' skipped." % path)
-        return res
+        return
 
     if path_prefix and path_prefix != '.':
         # user has passed a dir arg, show that as result prefix
@@ -470,7 +461,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None):
 
     path = path.encode(_terminal_encoding, 'replace')
 
-    writeline = opts.outputter.get_writer(path, revno)
+    writeline = opts.outputter.get_writer(path, revno, cache_id)
 
     if opts.files_with_matches or opts.files_without_match:
         # While printing files with matches we only have two case
@@ -488,27 +479,26 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None):
                     break
         if (opts.files_with_matches and found) or \
                 (opts.files_without_match and not found):
-            res_append(writeline())
-        return res # return from files_with|without_matches
+            writeline()
+        return
 
 
     if opts.line_number:
         if opts.fixed_string:
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:
-                    res_append(writeline(lineno=index+1, line=line))
+                    writeline(lineno=index+1, line=line)
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
-                    res_append(writeline(lineno=index+1, line=line))
+                    writeline(lineno=index+1, line=line)
     else:
         if opts.fixed_string:
             for line in file_text.splitlines():
                 if pattern in line:
-                    res_append(writeline(line=line))
+                    writeline(line=line)
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
-                    res_append(writeline(line=line))
-    return res
+                    writeline(line=line)
 
