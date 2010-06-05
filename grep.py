@@ -398,36 +398,33 @@ class _Outputter(object):
         parts = [path_start, "%(path)s"]
         if opts.print_revno:
             parts.extend([rev_sep, "%(revno)s"])
-        mid = len(parts)
+        self._format_initial = "".join(parts)
+        parts = []
         if not opts.files_with_matches and not opts.files_without_match:
             if opts.line_number:
-                parts.extend([sep, "%%(lineno)s"])
-            parts.extend([sep, "%%(line)s"])
+                parts.extend([sep, "%(lineno)s"])
+            parts.extend([sep, "%(line)s"])
         parts.append(opts.eol_marker)
-        self._format_string = "".join(parts)
-        if use_cache:
-            self._format_initial = "".join(parts[:mid])
-            self._format_perline = "".join(parts[mid:]).replace("%%", "%")
+        self._format_perline = "".join(parts).replace("%%", "%")
 
     def _get_writer_plain(self, path, revno, cache_id):
         """Get function for writing uncoloured output"""
+        per_line = self._format_perline
+        start = self._format_initial % {"path":path, "revno":revno}
         write = self.outf.write
         if self.cache is not None and cache_id is not None:
             result_list = []
             self.cache[cache_id] = path, result_list
             add_to_cache = result_list.append
-            per_line = self._format_perline
-            start = self._format_initial % {"path":path, "revno":revno}
             def _line_cache_and_writer(**kwargs):
                 """Write formatted line and cache arguments"""
                 end = per_line % kwargs
                 add_to_cache(end)
                 write(start + end)
             return _line_cache_and_writer
-        format = self._format_string % {"path":path, "revno":revno}
         def _line_writer(**kwargs):
             """Write formatted line from arguments given by underlying opts"""
-            write(format % kwargs)
+            write(start + per_line % kwargs)
         return _line_writer
 
     def write_cached_lines(self, cache_id, revno):
