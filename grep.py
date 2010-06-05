@@ -180,7 +180,7 @@ def versioned_grep(opts):
             given_revs = [start_rev_tuple]
 
         # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
-        opts.line_writer = staticmethod(_make_line_writer(opts))
+        opts.outputter = _Outputter(opts)
 
         for revid, revno, merge_depth in given_revs:
             if opts.levels == 1 and merge_depth != 0:
@@ -217,7 +217,7 @@ def workingtree_grep(opts):
         raise errors.BzrCommandError(msg)
 
     # GZ 2010-06-02: Shouldn't be smuggling this on opts, but easy for now
-    opts.line_writer = staticmethod(_make_line_writer(opts))
+    opts.outputter = _Outputter(opts)
 
     tree.lock_read()
     try:
@@ -379,71 +379,76 @@ def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
         opts.outf.write(s)
 
 
-def _make_line_writer(opts):
-    """Precalculate formatting and return function for writing output lines
+class _Outputter(object):
+    """Precalculate formatting based on options given
 
-    The idea here is to do this work only once per run, and return a function
-    that will do the minimum amount possible for each match.
-
-    It may be best to add another step that also preformats things that don't
-    change across a file like the path and revno to leave the line writer
-    even smaller.
+    The idea here is to do this work only once per run, and finally return a
+    function that will do the minimum amount possible for each match.
     """
-    write = opts.outf.write
-    pattern = opts.pattern.encode(_user_encoding, 'replace')
-    patternc = opts.patternc
-    eol = opts.eol_marker
+    def __init__(self, opts):
+        self.outf = opts.outf
 
-    if opts.show_color:
-        path_start = FG.MAGENTA
-        sep = color_string(':', FG.BOLD_CYAN)
-        rev_sep = color_string('~', FG.BOLD_YELLOW)
-    else:
-        path_start = ""
-        sep = ":"
-        rev_sep = "~"
-
-    if opts.files_with_matches or opts.files_without_match:
-        if opts.print_revno:
-            format = "%s%%(path)s%s%%(revno)s%s" % (path_start, rev_sep, eol)
+        if opts.show_color:
+            pat = opts.pattern.encode(_user_encoding, 'replace')
+            if not opts.fixed_string:
+                flags = opts.patternc.flags
+                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._highlight = color_string("\\1", FG.BOLD_RED)
+                self.get_writer = self._get_writer_regexp_highlighted
+            else:
+                self._old = pat
+                self._new = color_string(pat, FG.BOLD_RED)
+                self.get_writer = self._get_writer_fixed_highlighted
+            path_start = FG.MAGENTA
+            sep = color_string(':', FG.BOLD_CYAN)
+            rev_sep = color_string('~', FG.BOLD_YELLOW)
         else:
-            format = "%s%%(path)s%s" % (path_start, eol)
-    elif opts.print_revno and opts.line_number:
-        format = "%s%%(path)s%s%%(revno)s%s%%(lineno)d%s%%(line)s%s" % (
-            path_start, rev_sep, sep, sep, eol)
-    elif opts.print_revno:
-        format = "%s%%(path)s%s%%(revno)s%s%%(line)s%s" % (
-            path_start, rev_sep, sep, eol)
-    elif opts.line_number:
-        format = "%s%%(path)s%s%%(lineno)d%s%%(line)s%s" % (
-            path_start, sep, sep, eol)
-    else:
-        format = "%s%%(path)s%s%%(line)s%s" % (path_start, sep, eol)
+            self.get_writer = self._get_writer_plain
+            path_start = ""
+            sep = ":"
+            rev_sep = "~"
 
-    def _line_writer(**kwargs):
-        """Write formatted line from arguments given by underlying opts"""
-        line = format % kwargs
-        write(line)
-        # GZ 2010-06-02: Need to return line for the 'res_cache' hack to
-        #                avoiding checking the same file twice, clean this
-        #                up later by changing that mechanism.
-        return line
-    if not opts.show_color:
+        parts = [path_start, "%(path)s"]
+        if opts.print_revno:
+            parts.extend([rev_sep, "%(revno)s"])
+        if not opts.files_with_matches and not opts.files_without_match:
+            if opts.line_number:
+                parts.extend([sep, "%%(lineno)s"])
+            parts.extend([sep, "%%(line)s"])
+        parts.append(opts.eol_marker)
+        self._format_string = "".join(parts)
+
+    def _get_writer_plain(self, path, revno):
+        """Get function for writing uncoloured output"""
+        format = self._format_string % {"path":path, "revno":revno}
+        write = self.outf.write
+        def _line_writer(**kwargs):
+            """Write formatted line from arguments given by underlying opts"""
+            line = format % kwargs
+            write(line)
+            # GZ 2010-06-02: Need to return line for the 'res_cache' hack to
+            #                avoiding checking the same file twice, clean this
+            #                up later by changing that mechanism.
+            return line
         return _line_writer
 
-    if not opts.fixed_string:
-        sub = re.compile(pattern.join(("((?:",")+)")), patternc.flags).sub
-        highlight = color_string("\\1", FG.BOLD_RED)
+    def _get_writer_regexp_highlighted(self, path, revno):
+        """Get function for writing output with regexp match highlighted"""
+        _line_writer = self._get_writer_plain(path, revno)
+        sub, highlight = self._sub, self._highlight
         def _line_writer_regexp_highlighted(line, **kwargs):
             """Write formatted line with matched pattern highlighted"""
             return _line_writer(line=sub(highlight, line), **kwargs)
         return _line_writer_regexp_highlighted
 
-    highlighted = color_string(pattern, FG.BOLD_RED)
-    def _line_writer_fixed_highlighted(line, **kwargs):
-        """Write formatted line with string searched for highlighted"""
-        return _line_writer(line=line.replace(pattern, highlighted), **kwargs)
-    return _line_writer_fixed_highlighted
+    def _get_writer_fixed_highlighted(self, path, revno):
+        """Get function for writing output with search string highlighted"""
+        _line_writer = self._get_writer_plain(path, revno)
+        old, new = self._old, self._new
+        def _line_writer_fixed_highlighted(line, **kwargs):
+            """Write formatted line with string searched for highlighted"""
+            return _line_writer(line=line.replace(old, new), **kwargs)
+        return _line_writer_fixed_highlighted
 
 
 def _file_grep(file_text, path, opts, revno, path_prefix=None):
@@ -465,7 +470,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None):
 
     path = path.encode(_terminal_encoding, 'replace')
 
-    writeline = opts.line_writer
+    writeline = opts.outputter.get_writer(path, revno)
 
     if opts.files_with_matches or opts.files_without_match:
         # While printing files with matches we only have two case
@@ -483,7 +488,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None):
                     break
         if (opts.files_with_matches and found) or \
                 (opts.files_without_match and not found):
-            res_append(writeline(path=path, revno=revno))
+            res_append(writeline())
         return res # return from files_with|without_matches
 
 
@@ -491,21 +496,19 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None):
         if opts.fixed_string:
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:
-                    res_append(writeline(path=path, revno=revno,
-                        lineno=index+1, line=line))
+                    res_append(writeline(lineno=index+1, line=line))
         else:
             for index, line in enumerate(file_text.splitlines()):
                 if patternc.search(line):
-                    res_append(writeline(path=path, revno=revno,
-                        lineno=index+1, line=line))
+                    res_append(writeline(lineno=index+1, line=line))
     else:
         if opts.fixed_string:
             for line in file_text.splitlines():
                 if pattern in line:
-                    res_append(writeline(path=path, revno=revno, line=line))
+                    res_append(writeline(line=line))
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
-                    res_append(writeline(path=path, revno=revno, line=line))
+                    res_append(writeline(line=line))
     return res
 
