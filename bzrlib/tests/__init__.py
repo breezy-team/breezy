@@ -3796,6 +3796,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_switch',
         'bzrlib.tests.test_symbol_versioning',
         'bzrlib.tests.test_tag',
+        'bzrlib.tests.test_test_server',
         'bzrlib.tests.test_testament',
         'bzrlib.tests.test_textfile',
         'bzrlib.tests.test_textmerge',

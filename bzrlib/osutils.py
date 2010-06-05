@@ -18,7 +18,6 @@ import errno
 import os
 import re
 import stat
-from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 import sys
 import time
 import codecs
@@ -27,23 +26,12 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
 import getpass
-from ntpath import (abspath as _nt_abspath,
-                    join as _nt_join,
-                    normpath as _nt_normpath,
-                    realpath as _nt_realpath,
-                    splitdrive as _nt_splitdrive,
-                    )
+import ntpath
 import posixpath
 import shutil
-from shutil import (
-    rmtree,
-    )
 import socket
 import subprocess
 import tempfile
-from tempfile import (
-    mkdtemp,
-    )
 import unicodedata
 
 from bzrlib import (
@@ -304,13 +292,13 @@ def _win32_fixdrive(path):
     running python.exe under cmd.exe return capital C:\\
     running win32 python inside a cygwin shell returns lowercase c:\\
     """
-    drive, path = _nt_splitdrive(path)
+    drive, path = ntpath.splitdrive(path)
     return drive.upper() + path
 
 
 def _win32_abspath(path):
-    # Real _nt_abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
+    # Real ntpath.abspath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
 
 
 def _win98_abspath(path):
@@ -327,30 +315,30 @@ def _win98_abspath(path):
     #   /path       => C:/path
     path = unicode(path)
     # check for absolute path
-    drive = _nt_splitdrive(path)[0]
+    drive = ntpath.splitdrive(path)[0]
     if drive == '' and path[:2] not in('//','\\\\'):
         cwd = os.getcwdu()
         # we cannot simply os.path.join cwd and path
         # because os.path.join('C:','/path') produce '/path'
         # and this is incorrect
         if path[:1] in ('/','\\'):
-            cwd = _nt_splitdrive(cwd)[0]
+            cwd = ntpath.splitdrive(cwd)[0]
             path = path[1:]
         path = cwd + '\\' + path
-    return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
-    # Real _nt_realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))
+    # Real ntpath.realpath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(ntpath.realpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
-    return _nt_join(*args).replace('\\', '/')
+    return ntpath.join(*args).replace('\\', '/')
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(_nt_normpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_getcwd():
@@ -395,9 +383,8 @@ dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
 splitext = os.path.splitext
-# These were already imported into local scope
-# mkdtemp = tempfile.mkdtemp
-# rmtree = shutil.rmtree
+mkdtemp = tempfile.mkdtemp
+rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
@@ -502,7 +489,7 @@ def normalizepath(f):
 def isdir(f):
     """True if f is an accessible directory."""
     try:
-        return S_ISDIR(os.lstat(f)[ST_MODE])
+        return stat.S_ISDIR(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
@@ -510,14 +497,14 @@ def isdir(f):
 def isfile(f):
     """True if f is a regular file."""
     try:
-        return S_ISREG(os.lstat(f)[ST_MODE])
+        return stat.S_ISREG(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
 def islink(f):
     """True if f is a symlink."""
     try:
-        return S_ISLNK(os.lstat(f)[ST_MODE])
+        return stat.S_ISLNK(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
@@ -863,7 +850,7 @@ def format_delta(delta):
 
 def filesize(f):
     """Return size of given open file."""
-    return os.fstat(f.fileno())[ST_SIZE]
+    return os.fstat(f.fileno())[stat.ST_SIZE]
 
 
 # Define rand_bytes based on platform.
@@ -2042,6 +2029,28 @@ def send_all(sock, bytes, report_activity=None):
         else:
             sent_total += sent
             report_activity(sent, 'write')
+
+# socket.create_connection() is not available before python2.6, so we provide
+# it for earlier versions
+if getattr(socket, 'create_connection', None) is not None:
+    connect_socket = socket.create_connection
+else:
+    # We don't use nor handle the timeout though
+    def connect_socket(address, timeout=None):
+        err = socket.error('getaddrinfo returns an empty list')
+        for res in socket.getaddrinfo(host, port):
+            af, socktype, proto, canonname, sa = res
+            sock = None
+            try:
+                sock = socket.socket(af, socktype, proto)
+                sock.connect(sa)
+                return sock
+
+            except socket.error, err:
+                # 'err' is now the most recent error
+                if sock is not None:
+                    sock.close()
+        raise err
 
 
 def dereference_path(path):
