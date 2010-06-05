@@ -490,20 +490,20 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         return
 
 
-    if opts.line_number:
-        if opts.fixed_string:
+    if opts.fixed_string:
+        if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:
                     writeline(lineno=index+1, line=line)
         else:
-            for index, line in enumerate(file_text.splitlines()):
-                if patternc.search(line):
-                    writeline(lineno=index+1, line=line)
-    else:
-        if opts.fixed_string:
             for line in file_text.splitlines():
                 if pattern in line:
                     writeline(line=line)
+    else:
+        if opts.line_number:
+            for index, line in enumerate(file_text.splitlines()):
+                if patternc.search(line):
+                    writeline(lineno=index+1, line=line)
         else:
             for line in file_text.splitlines():
                 if patternc.search(line):
