@@ -1732,6 +1732,7 @@ class SampleSocket(object):
         self.readfile = StringIO(socket_read_content)
         self.writefile = StringIO()
         self.writefile.close = lambda: None
+        self.close = lambda: None
 
     def makefile(self, mode='r', bufsize=None):
         if 'r' in mode:

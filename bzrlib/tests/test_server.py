@@ -362,7 +362,7 @@ class TestingTCPServerMixin:
     def handle_error(self, request, client_address):
         # Stop serving and re-raise the last exception seen
         self.serving.clear()
-        self.sibling_class.handle_error(self, request, client_address)
+#        self.sibling_class.handle_error(self, request, client_address)
         raise
 
     # The following methods are called by the main thread
