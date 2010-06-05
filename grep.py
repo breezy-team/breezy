@@ -193,8 +193,6 @@ def versioned_grep(opts):
                     path_prefix = path
                     dir_grep(tree, path, relpath, opts, revno, path_prefix)
                 else:
-                    # GZ 2010-06-05: Temp hack to stop issues, why no caching?
-                    opts.outputter._cache_id = None
                     versioned_file_grep(tree, id, '.', path, opts, revno)
     finally:
         branch.unlock()
