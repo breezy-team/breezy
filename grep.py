@@ -16,12 +16,8 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
-import cStringIO
 from fnmatch import fnmatch
-import os
 import re
-import string
 
 from termcolor import color_string, re_color_string, FG
 
@@ -277,10 +273,10 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                 if opts.files_with_matches or opts.files_without_match:
                     # Optimize for wtree list-only as we don't need to read the
                     # entire file
-                    file = codecs.open(path_for_file, 'r', buffering=4096)
+                    file = open(path_for_file, 'r', buffering=4096)
                     _file_grep_list_only_wtree(file, fp, opts, path_prefix)
                 else:
-                    file_text = codecs.open(path_for_file, 'r').read()
+                    file_text = open(path_for_file, 'r').read()
                     _file_grep(file_text, fp, opts, revno, path_prefix)
 
     if revno != None: # grep versioned files
