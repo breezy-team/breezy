@@ -251,7 +251,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_get_bytes_unknown_file(self):
         t = self.get_transport()
-
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
     def test_get_with_open_write_stream_sees_all_content(self):

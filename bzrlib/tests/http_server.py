@@ -75,6 +75,14 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 self.headers.get('referer', '-'),
                 self.headers.get('user-agent', '-'))
 
+    def handle(self):
+        SimpleHTTPServer.SimpleHTTPRequestHandler.handle(self)
+        # Some client (pycurl, I'm looking at you) are more picky than others
+        # and require that the socket itself is close
+        # (SocketServer.StreamRequestHandler only close the two associated
+        # 'makefile' objects)
+        self.connection.close()
+
     def handle_one_request(self):
         """Handle a single HTTP request.
 
@@ -220,12 +228,12 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             # mode may cause newline translations, making the
             # actual size of the content transmitted *less* than
             # the content-length!
-            file = open(path, 'rb')
+            f = open(path, 'rb')
         except IOError:
             self.send_error(404, "File not found")
             return
 
-        file_size = os.fstat(file.fileno())[6]
+        file_size = os.fstat(f.fileno())[6]
         tail, ranges = self.parse_ranges(ranges_header_value)
         # Normalize tail into ranges
         if tail != 0:
@@ -252,7 +260,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
             # RFC2616 14.16 and 14.35 says that when a server
             # encounters unsatisfiable range specifiers, it
             # SHOULD return a 416.
-            file.close()
+            f.close()
             # FIXME: We SHOULD send a Content-Range header too,
             # but the implementation of send_error does not
             # allows that. So far.
@@ -261,10 +269,10 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
 
         if len(ranges) == 1:
             (start, end) = ranges[0]
-            self.get_single_range(file, file_size, start, end)
+            self.get_single_range(f, file_size, start, end)
         else:
-            self.get_multiple_ranges(file, file_size, ranges)
-        file.close()
+            self.get_multiple_ranges(f, file_size, ranges)
+        f.close()
 
     def translate_path(self, path):
         """Translate a /-separated PATH to the local filename syntax.
