@@ -1986,8 +1986,6 @@ class TestColorGrep(GrepTestBase):
 
         streams = self.run_bzr(["grep", "--color", "always",
             "--files-with-matches", "aaa"])
-        self.expectFailure("Working tree optimisation kills colouration",
-            self.assertNotEqual, streams, ("d/aaa\n", ""))
         self.assertEqual(streams, ("".join([
             FG.MAGENTA, "d/aaa", FG.NONE, "\n"
             ]), ""))

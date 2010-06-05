@@ -351,8 +351,7 @@ def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
             # user has passed a dir arg, show that as result prefix
             path = osutils.pathjoin(path_prefix, path)
         path = path.encode(_terminal_encoding, 'replace')
-        s = path + opts.eol_marker
-        opts.outf.write(s)
+        opts.outputter.get_writer(path, None, None)()
 
 
 class _Outputter(object):
