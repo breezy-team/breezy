@@ -260,9 +260,10 @@ class ThreadWithException(threading.Thread):
         """Overrides Thread.run to capture any exception."""
         self.ready.clear()
         try:
-            super(ThreadWithException, self).run()
-        except:
-            self.exception = sys.exc_info()
+            try:
+                super(ThreadWithException, self).run()
+            except:
+                self.exception = sys.exc_info()
         finally:
             # Make sure the calling thread is released
             self.ready.set()
