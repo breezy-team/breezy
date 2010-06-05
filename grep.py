@@ -472,20 +472,27 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
     writeline = opts.outputter.get_writer(path, revno, cache_id)
 
     if opts.files_with_matches or opts.files_without_match:
-        # While printing files with matches we only have two case
-        # print file name or print file name with revno.
-        found = False
         if opts.fixed_string:
-            for line in file_text.splitlines():
-                if pattern in line:
-                    found = True
-                    break
+            if sys.platform > (2, 5):
+                found = pattern in file_text
+            else:
+                for line in file_text.splitlines():
+                    if pattern in line:
+                        found = True
+                        break
+                else:
+                    found = False
         else:
             search = opts.patternc.search
-            for line in file_text.splitlines():
-                if search(line):
-                    found = True
-                    break
+            if os.linesep == "\n" or not pattern.endswith("$"):
+                found = search(file_text) is not None
+            else:
+                for line in file_text.splitlines():
+                    if search(line):
+                        found = True
+                        break
+                else:
+                    found = False
         if (opts.files_with_matches and found) or \
                 (opts.files_without_match and not found):
             writeline()
