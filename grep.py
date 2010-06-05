@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+import os
+import sys
+
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from fnmatch import fnmatch
@@ -487,16 +490,54 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
                 (opts.files_without_match and not found):
             writeline()
     elif opts.fixed_string:
+        # Fast path for no match, search through the entire file at once rather
+        # than a line at a time. However, we don't want this without Python 2.5
+        # as the quick string search algorithm wasn't implemented till then:
+        # <http://effbot.org/zone/stringlib.htm>
+        if sys.version_info > (2, 5):
+            i = file_text.find(pattern)
+            if i == -1:
+                return
+            b = file_text.rfind("\n", 0, i) + 1
+            e = file_text.find("\n", i) + 1 or len(file_text)
+            line = file_text[b:e-1]
+            if opts.line_number:
+                start = file_text.count("\n", 0, b) + 2
+                writeline(lineno=start-1, line=line)
+            else:
+                writeline(line=line)
+            file_text = file_text[e:]
+        else:
+            start = 1
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:
-                    writeline(lineno=index+1, line=line)
+                    writeline(lineno=index+start, line=line)
         else:
             for line in file_text.splitlines():
                 if pattern in line:
                     writeline(line=line)
     else:
+        # Fast path on no match, the re module avoids bad behaviour in most
+        # standard cases, but perhaps could try and detect backtracking
+        # patterns here and avoid whole text search in those cases
         search = opts.patternc.search
+        if os.linesep == "\n" or not pattern.endswith("$"):
+            # GZ 2010-06-05: Grr, re.MULTILINE can't save us when searching
+            #                through revisions as bazaar returns binary mode
+            #                and trailing \r breaks $ as line ending match
+            m = search(file_text)
+            if m is None:
+                return
+            b = file_text.rfind("\n", 0, m.start()) + 1
+            e = file_text.find("\n", m.end()) + 1 or len(file_text)
+            line = file_text[b:e-1].rstrip("\r")
+            if opts.line_number:
+                start = file_text.count("\n", 0, b) + 1
+                writeline(lineno=start, line=line)
+            else:
+                writeline(line=line)
+            file_text = file_text[e:]
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
                 if search(line):

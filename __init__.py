@@ -198,9 +198,9 @@ class cmd_grep(Command):
             pattern = re.escape(pattern)
 
         patternc = None
-        re_flags = 0
+        re_flags = re.MULTILINE
         if ignore_case:
-            re_flags = re.IGNORECASE
+            re_flags |= re.IGNORECASE
 
         if not fixed_string:
             patternc = grep.compile_pattern(pattern, re_flags)
