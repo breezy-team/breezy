@@ -454,7 +454,6 @@ class _Outputter(object):
 
 def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
     pattern = opts.pattern.encode(_user_encoding, 'replace')
-    patternc = opts.patternc
 
     # test and skip binary files
     if '\x00' in file_text[:1024]:
@@ -480,8 +479,9 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
                     found = True
                     break
         else:
+            search = opts.patternc.search
             for line in file_text.splitlines():
-                if patternc.search(line):
+                if search(line):
                     found = True
                     break
         if (opts.files_with_matches and found) or \
@@ -500,12 +500,13 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
                 if pattern in line:
                     writeline(line=line)
     else:
+        search = opts.patternc.search
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
-                if patternc.search(line):
+                if search(line):
                     writeline(lineno=index+1, line=line)
         else:
             for line in file_text.splitlines():
-                if patternc.search(line):
+                if search(line):
                     writeline(line=line)
 
