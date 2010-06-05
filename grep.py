@@ -262,15 +262,12 @@ def dir_grep(tree, path, relpath, opts, revno, path_prefix):
                 # If old result is valid, print results immediately.
                 # Otherwise, add file info to to_grep so that the
                 # loop later will get chunks and grep them
-                cache_hit = outputter.cache.get(tree.inventory[fid].revision)
-                if cache_hit is not None:
+                cache_id = tree.inventory[fid].revision
+                if cache_id in outputter.cache:
                     # GZ 2010-06-05: Not really sure caching and re-outputting
                     #                the old path is really the right thing,
                     #                but it's what the old code seemed to do
-                    cached_path, cached_matches = cache_hit
-                    writer = outputter.get_writer(cached_path, revno, None)
-                    for match in cached_matches:
-                        writer(**match)
+                    outputter.write_cached_lines(cache_id, revno)
                 else:
                     to_grep_append((fid, (fp, fid)))
             else:
@@ -425,6 +422,14 @@ class _Outputter(object):
             """Write formatted line from arguments given by underlying opts"""
             write(format % kwargs)
         return _line_writer
+
+    def write_cached_lines(self, cache_id, revno):
+        """Write cached results out again for new revision"""
+        cached_path, cached_matches = self.cache[cache_id]
+        format = self._format_string % {"path":cached_path, "revno":revno}
+        write = self.outf.write
+        for match in cached_matches:
+            write(format % match)
 
     def _get_writer_regexp_highlighted(self, path, revno, cache_id):
         """Get function for writing output with regexp match highlighted"""
