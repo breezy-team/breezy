@@ -2038,7 +2038,7 @@ else:
     # We don't use nor handle the timeout though
     def connect_socket(address, timeout=None):
         err = socket.error('getaddrinfo returns an empty list')
-        for res in socket.getaddrinfo(host, port):
+        for res in socket.getaddrinfo(*address):
             af, socktype, proto, canonname, sa = res
             sock = None
             try:
