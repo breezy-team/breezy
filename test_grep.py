@@ -1939,6 +1939,7 @@ class TestGrep(GrepTestBase):
 class TestColorGrep(GrepTestBase):
     """Tests for the --color option."""
 
+    # GZ 2010-06-05: Does this really require the feature? Nothing prints.
     _test_needs_features = [features.color_feature]
 
     _rev_sep = color_string('~', fg=FG.BOLD_YELLOW)
@@ -1950,6 +1951,52 @@ class TestColorGrep(GrepTestBase):
         out, err = self.run_bzr(['grep', '--color', 'foo', 'bar'], 3)
         self.assertEqual(out, '')
         self.assertContainsRe(err, 'Valid values for --color are', flags=TestGrep._reflags)
+
+    def test_ver_matching_files(self):
+        """(versioned) Search for matches or no matches only"""
+        tree = self.make_branch_and_tree(".")
+        contents = ["d/", "d/aaa", "bbb"]
+        self.build_tree(contents)
+        tree.add(contents)
+        tree.commit("Initial commit")
+
+        # GZ 2010-06-05: Maybe modify the working tree here
+
+        streams = self.run_bzr(["grep", "--color", "always", "-r", "1",
+            "--files-with-matches", "aaa"])
+        self.assertEqual(streams, ("".join([
+            FG.MAGENTA, "d/aaa", self._rev_sep, "1", "\n"
+            ]), ""))
+
+        streams = self.run_bzr(["grep", "--color", "always", "-r", "1",
+            "--files-without-match", "aaa"])
+        self.assertEqual(streams, ("".join([
+            FG.MAGENTA, "bbb", self._rev_sep, "1", "\n"
+            ]), ""))
+
+    def test_wtree_matching_files(self):
+        """(wtree) Search for matches or no matches only"""
+        tree = self.make_branch_and_tree(".")
+        contents = ["d/", "d/aaa", "bbb"]
+        self.build_tree(contents)
+        tree.add(contents)
+        tree.commit("Initial commit")
+
+        # GZ 2010-06-05: Maybe modify the working tree here
+
+        streams = self.run_bzr(["grep", "--color", "always",
+            "--files-with-matches", "aaa"])
+        self.expectFailure("Working tree optimisation kills colouration",
+            self.assertNotEqual, streams, ("d/aaa\n", ""))
+        self.assertEqual(streams, ("".join([
+            FG.MAGENTA, "d/aaa", FG.NONE, "\n"
+            ]), ""))
+
+        streams = self.run_bzr(["grep", "--color", "always",
+            "--files-without-match", "aaa"])
+        self.assertEqual(streams, ("".join([
+            FG.MAGENTA, "bbb", FG.NONE, "\n"
+            ]), ""))
 
     def test_ver_basic_file(self):
         """(versioned) Search for pattern in specfic file.

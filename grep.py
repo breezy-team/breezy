@@ -372,24 +372,28 @@ class _Outputter(object):
             self.cache = {}
         else:
             self.cache = None
+        no_line = opts.files_with_matches or opts.files_without_match
 
         if opts.show_color:
             pat = opts.pattern.encode(_user_encoding, 'replace')
-            if not opts.fixed_string:
+            if no_line:
+                self.get_writer = self._get_writer_plain
+            elif opts.fixed_string:
+                self._old = pat
+                self._new = color_string(pat, FG.BOLD_RED)
+                self.get_writer = self._get_writer_fixed_highlighted
+            else:
                 flags = opts.patternc.flags
                 self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
                 self._highlight = color_string("\\1", FG.BOLD_RED)
                 self.get_writer = self._get_writer_regexp_highlighted
-            else:
-                self._old = pat
-                self._new = color_string(pat, FG.BOLD_RED)
-                self.get_writer = self._get_writer_fixed_highlighted
             path_start = FG.MAGENTA
+            path_end = FG.NONE
             sep = color_string(':', FG.BOLD_CYAN)
             rev_sep = color_string('~', FG.BOLD_YELLOW)
         else:
             self.get_writer = self._get_writer_plain
-            path_start = ""
+            path_start = path_end = ""
             sep = ":"
             rev_sep = "~"
 
@@ -398,7 +402,10 @@ class _Outputter(object):
             parts.extend([rev_sep, "%(revno)s"])
         self._format_initial = "".join(parts)
         parts = []
-        if not opts.files_with_matches and not opts.files_without_match:
+        if no_line:
+            if not opts.print_revno:
+                parts.append(path_end)
+        else:
             if opts.line_number:
                 parts.extend([sep, "%(lineno)s"])
             parts.extend([sep, "%(line)s"])
