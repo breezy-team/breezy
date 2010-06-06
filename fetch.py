@@ -290,7 +290,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
         raise AssertionError("unusual modes don't match: %r != %r" % (
             unusual_modes, new_unusual_modes))
     # Verify that we can reconstruct the commit properly
-    rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree)
+    rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree, True)
     if rec_o != o:
         raise AssertionError("Reconstructed commit differs: %r != %r" % (
             rec_o, o))
