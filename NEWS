@@ -35,7 +35,7 @@
  BUG FIXES
 
   * Fix compatibility with newer versions of Python2.6, which change the 
-    behaviour of urlparse.urlsplit.
+    behaviour of urlparse.urlsplit. (Jelmer Vernooij, #561351)
  
   * Avoid storing texts of symlinks, which causes checksum errors in 
     `bzr check`. (#512323, INADA Naoki, Jelmer Vernooij)
