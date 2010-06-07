@@ -265,15 +265,13 @@ class ThreadWithException(threading.Thread):
            - an exception class: the instances of this class will be ignored,
            - a tuple of exception classes: the instances of any class of the
              list will be ignored,
-           - a callable: that will be passed exc_class, exc_value
+           - a callable: that will be passed the exception object
              and should return True if the exception should be ignored
         """
         if ignored is None:
             self.ignored_exceptions = None
-        elif isinstance(ignored, Exception):
-            self.ignored_exceptions = lambda c, v: c is ignored
-        elif isinstance(ignored, tuple):
-            self.ignored_exceptions = lambda c, v: isinstance(v, ignored)
+        elif isinstance(ignored, (Exception, tuple)):
+            self.ignored_exceptions = lambda e: isinstance(e, ignored)
         else:
             self.ignored_exceptions = ignored
 
@@ -304,7 +302,7 @@ class ThreadWithException(threading.Thread):
             exc_class, exc_value, exc_tb = self.exception
             self.exception = None # The exception should be raised only once
             if (self.ignored_exceptions is None
-                or not self.ignored_exceptions(exc_class, exc_value)):
+                or not self.ignored_exceptions(exc_value)):
                 # Raise non ignored exceptions
                 raise exc_class, exc_value, exc_tb
         if timeout and self.isAlive():
