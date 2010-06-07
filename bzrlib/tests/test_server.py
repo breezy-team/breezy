@@ -281,7 +281,7 @@ class ThreadWithException(threading.Thread):
         super(ThreadWithException, self).join(timeout)
         if self.exception is not None:
             exc_class, exc_value, exc_tb = self.exception
-            self.execption = None # The exception should be raised only once
+            self.exception = None # The exception should be raised only once
             raise exc_class, exc_value, exc_tb
         if timeout and self.isAlive():
             # The timeout expired without joining the thread, the thread is
@@ -398,6 +398,12 @@ class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
         sock, addr = client
         self.shutdown_client_socket(sock)
 
+    def _pending_exception(self, thread):
+        """Raise server uncaught exception.
+
+        Daughter classes can override this if they use daughter threads.
+        """
+        thread.pending_exception()
 
 
 class TestingThreadingTCPServer(TestingTCPServerMixin,
@@ -450,6 +456,12 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
             # shutdown. If an exception occurred in the thread it will be
             # re-raised
             connection_thread.join()
+
+    def _pending_exception(self, thread):
+        for sock, addr, connection_thread in self.clients:
+            if connection_thread is not None:
+                connection_thread.pending_exception()
+        super(TestingThreadingTCPServer, self)._pending_exception(thread)
 
 
 class TestingTCPServerInAThread(transport.Server):
@@ -523,6 +535,10 @@ class TestingTCPServerInAThread(transport.Server):
             # that we will raise a single exception even if several occurred in
             # the various threads involved.
             self.server = None
+
+    def pending_exception(self):
+        """Raise uncaught exception in the server."""
+        self.server._pending_exception(self._server_thread)
 
 
 class SmartTCPServer_for_testing(server.SmartTCPServer):

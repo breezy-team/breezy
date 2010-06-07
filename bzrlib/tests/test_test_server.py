@@ -17,6 +17,7 @@
 import errno
 import socket
 import SocketServer
+import threading
 
 from bzrlib import (
     osutils,
@@ -174,3 +175,23 @@ class TestTCPServerInAThread(tests.TestCase):
         self.assertRaises(ServerFailure, server.stop_server)
 
 
+    def test_server_crash_while_responding(self):
+        sync = threading.Event()
+        sync.clear()
+        class ServerFailure(Exception):
+            pass
+
+        class FailingDuringResponseHandler(TCPConnectionHandler):
+
+            def handle_connection(self):
+                req = self.rfile.readline()
+                sync.set()
+                raise ServerFailure()
+
+        server = self.get_server(
+            connection_handler_class=FailingDuringResponseHandler)
+        client = self.get_client()
+        client.connect(server.server_address)
+        client.write('ping\n')
+        sync.wait()
+        self.assertRaises(ServerFailure, server.pending_exception)
