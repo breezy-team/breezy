@@ -98,7 +98,7 @@ class TestWhoami(ExternalBase):
         self.assertContainsRe(err, 'Unable to determine your name')
 
     def test_whoami_directory(self):
-        """Test --directory option"""
+        """Test --directory option."""
         wt = self.make_branch_and_tree('subdir')
         c = wt.branch.get_config()
         c.set_user_option('email', 'Branch Identity <branch@identi.ty>')
@@ -110,7 +110,7 @@ class TestWhoami(ExternalBase):
                           c.get_user_option('email'))
 
     def test_whoami_remote_directory(self):
-        """Test --directory option"""
+        """Test --directory option with a remote directory."""
         wt = self.make_branch_and_tree('subdir')
         c = wt.branch.get_config()
         c.set_user_option('email', 'Branch Identity <branch@identi.ty>')
@@ -124,7 +124,7 @@ class TestWhoami(ExternalBase):
                           c.get_user_option('email'))
 
     def test_whoami_nonbranch_directory(self):
-        """Test --directory mentioning a non-branch directory"""
+        """Test --directory mentioning a non-branch directory."""
         wt = self.build_tree(['subdir/'])
         out, err = self.run_bzr("whoami --directory subdir", retcode=3)
         self.assertContainsRe(err, 'ERROR: Not a branch')
