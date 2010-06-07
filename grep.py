@@ -540,15 +540,17 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
             e = file_text.find("\n", m.end()) + 1 or len(file_text)
             line = file_text[b:e-1].rstrip("\r")
             if opts.line_number:
-                start = file_text.count("\n", 0, b) + 1
-                writeline(lineno=start, line=line)
+                start = file_text.count("\n", 0, b) + 2
+                writeline(lineno=start-1, line=line)
             else:
                 writeline(line=line)
             file_text = file_text[e:]
+        else:
+            start = 1
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
                 if search(line):
-                    writeline(lineno=index+1, line=line)
+                    writeline(lineno=index+start, line=line)
         else:
             for line in file_text.splitlines():
                 if search(line):

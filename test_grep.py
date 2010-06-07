@@ -1082,6 +1082,9 @@ class TestGrep(GrepTestBase):
             '-n', 'line1', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt~.:1:line1", flags=TestGrep._reflags)
 
+        out, err = self.run_bzr(['grep', '-n', 'line[0-9]', 'file0.txt'])
+        self.assertContainsRe(out, "file0.txt:3:line3", flags=TestGrep._reflags)
+
     def test_wtree_with_line_number(self):
         """(wtree) Search for pattern with --line-number.
         """
@@ -1098,6 +1101,9 @@ class TestGrep(GrepTestBase):
 
         out, err = self.run_bzr(['grep', '-n', '[hjkl]ine1', 'file0.txt'])
         self.assertContainsRe(out, "file0.txt:1:line1", flags=TestGrep._reflags)
+
+        out, err = self.run_bzr(['grep', '-n', 'line[0-9]', 'file0.txt'])
+        self.assertContainsRe(out, "file0.txt:3:line3", flags=TestGrep._reflags)
 
     def test_revno_basic_history_grep_file(self):
         """Search for pattern in specific revision number in a file.
