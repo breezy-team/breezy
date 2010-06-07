@@ -17,6 +17,7 @@
 import errno
 import socket
 import SocketServer
+import threading
 
 from bzrlib import (
     osutils,
@@ -117,7 +118,6 @@ class TestTCPServerInAThread(tests.TestCase):
     def test_start_stop(self):
         server = self.get_server()
         client = self.get_client()
-        client.connect((server.host, server.port))
         server.stop_server()
         # since the server doesn't accept connections anymore attempting to
         # connect should fail
@@ -147,14 +147,14 @@ class TestTCPServerInAThread(tests.TestCase):
         self.assertRaises(CantStart,
                           self.get_server, server_class=CantStartServer)
 
-    def test_server_fails_while_serving_or_stoping(self):
-        class ServerFailure(Exception):
+    def test_server_fails_while_serving_or_stopping(self):
+        class CantConnect(Exception):
             pass
 
         class FailingConnectionHandler(TCPConnectionHandler):
 
             def handle(self):
-                raise ServerFailure()
+                raise CantConnect()
 
         server = self.get_server(
             connection_handler_class=FailingConnectionHandler)
@@ -171,7 +171,53 @@ class TestTCPServerInAThread(tests.TestCase):
             client.read()
         except socket.error:
             pass
-        # Now the server has raise the exception in its own thread
-        self.assertRaises(ServerFailure, server.stop_server)
+        # Now the server has raised the exception in its own thread
+        self.assertRaises(CantConnect, server.stop_server)
 
+    def test_server_crash_while_responding(self):
+        sync = threading.Event()
+        sync.clear()
+        class FailToRespond(Exception):
+            pass
 
+        class FailingDuringResponseHandler(TCPConnectionHandler):
+
+            def handle_connection(self):
+                req = self.rfile.readline()
+                threading.currentThread().set_event(sync)
+                raise FailToRespond()
+
+        server = self.get_server(
+            connection_handler_class=FailingDuringResponseHandler)
+        client = self.get_client()
+        client.connect((server.host, server.port))
+        client.write('ping\n')
+        sync.wait()
+        self.assertRaises(FailToRespond, server.pending_exception)
+
+    def test_exception_swallowed_while_serving(self):
+        sync = threading.Event()
+        sync.clear()
+        class CantServe(Exception):
+            pass
+
+        class FailingWhileServingConnectionHandler(TCPConnectionHandler):
+
+            def handle(self):
+                # We want to sync with the thread that is serving the
+                # connection.
+                threading.currentThread().set_event(sync)
+                raise CantServe()
+
+        server = self.get_server(
+            connection_handler_class=FailingWhileServingConnectionHandler)
+        # Install the exception swallower
+        server.set_ignored_exceptions(CantServe)
+        client = self.get_client()
+        # Connect to the server so the exception is raised there
+        client.connect((server.host, server.port))
+        # Wait for the exception to propagate.
+        sync.wait()
+        # The connection wasn't served properly but the exception should have
+        # been swallowed.
+        server.pending_exception()
