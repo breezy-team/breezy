@@ -484,7 +484,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
                     found = False
         else:
             search = opts.patternc.search
-            if os.linesep == "\n" or not pattern.endswith("$"):
+            if "$" not in pattern:
                 found = search(file_text) is not None
             else:
                 for line in file_text.splitlines():
@@ -506,14 +506,9 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
             if i == -1:
                 return
             b = file_text.rfind("\n", 0, i) + 1
-            e = file_text.find("\n", i) + 1 or len(file_text)
-            line = file_text[b:e-1]
             if opts.line_number:
-                start = file_text.count("\n", 0, b) + 2
-                writeline(lineno=start-1, line=line)
-            else:
-                writeline(line=line)
-            file_text = file_text[e:]
+                start = file_text.count("\n", 0, b) + 1
+            file_text = file_text[b:]
         else:
             start = 1
         if opts.line_number:
@@ -529,7 +524,7 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         # standard cases, but perhaps could try and detect backtracking
         # patterns here and avoid whole text search in those cases
         search = opts.patternc.search
-        if os.linesep == "\n" or not pattern.endswith("$"):
+        if "$" not in pattern:
             # GZ 2010-06-05: Grr, re.MULTILINE can't save us when searching
             #                through revisions as bazaar returns binary mode
             #                and trailing \r breaks $ as line ending match
@@ -537,14 +532,9 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
             if m is None:
                 return
             b = file_text.rfind("\n", 0, m.start()) + 1
-            e = file_text.find("\n", m.end()) + 1 or len(file_text)
-            line = file_text[b:e-1].rstrip("\r")
             if opts.line_number:
-                start = file_text.count("\n", 0, b) + 2
-                writeline(lineno=start-1, line=line)
-            else:
-                writeline(line=line)
-            file_text = file_text[e:]
+                start = file_text.count("\n", 0, b) + 1
+            file_text = file_text[b:]
         else:
             start = 1
         if opts.line_number:
