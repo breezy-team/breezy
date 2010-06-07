@@ -118,7 +118,6 @@ class TestTCPServerInAThread(tests.TestCase):
     def test_start_stop(self):
         server = self.get_server()
         client = self.get_client()
-        client.connect(server.server_address)
         server.stop_server()
         # since the server doesn't accept connections anymore attempting to
         # connect should fail
@@ -147,7 +146,7 @@ class TestTCPServerInAThread(tests.TestCase):
         self.assertRaises(CantStart,
                           self.get_server, server_class=CantStartServer)
 
-    def test_server_fails_while_serving_or_stoping(self):
+    def test_server_fails_while_serving_or_stopping(self):
         class CantConnect(Exception):
             pass
 

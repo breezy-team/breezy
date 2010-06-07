@@ -360,6 +360,20 @@ class TestingTCPServerMixin:
         finally:
             self.stopped.set()
 
+    def handle_request(self):
+        """Handle one request.
+
+        The python version swallows some socket exceptions and we don't use
+        timeout, so we override it to better control the server behavior.
+        """
+        request, client_address = self.get_request()
+        if self.verify_request(request, client_address):
+            try:
+                self.process_request(request, client_address)
+            except:
+                self.handle_error(request, client_address)
+                self.close_request(request)
+
     def verify_request(self, request, client_address):
         """Verify the request.
 
@@ -551,10 +565,11 @@ class TestingTCPServerInAThread(transport.Server):
             return
         try:
             # The server has been started successfully, shut it down now.  As
-            # soon as we stop serving, no more connection are accepted.
-            self.server.serving.clear()
+            # soon as we stop serving, no more connection are accepted except
+            # one to get out of the blocking listen.
             self.set_ignored_exceptions(
                 self.server.ignored_exceptions_during_shutdown)
+            self.server.serving.clear()
             # The server is listening for a last connection, let's give it:
             last_conn = None
             try:
