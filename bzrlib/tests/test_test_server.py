@@ -183,7 +183,7 @@ class TestTCPServerInAThread(tests.TestCase):
 
             def handle_connection(self):
                 req = self.rfile.readline()
-                sync.set()
+                threading.currentThread().set_event(sync)
                 raise FailToRespond()
 
         server = self.get_server(
