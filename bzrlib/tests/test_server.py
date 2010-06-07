@@ -397,7 +397,11 @@ class TestingTCPServerMixin:
             sock.shutdown(socket.SHUT_RDWR)
             sock.close()
         except (socket.error, select.error), e:
-            if e[0] in (errno.EBADF, errno.ENOTCONN):
+            accepted_errnos = [errno.EBADF, errno.ENOTCONN, errno.ECONNRESET]
+            if sys.platform == 'win32':
+                accepted_errnos.extend([errno.WSAEBADF, errno.WSAENOTCONN,
+                                        errno.WSAECONNRESET])
+            if e[0] in accepted_errnos:
                 # Right, the socket is already down
                 pass
             else:
