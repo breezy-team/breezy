@@ -20,8 +20,10 @@
 import os
 
 import bzrlib
-from bzrlib import osutils
-from bzrlib.branch import Branch
+from bzrlib import (
+    osutils,
+    config,
+    )
 from bzrlib.tests.blackbox import ExternalBase
 
 
@@ -120,8 +122,12 @@ class TestWhoami(ExternalBase):
         url = self.get_url('subdir')
         self.run_bzr(['whoami', '--directory', url, '--branch',
                       'Changed Identity <changed@identi.ty>'])
+        # The identity has been set in the branch config (but not the global
+        # config)
         self.assertEquals('Changed Identity <changed@identi.ty>',
                           c.get_user_option('email'))
+        global_conf = config.GlobalConfig()
+        self.assertEquals(None, global_conf.get_user_option('email'))
 
     def test_whoami_nonbranch_directory(self):
         """Test --directory mentioning a non-branch directory."""
