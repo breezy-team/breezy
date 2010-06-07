@@ -252,9 +252,30 @@ class ThreadWithException(threading.Thread):
         super(ThreadWithException, self).__init__(*args, **kwargs)
         self.set_event(event)
         self.exception = None
+        self.ignored_exceptions = None # see set_ignored_exceptions
 
     def set_event(self, event):
         self.ready = event
+
+    def set_ignored_exceptions(self, ignored):
+        """Declare which exceptions will be ignored.
+
+        :param ignored: Can be either:
+           - None: all exceptions will be raised,
+           - an exception class: the instances of this class will be ignored,
+           - a tuple of exception classes: the instances of any class of the
+             list will be ignored,
+           - a callable: that will be passed exc_class, exc_value
+             and should return True if the exception should be ignored
+        """
+        if ignored is None:
+            self.ignored_exceptions = None
+        elif isinstance(ignored, Exception):
+            self.ignored_exceptions = lambda c, v: c is ignored
+        elif isinstance(ignored, tuple):
+            self.ignored_exceptions = lambda c, v: isinstance(v, ignored)
+        else:
+            self.ignored_exceptions = ignored
 
     def run(self):
         """Overrides Thread.run to capture any exception."""
@@ -282,7 +303,10 @@ class ThreadWithException(threading.Thread):
         if self.exception is not None:
             exc_class, exc_value, exc_tb = self.exception
             self.exception = None # The exception should be raised only once
-            raise exc_class, exc_value, exc_tb
+            if (self.ignored_exceptions is None
+                or not self.ignored_exceptions(exc_class, exc_value)):
+                # Raise non ignored exceptions
+                raise exc_class, exc_value, exc_tb
         if timeout and self.isAlive():
             # The timeout expired without joining the thread, the thread is
             # therefore stucked and that's a failure as far as the test is
@@ -312,6 +336,7 @@ class TestingTCPServerMixin:
         # We collect the resources used by the clients so we can release them
         # when shutting down
         self.clients = []
+        self.ignored_exceptions = None
 
     def server_bind(self):
         # We need to override the SocketServer bind, yet, we still want to use
@@ -378,6 +403,19 @@ class TestingTCPServerMixin:
             else:
                 raise
 
+    # The following methods are called by the main thread
+
+    def set_ignored_exceptions(self, thread, ignored_exceptions):
+        self.ignored_exceptions = ignored_exceptions
+        thread.set_ignored_exceptions(self.ignored_exceptions)
+
+    def _pending_exception(self, thread):
+        """Raise server uncaught exception.
+
+        Daughter classes can override this if they use daughter threads.
+        """
+        thread.pending_exception()
+
 
 class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
 
@@ -397,13 +435,6 @@ class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
     def shutdown_client(self, client):
         sock, addr = client
         self.shutdown_client_socket(sock)
-
-    def _pending_exception(self, thread):
-        """Raise server uncaught exception.
-
-        Daughter classes can override this if they use daughter threads.
-        """
-        thread.pending_exception()
 
 
 class TestingThreadingTCPServer(TestingTCPServerMixin,
@@ -436,10 +467,13 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
             event=stopped,
             target = self.process_request_thread,
             args = (started, stopped, request, client_address))
-        t.name = '%s -> %s' % (client_address, self.server_address)
         # Update the client description
         self.clients.pop()
         self.clients.append((request, client_address, t))
+        # Propagate the exception handler since we must the same one for
+        # connections running in their own threads than TestingTCPServer.
+        t.set_ignored_exceptions(self.ignored_exceptions)
+        t.name = '%s -> %s' % (client_address, self.server_address)
         t.start()
         started.wait()
         # If an exception occured during the thread start, it will get raised.
@@ -457,11 +491,19 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
             # re-raised
             connection_thread.join()
 
+    def set_ignored_exceptions(self, thread, ignored_exceptions):
+        TestingTCPServerMixin.set_ignored_exceptions(self, thread,
+                                                     ignored_exceptions)
+        for sock, addr, connection_thread in self.clients:
+            if connection_thread is not None:
+                connection_thread.set_ignored_exceptions(
+                    self.ignored_exceptions)
+
     def _pending_exception(self, thread):
         for sock, addr, connection_thread in self.clients:
             if connection_thread is not None:
                 connection_thread.pending_exception()
-        super(TestingThreadingTCPServer, self)._pending_exception(thread)
+        TestingTCPServerMixin._pending_exception(self, thread)
 
 
 class TestingTCPServerInAThread(transport.Server):
@@ -472,6 +514,7 @@ class TestingTCPServerInAThread(transport.Server):
         self.request_handler_class = request_handler_class
         self.server_address = server_address
         self.server = None
+        self._server_thread = None
 
     def __repr__(self):
         return "%s%r" % (self.__class__.__name__, self.server_address)
@@ -535,6 +578,11 @@ class TestingTCPServerInAThread(transport.Server):
             # that we will raise a single exception even if several occurred in
             # the various threads involved.
             self.server = None
+
+    def set_ignored_exceptions(self, ignored_exceptions):
+        """Install an exception handler for the server."""
+        self.server.set_ignored_exceptions(self._server_thread,
+                                           ignored_exceptions)
 
     def pending_exception(self):
         """Raise uncaught exception in the server."""
