@@ -1,3 +1,9 @@
+bzr-grep 0.4.0-dev
+==================================
+* Add seperate output formatter to reduce duplication of search loops,
+  additionally make -Fi use regexp rather than lowercasing pattern and
+  entirety of text for the same reason. (Martin [gz])
+
 bzr-grep 0.3.0-final - 23-May-2010
 ==================================
 * Support for --color option (POSIX only). (Parth Malwankar, #571694)
