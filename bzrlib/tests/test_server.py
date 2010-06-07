@@ -372,6 +372,16 @@ class TestingTCPServerMixin:
         self.serving.clear()
         raise
 
+    def ignored_exceptions_during_shutdown(self, e):
+        if sys.platform == 'win32':
+            accepted_errnos = [errno.WSAEBADF, errno.WSAENOTCONN,
+                                        errno.WSAECONNRESET]
+        else:
+            accepted_errnos = [errno.EBADF, errno.ENOTCONN, errno.ECONNRESET]
+        if isinstance(e, socket.error) and e[0] in accepted_errnos:
+            return True
+        return False
+
     # The following methods are called by the main thread
 
     def stop_client_connections(self):
@@ -389,18 +399,13 @@ class TestingTCPServerMixin:
         This should be called only when no other thread is trying to use the
         socket.
         """
+        # The request process has been completed, the thread is about to
+        # die, let's shutdown the socket if we can.
         try:
-            # The request process has been completed, the thread is about to
-            # die, let's shutdown the socket if we can.
             sock.shutdown(socket.SHUT_RDWR)
             sock.close()
-        except (socket.error, select.error), e:
-            accepted_errnos = [errno.EBADF, errno.ENOTCONN, errno.ECONNRESET]
-            if sys.platform == 'win32':
-                accepted_errnos.extend([errno.WSAEBADF, errno.WSAENOTCONN,
-                                        errno.WSAECONNRESET])
-            if e[0] in accepted_errnos:
-                # Right, the socket is already down
+        except Exception, e:
+            if self.ignored_exceptions(e):
                 pass
             else:
                 raise
@@ -550,9 +555,10 @@ class TestingTCPServerInAThread(transport.Server):
             return
         try:
             # The server has been started successfully, shut it down now.  As
-            # soon as we stop serving, no more connection are accepted except
-            # one to get out of the blocking listen.
+            # soon as we stop serving, no more connection are accepted.
             self.server.serving.clear()
+            self.set_ignored_exceptions(
+                self.server.ignored_exceptions_during_shutdown)
             # The server is listening for a last connection, let's give it:
             last_conn = None
             try:
