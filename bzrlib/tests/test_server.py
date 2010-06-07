@@ -350,13 +350,15 @@ class TestingTCPServerMixin:
         self.stopped.clear()
         # We are listening and ready to accept connections
         self.started.set()
-        while self.serving.isSet():
-            # Really a connection but the python framework is generic and
-            # call them requests
-            self.handle_request()
-        # Let's close the listening socket
-        self.server_close()
-        self.stopped.set()
+        try:
+            while self.serving.isSet():
+                # Really a connection but the python framework is generic and
+                # call them requests
+                self.handle_request()
+            # Let's close the listening socket
+            self.server_close()
+        finally:
+            self.stopped.set()
 
     def verify_request(self, request, client_address):
         """Verify the request.
@@ -375,7 +377,7 @@ class TestingTCPServerMixin:
     def ignored_exceptions_during_shutdown(self, e):
         if sys.platform == 'win32':
             accepted_errnos = [errno.EBADF, errno.WSAEBADF, errno.WSAENOTCONN,
-                               errno.WSAECONNRESET]
+                               errno.WSAECONNRESET, errno.WSAESHUTDOWN]
         else:
             accepted_errnos = [errno.EBADF, errno.ENOTCONN, errno.ECONNRESET]
         if isinstance(e, socket.error) and e[0] in accepted_errnos:
@@ -389,18 +391,12 @@ class TestingTCPServerMixin:
             c = self.clients.pop()
             self.shutdown_client(c)
 
-    def shutdown_client_socket(self, sock):
-        """Properly shutdown a client socket.
-
-        Under some circumstances (as in bug #383920), we need to force the
-        shutdown as python delays it until gc occur otherwise and the client
-        may hang.
+    def shutdown_socket(self, sock):
+        """Properly shutdown a socket.
 
         This should be called only when no other thread is trying to use the
         socket.
         """
-        # The request process has been completed, the thread is about to
-        # die, let's shutdown the socket if we can.
         try:
             sock.shutdown(socket.SHUT_RDWR)
             sock.close()
@@ -441,7 +437,7 @@ class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
 
     def shutdown_client(self, client):
         sock, addr = client
-        self.shutdown_client_socket(sock)
+        self.shutdown_socket(sock)
 
 
 class TestingThreadingTCPServer(TestingTCPServerMixin,
@@ -490,7 +486,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
 
     def shutdown_client(self, client):
         sock, addr, connection_thread = client
-        self.shutdown_client_socket(sock)
+        self.shutdown_socket(sock)
         if connection_thread is not None:
             # The thread has been created only if the request is processed but
             # after the connection is inited. This could happen during server
@@ -580,7 +576,13 @@ class TestingTCPServerInAThread(transport.Server):
                 last_conn.close()
             # Check for any exception that could have occurred in the server
             # thread
-            self._server_thread.join()
+            try:
+                self._server_thread.join()
+            except Exception, e:
+                if self.server.ignored_exceptions(e):
+                    pass
+                else:
+                    raise
         finally:
             # Make sure we can be called twice safely, note that this means
             # that we will raise a single exception even if several occurred in

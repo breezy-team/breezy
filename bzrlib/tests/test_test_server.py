@@ -171,7 +171,7 @@ class TestTCPServerInAThread(tests.TestCase):
             client.read()
         except socket.error:
             pass
-        # Now the server has raise the exception in its own thread
+        # Now the server has raised the exception in its own thread
         self.assertRaises(CantConnect, server.stop_server)
 
     def test_server_crash_while_responding(self):
@@ -204,7 +204,9 @@ class TestTCPServerInAThread(tests.TestCase):
         class FailingWhileServingConnectionHandler(TCPConnectionHandler):
 
             def handle(self):
-                sync.set()
+                # We want to sync with the thread that is serving the
+                # connection.
+                threading.currentThread().set_event(sync)
                 raise CantServe()
 
         server = self.get_server(
@@ -212,7 +214,9 @@ class TestTCPServerInAThread(tests.TestCase):
         # Install the exception swallower
         server.set_ignored_exceptions(CantServe)
         client = self.get_client()
+        # Connect to the server so the exception is raised there
         client.connect(server.server_address)
+        # Wait for the exception to propagate.
         sync.wait()
         # The connection wasn't served properly but the exception should have
         # been swallowed.
