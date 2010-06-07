@@ -442,14 +442,14 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
     # The following methods are called by the main thread
 
     def shutdown_client(self, client):
-        sock, addr, t = client
+        sock, addr, connection_thread = client
         self.shutdown_client_socket(sock)
-        if t is not None:
+        if connection_thread is not None:
             # The thread has been created only if the request is processed but
             # after the connection is inited. This could happen during server
             # shutdown. If an exception occurred in the thread it will be
             # re-raised
-            t.join()
+            connection_thread.join()
 
 
 class TestingTCPServerInAThread(transport.Server):
