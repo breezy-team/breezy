@@ -1936,6 +1936,44 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2) # finds line1 and line10
 
 
+class TestNonAscii(GrepTestBase):
+    """Tests for non-ascii filenames and file contents"""
+
+    _test_needs_features = [tests.UnicodeFilenameFeature]
+
+    def test_unicode_only_file(self):
+        """Test filename and contents that requires a unicode encoding"""
+        tree = self.make_branch_and_tree(".")
+        contents = [u"\u1234"]
+        self.build_tree(contents)
+        tree.add(contents)
+        tree.commit("Initial commit")
+        as_utf8 = u"\u1234".encode("UTF-8")
+
+        # GZ 2010-06-07: Note we can't actually grep for \u1234 as the pattern
+        #                is mangled according to the user encoding.
+        streams = self.run_bzr(["grep", "--files-with-matches",
+            u"contents"], encoding="UTF-8")
+        self.assertEqual(streams, (as_utf8 + "\n", ""))
+
+        streams = self.run_bzr(["grep", "-r", "1", "--files-with-matches",
+            u"contents"], encoding="UTF-8")
+        self.assertEqual(streams, (as_utf8 + "~1\n", ""))
+
+        fileencoding = osutils.get_user_encoding()
+        as_mangled = as_utf8.decode(fileencoding, "replace").encode("UTF-8")
+
+        streams = self.run_bzr(["grep", "-n",
+            u"contents"], encoding="UTF-8")
+        self.assertEqual(streams, ("%s:1:contents of %s\n" %
+            (as_utf8, as_mangled), ""))
+
+        streams = self.run_bzr(["grep", "-n", "-r", "1",
+            u"contents"], encoding="UTF-8")
+        self.assertEqual(streams, ("%s~1:1:contents of %s\n" %
+            (as_utf8, as_mangled), ""))
+
+
 class TestColorGrep(GrepTestBase):
     """Tests for the --color option."""
 

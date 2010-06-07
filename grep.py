@@ -344,7 +344,6 @@ def _file_grep_list_only_wtree(file, path, opts, path_prefix=None):
         if path_prefix and path_prefix != '.':
             # user has passed a dir arg, show that as result prefix
             path = osutils.pathjoin(path_prefix, path)
-        path = path.encode(_terminal_encoding, 'replace')
         opts.outputter.get_writer(path, None, None)()
 
 
@@ -463,7 +462,10 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         # user has passed a dir arg, show that as result prefix
         path = osutils.pathjoin(path_prefix, path)
 
-    path = path.encode(_terminal_encoding, 'replace')
+    # GZ 2010-06-07: There's no actual guarentee the file contents will be in
+    #                the user encoding, but we have to guess something and it
+    #                is a reasonable default without a better mechanism.
+    file_encoding = _user_encoding
     pattern = opts.pattern.encode(_user_encoding, 'replace')
 
     writeline = opts.outputter.get_writer(path, revno, cache_id)
@@ -490,18 +492,22 @@ def _file_grep(file_text, path, opts, revno, path_prefix=None, cache_id=None):
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
                 if pattern in line:
+                    line = line.decode(file_encoding)
                     writeline(lineno=index+1, line=line)
         else:
             for line in file_text.splitlines():
                 if pattern in line:
+                    line = line.decode(file_encoding)
                     writeline(line=line)
     else:
         search = opts.patternc.search
         if opts.line_number:
             for index, line in enumerate(file_text.splitlines()):
                 if search(line):
+                    line = line.decode(file_encoding)
                     writeline(lineno=index+1, line=line)
         else:
             for line in file_text.splitlines():
                 if search(line):
+                    line = line.decode(file_encoding)
                     writeline(line=line)
