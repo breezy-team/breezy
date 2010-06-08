@@ -1092,7 +1092,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # If the filesystem is Unicode, skip the test
         if os.name != 'posix':
             self.skip('Test requires a posix style byte-based filesystem')
-            return 
+            return
 
         tree = [
             '.bzr',
@@ -1957,7 +1957,7 @@ class TestTerminalWidth(tests.TestCase):
     def restore_osutils_globals(self):
         osutils._terminal_size_state = self._orig_terminal_size_state
         osutils._first_terminal_size = self._orig_first_terminal_size
-        
+
     def replace_stdout(self, new):
         self.overrideAttr(sys, 'stdout', new)
 
