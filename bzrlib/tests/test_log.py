@@ -1750,4 +1750,7 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         self.assertLogRevnos(['3', '2'],
                              b, '1', '3', exclude_common_ancestry=True,
                              generate_merge_revisions=False)
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2'],
+                             b, '1', '3', exclude_common_ancestry=True,
+                             generate_merge_revisions=True)
 
