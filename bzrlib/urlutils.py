@@ -135,7 +135,7 @@ def join(base, *args):
             arg_path_start = 0
         elif arg_path_start is None:
             arg_path_start = len(arg)
-        if not arg_scheme_end is None:
+        if arg_scheme_end is not None:
             base = arg
             path = arg[arg_path_start:]
             scheme_end = arg_scheme_end
