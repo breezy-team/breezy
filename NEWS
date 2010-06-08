@@ -5,6 +5,10 @@ bzr-grep 0.4.0-dev - Unreleased
   entirety of text for the same reason. This also fixes bug #590589
   - UnicodeDecodeError with options -Fi. (Martin [gz])
 
+* Added fast path for no match that avoids splitting the file text into
+  seperate lines and testing each one, by checking the entire text for a
+  possible match initially. (Martin [gz])
+
 * Added Makefile to enable BSD ports. (Parth Malwankar)
 
 * Fixed setup.py to work correctly. (Martin <gzlist@googlemail.com>)
