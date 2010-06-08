@@ -11,7 +11,7 @@ bzr-grep 0.4.0-final - 08-Jun-2010
 
 * Added Makefile. (Parth Malwankar)
 
-* Fixed setup.py to work correctly. (Martin <gzlist@googlemail.com>)
+* Fixed setup.py to work correctly. (Martin [gz])
 
 bzr-grep 0.3.0-final - 23-May-2010
 ==================================
