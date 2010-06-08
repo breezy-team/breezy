@@ -16,6 +16,6 @@
 """Plugin version information."""
 
 
-version_info = (0, 4, 0, 'dev', 0)
+version_info = (0, 4, 0, 'final', 0)
 version_str = '.'.join(map(str, version_info))
 

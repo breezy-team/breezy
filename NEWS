@@ -1,5 +1,5 @@
-bzr-grep 0.4.0-dev - Unreleased
-===============================
+bzr-grep 0.4.0-final - 08-Jun-2010
+==================================
 * Add seperate output formatter to reduce duplication of search loops,
   additionally make -Fi use regexp rather than lowercasing pattern and
   entirety of text for the same reason. This also fixes bug #590589
@@ -9,7 +9,7 @@ bzr-grep 0.4.0-dev - Unreleased
   seperate lines and testing each one, by checking the entire text for a
   possible match initially. (Martin [gz])
 
-* Added Makefile to enable BSD ports. (Parth Malwankar)
+* Added Makefile. (Parth Malwankar)
 
 * Fixed setup.py to work correctly. (Martin <gzlist@googlemail.com>)
 
