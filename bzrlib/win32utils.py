@@ -522,7 +522,7 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
-def _win32syscall_command_line_to_argv(command_line, single_quotes_allowed=False):
+def _command_line_to_argv(command_line, single_quotes_allowed=False):
     """Convert a Unicode command line into a list of argv arguments.
 
     It performs wildcard expansion to make wildcards act closer to how they
@@ -541,30 +541,25 @@ def _win32syscall_command_line_to_argv(command_line, single_quotes_allowed=False
     # Bug #587868 Now make sure that the length of s agrees with sys.argv 
     # we do this by simply counting the number of arguments in each. The counts should 
     # agree no matter what encoding sys.argv is in (AFAIK) 
-    # len(arguments) < len (sys.argv) should be an impossibility since python gets 
+    # len(arguments) < len(sys.argv) should be an impossibility since python gets 
     # args from the very same PEB as does GetCommandLineW
-    arguments = []
-    arguments.extend(s)
-    if len(arguments) < len (sys.argv):
-        raise AssertionError("len(GetCommandLineW(...)) < len (sys.argv) should not be possible")
+    arguments = list(s)
+    if len(arguments) < len(sys.argv):
+        raise BzrInternalError("len(GetCommandLineW(...)) < len(sys.argv) should not be possible")
     arguments = arguments[len(arguments) - len(sys.argv):]
     
     # Carry on to process globs (metachars) in the command line
-    argv = process_metachars_in_commandline(arguments)
-    return argv
-
-
-def process_metachars_in_commandline(raw_args):
     # expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs
-    args = []
-    for is_quoted, arg in raw_args:
+    argv = []
+    for is_quoted, arg in arguments:
         if is_quoted or not glob.has_magic(arg):
-            args.append(arg)
+            argv.append(arg)
         else:
-            args.extend(glob_one(arg))
-    return args
+            argv.extend(glob_one(arg))
+    return argv
+
 
 
 if has_ctypes and winver != 'Windows 98':
@@ -576,8 +571,7 @@ if has_ctypes and winver != 'Windows 98':
         if command_line is None:
             raise ctypes.WinError()
         # Skip the first argument, since we only care about parameters
-        argv = _win32syscall_command_line_to_argv(command_line)[1:]
-            
+        argv = _command_line_to_argv(command_line)[1:]
         return argv
 else:
     get_unicode_argv = None

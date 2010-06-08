@@ -97,3 +97,18 @@ class TestShelveRelpath(TestCaseWithTransport):
         tree.add('file')
         os.chdir('tree/dir')
         self.run_bzr('shelve --all ../file')
+
+
+class TestShelveUnshelve(TestCaseWithTransport):
+
+    def test_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/a', 'initial\n')])
+        tree.add('a')
+        tree.commit(message='committed')
+        self.build_tree_contents([('tree/a', 'initial\nmore\n')])
+        self.run_bzr('shelve -d tree --all')
+        self.assertFileEqual('initial\n', 'tree/a')
+        self.run_bzr('unshelve --directory tree')
+        self.assertFileEqual('initial\nmore\n', 'tree/a')
