@@ -1090,7 +1090,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # are not using the filesystem's encoding
 
         # require a bytestring based filesystem
-        self.requireFeature(tests.ByteStringNamedFilesystem)        
+        self.requireFeature(tests.ByteStringNamedFilesystem)
 
         tree = [
             '.bzr',
