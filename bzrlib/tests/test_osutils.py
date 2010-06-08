@@ -1089,10 +1089,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         # walkdirs didn't raise a useful message when the filenames
         # are not using the filesystem's encoding
 
-        # If the filesystem is Unicode, skip the test
-        if os.name != 'posix':
-            self.skip('Test requires a posix style byte-based filesystem')
-            return
+        # require a bytestring based filesystem
+        self.requireFeature(tests.ByteStringNamedFilesystem)        
 
         tree = [
             '.bzr',
