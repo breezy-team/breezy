@@ -30,7 +30,8 @@ Bug Fixes
   (Alexander Belchenko, #588277)
 
 * ``bzr pull`` now works when a lp: URL is explicitly defined as the parent
-  or pull location in locations.conf or branch.conf. (Gordon Tyler)
+  or pull location in locations.conf or branch.conf.
+  (Gordon Tyler, #534787)
 
 Improvements
 ************
