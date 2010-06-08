@@ -156,7 +156,7 @@ class TestUrlToPath(TestCase):
         # Weird stuff
         # Can't have slashes or colons in the scheme
         test_one('/path/to/://foo', None)
-        test_one('path:path://foo', ('path', 'path://foo'))
+        test_one('scheme:stuff://foo', ('scheme', 'stuff://foo'))
         # Must have more than one character for scheme
         test_one('C://foo', None)
         test_one('ab://foo', ('ab', 'foo'))
