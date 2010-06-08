@@ -193,12 +193,24 @@ def import_git_submodule(texts, mapping, path, name, (base_hexsha, hexsha),
 
 def remove_disappeared_children(base_inv, path, base_tree, existing_children,
         lookup_object):
+    """Generate an inventory delta for removed children.
+
+    :param base_inv: Base inventory against which to generate the 
+        inventory delta.
+    :param path: Path to process
+    :param base_tree: Git Tree base object
+    :param existing_children: Children that still exist
+    :param lookup_object: Lookup a git object by its SHA1
+    :return: Inventory delta, as list
+    """
     ret = []
     for name, mode, hexsha in base_tree.iteritems():
         if name in existing_children:
             continue
         c_path = posixpath.join(path, name.decode("utf-8"))
-        ret.append((c_path, None, base_inv.path2id(c_path), None))
+        file_id = base_inv.path2id(c_path)
+        assert file_id is not None
+        ret.append((c_path, None, file_id, None))
         if stat.S_ISDIR(mode):
             ret.extend(remove_disappeared_children(
                 base_inv, c_path, lookup_object(hexsha), [], lookup_object))
