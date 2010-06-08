@@ -2,7 +2,8 @@ bzr-grep 0.4.0-dev - Unreleased
 ===============================
 * Add seperate output formatter to reduce duplication of search loops,
   additionally make -Fi use regexp rather than lowercasing pattern and
-  entirety of text for the same reason. (Martin [gz])
+  entirety of text for the same reason. This also fixes bug #590589
+  - UnicodeDecodeError with options -Fi. (Martin [gz])
 
 * Added Makefile to enable BSD ports. (Parth Malwankar)
 
