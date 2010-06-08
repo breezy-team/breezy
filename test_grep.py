@@ -1936,9 +1936,48 @@ class TestGrep(GrepTestBase):
         self.assertEqual(len(out.splitlines()), 2) # finds line1 and line10
 
 
+class TestNonAscii(GrepTestBase):
+    """Tests for non-ascii filenames and file contents"""
+
+    _test_needs_features = [tests.UnicodeFilenameFeature]
+
+    def test_unicode_only_file(self):
+        """Test filename and contents that requires a unicode encoding"""
+        tree = self.make_branch_and_tree(".")
+        contents = [u"\u1234"]
+        self.build_tree(contents)
+        tree.add(contents)
+        tree.commit("Initial commit")
+        as_utf8 = u"\u1234".encode("UTF-8")
+
+        # GZ 2010-06-07: Note we can't actually grep for \u1234 as the pattern
+        #                is mangled according to the user encoding.
+        streams = self.run_bzr(["grep", "--files-with-matches",
+            u"contents"], encoding="UTF-8")
+        self.assertEqual(streams, (as_utf8 + "\n", ""))
+
+        streams = self.run_bzr(["grep", "-r", "1", "--files-with-matches",
+            u"contents"], encoding="UTF-8")
+        self.assertEqual(streams, (as_utf8 + "~1\n", ""))
+
+        fileencoding = osutils.get_user_encoding()
+        as_mangled = as_utf8.decode(fileencoding, "replace").encode("UTF-8")
+
+        streams = self.run_bzr(["grep", "-n",
+            u"contents"], encoding="UTF-8")
+        self.assertEqual(streams, ("%s:1:contents of %s\n" %
+            (as_utf8, as_mangled), ""))
+
+        streams = self.run_bzr(["grep", "-n", "-r", "1",
+            u"contents"], encoding="UTF-8")
+        self.assertEqual(streams, ("%s~1:1:contents of %s\n" %
+            (as_utf8, as_mangled), ""))
+
+
 class TestColorGrep(GrepTestBase):
     """Tests for the --color option."""
 
+    # GZ 2010-06-05: Does this really require the feature? Nothing prints.
     _test_needs_features = [features.color_feature]
 
     _rev_sep = color_string('~', fg=FG.BOLD_YELLOW)
@@ -1951,6 +1990,50 @@ class TestColorGrep(GrepTestBase):
         self.assertEqual(out, '')
         self.assertContainsRe(err, 'Valid values for --color are', flags=TestGrep._reflags)
 
+    def test_ver_matching_files(self):
+        """(versioned) Search for matches or no matches only"""
+        tree = self.make_branch_and_tree(".")
+        contents = ["d/", "d/aaa", "bbb"]
+        self.build_tree(contents)
+        tree.add(contents)
+        tree.commit("Initial commit")
+
+        # GZ 2010-06-05: Maybe modify the working tree here
+
+        streams = self.run_bzr(["grep", "--color", "always", "-r", "1",
+            "--files-with-matches", "aaa"])
+        self.assertEqual(streams, ("".join([
+            FG.MAGENTA, "d/aaa", self._rev_sep, "1", "\n"
+            ]), ""))
+
+        streams = self.run_bzr(["grep", "--color", "always", "-r", "1",
+            "--files-without-match", "aaa"])
+        self.assertEqual(streams, ("".join([
+            FG.MAGENTA, "bbb", self._rev_sep, "1", "\n"
+            ]), ""))
+
+    def test_wtree_matching_files(self):
+        """(wtree) Search for matches or no matches only"""
+        tree = self.make_branch_and_tree(".")
+        contents = ["d/", "d/aaa", "bbb"]
+        self.build_tree(contents)
+        tree.add(contents)
+        tree.commit("Initial commit")
+
+        # GZ 2010-06-05: Maybe modify the working tree here
+
+        streams = self.run_bzr(["grep", "--color", "always",
+            "--files-with-matches", "aaa"])
+        self.assertEqual(streams, ("".join([
+            FG.MAGENTA, "d/aaa", FG.NONE, "\n"
+            ]), ""))
+
+        streams = self.run_bzr(["grep", "--color", "always",
+            "--files-without-match", "aaa"])
+        self.assertEqual(streams, ("".join([
+            FG.MAGENTA, "bbb", FG.NONE, "\n"
+            ]), ""))
+
     def test_ver_basic_file(self):
         """(versioned) Search for pattern in specfic file.
         """
@@ -1962,12 +2045,12 @@ class TestColorGrep(GrepTestBase):
 
         # prepare colored result
         foo = color_string('foo', fg=FG.BOLD_RED)
-        res = (color_string('file0.txt', fg=FG.MAGENTA)
+        res = (FG.MAGENTA + 'file0.txt'
             + self._rev_sep + '1' + self._sep
             + foo + ' is ' + foo + 'bar1' + '\n')
         txt_res = 'file0.txt~1:foo is foobar1\n'
 
-        nres = (color_string('file0.txt', fg=FG.MAGENTA)
+        nres = (FG.MAGENTA + 'file0.txt'
             + self._rev_sep + '1' + self._sep + '1' + self._sep
             + foo + ' is ' + foo + 'bar1' + '\n')
 
@@ -2029,10 +2112,10 @@ class TestColorGrep(GrepTestBase):
 
         # prepare colored result
         foo = color_string('foo', fg=FG.BOLD_RED)
-        res = (color_string('file0.txt', fg=FG.MAGENTA)
+        res = (FG.MAGENTA + 'file0.txt'
             + self._sep + foo + ' is ' + foo + 'bar1' + '\n')
 
-        nres = (color_string('file0.txt', fg=FG.MAGENTA)
+        nres = (FG.MAGENTA + 'file0.txt'
             + self._sep + '1' + self._sep
             + foo + ' is ' + foo + 'bar1' + '\n')
 
