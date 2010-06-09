@@ -331,7 +331,7 @@ class BundleInfo(object):
                 try:
                     name, value = info_item.split(':', 1)
                 except ValueError:
-                    raise 'Value %r has no colon' % info_item
+                    raise ValueError('Value %r has no colon' % info_item)
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':
