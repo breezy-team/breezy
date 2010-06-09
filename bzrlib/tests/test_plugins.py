@@ -812,7 +812,14 @@ class TestLoadPluginAtSyntax(tests.TestCase):
         self.assertEquals([('b', 'man')], self._get_paths('b@man'))
 
     def test_bogus_path(self):
-        self.assertRaises(errors.BzrCommandError, self._get_paths('batman'))
+        # We need a '@'
+        self.assertRaises(errors.BzrCommandError, self._get_paths, 'batman')
+        # Too much '@' isn't good either
+        self.assertRaises(errors.BzrCommandError, self._get_paths,
+                          'batman@mobile@cave')
+        # An empty description probably indicates a problem
+        self.assertRaises(errors.BzrCommandError, self._get_paths,
+                          os.pathsep.join(['batman@cave', '', 'robin@mobile']))
 
 
 class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):

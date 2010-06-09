@@ -98,7 +98,12 @@ def _get_specific_plugin_paths(paths):
         return []
     specs = []
     for spec in paths.split(os.pathsep):
-        name, path = spec.split('@')
+        try:
+            name, path = spec.split('@')
+        except ValueError:
+            raise errors.BzrCommandError(
+                '"%s" is not a valid <plugin_name>@<plugin_path> description '
+                % spec)
         specs.append((name, path))
     return specs
 
