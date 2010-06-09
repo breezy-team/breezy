@@ -880,6 +880,22 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertIsSameRealPath('non-standard-dir/test_bar/__init__.py',
                                   bzrlib.plugins.test_foo.test_bar.__file__)
 
+    def test_relative_submodule_loading(self):
+        self.create_plugin_package('test_foo', dir='another-dir', source='''
+import test_bar
+''')
+        # We create an additional directory under the one for test_foo
+        self.create_plugin_package('test_bar', dir='another-dir/test_bar')
+        self.addCleanup(self._unregister_plugin_submodule,
+                        'test_foo', 'test_bar')
+        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@another-dir')
+        plugin.set_plugins_path(['standard'])
+        import bzrlib.plugins.test_foo
+        self.assertEqual('bzrlib.plugins.test_foo',
+                         bzrlib.plugins.test_foo.__package__)
+        self.assertIsSameRealPath('another-dir/test_bar/__init__.py',
+                                  bzrlib.plugins.test_foo.test_bar.__file__)
+
     def test_loading_from___init__only(self):
         # We rename the existing __init__.py file to ensure that we don't load
         # a random file
