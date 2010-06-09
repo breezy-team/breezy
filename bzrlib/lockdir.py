@@ -545,7 +545,7 @@ class LockDir(lock.Lock):
                 # especially if this error is issued from the server.
                 lock_url, user, hostname, pid, time_ago = formatted_info
                 self._report_function(
-                    'Unable to acquire lock held by '
+                    '%s lock held by '  # start
                     '%s '               # user
                     'at %s '            # hostname
                     '[process #%s], '   # pid
@@ -553,6 +553,7 @@ class LockDir(lock.Lock):
                     'Will continue to try until %s, unless '
                     'you press Ctrl-C.\n'
                     'See "bzr help break-lock" for more.',
+                    start,
                     user,
                     hostname,
                     pid,
