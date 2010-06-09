@@ -27,6 +27,7 @@ import sys
 
 import bzrlib
 from bzrlib import (
+    errors,
     osutils,
     plugin,
     plugins,
@@ -796,6 +797,22 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         # Make sure we don't warn about the plugin ImportError since this has
         # been *requested* by the user.
         self.assertLength(0, self.warnings)
+
+
+class TestLoadPluginAtSyntax(tests.TestCase):
+
+    def _get_paths(self, paths):
+        return plugin._get_specific_plugin_paths(paths)
+
+    def test_empty(self):
+        self.assertEquals([], self._get_paths(None))
+        self.assertEquals([], self._get_paths(''))
+
+    def test_one_path(self):
+        self.assertEquals([('b', 'man')], self._get_paths('b@man'))
+
+    def test_bogus_path(self):
+        self.assertRaises(errors.BzrCommandError, self._get_paths('batman'))
 
 
 class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
