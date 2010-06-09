@@ -2420,9 +2420,14 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             repo_token = self.repository.lock_write().repository_token
             self.repository.unlock()
         err_context = {'token': token}
-        response = self._call(
-            'Branch.lock_write', self._remote_path(), branch_token,
-            repo_token or '', **err_context)
+        try:
+            response = self._call(
+                'Branch.lock_write', self._remote_path(), branch_token,
+                repo_token or '', **err_context)
+        except errors.LockContention, e:
+            # set msg to lock url so user can use 'break-lock'
+            e.msg = self.repository.base.rstrip('.bzr/')
+            raise e
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         ok, branch_token, repo_token = response

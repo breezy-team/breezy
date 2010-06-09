@@ -539,21 +539,24 @@ class LockDir(lock.Lock):
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
-                lock_url = self.transport.abspath(self.path)
                 # See <https://bugs.launchpad.net/bzr/+bug/250451>
                 # the URL here is sometimes not one that is useful to the
                 # user, perhaps being wrapped in a lp-%d or chroot decorator,
                 # especially if this error is issued from the server.
-                self._report_function('%s %s\n'
-                    '%s\n' # held by
-                    '%s\n' # locked ... ago
+                lock_url, user, hostname, pid, time_ago = formatted_info
+                self._report_function(
+                    'Unable to acquire lock held by '
+                    '%s '               # user
+                    'at %s '            # hostname
+                    '[process #%s], '   # pid
+                    'acquired %s.\n'    # time ago
                     'Will continue to try until %s, unless '
                     'you press Ctrl-C.\n'
                     'See "bzr help break-lock" for more.',
-                    start,
-                    formatted_info[0],
-                    formatted_info[1],
-                    formatted_info[2],
+                    user,
+                    hostname,
+                    pid,
+                    time_ago,
                     deadline_str,
                     )
 
@@ -622,11 +625,15 @@ class LockDir(lock.Lock):
             time_ago = '(unknown)'
         else:
             time_ago = format_delta(time.time() - int(info['start_time']))
+        user = info.get('user', '<unknown>')
+        hostname = info.get('hostname', '<unknown>')
+        pid = info.get('pid', '<unknown>')
         return [
-            'lock %s' % (lock_url,),
-            'held by %s on host %s [process #%s]' %
-                tuple([info.get(x, '<unknown>') for x in ['user', 'hostname', 'pid']]),
-            'locked %s' % (time_ago,),
+            lock_url,
+            user,
+            hostname,
+            pid,
+            time_ago,
             ]
 
     def validate_token(self, token):
