@@ -25,6 +25,10 @@ Bug Fixes
   test that all commands available to the test suite have help.
   (Robert Collins, #177500)
 
+* Relative imports in plugins are now handled correctly when using
+  BZR_PLUGINS_AT.
+  (Vincent Ladeuil, #588959)
+
 Improvements
 ************
 

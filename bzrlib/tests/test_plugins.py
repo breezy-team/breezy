@@ -84,9 +84,10 @@ dir_source = '%s'
         py_name = 'bzrlib.plugins.%s.%s' % (plugin_name, submodule_name)
         if py_name in sys.modules:
             del sys.modules[py_name]
-        plugin = getattr(bzrlib.plugins, plugin_name)
-        if getattr(plugin, submodule_name, None) is not None:
-            delattr(plugin, submodule_name)
+        plugin = getattr(bzrlib.plugins, plugin_name, None)
+        if plugin is not None:
+            if getattr(plugin, submodule_name, None) is not None:
+                delattr(plugin, submodule_name)
 
     def assertPluginUnknown(self, name):
         self.failIf(getattr(bzrlib.plugins, name, None) is not None)
