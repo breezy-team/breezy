@@ -2038,7 +2038,8 @@ else:
     # We don't use nor handle the timeout though
     def connect_socket(address, timeout=None):
         err = socket.error('getaddrinfo returns an empty list')
-        for res in socket.getaddrinfo(*address):
+        host, port = address
+        for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
             af, socktype, proto, canonname, sa = res
             sock = None
             try:
@@ -2046,11 +2047,11 @@ else:
                 sock.connect(sa)
                 return sock
 
-            except socket.error, err:
+            except exc_class, err:
                 # 'err' is now the most recent error
                 if sock is not None:
                     sock.close()
-        raise err
+        raise exc_class, err
 
 
 def dereference_path(path):
