@@ -544,8 +544,19 @@ def _command_line_to_argv(command_line, single_quotes_allowed=False):
     # len(arguments) < len(sys.argv) should be an impossibility since python gets 
     # args from the very same PEB as does GetCommandLineW
     arguments = list(s)
+    
+    # Bug #588277 remove the --profile-imports from the command line arguments
+    # as is also done in the main bzr module
+    if '--profile-imports' not in sys.argv:
+        if (False, '--profile-imports') in arguments:
+            arguments.remove((False, '--profile-imports'))
+        elif (True, '--profile-imports') in arguments:
+            arguments.remove((True, '--profile-imports'))
+    
+    # Now shorten the command line we get from GetCommandLineW to match sys.argv
     if len(arguments) < len(sys.argv):
-        raise BzrInternalError("len(GetCommandLineW(...)) < len(sys.argv) should not be possible")
+        from bzrlib.errors import InternalBzrError
+        raise InternalBzrError("len(GetCommandLineW(...)) < len(sys.argv) should not be possible")
     arguments = arguments[len(arguments) - len(sys.argv):]
     
     # Carry on to process globs (metachars) in the command line
@@ -559,7 +570,6 @@ def _command_line_to_argv(command_line, single_quotes_allowed=False):
         else:
             argv.extend(glob_one(arg))
     return argv
-
 
 
 if has_ctypes and winver != 'Windows 98':
