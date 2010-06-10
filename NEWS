@@ -28,6 +28,10 @@ Bug Fixes
   leading to faster init for directories with existing content.
   (Martin [gz], Parth Malwankar, #501307)
 
+* ``bzr log --exclude-common-ancestry`` is now taken into account for
+  linear ancetries.
+  (Vincent Ladeuil, #575631)
+
 * Final fix for 'no help for command' issue. We now show a clean message
   when a command has no help, document how to set help more clearly, and
   test that all commands available to the test suite have help.
