@@ -37,6 +37,11 @@ Bug Fixes
   arguments on Windows, because bzr script does the same.
   (Alexander Belchenko, #588277)
 
+* Enable debugging of bzr on windows with pdb and other tools. This was 
+  broken because we call GetCommandLineW on windows. The fix adjusts the 
+  command line we get to be the same length as sys.argv.
+  (Jason Spashett, Alexander Belchenko, #587868)
+
 Improvements
 ************
 
