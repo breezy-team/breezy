@@ -3313,11 +3313,11 @@ def reinvoke_for_tests(suite):
                 '--subunit']
             if '--no-plugins' in sys.argv:
                 argv.append('--no-plugins')
-            # stderr=subrocess.STDOUT would be ideal, but until we prevent
+            # stderr=subprocess.STDOUT would be ideal, but until we prevent
             # noise on stderr it can interrupt the subunit protocol.
-            process = subrocess.Popen(argv, stdin=subrocess.PIPE,
-                                      stdout=subrocess.PIPE,
-                                      stderr=subrocess.PIPE,
+            process = subprocess.Popen(argv, stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE,
                                       bufsize=1)
             test = TestInSubprocess(process, test_list_file_name)
             result.append(test)
