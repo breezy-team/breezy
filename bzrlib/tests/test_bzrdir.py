@@ -1111,9 +1111,11 @@ class TestHTTPRedirections(object):
     """
 
     def create_transport_readonly_server(self):
+        # We don't set the http protocol version, relying on the default
         return http_utils.HTTPServerRedirecting()
 
     def create_transport_secondary_server(self):
+        # We don't set the http protocol version, relying on the default
         return http_utils.HTTPServerRedirecting()
 
     def setUp(self):
