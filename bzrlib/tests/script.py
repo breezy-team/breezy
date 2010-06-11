@@ -475,3 +475,7 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
 
+
+def run_script(test_case, script_string):
+    """Run the given script within a testcase"""
+    return ScriptRunner().run_script(test_case, script_string)
