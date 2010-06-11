@@ -44,13 +44,12 @@ from bzrlib.ui import text as _mod_ui_text
 class TestUIConfiguration(tests.TestCaseWithTransport):
 
     def test_output_encoding_configuration(self):
-        unicode_factory = fixtures.UnicodeFactory()
-        enc = unicode_factory.choose_encoding()
+        enc = fixtures.generate_unicode_encodings().next()
         config.GlobalConfig().set_user_option('output_encoding',
             enc)
         ui = tests.TestUIFactory(stdin=None,
-                                 stdout=tests.StringIOWrapper(),
-                                 stderr=tests.StringIOWrapper())
+            stdout=tests.StringIOWrapper(),
+            stderr=tests.StringIOWrapper())
         os = ui.make_output_stream()
         self.assertEquals(os.encoding, enc)
 
