@@ -45,10 +45,6 @@ class TestCICPBase(tests.TestCaseWithTransport):
                                  ])
         return wt
 
-    def check_error_output(self, retcode, output, *args):
-        got = self.run_bzr(retcode=retcode, *args)[1]
-        self.failUnlessEqual(got, output)
-
 
 class TestAdd(TestCICPBase):
 
@@ -159,8 +155,11 @@ class TestMove(TestCICPBase):
         wt = self._make_mixed_case_tree()
         self.run_bzr('add')
         self.run_bzr('ci -m message')
-        ex = 'bzr: ERROR: Could not move CamelCase => lowercase: lowercaseparent/lowercase is already versioned.\n'
-        self.check_error_output(3, ex, 'mv camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE')
+        run_script(self, """
+            $ bzr mv camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE
+            2>bzr: ERROR: Could not move CamelCase => lowercase: \
+lowercaseparent/lowercase is already versioned.
+            """)
 
     def test_mv_newname_exists_after(self):
         # test a 'mv --after', but when the target already exists with a name
@@ -173,8 +172,11 @@ class TestMove(TestCICPBase):
         # bzr should report that the filename is already versioned.
         os.unlink('CamelCaseParent/CamelCase')
         osutils.rename('lowercaseparent/lowercase', 'lowercaseparent/LOWERCASE')
-        ex = 'bzr: ERROR: Could not move CamelCase => lowercase: lowercaseparent/lowercase is already versioned.\n'
-        self.check_error_output(3, ex, 'mv --after camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE')
+        run_script(self, """
+            $ bzr mv --after camelcaseparent/camelcase LOWERCASEPARENT/LOWERCASE
+            2>bzr: ERROR: Could not move CamelCase => lowercase: \
+lowercaseparent/lowercase is already versioned.
+            """)
 
     def test_mv_newname_root(self):
         wt = self._make_mixed_case_tree()
