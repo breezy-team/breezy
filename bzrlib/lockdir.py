@@ -539,28 +539,19 @@ class LockDir(lock.Lock):
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
-                # See <https://bugs.launchpad.net/bzr/+bug/250451>
-                # the URL here is sometimes not one that is useful to the
-                # user, perhaps being wrapped in a lp-%d or chroot decorator,
-                # especially if this error is issued from the server.
-                lock_url, user, hostname, pid, time_ago = formatted_info
-                self._report_function(
-                    '%s lock held by '  # start
-                    '%s '               # user
-                    'at %s '            # hostname
-                    '[process #%s], '   # pid
-                    'acquired %s.\n'    # time ago
-                    'Will continue to try until %s, unless '
-                    'you press Ctrl-C.\n'
-                    'See "bzr help break-lock" for more.',
-                    start,
-                    user,
-                    hostname,
-                    pid,
-                    time_ago,
-                    deadline_str,
-                    )
-
+                user, hostname, pid, time_ago = formatted_info
+                msg = ('%s lock held by '   # start
+                    '%s\n'                  # user
+                    'at %s '                # hostname
+                    '[process #%s], '       # pid
+                    'acquired %s.')         # time ago
+                msg_args = [start, user, hostname, pid, time_ago]
+                if timeout > 0:
+                    msg += ('\nWill continue to try until %s, unless '
+                        'you press Ctrl-C.')
+                    msg_args.append(deadline_str)
+                msg += '\nSee "bzr help break-lock" for more.'
+                self._report_function(msg, *msg_args)
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
                 raise LockContention(self)
@@ -620,7 +611,6 @@ class LockDir(lock.Lock):
 
     def _format_lock_info(self, info):
         """Turn the contents of peek() into something for the user"""
-        lock_url = self.transport.abspath(self.path)
         start_time = info.get('start_time')
         if start_time is None:
             time_ago = '(unknown)'
@@ -630,7 +620,6 @@ class LockDir(lock.Lock):
         hostname = info.get('hostname', '<unknown>')
         pid = info.get('pid', '<unknown>')
         return [
-            lock_url,
             user,
             hostname,
             pid,
