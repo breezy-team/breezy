@@ -2046,7 +2046,7 @@ def connect_socket(address, timeout=None):
             sock.connect(sa)
             return sock
 
-        except exc_class, err:
+        except socket.error, err:
             # 'err' is now the most recent error
             if sock is not None:
                 sock.close()
