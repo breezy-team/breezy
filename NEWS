@@ -32,6 +32,10 @@ Bug Fixes
   linear ancetries.
   (Vincent Ladeuil, #575631)
 
+* Ensure that wrong path specifications in ``BZR_PLUGINS_AT`` display
+  proper error messages.  
+  (Vincent Ladeuil, #591215)
+
 * Final fix for 'no help for command' issue. We now show a clean message
   when a command has no help, document how to set help more clearly, and
   test that all commands available to the test suite have help.
