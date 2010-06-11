@@ -1914,7 +1914,7 @@ class BzrBadParameterNotUnicode(BzrBadParameter):
 
     _fmt = "Parameter %(param)s is neither unicode nor utf8."
 
-    
+
 class ReusingTransform(BzrError):
 
     _fmt = "Attempt to reuse a transform that has already been applied."
@@ -1923,12 +1923,12 @@ class ReusingTransform(BzrError):
 class CantMoveRoot(BzrError):
 
     _fmt = "Moving the root directory is not supported at this time"
-    
-    
+
+
 class TransformRenameFailed(BzrError):
 
     _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
-    
+
     def __init__(self, from_path, to_path, why, errno):
         self.from_path = from_path
         self.to_path = to_path
