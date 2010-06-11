@@ -34,6 +34,14 @@ from bzrlib.transport import (
 from bzrlib.smart import server
 
 
+def debug_threads():
+    # FIXME: There is a dependency loop between bzrlib.tests and
+    # bzrlib.tests.test_server that needs to be fixed. In the mean time
+    # defining this function is enough for our needs. -- vila 20100611
+    from bzrlib import tests
+    return 'threads' in tests.selftest_debug_flags
+
+
 class TestServer(transport.Server):
     """A Transport Server dedicated to tests.
 
@@ -482,6 +490,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         stopped = threading.Event()
         t = ThreadWithException(
             event=stopped,
+            name='%s -> %s' % (client_address, self.server_address),
             target = self.process_request_thread,
             args = (started, stopped, request, client_address))
         # Update the client description
@@ -490,9 +499,10 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         # Propagate the exception handler since we must the same one for
         # connections running in their own threads than TestingTCPServer.
         t.set_ignored_exceptions(self.ignored_exceptions)
-        t.name = '%s -> %s' % (client_address, self.server_address)
         t.start()
         started.wait()
+        if debug_threads():
+            print 'Client thread %s started' % (t.name,)
         # If an exception occured during the thread start, it will get raised.
         t.pending_exception()
 
@@ -506,6 +516,9 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
             # after the connection is inited. This could happen during server
             # shutdown. If an exception occurred in the thread it will be
             # re-raised
+            if debug_threads():
+                print 'Client thread %s will be joined' % (
+                    connection_thread.name,)
             connection_thread.join()
 
     def set_ignored_exceptions(self, thread, ignored_exceptions):
@@ -543,13 +556,16 @@ class TestingTCPServerInAThread(transport.Server):
     def start_server(self):
         self.server = self.create_server()
         self._server_thread = ThreadWithException(
-            event=self.server.started, target=self.run_server)
+            event=self.server.started,
+            name=self.server_address,
+            target=self.run_server)
         self._server_thread.start()
         # Wait for the server thread to start (i.e release the lock)
         self.server.started.wait()
+        if debug_threads():
+            print 'Server thread %s started' % (self._server_thread.name,)
         # Get the real address, especially the port
         self.server_address = self.server.server_address
-        self._server_thread.name = self.server_address
         # If an exception occured during the server start, it will get raised,
         # otherwise, the server is blocked on its accept() call.
         self._server_thread.pending_exception()
@@ -570,6 +586,9 @@ class TestingTCPServerInAThread(transport.Server):
             self.set_ignored_exceptions(
                 self.server.ignored_exceptions_during_shutdown)
             self.server.serving.clear()
+            if debug_threads():
+                print 'Server thread %s will be joined' % (
+                    self._server_thread.name,)
             # The server is listening for a last connection, let's give it:
             last_conn = None
             try:
