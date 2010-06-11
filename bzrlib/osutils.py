@@ -1241,7 +1241,7 @@ def decode_filename(filename):
     Otherwise it is decoded from the the filesystem's encoding. If decoding
     fails, a errors.BadFilenameEncoding exception is raised.
     """
-    if isinstance(filename, unicode):
+    if type(filename) is unicode:
         return filename
     try:
         return filename.decode(_fs_enc)
