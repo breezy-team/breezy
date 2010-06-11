@@ -63,6 +63,11 @@ API Changes
   ``bzrlib.patiencediff`` instead.
   (Andrew Bennetts)
 
+* ``bzrlib.tests.blackbox.ExternalBase`` is deprecated.  It provided only
+  one method ``check_output``, and we now recommend checking command
+  output using ``run_script``.
+  (Martin Pool)
+
 Internals
 *********
 
