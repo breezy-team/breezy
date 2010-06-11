@@ -3836,6 +3836,7 @@ def _test_suite_modules_to_doctest():
         'bzrlib.option',
         'bzrlib.symbol_versioning',
         'bzrlib.tests',
+        'bzrlib.tests.fixtures',
         'bzrlib.timestamp',
         'bzrlib.version_info_formats.format_custom',
         ]

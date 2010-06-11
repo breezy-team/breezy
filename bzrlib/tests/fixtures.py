@@ -20,21 +20,65 @@
 Fixtures can be created during a test as a way to separate out creation of
 objects to test.  Fixture objects can hold some state so that different 
 objects created during a test instance can be related.  Normally a fixture
-should live only for the duration of a single test.
+should live only for the duration of a single test, and its tearDown method
+should be passed to `addCleanup` on the test.
 """
 
 
-class UnicodeFactory(object):
+import itertools
 
-    def __init__(self):
-        self._counter = 0
 
-    def choose_string(self):
-        """Return a new short unicode string."""
-        self._counter += 1
-        # use a mathematical symbol unlikely to be in 8-bit encodings
-        return u"\N{SINE WAVE}%d" % self._counter
+def generate_unicode_names():
+    """Generate a sequence of arbitrary unique unicode names.
+    
+    By default they are not representable in ascii.
+    
+    >>> gen = generate_unicode_names()
+    >>> n1 = gen.next()
+    >>> n2 = gen.next()
+    >>> type(n1)
+    <type 'unicode'>
+    >>> n1 == n2
+    False
+    >>> n1.encode('ascii', 'replace') == n1
+    False
+    """
+    # include a mathematical symbol unlikely to be in 8-bit encodings
+    return (u"\N{SINE WAVE}%d" % x for x in itertools.count())
 
-    def choose_encoding(self):
-        """Return a new Python string encoding."""
-        return 'cp850'
+
+interesting_encodings = [
+    ('iso-8859-1', False),
+    ('ascii', False),
+    ('cp850', False),
+    ('utf-8', True),
+    ('ucs-2', True),
+    ]
+
+
+def generate_unicode_encodings(universal_encoding=None):
+    """Return a generator of unicode encoding names.
+
+    These can be passed to Python encode/decode/etc.
+    
+    :param universal_encoding: True/False/None tristate to say whether the
+        generated encodings either can or cannot encode all unicode 
+        strings.
+
+    >>> n1 = generate_unicode_names().next()
+    >>> enc = generate_unicode_encodings(universal_encoding=True).next()
+    >>> enc2 = generate_unicode_encodings(universal_encoding=False).next()
+    >>> n1.encode(enc).decode(enc) == n1
+    True
+    >>> try:
+    ...   n1.encode(enc2).decode(enc2)
+    ... except UnicodeError:
+    ...   print 'fail'
+    fail
+    """
+    # TODO: check they're supported on this platform?
+    if universal_encoding is not None:
+        e = [n for (n, u) in interesting_encodings if u == universal_encoding]
+    else:
+        e = [n for (n, u) in interesting_encodings]
+    return itertools.cycle(iter(e))
