@@ -2030,28 +2030,27 @@ def send_all(sock, bytes, report_activity=None):
             sent_total += sent
             report_activity(sent, 'write')
 
-# socket.create_connection() is not available before python2.6, so we provide
-# it for earlier versions
-if getattr(socket, 'create_connection', None) is not None:
-    connect_socket = socket.create_connection
-else:
-    # We don't use nor handle the timeout though
-    def connect_socket(address, timeout=None):
-        err = socket.error('getaddrinfo returns an empty list')
-        host, port = address
-        for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
-            af, socktype, proto, canonname, sa = res
-            sock = None
-            try:
-                sock = socket.socket(af, socktype, proto)
-                sock.connect(sa)
-                return sock
 
-            except exc_class, err:
-                # 'err' is now the most recent error
-                if sock is not None:
-                    sock.close()
-        raise exc_class, err
+def connect_socket(address, timeout=None):
+    # Slight variation of the socket.create_connection() function (provided
+    # by python-2.6) that can fail if getaddrinfo returns an empty list. We
+    # also provide it for previous python versions. Also, we don't use the
+    # timeout parameter so we don't implement it either.
+    err = socket.error('getaddrinfo returns an empty list')
+    host, port = address
+    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+        af, socktype, proto, canonname, sa = res
+        sock = None
+        try:
+            sock = socket.socket(af, socktype, proto)
+            sock.connect(sa)
+            return sock
+
+        except exc_class, err:
+            # 'err' is now the most recent error
+            if sock is not None:
+                sock.close()
+    raise err
 
 
 def dereference_path(path):
