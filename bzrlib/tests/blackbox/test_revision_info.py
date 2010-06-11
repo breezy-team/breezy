@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2009 Canonical Ltd
+# Copyright (C) 2004, 2005, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,13 +23,13 @@ from bzrlib.workingtree import WorkingTree
 
 class TestRevisionInfo(ExternalBase):
 
-    def check_error(self, output, *args):
-        """Verify that the expected error matches what bzr says.
+    def check_output(self, output, *args):
+        """Verify that the expected output matches what bzr says.
 
         The output is supplied first, so that you can supply a variable
         number of arguments to bzr.
         """
-        self.assertContainsRe(self.run_bzr(args, retcode=3)[1], output)
+        self.assertEquals(self.run_bzr(*args)[0], output)
 
     def test_revision_info(self):
         """Test that 'bzr revision-info' reports the correct thing."""
