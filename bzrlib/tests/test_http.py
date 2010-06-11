@@ -89,6 +89,18 @@ def load_tests(standard_tests, module, loader):
                             _qualified_prefix='http+pycurl',)))
     tests.multiply_tests(t_tests, transport_scenarios, result)
 
+    protocol_scenarios = [
+            ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
+            ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
+            ]
+
+    # some tests are parametrized by the protocol version only
+    p_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance((
+                TestAuthOnRedirected,
+                )))
+    tests.multiply_tests(p_tests, protocol_scenarios, result)
+
     # each implementation tested with each HTTP version
     tp_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
@@ -103,10 +115,6 @@ def load_tests(standard_tests, module, loader):
                 TestRanges,
                 TestSpecificRequestHandler,
                 )))
-    protocol_scenarios = [
-            ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
-            ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
-            ]
     tp_scenarios = tests.multiply_scenarios(transport_scenarios,
                                             protocol_scenarios)
     tests.multiply_tests(tp_tests, tp_scenarios, result)
@@ -2184,13 +2192,14 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
     _transport = _urllib.HttpTransport_urllib
 
     def create_transport_readonly_server(self):
-        return self._auth_server()
+        return self._auth_server(protocol_version=self._protocol_version)
 
     def create_transport_secondary_server(self):
         """Create the secondary server redirecting to the primary server"""
         new = self.get_readonly_server()
 
-        redirecting = http_utils.HTTPServerRedirecting()
+        redirecting = http_utils.HTTPServerRedirecting(
+            protocol_version=self._protocol_version)
         redirecting.redirect_to(new.host, new.port)
         return redirecting
 
