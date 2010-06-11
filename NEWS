@@ -17,8 +17,20 @@ Compatibility Breaks
 New Features
 ************
 
+* Support ``--directory`` option for a number of additional commands:
+  conflicts, merge-directive, missing, resolve, shelve, switch,
+  unshelve, whoami. (Martin von Gagern, #527878)
+
 Bug Fixes
 *********
+
+* ``bzr init`` does not recursively scan directory contents anymore
+  leading to faster init for directories with existing content.
+  (Martin [gz], Parth Malwankar, #501307)
+
+* ``bzr log --exclude-common-ancestry`` is now taken into account for
+  linear ancetries.
+  (Vincent Ladeuil, #575631)
 
 * Final fix for 'no help for command' issue. We now show a clean message
   when a command has no help, document how to set help more clearly, and
@@ -32,6 +44,12 @@ Bug Fixes
 Improvements
 ************
 
+* Use lazy imports in ``bzrlib/merge.py`` so that plugins like ``news_merge``
+  do not cause modules to be loaded unnecessarily just because the plugin
+  registers a merge hook.  This improves ``bzr rocks`` time by about 25%
+  in a default installation (with just the core plugins).
+  (Andrew Bennetts)
+
 Documentation
 *************
 
@@ -43,6 +61,11 @@ Documentation
 
 API Changes
 ***********
+
+* ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
+  2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
+  ``bzrlib.patiencediff`` instead.
+  (Andrew Bennetts)
 
 Internals
 *********
@@ -451,10 +474,28 @@ Internals
   Command is now transient and only exists for the duration of ``run()``.
   (Robert Collins)
 
-bzr 2.2.0b1
-###########
+bzr 2.2b1
+#########
 
-:2.2.0b1: 2010-04-01
+:2.2b1: 2010-04-01
+
+This is the first beta of the 2.2 series, leading up to a 2.2.0
+release in July or August.  Beta releases are suitable for everyday use
+but may cause some incompatibilities with plugins.  Some plugins may need
+small updates to work with 2.2b1.
+
+2.2b1 includes some changes to make merge conflicts easier to understand
+and resolve.  It also removes some old unnecessary code, and loads
+somewhat less code at startup.  It starts adding a common infrastructure
+for dealing with colocated named branches, which can be implemented in
+various ways in either bzr native or foreign formats.   On Ubuntu and
+other platforms with the apport bug-reporting library, there's an easier
+path to report problems with bzr.  We plan to continue with these themes
+through the 2.2 series.
+
+Over thirty bugs have been fixed, including in the log command, exporting
+to tarballs, restarting interrupted system calls, portability of compiled
+extensions, making backups during upgrade, and locking on ftp.
 
 Compatibility Breaks
 ********************

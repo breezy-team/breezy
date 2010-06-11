@@ -2850,6 +2850,12 @@ class UncommittedChanges(BzrError):
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
 
 
+class ShelvedChanges(UncommittedChanges):
+
+    _fmt = ('Working tree "%(display_url)s" has shelved changes'
+            ' (See bzr shelve --list).%(more)s')
+
+
 class MissingTemplateVariable(BzrError):
 
     _fmt = 'Variable {%(name)s} is not available.'
