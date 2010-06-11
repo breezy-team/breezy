@@ -80,6 +80,16 @@ dir_source = '%s'
         if getattr(bzrlib.plugins, name, None) is not None:
             delattr(bzrlib.plugins, name)
 
+    def _unregister_plugin_submodule(self, plugin_name, submodule_name):
+        """Remove the submodule from sys.modules and the bzrlib namespace."""
+        py_name = 'bzrlib.plugins.%s.%s' % (plugin_name, submodule_name)
+        if py_name in sys.modules:
+            del sys.modules[py_name]
+        plugin = getattr(bzrlib.plugins, plugin_name, None)
+        if plugin is not None:
+            if getattr(plugin, submodule_name, None) is not None:
+                delattr(plugin, submodule_name)
+
     def assertPluginUnknown(self, name):
         self.failIf(getattr(bzrlib.plugins, name, None) is not None)
         self.failIf('bzrlib.plugins.%s' % name in sys.modules)
@@ -828,8 +838,6 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         super(TestLoadPluginAt, self).setUp()
         # Make sure we don't pollute the plugins namespace
         self.overrideAttr(plugins, '__path__')
-        # Be paranoid in case a test fail
-        self.addCleanup(self._unregister_plugin, 'test_foo')
         # Reset the flag that protect against double loading
         self.overrideAttr(plugin, '_loaded', False)
         # Create the same plugin in two directories
@@ -837,6 +845,8 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         # The "normal" directory, we use 'standard' instead of 'plugins' to
         # avoid depending on the precise naming.
         self.create_plugin_package('test_foo', dir='standard/test_foo')
+        # All the tests will load the 'test_foo' plugin from various locations
+        self.addCleanup(self._unregister_plugin, 'test_foo')
 
     def assertTestFooLoadedFrom(self, path):
         self.assertPluginKnown('test_foo')
@@ -884,6 +894,8 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
     def test_submodule_loading(self):
         # We create an additional directory under the one for test_foo
         self.create_plugin_package('test_bar', dir='non-standard-dir/test_bar')
+        self.addCleanup(self._unregister_plugin_submodule,
+                        'test_foo', 'test_bar')
         osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.set_plugins_path(['standard'])
         import bzrlib.plugins.test_foo
@@ -891,6 +903,22 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
                          bzrlib.plugins.test_foo.__package__)
         import bzrlib.plugins.test_foo.test_bar
         self.assertIsSameRealPath('non-standard-dir/test_bar/__init__.py',
+                                  bzrlib.plugins.test_foo.test_bar.__file__)
+
+    def test_relative_submodule_loading(self):
+        self.create_plugin_package('test_foo', dir='another-dir', source='''
+import test_bar
+''')
+        # We create an additional directory under the one for test_foo
+        self.create_plugin_package('test_bar', dir='another-dir/test_bar')
+        self.addCleanup(self._unregister_plugin_submodule,
+                        'test_foo', 'test_bar')
+        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@another-dir')
+        plugin.set_plugins_path(['standard'])
+        import bzrlib.plugins.test_foo
+        self.assertEqual('bzrlib.plugins.test_foo',
+                         bzrlib.plugins.test_foo.__package__)
+        self.assertIsSameRealPath('another-dir/test_bar/__init__.py',
                                   bzrlib.plugins.test_foo.test_bar.__file__)
 
     def test_loading_from___init__only(self):

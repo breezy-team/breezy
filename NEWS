@@ -45,6 +45,10 @@ Bug Fixes
   arguments on Windows, because bzr script does the same.
   (Alexander Belchenko, #588277)
 
+* Relative imports in plugins are now handled correctly when using
+  BZR_PLUGINS_AT.
+  (Vincent Ladeuil, #588959)
+
 Improvements
 ************
 
