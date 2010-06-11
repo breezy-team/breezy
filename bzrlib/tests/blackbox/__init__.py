@@ -130,6 +130,7 @@ def load_tests(basic_tests, module, loader):
 
 
 class ExternalBase(tests.TestCaseWithTransport):
+    """Don't use this class anymore, use TestCaseWithTransport or similar"""
 
     @deprecated_method(deprecated_in((2, 2, 0)))
     def check_output(self, output, *args):

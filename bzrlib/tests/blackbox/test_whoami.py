@@ -22,10 +22,10 @@ import os
 import bzrlib
 from bzrlib import osutils
 from bzrlib.branch import Branch
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestWhoami(ExternalBase):
+class TestWhoami(TestCaseWithTransport):
 
     def test_whoami(self):
         # this should always identify something, if only "john@localhost"

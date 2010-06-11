@@ -17,11 +17,11 @@
 import os
 
 from bzrlib.errors import BzrCommandError, NoSuchRevision
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class TestRevisionInfo(ExternalBase):
+class TestRevisionInfo(TestCaseWithTransport):
 
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.

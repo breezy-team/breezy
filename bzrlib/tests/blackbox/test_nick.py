@@ -20,10 +20,10 @@ import os
 
 import bzrlib
 from bzrlib import osutils
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestNick(ExternalBase):
+class TestNick(TestCaseWithTransport):
 
     def test_nick_command(self):
         """bzr nick for viewing, setting nicknames"""

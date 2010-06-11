@@ -19,7 +19,7 @@ import os
 import sys
 
 from bzrlib.tests import SymlinkFeature, TestSkipped
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 from bzrlib import osutils
 
@@ -31,7 +31,7 @@ d='d/'
 files=(a, b, c, d)
 
 
-class TestRemove(ExternalBase):
+class TestRemove(TestCaseWithTransport):
 
     def _make_tree_and_add(self, paths):
         tree = self.make_branch_and_tree('.')
