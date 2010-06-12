@@ -263,7 +263,8 @@ class ThreadWithException(threading.Thread):
         self.ignored_exceptions = None # see set_ignored_exceptions
 
     # compatibility thunk for python-2.4 and python-2.5...
-    name = property(threading.Thread.getName, threading.Thread.setName)
+    if sys.version_info < (2, 6):
+        name = property(threading.Thread.getName, threading.Thread.setName)
 
     def set_event(self, event):
         self.ready = event
