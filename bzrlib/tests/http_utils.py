@@ -28,13 +28,14 @@ from bzrlib import (
     errors,
     osutils,
     tests,
+    transport,
     )
-from bzrlib.smart import medium, protocol
+from bzrlib.smart import (
+    medium,
+    protocol,
+    )
 from bzrlib.tests import http_server
-from bzrlib.transport import (
-    chroot,
-    get_transport,
-    )
+from bzrlib.transport import chroot
 
 
 class HTTPServerWithSmarts(http_server.HttpServer):
@@ -56,11 +57,12 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
 
     def do_POST(self):
         """Hand the request off to a smart server instance."""
-        backing = get_transport(self.server.test_case_server._home_dir)
+        backing = transport.get_transport(
+            self.server.test_case_server._home_dir)
         chroot_server = chroot.ChrootServer(backing)
         chroot_server.start_server()
         try:
-            t = get_transport(chroot_server.get_url())
+            t = transport.get_transport(chroot_server.get_url())
             self.do_POST_inner(t)
         finally:
             chroot_server.stop_server()
@@ -157,7 +159,7 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
         return self._adjust_url(base, relpath)
 
     def get_secondary_transport(self, relpath=None):
-        t = get_transport(self.get_secondary_url(relpath))
+        t = transport.get_transport(self.get_secondary_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -261,7 +263,7 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
         return self._adjust_url(base, relpath)
 
    def get_old_transport(self, relpath=None):
-        t = get_transport(self.get_old_url(relpath))
+        t = transport.get_transport(self.get_old_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -270,7 +272,7 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
         return self._adjust_url(base, relpath)
 
    def get_new_transport(self, relpath=None):
-        t = get_transport(self.get_new_url(relpath))
+        t = transport.get_transport(self.get_new_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 

@@ -1406,8 +1406,8 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
         self.old_transport = self.get_old_transport()
 
-    def get_a(self, transport):
-        return transport.get('a')
+    def get_a(self, t):
+        return t.get('a')
 
     def test_no_redirection(self):
         t = self.get_new_transport()
