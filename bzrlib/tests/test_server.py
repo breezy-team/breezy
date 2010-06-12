@@ -262,6 +262,9 @@ class ThreadWithException(threading.Thread):
         self.exception = None
         self.ignored_exceptions = None # see set_ignored_exceptions
 
+    # compatibility thunk for python-2.4 and python-2.5...
+    name = property(threading.Thread.getName, threading.Thread.setName)
+
     def set_event(self, event):
         self.ready = event
 
@@ -557,15 +560,15 @@ class TestingTCPServerInAThread(transport.Server):
         self.server = self.create_server()
         self._server_thread = ThreadWithException(
             event=self.server.started,
-            name=self.server_address,
             target=self.run_server)
         self._server_thread.start()
         # Wait for the server thread to start (i.e release the lock)
         self.server.started.wait()
-        if debug_threads():
-            print 'Server thread %s started' % (self._server_thread.name,)
         # Get the real address, especially the port
         self.server_address = self.server.server_address
+        self._server_thread.name = self.server.server_address
+        if debug_threads():
+            print 'Server thread %s started' % (self._server_thread.name,)
         # If an exception occured during the server start, it will get raised,
         # otherwise, the server is blocked on its accept() call.
         self._server_thread.pending_exception()
