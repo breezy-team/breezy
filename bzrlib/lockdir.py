@@ -151,7 +151,7 @@ from bzrlib import rio
 # files/dirs created.
 
 
-_DEFAULT_TIMEOUT_SECONDS = 300
+_DEFAULT_TIMEOUT_SECONDS = 10
 _DEFAULT_POLL_SECONDS = 1.0
 
 
@@ -539,13 +539,21 @@ class LockDir(lock.Lock):
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
+                # As local lock urls are correct we display them.
+                # We avoid displaying remote lock urls.
+                lock_url = self.transport.abspath(self.path)
+                if lock_url.startswith('file://'):
+                    lock_url = lock_url.split('.bzr/')[0] + '\n'
+                else:
+                    lock_url = ''
                 user, hostname, pid, time_ago = formatted_info
-                msg = ('%s lock held by '   # start
+                msg = ('%s lock %s'         # lock_url
+                    'held by '              # start
                     '%s\n'                  # user
                     'at %s '                # hostname
                     '[process #%s], '       # pid
                     'acquired %s.')         # time ago
-                msg_args = [start, user, hostname, pid, time_ago]
+                msg_args = [start, lock_url, user, hostname, pid, time_ago]
                 if timeout > 0:
                     msg += ('\nWill continue to try until %s, unless '
                         'you press Ctrl-C.')
@@ -559,8 +567,11 @@ class LockDir(lock.Lock):
                 self._trace("waiting %ss", poll)
                 time.sleep(poll)
             else:
+                # As timeout is always 0 for remote locks
+                # this block is applicable only for local
+                # lock contention
                 self._trace("timeout after waiting %ss", timeout)
-                raise LockContention(self)
+                raise LockContention('(local)', lock_url)
 
     def leave_in_place(self):
         self._locked_via_token = True

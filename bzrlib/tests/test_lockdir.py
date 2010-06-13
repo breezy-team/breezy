@@ -193,12 +193,12 @@ class TestLockDir(TestCaseWithTransport):
             lf1.unlock()
         self.assertEqual(1, len(self._logged_reports))
         self.assertEqual(self._logged_reports[0][0],
-            '%s lock held by %s\n'
+            '%s lock %sheld by %s\n'
             'at %s [process #%s], acquired %s.\n'
             'Will continue to try until %s, unless '
             'you press Ctrl-C.\n'
             'See "bzr help break-lock" for more.')
-        start, user, hostname, pid, time_ago, deadline_str = \
+        start, lock_url, user, hostname, pid, time_ago, deadline_str = \
             self._logged_reports[0][1]
         self.assertEqual(start, u'Unable to obtain')
         self.assertEqual(user, u'jrandom@example.com')
