@@ -28,6 +28,14 @@ Bug Fixes
   leading to faster init for directories with existing content.
   (Martin [gz], Parth Malwankar, #501307)
 
+* ``bzr log --exclude-common-ancestry`` is now taken into account for
+  linear ancetries.
+  (Vincent Ladeuil, #575631)
+
+* Ensure that wrong path specifications in ``BZR_PLUGINS_AT`` display
+  proper error messages.  
+  (Vincent Ladeuil, #591215)
+
 * Final fix for 'no help for command' issue. We now show a clean message
   when a command has no help, document how to set help more clearly, and
   test that all commands available to the test suite have help.
@@ -36,6 +44,10 @@ Bug Fixes
 * Explicitly removing ``--profile-imports`` option from parsed command-line
   arguments on Windows, because bzr script does the same.
   (Alexander Belchenko, #588277)
+
+* Relative imports in plugins are now handled correctly when using
+  BZR_PLUGINS_AT.
+  (Vincent Ladeuil, #588959)
 
 Improvements
 ************
