@@ -49,6 +49,11 @@ Bug Fixes
   BZR_PLUGINS_AT.
   (Vincent Ladeuil, #588959)
 
+* URL displayed for use with ``break-lock`` when smart server sees lock
+  contention are now valid. Default timeout for lock contention retry is
+  now 10 seconds instead of 300 seconds.
+  (Parth Malwankar, #250451)
+
 Improvements
 ************
 
