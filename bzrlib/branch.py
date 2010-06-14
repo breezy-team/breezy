@@ -962,7 +962,6 @@ class Branch(bzrdir.ControlComponent):
                 raise errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
 
-    @needs_write_lock
     def update_revisions(self, other, stop_revision=None, overwrite=False,
                          graph=None):
         """Pull in new perfect-fit revisions.
@@ -1266,24 +1265,14 @@ class Branch(bzrdir.ControlComponent):
                 revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
-    @needs_read_lock
     def copy_content_into(self, destination, revision_id=None):
         """Copy the content of self into destination.
 
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        self.update_references(destination)
-        self._synchronize_history(destination, revision_id)
-        try:
-            parent = self.get_parent()
-        except errors.InaccessibleParent, e:
-            mutter('parent was not accessible to copy: %s', e)
-        else:
-            if parent:
-                destination.set_parent(parent)
-        if self._push_should_merge_tags():
-            self.tags.merge_to(destination.tags)
+        return InterBranch.get(self, destination).copy_content_into(
+            revision_id=revision_id)
 
     def update_references(self, target):
         if not getattr(self._format, 'supports_reference_locations', False):
@@ -3245,48 +3234,64 @@ class GenericInterBranch(InterBranch):
             return format._custom_format
         return format                                                                                                  
 
+    @needs_write_lock
+    def copy_content_into(self, revision_id=None):
+        """Copy the content of source into target
+
+        revision_id: if not None, the revision history in the new branch will
+                     be truncated to end with revision_id.
+        """
+        self.source.update_references(self.target)
+        self.source._synchronize_history(self.target, revision_id)
+        try:
+            parent = self.source.get_parent()
+        except errors.InaccessibleParent, e:
+            mutter('parent was not accessible to copy: %s', e)
+        else:
+            if parent:
+                self.target.set_parent(parent)
+        if self.source._push_should_merge_tags():
+            self.tags.merge_to(self.target.tags)
+
+    @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
         graph=None):
         """See InterBranch.update_revisions()."""
-        self.source.lock_read()
-        try:
-            other_revno, other_last_revision = self.source.last_revision_info()
-            stop_revno = None # unknown
-            if stop_revision is None:
-                stop_revision = other_last_revision
-                if _mod_revision.is_null(stop_revision):
-                    # if there are no commits, we're done.
-                    return
-                stop_revno = other_revno
+        other_revno, other_last_revision = self.source.last_revision_info()
+        stop_revno = None # unknown
+        if stop_revision is None:
+            stop_revision = other_last_revision
+            if _mod_revision.is_null(stop_revision):
+                # if there are no commits, we're done.
+                return
+            stop_revno = other_revno
 
-            # what's the current last revision, before we fetch [and change it
-            # possibly]
-            last_rev = _mod_revision.ensure_null(self.target.last_revision())
-            # we fetch here so that we don't process data twice in the common
-            # case of having something to pull, and so that the check for
-            # already merged can operate on the just fetched graph, which will
-            # be cached in memory.
-            self.target.fetch(self.source, stop_revision)
-            # Check to see if one is an ancestor of the other
-            if not overwrite:
-                if graph is None:
-                    graph = self.target.repository.get_graph()
-                if self.target._check_if_descendant_or_diverged(
-                        stop_revision, last_rev, graph, self.source):
-                    # stop_revision is a descendant of last_rev, but we aren't
-                    # overwriting, so we're done.
-                    return
-            if stop_revno is None:
-                if graph is None:
-                    graph = self.target.repository.get_graph()
-                this_revno, this_last_revision = \
-                        self.target.last_revision_info()
-                stop_revno = graph.find_distance_to_null(stop_revision,
-                                [(other_last_revision, other_revno),
-                                 (this_last_revision, this_revno)])
-            self.target.set_last_revision_info(stop_revno, stop_revision)
-        finally:
-            self.source.unlock()
+        # what's the current last revision, before we fetch [and change it
+        # possibly]
+        last_rev = _mod_revision.ensure_null(self.target.last_revision())
+        # we fetch here so that we don't process data twice in the common
+        # case of having something to pull, and so that the check for
+        # already merged can operate on the just fetched graph, which will
+        # be cached in memory.
+        self.target.fetch(self.source, stop_revision)
+        # Check to see if one is an ancestor of the other
+        if not overwrite:
+            if graph is None:
+                graph = self.target.repository.get_graph()
+            if self.target._check_if_descendant_or_diverged(
+                    stop_revision, last_rev, graph, self.source):
+                # stop_revision is a descendant of last_rev, but we aren't
+                # overwriting, so we're done.
+                return
+        if stop_revno is None:
+            if graph is None:
+                graph = self.target.repository.get_graph()
+            this_revno, this_last_revision = \
+                    self.target.last_revision_info()
+            stop_revno = graph.find_distance_to_null(stop_revision,
+                            [(other_last_revision, other_revno),
+                             (this_last_revision, this_revno)])
+        self.target.set_last_revision_info(stop_revno, stop_revision)
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, run_hooks=True,

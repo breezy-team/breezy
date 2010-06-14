@@ -144,9 +144,38 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
         return newbranch.bzrdir
 
 
+class StubWithFormat(object):
+    """A stub object used to check that convenience methods call Inter's."""
+
+    _format = object()
+
+
+class StubMatchingInter(object):
+    """An inter for tests.
+
+    This is not a subclass of InterBranch so that missing methods are caught
+    and added rather than actually trying to do something.
+    """
+
+    _uses = []
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
+
+    @classmethod
+    def is_compatible(klass, source, target):
+        return StubWithFormat._format in (source._format, target._format)
+
+    def copy_content_into(self, *args, **kwargs):
+        self.__class__._uses.append(
+            (self, 'copy_content_into', args, kwargs))
+
+
 def load_tests(standard_tests, module, loader):
     submod_tests = loader.loadTestsFromModuleNames([
         'bzrlib.tests.per_interbranch.test_get',
+        'bzrlib.tests.per_interbranch.test_copy_content_into',
         'bzrlib.tests.per_interbranch.test_pull',
         'bzrlib.tests.per_interbranch.test_push',
         'bzrlib.tests.per_interbranch.test_update_revisions',
