@@ -28,14 +28,20 @@ Bug Fixes
   leading to faster init for directories with existing content.
   (Martin [gz], Parth Malwankar, #501307)
 
+* Explicitly removing ``--profile-imports`` option from parsed command-line
+  arguments on Windows, because bzr script does the same.
+  (Alexander Belchenko, #588277)
+
+* Fetching was slightly confused about the best code to use and was
+  using a new code path for all branches, resulting in more lookups than
+  necessary on old branches.
+  (Robert Collins, #593515)
+
 * Final fix for 'no help for command' issue. We now show a clean message
   when a command has no help, document how to set help more clearly, and
   test that all commands available to the test suite have help.
   (Robert Collins, #177500)
 
-* Explicitly removing ``--profile-imports`` option from parsed command-line
-  arguments on Windows, because bzr script does the same.
-  (Alexander Belchenko, #588277)
 
 Improvements
 ************
