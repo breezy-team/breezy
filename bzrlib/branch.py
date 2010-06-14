@@ -3251,7 +3251,7 @@ class GenericInterBranch(InterBranch):
             if parent:
                 self.target.set_parent(parent)
         if self.source._push_should_merge_tags():
-            self.tags.merge_to(self.target.tags)
+            self.source.tags.merge_to(self.target.tags)
 
     @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
