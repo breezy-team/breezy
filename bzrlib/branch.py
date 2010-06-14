@@ -198,6 +198,13 @@ class Branch(bzrdir.ControlComponent):
         return self.supports_tags() and self.tags.get_tag_dict()
 
     def get_config(self):
+        """Get a bzrlib.config.BranchConfig for this Branch.
+
+        This can then be used to get and set configuration options for the
+        branch.
+
+        :return: A bzrlib.config.BranchConfig.
+        """
         return BranchConfig(self)
 
     def _get_config(self):
