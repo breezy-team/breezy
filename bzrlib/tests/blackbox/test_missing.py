@@ -200,3 +200,23 @@ class TestMissing(TestCaseWithTransport):
                           'Branches are up to date.\n' % location,
                           lines)
         self.assertEquals('', err)
+
+    def test_missing_directory(self):
+        """Test --directory option"""
+
+        # create a source branch
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/a', 'initial\n')])
+        a_tree.add('a')
+        a_tree.commit(message='initial')
+
+        # clone and add a differing revision
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([('b/a', 'initial\nmore\n')])
+        b_tree.commit(message='more')
+        
+        out2, err2 = self.run_bzr('missing --directory a b', retcode=1)
+        os.chdir('a')
+        out1, err1 = self.run_bzr('missing ../b', retcode=1)
+        self.assertEqualDiff(out1, out2)
+        self.assertEqualDiff(err1, err2)
