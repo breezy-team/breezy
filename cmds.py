@@ -380,8 +380,10 @@ class cmd_builddeb(Command):
                 upstream_branch, upstream_revision = self._get_upstream_branch(
                     merge, export_upstream, export_upstream_revision, config,
                     changelog.version)
-                upstream_sources.append(UpstreamBranchSource(upstream_branch,
-                    {changelog.version.upstream_version: upstream_revision}))
+                if upstream_branch is not None:
+                    upstream_sources.append(UpstreamBranchSource(
+                      upstream_branch, {
+                        changelog.version.upstream_version: upstream_revision}))
             elif not native and config.upstream_branch:
                 upstream_branch = Branch.open(config.upstream_branch)
                 upstream_sources.append(UpstreamBranchSource(upstream_branch))
