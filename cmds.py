@@ -361,7 +361,7 @@ class cmd_builddeb(Command):
                 merge = True
             (changelog, larstiq) = find_changelog(tree, merge)
             if package_merge:
-                prev_version = find_previous_upload(changelog)
+                prev_version = find_previous_upload(tree, merge)
                 build_options.append("-v%s" % str(prev_version))
                 if (prev_version.upstream_version
                         != changelog.version.upstream_version

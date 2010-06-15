@@ -60,6 +60,7 @@ from bzrlib.plugins.builddeb.errors import (
                 MissingChangelogError,
                 AddChangelogError,
                 NoPreviousUpload,
+                UnableToFindPreviousUpload,
                 UnknownDistribution,
                 UnparseableChangelog,
                 )
@@ -555,8 +556,8 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
             filtered=filtered)
 
 
-def find_previous_upload(cl):
-    """Given a changelog, find the previous upload to the distribution.
+def find_previous_upload(tree, merge):
+    """Given a tree, find the previous upload to the distribution.
 
     When e.g. Ubuntu merges from Debian they want to build with
     -vPREV_VERSION. Here's where we find that previous version.
@@ -572,6 +573,10 @@ def find_previous_upload(cl):
     a previous version, as we should consider old series in e.g.
     Ubuntu.
     """
+    try:
+        cl, larstiq = find_changelog(tree, merge, max_blocks=None)
+    except UnparseableChangelog:
+        raise UnableToFindPreviousUpload()
     blocks = cl._blocks
     current_target = blocks[0].distributions.split(" ")[0]
     all_debian = [r + t for r in DEBIAN_RELEASES for t in DEBIAN_POCKETS]

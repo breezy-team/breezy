@@ -198,3 +198,8 @@ class NoPreviousUpload(BzrError):
 
     def __init__(self, distribution):
         BzrError.__init__(self, distribution=distribution)
+
+
+class UnableToFindPreviousUpload(BzrError):
+
+    _fmt = ("Unable to determine the previous upload for --package-merge.")
