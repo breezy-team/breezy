@@ -36,6 +36,10 @@ Bug Fixes
 * ``bzr log --exclude-common-ancestry`` is now taken into account for
   linear ancetries. (Vincent Ladeuil, #575631)
 
+* ``bzr pull`` now works when a lp: URL is explicitly defined as the parent
+  or pull location in locations.conf or branch.conf.
+  (Gordon Tyler, #534787)
+
 * Ensure that wrong path specifications in ``BZR_PLUGINS_AT`` display
   proper error messages. (Vincent Ladeuil, #591215)
 
@@ -52,12 +56,12 @@ Bug Fixes
   test that all commands available to the test suite have help.
   (Robert Collins, #177500)
 
+* ``ScriptRunner`` now strips off leading indentation from test scripts,
+  which previously caused "SyntaxError: No command for line".
+  (Martin Pool)
+
 * Relative imports in plugins are now handled correctly when using
   BZR_PLUGINS_AT. (Vincent Ladeuil, #588959)
-
-* ``bzr pull`` now works when a lp: URL is explicitly defined as the parent
-  or pull location in locations.conf or branch.conf.
-  (Gordon Tyler, #534787)
 
 Improvements
 ************
