@@ -151,7 +151,7 @@ from bzrlib import rio
 # files/dirs created.
 
 
-_DEFAULT_TIMEOUT_SECONDS = 10
+_DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_POLL_SECONDS = 1.0
 
 
@@ -571,7 +571,7 @@ class LockDir(lock.Lock):
                 # this block is applicable only for local
                 # lock contention
                 self._trace("timeout after waiting %ss", timeout)
-                raise LockContention('(local)', lock_url)
+                raise LockContention('(local)', lock_url.rstrip())
 
     def leave_in_place(self):
         self._locked_via_token = True
