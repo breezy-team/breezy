@@ -543,11 +543,11 @@ class LockDir(lock.Lock):
                 # We avoid displaying remote lock urls.
                 lock_url = self.transport.abspath(self.path)
                 if lock_url.startswith('file://'):
-                    lock_url = lock_url.split('.bzr/')[0] + '\n'
+                    lock_url = lock_url.split('.bzr/')[0]
                 else:
                     lock_url = ''
                 user, hostname, pid, time_ago = formatted_info
-                msg = ('%s lock %s'         # lock_url
+                msg = ('%s lock %s '        # lock_url
                     'held by '              # start
                     '%s\n'                  # user
                     'at %s '                # hostname
@@ -571,7 +571,7 @@ class LockDir(lock.Lock):
                 # this block is applicable only for local
                 # lock contention
                 self._trace("timeout after waiting %ss", timeout)
-                raise LockContention('(local)', lock_url.rstrip())
+                raise LockContention('(local)', lock_url)
 
     def leave_in_place(self):
         self._locked_via_token = True

@@ -193,7 +193,7 @@ class TestLockDir(TestCaseWithTransport):
             lf1.unlock()
         self.assertEqual(1, len(self._logged_reports))
         self.assertEqual(self._logged_reports[0][0],
-            '%s lock %sheld by %s\n'
+            '%s lock %s held by %s\n'
             'at %s [process #%s], acquired %s.\n'
             'Will continue to try until %s, unless '
             'you press Ctrl-C.\n'
