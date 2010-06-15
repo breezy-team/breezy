@@ -208,7 +208,7 @@ class TestUrlToPath(TestCase):
         self.assertFalse(urlutils.is_url('/foo/bar'))
         self.assertFalse(urlutils.is_url('C:/'))
         self.assertFalse(urlutils.is_url('C:/foo'))
-        self.assertTrue(urlutils.is_url('C:/foo/bar'))
+        self.assertFalse(urlutils.is_url('C:/foo/bar'))
 
     def test_join(self):
         def test(expected, *args):
