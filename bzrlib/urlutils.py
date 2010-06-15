@@ -104,6 +104,11 @@ def _find_scheme_and_separator(url):
     return len(scheme), first_path_slash+m.start('path')
 
 
+def is_url(url):
+    """Tests whether a URL is in actual fact a URL."""
+    return _url_scheme_re.match(url) is not None
+
+
 def join(base, *args):
     """Create a URL by joining sections.
 

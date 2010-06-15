@@ -55,6 +55,10 @@ Bug Fixes
 * Relative imports in plugins are now handled correctly when using
   BZR_PLUGINS_AT. (Vincent Ladeuil, #588959)
 
+* ``bzr pull`` now works when a lp: URL is explicitly defined as the parent
+  or pull location in locations.conf or branch.conf.
+  (Gordon Tyler, #534787)
+
 Improvements
 ************
 
