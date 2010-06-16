@@ -887,6 +887,7 @@ class SmartClientSocketMedium(SmartClientStreamMedium):
 
 
 class SmartTCPClientMedium(SmartClientSocketMedium):
+    """A client medium using TCP."""
 
     def __init__(self, host, port, base):
         """Creates a client that will connect on the first use."""
@@ -937,7 +938,7 @@ class SmartTCPClientMedium(SmartClientSocketMedium):
 
 
 class SmartClientAlreadyConnectedSocketMedium(SmartClientSocketMedium):
-    """A SmartClientSocketMedium for an already-connected socket.
+    """A client medium for an already connected socket.
     
     Note that this class will assume it "owns" the socket, so it will close it
     when its disconnect method is called.

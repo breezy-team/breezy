@@ -670,8 +670,11 @@ class SSHConnection(object):
 
 
 class SSHSubprocessConnection(SSHConnection):
-    """A socket-like object that talks to an ssh subprocess via pipes or a
-    socket."""
+    """A connection to an ssh subprocess via pipes or a socket.
+
+    This class is also socket-like enough to be used with
+    SocketAsChannelAdapter (it has 'send' and 'recv' methods).
+    """
 
     def __init__(self, proc, sock=None):
         """Constructor.
@@ -713,6 +716,8 @@ class SSHSubprocessConnection(SSHConnection):
 
 
 class _ParamikoSSHConnection(SSHConnection):
+    """An SSH connection via paramiko."""
+
     def __init__(self, channel):
         self.channel = channel
 
