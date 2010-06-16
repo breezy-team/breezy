@@ -139,7 +139,11 @@ def grep_diff(opts):
         bzrdir.BzrDir.open_containing_tree_or_branch('.')
     branch.lock_read()
     try:
-        start_rev = opts.revision[0]
+        if opts.revision:
+            start_rev = opts.revision[0]
+        else:
+            opts.revision = [RevisionSpec.from_string('last:1')]
+            start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
         if start_revid == None:
             start_rev = RevisionSpec_revno.from_string("revno:1")
