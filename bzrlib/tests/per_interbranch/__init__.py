@@ -76,11 +76,9 @@ def default_test_list():
     # test the default InterBranch between format 6 and the current
     # default format.
     for optimiser_class in InterBranch._optimisers:
-        format_from_test, format_to_test = \
-            optimiser_class._get_branch_formats_to_test()
-        if format_to_test is not None:
-            result.append((optimiser_class,
-                           format_from_test, format_to_test))
+        for format_from_test, format_to_test in \
+            optimiser_class._get_branch_formats_to_test():
+            result.append((optimiser_class, format_from_test, format_to_test))
     # if there are specific combinations we want to use, we can add them
     # here.
     return result

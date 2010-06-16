@@ -3185,10 +3185,15 @@ class InterBranch(InterObject):
     _optimisers = []
     """The available optimised InterBranch types."""
 
-    @staticmethod
-    def _get_branch_formats_to_test():
-        """Return a tuple with the Branch formats to use when testing."""
-        raise NotImplementedError(InterBranch._get_branch_formats_to_test)
+    @classmethod
+    def _get_branch_formats_to_test(klass):
+        """Return an iterable of format tuples for testing.
+        
+        :return: An iterable of (from_format, to_format) to use when testing
+            this InterBranch class. Each InterBranch class should define this
+            method itself.
+        """
+        raise NotImplementedError(klass._get_branch_formats_to_test)
 
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, local=False):
@@ -3230,9 +3235,9 @@ class GenericInterBranch(InterBranch):
         # GenericBranch uses the public API, so always compatible
         return True
 
-    @staticmethod
-    def _get_branch_formats_to_test():
-        return BranchFormat._default_format, BranchFormat._default_format
+    @classmethod
+    def _get_branch_formats_to_test(klass):
+        return [(BranchFormat._default_format, BranchFormat._default_format)]
 
     @classmethod
     def unwrap_format(klass, format):
