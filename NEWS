@@ -14,6 +14,11 @@ bzr 2.2b4
 Compatibility Breaks
 ********************
 
+* URLs like ``foo:bar/baz`` are now always parsed as a URL with scheme "foo"
+  and path "bar/baz", even if bzr does not recognize "foo" as a known URL
+  scheme.  Previously these URLs would be treated as local paths.
+  (Gordon Tyler)
+
 New Features
 ************
 
@@ -28,14 +33,35 @@ Bug Fixes
   leading to faster init for directories with existing content.
   (Martin [gz], Parth Malwankar, #501307)
 
+* ``bzr log --exclude-common-ancestry`` is now taken into account for
+  linear ancetries. (Vincent Ladeuil, #575631)
+
+* ``bzr pull`` now works when a lp: URL is explicitly defined as the parent
+  or pull location in locations.conf or branch.conf.
+  (Gordon Tyler, #534787)
+
+* Ensure that wrong path specifications in ``BZR_PLUGINS_AT`` display
+  proper error messages. (Vincent Ladeuil, #591215)
+
+* Explicitly removing ``--profile-imports`` option from parsed command-line
+  arguments on Windows, because bzr script does the same.
+  (Alexander Belchenko, #588277)
+
+* Fetching was slightly confused about the best code to use and was
+  using a new code path for all branches, resulting in more lookups than
+  necessary on old branches. (Robert Collins, #593515)
+
 * Final fix for 'no help for command' issue. We now show a clean message
   when a command has no help, document how to set help more clearly, and
   test that all commands available to the test suite have help.
   (Robert Collins, #177500)
 
-* Explicitly removing ``--profile-imports`` option from parsed command-line
-  arguments on Windows, because bzr script does the same.
-  (Alexander Belchenko, #588277)
+* ``ScriptRunner`` now strips off leading indentation from test scripts,
+  which previously caused "SyntaxError: No command for line".
+  (Martin Pool)
+
+* Relative imports in plugins are now handled correctly when using
+  BZR_PLUGINS_AT. (Vincent Ladeuil, #588959)
 
 Improvements
 ************
@@ -43,6 +69,11 @@ Improvements
 * Bazaar now reads data from SSH connections more efficiently on platforms
   that provide the ``socketpair`` function, and when using paramiko.
   (Andrew Bennetts, #590637)
+
+* ``Branch.copy_content_into`` is now a convenience method dispatching to
+  a ``InterBranch`` multi-method. This permits ``bzr-loom`` and other
+  plugins to intercept this even when a ``RemoteBranch`` proxy is in use.
+  (Robert Collins, #201613)
 
 * Use lazy imports in ``bzrlib/merge.py`` so that plugins like ``news_merge``
   do not cause modules to be loaded unnecessarily just because the plugin
@@ -69,6 +100,8 @@ API Changes
 
 Internals
 *********
+
+* Improved ``bzrlib.urlutils`` to handle lp:foo/bar URLs. (Gordon Tyler)
 
 Testing
 *******
