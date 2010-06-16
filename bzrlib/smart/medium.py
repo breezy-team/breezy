@@ -740,12 +740,10 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
 
 class SSHParams(object):
+    """A set of parameters for starting a remote bzr via SSH."""
 
     def __init__(self, host, port=None, username=None, password=None,
             bzr_remote_path='bzr'):
-        """Creates a client that will connect on the first use.
-
-        """
         self.host = host
         self.port = port
         self.username = username
