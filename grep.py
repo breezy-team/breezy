@@ -21,14 +21,21 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from fnmatch import fnmatch
 import re
+from cStringIO import StringIO
 
 from termcolor import color_string, re_color_string, FG
 
-
-from bzrlib import bzrdir
+from bzrlib import bzrdir, diff
 from bzrlib.workingtree import WorkingTree
-from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
+from bzrlib.revision import Revision
+from bzrlib.revisionspec import (
+    RevisionSpec,
+    RevisionSpec_revid,
+    RevisionSpec_revno,
+    RevisionInfo,
+    )
 from bzrlib import (
+    diff
     errors,
     lazy_regex,
     osutils,
@@ -125,6 +132,74 @@ def is_fixed_string(s):
     if re.match("^([A-Za-z0-9_]|\s)*$", s):
         return True
     return False
+
+
+def grep_diff(opts):
+    wt, branch, relpath = \
+        bzrdir.BzrDir.open_containing_tree_or_branch('.')
+    branch.lock_read()
+    try:
+        start_rev = opts.revision[0]
+        start_revid = start_rev.as_revision_id(branch)
+        if start_revid == None:
+            start_rev = RevisionSpec_revno.from_string("revno:1")
+            start_revid = start_rev.as_revision_id(branch)
+        srevno_tuple = branch.revision_id_to_dotted_revno(start_revid)
+
+        if len(opts.revision) == 2:
+            end_rev = opts.revision[1]
+            end_revid = end_rev.as_revision_id(branch)
+            if end_revid == None:
+                end_revno, end_revid = branch.last_revision_info()
+            erevno_tuple = branch.revision_id_to_dotted_revno(end_revid)
+
+            grep_mainline = (_rev_on_mainline(srevno_tuple) and
+                _rev_on_mainline(erevno_tuple))
+
+            # ensure that we go in reverse order
+            if srevno_tuple > erevno_tuple:
+                srevno_tuple, erevno_tuple = erevno_tuple, srevno_tuple
+                start_revid, end_revid = end_revid, start_revid
+
+            # Optimization: Traversing the mainline in reverse order is much
+            # faster when we don't want to look at merged revs. We try this
+            # with _linear_view_revisions. If all revs are to be grepped we
+            # use the slower _graph_view_revisions
+            if opts.levels==1 and grep_mainline:
+                given_revs = _linear_view_revisions(branch, start_revid, end_revid)
+            else:
+                given_revs = _graph_view_revisions(branch, start_revid, end_revid)
+        else:
+            # We do an optimization below. For grepping a specific revison
+            # We don't need to call _graph_view_revisions which is slow.
+            # We create the start_rev_tuple for only that specific revision.
+            # _graph_view_revisions is used only for revision range.
+            start_revno = '.'.join(map(str, srevno_tuple))
+            start_rev_tuple = (start_revid, start_revno, 0)
+            given_revs = [start_rev_tuple]
+        repo = branch.repository
+        count = 0
+        for revid, revno, merge_depth in given_revs:
+            if opts.levels == 1 and merge_depth != 0:
+                # with level=1 show only top level
+                continue
+
+            rev_spec = RevisionSpec_revid.from_string("revid:"+revid)
+            new_rev = repo.get_revision(revid)
+            new_tree = rev_spec.as_tree(branch)
+            if len(new_rev.parent_ids) == 0:
+                ancestor_id = _mod_revision.NULL_REVISION
+            else:
+                ancestor_id = new_rev.parent_ids[0]
+            old_tree = repo.revision_tree(ancestor_id)
+            s = StringIO()
+            diff.show_diff_trees(old_tree, new_tree, s,
+                old_label='', new_label='')
+            print s.getvalue()
+            print "=" * 10, count
+            count += 1
+    finally:
+        branch.unlock()
 
 
 def versioned_grep(opts):
