@@ -98,6 +98,18 @@ API Changes
   ``bzrlib.patiencediff`` instead.
   (Andrew Bennetts)
 
+* ``bzrlib.transport.ssh.SSHVendor.connect_ssh`` now returns an object
+  that implements the interface of ``bzrlib.transport.ssh.SSHConnection``.
+  Third-party implementations of ``SSHVendor`` may need to be updated
+  accordingly.  Similarly, any code using ``SSHConnection`` directly will
+  need to be updated.
+  (Andrew Bennetts)
+
+* The constructor of ``bzrilb.smart.medium.SmartSSHClientMedium`` has
+  changed to take an ``SSHParams`` instance (replacing many individual
+  values).
+  (Andrew Bennetts)
+
 Internals
 *********
 
