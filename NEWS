@@ -20,6 +20,9 @@ New Features
 Bug Fixes
 *********
 
+* Raise ValueError instead of a string exception.
+  (John Arbash Meinel, #586926)
+
 Improvements
 ************
 
@@ -498,6 +501,9 @@ Bug Fixes
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
+
+* Raise ValueError instead of a string exception.
+  (John Arbash Meinel, #586926)
 
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
