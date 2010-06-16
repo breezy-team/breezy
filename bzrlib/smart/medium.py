@@ -715,10 +715,6 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
     """A client medium using simple pipes.
 
     This client does not manage the pipes: it assumes they will always be open.
-
-    Note that if readable_pipe.read might raise IOError or OSError with errno
-    of EINTR, it must be safe to retry the read.  Plain CPython fileobjects
-    (such as used for sys.stdin) are safe.
     """
 
     def __init__(self, readable_pipe, writeable_pipe, base):
@@ -737,26 +733,42 @@ class SmartSimplePipesClientMedium(SmartClientStreamMedium):
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium._read_bytes."""
-        bytes = osutils.until_no_eintr(self._readable_pipe.read, count)
+        bytes_to_read = min(count, _MAX_READ_SIZE)
+        bytes = self._readable_pipe.read(bytes_to_read)
         self._report_activity(len(bytes), 'read')
         return bytes
 
 
-class SmartSSHClientMedium(SmartClientStreamMedium):
-    """A client medium using SSH."""
+class SSHParams(object):
 
     def __init__(self, host, port=None, username=None, password=None,
-            base=None, vendor=None, bzr_remote_path=None):
+            bzr_remote_path='bzr'):
         """Creates a client that will connect on the first use.
 
+        """
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.bzr_remote_path = bzr_remote_path
+
+
+class SmartSSHClientMedium(SmartClientStreamMedium):
+    """A client medium using SSH.
+    
+    It delegates IO to a SmartClientSocketMedium or
+    SmartClientAlreadyConnectedSocketMedium (depending on platform).
+    """
+
+    def __init__(self, base, ssh_params, vendor=None):
+        """Creates a client that will connect on the first use.
+
+        :param ssh_params: A SSHParams instance.
         :param vendor: An optional override for the ssh vendor to use. See
             bzrlib.transport.ssh for details on ssh vendors.
         """
-        self._connected = False
-        self._host = host
-        self._password = password
-        self._port = port
-        self._username = username
+        self._real_medium = None
+        self._ssh_params = ssh_params
         # for the benefit of progress making a short description of this
         # transport
         self._scheme = 'bzr+ssh'
@@ -764,67 +776,72 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         # _DebugCounter so we have to store all the values used in our repr
         # method before calling the super init.
         SmartClientStreamMedium.__init__(self, base)
-        self._read_from = None
-        self._ssh_connection = None
         self._vendor = vendor
-        self._write_to = None
-        self._bzr_remote_path = bzr_remote_path
+        self._ssh_connection = None
 
     def __repr__(self):
-        if self._port is None:
+        if self._ssh_params.port is None:
             maybe_port = ''
         else:
-            maybe_port = ':%s' % self._port
+            maybe_port = ':%s' % self._ssh_params.port
         return "%s(%s://%s@%s%s/)" % (
             self.__class__.__name__,
             self._scheme,
-            self._username,
-            self._host,
+            self._ssh_params.username,
+            self._ssh_params.host,
             maybe_port)
 
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
         self._ensure_connection()
-        self._write_to.write(bytes)
-        self._report_activity(len(bytes), 'write')
+        # XXX: Perhaps should use accept_bytes rather than _accept_bytes?
+        self._real_medium._accept_bytes(bytes)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
-        if not self._connected:
-            return
-        self._read_from.close()
-        self._write_to.close()
-        self._ssh_connection.close()
-        self._connected = False
+        if self._real_medium is not None:
+            self._real_medium.disconnect()
+            self._real_medium = None
+        if self._ssh_connection is not None:
+            self._ssh_connection.close()
+            self._ssh_connection = None
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
-        if self._connected:
+        if self._real_medium is not None:
             return
         if self._vendor is None:
             vendor = ssh._get_ssh_vendor()
         else:
             vendor = self._vendor
-        self._ssh_connection = vendor.connect_ssh(self._username,
-                self._password, self._host, self._port,
-                command=[self._bzr_remote_path, 'serve', '--inet',
+        self._ssh_connection = vendor.connect_ssh(self._ssh_params.username,
+                self._ssh_params.password, self._ssh_params.host,
+                self._ssh_params.port,
+                command=[self._ssh_params.bzr_remote_path, 'serve', '--inet',
                          '--directory=/', '--allow-writes'])
-        self._read_from, self._write_to = \
-            self._ssh_connection.get_filelike_channels()
-        self._connected = True
+        io_kind, io_object = self._ssh_connection.get_sock_or_pipes()
+        if io_kind == 'socket':
+            self._real_medium = SmartClientAlreadyConnectedSocketMedium(
+                self.base, io_object)
+        elif io_kind == 'pipes':
+            read_from, write_to = io_object
+            self._real_medium = SmartSimplePipesClientMedium(
+                read_from, write_to, self.base)
+        else:
+            raise AssertionError(
+                "Unexpected io_kind %r from %r"
+                % (io_kind, self._ssh_connection))
 
     def _flush(self):
         """See SmartClientStreamMedium._flush()."""
-        self._write_to.flush()
+        self._real_medium._flush()
 
     def _read_bytes(self, count):
         """See SmartClientStreamMedium.read_bytes."""
-        if not self._connected:
+        if self._real_medium is None:
             raise errors.MediumNotConnected(self)
-        bytes_to_read = min(count, _MAX_READ_SIZE)
-        bytes = self._read_from.read(bytes_to_read)
-        self._report_activity(len(bytes), 'read')
-        return bytes
+        # XXX: perhaps should delegate to read_bytes, not _read_bytes?
+        return self._real_medium._read_bytes(count)
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
@@ -832,21 +849,33 @@ BZR_DEFAULT_INTERFACE = None
 BZR_DEFAULT_PORT = 4155
 
 
-class SmartTCPClientMedium(SmartClientStreamMedium):
-    """A client medium using TCP."""
+class SmartClientSocketMedium(SmartClientStreamMedium):
+    """A client medium using sockets."""
 
-    def __init__(self, host, port, base):
+    def __init__(self, base):
         """Creates a client that will connect on the first use."""
         SmartClientStreamMedium.__init__(self, base)
-        self._connected = False
-        self._host = host
-        self._port = port
         self._socket = None
+        self._connected = False
 
     def _accept_bytes(self, bytes):
         """See SmartClientMedium.accept_bytes."""
         self._ensure_connection()
         osutils.send_all(self._socket, bytes, self._report_activity)
+
+    def _flush(self):
+        """See SmartClientStreamMedium._flush().
+
+        For TCP we do no flushing. We may want to turn off TCP_NODELAY and
+        add a means to do a flush, but that can be done in the future.
+        """
+
+    def _read_bytes(self, count):
+        """See SmartClientMedium.read_bytes."""
+        if not self._connected:
+            raise errors.MediumNotConnected(self)
+        return osutils.read_bytes_from_socket(
+            self._socket, self._report_activity)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -855,6 +884,17 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
         self._socket.close()
         self._socket = None
         self._connected = False
+
+
+class SmartTCPClientMedium(SmartClientSocketMedium):
+
+    def __init__(self, host, port, base):
+        """Creates a client that will connect on the first use."""
+        SmartClientSocketMedium.__init__(self, base)
+        self._connected = False
+        self._host = host
+        self._port = port
+        self._socket = None
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
@@ -895,19 +935,22 @@ class SmartTCPClientMedium(SmartClientStreamMedium):
                     (self._host, port, err_msg))
         self._connected = True
 
-    def _flush(self):
-        """See SmartClientStreamMedium._flush().
 
-        For TCP we do no flushing. We may want to turn off TCP_NODELAY and
-        add a means to do a flush, but that can be done in the future.
-        """
+class SmartClientAlreadyConnectedSocketMedium(SmartClientSocketMedium):
+    """A SmartClientSocketMedium for an already-connected socket.
+    
+    Note that this class will assume it "owns" the socket, so it will close it
+    when its disconnect method is called.
+    """
 
-    def _read_bytes(self, count):
-        """See SmartClientMedium.read_bytes."""
-        if not self._connected:
-            raise errors.MediumNotConnected(self)
-        return osutils.read_bytes_from_socket(
-            self._socket, self._report_activity)
+    def __init__(self, base, sock):
+        SmartClientSocketMedium.__init__(self, base)
+        self._socket = sock
+        self._connected = True
+
+    def _ensure_connection(self):
+        # Already connected, by definition!  So nothing to do.
+        pass
 
 
 class SmartClientStreamMediumRequest(SmartClientMediumRequest):
