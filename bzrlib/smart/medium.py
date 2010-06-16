@@ -792,8 +792,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
     def _accept_bytes(self, bytes):
         """See SmartClientStreamMedium.accept_bytes."""
         self._ensure_connection()
-        # XXX: Perhaps should use accept_bytes rather than _accept_bytes?
-        self._real_medium._accept_bytes(bytes)
+        self._real_medium.accept_bytes(bytes)
 
     def disconnect(self):
         """See SmartClientMedium.disconnect()."""
@@ -838,8 +837,7 @@ class SmartSSHClientMedium(SmartClientStreamMedium):
         """See SmartClientStreamMedium.read_bytes."""
         if self._real_medium is None:
             raise errors.MediumNotConnected(self)
-        # XXX: perhaps should delegate to read_bytes, not _read_bytes?
-        return self._real_medium._read_bytes(count)
+        return self._real_medium.read_bytes(count)
 
 
 # Port 4155 is the default port for bzr://, registered with IANA.
@@ -848,10 +846,12 @@ BZR_DEFAULT_PORT = 4155
 
 
 class SmartClientSocketMedium(SmartClientStreamMedium):
-    """A client medium using sockets."""
+    """A client medium using a socket.
+    
+    This class isn't usable directly.  Use one of its subclasses instead.
+    """
 
     def __init__(self, base):
-        """Creates a client that will connect on the first use."""
         SmartClientStreamMedium.__init__(self, base)
         self._socket = None
         self._connected = False
@@ -861,11 +861,16 @@ class SmartClientSocketMedium(SmartClientStreamMedium):
         self._ensure_connection()
         osutils.send_all(self._socket, bytes, self._report_activity)
 
+    def _ensure_connection(self):
+        """Connect this medium if not already connected."""
+        raise NotImplementedError(self._ensure_connection)
+
     def _flush(self):
         """See SmartClientStreamMedium._flush().
 
-        For TCP we do no flushing. We may want to turn off TCP_NODELAY and
-        add a means to do a flush, but that can be done in the future.
+        For sockets we do no flushing. For TCP sockets we may want to turn off
+        TCP_NODELAY and add a means to do a flush, but that can be done in the
+        future.
         """
 
     def _read_bytes(self, count):
@@ -885,15 +890,13 @@ class SmartClientSocketMedium(SmartClientStreamMedium):
 
 
 class SmartTCPClientMedium(SmartClientSocketMedium):
-    """A client medium using TCP."""
+    """A client medium that creates a TCP connection."""
 
     def __init__(self, host, port, base):
         """Creates a client that will connect on the first use."""
         SmartClientSocketMedium.__init__(self, base)
-        self._connected = False
         self._host = host
         self._port = port
-        self._socket = None
 
     def _ensure_connection(self):
         """Connect this medium if not already connected."""
