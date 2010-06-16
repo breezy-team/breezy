@@ -717,11 +717,7 @@ class _ParamikoSSHConnection(SSHConnection):
         self.channel = channel
 
     def get_sock_or_pipes(self):
-        # XXX: in theory could return ('socket', self.channel) here instead,
-        # but need to check if paramiko's emulation of the socket API handles
-        # EINTR safely first.
-        return 'pipes', (
-            self.channel.makefile('rb'), self.channel.makefile('wb'))
+        return ('socket', self.channel)
 
     def close(self):
         return self.channel.close()
