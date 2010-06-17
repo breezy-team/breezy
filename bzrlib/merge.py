@@ -1778,7 +1778,7 @@ class MergeIntoMerger(Merger):
     """
 
     def __init__(self, this_tree, other_branch, other_tree, target_subdir,
-            source_subpath):
+            source_subpath, other_rev_id=None):
         """Create a new MergeIntoMerger object.
 
         source_subpath in other_tree will be effectively copied to
@@ -1805,8 +1805,9 @@ class MergeIntoMerger(Merger):
         self._target_subdir = target_subdir
         self._source_subpath = source_subpath
         self.other_branch = other_branch
-        self.other_rev_id = other_tree.get_revision_id()
-        self.other_basis = self.other_rev_id
+        if other_rev_id is None:
+            other_rev_id = other_tree.get_revision_id()
+        self.other_rev_id = self.other_basis = other_rev_id
         self.base_is_ancestor = True
         self.backup_files = True
         self.merge_type = Merge3Merger
@@ -1909,7 +1910,7 @@ class Merge3MergeIntoMerger(Merge3Merger):
             yield (entry, parent_id)
 
 
-def merge_into_helper(location, subdir=None, add_cleanup=None):
+def merge_into_helper(location, add_cleanup, subdir=None):
     # Open and lock the various tree and branch objects
     from bzrlib import workingtree
     import os

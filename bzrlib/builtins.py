@@ -4069,7 +4069,7 @@ class cmd_merge_into(Command):
     def run(self, location, merge_as=None):
         try:
             conflicts = _mod_merge.merge_into_helper(
-                location, merge_as, self.add_cleanup)
+                location, self.add_cleanup, merge_as)
         except _mod_merge.PathNotInTree, e:
             raise errors.BzrCommandError(str(e))
         # Report the results

@@ -64,7 +64,7 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
     def do_merge_into(self, location, merge_as=None):
         """Invoke merge_into_helper."""
         operation = cleanup.OperationWithCleanups(merge.merge_into_helper)
-        return operation.run_simple(location, merge_as, operation.add_cleanup)
+        return operation.run_simple(location, operation.add_cleanup, merge_as)
 
     def assertTreeEntriesEqual(self, expected_entries, tree):
         """Assert that 'tree' contains the expected inventory entries.
