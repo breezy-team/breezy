@@ -918,7 +918,7 @@ def joinpath(p):
 
 def parent_directories(filename):
     """Return the list of parent directories, deepest first.
-    
+
     For example, parent_directories("a/b/c") -> ["a/b", "a"].
     """
     parents = []
@@ -948,7 +948,7 @@ def failed_to_load_extension(exception):
     # NB: This docstring is just an example, not a doctest, because doctest
     # currently can't cope with the use of lazy imports in this namespace --
     # mbp 20090729
-    
+
     # This currently doesn't report the failure at the time it occurs, because
     # they tend to happen very early in startup when we can't check config
     # files etc, and also we want to report all failures but not spam the user
@@ -1024,8 +1024,8 @@ def link_or_copy(src, dest):
 
 
 def delete_any(path):
-    """Delete a file, symlink or directory.  
-    
+    """Delete a file, symlink or directory.
+
     Will delete even if readonly.
     """
     try:
@@ -1219,6 +1219,22 @@ def canonical_relpaths(base, paths):
     """
     # but for now, we haven't optimized...
     return [canonical_relpath(base, p) for p in paths]
+
+
+def decode_filename(filename):
+    """Decode the filename using the filesystem encoding
+
+    If it is unicode, it is returned.
+    Otherwise it is decoded from the the filesystem's encoding. If decoding
+    fails, a errors.BadFilenameEncoding exception is raised.
+    """
+    if type(filename) is unicode:
+        return filename
+    try:
+        return filename.decode(_fs_enc)
+    except UnicodeDecodeError:
+        raise errors.BadFilenameEncoding(filename, _fs_enc)
+
 
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
@@ -1631,7 +1647,7 @@ def walkdirs(top, prefix=""):
         dirblock = []
         append = dirblock.append
         try:
-            names = sorted(_listdir(top))
+            names = sorted(map(decode_filename, _listdir(top)))
         except OSError, e:
             if not _is_error_enotdir(e):
                 raise
@@ -2007,14 +2023,14 @@ def recv_all(socket, count):
 
 def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
- 
+
     Breaks large blocks in smaller chunks to avoid buffering limitations on
     some platforms, and catches EINTR which may be thrown if the send is
     interrupted by a signal.
 
     This is preferred to socket.sendall(), because it avoids portability bugs
     and provides activity reporting.
- 
+
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
     """
@@ -2130,7 +2146,7 @@ def file_kind(f, _lstat=os.lstat):
 
 def until_no_eintr(f, *a, **kw):
     """Run f(*a, **kw), retrying if an EINTR error occurs.
-    
+
     WARNING: you must be certain that it is safe to retry the call repeatedly
     if EINTR does occur.  This is typically only true for low-level operations
     like os.read.  If in any doubt, don't use this.
@@ -2267,7 +2283,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
 if sys.platform == 'win32':
     def open_file(filename, mode='r', bufsize=-1):
         """This function is used to override the ``open`` builtin.
-        
+
         But it uses O_NOINHERIT flag so the file handle is not inherited by
         child processes.  Deleting or renaming a closed file opened with this
         function is not blocking child processes.
