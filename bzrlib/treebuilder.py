@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,7 @@
 
 """TreeBuilder helper class.
 
-TreeBuilders are used to build trees of various shapres or properties. This
+TreeBuilders are used to build trees of various shapes or properties. This
 can be extremely useful in testing for instance.
 """
 
