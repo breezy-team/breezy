@@ -24,10 +24,10 @@ from bzrlib.tests.per_interbranch import (
     )
 
 
-class TestCopyContentInto(TestCaseWithInterBranch):
+class TestInterBranchGet(TestCaseWithInterBranch):
 
     def test_gets_right_inter(self):
-        self.tree1 = self.make_branch_and_tree('tree1')
+        self.tree1 = self.make_from_branch_and_tree('tree1')
         branch2 = self.make_to_branch('tree2')
         self.assertIs(branch.InterBranch.get(
             self.tree1.branch, branch2).__class__,
