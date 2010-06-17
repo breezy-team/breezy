@@ -69,6 +69,10 @@ Bug Fixes
 Improvements
 ************
 
+* Bazaar now reads data from SSH connections more efficiently on platforms
+  that provide the ``socketpair`` function, and when using paramiko.
+  (Andrew Bennetts, #590637)
+
 * ``Branch.copy_content_into`` is now a convenience method dispatching to
   a ``InterBranch`` multi-method. This permits ``bzr-loom`` and other
   plugins to intercept this even when a ``RemoteBranch`` proxy is in use.
@@ -96,6 +100,16 @@ API Changes
   2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
   ``bzrlib.patiencediff`` instead.
   (Andrew Bennetts)
+
+* ``bzrlib.transport.ssh.SSHVendor.connect_ssh`` now returns an object
+  that implements the interface of ``bzrlib.transport.ssh.SSHConnection``.
+  Third-party implementations of ``SSHVendor`` may need to be updated
+  accordingly.  Similarly, any code using ``SSHConnection`` directly will
+  need to be updated.  (Andrew Bennetts)
+
+* The constructor of ``bzrilb.smart.medium.SmartSSHClientMedium`` has
+  changed to take an ``SSHParams`` instance (replacing many individual
+  values).  (Andrew Bennetts)
 
 Internals
 *********
