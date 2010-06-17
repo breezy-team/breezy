@@ -89,14 +89,14 @@ Documentation
 API Changes
 ***********
 
-* ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
-  2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
-  ``bzrlib.patiencediff`` instead. (Andrew Bennetts)
-
 * ``bzrlib.branch.InterBranch._get_branch_formats_to_test`` now returns
   an iterable of format pairs, rather than just a single pair, permitting
   InterBranch objects that work with multiple permutations to be
   comprehensively tested. (Robert Collins)
+
+* ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
+  2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
+  ``bzrlib.patiencediff`` instead. (Andrew Bennetts)
 
 Internals
 *********
