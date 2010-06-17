@@ -1023,7 +1023,6 @@ class Branch(bzrdir.ControlComponent):
             self._extend_partial_history(distance_from_last)
         return self._partial_revision_history_cache[distance_from_last]
 
-    @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              possible_transports=None, *args, **kwargs):
         """Mirror source into this branch.
@@ -3195,6 +3194,7 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(klass._get_branch_formats_to_test)
 
+    @needs_write_lock
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, local=False):
         """Mirror source into target branch.
@@ -3205,6 +3205,7 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.pull)
 
+    @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
                          graph=None):
         """Pull in new perfect-fit revisions.
@@ -3218,6 +3219,7 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.update_revisions)
 
+    @needs_write_lock
     def push(self, overwrite=False, stop_revision=None,
              _override_hook_source_branch=None):
         """Mirror the source branch into the target branch.
@@ -3305,6 +3307,7 @@ class GenericInterBranch(InterBranch):
                              (this_last_revision, this_revno)])
         self.target.set_last_revision_info(stop_revno, stop_revision)
 
+    @needs_write_lock
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, run_hooks=True,
              _override_hook_target=None, local=False):
