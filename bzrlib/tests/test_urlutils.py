@@ -156,7 +156,7 @@ class TestUrlToPath(TestCase):
         # Weird stuff
         # Can't have slashes or colons in the scheme
         test_one('/path/to/://foo', None)
-        test_one('path:path://foo', None)
+        test_one('scheme:stuff://foo', ('scheme', 'stuff://foo'))
         # Must have more than one character for scheme
         test_one('C://foo', None)
         test_one('ab://foo', ('ab', 'foo'))
@@ -195,6 +195,20 @@ class TestUrlToPath(TestCase):
             dirname('path/to/foo/', exclude_trailing_slash=False))
         self.assertEqual('path/..', dirname('path/../foo'))
         self.assertEqual('../path', dirname('../path/foo'))
+    
+    def test_is_url(self):
+        self.assertTrue(urlutils.is_url('http://foo/bar'))
+        self.assertTrue(urlutils.is_url('bzr+ssh://foo/bar'))
+        self.assertTrue(urlutils.is_url('lp:foo/bar'))
+        self.assertTrue(urlutils.is_url('file:///foo/bar'))
+        self.assertFalse(urlutils.is_url(''))
+        self.assertFalse(urlutils.is_url('foo'))
+        self.assertFalse(urlutils.is_url('foo/bar'))
+        self.assertFalse(urlutils.is_url('/foo'))
+        self.assertFalse(urlutils.is_url('/foo/bar'))
+        self.assertFalse(urlutils.is_url('C:/'))
+        self.assertFalse(urlutils.is_url('C:/foo'))
+        self.assertFalse(urlutils.is_url('C:/foo/bar'))
 
     def test_join(self):
         def test(expected, *args):
@@ -210,6 +224,8 @@ class TestUrlToPath(TestCase):
         test('http://foo/bar/baz', 'http://foo', 'bar/baz')
         test('http://foo/baz', 'http://foo', 'bar/../baz')
         test('http://foo/baz', 'http://foo/bar/', '../baz')
+        test('lp:foo/bar', 'lp:foo', 'bar')
+        test('lp:foo/bar/baz', 'lp:foo', 'bar/baz')
 
         # Absolute paths
         test('http://foo', 'http://foo') # abs url with nothing is preserved.
@@ -219,6 +235,9 @@ class TestUrlToPath(TestCase):
         test('http://bar/', 'http://foo', 'http://bar/')
         test('http://bar/a', 'http://foo', 'http://bar/a')
         test('http://bar/a/', 'http://foo', 'http://bar/a/')
+        test('lp:bar', 'http://foo', 'lp:bar')
+        test('lp:bar', 'lp:foo', 'lp:bar')
+        test('file:///stuff', 'lp:foo', 'file:///stuff')
 
         # From a base path
         test('file:///foo', 'file:///', 'foo')

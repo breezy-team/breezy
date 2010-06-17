@@ -186,7 +186,7 @@ man_head = """\
 .B "help"
 .I "command"
 .SH "DESCRIPTION"
-Bazaar (or %(bzrcmd)s) is a project of Canonical to develop an open source
+Bazaar (or %(bzrcmd)s) is a project of Canonical to develop an free
 distributed version control system that is powerful, friendly, and scalable.
 Version control means a system that keeps track of previous revisions
 of software source code or similar information and helps people work on it in teams.

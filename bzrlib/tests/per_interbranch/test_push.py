@@ -145,7 +145,7 @@ class TestPush(TestCaseWithInterBranch):
         except (errors.IncompatibleFormat, errors.UninitializableFormat):
             # This Branch format cannot create shared repositories
             return
-        # This is a little bit trickier because make_branch_and_tree will not
+        # This is a little bit trickier because make_from_branch_and_tree will not
         # re-use a shared repository.
         try:
             a_branch = self.make_from_branch('repo/tree')
