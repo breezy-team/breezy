@@ -618,7 +618,7 @@ BZR_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a breaki
 _files = \
 r"""Files
 
-:On Linux:   ~/.bazaar/bazaar.conf
+:On Unix:   ~/.bazaar/bazaar.conf
 :On Windows: C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf
 
 Contains the user's default configuration. The section ``[DEFAULT]`` is

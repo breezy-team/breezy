@@ -869,7 +869,7 @@ and reviewed, you can keep others informed of where you're spending your
 energy by emailing the **bazaar-commits** list implicitly. To do this,
 install and configure the Email plugin. One way to do this is add these
 configuration settings to your central configuration file (e.g.
-``~/.bazaar/bazaar.conf`` on Linux)::
+``~/.bazaar/bazaar.conf``)::
 
   [DEFAULT]
   email = Joe Smith <joe.smith@internode.on.net>

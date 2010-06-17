@@ -90,7 +90,7 @@ the way the plugin are searched.
 
 As for the ``PATH`` variables, if multiple directories are
 specified in ``BZR_PLUGIN_PATH`` they should be separated by the
-platform specific appropriate character (':' on Unix/Linux/etc,
+platform specific appropriate character (':' on Unix,
 ';' on windows)
 
 By default if ``BZR_PLUGIN_PATH`` is set, it replaces searching
@@ -185,7 +185,7 @@ Configuration files
 Location
 ~~~~~~~~
 
-Configuration files are located in ``$HOME/.bazaar`` on Linux/Unix and
+Configuration files are located in ``$HOME/.bazaar`` on Unix and
 ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` on
 Windows. (You can check the location for your system by using
 ``bzr version``.)
