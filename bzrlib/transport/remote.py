@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -514,9 +514,9 @@ class RemoteSSHTransport(RemoteTransport):
         if user is None:
             auth = config.AuthenticationConfig()
             user = auth.get_user('ssh', self._host, self._port)
-        client_medium = medium.SmartSSHClientMedium(self._host, self._port,
-            user, self._password, self.base,
-            bzr_remote_path=bzr_remote_path)
+        ssh_params = medium.SSHParams(self._host, self._port, user,
+            self._password, bzr_remote_path)
+        client_medium = medium.SmartSSHClientMedium(self.base, ssh_params)
         return client_medium, (user, self._password)
 
 

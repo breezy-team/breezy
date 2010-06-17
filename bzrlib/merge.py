@@ -16,14 +16,14 @@
 
 import warnings
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
     conflicts as _mod_conflicts,
     debug,
-    decorators,
     errors,
     graph as _mod_graph,
-    hooks,
     merge3,
     osutils,
     patiencediff,
@@ -34,9 +34,14 @@ from bzrlib import (
     tree as _mod_tree,
     tsort,
     ui,
-    versionedfile
+    versionedfile,
     )
 from bzrlib.cleanup import OperationWithCleanups
+""")
+from bzrlib import (
+    decorators,
+    hooks,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,

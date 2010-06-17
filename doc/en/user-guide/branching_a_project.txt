@@ -8,7 +8,7 @@ Before someone else can get a copy of your work, you need to
 agree on a transfer technology.
 You may decide to make the top level directory of your branch
 a network share, an approach familiar to Windows users.
-Linux and OS X users might prefer access to be
+Unix users might prefer access to be
 via SFTP, a secure protocol built-in to most SSH servers.
 Bazaar is *very* flexible in this regard with support for
 lots of protocols some of which are given below.
