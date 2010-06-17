@@ -701,7 +701,7 @@ class SSHSubprocessConnection(SSHConnection):
 
     def recv(self, count):
         if self._sock is not None:
-            return self._sock.read(count)
+            return self._sock.recv(count)
         else:
             return os.read(self.proc.stdout.fileno(), count)
 
