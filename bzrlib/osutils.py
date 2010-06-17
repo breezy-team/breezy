@@ -1321,7 +1321,7 @@ if sys.platform == 'darwin':
 def normalizes_filenames():
     """Return True if this platform normalizes unicode filenames.
 
-    Mac OSX does, Windows/Linux do not.
+    Only Mac OSX.
     """
     return _platform_normalizes_filenames
 
@@ -1332,7 +1332,7 @@ def _accessible_normalized_filename(path):
     On platforms where the system normalizes filenames (Mac OSX),
     you can access a file by any path which will normalize correctly.
     On platforms where the system does not normalize filenames
-    (Windows, Linux), you have to access a file by its exact path.
+    (everything else), you have to access a file by its exact path.
 
     Internally, bzr only supports NFC normalization, since that is
     the standard for XML documents.

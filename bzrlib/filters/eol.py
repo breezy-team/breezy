@@ -25,8 +25,8 @@ import re, sys
 from bzrlib.errors import BzrError
 
 
-# Real Linux/Unix/OSX newline - \n without \r before it
-_LINUX_NL_RE = re.compile(r'(?<!\r)\n')
+# Real Unix newline - \n without \r before it
+_UNIX_NL_RE = re.compile(r'(?<!\r)\n')
 
 
 def _to_lf_converter(chunks, context=None):
@@ -44,7 +44,7 @@ def _to_crlf_converter(chunks, context=None):
     if '\x00' in content:
         return [content]
     else:
-        return [_LINUX_NL_RE.sub('\r\n', content)]
+        return [_UNIX_NL_RE.sub('\r\n', content)]
 
 
 # Register the eol content filter.
