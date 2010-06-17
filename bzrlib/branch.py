@@ -29,6 +29,7 @@ from bzrlib import (
         errors,
         lockdir,
         lockable_files,
+        remote,
         repository,
         revision as _mod_revision,
         rio,
@@ -197,6 +198,13 @@ class Branch(bzrdir.ControlComponent):
         return self.supports_tags() and self.tags.get_tag_dict()
 
     def get_config(self):
+        """Get a bzrlib.config.BranchConfig for this Branch.
+
+        This can then be used to get and set configuration options for the
+        branch.
+
+        :return: A bzrlib.config.BranchConfig.
+        """
         return BranchConfig(self)
 
     def _get_config(self):
@@ -961,7 +969,6 @@ class Branch(bzrdir.ControlComponent):
                 raise errors.NoSuchRevision(self, stop_revision)
         return other_history[self_len:stop_revision]
 
-    @needs_write_lock
     def update_revisions(self, other, stop_revision=None, overwrite=False,
                          graph=None):
         """Pull in new perfect-fit revisions.
@@ -1016,7 +1023,6 @@ class Branch(bzrdir.ControlComponent):
             self._extend_partial_history(distance_from_last)
         return self._partial_revision_history_cache[distance_from_last]
 
-    @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              possible_transports=None, *args, **kwargs):
         """Mirror source into this branch.
@@ -1265,24 +1271,14 @@ class Branch(bzrdir.ControlComponent):
                 revno = 1
         destination.set_last_revision_info(revno, revision_id)
 
-    @needs_read_lock
     def copy_content_into(self, destination, revision_id=None):
         """Copy the content of self into destination.
 
         revision_id: if not None, the revision history in the new branch will
                      be truncated to end with revision_id.
         """
-        self.update_references(destination)
-        self._synchronize_history(destination, revision_id)
-        try:
-            parent = self.get_parent()
-        except errors.InaccessibleParent, e:
-            mutter('parent was not accessible to copy: %s', e)
-        else:
-            if parent:
-                destination.set_parent(parent)
-        if self._push_should_merge_tags():
-            self.tags.merge_to(destination.tags)
+        return InterBranch.get(self, destination).copy_content_into(
+            revision_id=revision_id)
 
     def update_references(self, target):
         if not getattr(self._format, 'supports_reference_locations', False):
@@ -3188,11 +3184,17 @@ class InterBranch(InterObject):
     _optimisers = []
     """The available optimised InterBranch types."""
 
-    @staticmethod
-    def _get_branch_formats_to_test():
-        """Return a tuple with the Branch formats to use when testing."""
-        raise NotImplementedError(InterBranch._get_branch_formats_to_test)
+    @classmethod
+    def _get_branch_formats_to_test(klass):
+        """Return an iterable of format tuples for testing.
+        
+        :return: An iterable of (from_format, to_format) to use when testing
+            this InterBranch class. Each InterBranch class should define this
+            method itself.
+        """
+        raise NotImplementedError(klass._get_branch_formats_to_test)
 
+    @needs_write_lock
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, local=False):
         """Mirror source into target branch.
@@ -3203,6 +3205,7 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.pull)
 
+    @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
                          graph=None):
         """Pull in new perfect-fit revisions.
@@ -3216,6 +3219,7 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.update_revisions)
 
+    @needs_write_lock
     def push(self, overwrite=False, stop_revision=None,
              _override_hook_source_branch=None):
         """Mirror the source branch into the target branch.
@@ -3226,110 +3230,113 @@ class InterBranch(InterObject):
 
 
 class GenericInterBranch(InterBranch):
-    """InterBranch implementation that uses public Branch functions.
-    """
+    """InterBranch implementation that uses public Branch functions."""
 
-    @staticmethod
-    def _get_branch_formats_to_test():
-        return BranchFormat._default_format, BranchFormat._default_format
+    @classmethod
+    def is_compatible(klass, source, target):
+        # GenericBranch uses the public API, so always compatible
+        return True
 
+    @classmethod
+    def _get_branch_formats_to_test(klass):
+        return [(BranchFormat._default_format, BranchFormat._default_format)]
+
+    @classmethod
+    def unwrap_format(klass, format):
+        if isinstance(format, remote.RemoteBranchFormat):
+            format._ensure_real()
+            return format._custom_format
+        return format                                                                                                  
+
+    @needs_write_lock
+    def copy_content_into(self, revision_id=None):
+        """Copy the content of source into target
+
+        revision_id: if not None, the revision history in the new branch will
+                     be truncated to end with revision_id.
+        """
+        self.source.update_references(self.target)
+        self.source._synchronize_history(self.target, revision_id)
+        try:
+            parent = self.source.get_parent()
+        except errors.InaccessibleParent, e:
+            mutter('parent was not accessible to copy: %s', e)
+        else:
+            if parent:
+                self.target.set_parent(parent)
+        if self.source._push_should_merge_tags():
+            self.source.tags.merge_to(self.target.tags)
+
+    @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
         graph=None):
         """See InterBranch.update_revisions()."""
-        self.source.lock_read()
-        try:
-            other_revno, other_last_revision = self.source.last_revision_info()
-            stop_revno = None # unknown
-            if stop_revision is None:
-                stop_revision = other_last_revision
-                if _mod_revision.is_null(stop_revision):
-                    # if there are no commits, we're done.
-                    return
-                stop_revno = other_revno
+        other_revno, other_last_revision = self.source.last_revision_info()
+        stop_revno = None # unknown
+        if stop_revision is None:
+            stop_revision = other_last_revision
+            if _mod_revision.is_null(stop_revision):
+                # if there are no commits, we're done.
+                return
+            stop_revno = other_revno
 
-            # what's the current last revision, before we fetch [and change it
-            # possibly]
-            last_rev = _mod_revision.ensure_null(self.target.last_revision())
-            # we fetch here so that we don't process data twice in the common
-            # case of having something to pull, and so that the check for
-            # already merged can operate on the just fetched graph, which will
-            # be cached in memory.
-            self.target.fetch(self.source, stop_revision)
-            # Check to see if one is an ancestor of the other
-            if not overwrite:
-                if graph is None:
-                    graph = self.target.repository.get_graph()
-                if self.target._check_if_descendant_or_diverged(
-                        stop_revision, last_rev, graph, self.source):
-                    # stop_revision is a descendant of last_rev, but we aren't
-                    # overwriting, so we're done.
-                    return
-            if stop_revno is None:
-                if graph is None:
-                    graph = self.target.repository.get_graph()
-                this_revno, this_last_revision = \
-                        self.target.last_revision_info()
-                stop_revno = graph.find_distance_to_null(stop_revision,
-                                [(other_last_revision, other_revno),
-                                 (this_last_revision, this_revno)])
-            self.target.set_last_revision_info(stop_revno, stop_revision)
-        finally:
-            self.source.unlock()
+        # what's the current last revision, before we fetch [and change it
+        # possibly]
+        last_rev = _mod_revision.ensure_null(self.target.last_revision())
+        # we fetch here so that we don't process data twice in the common
+        # case of having something to pull, and so that the check for
+        # already merged can operate on the just fetched graph, which will
+        # be cached in memory.
+        self.target.fetch(self.source, stop_revision)
+        # Check to see if one is an ancestor of the other
+        if not overwrite:
+            if graph is None:
+                graph = self.target.repository.get_graph()
+            if self.target._check_if_descendant_or_diverged(
+                    stop_revision, last_rev, graph, self.source):
+                # stop_revision is a descendant of last_rev, but we aren't
+                # overwriting, so we're done.
+                return
+        if stop_revno is None:
+            if graph is None:
+                graph = self.target.repository.get_graph()
+            this_revno, this_last_revision = \
+                    self.target.last_revision_info()
+            stop_revno = graph.find_distance_to_null(stop_revision,
+                            [(other_last_revision, other_revno),
+                             (this_last_revision, this_revno)])
+        self.target.set_last_revision_info(stop_revno, stop_revision)
 
+    @needs_write_lock
     def pull(self, overwrite=False, stop_revision=None,
-             possible_transports=None, _hook_master=None, run_hooks=True,
+             possible_transports=None, run_hooks=True,
              _override_hook_target=None, local=False):
-        """See Branch.pull.
+        """Pull from source into self, updating my master if any.
 
-        :param _hook_master: Private parameter - set the branch to
-            be supplied as the master to pull hooks.
         :param run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
-        :param _override_hook_target: Private parameter - set the branch to be
-            supplied as the target_branch to pull hooks.
-        :param local: Only update the local branch, and not the bound branch.
         """
-        # This type of branch can't be bound.
-        if local:
+        bound_location = self.target.get_bound_location()
+        if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
-        result = PullResult()
-        result.source_branch = self.source
-        if _override_hook_target is None:
-            result.target_branch = self.target
-        else:
-            result.target_branch = _override_hook_target
-        self.source.lock_read()
+        master_branch = None
+        if not local and bound_location and self.source.user_url != bound_location:
+            # not pulling from master, so we need to update master.
+            master_branch = self.target.get_master_branch(possible_transports)
+            master_branch.lock_write()
         try:
-            # We assume that during 'pull' the target repository is closer than
-            # the source one.
-            self.source.update_references(self.target)
-            graph = self.target.repository.get_graph(self.source.repository)
-            # TODO: Branch formats should have a flag that indicates 
-            # that revno's are expensive, and pull() should honor that flag.
-            # -- JRV20090506
-            result.old_revno, result.old_revid = \
-                self.target.last_revision_info()
-            self.target.update_revisions(self.source, stop_revision,
-                overwrite=overwrite, graph=graph)
-            # TODO: The old revid should be specified when merging tags, 
-            # so a tags implementation that versions tags can only 
-            # pull in the most recent changes. -- JRV20090506
-            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                overwrite)
-            result.new_revno, result.new_revid = self.target.last_revision_info()
-            if _hook_master:
-                result.master_branch = _hook_master
-                result.local_branch = result.target_branch
-            else:
-                result.master_branch = result.target_branch
-                result.local_branch = None
-            if run_hooks:
-                for hook in Branch.hooks['post_pull']:
-                    hook(result)
+            if master_branch:
+                # pull from source into master.
+                master_branch.pull(self.source, overwrite, stop_revision,
+                    run_hooks=False)
+            return self._pull(overwrite,
+                stop_revision, _hook_master=master_branch,
+                run_hooks=run_hooks,
+                _override_hook_target=_override_hook_target)
         finally:
-            self.source.unlock()
-        return result
+            if master_branch:
+                master_branch.unlock()
 
     def push(self, overwrite=False, stop_revision=None,
              _override_hook_source_branch=None):
@@ -3397,48 +3404,63 @@ class GenericInterBranch(InterBranch):
             _run_hooks()
             return result
 
-    @classmethod
-    def is_compatible(self, source, target):
-        # GenericBranch uses the public API, so always compatible
-        return True
-
-
-class InterToBranch5(GenericInterBranch):
-
-    @staticmethod
-    def _get_branch_formats_to_test():
-        return BranchFormat._default_format, BzrBranchFormat5()
-
-    def pull(self, overwrite=False, stop_revision=None,
-             possible_transports=None, run_hooks=True,
+    def _pull(self, overwrite=False, stop_revision=None,
+             possible_transports=None, _hook_master=None, run_hooks=True,
              _override_hook_target=None, local=False):
-        """Pull from source into self, updating my master if any.
+        """See Branch.pull.
 
+        This function is the core worker, used by GenericInterBranch.pull to
+        avoid duplication when pulling source->master and source->local.
+
+        :param _hook_master: Private parameter - set the branch to
+            be supplied as the master to pull hooks.
         :param run_hooks: Private parameter - if false, this branch
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
+        :param _override_hook_target: Private parameter - set the branch to be
+            supplied as the target_branch to pull hooks.
+        :param local: Only update the local branch, and not the bound branch.
         """
-        bound_location = self.target.get_bound_location()
-        if local and not bound_location:
+        # This type of branch can't be bound.
+        if local:
             raise errors.LocalRequiresBoundBranch()
-        master_branch = None
-        if not local and bound_location and self.source.user_url != bound_location:
-            # not pulling from master, so we need to update master.
-            master_branch = self.target.get_master_branch(possible_transports)
-            master_branch.lock_write()
+        result = PullResult()
+        result.source_branch = self.source
+        if _override_hook_target is None:
+            result.target_branch = self.target
+        else:
+            result.target_branch = _override_hook_target
+        self.source.lock_read()
         try:
-            if master_branch:
-                # pull from source into master.
-                master_branch.pull(self.source, overwrite, stop_revision,
-                    run_hooks=False)
-            return super(InterToBranch5, self).pull(overwrite,
-                stop_revision, _hook_master=master_branch,
-                run_hooks=run_hooks,
-                _override_hook_target=_override_hook_target)
+            # We assume that during 'pull' the target repository is closer than
+            # the source one.
+            self.source.update_references(self.target)
+            graph = self.target.repository.get_graph(self.source.repository)
+            # TODO: Branch formats should have a flag that indicates 
+            # that revno's are expensive, and pull() should honor that flag.
+            # -- JRV20090506
+            result.old_revno, result.old_revid = \
+                self.target.last_revision_info()
+            self.target.update_revisions(self.source, stop_revision,
+                overwrite=overwrite, graph=graph)
+            # TODO: The old revid should be specified when merging tags, 
+            # so a tags implementation that versions tags can only 
+            # pull in the most recent changes. -- JRV20090506
+            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+                overwrite)
+            result.new_revno, result.new_revid = self.target.last_revision_info()
+            if _hook_master:
+                result.master_branch = _hook_master
+                result.local_branch = result.target_branch
+            else:
+                result.master_branch = result.target_branch
+                result.local_branch = None
+            if run_hooks:
+                for hook in Branch.hooks['post_pull']:
+                    hook(result)
         finally:
-            if master_branch:
-                master_branch.unlock()
+            self.source.unlock()
+        return result
 
 
 InterBranch.register_optimiser(GenericInterBranch)
-InterBranch.register_optimiser(InterToBranch5)

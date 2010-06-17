@@ -395,20 +395,21 @@ the file doesn't exist::
 The actual use of ScriptRunner within a TestCase looks something like
 this::
 
-        def test_unshelve_keep(self):
-                # some setup here
-                sr = ScriptRunner()
-                sr.run_script(self, '''
-        $ bzr add file
-        $ bzr shelve --all -m Foo
-        $ bzr shelve --list
-        1: Foo
-        $ bzr unshelve --keep
-        $ bzr shelve --list
-        1: Foo
-        $ cat file
-        contents of file
-        ''')
+    from bzrlib.tests import script
+
+    def test_unshelve_keep(self):
+        # some setup here
+        script.run_script(self, '''
+            $ bzr add file
+            $ bzr shelve --all -m Foo
+            $ bzr shelve --list
+            1: Foo
+            $ bzr unshelve --keep
+            $ bzr shelve --list
+            1: Foo
+            $ cat file
+            contents of file
+            ''')
 
 
 Import tariff tests
@@ -872,4 +873,4 @@ Please see bzrlib.treebuilder for more details.
 .. |--| unicode:: U+2014
 
 ..
-   vim: ft=rst tw=74 ai
+   vim: ft=rst tw=74 ai et sw=4
