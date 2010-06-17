@@ -590,3 +590,15 @@ def find_previous_upload(cl):
         if block.distributions.split(" ")[0] in match_targets:
             return block.version
     raise NoPreviousUpload(current_target)
+
+
+def tree_contains_upstream_source(tree):
+    """Guess if the specified tree contains the upstream source.
+    
+    :param tree: A RevisionTree.
+    :return: Boolean indicating whether or not the tree contains the upstream
+        source
+    """
+    present_files = set(tree.inventory.root.children.keys())
+    packaging_files = frozenset(["debian", ".bzr-builddeb"])
+    return (len(present_files - packaging_files) > 0)

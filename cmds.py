@@ -99,6 +99,7 @@ from bzrlib.plugins.builddeb.util import (
         open_file,
         open_file_via_transport,
         tarball_name,
+        tree_contains_upstream_source,
         )
 
 dont_purge_opt = Option('dont-purge',
@@ -356,7 +357,7 @@ class cmd_builddeb(Command):
                 use_existing = True
             merge, native, split = self._build_type(config, merge, native, split)
             if (not merge and not native and not split and
-                tree.inventory.root.children.keys() == ["debian"]):
+                not tree_contains_upstream_source(tree)):
                 # Default to merge mode if there's only a debian/ directory
                 merge = True
             (changelog, larstiq) = find_changelog(tree, merge)
