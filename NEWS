@@ -41,6 +41,9 @@ Bug Fixes
   arguments on Windows, because bzr script does the same.
   (Alexander Belchenko, #588277)
 
+* ``walkdirs`` now raises a useful message when the filenames are not using
+  the filesystem encoding. (Eric Moritz, #488519)
+
 Improvements
 ************
 
