@@ -1953,10 +1953,7 @@ def get_user_encoding(use_cache=True):
 
 
 def get_diff_header_encoding():
-    if sys.platform == 'win32':
-        return get_terminal_encoding()
-    else:
-        return 'utf8'
+    return get_terminal_encoding()
 
 
 def get_host_name():
