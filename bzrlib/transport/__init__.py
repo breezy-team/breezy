@@ -1551,9 +1551,6 @@ class ConnectedTransport(Transport):
         return transport
 
 
-# We try to recognize an url lazily (ignoring user, password, etc)
-_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<rest>.*)$')
-
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
@@ -1572,8 +1569,7 @@ def get_transport(base, possible_transports=None):
     base = directories.dereference(base)
 
     def convert_path_to_url(base, error_str):
-        m = _urlRE.match(base)
-        if m:
+        if urlutils.is_url(base):
             # This looks like a URL, but we weren't able to
             # instantiate it as such raise an appropriate error
             # FIXME: we have a 'error_str' unused and we use last_err below

@@ -19,7 +19,7 @@ If ``whoami`` is used without an argument, the current value is displayed.
 Configuration files
 -------------------
 
-Configuration files are located in ``$HOME/.bazaar`` on Linux/Unix and
+Configuration files are located in ``$HOME/.bazaar`` on Unix and
 ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` on
 Windows. There are three primary configuration files in this location:
 
