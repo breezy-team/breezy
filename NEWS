@@ -66,6 +66,9 @@ Bug Fixes
   which previously caused "SyntaxError: No command for line".
   (Martin Pool)
 
+* ``walkdirs`` now raises a useful message when the filenames are not using
+  the filesystem encoding. (Eric Moritz, #488519)
+
 Improvements
 ************
 
