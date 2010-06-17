@@ -100,7 +100,7 @@ O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 def get_unicode_argv():
     try:
         user_encoding = get_user_encoding()
-        return [a.decode(user_encoding) for a in sys.argv[1:]]
+        return [a.decode(user_encoding) for a in sys.argv]
     except UnicodeDecodeError:
         raise errors.BzrError(("Parameter '%r' is unsupported by the current "
                                                             "encoding." % a))

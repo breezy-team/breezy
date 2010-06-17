@@ -538,33 +538,12 @@ def _command_line_to_argv(command_line, single_quotes_allowed=False):
     # First, spit the command line
     s = cmdline.Splitter(command_line, single_quotes_allowed=single_quotes_allowed)
     
-    # Bug #587868 Now make sure that the length of s agrees with sys.argv 
-    # we do this by simply counting the number of arguments in each. The counts should 
-    # agree no matter what encoding sys.argv is in (AFAIK) 
-    # len(arguments) < len(sys.argv) should be an impossibility since python gets 
-    # args from the very same PEB as does GetCommandLineW
-    arguments = list(s)
-    
-    # Bug #588277 remove the --profile-imports from the command line arguments
-    # as is also done in the main bzr module
-    if '--profile-imports' not in sys.argv:
-        if (False, '--profile-imports') in arguments:
-            arguments.remove((False, '--profile-imports'))
-        elif (True, '--profile-imports') in arguments:
-            arguments.remove((True, '--profile-imports'))
-    
-    # Now shorten the command line we get from GetCommandLineW to match sys.argv
-    if len(arguments) < len(sys.argv):
-        from bzrlib.errors import InternalBzrError
-        raise InternalBzrError("len(GetCommandLineW(...)) < len(sys.argv) should not be possible")
-    arguments = arguments[len(arguments) - len(sys.argv):]
-    
     # Carry on to process globs (metachars) in the command line
     # expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs
     argv = []
-    for is_quoted, arg in arguments:
+    for is_quoted, arg in s:
         if is_quoted or not glob.has_magic(arg):
             argv.append(arg)
         else:
@@ -580,8 +559,15 @@ if has_ctypes and winver != 'Windows 98':
         command_line = GetCommandLineW()
         if command_line is None:
             raise ctypes.WinError()
-        # Skip the first argument, since we only care about parameters
-        argv = _command_line_to_argv(command_line)[1:]
+        # Bug #587868 Now make sure that the length of s agrees with sys.argv 
+        # we do this by simply counting the number of arguments in each. The counts should 
+        # agree no matter what encoding sys.argv is in (AFAIK) 
+        # len(arguments) < len(sys.argv) should be an impossibility since python gets 
+        # args from the same place as does GetCommandLineW
+        if len(command_line) < len(sys.argv):
+            raise AssertError("len(command_line) < len(sys.argv) should not occur.")
+        argv = _command_line_to_argv(command_line)
+        argv = argv[len(argv) - len(sys.argv):]
         return argv
 else:
     get_unicode_argv = None
