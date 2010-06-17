@@ -1041,8 +1041,6 @@ class UnlockableTransport(LockError):
 class LockContention(LockError):
 
     _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
-    # TODO: show full url for lock, combining the transport and relative
-    # bits?
 
     internal_error = False
 
