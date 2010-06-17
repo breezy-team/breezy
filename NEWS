@@ -66,13 +66,19 @@ Bug Fixes
   which previously caused "SyntaxError: No command for line".
   (Martin Pool)
 
-* ``walkdirs`` now raises a useful message when the filenames are not using
-  the filesystem encoding. (Eric Moritz, #488519)
+* Show unicode filenames in diff headers using terminal encoding. 
+  (Alexander Belchenko, Bug #382699)
+  NOTE for Windows users: If user need to save diff to file then user need to
+  change encoding of the terminal to ANSI encoding with command ``chcp XXX``
+  (e.g. ``chcp 1251`` for Russian Windows).
 
 * URL displayed for use with ``break-lock`` when smart server sees lock
   contention are now valid. Default timeout for lock contention retry is
   now 30 seconds instead of 300 seconds.
   (Parth Malwankar, #250451)
+
+* ``walkdirs`` now raises a useful message when the filenames are not using
+  the filesystem encoding. (Eric Moritz, #488519)
 
 Improvements
 ************
