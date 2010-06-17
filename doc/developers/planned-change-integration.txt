@@ -73,7 +73,7 @@ likely to require changes to their collaborators to be considered 'finished'.
  * Working tree disk ordering: Knowing the expected order for disk operations
    may influence the needed use case specific APIs, so having a solid
    understanding of what is optimal - and why - and whether it is pessimal on
-   non linux platforms is rather important.
+   non-Linux-kernel platforms is rather important.
 
  * Be able to version files greater than memory in size: This cannot be
    achieved until all parts of the library which deal with user files are able

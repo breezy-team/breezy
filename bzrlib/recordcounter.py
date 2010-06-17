@@ -31,10 +31,10 @@ class RecordCounter(object):
 
         # Users of RecordCounter instance update progress bar every
         # _STEP_ records. We choose are reasonably high number to keep
-        # display updates from being two frequent. This is an odd number
+        # display updates from being too frequent. This is an odd number
         # to ensure that the last digit of the records fetched in
         # fetches vs estimate ratio changes periodically.
-        self.STEP = 71
+        self.STEP = 7
 
     def is_initialized(self):
         return self.initialized

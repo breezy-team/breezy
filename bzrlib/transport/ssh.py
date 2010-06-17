@@ -239,8 +239,7 @@ class SSHVendor(object):
     def connect_ssh(self, username, password, host, port, command):
         """Make an SSH connection.
 
-        :returns: something with a `close` method, and a `get_filelike_channels`
-            method that returns a pair of (read, write) filelike objects.
+        :returns: an SSHConnection.
         """
         raise NotImplementedError(self.connect_ssh)
 
@@ -267,17 +266,6 @@ class LoopbackVendor(SSHVendor):
         return SFTPClient(SocketAsChannelAdapter(sock))
 
 register_ssh_vendor('loopback', LoopbackVendor())
-
-
-class _ParamikoSSHConnection(object):
-    def __init__(self, channel):
-        self.channel = channel
-
-    def get_filelike_channels(self):
-        return self.channel.makefile('rb'), self.channel.makefile('wb')
-
-    def close(self):
-        return self.channel.close()
 
 
 class ParamikoVendor(SSHVendor):
@@ -363,11 +351,23 @@ class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
 
     def _connect(self, argv):
-        proc = subprocess.Popen(argv,
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE,
+        # Attempt to make a socketpair to use as stdin/stdout for the SSH
+        # subprocess.  We prefer sockets to pipes because they support
+        # non-blocking short reads, allowing us to optimistically read 64k (or
+        # whatever) chunks.
+        try:
+            my_sock, subproc_sock = socket.socketpair()
+        except (AttributeError, socket.error):
+            # This platform doesn't support socketpair(), so just use ordinary
+            # pipes instead.
+            stdin = stdout = subprocess.PIPE
+            sock = None
+        else:
+            stdin = stdout = subproc_sock
+            sock = my_sock
+        proc = subprocess.Popen(argv, stdin=stdin, stdout=stdout,
                                 **os_specific_subprocess_params())
-        return SSHSubprocess(proc)
+        return SSHSubprocessConnection(proc, sock=sock)
 
     def connect_sftp(self, username, password, host, port):
         try:
@@ -652,11 +652,40 @@ def _close_ssh_proc(proc):
             pass
 
 
-class SSHSubprocess(object):
-    """A socket-like object that talks to an ssh subprocess via pipes."""
+class SSHConnection(object):
+    """Abstract base class for SSH connections."""
 
-    def __init__(self, proc):
+    def get_sock_or_pipes(self):
+        """Returns a (kind, io_object) pair.
+
+        If kind == 'socket', then io_object is a socket.
+
+        If kind == 'pipes', then io_object is a pair of file-like objects
+        (read_from, write_to).
+        """
+        raise NotImplementedError(self.get_sock_or_pipes)
+
+    def close(self):
+        raise NotImplementedError(self.close)
+
+
+class SSHSubprocessConnection(SSHConnection):
+    """A connection to an ssh subprocess via pipes or a socket.
+
+    This class is also socket-like enough to be used with
+    SocketAsChannelAdapter (it has 'send' and 'recv' methods).
+    """
+
+    def __init__(self, proc, sock=None):
+        """Constructor.
+
+        :param proc: a subprocess.Popen
+        :param sock: if proc.stdin/out is a socket from a socketpair, then sock
+            should bzrlib's half of that socketpair.  If not passed, proc's
+            stdin/out is assumed to be ordinary pipes.
+        """
         self.proc = proc
+        self._sock = sock
         # Add a weakref to proc that will attempt to do the same as self.close
         # to avoid leaving processes lingering indefinitely.
         def terminate(ref):
@@ -665,14 +694,37 @@ class SSHSubprocess(object):
         _subproc_weakrefs.add(weakref.ref(self, terminate))
 
     def send(self, data):
-        return os.write(self.proc.stdin.fileno(), data)
+        if self._sock is not None:
+            return self._sock.send(data)
+        else:
+            return os.write(self.proc.stdin.fileno(), data)
 
     def recv(self, count):
-        return os.read(self.proc.stdout.fileno(), count)
+        if self._sock is not None:
+            return self._sock.read(count)
+        else:
+            return os.read(self.proc.stdout.fileno(), count)
 
     def close(self):
         _close_ssh_proc(self.proc)
 
-    def get_filelike_channels(self):
-        return (self.proc.stdout, self.proc.stdin)
+    def get_sock_or_pipes(self):
+        if self._sock is not None:
+            return 'socket', self._sock
+        else:
+            return 'pipes', (self.proc.stdout, self.proc.stdin)
+
+
+class _ParamikoSSHConnection(SSHConnection):
+    """An SSH connection via paramiko."""
+
+    def __init__(self, channel):
+        self.channel = channel
+
+    def get_sock_or_pipes(self):
+        return ('socket', self.channel)
+
+    def close(self):
+        return self.channel.close()
+
 

@@ -135,7 +135,7 @@ class StubSFTPServer (paramiko.SFTPServerInterface):
         try:
             out = [ ]
             # TODO: win32 incorrectly lists paths with non-ascii if path is not
-            # unicode. However on Linux the server should only deal with
+            # unicode. However on unix the server should only deal with
             # bytestreams and posix.listdir does the right thing
             if sys.platform == 'win32':
                 flist = [f.encode('utf8') for f in os.listdir(path)]
@@ -452,7 +452,7 @@ class SFTPServer(test_server.TestServer):
             # Normalize the path or it will be wrongly escaped
             self._homedir = osutils.normpath(self._homedir)
         else:
-            # But Linux SFTP servers should just deal in bytestreams
+            # But unix SFTP servers should just deal in bytestreams
             self._homedir = os.getcwd()
         if self._server_homedir is None:
             self._server_homedir = self._homedir
