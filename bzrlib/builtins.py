@@ -1970,11 +1970,15 @@ class cmd_diff(Command):
          old_branch, new_branch,
          specific_files, extra_trees) = get_trees_and_branches_to_diff_locked(
             file_list, revision, old, new, self.add_cleanup, apply_view=True)
+        # GNU diff on Windows uses ANSI encoding for filenames
+        path_encoding = osutils.get_diff_header_encoding()
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
-                               extra_trees=extra_trees, using=using,
+                               extra_trees=extra_trees,
+                               path_encoding=path_encoding,
+                               using=using,
                                format_cls=format)
 
 
@@ -3892,8 +3896,10 @@ class cmd_merge(Command):
     def _do_preview(self, merger):
         from bzrlib.diff import show_diff_trees
         result_tree = self._get_preview(merger)
+        path_encoding = osutils.get_diff_header_encoding()
         show_diff_trees(merger.this_tree, result_tree, self.outf,
-                        old_label='', new_label='')
+                        old_label='', new_label='',
+                        path_encoding=path_encoding)
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
         merger.change_reporter = change_reporter
