@@ -643,8 +643,8 @@ class TestingTCPServerInAThread(transport.Server):
         self.server._pending_exception(self._server_thread)
 
 
-class TestingSmartRequestHandler(SocketServer.BaseRequestHandler,
-                                 medium.SmartServerSocketStreamMedium):
+class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
+                                    medium.SmartServerSocketStreamMedium):
 
     def __init__(self, request, client_address, server):
         medium.SmartServerSocketStreamMedium.__init__(
@@ -668,6 +668,14 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
                                            request_handler_class)
         server.SmartTCPServer.__init__(self, backing_transport,
                                        root_client_path)
+    def serve(self):
+        # FIXME: No test are exercising the hooks for the test server
+        # -- vila 20100618
+        self.run_server_started_hooks()
+        try:
+            TestingThreadingTCPServer.serve(self)
+        finally:
+            self.run_server_stopped_hooks()
 
     def get_url(self):
         """Return the url of the server"""
@@ -687,7 +695,7 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         super(SmartTCPServer_for_testing, self).__init__(
                 (self.host, self.port),
                 TestingSmartServer,
-                TestingSmartRequestHandler)
+                TestingSmartConnectionHandler)
 
     def create_server(self):
         return self.server_class((self.host, self.port),
@@ -722,6 +730,10 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         self.backing_transport = transport.get_transport(
             self.chroot_server.get_url())
         super(SmartTCPServer_for_testing, self).start_server()
+
+    def stop_server(self):
+        super(SmartTCPServer_for_testing, self).stop_server()
+        self.chroot_server.stop_server()
 
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""
