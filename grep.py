@@ -203,19 +203,18 @@ def grep_diff(opts):
             display_file = False
             file_header = None
             text = s.getvalue()
-            if opts.fixed_string:
-                for line in text.splitlines():
-                    if file_pattern.search(line):
-                        file_header = line
-                        display_file = True
-                    if diff_pattern.search(line):
-                        if display_revno:
-                            print "===", "revno:"+revno, "==="
-                            display_revno = False
-                        if display_file:
-                            print "  " + file_header
-                            display_file = False
-                        print "    " + line
+            for line in text.splitlines():
+                if file_pattern.search(line):
+                    file_header = line
+                    display_file = True
+                if diff_pattern.search(line):
+                    if display_revno:
+                        print "===", "revno:"+revno, "==="
+                        display_revno = False
+                    if display_file:
+                        print "  " + file_header
+                        display_file = False
+                    print "    " + line
     finally:
         branch.unlock()
 
