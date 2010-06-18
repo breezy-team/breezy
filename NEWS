@@ -137,6 +137,8 @@ Internals
 Testing
 *******
 
+* ``test_import_tariff`` now respects BZR_PLUGINS_AT and BZR_PLUGINS_DISABLE.
+  (Vincent Ladeuil, #595587)
 
 bzr 2.2b3
 #########
