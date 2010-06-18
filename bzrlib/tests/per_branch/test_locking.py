@@ -533,6 +533,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
     def test_lock_write_raises_in_lock_read(self):
         branch = self.make_branch('b')
         branch.lock_read()
+        self.addCleanup(branch.unlock)
         err = self.assertRaises(errors.ReadOnlyError, branch.lock_write)
 
     def test_lock_and_unlock_leaves_repo_unlocked(self):

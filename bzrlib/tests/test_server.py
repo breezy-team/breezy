@@ -31,7 +31,10 @@ from bzrlib.transport import (
     chroot,
     pathfilter,
     )
-from bzrlib.smart import server
+from bzrlib.smart import (
+    medium,
+    server,
+    )
 
 
 def debug_threads():
@@ -503,7 +506,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         # Update the client description
         self.clients.pop()
         self.clients.append((request, client_address, t))
-        # Propagate the exception handler since we must the same one for
+        # Propagate the exception handler since we must use the same one for
         # connections running in their own threads than TestingTCPServer.
         t.set_ignored_exceptions(self.ignored_exceptions)
         t.start()
@@ -640,26 +643,69 @@ class TestingTCPServerInAThread(transport.Server):
         self.server._pending_exception(self._server_thread)
 
 
-class SmartTCPServer_for_testing(server.SmartTCPServer):
+class TestingSmartConnectionHandler(SocketServer.BaseRequestHandler,
+                                    medium.SmartServerSocketStreamMedium):
+
+    def __init__(self, request, client_address, server):
+        medium.SmartServerSocketStreamMedium.__init__(
+            self, request, server.backing_transport,
+            server.root_client_path)
+        request.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        SocketServer.BaseRequestHandler.__init__(self, request, client_address,
+                                                 server)
+
+    def handle(self):
+        while not self.finished:
+            server_protocol = self._build_protocol()
+            self._serve_one_request(server_protocol)
+
+
+class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
+
+    def __init__(self, server_address, request_handler_class,
+                 backing_transport, root_client_path):
+        TestingThreadingTCPServer.__init__(self, server_address,
+                                           request_handler_class)
+        server.SmartTCPServer.__init__(self, backing_transport,
+                                       root_client_path)
+    def serve(self):
+        # FIXME: No test are exercising the hooks for the test server
+        # -- vila 20100618
+        self.run_server_started_hooks()
+        try:
+            TestingThreadingTCPServer.serve(self)
+        finally:
+            self.run_server_stopped_hooks()
+
+    def get_url(self):
+        """Return the url of the server"""
+        return "bzr://%s:%d/" % self.server_address
+
+
+class SmartTCPServer_for_testing(TestingTCPServerInAThread):
     """Server suitable for use by transport tests.
 
     This server is backed by the process's cwd.
     """
-
     def __init__(self, thread_name_suffix=''):
-        super(SmartTCPServer_for_testing, self).__init__(None)
         self.client_path_extra = None
         self.thread_name_suffix = thread_name_suffix
-        # We collect the sockets/threads used by the clients so we can
-        # close/join them when shutting down
-        self.clients = []
+        self.host = '127.0.0.1'
+        self.port = 0
+        super(SmartTCPServer_for_testing, self).__init__(
+                (self.host, self.port),
+                TestingSmartServer,
+                TestingSmartConnectionHandler)
 
-    def get_backing_transport(self, backing_transport_server):
-        """Get a backing transport from a server we are decorating."""
-        return transport.get_transport(backing_transport_server.get_url())
+    def create_server(self):
+        return self.server_class((self.host, self.port),
+                                 self.request_handler_class,
+                                 self.backing_transport,
+                                 self.root_client_path)
+
 
     def start_server(self, backing_transport_server=None,
-              client_path_extra='/extra/'):
+                     client_path_extra='/extra/'):
         """Set up server for testing.
 
         :param backing_transport_server: backing server to use.  If not
@@ -674,6 +720,7 @@ class SmartTCPServer_for_testing(server.SmartTCPServer):
         """
         if not client_path_extra.startswith('/'):
             raise ValueError(client_path_extra)
+        self.root_client_path = self.client_path_extra = client_path_extra
         from bzrlib.transport.chroot import ChrootServer
         if backing_transport_server is None:
             backing_transport_server = LocalURLServer()
@@ -682,48 +729,18 @@ class SmartTCPServer_for_testing(server.SmartTCPServer):
         self.chroot_server.start_server()
         self.backing_transport = transport.get_transport(
             self.chroot_server.get_url())
-        self.root_client_path = self.client_path_extra = client_path_extra
-        self.start_background_thread(self.thread_name_suffix)
-
-    def serve_conn(self, conn, thread_name_suffix):
-        conn_thread = super(SmartTCPServer_for_testing, self).serve_conn(
-            conn, thread_name_suffix)
-        self.clients.append((conn, conn_thread))
-        return conn_thread
-
-    def shutdown_client(self, client_socket):
-        """Properly shutdown a client socket.
-
-        Under some circumstances (as in bug #383920), we need to force the
-        shutdown as python delays it until gc occur otherwise and the client
-        may hang.
-
-        This should be called only when no other thread is trying to use the
-        socket.
-        """
-        try:
-            # The request process has been completed, the thread is about to
-            # die, let's shutdown the socket if we can.
-            client_socket.shutdown(socket.SHUT_RDWR)
-        except (socket.error, select.error), e:
-            if e[0] in (errno.EBADF, errno.ENOTCONN):
-                # Right, the socket is already down
-                pass
-            else:
-                raise
+        super(SmartTCPServer_for_testing, self).start_server()
 
     def stop_server(self):
-        self.stop_background_thread()
-        # Let's close all our pending clients too
-        for sock, thread in self.clients:
-            self.shutdown_client(sock)
-            thread.join()
-            del thread
-        self.clients = []
+        super(SmartTCPServer_for_testing, self).stop_server()
         self.chroot_server.stop_server()
 
+    def get_backing_transport(self, backing_transport_server):
+        """Get a backing transport from a server we are decorating."""
+        return transport.get_transport(backing_transport_server.get_url())
+
     def get_url(self):
-        url = super(SmartTCPServer_for_testing, self).get_url()
+        url = self.server.get_url()
         return url[:-1] + self.client_path_extra
 
     def get_bogus_url(self):
