@@ -31,7 +31,10 @@ from bzrlib.transport import (
     chroot,
     pathfilter,
     )
-from bzrlib.smart import server
+from bzrlib.smart import (
+    medium,
+    server,
+    )
 
 
 def debug_threads():
@@ -650,6 +653,7 @@ class SmartTCPServer_for_testing(server.SmartTCPServer):
         super(SmartTCPServer_for_testing, self).__init__(None)
         self.client_path_extra = None
         self.thread_name_suffix = thread_name_suffix
+        self._create_server_socket('127.0.0.1', 0)
         # We collect the sockets/threads used by the clients so we can
         # close/join them when shutting down
         self.clients = []
