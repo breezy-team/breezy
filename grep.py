@@ -25,7 +25,6 @@ from cStringIO import StringIO
 
 from termcolor import color_string, re_color_string, FG
 
-from bzrlib import bzrdir, diff
 from bzrlib.workingtree import WorkingTree
 from bzrlib.revision import Revision
 from bzrlib.revisionspec import (
@@ -35,7 +34,8 @@ from bzrlib.revisionspec import (
     RevisionInfo,
     )
 from bzrlib import (
-    diff
+    bzrdir,
+    diff,
     errors,
     lazy_regex,
     osutils,
