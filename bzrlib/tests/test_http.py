@@ -1756,6 +1756,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         branch = self.make_branch('relpath')
         url = self.http_server.get_url() + 'relpath'
         bd = bzrdir.BzrDir.open(url)
+        self.addCleanup(bd.transport.disconnect)
         self.assertIsInstance(bd, _mod_remote.RemoteBzrDir)
 
     def test_bulk_data(self):
@@ -2145,6 +2146,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         def redirected(t, exception, redirection_notice):
             self.redirections += 1
             redirected_t = t._redirected_to(exception.source, exception.target)
+            self.addCleanup(redirected_t.disconnect)
             return redirected_t
 
         stdout = tests.StringIOWrapper()
@@ -2172,7 +2174,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
                                        self.new_server.port)
         self.old_server.redirections = [
             ('(.*)', r'%s/1\1' % (new_prefix), 301),]
-        self.assertEqual('redirected once',t._perform(req).read())
+        self.assertEqual('redirected once', t._perform(req).read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
