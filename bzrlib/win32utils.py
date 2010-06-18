@@ -545,14 +545,6 @@ def _command_line_to_argv(command_line, single_quotes_allowed=False):
     # args from the very same PEB as does GetCommandLineW
     arguments = list(s)
     
-    # Bug #588277 remove the --profile-imports from the command line arguments
-    # as is also done in the main bzr module
-    if '--profile-imports' not in sys.argv:
-        if (False, '--profile-imports') in arguments:
-            arguments.remove((False, '--profile-imports'))
-        elif (True, '--profile-imports') in arguments:
-            arguments.remove((True, '--profile-imports'))
-    
     # Now shorten the command line we get from GetCommandLineW to match sys.argv
     if len(arguments) < len(sys.argv):
         from bzrlib.errors import InternalBzrError
