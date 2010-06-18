@@ -39,6 +39,7 @@ from bzrlib import (
     errors,
     lazy_regex,
     osutils,
+    revision as _mod_revision,
     textfile,
     trace,
     )
@@ -145,11 +146,9 @@ def grep_diff(opts):
             opts.revision = [RevisionSpec.from_string('last:1')]
             start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
-        if start_revid == None:
-            start_rev = RevisionSpec_revno.from_string("revno:1")
-            start_revid = start_rev.as_revision_id(branch)
+        if start_revid == 'null:':
+            return
         srevno_tuple = branch.revision_id_to_dotted_revno(start_revid)
-
         if len(opts.revision) == 2:
             end_rev = opts.revision[1]
             end_revid = end_rev.as_revision_id(branch)
@@ -182,7 +181,8 @@ def grep_diff(opts):
             start_rev_tuple = (start_revid, start_revno, 0)
             given_revs = [start_rev_tuple]
         repo = branch.repository
-        count = 0
+        diff_pattern = re.compile("^[+\-].*(" + opts.pattern + ")")
+        file_pattern = re.compile("=== (modified|added) file '.*'", re.UNICODE)
         for revid, revno, merge_depth in given_revs:
             if opts.levels == 1 and merge_depth != 0:
                 # with level=1 show only top level
@@ -199,9 +199,23 @@ def grep_diff(opts):
             s = StringIO()
             diff.show_diff_trees(old_tree, new_tree, s,
                 old_label='', new_label='')
-            print s.getvalue()
-            print "=" * 10, count
-            count += 1
+            display_revno = True
+            display_file = False
+            file_header = None
+            text = s.getvalue()
+            if opts.fixed_string:
+                for line in text.splitlines():
+                    if file_pattern.search(line):
+                        file_header = line
+                        display_file = True
+                    if diff_pattern.search(line):
+                        if display_revno:
+                            print "===", "revno:"+revno, "==="
+                            display_revno = False
+                        if display_file:
+                            print "  " + file_header
+                            display_file = False
+                        print "    " + line
     finally:
         branch.unlock()
 
