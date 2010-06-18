@@ -49,10 +49,6 @@ if version_info < NEED_VERS:
 if hasattr(os, "unsetenv"):
     os.unsetenv(REINVOKE)
 
-# Fetch a unicode argv
-from bzrlib.osutils import get_unicode_argv
-sys.argv = get_unicode_argv()
-    
 
 profiling = False
 if '--profile-imports' in sys.argv:

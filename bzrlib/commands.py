@@ -1158,7 +1158,7 @@ def _specified_or_unicode_argv(argv):
     # For internal or testing use, argv can be passed.  Otherwise, get it from
     # the process arguments in a unicode-safe way.
     if argv is None:
-        return sys.argv[1:]
+        return osutils.get_unicode_argv()
     else:
         new_argv = []
         try:
