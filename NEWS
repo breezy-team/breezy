@@ -107,6 +107,9 @@ Documentation
   ready-to-go for the next action (including other people doing
   development). (Robert Collins)
 
+* Remove obsolete discussion of PQM in documentation about how to
+  contribute to Bazaar.  (Martin Pool, #588444)
+
 API Changes
 ***********
 
