@@ -4359,6 +4359,17 @@ class _UnicodeFilename(Feature):
 UnicodeFilename = _UnicodeFilename()
 
 
+class _ByteStringNamedFilesystem(Feature):
+    """Is the filesystem based on bytes?"""
+
+    def _probe(self):
+        if os.name == "posix":
+            return True
+        return False
+
+ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
+
+
 class _UTF8Filesystem(Feature):
     """Is the filesystem UTF-8?"""
 

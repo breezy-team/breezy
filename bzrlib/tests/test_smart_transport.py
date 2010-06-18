@@ -48,6 +48,7 @@ from bzrlib.transport import (
         local,
         memory,
         remote,
+        ssh,
         )
 
 
@@ -65,7 +66,7 @@ class StringIOSSHVendor(object):
         return StringIOSSHConnection(self)
 
 
-class StringIOSSHConnection(object):
+class StringIOSSHConnection(ssh.SSHConnection):
     """A SSH connection that uses StringIO to buffer writes and answer reads."""
 
     def __init__(self, vendor):
@@ -73,9 +74,11 @@ class StringIOSSHConnection(object):
 
     def close(self):
         self.vendor.calls.append(('close', ))
+        self.vendor.read_from.close()
+        self.vendor.write_to.close()
 
-    def get_filelike_channels(self):
-        return self.vendor.read_from, self.vendor.write_to
+    def get_sock_or_pipes(self):
+        return 'pipes', (self.vendor.read_from, self.vendor.write_to)
 
 
 class _InvalidHostnameFeature(tests.Feature):
@@ -245,9 +248,9 @@ class SmartClientMediumTests(tests.TestCase):
         unopened_port = sock.getsockname()[1]
         # having vendor be invalid means that if it tries to connect via the
         # vendor it will blow up.
-        client_medium = medium.SmartSSHClientMedium('127.0.0.1', unopened_port,
-            username=None, password=None, base='base', vendor="not a vendor",
-            bzr_remote_path='bzr')
+        ssh_params = medium.SSHParams('127.0.0.1', unopened_port, None, None)
+        client_medium = medium.SmartSSHClientMedium(
+            'base', ssh_params, "not a vendor")
         sock.close()
 
     def test_ssh_client_connects_on_first_use(self):
@@ -255,9 +258,9 @@ class SmartClientMediumTests(tests.TestCase):
         # it bytes.
         output = StringIO()
         vendor = StringIOSSHVendor(StringIO(), output)
-        client_medium = medium.SmartSSHClientMedium(
-            'a hostname', 'a port', 'a username', 'a password', 'base', vendor,
-            'bzr')
+        ssh_params = medium.SSHParams(
+            'a hostname', 'a port', 'a username', 'a password', 'bzr')
+        client_medium = medium.SmartSSHClientMedium('base', ssh_params, vendor)
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
         self.assertEqual([('connect_ssh', 'a username', 'a password',
@@ -270,8 +273,10 @@ class SmartClientMediumTests(tests.TestCase):
         # it bytes.
         output = StringIO()
         vendor = StringIOSSHVendor(StringIO(), output)
-        client_medium = medium.SmartSSHClientMedium('a hostname', 'a port',
-            'a username', 'a password', 'base', vendor, bzr_remote_path='fugly')
+        ssh_params = medium.SSHParams(
+            'a hostname', 'a port', 'a username', 'a password',
+            bzr_remote_path='fugly')
+        client_medium = medium.SmartSSHClientMedium('base', ssh_params, vendor)
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
         self.assertEqual([('connect_ssh', 'a username', 'a password',
@@ -286,7 +291,7 @@ class SmartClientMediumTests(tests.TestCase):
         output = StringIO()
         vendor = StringIOSSHVendor(input, output)
         client_medium = medium.SmartSSHClientMedium(
-            'a hostname', base='base', vendor=vendor, bzr_remote_path='bzr')
+            'base', medium.SSHParams('a hostname'), vendor)
         client_medium._accept_bytes('abc')
         client_medium.disconnect()
         self.assertTrue(input.closed)
@@ -307,7 +312,7 @@ class SmartClientMediumTests(tests.TestCase):
         output = StringIO()
         vendor = StringIOSSHVendor(input, output)
         client_medium = medium.SmartSSHClientMedium(
-            'a hostname', base='base', vendor=vendor, bzr_remote_path='bzr')
+            'base', medium.SSHParams('a hostname'), vendor)
         client_medium._accept_bytes('abc')
         client_medium.disconnect()
         # the disconnect has closed output, so we need a new output for the
@@ -336,14 +341,14 @@ class SmartClientMediumTests(tests.TestCase):
         # Doing a disconnect on a new (and thus unconnected) SSH medium
         # does not fail.  It's ok to disconnect an unconnected medium.
         client_medium = medium.SmartSSHClientMedium(
-            None, base='base', bzr_remote_path='bzr')
+            'base', medium.SSHParams(None))
         client_medium.disconnect()
 
     def test_ssh_client_raises_on_read_when_not_connected(self):
         # Doing a read on a new (and thus unconnected) SSH medium raises
         # MediumNotConnected.
         client_medium = medium.SmartSSHClientMedium(
-            None, base='base', bzr_remote_path='bzr')
+            'base', medium.SSHParams(None))
         self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes,
                           0)
         self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes,
@@ -361,7 +366,7 @@ class SmartClientMediumTests(tests.TestCase):
         output.flush = logging_flush
         vendor = StringIOSSHVendor(input, output)
         client_medium = medium.SmartSSHClientMedium(
-            'a hostname', base='base', vendor=vendor, bzr_remote_path='bzr')
+            'base', medium.SSHParams('a hostname'), vendor=vendor)
         # this call is here to ensure we only flush once, not on every
         # _accept_bytes call.
         client_medium._accept_bytes('abc')
@@ -972,6 +977,7 @@ class TestSmartTCPServer(tests.TestCase):
             def get_bytes(self, path):
                 raise Exception("some random exception from inside server")
         smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
+        smart_server._create_server_socket('127.0.0.1', 0)
         smart_server.start_background_thread('-' + self.id())
         try:
             transport = remote.RemoteTCPTransport(smart_server.get_url())
@@ -1014,8 +1020,7 @@ class SmartTCPTests(tests.TestCase):
             self.backing_transport = transport.get_transport(
                 "readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
-        # XXX: Shouldn't we calling self.server.start_server below instead of
-        # start_background_thread ? -- vila 20100531
+        self.server._create_server_socket('127.0.0.1', 0)
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.stop_server)
