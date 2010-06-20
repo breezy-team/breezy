@@ -92,6 +92,12 @@ Improvements
   plugins to intercept this even when a ``RemoteBranch`` proxy is in use.
   (Robert Collins, #201613)
 
+* ``Branch`` formats can now be loaded lazily by registering a
+  ``MetaDirBranchFormatFactory`` rather than an actual format. This will
+  cause the named format class to be loaded only when an enumeration of
+  formats is needed or when the format string for the object is
+  encountered. (Robert Collins, Jelmer Vernooij)
+
 * Use lazy imports in ``bzrlib/merge.py`` so that plugins like ``news_merge``
   do not cause modules to be loaded unnecessarily just because the plugin
   registers a merge hook.  This improves ``bzr rocks`` time by about 25%
