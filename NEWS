@@ -130,8 +130,7 @@ API Changes
 
 * ``bzrlib.tests.blackbox.ExternalBase`` is deprecated.  It provided only
   one method ``check_output``, and we now recommend checking command
-  output using ``run_script``.
-  (Martin Pool)
+  output using ``run_script``. (Martin Pool)
 
 * ``bzrlib.transport.ssh.SSHVendor.connect_ssh`` now returns an object
   that implements the interface of ``bzrlib.transport.ssh.SSHConnection``.
