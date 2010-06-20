@@ -20,8 +20,10 @@
 import os
 
 import bzrlib
-from bzrlib import osutils
-from bzrlib.branch import Branch
+from bzrlib import (
+    osutils,
+    config,
+    )
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -43,45 +45,29 @@ class TestWhoami(TestCaseWithTransport):
         b = bzrlib.branch.Branch.open('.')
         b.get_config().set_user_option('email',
                                        'Branch Identity <branch@identi.ty>')
-        bzr_email = os.environ.get('BZR_EMAIL')
-        if bzr_email is not None:
-            del os.environ['BZR_EMAIL']
-        try:
-            whoami = self.run_bzr("whoami")[0]
-            self.assertEquals('Branch Identity <branch@identi.ty>\n', whoami)
-            whoami_email = self.run_bzr("whoami --email")[0]
-            self.assertEquals('branch@identi.ty\n', whoami_email)
+        whoami = self.run_bzr("whoami")[0]
+        self.assertEquals('Branch Identity <branch@identi.ty>\n', whoami)
+        whoami_email = self.run_bzr("whoami --email")[0]
+        self.assertEquals('branch@identi.ty\n', whoami_email)
 
-            # Verify that the environment variable overrides the value
-            # in the file
-            os.environ['BZR_EMAIL'] = 'Different ID <other@environ.ment>'
-            whoami = self.run_bzr("whoami")[0]
-            self.assertEquals('Different ID <other@environ.ment>\n', whoami)
-            whoami_email = self.run_bzr("whoami --email")[0]
-            self.assertEquals('other@environ.ment\n', whoami_email)
-            del os.environ['BZR_EMAIL']
-        finally:
-            if bzr_email is not None:
-                os.environ['BZR_EMAIL'] = bzr_email
+        # Verify that the environment variable overrides the value
+        # in the file
+        os.environ['BZR_EMAIL'] = 'Different ID <other@environ.ment>'
+        whoami = self.run_bzr("whoami")[0]
+        self.assertEquals('Different ID <other@environ.ment>\n', whoami)
+        whoami_email = self.run_bzr("whoami --email")[0]
+        self.assertEquals('other@environ.ment\n', whoami_email)
 
     def test_whoami_utf8(self):
         """verify that an identity can be in utf-8."""
         wt = self.make_branch_and_tree('.')
         self.run_bzr(['whoami', u'Branch Identity \u20ac <branch@identi.ty>'],
                      encoding='utf-8')
-        bzr_email = os.environ.get('BZR_EMAIL')
-        if bzr_email is not None:
-            del os.environ['BZR_EMAIL']
-        try:
-            whoami = self.run_bzr("whoami", encoding='utf-8')[0]
-            self.assertEquals('Branch Identity \xe2\x82\xac ' +
-                              '<branch@identi.ty>\n', whoami)
-            whoami_email = self.run_bzr("whoami --email",
-                                        encoding='utf-8')[0]
-            self.assertEquals('branch@identi.ty\n', whoami_email)
-        finally:
-            if bzr_email is not None:
-                os.environ['BZR_EMAIL'] = bzr_email
+        whoami = self.run_bzr("whoami", encoding='utf-8')[0]
+        self.assertEquals('Branch Identity \xe2\x82\xac ' +
+                          '<branch@identi.ty>\n', whoami)
+        whoami_email = self.run_bzr("whoami --email", encoding='utf-8')[0]
+        self.assertEquals('branch@identi.ty\n', whoami_email)
 
     def test_whoami_ascii(self):
         """
@@ -92,18 +78,10 @@ class TestWhoami(TestCaseWithTransport):
         b = bzrlib.branch.Branch.open('.')
         b.get_config().set_user_option('email', u'Branch Identity \u20ac ' +
                                        '<branch@identi.ty>')
-        bzr_email = os.environ.get('BZR_EMAIL')
-        if bzr_email is not None:
-            del os.environ['BZR_EMAIL']
-        try:
-            whoami = self.run_bzr("whoami", encoding='ascii')[0]
-            self.assertEquals('Branch Identity ? <branch@identi.ty>\n', whoami)
-            whoami_email = self.run_bzr("whoami --email",
-                                        encoding='ascii')[0]
-            self.assertEquals('branch@identi.ty\n', whoami_email)
-        finally:
-            if bzr_email is not None:
-                os.environ['BZR_EMAIL'] = bzr_email
+        whoami = self.run_bzr("whoami", encoding='ascii')[0]
+        self.assertEquals('Branch Identity ? <branch@identi.ty>\n', whoami)
+        whoami_email = self.run_bzr("whoami --email", encoding='ascii')[0]
+        self.assertEquals('branch@identi.ty\n', whoami_email)
 
     def test_warning(self):
         """verify that a warning is displayed if no email is given."""
@@ -120,3 +98,39 @@ class TestWhoami(TestCaseWithTransport):
         osutils.set_or_unset_env('BZR_EMAIL', None)
         out, err = self.run_bzr(['whoami'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
+
+    def test_whoami_directory(self):
+        """Test --directory option."""
+        wt = self.make_branch_and_tree('subdir')
+        c = wt.branch.get_config()
+        c.set_user_option('email', 'Branch Identity <branch@identi.ty>')
+        out, err = self.run_bzr("whoami --directory subdir")
+        self.assertEquals('Branch Identity <branch@identi.ty>\n', out)
+        self.run_bzr(['whoami', '--directory', 'subdir', '--branch',
+                      'Changed Identity <changed@identi.ty>'])
+        self.assertEquals('Changed Identity <changed@identi.ty>',
+                          c.get_user_option('email'))
+
+    def test_whoami_remote_directory(self):
+        """Test --directory option with a remote directory."""
+        wt = self.make_branch_and_tree('subdir')
+        c = wt.branch.get_config()
+        c.set_user_option('email', 'Branch Identity <branch@identi.ty>')
+        url = self.get_readonly_url() + '/subdir'
+        out, err = self.run_bzr(['whoami', '--directory', url])
+        self.assertEquals('Branch Identity <branch@identi.ty>\n', out)
+        url = self.get_url('subdir')
+        self.run_bzr(['whoami', '--directory', url, '--branch',
+                      'Changed Identity <changed@identi.ty>'])
+        # The identity has been set in the branch config (but not the global
+        # config)
+        self.assertEquals('Changed Identity <changed@identi.ty>',
+                          c.get_user_option('email'))
+        global_conf = config.GlobalConfig()
+        self.assertEquals(None, global_conf.get_user_option('email'))
+
+    def test_whoami_nonbranch_directory(self):
+        """Test --directory mentioning a non-branch directory."""
+        wt = self.build_tree(['subdir/'])
+        out, err = self.run_bzr("whoami --directory subdir", retcode=3)
+        self.assertContainsRe(err, 'ERROR: Not a branch')

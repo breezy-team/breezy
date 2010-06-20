@@ -55,13 +55,15 @@ class TestImportTariffs(TestCaseWithTransport):
         # explicitly do want to test against things installed there, therefore
         # we pass it through.
         env_changes = dict(PYTHONVERBOSE='1')
-        for name in ['BZR_HOME', 'BZR_PLUGIN_PATH', 'HOME',]:
+        for name in ['BZR_HOME', 'BZR_PLUGIN_PATH',
+                     'BZR_DISABLE_PLUGINS', 'BZR_PLUGINS_AT',
+                     'HOME',]:
             env_changes[name] = self._old_env.get(name)
         out, err = self.run_bzr_subprocess(args,
             allow_plugins=(not are_plugins_disabled()),
             env_changes=env_changes)
 
-        self.addDetail('subprocess_stderr', 
+        self.addDetail('subprocess_stderr',
             content.Content(content.ContentType("text", "plain"),
                 lambda:[err]))
 
@@ -71,7 +73,7 @@ class TestImportTariffs(TestCaseWithTransport):
                 bad_modules.append(module_name)
 
         if bad_modules:
-            self.fail("command %r loaded forbidden modules %r" 
+            self.fail("command %r loaded forbidden modules %r"
                 % (args, bad_modules))
         return out, err
 

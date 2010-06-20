@@ -26,7 +26,7 @@ class TestUpdateRevisions(TestCaseWithInterBranch):
 
     def setUp(self):
         super(TestUpdateRevisions, self).setUp()
-        self.tree1 = self.make_branch_and_tree('tree1')
+        self.tree1 = self.make_from_branch_and_tree('tree1')
         rev1 = self.tree1.commit('one')
         branch2 = self.make_to_branch('tree2')
         branch2.repository.fetch(self.tree1.branch.repository)
