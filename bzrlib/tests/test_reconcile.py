@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,15 +17,18 @@
 """Tests for reconiliation behaviour that is repository independent."""
 
 
-from bzrlib import bzrdir, errors, tests
+from bzrlib import (
+    bzrdir,
+    errors,
+    tests,
+    )
 from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.revision import Revision
-from bzrlib.tests.per_repository import TestCaseWithRepository
-from bzrlib.transport import get_transport
+from bzrlib.tests import per_repository
 from bzrlib.workingtree import WorkingTree
 
 
-class TestWorksWithSharedRepositories(TestCaseWithRepository):
+class TestWorksWithSharedRepositories(per_repository.TestCaseWithRepository):
 
     def test_reweave_empty(self):
         # we want a repo capable format
