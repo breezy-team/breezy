@@ -46,7 +46,6 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     multiply_tests,
     )
-from bzrlib.transport import get_transport
 
 
 def make_scenarios(test_list):
