@@ -31,13 +31,13 @@ from bzrlib import (
     bzrdir,
     progress,
     repository,
+    transport,
     workingtree,
     workingtree_4,
     )
 import bzrlib.branch
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade
 
 
@@ -80,27 +80,27 @@ class TestUpgrade(TestCaseWithTransport):
             rt.unlock()
         # check a backup was made:
         backup_dir = 'backup.bzr.~1~'
-        transport = get_transport(b.base)
-        transport.stat(backup_dir)
-        transport.stat(backup_dir + '/README')
-        transport.stat(backup_dir + '/branch-format')
-        transport.stat(backup_dir + '/revision-history')
-        transport.stat(backup_dir + '/merged-patches')
-        transport.stat(backup_dir + '/pending-merged-patches')
-        transport.stat(backup_dir + '/pending-merges')
-        transport.stat(backup_dir + '/branch-name')
-        transport.stat(backup_dir + '/branch-lock')
-        transport.stat(backup_dir + '/inventory')
-        transport.stat(backup_dir + '/stat-cache')
-        transport.stat(backup_dir + '/text-store')
-        transport.stat(backup_dir + '/text-store/foo-20051004035611-1591048e9dc7c2d4.gz')
-        transport.stat(backup_dir + '/text-store/foo-20051004035756-4081373d897c3453.gz')
-        transport.stat(backup_dir + '/inventory-store/')
-        transport.stat(backup_dir + '/inventory-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
-        transport.stat(backup_dir + '/inventory-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
-        transport.stat(backup_dir + '/revision-store/')
-        transport.stat(backup_dir + '/revision-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
-        transport.stat(backup_dir + '/revision-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
+        t = transport.get_transport(b.base)
+        t.stat(backup_dir)
+        t.stat(backup_dir + '/README')
+        t.stat(backup_dir + '/branch-format')
+        t.stat(backup_dir + '/revision-history')
+        t.stat(backup_dir + '/merged-patches')
+        t.stat(backup_dir + '/pending-merged-patches')
+        t.stat(backup_dir + '/pending-merges')
+        t.stat(backup_dir + '/branch-name')
+        t.stat(backup_dir + '/branch-lock')
+        t.stat(backup_dir + '/inventory')
+        t.stat(backup_dir + '/stat-cache')
+        t.stat(backup_dir + '/text-store')
+        t.stat(backup_dir + '/text-store/foo-20051004035611-1591048e9dc7c2d4.gz')
+        t.stat(backup_dir + '/text-store/foo-20051004035756-4081373d897c3453.gz')
+        t.stat(backup_dir + '/inventory-store/')
+        t.stat(backup_dir + '/inventory-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        t.stat(backup_dir + '/inventory-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
+        t.stat(backup_dir + '/revision-store/')
+        t.stat(backup_dir + '/revision-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        t.stat(backup_dir + '/revision-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
 
     def test_upgrade_with_ghosts(self):
         """Upgrade v0.0.4 tree containing ghost references.
@@ -153,12 +153,12 @@ class TestUpgrade(TestCaseWithTransport):
         # such a branch to metadir must not setup a working tree.
         self.build_tree_contents(_upgrade1_template)
         upgrade('.', bzrdir.BzrDirFormat6())
-        transport = get_transport('.')
-        transport.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
-        self.assertFalse(transport.has('.bzr/stat-cache'))
+        t = transport.get_transport('.')
+        t.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
+        self.assertFalse(t.has('.bzr/stat-cache'))
         # XXX: upgrade fails if a backup.bzr is already present
         # -- David Allouche 2006-08-11
-        transport.delete_tree('backup.bzr.~1~')
+        t.delete_tree('backup.bzr.~1~')
         # At this point, we have a format6 branch without checkout files.
         upgrade('.', bzrdir.BzrDirMetaFormat1())
         # The upgrade should not have set up a working tree.
