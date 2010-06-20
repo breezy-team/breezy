@@ -18,11 +18,11 @@
 
 from bzrlib import (
     errors,
+    transport,
     urlutils,
     )
 from bzrlib.directory_service import DirectoryServiceRegistry, directories
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.transport import get_transport
 
 
 class FooService(object):
@@ -56,7 +56,7 @@ class TestDirectoryLookup(TestCase):
         directories.register('foo:', FooService, 'Map foo URLs to http urls')
         self.addCleanup(directories.remove, 'foo:')
         self.assertEqual(FooService.base + 'bar/',
-                         get_transport('foo:bar').base)
+                         transport.get_transport('foo:bar').base)
 
 
 class TestAliasDirectory(TestCaseWithTransport):

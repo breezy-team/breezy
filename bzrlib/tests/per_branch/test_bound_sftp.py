@@ -144,13 +144,13 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
                 wt_child2.commit, 'child2', rev_id='r@d-2')
 
     def test_unbinding(self):
-        from bzrlib.transport import get_transport
+        from bzrlib import transport
         b_base, wt_child = self.create_branches()
 
         # TestCaseWithSFTPServer only allows you to connect one time
         # to the SFTP server. So we have to create a connection and
         # keep it around, so that it can be reused
-        __unused_t = get_transport(self.get_url('.'))
+        __unused_t = transport.get_transport(self.get_url('.'))
 
         wt_base = b_base.bzrdir.open_workingtree()
         open('base/a', 'wb').write('new base contents\n')

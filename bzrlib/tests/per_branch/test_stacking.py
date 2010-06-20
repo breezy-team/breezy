@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@ from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import server
 from bzrlib.tests import TestNotApplicable, KnownFailure, transport_util
 from bzrlib.tests.per_branch import TestCaseWithBranch
-from bzrlib.transport import get_transport
 
 
 unstackable_format_errors = (
