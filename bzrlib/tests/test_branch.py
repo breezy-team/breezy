@@ -136,12 +136,17 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
         return "opened branch."
 
 
+# Demonstrating how lazy loading is often implemented:
+# A constant string is created.
+SampleSupportedBranchFormatString = "Sample supported branch format."
+
+# And the format class can then reference the constant to avoid skew.
 class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
     """A sample supported format."""
 
     def get_format_string(self):
         """See BzrBranchFormat.get_format_string()."""
-        return "Sample supported branch format."
+        return SampleSupportedBranchFormatString
 
     def initialize(self, a_bzrdir, name=None):
         t = a_bzrdir.get_branch_transport(self, name=name)
@@ -172,7 +177,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         SampleSupportedBranchFormat().initialize(dir)
         factory = _mod_branch.MetaDirBranchFormatFactory(
-            SampleSupportedBranchFormat().get_format_string(),
+            SampleSupportedBranchFormatString,
             "bzrlib.tests.test_branch", "SampleSupportedBranchFormat")
         _mod_branch.BranchFormat.register_format(factory)
         self.addCleanup(_mod_branch.BranchFormat.unregister_format, factory)

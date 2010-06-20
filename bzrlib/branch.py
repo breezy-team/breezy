@@ -1727,7 +1727,13 @@ class BranchFormat(object):
 
 
 class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
-    """A factory for a BranchFormat object, permitting simple lazy registration."""
+    """A factory for a BranchFormat object, permitting simple lazy registration.
+    
+    While none of the built in BranchFormats are lazy registered yet,
+    bzrlib.tests.test_branch.TestMetaDirBranchFormatFactory demonstrates how to
+    use it, and the bzr-loom plugin uses it as well (see
+    bzrlib.plugins.loom.formats).
+    """
 
     def __init__(self, format_string, module_name, member_name):
         """Create a MetaDirBranchFormatFactory.
