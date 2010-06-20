@@ -61,13 +61,12 @@ from bzrlib import (
     revisiontree,
     trace,
     transform,
+    transport,
     ui,
     views,
     xml5,
     xml7,
     )
-import bzrlib.branch
-from bzrlib.transport import get_transport
 from bzrlib.workingtree_4 import (
     WorkingTreeFormat4,
     WorkingTreeFormat5,
@@ -369,10 +368,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 return True, None
             else:
                 return True, tree
-        transport = get_transport(location)
-        iterator = bzrdir.BzrDir.find_bzrdirs(transport, evaluate=evaluate,
+        t = transport.get_transport(location)
+        iterator = bzrdir.BzrDir.find_bzrdirs(t, evaluate=evaluate,
                                               list_current=list_current)
-        return [t for t in iterator if t is not None]
+        return [tr for tr in iterator if tr is not None]
 
     # should be deprecated - this is slow and in any case treating them as a
     # container is (we now know) bad style -- mbp 20070302
