@@ -55,7 +55,6 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.per_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 from bzrlib.ui import (
     CannedInputUIFactory,
@@ -202,7 +201,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
         TestSkipped.  Returns the newly sprouted bzrdir.
         """
-        to_transport = get_transport(to_url)
+        to_transport = transport.get_transport(to_url)
         if not isinstance(to_transport, LocalTransport):
             raise TestSkipped('Cannot sprout to remote bzrdirs.')
         target = from_bzrdir.sprout(to_url, revision_id=revision_id,
@@ -1183,8 +1182,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             '_network_name', None),
             None)
         # supported formats must be able to init and open
-        t = get_transport(self.get_url())
-        readonly_t = get_transport(self.get_readonly_url())
+        t = transport.get_transport(self.get_url())
+        readonly_t = transport.get_transport(self.get_readonly_url())
         made_control = self.bzrdir_format.initialize(t.base)
         self.failUnless(isinstance(made_control, bzrdir.BzrDir))
         self.assertEqual(self.bzrdir_format,
@@ -1394,7 +1393,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # test the formats specific behaviour for no-content or similar dirs.
         self.assertRaises(NotBranchError,
                           self.bzrdir_format.open,
-                          get_transport(self.get_readonly_url()))
+                          transport.get_transport(self.get_readonly_url()))
 
     def test_create_branch(self):
         # a bzrdir can construct a branch and repository for itself.
@@ -1403,7 +1402,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
@@ -1416,7 +1415,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
@@ -1431,7 +1430,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
@@ -1452,7 +1451,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
@@ -1467,7 +1466,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         try:
             made_repo = made_control.create_repository(shared=True)
@@ -1484,7 +1483,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository(shared=False)
         self.assertFalse(made_repo.is_shared())
@@ -1495,7 +1494,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         opened_repo = made_control.open_repository()
@@ -1623,7 +1622,7 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_root_transport(self):
         dir = self.make_bzrdir('.')
         self.assertEqual(dir.root_transport.base,
-                         get_transport(self.get_url('.')).base)
+                         transport.get_transport(self.get_url('.')).base)
 
     def test_find_repository_no_repo_under_standalone_branch(self):
         # finding a repo stops at standalone branches even if there is a
@@ -1634,8 +1633,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             # need a shared repository to test this.
             return
         url = self.get_url('intermediate')
-        get_transport(self.get_url()).mkdir('intermediate')
-        get_transport(self.get_url()).mkdir('intermediate/child')
+        transport.get_transport(self.get_url()).mkdir('intermediate')
+        transport.get_transport(self.get_url()).mkdir('intermediate/child')
         made_control = self.bzrdir_format.initialize(url)
         made_control.create_repository()
         innermost_control = self.bzrdir_format.initialize(
@@ -1659,7 +1658,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # need a shared repository to test this.
             return
         url = self.get_url('childbzrdir')
-        get_transport(self.get_url()).mkdir('childbzrdir')
+        transport.get_transport(self.get_url()).mkdir('childbzrdir')
         made_control = self.bzrdir_format.initialize(url)
         try:
             child_repo = made_control.open_repository()
@@ -1693,7 +1692,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # need a shared repository to test this.
             return
         url = self.get_url('childrepo')
-        get_transport(self.get_url()).mkdir('childrepo')
+        transport.get_transport(self.get_url()).mkdir('childrepo')
         child_control = self.bzrdir_format.initialize(url)
         child_repo = child_control.create_repository(shared=True)
         opened_control = bzrdir.BzrDir.open(self.get_url('childrepo'))
@@ -1712,8 +1711,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             # need a shared repository to test this.
             return
         url = self.get_url('intermediate')
-        get_transport(self.get_url()).mkdir('intermediate')
-        get_transport(self.get_url()).mkdir('intermediate/child')
+        transport.get_transport(self.get_url()).mkdir('intermediate')
+        transport.get_transport(self.get_url()).mkdir('intermediate/child')
         made_control = self.bzrdir_format.initialize(url)
         try:
             child_repo = made_control.open_repository()
@@ -1958,7 +1957,7 @@ class ChrootedBzrDirTests(ChrootedTestCase):
         # - do the vfs initialisation over the basic vfs transport
         # XXX: TODO this should become a 'bzrdirlocation' api call.
         url = self.get_vfs_only_url('subdir')
-        get_transport(self.get_vfs_only_url()).mkdir('subdir')
+        transport.get_transport(self.get_vfs_only_url()).mkdir('subdir')
         made_control = self.bzrdir_format.initialize(self.get_url('subdir'))
         try:
             repo = made_control.open_repository()
@@ -1974,7 +1973,7 @@ class ChrootedBzrDirTests(ChrootedTestCase):
 
 class TestBzrDirControlComponent(TestCaseWithBzrDir):
     """BzrDir implementations adequately implement ControlComponent."""
-    
+
     def test_urls(self):
         bd = self.make_bzrdir('bd')
         self.assertIsInstance(bd.user_url, str)

@@ -23,7 +23,6 @@ from bzrlib.errors import NotBranchError, NotVersionedError
 from bzrlib.osutils import basename
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 
 
 class TestPull(TestCaseWithWorkingTree):
