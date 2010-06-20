@@ -26,6 +26,7 @@ from bzrlib import (
     osutils,
     pack,
     tests,
+    transport,
     tuned_gzip,
     )
 from bzrlib.errors import (
@@ -53,7 +54,6 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     TestNotApplicable,
     )
-from bzrlib.transport import get_transport
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
@@ -1571,13 +1571,13 @@ class TestKnitIndex(KnitTests):
         # could leave an empty .kndx file, which bzr would later claim was a
         # corrupted file since the header was not present. In reality, the file
         # just wasn't created, so it should be ignored.
-        t = get_transport('.')
+        t = transport.get_transport('.')
         t.put_bytes('test.kndx', '')
 
         knit = self.make_test_knit()
 
     def test_knit_index_checks_header(self):
-        t = get_transport('.')
+        t = transport.get_transport('.')
         t.put_bytes('test.kndx', '# not really a knit header\n\n')
         k = self.make_test_knit()
         self.assertRaises(KnitHeaderError, k.keys)
