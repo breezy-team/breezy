@@ -14,10 +14,24 @@ bzr 2.2b4
 Compatibility Breaks
 ********************
 
+* bzrlib library users now need to call ``__enter__`` and ``__exit__`` on
+  the result of ``bzrlib.initialize``. This change was made when fixing
+  the bad habit recent bzr versions have had of leaving progress bars 
+  behind on the screen. That required calling another function before
+  exiting the program, and it made sense to provide a full context
+  manager at the same time. (Robert Collins)
+
+* The ``bzr`` front end now requires a ``bzrlib.ui.ui_factory`` which is a
+  context manager in the Python 2.5 and above sense. The bzrlib base class
+  is such a manager, but third party UI factories which do not derive from
+  ``bzrlib.ui.UIFactory`` will be incompatible with the command line front
+  end.
+  
 * URLs like ``foo:bar/baz`` are now always parsed as a URL with scheme "foo"
   and path "bar/baz", even if bzr does not recognize "foo" as a known URL
   scheme.  Previously these URLs would be treated as local paths.
   (Gordon Tyler)
+
 
 New Features
 ************
@@ -55,6 +69,8 @@ Bug Fixes
   when a command has no help, document how to set help more clearly, and
   test that all commands available to the test suite have help.
   (Robert Collins, #177500)
+
+* Progress output is cleaned up when exiting.  (Aaron Bentley)
 
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
@@ -181,8 +197,7 @@ Compatibility Breaks
 
 * ``bzr`` does not try to guess the username as ``username@hostname``
   and requires it to be explictly set. This can be set using ``bzr
-  whoami``.
-  (Parth Malwankar, #549310)
+  whoami``. (Parth Malwankar, #549310)
 
 * ``bzrlib.commands.Command`` will now raise ValueError during
   construction if there is no __doc__ set. (Note, this will be reverted in

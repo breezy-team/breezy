@@ -106,6 +106,9 @@ class UIFactory(object):
     This tells the library how to display things to the user.  Through this
     layer different applications can choose the style of UI.
 
+    UI Factories are also context managers, for some syntactic sugar some users
+    need.
+
     :ivar suppressed_warnings: Identifiers for user warnings that should 
         no be emitted.
     """
@@ -122,6 +125,22 @@ class UIFactory(object):
         self._task_stack = []
         self.suppressed_warnings = set()
         self._quiet = False
+
+    def __enter__(self):
+        """Context manager entry support.
+
+        Override in a concrete factory class if initialisation before use is
+        needed.
+        """
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit support.
+
+        Override in a concrete factory class if more cleanup than a simple
+        self.clear_term() is needed when the UIFactory is finished with.
+        """
+        self.clear_term()
+        return False # propogate exceptions.
 
     def be_quiet(self, state):
         """Tell the UI to be more quiet, or not.
@@ -350,7 +369,6 @@ class UIFactory(object):
             trace.warning("Fetching into experimental format %s.\n"
                 "This format may be unreliable or change in the future "
                 "without an upgrade path.\n" % (inter.target._format,))
-
 
 
 class SilentUIFactory(UIFactory):
