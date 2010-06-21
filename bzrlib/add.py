@@ -18,9 +18,7 @@
 
 import sys
 
-import bzrlib.bzrdir
 import bzrlib.osutils
-from bzrlib.symbol_versioning import *
 
 
 class AddAction(object):
