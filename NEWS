@@ -15,8 +15,13 @@ Compatibility Breaks
 
 * ``bzr`` does not try to guess the username as ``username@hostname``
   and requires it to be explictly set. This can be set using ``bzr
-  whoami``.
-  (Parth Malwankar, #549310)
+  whoami``. (Parth Malwankar, #549310)
+
+* The ``bzr`` front end now requires a ``bzrlib.ui.ui_factory`` which is a
+  context manager in the Python 2.5 and above sense. The bzrlib base class
+  is such a manager, but third party UI factories which do not derive from
+  ``bzrlib.ui.UIFactory`` will be incompatible with the command line front
+  end. (Robert Collins, Aaron Bentley)
 
 New Features
 ************
