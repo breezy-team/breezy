@@ -137,7 +137,7 @@ version_string = __version__
 # context of an operation than to look it up directly, but when that is too
 # hard, it is better to use this variable than to make a branch new global
 # variable.
-# If using this variable my looking it up (because it can't be easily obtained)
+# If using this variable by looking it up (because it can't be easily obtained)
 # it is important to store the reference you get, rather than looking it up
 # repeatedly; that way your code will behave properly in the bzrlib test suite
 # and from programs that do use multiple library contexts.
@@ -232,7 +232,7 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
     :param stdin, stdout, stderr: If provided, use these for terminal IO;
         otherwise use the files in `sys`.
     :return: A context manager for the use of bzrlib. The __enter__ method of
-        this context needs to be alled before it takes effect, and the __exit__
+        this context needs to be called before it takes effect, and the __exit__
         should be called by the caller before exiting their process or
         otherwise stopping use of bzrlib. Advanced callers can use
         BzrLibraryState directly.
