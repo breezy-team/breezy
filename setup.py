@@ -178,12 +178,12 @@ try:
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
-    print()
+    print("")
     print("The python package 'Pyrex' is not available."
           " If the .c files are available,")
     print("they will be built,"
           " but modifying the .pyx files will not rebuild them.")
-    print()
+    print("")
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
@@ -303,12 +303,12 @@ add_pyrex_extension('bzrlib._chk_map_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
 if have_pyrex and pyrex_version_info < (0, 9, 6, 3):
-    print()
+    print("")
     print('Your Pyrex/Cython version %s is too old to build the simple_set' % (
         pyrex_version))
     print('and static_tuple extensions.')
     print('Please upgrade to at least Pyrex 0.9.6.3')
-    print()
+    print("")
     # TODO: Should this be a fatal error?
 else:
     # We only need 0.9.6.3 to build _simple_set_pyx, but static_tuple depends
@@ -323,7 +323,7 @@ if unavailable_files:
     print('C extension(s) not found:')
     print('   %s' % ('\n  '.join(unavailable_files),))
     print('The python versions will be used instead.')
-    print()
+    print("")
 
 
 def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
