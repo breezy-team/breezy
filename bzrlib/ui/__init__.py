@@ -177,14 +177,19 @@ class UIFactory(object):
         version of stdout, but in a GUI it might be appropriate to send it to a 
         window displaying the text.
      
-        :param encoding: Unicode encoding for output; default is the 
-            terminal encoding, which may be different from the user encoding.
+        :param encoding: Unicode encoding for output; if not specified 
+            uses the configured 'output_encoding' if any; otherwise the 
+            terminal encoding. 
             (See get_terminal_encoding.)
 
         :param encoding_type: How to handle encoding errors:
             replace/strict/escape/exact.  Default is replace.
         """
         # XXX: is the caller supposed to close the resulting object?
+        if encoding is None:
+            from bzrlib import config
+            encoding = config.GlobalConfig().get_user_option(
+                'output_encoding')
         if encoding is None:
             encoding = osutils.get_terminal_encoding()
         if encoding_type is None:
