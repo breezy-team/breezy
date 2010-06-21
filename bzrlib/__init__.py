@@ -120,9 +120,59 @@ def test_suite():
     return tests.test_suite()
 
 
-def initialize(
-    setup_ui=True,
-    stdin=None, stdout=None, stderr=None):
+class BzrLibraryState(object):
+    """The state about how bzrlib has been configured."""
+
+    def __init__(self, setup_ui=True, stdin=None, stdout=None, stderr=None):
+        """Create library start for normal use of bzrlib.
+
+        Most applications that embed bzrlib, including bzr itself, should just call
+        bzrlib.initialize(), but it is possible to use the state class directly.
+
+        More options may be added in future so callers should use named arguments.
+
+        :param setup_ui: If true (default) use a terminal UI; otherwise 
+            some other ui_factory must be assigned to `bzrlib.ui.ui_factory` by
+            the caller.
+        :param stdin, stdout, stderr: If provided, use these for terminal IO;
+            otherwise use the files in `sys`.
+        """
+        self.setup_ui = setup_ui
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr
+
+    def __enter__(self):
+        # NB: This function tweaks so much global state it's hard to test it in
+        # isolation within the same interpreter.  It's not reached on normal
+        # in-process run_bzr calls.  If it's broken, we expect that
+        # TestRunBzrSubprocess may fail.
+        if version_info[3] == 'final':
+            from bzrlib.symbol_versioning import suppress_deprecation_warnings
+            suppress_deprecation_warnings(override=True)
+
+        import bzrlib.trace
+        bzrlib.trace.enable_default_logging()
+
+        if self.setup_ui:
+            import bzrlib.ui
+            stdin = self.stdin or sys.stdin
+            stdout = self.stdout or sys.stdout
+            stderr = self.stderr or sys.stderr
+            bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
+                stdin, stdout, stderr)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        import bzrlib.ui
+        bzrlib.trace._flush_stdout_stderr()
+        bzrlib.trace._flush_trace()
+        import bzrlib.osutils
+        bzrlib.osutils.report_extension_load_failures()
+        bzrlib.ui.ui_factory.__exit__(None, None, None)
+        bzrlib.ui.ui_factory = None
+
+
+def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
     """Set up everything needed for normal use of bzrlib.
 
     Most applications that embed bzrlib, including bzr itself, should call
@@ -131,42 +181,13 @@ def initialize(
     More options may be added in future so callers should use named arguments.
 
     :param setup_ui: If true (default) use a terminal UI; otherwise 
-        something else must be put into `bzrlib.ui.ui_factory`.
+        some other ui_factory must be assigned to `bzrlib.ui.ui_factory` by
+        the caller.
     :param stdin, stdout, stderr: If provided, use these for terminal IO;
         otherwise use the files in `sys`.
     """
     # TODO: mention this in a guide to embedding bzrlib
-    #
-    # NB: This function tweaks so much global state it's hard to test it in
-    # isolation within the same interpreter.  It's not reached on normal
-    # in-process run_bzr calls.  If it's broken, we expect that
-    # TestRunBzrSubprocess may fail.
-    
-    import bzrlib.trace
-
-    bzrlib.trace.enable_default_logging()
-
-    import bzrlib.ui
-    if stdin is None:
-        stdin = sys.stdin
-    if stdout is None:
-        stdout = sys.stdout
-    if stderr is None:
-        stderr = sys.stderr
-
-    if setup_ui:
-        bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
-            stdin, stdout, stderr)
-
-    if bzrlib.version_info[3] == 'final':
-        from bzrlib.symbol_versioning import suppress_deprecation_warnings
-        suppress_deprecation_warnings(override=True)
-
-def clean_up():
-    import bzrlib.ui
-    bzrlib.trace._flush_stdout_stderr()
-    bzrlib.trace._flush_trace()
-    import bzrlib.osutils
-    bzrlib.osutils.report_extension_load_failures()
-    bzrlib.ui.ui_factory.__exit__(None, None, None)
-    bzrlib.ui.ui_factory = None
+    library_state = BzrLibraryState(setup_ui=setup_ui, stdin=stdin,
+        stdout=stdout, stderr=stderr)
+    library_state.__enter__()
+    return library_state
