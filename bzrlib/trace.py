@@ -538,7 +538,7 @@ def report_bug(exc_info, err_file):
 
 
 def _flush_stdout_stderr():
-    # installed into an atexit hook by bzrlib.initialize()
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     try:
         sys.stdout.flush()
         sys.stderr.flush()
@@ -551,7 +551,7 @@ def _flush_stdout_stderr():
 
 
 def _flush_trace():
-    # run from atexit hook
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     global _trace_file
     if _trace_file:
         _trace_file.flush()
