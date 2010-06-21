@@ -184,13 +184,6 @@ class TestRename(tests.TestCaseInTempDir):
         shape = sorted(os.listdir('.'))
         self.assertEquals(['A', 'B'], shape)
 
-    def test_rename_error(self):
-        # We wrap os.rename to make it give an error including the filenames
-        # https://bugs.launchpad.net/bzr/+bug/491763
-        err = self.assertRaises(OSError, osutils.rename,
-            'nonexistent', 'target')
-        self.assertContainsString(str(err), 'nonexistent')
-
 
 class TestRandChars(tests.TestCase):
 
@@ -1071,7 +1064,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertExpectedBlocks(expected_dirblocks[1:], result)
 
     def test_walkdirs_os_error(self):
-        # <https://bugs.edge.launchpad.net/bzr/+bug/338653>
+        # <https://bugs.launchpad.net/bzr/+bug/338653>
         # Pyrex readdir didn't raise useful messages if it had an error
         # reading the directory
         if sys.platform == 'win32':
@@ -1089,6 +1082,40 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEquals(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\./test-unreadable")
+
+
+    def test_walkdirs_encoding_error(self):
+        # <https://bugs.launchpad.net/bzr/+bug/488519>
+        # walkdirs didn't raise a useful message when the filenames
+        # are not using the filesystem's encoding
+
+        # require a bytestring based filesystem
+        self.requireFeature(tests.ByteStringNamedFilesystem)
+
+        tree = [
+            '.bzr',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '1file'
+            ]
+
+        self.build_tree(tree)
+
+        # rename the 1file to a latin-1 filename
+        os.rename("./1file", "\xe8file")
+
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'UTF-8'
+
+        # this should raise on error
+        def attempt():
+            for dirdetail, dirblock in osutils.walkdirs('.'):
+                pass
+
+        self.assertRaises(errors.BadFilenameEncoding, attempt)
 
     def test__walkdirs_utf8(self):
         tree = [
@@ -1916,6 +1943,18 @@ class TestFailedToLoadExtension(tests.TestCase):
 
 
 class TestTerminalWidth(tests.TestCase):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self._orig_terminal_size_state = osutils._terminal_size_state
+        self._orig_first_terminal_size = osutils._first_terminal_size
+        self.addCleanup(self.restore_osutils_globals)
+        osutils._terminal_size_state = 'no_data'
+        osutils._first_terminal_size = None
+
+    def restore_osutils_globals(self):
+        osutils._terminal_size_state = self._orig_terminal_size_state
+        osutils._first_terminal_size = self._orig_first_terminal_size
 
     def replace_stdout(self, new):
         self.overrideAttr(sys, 'stdout', new)

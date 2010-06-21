@@ -788,7 +788,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.assertPushSucceeds([])
 
 
-class TestPushForeign(blackbox.ExternalBase):
+class TestPushForeign(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestPushForeign, self).setUp()

@@ -18,13 +18,15 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib import annotate # Must be lazy to avoid circular importing
+from bzrlib import (
+    annotate, # Must be lazy to avoid circular importing
+    graph as _mod_graph,
+    patiencediff,
+    )
 """)
 from bzrlib import (
     errors,
-    graph as _mod_graph,
     osutils,
-    patiencediff,
     ui,
     )
 

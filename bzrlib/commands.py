@@ -397,6 +397,12 @@ class Command(object):
             will not mangled.
 
     :cvar hooks: An instance of CommandHooks.
+    :ivar __doc__: The help shown by 'bzr help command' for this command.
+        This is set by assigning explicitly to __doc__ so that -OO can
+        be used::
+
+        class Foo(Command):
+            __doc__ = "My help goes here"
     """
     aliases = []
     takes_args = []
@@ -407,8 +413,6 @@ class Command(object):
 
     def __init__(self):
         """Construct an instance of this command."""
-        if self.__doc__ == Command.__doc__:
-            warn("No help message set for %r" % self)
         # List of standard options directly supported
         self.supported_std_options = []
         self._setup_run()
@@ -482,8 +486,8 @@ class Command(object):
             message explaining how to obtain full help.
         """
         doc = self.help()
-        if doc is None:
-            raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
+        if not doc:
+            doc = "No help for this command."
 
         # Extract the summary (purpose) and sections out from the text
         purpose,sections,order = self._get_help_parts(doc)

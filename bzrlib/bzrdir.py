@@ -2873,7 +2873,11 @@ class ConvertBzrDir4To5(Converter):
             self.revisions[rev_id] = rev
 
     def _load_old_inventory(self, rev_id):
-        old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
+        f = self.branch.repository.inventory_store.get(rev_id)
+        try:
+            old_inv_xml = f.read()
+        finally:
+            f.close()
         inv = xml4.serializer_v4.read_inventory_from_string(old_inv_xml)
         inv.revision_id = rev_id
         rev = self.revisions[rev_id]
@@ -2957,8 +2961,11 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            text = self.branch.repository._text_store.get(ie.text_id)
-            file_lines = text.readlines()
+            f = self.branch.repository._text_store.get(ie.text_id)
+            try:
+                file_lines = f.readlines()
+            finally:
+                f.close()
             w.add_lines(rev_id, previous_revisions, file_lines)
             self.text_count += 1
         else:
@@ -3245,7 +3252,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         # XXX: It's a bit ugly that the network name is here, because we'd
         # like to believe that format objects are stateless or at least
         # immutable,  However, we do at least avoid mutating the name after
-        # it's returned.  See <https://bugs.edge.launchpad.net/bzr/+bug/504102>
+        # it's returned.  See <https://bugs.launchpad.net/bzr/+bug/504102>
         self._network_name = None
 
     def __repr__(self):

@@ -615,7 +615,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         rev1 = wt.commit('first master commit')
         self.build_tree_contents([('wt/a', 'new content')])
         rev2 = wt.commit('second master commit')
-        # https://bugs.edge.launchpad.net/bzr/+bug/45719/comments/20
+        # https://bugs.launchpad.net/bzr/+bug/45719/comments/20
         # when adding 'update -r' we should make sure all wt formats support
         # it
         conflicts = wt.update(revision=rev1)

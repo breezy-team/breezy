@@ -749,7 +749,7 @@ class TestUIFactory(TextUIFactory):
     # XXX: Should probably unify more with CannedInputUIFactory or a
     # particular configuration of TextUIFactory, or otherwise have a clearer
     # idea of how they're supposed to be different.
-    # See https://bugs.edge.launchpad.net/bzr/+bug/408213
+    # See https://bugs.launchpad.net/bzr/+bug/408213
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
@@ -2482,7 +2482,11 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        contents = file(filename, 'r').read()
+        f = file(filename)
+        try:
+            contents = f.read()
+        finally:
+            f.close()
         if contents != expect:
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
@@ -3733,6 +3737,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_lru_cache',
         'bzrlib.tests.test_lsprof',
         'bzrlib.tests.test_mail_client',
+        'bzrlib.tests.test_matchers',
         'bzrlib.tests.test_memorytree',
         'bzrlib.tests.test_merge',
         'bzrlib.tests.test_merge3',
@@ -4100,8 +4105,11 @@ def _rmtree_temp_dir(dirname, test_id=None):
         if test_id != None:
             ui.ui_factory.clear_term()
             sys.stderr.write('\nWhile running: %s\n' % (test_id,))
+        # Ugly, but the last thing we want here is fail, so bear with it.
+        printable_e = str(e).decode(osutils.get_user_encoding(), 'replace'
+                                    ).encode('ascii', 'replace')
         sys.stderr.write('Unable to remove testing dir %s\n%s'
-                         % (os.path.basename(dirname), e))
+                         % (os.path.basename(dirname), printable_e))
 
 
 class Feature(object):
@@ -4335,6 +4343,17 @@ class _UnicodeFilename(Feature):
             return True
 
 UnicodeFilename = _UnicodeFilename()
+
+
+class _ByteStringNamedFilesystem(Feature):
+    """Is the filesystem based on bytes?"""
+
+    def _probe(self):
+        if os.name == "posix":
+            return True
+        return False
+
+ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
 
 
 class _UTF8Filesystem(Feature):

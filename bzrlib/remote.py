@@ -33,7 +33,7 @@ from bzrlib import (
     static_tuple,
     symbol_versioning,
 )
-from bzrlib.branch import BranchReferenceFormat
+from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.errors import (
@@ -43,6 +43,7 @@ from bzrlib.errors import (
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.revision import ensure_null, NULL_REVISION
+from bzrlib.repository import RepositoryWriteLockResult
 from bzrlib.trace import mutter, note, warning
 
 
@@ -898,7 +899,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def _has_same_fallbacks(self, other_repo):
         """Returns true if the repositories have the same fallbacks."""
         # XXX: copied from Repository; it should be unified into a base class
-        # <https://bugs.edge.launchpad.net/bzr/+bug/401622>
+        # <https://bugs.launchpad.net/bzr/+bug/401622>
         my_fb = self._fallback_repositories
         other_fb = other_repo._fallback_repositories
         if len(my_fb) != len(other_fb):
@@ -1000,6 +1001,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         pass
 
     def lock_read(self):
+        """Lock the repository for read operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         # wrong eventually - want a local lock cache context
         if not self._lock_mode:
             self._note_lock('r')
@@ -1012,6 +1017,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
                 repo.lock_read()
         else:
             self._lock_count += 1
+        return lock.LogicalLockResult(self.unlock)
 
     def _remote_lock_write(self, token):
         path = self.bzrdir._path_for_remote_call(self._client)
@@ -1057,7 +1063,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             raise errors.ReadOnlyError(self)
         else:
             self._lock_count += 1
-        return self._lock_token or None
+        return RepositoryWriteLockResult(self.unlock, self._lock_token or None)
 
     def leave_lock_in_place(self):
         if not self._lock_token:
@@ -1974,7 +1980,8 @@ class RemoteStreamSource(repository.StreamSource):
         if response_tuple[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response_tuple)
         byte_stream = response_handler.read_streamed_body()
-        src_format, stream = smart_repo._byte_stream_to_stream(byte_stream)
+        src_format, stream = smart_repo._byte_stream_to_stream(byte_stream,
+            self._record_counter)
         if src_format.network_name() != repo._format.network_name():
             raise AssertionError(
                 "Mismatched RemoteRepository and stream src %r, %r" % (
@@ -2390,6 +2397,10 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._vfs_set_tags_bytes(bytes)
 
     def lock_read(self):
+        """Lock the branch for read operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         self.repository.lock_read()
         if not self._lock_mode:
             self._note_lock('r')
@@ -2399,18 +2410,26 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
                 self._real_branch.lock_read()
         else:
             self._lock_count += 1
+        return lock.LogicalLockResult(self.unlock)
 
     def _remote_lock_write(self, token):
         if token is None:
             branch_token = repo_token = ''
         else:
             branch_token = token
-            repo_token = self.repository.lock_write()
+            repo_token = self.repository.lock_write().repository_token
             self.repository.unlock()
         err_context = {'token': token}
-        response = self._call(
-            'Branch.lock_write', self._remote_path(), branch_token,
-            repo_token or '', **err_context)
+        try:
+            response = self._call(
+                'Branch.lock_write', self._remote_path(), branch_token,
+                repo_token or '', **err_context)
+        except errors.LockContention, e:
+            # The LockContention from the server doesn't have any
+            # information about the lock_url. We re-raise LockContention
+            # with valid lock_url.
+            raise errors.LockContention('(remote lock)',
+                self.repository.base.split('.bzr/')[0])
         if response[0] != 'ok':
             raise errors.UnexpectedSmartServerResponse(response)
         ok, branch_token, repo_token = response
@@ -2437,7 +2456,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._lock_mode = 'w'
             self._lock_count = 1
         elif self._lock_mode == 'r':
-            raise errors.ReadOnlyTransaction
+            raise errors.ReadOnlyError(self)
         else:
             if token is not None:
                 # A token was given to lock_write, and we're relocking, so
@@ -2448,7 +2467,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             self._lock_count += 1
             # Re-lock the repository too.
             self.repository.lock_write(self._repo_lock_token)
-        return self._lock_token or None
+        return BranchWriteLockResult(self.unlock, self._lock_token or None)
 
     def _unlock(self, branch_token, repo_token):
         err_context = {'token': str((branch_token, repo_token))}
@@ -2777,13 +2796,47 @@ class RemoteBranchConfig(RemoteConfig):
         medium = self._branch._client._medium
         if medium._is_remote_before((1, 14)):
             return self._vfs_set_option(value, name, section)
+        if isinstance(value, dict):
+            if medium._is_remote_before((2, 2)):
+                return self._vfs_set_option(value, name, section)
+            return self._set_config_option_dict(value, name, section)
+        else:
+            return self._set_config_option(value, name, section)
+
+    def _set_config_option(self, value, name, section):
         try:
             path = self._branch._remote_path()
             response = self._branch._client.call('Branch.set_config_option',
                 path, self._branch._lock_token, self._branch._repo_lock_token,
                 value.encode('utf8'), name, section or '')
         except errors.UnknownSmartMethod:
+            medium = self._branch._client._medium
             medium._remember_remote_is_before((1, 14))
+            return self._vfs_set_option(value, name, section)
+        if response != ():
+            raise errors.UnexpectedSmartServerResponse(response)
+
+    def _serialize_option_dict(self, option_dict):
+        utf8_dict = {}
+        for key, value in option_dict.items():
+            if isinstance(key, unicode):
+                key = key.encode('utf8')
+            if isinstance(value, unicode):
+                value = value.encode('utf8')
+            utf8_dict[key] = value
+        return bencode.bencode(utf8_dict)
+
+    def _set_config_option_dict(self, value, name, section):
+        try:
+            path = self._branch._remote_path()
+            serialised_dict = self._serialize_option_dict(value)
+            response = self._branch._client.call(
+                'Branch.set_config_option_dict',
+                path, self._branch._lock_token, self._branch._repo_lock_token,
+                serialised_dict, name, section or '')
+        except errors.UnknownSmartMethod:
+            medium = self._branch._client._medium
+            medium._remember_remote_is_before((2, 2))
             return self._vfs_set_option(value, name, section)
         if response != ():
             raise errors.UnexpectedSmartServerResponse(response)

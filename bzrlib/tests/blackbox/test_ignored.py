@@ -17,10 +17,10 @@
 
 """Tests of the 'bzr ignored' command."""
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestIgnored(ExternalBase):
+class TestIgnored(TestCaseWithTransport):
 
     def test_ignored_added_file(self):
         """'bzr ignored' should not list versioned files."""

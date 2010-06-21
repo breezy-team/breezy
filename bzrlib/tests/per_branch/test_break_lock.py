@@ -41,7 +41,7 @@ class TestBreakLock(per_branch.TestCaseWithBranch):
     def test_unlocked_repo_locked(self):
         # break lock on the branch should try on the repository even
         # if the branch isn't locked
-        token = self.branch.repository.lock_write()
+        token = self.branch.repository.lock_write().repository_token
         if token is None:
             self.branch.repository.unlock()
             raise tests.TestNotApplicable(

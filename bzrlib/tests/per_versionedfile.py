@@ -999,13 +999,20 @@ class TestReadonlyHttpMixin(object):
         # we should be able to read from http with a versioned file.
         vf = self.get_file()
         # try an empty file access
-        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        readonly_vf = self.get_factory()('foo', get_transport(
+                self.get_readonly_url('.')))
         self.assertEqual([], readonly_vf.versions())
+
+    def test_readonly_http_works_with_feeling(self):
+        # we should be able to read from http with a versioned file.
+        vf = self.get_file()
         # now with feeling.
         vf.add_lines('1', [], ['a\n'])
         vf.add_lines('2', ['1'], ['b\n', 'a\n'])
-        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        readonly_vf = self.get_factory()('foo', get_transport(
+                self.get_readonly_url('.')))
         self.assertEqual(['1', '2'], vf.versions())
+        self.assertEqual(['1', '2'], readonly_vf.versions())
         for version in readonly_vf.versions():
             readonly_vf.get_lines(version)
 

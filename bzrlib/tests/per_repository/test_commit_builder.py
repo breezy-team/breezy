@@ -193,6 +193,23 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertEqual(revision_id,
             tree.branch.repository.get_inventory(revision_id).revision_id)
 
+    def test_commit_without_root_errors(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            def do_commit():
+                try:
+                    list(builder.record_iter_changes(
+                        tree, tree.last_revision(), []))
+                    builder.finish_inventory()
+                except:
+                    builder.abort()
+                    raise
+            self.assertRaises(errors.RootMissing, do_commit)
+        finally:
+            tree.unlock()
+
     def test_commit_without_root_or_record_iter_changes_errors(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
