@@ -164,9 +164,10 @@ class BzrLibraryState(object):
         More options may be added in future so callers should use named
         arguments.
 
-        BzrLibraryState implements the Python 2.5 Context Manager protocol, and
-        can be used with the with statement. Upon __enter__ the global
-        variables in use by bzr are set, and they are cleared on __exit__.
+        BzrLibraryState implements the Python 2.5 Context Manager protocol
+        PEP343, and can be used with the with statement. Upon __enter__ the
+        global variables in use by bzr are set, and they are cleared on
+        __exit__.
 
         :param setup_ui: If true (default) use a terminal UI; otherwise 
             some other ui_factory must be assigned to `bzrlib.ui.ui_factory` by
@@ -203,6 +204,7 @@ class BzrLibraryState(object):
         global global_state
         self.saved_state = global_state
         global_state = self
+        return self # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanups.cleanup_now()

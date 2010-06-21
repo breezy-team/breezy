@@ -132,6 +132,7 @@ class UIFactory(object):
         Override in a concrete factory class if initialisation before use is
         needed.
         """
+        return self # This is bound to the 'as' clause in a with statement.
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit support.
