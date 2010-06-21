@@ -114,14 +114,27 @@ def _format_version_tuple(version_info):
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
 
-
-def test_suite():
-    import tests
-    return tests.test_suite()
+# bzr has various bits of global state that are slowly being eliminated.
+# This variable is intended to permit any new state-like things to be attached
+# to a BzrLibraryState object rather than getting new global variables that
+# need to be hunted down. Accessing the current BzrLibraryState through this
+# variable is not encouraged: it is better to pass it around as part of the
+# context of an operation than to look it up directly, but when that is too
+# hard, it is better to use this variable than to make a branch new global
+# variable.
+# If using this variable my looking it up (because it can't be easily obtained)
+# it is important to store the reference you get, rather than looking it up
+# repeatedly; that way your code will behave properly in the bzrlib test suite
+# and from programs that do use multiple library contexts.
+global_state = None
 
 
 class BzrLibraryState(object):
-    """The state about how bzrlib has been configured."""
+    """The state about how bzrlib has been configured.
+    
+    :ivar saved_state: The bzrlib.global_state at the time __enter__ was
+        called.
+    """
 
     def __init__(self, setup_ui=True, stdin=None, stdout=None, stderr=None):
         """Create library start for normal use of bzrlib.
@@ -167,6 +180,9 @@ class BzrLibraryState(object):
             stderr = self.stderr or sys.stderr
             bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
                 stdin, stdout, stderr)
+        global global_state
+        self.saved_state = global_state
+        global_state = self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         import bzrlib.ui
@@ -176,6 +192,8 @@ class BzrLibraryState(object):
         bzrlib.osutils.report_extension_load_failures()
         bzrlib.ui.ui_factory.__exit__(None, None, None)
         bzrlib.ui.ui_factory = None
+        global global_state
+        global_state = self.saved_state
         return False # propogate exceptions.
 
 
@@ -203,3 +221,8 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         stdout=stdout, stderr=stderr)
     library_state.__enter__()
     return library_state
+
+
+def test_suite():
+    import tests
+    return tests.test_suite()
