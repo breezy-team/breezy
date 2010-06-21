@@ -374,7 +374,7 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')
     bzr_logger.removeHandler(new_handler)
-    # must be closed, otherwise logging will try to close it atexit, and the
+    # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
     bzr_logger.handlers = old_handlers

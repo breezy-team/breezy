@@ -140,6 +140,7 @@ class UIFactory(object):
         self.clear_term() is needed when the UIFactory is finished with.
         """
         self.clear_term()
+        return False # propogate exceptions.
 
     def be_quiet(self, state):
         """Tell the UI to be more quiet, or not.

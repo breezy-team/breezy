@@ -126,10 +126,16 @@ class BzrLibraryState(object):
     def __init__(self, setup_ui=True, stdin=None, stdout=None, stderr=None):
         """Create library start for normal use of bzrlib.
 
-        Most applications that embed bzrlib, including bzr itself, should just call
-        bzrlib.initialize(), but it is possible to use the state class directly.
+        Most applications that embed bzrlib, including bzr itself, should just
+        call bzrlib.initialize(), but it is possible to use the state class
+        directly.
 
-        More options may be added in future so callers should use named arguments.
+        More options may be added in future so callers should use named
+        arguments.
+
+        BzrLibraryState implements the Python 2.5 Context Manager protocol, and
+        can be used with the with statement. Upon __entry__ the global
+        variables in use by bzr are set, and they are cleared on __exit__.
 
         :param setup_ui: If true (default) use a terminal UI; otherwise 
             some other ui_factory must be assigned to `bzrlib.ui.ui_factory` by
@@ -170,6 +176,7 @@ class BzrLibraryState(object):
         bzrlib.osutils.report_extension_load_failures()
         bzrlib.ui.ui_factory.__exit__(None, None, None)
         bzrlib.ui.ui_factory = None
+        return False # propogate exceptions.
 
 
 def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
@@ -185,6 +192,11 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         the caller.
     :param stdin, stdout, stderr: If provided, use these for terminal IO;
         otherwise use the files in `sys`.
+    :return: A context manager for the use of bzrlib. The __enter__ method of
+        this context has already been called, the __exit__ should be called
+        by the caller before exiting their process or otherwise stopping use
+        of bzrlib. Advanced callers, or callers wanting to use the 'with'
+        statement in Python 2.5 and above, should use BzrLibraryState directly.
     """
     # TODO: mention this in a guide to embedding bzrlib
     library_state = BzrLibraryState(setup_ui=setup_ui, stdin=stdin,
