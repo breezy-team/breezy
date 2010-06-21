@@ -14,7 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""bzr library"""
+"""All of bzr.
+
+Developer documentation is available at
+http://doc.bazaar.canonical.com/bzr.dev/developers/
+
+The project website is at http://bazaar.canonical.com/
+
+Some particularly interesting things in bzrlib are:
+
+ * bzrlib.initialize -- setup the library for use
+ * bzrlib.plugin.load_plugins -- load all installed plugins
+ * bzrlib.branch.Branch.open -- open a branch
+ * bzrlib.workingtree.WorkingTree.open -- open a working tree
+
+We hope you enjoy this library.
+"""
 
 import time
 
@@ -134,6 +149,9 @@ class BzrLibraryState(object):
     
     :ivar saved_state: The bzrlib.global_state at the time __enter__ was
         called.
+    :ivar cleanups: An ObjectWithCleanups which can be used for cleanups that
+        should occur when the use of bzrlib is completed. This is initialised
+        in __enter__ and executed in __exit__.
     """
 
     def __init__(self, setup_ui=True, stdin=None, stdout=None, stderr=None):
@@ -147,7 +165,7 @@ class BzrLibraryState(object):
         arguments.
 
         BzrLibraryState implements the Python 2.5 Context Manager protocol, and
-        can be used with the with statement. Upon __entry__ the global
+        can be used with the with statement. Upon __enter__ the global
         variables in use by bzr are set, and they are cleared on __exit__.
 
         :param setup_ui: If true (default) use a terminal UI; otherwise 
@@ -170,7 +188,9 @@ class BzrLibraryState(object):
             from bzrlib.symbol_versioning import suppress_deprecation_warnings
             suppress_deprecation_warnings(override=True)
 
+        import bzrlib.cleanup
         import bzrlib.trace
+        self.cleanups = bzrlib.cleanup.ObjectWithCleanups()
         bzrlib.trace.enable_default_logging()
 
         if self.setup_ui:
@@ -185,6 +205,7 @@ class BzrLibraryState(object):
         global_state = self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cleanups.cleanup_now()
         import bzrlib.ui
         bzrlib.trace._flush_stdout_stderr()
         bzrlib.trace._flush_trace()
@@ -211,16 +232,13 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
     :param stdin, stdout, stderr: If provided, use these for terminal IO;
         otherwise use the files in `sys`.
     :return: A context manager for the use of bzrlib. The __enter__ method of
-        this context has already been called, the __exit__ should be called
-        by the caller before exiting their process or otherwise stopping use
-        of bzrlib. Advanced callers, or callers wanting to use the 'with'
-        statement in Python 2.5 and above, should use BzrLibraryState directly.
+        this context needs to be alled before it takes effect, and the __exit__
+        should be called by the caller before exiting their process or
+        otherwise stopping use of bzrlib. Advanced callers can use
+        BzrLibraryState directly.
     """
-    # TODO: mention this in a guide to embedding bzrlib
-    library_state = BzrLibraryState(setup_ui=setup_ui, stdin=stdin,
+    return BzrLibraryState(setup_ui=setup_ui, stdin=stdin,
         stdout=stdout, stderr=stderr)
-    library_state.__enter__()
-    return library_state
 
 
 def test_suite():

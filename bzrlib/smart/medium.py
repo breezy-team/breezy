@@ -28,9 +28,9 @@ import os
 import sys
 import urllib
 
+import bzrlib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import atexit
 import socket
 import thread
 import weakref
@@ -494,16 +494,16 @@ class SmartClientMediumRequest(object):
 class _DebugCounter(object):
     """An object that counts the HPSS calls made to each client medium.
 
-    When a medium is garbage-collected, or failing that when atexit functions
-    are run, the total number of calls made on that medium are reported via
-    trace.note.
+    When a medium is garbage-collected, or failing that when
+    bzrlib.global_state exits, the total number of calls made on that medium
+    are reported via trace.note.
     """
 
     def __init__(self):
         self.counts = weakref.WeakKeyDictionary()
         client._SmartClient.hooks.install_named_hook(
             'call', self.increment_call_count, 'hpss call counter')
-        atexit.register(self.flush_all)
+        bzrlib.global_state.cleanups.addCleanup(self.flush_all)
 
     def track(self, medium):
         """Start tracking calls made to a medium.

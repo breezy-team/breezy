@@ -136,6 +136,7 @@ import bzrlib.trace
 
 if __name__ == '__main__':
     library_state = bzrlib.initialize()
+    library_state.__enter__()
     try:
         exit_val = bzrlib.commands.main()
         if profiling:
