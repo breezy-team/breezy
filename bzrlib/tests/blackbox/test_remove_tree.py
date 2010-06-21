@@ -20,10 +20,10 @@
 import os
 
 from bzrlib import shelf
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestRemoveTree(ExternalBase):
+class TestRemoveTree(TestCaseWithTransport):
 
     def setUp(self):
         super(TestRemoveTree, self).setUp()

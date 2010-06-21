@@ -128,6 +128,10 @@ API Changes
   2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
   ``bzrlib.patiencediff`` instead. (Andrew Bennetts)
 
+* ``bzrlib.tests.blackbox.ExternalBase`` is deprecated.  It provided only
+  one method ``check_output``, and we now recommend checking command
+  output using ``run_script``. (Martin Pool)
+
 * ``bzrlib.transport.ssh.SSHVendor.connect_ssh`` now returns an object
   that implements the interface of ``bzrlib.transport.ssh.SSHConnection``.
   Third-party implementations of ``SSHVendor`` may need to be updated
