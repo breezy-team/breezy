@@ -503,7 +503,7 @@ class _DebugCounter(object):
         self.counts = weakref.WeakKeyDictionary()
         client._SmartClient.hooks.install_named_hook(
             'call', self.increment_call_count, 'hpss call counter')
-        bzrlib.global_state.cleanups.addCleanup(self.flush_all)
+        bzrlib.global_state.cleanups.add_cleanup(self.flush_all)
 
     def track(self, medium):
         """Start tracking calls made to a medium.
