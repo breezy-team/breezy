@@ -522,7 +522,7 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
-def _command_line_to_argv(command_line, single_quotes_allowed=False):
+def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     """Convert a Unicode command line into a list of argv arguments.
 
     It performs wildcard expansion to make wildcards act closer to how they
@@ -546,9 +546,9 @@ def _command_line_to_argv(command_line, single_quotes_allowed=False):
     arguments = list(s)
     
     # Now shorten the command line we get from GetCommandLineW to match sys.argv
-    if len(arguments) < len(sys.argv):
+    if len(arguments) < len(argv):
         raise AssertionError("Split command line can't be shorter than argv")
-    arguments = arguments[len(arguments) - len(sys.argv):]
+    arguments = arguments[len(arguments) - len(argv):]
     
     # Carry on to process globs (metachars) in the command line
     # expand globs if necessary
@@ -572,7 +572,7 @@ if has_ctypes and winver != 'Windows 98':
         if command_line is None:
             raise ctypes.WinError()
         # Skip the first argument, since we only care about parameters
-        argv = _command_line_to_argv(command_line)[1:]
+        argv = _command_line_to_argv(command_line, sys.argv)[1:]
         return argv
 else:
     get_unicode_argv = None
