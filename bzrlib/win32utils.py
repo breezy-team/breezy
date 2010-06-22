@@ -547,21 +547,20 @@ def _command_line_to_argv(command_line, single_quotes_allowed=False):
     
     # Now shorten the command line we get from GetCommandLineW to match sys.argv
     if len(arguments) < len(sys.argv):
-        from bzrlib.errors import InternalBzrError
-        raise InternalBzrError("len(GetCommandLineW(...)) < len(sys.argv) should not be possible")
+        raise AssertionError("Split command line can't be shorter than argv")
     arguments = arguments[len(arguments) - len(sys.argv):]
     
     # Carry on to process globs (metachars) in the command line
     # expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs
-    argv = []
+    args = []
     for is_quoted, arg in arguments:
         if is_quoted or not glob.has_magic(arg):
-            argv.append(arg)
+            args.append(arg)
         else:
-            argv.extend(glob_one(arg))
-    return argv
+            args.extend(glob_one(arg))
+    return args
 
 
 if has_ctypes and winver != 'Windows 98':
