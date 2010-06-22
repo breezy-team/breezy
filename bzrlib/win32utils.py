@@ -522,7 +522,7 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
-def _command_line_to_argv(command_line, single_quotes_allowed=False):
+def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
     """Convert a Unicode command line into a list of argv arguments.
 
     It performs wildcard expansion to make wildcards act closer to how they
@@ -535,12 +535,27 @@ def _command_line_to_argv(command_line, single_quotes_allowed=False):
                                   default.
     :return: A list of unicode strings.
     """
+    # First, spit the command line
     s = cmdline.Splitter(command_line, single_quotes_allowed=single_quotes_allowed)
-    # Now that we've split the content, expand globs if necessary
+    
+    # Bug #587868 Now make sure that the length of s agrees with sys.argv 
+    # we do this by simply counting the number of arguments in each. The counts should 
+    # agree no matter what encoding sys.argv is in (AFAIK) 
+    # len(arguments) < len(sys.argv) should be an impossibility since python gets 
+    # args from the very same PEB as does GetCommandLineW
+    arguments = list(s)
+    
+    # Now shorten the command line we get from GetCommandLineW to match sys.argv
+    if len(arguments) < len(argv):
+        raise AssertionError("Split command line can't be shorter than argv")
+    arguments = arguments[len(arguments) - len(argv):]
+    
+    # Carry on to process globs (metachars) in the command line
+    # expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs
     args = []
-    for is_quoted, arg in s:
+    for is_quoted, arg in arguments:
         if is_quoted or not glob.has_magic(arg):
             args.append(arg)
         else:
@@ -557,21 +572,7 @@ if has_ctypes and winver != 'Windows 98':
         if command_line is None:
             raise ctypes.WinError()
         # Skip the first argument, since we only care about parameters
-        argv = _command_line_to_argv(command_line)[1:]
-        if getattr(sys, 'frozen', None) is None:
-            # Invoked via 'python.exe' which takes the form:
-            #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
-            # we need to get only BZR_OPTIONS part,
-            # We already removed 'python.exe' so we remove everything up to and
-            # including the first non-option ('-') argument.
-            for idx in xrange(len(argv)):
-                if argv[idx][:1] != '-':
-                    break
-            argv = argv[idx+1:]
-        # we should remove '--profile-imports' option as well (bug #588277)
-        # see bzr script ~ line 54
-        if '--profile-imports' in argv and '--profile-imports' not in sys.argv:
-            argv.remove('--profile-imports')
+        argv = _command_line_to_argv(command_line, sys.argv)[1:]
         return argv
 else:
     get_unicode_argv = None
