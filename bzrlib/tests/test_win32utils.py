@@ -332,3 +332,11 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
         self.requireFeature(backslashdir_feature)
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'a/b.c'], 'a\\b*')
+
+    def test_with_pdb(self):
+        """Check stripping Python arguments before bzr script per lp:587868"""
+        self.assertCommandLine([u"rocks"], "-m pdb rocks", ["rocks"])
+        self.build_tree(['d/', 'd/f1', 'd/f2'])
+        self.assertCommandLine([u"rm", u"x*"], "-m pdb rm x*", ["rm", u"x*"])
+        self.assertCommandLine([u"add", u"d/f1", u"d/f2"], "-m pdb add d/*",
+            ["add", u"d/*"])
