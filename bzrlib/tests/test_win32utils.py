@@ -54,7 +54,7 @@ class _RequiredModuleFeature(Feature):
 Win32RegistryFeature = _RequiredModuleFeature('_winreg')
 CtypesFeature = _RequiredModuleFeature('ctypes')
 Win32comShellFeature = _RequiredModuleFeature('win32com.shell')
-
+Win32ApiFeature = _RequiredModuleFeature('win32api') 
 
 # Tests
 # -----
@@ -189,6 +189,7 @@ class TestAppPaths(TestCase):
         # typical windows users should have wordpad in the system
         # but there is problem: its path has the format REG_EXPAND_SZ
         # so naive attempt to get the path is not working
+        self.requireFeature(Win32ApiFeature)
         for a in ('wordpad', 'wordpad.exe'):
             p = get_app_path(a)
             d, b = os.path.split(p)
