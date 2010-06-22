@@ -222,3 +222,17 @@ class TestMergeInto(TestMergeIntoBase):
         # The dest tree is unmodified.
         self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
         self.assertTreeEntriesEqual([('', 'dest-root-id')], dest_wt)
+
+    def test_no_such_target_path(self):
+        """PathNotInTree is also raised if the specified path in the target
+        tree does not exist.
+        """
+        dest_wt = self.setup_simple_branch('dest')
+        two_file_wt = self.setup_simple_branch('src', ['file.txt'])
+        self.assertRaises(merge.PathNotInTree, self.do_merge_into,
+            'src', 'dest/no-such-dir/foo')
+        dest_wt.lock_read()
+        self.addCleanup(dest_wt.unlock)
+        # The dest tree is unmodified.
+        self.assertEqual(['r1-dest'], dest_wt.get_parent_ids())
+        self.assertTreeEntriesEqual([('', 'dest-root-id')], dest_wt)
