@@ -1814,7 +1814,7 @@ class MergeIntoMerger(Merger):
         self.show_base = False
         self.reprocess = False
         self.interesting_ids = None
-        self.merge_type = Wrapper(Merge3MergeIntoMerger,
+        self.merge_type = _Wrapper(Merge3MergeIntoMerger,
                                   target_subdir=self._target_subdir,
                                   source_subpath=self._source_subpath)
         if self._source_subpath != '':
@@ -1829,7 +1829,7 @@ class MergeIntoMerger(Merger):
         Merger.set_pending(self)
 
 
-class Wrapper(object):
+class _Wrapper(object):
     """Wrap a class to provide extra parameters."""
 
     # Merger.do_merge() sets up its own set of parameters to pass to the
@@ -1913,6 +1913,21 @@ class Merge3MergeIntoMerger(Merge3Merger):
 
 
 def merge_into_helper(location, add_cleanup, subdir=None):
+    """Helper for cmd_merge_into.
+    
+    :param location: location of directory to merge from, either the location
+        of a branch or of a path inside a branch.
+    :param add_cleanup: callable for registering cleanup functions to be run
+        after this helper returns or raises, e.g. Command.add_cleanup.
+    :param subdir: the path in a tree to add the new directory as.  If not
+        given this will be the current working directory + basename of the
+        location parameter.
+
+    :raises PathNotInTree: if 'location' refers to a directory that could not
+        be found, or if 'subdir' assumes a containing directory that doesn't
+        exist.
+    :returns: the conflicts from 'do_merge'.
+    """
     # Open and lock the various tree and branch objects
     from bzrlib import workingtree
     import os
