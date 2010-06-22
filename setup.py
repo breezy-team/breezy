@@ -125,7 +125,7 @@ class my_install_scripts(install_scripts):
                 f = file(batch_path, "w")
                 f.write(batch_str)
                 f.close()
-                print("Created:", batch_path)
+                print("Created: %s" % batch_path)
             except Exception:
                 e = sys.exc_info()[1]
                 print("ERROR: Unable to create %s: %s" % (batch_path, e))
