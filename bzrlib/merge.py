@@ -1764,10 +1764,10 @@ class Diff3Merger(Merge3Merger):
 
 class PathNotInTree(errors.BzrError):
 
-    _fmt = """Tree does not contain %(path)s."""
+    _fmt = """%(tree)s does not contain %(path)s."""
 
-    def __init__(self, path):
-        errors.BzrError.__init__(self, path=path)
+    def __init__(self, path, tree):
+        errors.BzrError.__init__(self, path=path, tree=tree)
 
 
 class MergeIntoMerger(Merger):
@@ -1880,22 +1880,24 @@ class Merge3MergeIntoMerger(Merge3Merger):
         if subdir_id is None:
             # XXX: The error would be clearer if it gave the URL of the source
             # branch, but we don't have a reference to that here.
-            raise PathNotInTree(self._source_subpath)
+            raise PathNotInTree(self._source_subpath, "Source tree")
         subdir = other_inv[subdir_id]
         parent_in_target = osutils.dirname(self._target_subdir)
         target_id = self.this_tree.inventory.path2id(parent_in_target)
         if target_id is None:
-            raise AssertionError('_target_subdir %r not present?' %
-                    (self._target_subdir,))
+            raise PathNotInTree(self._target_subdir, "Target tree")
         name_in_target = osutils.basename(self._target_subdir)
         merge_into_root = subdir.copy()
         merge_into_root.name = name_in_target
         if merge_into_root.file_id in self.this_tree.inventory:
             # Give the root a new file-id.
-            # XXX: what to do if something other than the root has the same
-            # file-id as something in this_tree?  Ideally make a conflict of
-            # some sort?  Shouldn't occur with unrelated branches, so it's
-            # hopefully an uncommon edge case.
+            # This can happen fairly easily if the directory we are
+            # incorporating is the root, and both trees have 'TREE_ROOT' as
+            # their root_id.  Users will expect this to Just Work, so we
+            # change the file-id here.
+            # Non-root file-ids could potentially conflict too.  That's really
+            # an edge case, so we don't do anything special for those.  We let
+            # them cause conflicts.
             merge_into_root.file_id = generate_ids.gen_file_id(name_in_target)
         yield (merge_into_root, target_id)
         if subdir.kind != 'directory':

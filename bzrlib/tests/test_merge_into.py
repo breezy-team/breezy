@@ -159,6 +159,23 @@ class TestMergeInto(TestMergeIntoBase):
              ('dir.moved/file.txt', 'dest-file.txt-id'),
             ], dest_wt)
 
+    def test_file_id_conflict(self):
+        """A conflict is generated if the merge-into adds a file (or other
+        inventory entry) with a file-id that already exists in the target tree.
+        """
+        dest_wt = self.setup_simple_branch('dest', ['file.txt'])
+        # Make a second tree with a file-id that will clash with file.txt in
+        # dest.
+        src_wt = self.make_branch_and_tree('src')
+        self.build_tree(['src/README'])
+        src_wt.add(['README'], ids=['dest-file.txt-id'])
+        src_wt.commit("Rev 1 of src.", rev_id='r1-src')
+        conflicts = self.do_merge_into('src', 'dest/dir')
+        # This is an edge case that shouldn't happen to users very often.  So
+        # we don't care really about the exact presentation of the conflict,
+        # just that there is one.
+        self.assertEqual(1, conflicts)
+
     def test_only_subdir(self):
         """When the location points to just part of a tree, merge just that
         subtree.
