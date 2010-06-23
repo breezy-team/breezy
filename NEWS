@@ -4,6 +4,13 @@
 
   * Drop support for Bazaar < 2.0. (Jelmer Vernooij)
 
+ BUGS
+
+  * Cope with kind changes when generating git objects from Bazaar 
+    revisions that contain kind changes where a directory is changed 
+	into a file and its (file/symlink) children are removed 
+	(rather than moved). (#597758, Jelmer Vernooij)
+
 0.5.1	2010-05-22
 
  BUG FIXES
