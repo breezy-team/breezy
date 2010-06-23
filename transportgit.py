@@ -41,6 +41,7 @@ from dulwich.repo import (
     )
 
 from bzrlib.errors import (
+    FileExists,
     NoSuchFile,
     )
 
@@ -145,7 +146,10 @@ class TransportObjectStore(PackBasedObjectStore):
         :param obj: Object to add
         """
         (dir, file) = self._split_loose_object(obj.id)
-        self.transport.mkdir(dir)
+        try:
+            self.transport.mkdir(dir)
+        except FileExists:
+            pass
         path = "%s/%s" % (dir, file)
         if self.transport.has(path):
             return # Already there, no need to write again
