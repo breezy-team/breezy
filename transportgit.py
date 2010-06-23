@@ -107,15 +107,26 @@ class TransportObjectStore(PackBasedObjectStore):
     def _pack_cache_stale(self):
         return False # FIXME
 
+    def _pack_names(self):
+        try:
+            f = self.transport.get('info/packs')
+        except NoSuchFile:
+            return self.pack_transport.list_dir(".")
+        else:
+            ret = []
+            for line in f.readlines():
+                line = line.rstrip("\n")
+                if not line:
+                    continue
+                (kind, name) = line.split(" ", 1)
+                if kind != "P":
+                    continue
+                ret.append(name)
+            return ret
+
     def _load_packs(self):
         ret = []
-        for line in self.transport.get('info/packs').readlines():
-            line = line.rstrip("\n")
-            if not line:
-                continue
-            (kind, name) = line.split(" ", 1)
-            if kind != "P":
-                continue
+        for name in self._pack_names():
             if name.startswith("pack-") and name.endswith(".pack"):
                 pd = PackData(name, self.pack_transport.get(name))
                 idxname = name.replace(".pack", ".idx")
