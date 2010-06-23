@@ -34,11 +34,11 @@ from bzrlib.osutils import (
     pathjoin,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class TestCommands(ExternalBase):
+class TestCommands(TestCaseWithTransport):
 
     def test_ignore_absolutes(self):
         """'ignore' with an absolute path returns an error"""

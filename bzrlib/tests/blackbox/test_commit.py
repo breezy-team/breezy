@@ -33,10 +33,10 @@ from bzrlib.tests import (
     probe_bad_non_ascii,
     TestSkipped,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCommit(ExternalBase):
+class TestCommit(TestCaseWithTransport):
 
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""

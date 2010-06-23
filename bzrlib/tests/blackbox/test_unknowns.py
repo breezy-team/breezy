@@ -18,10 +18,10 @@
 
 """Black-box tests for 'bzr unknowns', which shows unknown files."""
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestUnknowns(ExternalBase):
+class TestUnknowns(TestCaseWithTransport):
 
     def test_unknowns(self):
         """Test that 'unknown' command reports unknown files"""
