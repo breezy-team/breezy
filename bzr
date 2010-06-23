@@ -52,7 +52,6 @@ if hasattr(os, "unsetenv"):
 
 profiling = False
 if '--profile-imports' in sys.argv:
-    sys.argv.remove('--profile-imports')
     import profile_imports
     profile_imports.install()
     profiling = True
@@ -135,11 +134,14 @@ import bzrlib.trace
 
 
 if __name__ == '__main__':
-    bzrlib.initialize()
-    exit_val = bzrlib.commands.main()
-
-    if profiling:
-        profile_imports.log_stack_info(sys.stderr)
+    library_state = bzrlib.initialize()
+    library_state.__enter__()
+    try:
+        exit_val = bzrlib.commands.main()
+        if profiling:
+            profile_imports.log_stack_info(sys.stderr)
+    finally:
+        library_state.__exit__(None, None, None)
 
     # By this point we really have completed everything we want to do, and
     # there's no point doing any additional cleanup.  Abruptly exiting here

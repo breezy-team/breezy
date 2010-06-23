@@ -496,6 +496,17 @@ Valid values:
     using deprecated formats.
 
 
+Unicode options
+---------------
+
+output_encoding
+~~~~~~~~~~~~~~~
+
+A Python unicode encoding name for text output from bzr, such as log
+information.  Values include: utf8, cp850, ascii, iso-8859-1.  The default
+is the terminal encoding prefered by the operating system.
+
+
 Branch type specific options
 ----------------------------
 
