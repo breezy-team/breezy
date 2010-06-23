@@ -150,6 +150,7 @@ class ContentCache(object):
 
 
 class BzrGitCacheFormat(object):
+    """Bazaar-Git Cache Format."""
 
     def get_format_string(self):
         """Return a single-line unique format string for this cache format."""
@@ -160,6 +161,7 @@ class BzrGitCacheFormat(object):
         raise NotImplementedError(self.open)
 
     def initialize(self, transport):
+        """Create a new instance of this cache format at transport."""
         transport.put_bytes('format', self.get_format_string())
 
     @classmethod
@@ -204,6 +206,7 @@ class BzrGitCacheFormat(object):
 
 
 class CacheUpdater(object):
+    """Base class for objects that can update a bzr-git cache."""
 
     def add_object(self, obj, ie):
         raise NotImplementedError(self.add_object)
@@ -221,6 +224,9 @@ class BzrGitCache(object):
         self._cache_updater_klass = cache_updater_klass
 
     def get_updater(self, rev):
+        """Update an object that implements the CacheUpdater interface for 
+        updating this cache.
+        """
         return self._cache_updater_klass(self, rev)
 
 
@@ -228,6 +234,7 @@ DictBzrGitCache = lambda: BzrGitCache(DictGitShaMap(), None, DictCacheUpdater)
 
 
 class DictCacheUpdater(CacheUpdater):
+    """Cache updater for dict-based caches."""
 
     def __init__(self, cache, rev):
         self.cache = cache
@@ -262,6 +269,7 @@ class DictCacheUpdater(CacheUpdater):
 
 
 class DictGitShaMap(GitShaMap):
+    """Git SHA map that uses a dictionary."""
 
     def __init__(self):
         self._by_sha = {}
@@ -344,6 +352,7 @@ class SqliteGitCacheFormat(BzrGitCacheFormat):
 
 
 class SqliteGitShaMap(GitShaMap):
+    """Bazaar GIT Sha map that uses a sqlite database for storage."""
 
     def __init__(self, path=None):
         self.path = path
@@ -382,7 +391,9 @@ class SqliteGitShaMap(GitShaMap):
         return "%s(%r)" % (self.__class__.__name__, self.path)
     
     def lookup_commit(self, revid):
-        row = self.db.execute("select sha1 from commits where revid = ?", (revid,)).fetchone()
+        cursor = self.db.execute("select sha1 from commits where revid = ?", 
+            (revid,))
+        row = cursor.fetchone()
         if row is not None:
             return row[0]
         raise KeyError
@@ -432,6 +443,7 @@ class SqliteGitShaMap(GitShaMap):
 
 
 class TdbCacheUpdater(CacheUpdater):
+    """Cache updater for tdb-based caches."""
 
     def __init__(self, cache, rev):
         self.cache = cache
@@ -470,6 +482,7 @@ class TdbCacheUpdater(CacheUpdater):
 TdbBzrGitCache = lambda p: BzrGitCache(TdbGitShaMap(p), None, TdbCacheUpdater)
 
 class TdbGitCacheFormat(BzrGitCacheFormat):
+    """Cache format for tdb-based caches."""
 
     def get_format_string(self):
         return 'bzr-git sha map version 3 using tdb\n'
