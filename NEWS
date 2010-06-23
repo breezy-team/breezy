@@ -119,6 +119,10 @@ Improvements
   formats is needed or when the format string for the object is
   encountered. (Robert Collins, Jelmer Vernooij)
 
+* The encoding that bzr uses to output things other than file content can
+  now be overridden via the output_encoding configuration option.
+  (Martin Pool, #340394)
+
 * Use lazy imports in ``bzrlib/merge.py`` so that plugins like ``news_merge``
   do not cause modules to be loaded unnecessarily just because the plugin
   registers a merge hook.  This improves ``bzr rocks`` time by about 25%
@@ -170,6 +174,9 @@ Internals
 
 Testing
 *******
+
+* Add ``bzrlib.tests.fixtures`` to hold code for setting up objects
+  to test.  (Martin Pool)
 
 * ``test_import_tariff`` now respects BZR_PLUGINS_AT and BZR_PLUGINS_DISABLE.
   (Vincent Ladeuil, #595587)
