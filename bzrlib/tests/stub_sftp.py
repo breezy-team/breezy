@@ -418,9 +418,6 @@ class SFTPServer(test_server.TestServer):
         decorator.
         """
         if self.add_latency > 0.000001:
-            # FIXME: We appear to use SocketDelay for the server socket only, I
-            # don't think that gets magically propagated to client
-            # sockets... -- vila 20100526
             sock = SocketDelay(sock, self.add_latency)
         return self._run_server(sock)
 
