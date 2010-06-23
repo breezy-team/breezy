@@ -667,6 +667,10 @@ class InvalidStatusRequestHandler(http_server.TestingHTTPRequestHandler):
         """Fakes handling a single HTTP request, returns a bad status"""
         ignored = http_server.TestingHTTPRequestHandler.parse_request(self)
         self.wfile.write("Invalid status line\r\n")
+        # If we don't close the connection pycurl will hang. Since this is a
+        # stress test we don't *have* to respect the protocol, but we don't
+        # have to sabotage it too much either.
+        self.close_connection = True
         return False
 
 
@@ -677,19 +681,6 @@ class TestInvalidStatusServer(TestBadStatusServer):
     """
 
     _req_handler_class = InvalidStatusRequestHandler
-
-    def test_http_has(self):
-        # FIXME: that should be fixed now, needs testing -- vila 20100611
-        if self._testing_pycurl() and self._protocol_version == 'HTTP/1.1':
-            raise tests.KnownFailure(
-                'pycurl hangs if the server send back garbage')
-        super(TestInvalidStatusServer, self).test_http_has()
-
-    def test_http_get(self):
-        if self._testing_pycurl() and self._protocol_version == 'HTTP/1.1':
-            raise tests.KnownFailure(
-                'pycurl hangs if the server send back garbage')
-        super(TestInvalidStatusServer, self).test_http_get()
 
 
 class BadProtocolRequestHandler(http_server.TestingHTTPRequestHandler):

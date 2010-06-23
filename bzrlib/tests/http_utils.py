@@ -111,7 +111,7 @@ class TestCaseWithWebserver(tests.TestCaseWithTransport):
 
     # These attributes can be overriden or parametrized by daughter clasess if
     # needed, but must exist so that the create_transport_readonly_server()
-    # method (or any method creating an http(s) server can propagate it.
+    # method (or any method creating an http(s) server) can propagate it.
     _protocol_version = None
     _url_protocol = 'http'
 
