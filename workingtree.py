@@ -175,9 +175,11 @@ class GitWorkingTree(workingtree.WorkingTree):
             head = self.repository._git.head()
         except KeyError, name:
             raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
-        basis_inv = self.repository.get_inventory(self.mapping.revision_id_foreign_to_bzr(head))
-        result = GitIndexInventory(basis_inv, self.mapping, self.index,
-            self.repository._git.object_store)
+        basis_inv = self.repository.get_inventory(self.branch.lookup_foreign_revision_id(head))
+        store = self.repository._git.object_store
+        fileid_map = self.mapping.get_fileid_map(store.__getitem__,
+            store[head].tree)
+        result = GitIndexInventory(basis_inv, fileid_map, self.index, store)
         self._set_inventory(result, dirty=False)
 
     @needs_read_lock
@@ -230,7 +232,21 @@ class InterIndexGitTree(tree.InterTree):
         changes = self._index.changes_from_tree(
             self.source._repository._git.object_store, self.source.tree, 
             want_unchanged=want_unchanged)
+        source_fileid_map = self.source.mapping.get_fileid_map(
+            self.source._repository._git.object_store.__getitem__,
+            self.source.tree)
+        if self.target.mapping.BZR_FILE_IDS_FILE is not None:
+            try:
+                file_id = self.target.path2id(
+                    self.target.mapping.BZR_FILE_IDS_FILE)
+            except errors.NoSuchId:
+                target_fileid_map = {}
+            else:
+                target_fileid_map = self.import_fileid_map(Blob.from_string(self.target.file_text(file_id)))
+        else:
+            target_fileid_map = {}
         ret = tree_delta_from_git_changes(changes, self.target.mapping, 
+            (source_fileid_map, target_fileid_map),
             specific_file=specific_files, require_versioned=require_versioned)
         if want_unversioned:
             for e in self.target.extras():

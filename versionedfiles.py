@@ -25,7 +25,7 @@ from dulwich.objects import (
 
 from bzrlib.versionedfile import (
     AbsentContentFactory,
-    FulltextContentFactory,
+    ChunkedContentFactory,
     VersionedFiles,
     )
 
@@ -59,9 +59,9 @@ class GitRevisions(VersionedFiles):
             except KeyError:
                 yield AbsentContentFactory(key)
             else:
-                yield FulltextContentFactory(key, 
+                yield ChunkedContentFactory(key, 
                     tuple([(self.repository.lookup_foreign_revision_id(p, mapping),) for p in commit.parents]), None, 
-                    commit.as_raw_string())
+                    commit.as_raw_chunks())
 
     def get_parent_map(self, keys):
         ret = {}
@@ -103,9 +103,9 @@ class GitTexts(VersionedFiles):
                 yield AbsentContentFactory(key)
             else:
                 if isinstance(obj, Tree):
-                    yield FulltextContentFactory(key, None, None, "")
+                    yield ChunkedContentFactory(key, None, None, [])
                 elif isinstance(obj, Blob):
-                    yield FulltextContentFactory(key, None, None, obj.data)
+                    yield ChunkedContentFactory(key, None, None, obj.chunked)
                 else:
                     raise AssertionError("file text resolved to %r" % obj)
 

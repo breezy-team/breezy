@@ -102,6 +102,9 @@ class TransportObjectStore(PackBasedObjectStore):
         super(TransportObjectStore, self).__init__()
         self.transport = transport
         self.pack_transport = self.transport.clone(PACKDIR)
+    
+    def _pack_cache_stale(self):
+        return False # FIXME
 
     def _load_packs(self):
         ret = []
@@ -132,7 +135,7 @@ class TransportObjectStore(PackBasedObjectStore):
     def _get_loose_object(self, sha):
         path = '%s/%s' % self._split_loose_object(sha)
         try:
-            return ShaFile._parse_file(self.transport.get(path).read())
+            return ShaFile.from_file(self.transport.get(path))
         except NoSuchFile:
             return None
 

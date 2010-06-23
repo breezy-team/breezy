@@ -1,4 +1,10 @@
-0.5.1	UNRELEASED
+0.5.2	UNRELEASED
+
+ COMPATIBILITY
+
+  * Drop support for Bazaar < 2.0. (Jelmer Vernooij)
+
+0.5.1	2010-05-22
 
  BUG FIXES
 
@@ -13,6 +19,12 @@
   * Default to non-bare repositories when initializing a control directory.
     (Jelmer Vernooij)
 
+  * Cope with -0000 as timezone in Git commits. (Jelmer Vernooij, #539978)
+
+ FEATURES
+
+  * Support 'bzr diff --format=git'. (Jelmer Vernooij, #555994)
+
  PERFORMANCE
  
   * Avoid the use of InventoryDirectory.children. This speeds up 
@@ -23,7 +35,7 @@
  BUG FIXES
 
   * Fix compatibility with newer versions of Python2.6, which change the 
-    behaviour of urlparse.urlsplit.
+    behaviour of urlparse.urlsplit. (Jelmer Vernooij, #561351)
  
   * Avoid storing texts of symlinks, which causes checksum errors in 
     `bzr check`. (#512323, INADA Naoki, Jelmer Vernooij)

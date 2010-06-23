@@ -40,7 +40,6 @@ lazy_check_versions()
 
 from bzrlib.plugins.git.branch import (
     GitBranch,
-    extract_tags,
     )
 from bzrlib.plugins.git.errors import (
     GitSmartRemoteNotSupported,
@@ -55,6 +54,10 @@ from bzrlib.plugins.git.mapping import (
 from bzrlib.plugins.git.repository import (
     GitRepository,
     )
+from bzrlib.plugins.git.refs import (
+    extract_tags,
+    branch_name_to_ref,
+    )
 
 import dulwich as git
 from dulwich.errors import (
@@ -62,7 +65,7 @@ from dulwich.errors import (
     )
 from dulwich.pack import (
     Pack,
-    PackData,
+    ThinPackData,
     )
 import os
 import tempfile
@@ -161,8 +164,8 @@ class TCPGitSmartTransport(GitSmartTransport):
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port, thin_packs=thin_packs,
-            report_activity=self._report_activity)
+        return git.client.TCPGitClient(self._host, self._port,
+            thin_packs=thin_packs, report_activity=self._report_activity)
 
 
 class SSHGitSmartTransport(GitSmartTransport):
@@ -192,9 +195,8 @@ class RemoteGitDir(GitDir):
         self._lockfiles = lockfiles
         self._mode_check_done = None
 
-    def _branch_name_to_ref(self, name):
-        from bzrlib.plugins.git.branch import branch_name_to_ref
-        return branch_name_to_ref(name, default="refs/heads/master")
+    def _branch_name_to_ref(self, name, default=None):
+        return branch_name_to_ref(name, default=default)
 
     def open_repository(self):
         return RemoteGitRepository(self, self._lockfiles)
@@ -224,7 +226,7 @@ class TemporaryPackIterator(Pack):
     @property
     def data(self):
         if self._data is None:
-            self._data = PackData(self._data_path)
+            self._data = ThinPackData(self.resolve_ext_ref, self._data_path)
         return self._data
 
     @property
@@ -235,7 +237,7 @@ class TemporaryPackIterator(Pack):
                 try:
                     def report_progress(cur, total):
                         pb.update("generating index", cur, total)
-                    self.data.create_index(self._idx_path, self.resolve_ext_ref,
+                    self.data.create_index(self._idx_path, 
                         progress=report_progress)
                 finally:
                     pb.finished()
@@ -301,6 +303,15 @@ class RemoteGitRepository(GitRepository):
         except InvalidRevisionId:
             raise NoSuchRevision(self, bzr_revid)
 
+    def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
+        """Lookup a revision id.
+
+        """
+        if mapping is None:
+            mapping = self.get_mapping()
+        # Not really an easy way to parse foreign revids here..
+        return mapping.revision_id_foreign_to_bzr(foreign_revid)
+
 
 class RemoteGitTagDict(tag.BasicTags):
 
@@ -322,7 +333,7 @@ class RemoteGitTagDict(tag.BasicTags):
 class RemoteGitBranch(GitBranch):
 
     def __init__(self, bzrdir, repository, name, lockfiles):
-        self._ref = None
+        self._sha = None
         super(RemoteGitBranch, self).__init__(bzrdir, repository, name,
                 lockfiles)
 
@@ -330,7 +341,7 @@ class RemoteGitBranch(GitBranch):
         raise GitSmartRemoteNotSupported()
 
     def last_revision(self):
-        return self.mapping.revision_id_foreign_to_bzr(self.head)
+        return self.lookup_foreign_revision_id(self.head)
 
     def _get_config(self):
         class EmptyConfig(object):
@@ -342,16 +353,15 @@ class RemoteGitBranch(GitBranch):
 
     @property
     def head(self):
-        if self._ref is not None:
-            return self._ref
+        if self._sha is not None:
+            return self._sha
         heads = self.repository.get_refs()
-        if self.name in heads:
-            self._ref = heads[self.name]
-        elif ("refs/heads/" + self.name) in heads:
-            self._ref = heads["refs/heads/" + self.name]
+        name = self.bzrdir._branch_name_to_ref(self.name, "HEAD")
+        if name in heads:
+            self._sha = heads[name]
         else:
             raise NoSuchRef(self.name)
-        return self._ref
+        return self._sha
 
     def _synchronize_history(self, destination, revision_id):
         """See Branch._synchronize_history()."""

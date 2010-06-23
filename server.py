@@ -16,37 +16,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-import os
-import tempfile
-
 from dulwich.server import TCPGitServer
 
 from bzrlib.bzrdir import (
     BzrDir,
-    BzrDirFormat,
     )
 
-from bzrlib.plugins.git.fetch import (
-    import_git_objects,
-    )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
     )
 from bzrlib.plugins.git.object_store import (
     get_object_store
     )
+from bzrlib.plugins.git.refs import (
+    BazaarRefsContainer,
+    )
 
 from dulwich.server import (
     Backend,
     BackendRepo,
-    )
-from dulwich.pack import (
-    PackData,
-    write_pack_index_v2,
-    )
-from dulwich.objects import (
-    ShaFile,
-    hex_to_sha,
     )
 
 class BzrBackend(Backend):
@@ -57,8 +45,9 @@ class BzrBackend(Backend):
         self.mapping = default_mapping
 
     def open_repository(self, path):
-        # FIXME: Sanitize path properly
-        return BzrBackendRepo(self.transport.clone(path.lstrip("/")), self.mapping)
+        # FIXME: More secure path sanitization
+        return BzrBackendRepo(self.transport.clone(path.lstrip("/")),
+            self.mapping)
 
 
 class BzrBackendRepo(BackendRepo):
@@ -69,91 +58,27 @@ class BzrBackendRepo(BackendRepo):
         self.repo_dir = BzrDir.open_from_transport(self.transport)
         self.repo = self.repo_dir.find_repository()
         self.object_store = get_object_store(self.repo)
+        self.refs = BazaarRefsContainer(self.repo_dir, self.object_store)
+        self._refs = self.refs.as_dict() # Much faster for now..
 
     def get_refs(self):
-        """Return a dict of all tags and branches in repository (and shas) """
-        ret = {}
-        branch = None
-        for branch in self.repo.find_branches(using=True):
-            #FIXME: Look for 'master' or 'trunk' in here, and set HEAD
-            # accordingly...
-            #FIXME: Need to get branch path relative to its repository and
-            # use this instead of nick
-            ret["refs/heads/"+branch.nick] = self.object_store._lookup_revision_sha1(branch.last_revision())
-        if 'HEAD' not in ret and branch:
-            ret['HEAD'] = self.object_store._lookup_revision_sha1(branch.last_revision())
-        return ret
+        return self._refs
 
-    def apply_pack(self, refs, read):
-        """Apply pack from client to current repository"""
+    def get_peeled(self, name):
+        return self.get_refs()[name]
 
-        fd, path = tempfile.mkstemp(suffix=".pack")
-        f = os.fdopen(fd, 'w')
-        f.write(read())
-        f.close()
-
-        p = PackData(path)
-        entries = p.sorted_entries()
-        heads = []
-        for e in entries:
-            sha = e[0]
-            offset = e[1]
-            t, o = p.get_object_at (offset)
-            if t == 1 or t == 4:
-                heads.append(sha)
-        write_pack_index_v2(path[:-5]+".idx", entries, p.calculate_checksum())
-
-        objects = {}
-        for tup in p.iterobjects():
-            obj_type, obj = p.get_object_at (tup[0])
-            if obj_type in range(1, 4):
-                sf = ShaFile.from_raw_string (obj_type, obj)
-                objects[hex_to_sha(sf.id)] = sf
-
-        self.repo.lock_write()
-        try:
-            self.repo.start_write_group()
-            try:
-                import_git_objects(self.repo, self.mapping, objects,
-                                   self.object_store,
-                                   heads)
-            except:
-                self.repo.abort_write_group()
-                raise
-            else:
-                self.repo.commit_write_group()
-        finally:
-            self.repo.unlock()
-
-        for oldsha, sha, ref in refs:
-            if ref[:11] == 'refs/heads/':
-                branch_nick = ref[11:]
-                transport = self.repo.root_transport.clone(branch_nick)
-
-                try:
-                    target_dir = BzrDir.open_from_transport(transport)
-                except:
-                    format = BzrDirFormat.get_default_format()
-                    format.initialize_on_transport(transport)
-
-                try:
-                    target_branch = target_dir.open_branch()
-                except:
-                    target_branch = target_dir.create_branch()
-
-                rev_id = self.mapping.revision_id_foreign_to_bzr(sha)
-                target_branch.generate_revision_history(rev_id)
-
-    def fetch_objects(self, determine_wants, graph_walker, progress):
+    def fetch_objects(self, determine_wants, graph_walker, progress,
+        get_tagged=None):
         """ yield git objects to send to client """
-        # If this is a Git repository, just use the existing fetch_objects implementation.
-        if getattr(self.repo, "fetch_objects", None) is not None:
-            return self.repo.fetch_objects(determine_wants, graph_walker, None, progress)[0]
 
         wants = determine_wants(self.get_refs())
-        graph_walker.reset()
-        have = self.object_store.find_common_revisions(graph_walker)
-        return self.object_store.generate_pack_contents(have, wants)
+        self.repo.lock_read()
+        try:
+            have = self.object_store.find_common_revisions(graph_walker)
+            return self.object_store.generate_pack_contents(have, wants, progress,
+                get_tagged)
+        finally:
+            self.repo.unlock()
 
 
 def serve_git(transport, host=None, port=None, inet=False):

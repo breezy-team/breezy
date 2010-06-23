@@ -1,4 +1,5 @@
 # Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2010 Jelmer Vernooij
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,7 +29,6 @@ LockWarner = getattr(lockable_files, "_LockWarner", None)
 
 from bzrlib.plugins.git import (
     LocalGitBzrDirFormat,
-    get_rich_root_format,
     )
 
 
@@ -76,7 +76,7 @@ class GitDir(bzrdir.BzrDir):
         return True
 
     def cloning_metadir(self, stacked=False):
-        return get_rich_root_format(stacked)
+        return bzrdir.format_registry.make_bzrdir("default")
 
     def _branch_name_to_ref(self, name):
         raise NotImplementedError(self._branch_name_to_ref)
@@ -113,28 +113,38 @@ class LocalGitDir(GitDir):
         self._mode_check_done = None
 
     def _branch_name_to_ref(self, name):
-        from bzrlib.plugins.git.branch import branch_name_to_ref
-        if name in (None, "HEAD"):
+        from bzrlib.plugins.git.refs import branch_name_to_ref
+        ref = branch_name_to_ref(name, None)
+        if ref == "HEAD":
             from dulwich.repo import SYMREF
-            refcontents = self._git.refs.read_ref("HEAD")
+            refcontents = self._git.refs.read_ref(ref)
             if refcontents.startswith(SYMREF):
-                name = refcontents[len(SYMREF):]
-            else:
-                name = "HEAD"
-        return branch_name_to_ref(name, "HEAD")
+                ref = refcontents[len(SYMREF):]
+        return ref
 
     def is_control_filename(self, filename):
         return filename == '.git' or filename.startswith('.git/')
 
-    def get_branch_transport(self, branch_format):
+    def get_branch_transport(self, branch_format, name):
         if branch_format is None:
             return self.transport
         if isinstance(branch_format, LocalGitBzrDirFormat):
             return self.transport
         raise bzr_errors.IncompatibleFormat(branch_format, self._format)
 
-    get_repository_transport = get_branch_transport
-    get_workingtree_transport = get_branch_transport
+    def get_repository_transport(self, format):
+        if format is None:
+            return self.transport
+        if isinstance(format, LocalGitBzrDirFormat):
+            return self.transport
+        raise bzr_errors.IncompatibleFormat(format, self._format)
+
+    def get_workingtree_transport(self, format):
+        if format is None:
+            return self.transport
+        if isinstance(format, LocalGitBzrDirFormat):
+            return self.transport
+        raise bzr_errors.IncompatibleFormat(format, self._format)
 
     def _open_branch(self, name=None, ignore_fallbacks=None, unsupported=False):
         """'create' a branch for this dir."""
@@ -167,7 +177,12 @@ class LocalGitDir(GitDir):
                 pass
             else:
                 from bzrlib.plugins.git.workingtree import GitWorkingTree
-                return GitWorkingTree(self, repo, self.open_branch(), index)
+                try:
+                    branch = self.open_branch()
+                except bzr_errors.NotBranchError:
+                    pass
+                else:
+                    return GitWorkingTree(self, repo, branch, index)
         loc = urlutils.unescape_for_display(self.root_transport.base, 'ascii')
         raise bzr_errors.NoWorkingTree(loc)
 
@@ -176,7 +191,8 @@ class LocalGitDir(GitDir):
 
     def create_branch(self, name=None):
         refname = self._branch_name_to_ref(name)
-        self._git.refs[refname] = "0" * 40
+        from dulwich.protocol import ZERO_SHA
+        self._git.refs[refname or "HEAD"] = ZERO_SHA
         return self.open_branch(name)
 
     def backup_bzrdir(self):

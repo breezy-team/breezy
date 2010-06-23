@@ -48,13 +48,13 @@ class TestGitBlackBox(ExternalBase):
         dir = BzrDir.open(self.test_dir)
         dir.create_branch()
         output, error = self.run_bzr(['nick'])
-        self.assertEquals("master\n", output)
+        self.assertEquals("HEAD\n", output)
 
     def test_info(self):
         self.simple_commit()
         output, error = self.run_bzr(['info'])
         self.assertEqual(error, '')
-        self.assertTrue("Repository branch (format: git)" in output)
+        self.assertTrue("Standalone tree (format: git)" in output)
 
     def test_branch(self):
         os.mkdir("gitbranch")
@@ -83,7 +83,7 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(['info', '-v'])
         self.assertEqual(error, '')
-        self.assertTrue("Repository branch (format: git)" in output)
+        self.assertTrue("Standalone tree (format: git)" in output)
         self.assertTrue("control: Local Git Repository" in output)
         self.assertTrue("branch: Git Branch" in output)
         self.assertTrue("repository: Git Repository" in output)
@@ -93,9 +93,9 @@ class TestGitBlackBox(ExternalBase):
         GitRepo.init(os.path.join(self.test_dir, "bla"))
         self.run_bzr(['init', 'foo'])
         self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
-        output, error = self.run_bzr(['push', '-d', 'foo', 'bla'], retcode=3)
-        self.assertEquals('bzr: ERROR: Push is not yet supported for bzr-git. Try dpush instead.\n', error)
+        output, error = self.run_bzr(['push', '-d', 'foo', 'bla'])
         self.assertEquals("", output)
+        self.assertTrue(error.endswith("Created new branch.\n"))
 
     def test_log(self):
         # Smoke test for "bzr log" in a git repository.
@@ -134,5 +134,5 @@ class TestGitBlackBox(ExternalBase):
     def test_init_repo(self):
         output, error = self.run_bzr(["init-repo", "--git", "bla.git"])
         self.assertEquals(error, '')
-        self.assertEquals(output, 'Shared repository with trees (format: git)\nLocation:\n  shared repository: bla.git\n')
+        self.assertEquals(output, 'Unshared repository with trees (format: git)\nLocation:\n  repository: bla.git\n')
 

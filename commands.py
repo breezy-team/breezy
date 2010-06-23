@@ -28,9 +28,6 @@ from bzrlib.option import (
     Option,
     )
 
-from bzrlib.plugins.git import (
-    get_rich_root_format,
-    )
 
 class cmd_git_import(Command):
     """Import all branches from a git repository.
@@ -69,11 +66,10 @@ class cmd_git_import(Command):
         source_repo = Repository.open(src_location)
         if not isinstance(source_repo, GitRepository):
             raise BzrCommandError("%r is not a git repository" % src_location)
-        format = get_rich_root_format()
         try:
             target_bzrdir = BzrDir.open(dest_location)
         except NotBranchError:
-            target_bzrdir = BzrDir.create(dest_location, format=format)
+            target_bzrdir = BzrDir.create(dest_location)
         try:
             target_repo = target_bzrdir.find_repository()
         except NoRepositoryPresent:
@@ -165,3 +161,71 @@ class cmd_git_object(Command):
                     self.outf.write("%s\n" % sha1)
         finally:
             repo.unlock()
+
+
+class cmd_git_refs(Command):
+    """Output all of the virtual refs for a repository.
+
+    """
+
+    hidden = True
+
+    takes_options = [Option('directory',
+        short_name='d',
+        help='Location of repository.', type=unicode)]
+
+    @display_command
+    def run(self, directory="."):
+        from bzrlib.bzrdir import (
+            BzrDir,
+            )
+        from bzrlib.plugins.git.refs import (
+            BazaarRefsContainer,
+            )
+        from bzrlib.plugins.git.object_store import (
+            get_object_store,
+            )
+        bzrdir, _ = BzrDir.open_containing(directory)
+        repo = bzrdir.find_repository()
+        repo.lock_read()
+        try:
+            object_store = get_object_store(repo)
+            refs = BazaarRefsContainer(bzrdir, object_store)
+            for k, v in refs.as_dict().iteritems():
+                self.outf.write("%s -> %s\n" % (k, v))
+        finally:
+            repo.unlock()
+
+
+class cmd_git_apply(Command):
+    """Apply a series of git-am style patches.
+
+    This command will in the future probably be integrated into 
+    "bzr pull".
+    """
+
+    takes_args = ["patches*"]
+
+    def _apply_patch(self, wt, f):
+        from dulwich.patch import git_am_patch_split
+        (c, diff, version) = git_am_patch_split(f)
+        # FIXME: Process diff
+        wt.commit(committer=c.committer,
+                  message=c.message)
+
+    def run(self, patches_list=None):
+        from bzrlib.workingtree import WorkingTree
+        if patches_list is None:
+            patches_list = []
+        
+        tree, _ = WorkingTree.open_containing(".")
+        tree.lock_write()
+        try:
+            for patch in patches_list:
+                f = open(patch, 'r')
+                try:
+                    self._apply_patch(tree, f)
+                finally:
+                    f.close()
+        finally:
+            tree.unlock()

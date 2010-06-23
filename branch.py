@@ -1,5 +1,5 @@
 # Copyright (C) 2007 Canonical Ltd
-# Copyright (C) 2009 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2009-2010 Jelmer Vernooij <jelmer@samba.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,9 +40,6 @@ from bzrlib.trace import (
     mutter,
     )
 
-from bzrlib.plugins.git import (
-    get_rich_root_format,
-    )
 from bzrlib.plugins.git.config import (
     GitBranchConfig,
     )
@@ -50,51 +47,14 @@ from bzrlib.plugins.git.errors import (
     NoPushSupport,
     NoSuchRef,
     )
+from bzrlib.plugins.git.refs import (
+    branch_name_to_ref,
+    ref_to_branch_name,
+    extract_tags,
+    tag_name_to_ref,
+    )
 
 from bzrlib.foreign import ForeignBranch
-
-
-def extract_tags(refs):
-    """Extract the tags from a refs dictionary.
-
-    :param refs: Refs to extract the tags from.
-    :return: Dictionary mapping tag names to SHA1s.
-    """
-    ret = {}
-    for k,v in refs.iteritems():
-        if k.startswith("refs/tags/") and not k.endswith("^{}"):
-            v = refs.get(k+"^{}", v)
-            ret[k[len("refs/tags/"):]] = v
-    return ret
-
-
-def branch_name_to_ref(name, default=None):
-    """Map a branch name to a ref.
-
-    :param name: Branch name
-    :return: ref string
-    """
-    if name is None:
-        return default
-    if name == "HEAD":
-        return "HEAD"
-    if not name.startswith("refs/"):
-        return "refs/heads/%s" % name
-    else:
-        return name
-
-
-def ref_to_branch_name(ref):
-    """Map a ref to a branch name
-
-    :param ref: Ref
-    :return: A branch name
-    """
-    if ref == "HEAD":
-        return "HEAD"
-    if ref.startswith("refs/heads/"):
-        return ref[len("refs/heads/"):]
-    raise ValueError("unable to map ref %s back to branch name")
 
 
 class GitPullResult(branch.PullResult):
@@ -135,13 +95,13 @@ class LocalGitTagDict(tag.BasicTags):
                 mutter("Tag %s points at object %r that is not a commit, "
                        "ignoring", k, obj)
                 continue
-            ret[k] = self.branch.mapping.revision_id_foreign_to_bzr(v)
+            ret[k] = self.branch.lookup_foreign_revision_id(v)
         return ret
 
     def _set_tag_dict(self, to_dict):
         extra = set(self.repository._git.get_refs().keys())
         for k, revid in to_dict.iteritems():
-            name = "refs/tags/%s" % k
+            name = tag_name_to_ref(k)
             if name in extra:
                 extra.remove(name)
             self.set_tag(k, revid)
@@ -150,7 +110,7 @@ class LocalGitTagDict(tag.BasicTags):
                 del self.repository._git[name]
         
     def set_tag(self, name, revid):
-        self.repository._git.refs["refs/tags/%s" % name], _ = \
+        self.repository._git.refs[tag_name_to_ref(name)], _ = \
             self.branch.mapping.revision_id_bzr_to_foreign(revid)
 
 
@@ -187,6 +147,18 @@ class GitBranchFormat(branch.BranchFormat):
             return LocalGitTagDict(branch)
 
 
+class GitReadLock(object):
+
+    def __init__(self, unlock):
+        self.unlock = unlock
+
+
+class GitWriteLock(object):
+
+    def __init__(self, unlock):
+        self.unlock = unlock
+
+
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
@@ -207,7 +179,7 @@ class GitBranch(ForeignBranch):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        return get_rich_root_format()
+        return bzrdir.format_registry.make_bzrdir("default")
 
     def get_child_submit_format(self):
         """Return the preferred format of submissions to this branch."""
@@ -221,7 +193,7 @@ class GitBranch(ForeignBranch):
 
         :return: Branch nick
         """
-        return self.name
+        return self.name or "HEAD"
 
     def _set_nick(self, nick):
         raise NotImplementedError
@@ -230,7 +202,7 @@ class GitBranch(ForeignBranch):
 
     def __repr__(self):
         return "<%s(%r, %r)>" % (self.__class__.__name__, self.repository.base,
-            self.ref)
+            self.ref or "HEAD")
 
     def generate_revision_history(self, revid, old_revid=None):
         # FIXME: Check that old_revid is in the ancestry of revid
@@ -239,6 +211,7 @@ class GitBranch(ForeignBranch):
 
     def lock_write(self):
         self.control_files.lock_write()
+        return GitWriteLock(self.unlock)
 
     def get_stacked_on_url(self):
         # Git doesn't do stacking (yet...)
@@ -255,6 +228,7 @@ class GitBranch(ForeignBranch):
 
     def lock_read(self):
         self.control_files.lock_read()
+        return GitReadLock(self.unlock)
 
     def is_locked(self):
         return self.control_files.is_locked()
@@ -270,11 +244,15 @@ class GitBranch(ForeignBranch):
         # perhaps should escape this ?
         if self.head is None:
             return revision.NULL_REVISION
-        return self.mapping.revision_id_foreign_to_bzr(self.head)
+        return self.lookup_foreign_revision_id(self.head)
 
     def _basic_push(self, target, overwrite=False, stop_revision=None):
         return branch.InterBranch.get(self, target)._basic_push(
             overwrite, stop_revision)
+
+    def lookup_foreign_revision_id(self, foreign_revid):
+        return self.repository.lookup_foreign_revision_id(foreign_revid, 
+            self.mapping)
 
 
 class LocalGitBranch(GitBranch):
@@ -283,7 +261,8 @@ class LocalGitBranch(GitBranch):
     def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
         super(LocalGitBranch, self).__init__(bzrdir, repository, name, 
               lockfiles, tagsdict)
-        if not name in repository._git.get_refs().keys():
+        refs = repository._git.get_refs()
+        if not (name in refs.keys() or "HEAD" in refs.keys()):
             raise errors.NotBranchError(self.base)
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
@@ -312,7 +291,7 @@ class LocalGitBranch(GitBranch):
         :return: WorkingTree object of checkout.
         """
         checkout_branch = bzrdir.BzrDir.create_branch_convenience(
-            to_location, force_new_tree=False, format=get_rich_root_format())
+            to_location, force_new_tree=False)
         checkout = checkout_branch.bzrdir
         checkout_branch.bind(self)
         # pull up to the specified revision_id to set the initial
@@ -330,7 +309,7 @@ class LocalGitBranch(GitBranch):
 
     def _get_head(self):
         try:
-            return self.repository._git.ref(self.ref)
+            return self.repository._git.ref(self.ref or "HEAD")
         except KeyError:
             return None
 
@@ -338,13 +317,12 @@ class LocalGitBranch(GitBranch):
         self.set_last_revision(revid)
 
     def set_last_revision(self, revid):
-        (newhead, self.mapping) = self.mapping.revision_id_bzr_to_foreign(
-                revid)
+        (newhead, self.mapping) = self.repository.lookup_bzr_revision_id(revid)
         self.head = newhead
 
     def _set_head(self, value):
         self._head = value
-        self.repository._git.refs[self.ref] = self._head
+        self.repository._git.refs[self.ref or "HEAD"] = self._head
         self._clear_cached_state()
 
     head = property(_get_head, _set_head)
@@ -364,9 +342,15 @@ class LocalGitBranch(GitBranch):
 
     def supports_tags(self):
         return True
-
+    
 
 class GitBranchPullResult(branch.PullResult):
+
+    def __init__(self):
+        super(GitBranchPullResult, self).__init__()
+        self.new_git_head = None
+        self._old_revno = None
+        self._new_revno = None
 
     def report(self, to_file):
         if not is_quiet():
@@ -378,6 +362,35 @@ class GitBranchPullResult(branch.PullResult):
             else:
                 to_file.write('Now on revision %d.\n' % (self.new_revno,))
         self._show_tag_conficts(to_file)
+
+    def _lookup_revno(self, revid):
+        assert isinstance(revid, str), "was %r" % revid
+        # Try in source branch first, it'll be faster
+        try:
+            return self.source_branch.revision_id_to_revno(revid)
+        except errors.NoSuchRevision:
+            # FIXME: Check using graph.find_distance_to_null() ?
+            return self.target_branch.revision_id_to_revno(revid)
+
+    def _get_old_revno(self):
+        if self._old_revno is not None:
+            return self._old_revno
+        return self._lookup_revno(self.old_revid)
+
+    def _set_old_revno(self, revno):
+        self._old_revno = revno
+
+    old_revno = property(_get_old_revno, _set_old_revno)
+
+    def _get_new_revno(self):
+        if self._new_revno is not None:
+            return self._new_revno
+        return self._lookup_revno(self.new_revid)
+
+    def _set_new_revno(self, revno):
+        self._new_revno = revno
+    
+    new_revno = property(_get_new_revno, _set_new_revno)
 
 
 class GitBranchPushResult(branch.BranchPushResult):
@@ -424,25 +437,28 @@ class InterFromGitBranch(branch.GenericInterBranch):
         """
         interrepo = self._get_interrepo(self.source, self.target)
         def determine_wants(heads):
-            if not self.source.ref in heads:
+            if self.source.ref is not None and not self.source.ref in heads:
                 raise NoSuchRef(self.source.ref, heads.keys())
             if stop_revision is not None:
                 self._last_revid = stop_revision
                 head, mapping = self.source.repository.lookup_bzr_revision_id(
                     stop_revision)
             else:
-                head = heads[self.source.ref]
-                self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(
-                    head)
+                if self.source.ref is not None:
+                    head = heads[self.source.ref]
+                else:
+                    head = heads["HEAD"]
+                self._last_revid = self.source.lookup_foreign_revision_id(head)
             if self.target.repository.has_revision(self._last_revid):
                 return []
             return [head]
         pack_hint, head = interrepo.fetch_objects(
             determine_wants, self.source.mapping, limit=limit)
-        if pack_hint is not None and self.target.repository._format.pack_compresses:
+        if (pack_hint is not None and
+            self.target.repository._format.pack_compresses):
             self.target.repository.pack(hint=pack_hint)
         if head is not None:
-            self._last_revid = self.source.mapping.revision_id_foreign_to_bzr(head)
+            self._last_revid = self.source.lookup_foreign_revision_id(head)
         if overwrite:
             prev_last_revid = None
         else:
@@ -534,6 +550,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite=False, stop_revision=None):
+        from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -541,11 +558,11 @@ class InterGitLocalRemoteBranch(InterGitBranch):
             stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
         def get_changed_refs(old_refs):
-            result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(old_refs.get(self.target.ref, "0" * 40))
+            result.old_revid = self.target.lookup_foreign_revision_id(old_refs.get(self.target.ref, ZERO_SHA))
             refs = { self.target.ref: self.source.repository.lookup_bzr_revision_id(stop_revision)[0] }
             result.new_revid = stop_revision
             for name, sha in self.source.repository._git.refs.as_dict("refs/tags").iteritems():
-                refs["refs/tags/%s" % name] = sha
+                refs[tag_name_to_ref(name)] = sha
             return refs
         self.target.repository.send_pack(get_changed_refs,
             self.source.repository._git.object_store.generate_pack_contents)
@@ -574,7 +591,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
 
     def update_tags(self, refs):
         for name, v in extract_tags(refs).iteritems():
-            revid = self.target.mapping.revision_id_foreign_to_bzr(v)
+            revid = self.target.lookup_foreign_revision_id(v)
             self.target.tags.set_tag(name, revid)
 
     def update_refs(self, stop_revision=None):
@@ -582,7 +599,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
             self.target.repository)
         if stop_revision is None:
             refs = interrepo.fetch_refs(branches=["HEAD"])
-            stop_revision = self.target.mapping.revision_id_foreign_to_bzr(refs["HEAD"])
+            stop_revision = self.target.lookup_foreign_revision_id(refs["HEAD"])
         else:
             refs = interrepo.fetch_refs(revision_id=stop_revision)
         return refs, stop_revision
@@ -618,28 +635,63 @@ class InterToGitBranch(branch.InterBranch):
     def update_revisions(self, *args, **kwargs):
         raise NoPushSupport()
 
-    def push(self, overwrite=True, stop_revision=None,
-             _override_hook_source_branch=None):
-        raise NoPushSupport()
+    def _get_new_refs(self, stop_revision=None):
+        if stop_revision is None:
+            stop_revision = self.source.last_revision()
+        main_ref = self.target.ref or "refs/heads/master"
+        refs = { main_ref: stop_revision }
+        for name, revid in self.source.tags.get_tag_dict().iteritems():
+            if self.source.repository.has_revision(revid):
+                refs[tag_name_to_ref(name)] = revid
+        return refs, main_ref
 
-    def lossy_push(self, stop_revision=None):
+    def pull(self, overwrite=False, stop_revision=None, local=False,
+             possible_transports=None):
+        from dulwich.protocol import ZERO_SHA
+        result = GitBranchPullResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        # FIXME: Check for diverged branches
+        old_refs = self.target.repository._git.get_refs()
+        refs = dict(old_refs)
+        new_refs, main_ref = self._get_new_refs(stop_revision)
+        refs.update(new_refs)
+        self.target.repository.fetch_refs(self.source.repository, refs)
+        result.old_revid = self.target.lookup_foreign_revision_id(
+            old_refs.get(main_ref, ZERO_SHA))
+        result.new_revid = refs[main_ref]
+        return result
+
+    def push(self, overwrite=False, stop_revision=None,
+             _override_hook_source_branch=None):
+        from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        if stop_revision is None:
-            stop_revision = self.source.last_revision()
         # FIXME: Check for diverged branches
-        refs = { self.target.ref: stop_revision }
-        for name, revid in self.source.tags.get_tag_dict().iteritems():
-            if self.source.repository.has_revision(revid):
-                refs["refs/tags/%s" % name] = revid
-        revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
+        old_refs = self.target.repository._git.get_refs()
+        refs = dict(old_refs)
+        new_refs, main_ref = self._get_new_refs(stop_revision)
+        refs.update(new_refs)
+        self.target.repository.fetch_refs(self.source.repository, refs)
+        result.old_revid = self.target.lookup_foreign_revision_id(
+            old_refs.get(main_ref, ZERO_SHA))
+        result.new_revid = refs[main_ref]
+        return result
+
+    def lossy_push(self, stop_revision=None):
+        from dulwich.protocol import ZERO_SHA
+        result = GitBranchPushResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        # FIXME: Check for diverged branches
+        refs, main_ref = self._get_new_refs(stop_revision)
+        result.revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
             self.source.repository, refs)
-        result.old_revid = self.target.mapping.revision_id_foreign_to_bzr(
-            old_refs.get(self.target.ref, "0" * 40))
-        result.new_revid = self.target.mapping.revision_id_foreign_to_bzr(
-            new_refs[self.target.ref])
-        result.revidmap = revidmap
+        result.old_revid = self.target.lookup_foreign_revision_id(
+            old_refs.get(self.target.ref, ZERO_SHA))
+        result.new_revid = self.target.lookup_foreign_revision_id(
+            new_refs[main_ref])
         return result
 
 

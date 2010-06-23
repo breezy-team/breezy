@@ -52,6 +52,13 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
 
     _test_needs_features = [tests.GitCommandFeature]
 
+    def _do_commit(self):
+        builder = tests.GitBranchBuilder()
+        builder.set_file('a', 'text for a\n', False)
+        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        mapping = builder.finish()
+        return mapping[commit_handle]
+
     def test_open_existing(self):
         GitRepo.init(self.test_dir)
 
@@ -64,16 +71,28 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         repo = Repository.open('.')
         self.assertIsInstance(repo._git, dulwich.repo.Repo)
 
+    def test_has_revision(self):
+        GitRepo.init(self.test_dir)
+        commit_id = self._do_commit()
+        repo = Repository.open('.')
+        self.assertFalse(repo.has_revision('foobar'))
+        revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
+        self.assertTrue(repo.has_revision(revid))
+
+    def test_has_revisions(self):
+        GitRepo.init(self.test_dir)
+        commit_id = self._do_commit()
+        repo = Repository.open('.')
+        self.assertEquals(set(), repo.has_revisions(['foobar']))
+        revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
+        self.assertEquals(set([revid]), repo.has_revisions(['foobar', revid]))
+
     def test_get_revision(self):
         # GitRepository.get_revision gives a Revision object.
 
         # Create a git repository with a revision.
         GitRepo.init(self.test_dir)
-        builder = tests.GitBranchBuilder()
-        builder.set_file('a', 'text for a\n', False)
-        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
-        mapping = builder.finish()
-        commit_id = mapping[commit_handle]
+        commit_id = self._do_commit()
 
         # Get the corresponding Revision object.
         revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
@@ -143,6 +162,15 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
 
 class TestGitRepository(tests.TestCaseWithTransport):
 
+    _test_needs_features = [tests.GitCommandFeature]
+
+    def _do_commit(self):
+        builder = tests.GitBranchBuilder()
+        builder.set_file('a', 'text for a\n', False)
+        commit_handle = builder.commit('Joe Foo <joe@foo.com>', u'message')
+        mapping = builder.finish()
+        return mapping[commit_handle]
+
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         dulwich.repo.Repo.create(self.test_dir)
@@ -160,6 +188,11 @@ class TestGitRepository(tests.TestCaseWithTransport):
 
     def test_all_revision_ids_none(self):
         self.assertEquals(set([]), self.git_repo.all_revision_ids())
+
+    def test_all_revision_ids(self):
+        commit_id = self._do_commit()
+        self.assertEquals(set(["git-v1:%s" % commit_id]),
+                self.git_repo.all_revision_ids())
 
     def test_get_ancestry_null(self):
         self.assertEquals([None, revision.NULL_REVISION], self.git_repo.get_ancestry(revision.NULL_REVISION))
@@ -220,7 +253,7 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
         store, store_iter = self.object_iter()
         store._cache.idmap.start_write_group()
         try:
-            return store_iter.import_revision(revid)
+            return store_iter.import_revision(revid, roundtrip=False)
         except:
             store._cache.idmap.abort_write_group()
             raise

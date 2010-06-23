@@ -152,25 +152,23 @@ class ContentCache(object):
 class BzrGitCacheFormat(object):
 
     def get_format_string(self):
+        """Return a single-line unique format string for this cache format."""
         raise NotImplementedError(self.get_format_string)
 
     def open(self, transport):
+        """Open this format on a transport."""
         raise NotImplementedError(self.open)
 
     def initialize(self, transport):
         transport.put_bytes('format', self.get_format_string())
 
     @classmethod
-    def from_repository(self, repository):
-        repo_transport = getattr(repository, "_transport", None)
-        if repo_transport is not None:
-            try:
-                repo_transport.mkdir('git')
-            except bzrlib.errors.FileExists:
-                pass
-            transport = repo_transport.clone('git')
-        else:
-            transport = get_remote_cache_transport()
+    def from_transport(self, transport):
+        """Open a cache file present on a transport, or initialize one.
+
+        :param transport: Transport to use
+        :return: A BzrGitCache instance
+        """
         try:
             format_name = transport.get_bytes('format')
             format = formats.get(format_name)
@@ -178,6 +176,31 @@ class BzrGitCacheFormat(object):
             format = formats.get('default')
             format.initialize(transport)
         return format.open(transport)
+
+    @classmethod
+    def from_repository(cls, repository):
+        """Open a cache file for a repository.
+
+        This will use the repository's transport to store the cache file, or
+        use the users global cache directory if the repository has no 
+        transport associated with it.
+
+        :param repository: Repository to open the cache for
+        :return: A `BzrGitCache`
+        """
+        repo_transport = getattr(repository, "_transport", None)
+        if repo_transport is not None:
+            # Even if we don't write to this repo, we should be able 
+            # to update its cache.
+            repo_transport = remove_readonly_transport_decorator(repo_transport)
+            try:
+                repo_transport.mkdir('git')
+            except bzrlib.errors.FileExists:
+                pass
+            transport = repo_transport.clone('git')
+        else:
+            transport = get_remote_cache_transport()
+        return cls.from_transport(transport)
 
 
 class CacheUpdater(object):
@@ -218,13 +241,16 @@ class DictCacheUpdater(CacheUpdater):
             self._commit = obj
             assert ie is None
             type_data = (self.revid, self._commit.tree)
+            self.cache.idmap._by_revid[self.revid] = obj.id
         elif obj.type_name in ("blob", "tree"):
-            if obj.type_name == "blob":
-                revision = ie.revision
-            else:
-                revision = self.revid
-            type_data = (ie.file_id, revision)
-            self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
+            if ie is not None:
+                if obj.type_name == "blob":
+                    revision = ie.revision
+                else:
+                    revision = self.revid
+                type_data = (ie.file_id, revision)
+                self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] =\
+                    obj.id
         else:
             raise AssertionError
         self.cache.idmap._by_sha[obj.id] = (obj.type_name, type_data)
@@ -240,6 +266,7 @@ class DictGitShaMap(GitShaMap):
     def __init__(self):
         self._by_sha = {}
         self._by_fileid = {}
+        self._by_revid = {}
 
     def lookup_blob_id(self, fileid, revision):
         return self._by_fileid[revision][fileid]
@@ -248,7 +275,10 @@ class DictGitShaMap(GitShaMap):
         return self._by_sha[sha]
 
     def lookup_tree_id(self, fileid, revision):
-        return self._base._by_fileid[revision][fileid]
+        return self._by_fileid[revision][fileid]
+
+    def lookup_commit(self, revid):
+        return self._by_revid[revid]
 
     def revids(self):
         for key, (type, type_data) in self._by_sha.iteritems():
@@ -274,9 +304,11 @@ class SqliteCacheUpdater(CacheUpdater):
             self._commit = obj
             assert ie is None
         elif obj.type_name == "tree":
-            self._trees.append((obj.id, ie.file_id, self.revid))
+            if ie is not None:
+                self._trees.append((obj.id, ie.file_id, self.revid))
         elif obj.type_name == "blob":
-            self._blobs.append((obj.id, ie.file_id, ie.revision))
+            if ie is not None:
+                self._blobs.append((obj.id, ie.file_id, ie.revision))
         else:
             raise AssertionError
 
@@ -365,7 +397,7 @@ class SqliteGitShaMap(GitShaMap):
         raise KeyError(fileid)
 
     def lookup_tree_id(self, fileid, revision):
-        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid, self.revid)).fetchone()
+        row = self.db.execute("select sha1 from trees where fileid = ? and revid = ?", (fileid, revision)).fetchone()
         if row is not None:
             return row[0]
         raise KeyError(fileid)
@@ -412,19 +444,22 @@ class TdbCacheUpdater(CacheUpdater):
     def add_object(self, obj, ie):
         sha = obj.sha().digest()
         if obj.type_name == "commit":
-            self.db["commit\0" + self.revid] = "\0".join((obj.id, obj.tree))
+            self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
             type_data = (self.revid, obj.tree)
             self._commit = obj
             assert ie is None
         elif obj.type_name == "blob":
+            if ie is None:
+                return
             self.db["\0".join(("blob", ie.file_id, ie.revision))] = sha
             type_data = (ie.file_id, ie.revision)
         elif obj.type_name == "tree":
+            if ie is None:
+                return
             type_data = (ie.file_id, self.revid)
         else:
             raise AssertionError
-        self.db["git\0" + sha] = "\0".join((obj.type_name,
-            type_data[0], type_data[1]))
+        self.db["git\0" + sha] = "\0".join((obj.type_name, ) + type_data)
 
     def finish(self):
         if self._commit is None:
@@ -774,18 +809,35 @@ formats.register('default', IndexGitCacheFormat())
 
 
 def migrate_ancient_formats(repo_transport):
-    if repo_transport.has("git.tdb"):
-        TdbGitCacheFormat().initialize(repo_transport.clone("git"))
-        repo_transport.rename("git.tdb", "git/idmap.tdb")
-    elif repo_transport.has("git.db"):
+    # Prefer migrating git.db over git.tdb, since the latter may not 
+    # be openable on some platforms.
+    if repo_transport.has("git.db"):
         SqliteGitCacheFormat().initialize(repo_transport.clone("git"))
         repo_transport.rename("git.db", "git/idmap.db")
+    elif repo_transport.has("git.tdb"):
+        TdbGitCacheFormat().initialize(repo_transport.clone("git"))
+        repo_transport.rename("git.tdb", "git/idmap.tdb")
+
+
+def remove_readonly_transport_decorator(transport):
+    if transport.is_readonly():
+        return transport._decorated
+    return transport
 
 
 def from_repository(repository):
+    """Open a cache file for a repository.
+
+    If the repository is remote and there is no transport available from it
+    this will use a local file in the users cache directory
+    (typically ~/.cache/bazaar/git/)
+
+    :param repository: A repository object
+    """
     repo_transport = getattr(repository, "_transport", None)
     if repo_transport is not None:
         # Migrate older cache formats
+        repo_transport = remove_readonly_transport_decorator(repo_transport)
         try:
             repo_transport.mkdir("git")
         except bzrlib.errors.FileExists:

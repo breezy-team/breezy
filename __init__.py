@@ -70,7 +70,8 @@ from bzrlib.send import (
 
 if getattr(sys, "frozen", None):
     # allow import additional libs from ./_lib for bzr.exe only
-    sys.path.append(os.path.normpath(os.path.join(os.path.dirname(__file__), '_lib')))
+    sys.path.append(os.path.normpath(
+        os.path.join(os.path.dirname(__file__), '_lib')))
 
 _versions_checked = False
 def lazy_check_versions():
@@ -85,7 +86,9 @@ def lazy_check_versions():
             "bzr-git: Please install dulwich, https://launchpad.net/dulwich")
     else:
         if dulwich_version < dulwich_minimum_version:
-            raise bzr_errors.DependencyNotPresent("dulwich", "bzr-git: Dulwich is too old; at least %d.%d.%d is required" % dulwich_minimum_version)
+            raise bzr_errors.DependencyNotPresent("dulwich",
+                "bzr-git: Dulwich is too old; at least %d.%d.%d is required" %
+                    dulwich_minimum_version)
 
 bzrdir.format_registry.register_lazy('git',
     "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
@@ -108,6 +111,8 @@ else:
 class GitBzrDirFormat(bzrdir.BzrDirFormat):
 
     _lock_class = TransportLock
+
+    colocated_branches = True
 
     def is_supported(self):
         return True
@@ -132,7 +137,8 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         from bzrlib.transport.local import LocalTransport
         if isinstance(transport, LocalTransport):
             import dulwich
-            gitrepo = dulwich.repo.Repo(transport.local_abspath(".").encode(osutils._fs_enc))
+            path = transport.local_abspath(".").encode(osutils._fs_enc)
+            gitrepo = dulwich.repo.Repo(path)
         else:
             from bzrlib.plugins.git.transportgit import TransportRepo
             gitrepo = TransportRepo(transport)
@@ -143,9 +149,8 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         try:
-            if not (transport.has('info/refs') or 
-                    transport.has('.git/branches') or 
-                    transport.has('branches')):
+            if not transport.has_any(['info/refs', '.git/branches',
+                                      'branches']):
                 raise bzr_errors.NotBranchError(path=transport.base)
         except bzr_errors.NoSuchFile:
             raise bzr_errors.NotBranchError(path=transport.base)
@@ -252,6 +257,8 @@ foreign_vcs_registry.register_lazy("git",
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"],
     "bzrlib.plugins.git.commands")
+plugin_cmds.register_lazy("cmd_git_refs", [], "bzrlib.plugins.git.commands")
+plugin_cmds.register_lazy("cmd_git_apply", [], "bzrlib.plugins.git.commands")
 
 def update_stanza(rev, stanza):
     mapping = getattr(rev, "mapping", None)
@@ -271,22 +278,27 @@ transport_server_registry.register_lazy('git',
     'Git Smart server protocol over TCP. (default port: 9418)')
 
 
-from bzrlib.repository import network_format_registry as repository_network_format_registry
+from bzrlib.repository import (
+    network_format_registry as repository_network_format_registry,
+    )
 repository_network_format_registry.register_lazy('git',
     'bzrlib.plugins.git.repository', 'GitRepositoryFormat')
 
-from bzrlib.bzrdir import network_format_registry as bzrdir_network_format_registry
+from bzrlib.bzrdir import (
+    network_format_registry as bzrdir_network_format_registry,
+    )
 bzrdir_network_format_registry.register('git', GitBzrDirFormat)
-
-
-def get_rich_root_format(stacked=False):
-    if stacked:
-        return bzrdir.format_registry.make_bzrdir("1.9-rich-root")
-    else:
-        return bzrdir.format_registry.make_bzrdir("default-rich-root")
 
 send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
                                    'send_git', 'Git am-style diff format')
+
+try:
+    from bzrlib.diff import format_registry as diff_format_registry
+except ImportError:
+    pass
+else:
+    diff_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
+        'GitDiffTree', 'Git am-style diff format')
 
 def test_suite():
     from bzrlib.plugins.git import tests
