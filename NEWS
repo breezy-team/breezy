@@ -183,18 +183,16 @@ Internals
 Testing
 *******
 
-<<<<<<< TREE
 * Add ``bzrlib.tests.fixtures`` to hold code for setting up objects
   to test.  (Martin Pool)
 
-* ``test_import_tariff`` now respects BZR_PLUGINS_AT and BZR_PLUGINS_DISABLE.
-  (Vincent Ladeuil, #595587)
-=======
 * HTTP test servers would not leak threads (and sockets) anymore. They
   won't hang on AIX anymore either.
   (Vincent Ladeuil, #405745)
 
->>>>>>> MERGE-SOURCE
+* ``test_import_tariff`` now respects BZR_PLUGINS_AT and BZR_PLUGINS_DISABLE.
+  (Vincent Ladeuil, #595587)
+
 
 bzr 2.2b3
 #########
