@@ -31,7 +31,9 @@ from dulwich.object_store import (
 from dulwich.pack import (
     PackData,
     Pack,
+    iter_sha1,
     load_pack_index_file,
+    write_pack_index_v2,
     )
 from dulwich.repo import (
     BaseRepo,
@@ -128,7 +130,8 @@ class TransportObjectStore(PackBasedObjectStore):
         ret = []
         for name in self._pack_names():
             if name.startswith("pack-") and name.endswith(".pack"):
-                pd = PackData(name, self.pack_transport.get(name))
+                size = self.pack_transport.stat(name).st_size
+                pd = PackData(name, self.pack_transport.get(name), size=size)
                 idxname = name.replace(".pack", ".idx")
                 idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
                 ret.append(Pack.from_objects(pd, idx))
@@ -166,13 +169,42 @@ class TransportObjectStore(PackBasedObjectStore):
             return # Already there, no need to write again
         self.transport.put_bytes(path, obj.as_legacy_object())
 
+    def move_in_pack(self, path):
+        """Move a specific file containing a pack into the pack directory.
+
+        :note: The file should be on the same file system as the
+            packs directory.
+
+        :param path: Path to the pack file.
+        """
+        import os
+        p = PackData(path)
+        entries = p.sorted_entries()
+        basename = os.path.join(self.pack_transport.local_abspath('.'),
+            "pack-%s" % iter_sha1(entry[0] for entry in entries))
+        write_pack_index_v2(basename+".idx", entries, p.get_stored_checksum())
+        p.close()
+        os.rename(path, basename + ".pack")
+        final_pack = Pack(basename)
+        self._add_known_pack(final_pack)
+        return final_pack
+
     def add_pack(self):
         """Add a new pack to this object store. 
 
         :return: Fileobject to write to and a commit function to 
             call when the pack is finished.
         """
-        raise NotImplementedError(self.add_pack)
+        import os, tempfile
+        fd, path = tempfile.mkstemp(dir=self.pack_transport.local_abspath('.'), suffix=".pack")
+        f = os.fdopen(fd, 'wb')
+        def commit():
+            f.close()
+            if os.path.getsize(path) > 0:
+                return self.move_in_pack(path)
+            else:
+                return None
+        return f, commit
 
     @classmethod
     def init(cls, transport):
