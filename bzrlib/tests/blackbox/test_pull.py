@@ -29,12 +29,12 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
 
-class TestPull(ExternalBase):
+class TestPull(TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)

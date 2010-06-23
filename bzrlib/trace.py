@@ -374,7 +374,7 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')
     bzr_logger.removeHandler(new_handler)
-    # must be closed, otherwise logging will try to close it atexit, and the
+    # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
     bzr_logger.handlers = old_handlers
@@ -540,7 +540,7 @@ def report_bug(exc_info, err_file):
 
 
 def _flush_stdout_stderr():
-    # installed into an atexit hook by bzrlib.initialize()
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     try:
         sys.stdout.flush()
         sys.stderr.flush()
@@ -553,7 +553,7 @@ def _flush_stdout_stderr():
 
 
 def _flush_trace():
-    # run from atexit hook
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     global _trace_file
     if _trace_file:
         _trace_file.flush()

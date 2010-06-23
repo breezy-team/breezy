@@ -30,10 +30,10 @@ from bzrlib import (
     export,
     tests,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestExport(ExternalBase):
+class TestExport(TestCaseWithTransport):
 
     def test_tar_export(self):
         tree = self.make_branch_and_tree('tar')
