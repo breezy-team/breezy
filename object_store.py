@@ -142,11 +142,13 @@ def _check_expected_sha(expected_sha, object):
             expected_sha))
 
 
-def _tree_to_objects(tree, parent_trees, idmap, unusual_modes, dummy_file_name=None):
+def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
+                     dummy_file_name=None):
     """Iterate over the objects that were introduced in a revision.
 
     :param idmap: id map
-    :param unusual_modes: Unusual file modes
+    :param parent_trees: Parent revision trees
+    :param unusual_modes: Unusual file modes dictionary
     :param dummy_file_name: File name to use for dummy files
         in empty directories. None to skip empty directories
     :return: Yields (path, object, ie) entries
@@ -173,6 +175,8 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes, dummy_file_name=N
                     pie.symlink_target == ie.symlink_target):
                     return pie
         raise KeyError
+    
+    # Find all the changed blobs
     for (file_id, path, changed_content, versioned, parent, name, kind,
          executable) in tree.iter_changes(base_tree):
         if kind[1] == "file":
@@ -206,9 +210,11 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes, dummy_file_name=N
             new_trees[posixpath.dirname(path[1])] = parent[1]
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
-        if path[0] is not None:
+        if path[0] is not None and parent[0] in tree.inventory and tree.inventory[parent[0]].kind == "directory":
+            # Removal
             new_trees[posixpath.dirname(path[0])] = parent[0]
     
+    # Fetch contents of the blobs that were changed
     for (path, ie), chunks in tree.iter_files_bytes(
         [(ie.file_id, (path, ie)) for (path, ie) in new_blobs]):
         obj = Blob()
@@ -225,11 +231,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes, dummy_file_name=N
         items = new_trees.items()
         new_trees = {}
         for path, file_id in items:
-            try:
-                parent_id = tree.inventory[file_id].parent_id
-            except errors.NoSuchId:
-                # Directory was removed recursively perhaps ?
-                continue
+            parent_id = tree.inventory[file_id].parent_id
             if parent_id is not None:
                 parent_path = urlutils.dirname(path)
                 new_trees[parent_path] = parent_id
