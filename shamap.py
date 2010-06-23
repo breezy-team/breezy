@@ -604,6 +604,18 @@ class VersionedFilesContentCache(ContentCache):
         return ShaFile._parse_legacy_object(entry.get_bytes_as('fulltext'))
 
 
+class GitObjectStoreContentCache(ContentCache):
+
+    def __init__(self, store):
+        self.store = store
+
+    def add(self, obj):
+        self.store.add_object(obj)
+
+    def __getitem__(self, sha):
+        return self.store[sha]
+
+
 class IndexCacheUpdater(CacheUpdater):
 
     def __init__(self, cache, rev):
@@ -642,21 +654,27 @@ class IndexBzrGitCache(BzrGitCache):
 
     def __init__(self, transport=None):
         mapper = versionedfile.ConstantMapper("trees")
-        trees_store = knit.make_file_factory(True, mapper)(transport)
-        super(IndexBzrGitCache, self).__init__(
-                IndexGitShaMap(transport.clone('index')),
-                VersionedFilesContentCache(trees_store),
+        shamap = IndexGitShaMap(transport.clone('index'))
+        #trees_store = knit.make_file_factory(True, mapper)(transport)
+        #content_cache = VersionedFilesContentCache(trees_store)
+        from bzrlib.plugins.git.transportgit import TransportObjectStore
+        store = TransportObjectStore(transport.clone('objects'))
+        content_cache = GitObjectStoreContentCache(store)
+        super(IndexBzrGitCache, self).__init__(shamap, content_cache,
                 IndexCacheUpdater)
 
 
 class IndexGitCacheFormat(BzrGitCacheFormat):
 
     def get_format_string(self):
-        return 'bzr-git sha map version 1\n'
+        return 'bzr-git sha map with git object cache version 1\n'
 
     def initialize(self, transport):
         super(IndexGitCacheFormat, self).initialize(transport)
         transport.mkdir('index')
+        transport.mkdir('objects')
+        from bzrlib.plugins.git.transportgit import TransportObjectStore
+        TransportObjectStore.init(transport.clone('objects'))
 
     def open(self, transport):
         return IndexBzrGitCache(transport)
