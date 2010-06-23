@@ -22,11 +22,11 @@ import os
 
 from bzrlib import osutils
 from bzrlib.workingtree import WorkingTree
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.directory_service import directories
 
 
-class TestSwitch(ExternalBase):
+class TestSwitch(TestCaseWithTransport):
 
     def _create_sample_tree(self):
         tree = self.make_branch_and_tree('branch-1')

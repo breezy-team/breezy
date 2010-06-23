@@ -732,8 +732,10 @@ class SmartTCPServer_for_testing(TestingTCPServerInAThread):
         super(SmartTCPServer_for_testing, self).start_server()
 
     def stop_server(self):
-        super(SmartTCPServer_for_testing, self).stop_server()
-        self.chroot_server.stop_server()
+        try:
+            super(SmartTCPServer_for_testing, self).stop_server()
+        finally:
+            self.chroot_server.stop_server()
 
     def get_backing_transport(self, backing_transport_server):
         """Get a backing transport from a server we are decorating."""

@@ -1955,6 +1955,10 @@ def get_user_encoding(use_cache=True):
     return user_encoding
 
 
+def get_diff_header_encoding():
+    return get_terminal_encoding()
+
+
 def get_host_name():
     """Return the current unicode host name.
 
