@@ -28,8 +28,8 @@ from bzrlib import (
     errors,
     workingtree,
     )
-from bzrlib.tests.blackbox import (
-    ExternalBase,
+from bzrlib.tests import (
+    TestCaseWithTransport,
     )
 from bzrlib.tests import (
     HardlinkFeature,
@@ -37,7 +37,7 @@ from bzrlib.tests import (
     )
 
 
-class TestCheckout(ExternalBase):
+class TestCheckout(TestCaseWithTransport):
 
     def setUp(self):
         super(TestCheckout, self).setUp()

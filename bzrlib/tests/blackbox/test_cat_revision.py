@@ -1,4 +1,4 @@
-# Copyright (C) 2004-2010 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,10 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib.tests import blackbox
+
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCatRevision(blackbox.ExternalBase):
+class TestCatRevision(TestCaseWithTransport):
 
     def test_cat_unicode_revision(self):
         tree = self.make_branch_and_tree('.')
@@ -47,17 +48,13 @@ class TestCatRevision(blackbox.ExternalBase):
         finally:
             r.unlock()
 
-        self.check_output(revs[1], 'cat-revision a@r-0-1')
-        self.check_output(revs[2], 'cat-revision a@r-0-2')
-        self.check_output(revs[3], 'cat-revision a@r-0-3')
-
-        self.check_output(revs[1], 'cat-revision -r 1')
-        self.check_output(revs[2], 'cat-revision -r 2')
-        self.check_output(revs[3], 'cat-revision -r 3')
-
-        self.check_output(revs[1], 'cat-revision -r revid:a@r-0-1')
-        self.check_output(revs[2], 'cat-revision -r revid:a@r-0-2')
-        self.check_output(revs[3], 'cat-revision -r revid:a@r-0-3')
+        for i in [1, 2, 3]:
+            self.assertEqual(revs[i],
+                self.run_bzr('cat-revision -r revid:a@r-0-%d' % i)[0])
+            self.assertEqual(revs[i],
+                self.run_bzr('cat-revision a@r-0-%d' % i)[0])
+            self.assertEqual(revs[i],
+                self.run_bzr('cat-revision -r %d' % i)[0])
 
     def test_cat_no_such_revid(self):
         tree = self.make_branch_and_tree('.')

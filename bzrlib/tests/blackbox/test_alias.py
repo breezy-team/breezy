@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,11 +19,11 @@
 import os
 import codecs
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
-class TestAlias(ExternalBase):
+class TestAlias(TestCaseWithTransport):
 
     def test_list_alias_with_none(self):
         """Calling alias with no parameters lists existing aliases."""

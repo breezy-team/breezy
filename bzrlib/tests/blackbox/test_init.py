@@ -27,15 +27,15 @@ from bzrlib import (
     )
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.tests import TestSkipped
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
 
 
-class TestInit(ExternalBase):
+class TestInit(TestCaseWithTransport):
 
     def setUp(self):
-        ExternalBase.setUp(self)
+        TestCaseWithTransport.setUp(self)
         self._default_label = '2a'
 
     def test_init_with_format(self):
