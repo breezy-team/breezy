@@ -78,7 +78,7 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
     def handle(self):
         SimpleHTTPServer.SimpleHTTPRequestHandler.handle(self)
         # Some client (pycurl, I'm looking at you) are more picky than others
-        # and require that the socket itself is close
+        # and require that the socket itself is closed
         # (SocketServer.StreamRequestHandler only close the two associated
         # 'makefile' objects)
         self.connection.close()
