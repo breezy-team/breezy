@@ -162,3 +162,9 @@ class TransportObjectStore(PackBasedObjectStore):
             call when the pack is finished.
         """
         raise NotImplementedError(self.add_pack)
+
+    @classmethod
+    def init(cls, transport):
+        transport.mkdir('info')
+        transport.mkdir(PACKDIR)
+        return cls(transport)
