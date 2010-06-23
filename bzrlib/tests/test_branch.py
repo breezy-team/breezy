@@ -136,6 +136,27 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
         return "opened branch."
 
 
+# Demonstrating how lazy loading is often implemented:
+# A constant string is created.
+SampleSupportedBranchFormatString = "Sample supported branch format."
+
+# And the format class can then reference the constant to avoid skew.
+class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
+    """A sample supported format."""
+
+    def get_format_string(self):
+        """See BzrBranchFormat.get_format_string()."""
+        return SampleSupportedBranchFormatString
+
+    def initialize(self, a_bzrdir, name=None):
+        t = a_bzrdir.get_branch_transport(self, name=name)
+        t.put_bytes('format', self.get_format_string())
+        return 'A branch'
+
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+        return "opened supported branch."
+
+
 class TestBzrBranchFormat(tests.TestCaseWithTransport):
     """Tests for the BzrBranchFormat facility."""
 
@@ -151,6 +172,17 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             found_format = _mod_branch.BranchFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
+
+    def test_find_format_factory(self):
+        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        SampleSupportedBranchFormat().initialize(dir)
+        factory = _mod_branch.MetaDirBranchFormatFactory(
+            SampleSupportedBranchFormatString,
+            "bzrlib.tests.test_branch", "SampleSupportedBranchFormat")
+        _mod_branch.BranchFormat.register_format(factory)
+        self.addCleanup(_mod_branch.BranchFormat.unregister_format, factory)
+        b = _mod_branch.Branch.open(self.get_url())
+        self.assertEqual(b, "opened supported branch.")
 
     def test_find_format_not_branch(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -184,6 +216,34 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         # unregister the format
         _mod_branch.BranchFormat.unregister_format(format)
         self.make_branch_and_tree('bar')
+
+
+#Used by TestMetaDirBranchFormatFactory 
+FakeLazyFormat = None
+
+
+class TestMetaDirBranchFormatFactory(tests.TestCase):
+
+    def test_get_format_string_does_not_load(self):
+        """Formats have a static format string."""
+        factory = _mod_branch.MetaDirBranchFormatFactory("yo", None, None)
+        self.assertEqual("yo", factory.get_format_string())
+
+    def test_call_loads(self):
+        # __call__ is used by the network_format_registry interface to get a
+        # Format.
+        global FakeLazyFormat
+        del FakeLazyFormat
+        factory = _mod_branch.MetaDirBranchFormatFactory(None,
+            "bzrlib.tests.test_branch", "FakeLazyFormat")
+        self.assertRaises(AttributeError, factory)
+
+    def test_call_returns_call_of_referenced_object(self):
+        global FakeLazyFormat
+        FakeLazyFormat = lambda:'called'
+        factory = _mod_branch.MetaDirBranchFormatFactory(None,
+            "bzrlib.tests.test_branch", "FakeLazyFormat")
+        self.assertEqual('called', factory())
 
 
 class TestBranch67(object):

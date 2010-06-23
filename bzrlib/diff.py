@@ -99,8 +99,8 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     if sequence_matcher is None:
         sequence_matcher = patiencediff.PatienceSequenceMatcher
     ud = patiencediff.unified_diff(oldlines, newlines,
-                      fromfile=old_filename.encode(path_encoding),
-                      tofile=new_filename.encode(path_encoding),
+                      fromfile=old_filename.encode(path_encoding, 'replace'),
+                      tofile=new_filename.encode(path_encoding, 'replace'),
                       sequencematcher=sequence_matcher)
 
     ud = list(ud)
@@ -713,11 +713,11 @@ class DiffText(DiffPath):
             from_text = _get_text(self.old_tree, from_file_id, from_path)
             to_text = _get_text(self.new_tree, to_file_id, to_path)
             self.text_differ(from_label, from_text, to_label, to_text,
-                             self.to_file)
+                             self.to_file, path_encoding=self.path_encoding)
         except errors.BinaryFile:
             self.to_file.write(
                   ("Binary files %s and %s differ\n" %
-                  (from_label, to_label)).encode(self.path_encoding))
+                  (from_label, to_label)).encode(self.path_encoding,'replace'))
         return self.CHANGED
 
 
@@ -920,7 +920,10 @@ class DiffTree(object):
             extra_factories = []
         if external_diff_options:
             opts = external_diff_options.split()
-            def diff_file(olab, olines, nlab, nlines, to_file):
+            def diff_file(olab, olines, nlab, nlines, to_file, path_encoding=None):
+                """:param path_encoding: not used but required
+                        to match the signature of internal_diff.
+                """
                 external_diff(olab, olines, nlab, nlines, to_file, opts)
         else:
             diff_file = internal_diff
