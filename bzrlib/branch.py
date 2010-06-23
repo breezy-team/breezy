@@ -1518,7 +1518,10 @@ class BranchFormat(object):
         try:
             transport = a_bzrdir.get_branch_transport(None, name=name)
             format_string = transport.get_bytes("format")
-            return klass._formats[format_string]
+            format = klass._formats[format_string]
+            if isinstance(format, MetaDirBranchFormatFactory):
+                return format()
+            return format
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
         except KeyError:
@@ -1528,6 +1531,20 @@ class BranchFormat(object):
     def get_default_format(klass):
         """Return the current default format."""
         return klass._default_format
+
+    @classmethod
+    def get_formats(klass):
+        """Get all the known formats.
+
+        Warning: This triggers a load of all lazy registered formats: do not
+        use except when that is desireed.
+        """
+        result = []
+        for fmt in klass._formats.values():
+            if isinstance(fmt, MetaDirBranchFormatFactory):
+                fmt = fmt()
+            result.append(fmt)
+        return result
 
     def get_reference(self, a_bzrdir, name=None):
         """Get the target reference of the branch in a_bzrdir.
@@ -1671,11 +1688,19 @@ class BranchFormat(object):
 
     @classmethod
     def register_format(klass, format):
-        """Register a metadir format."""
+        """Register a metadir format.
+        
+        See MetaDirBranchFormatFactory for the ability to register a format
+        without loading the code the format needs until it is actually used.
+        """
         klass._formats[format.get_format_string()] = format
         # Metadir formats have a network name of their format string, and get
-        # registered as class factories.
-        network_format_registry.register(format.get_format_string(), format.__class__)
+        # registered as factories.
+        if isinstance(format, MetaDirBranchFormatFactory):
+            network_format_registry.register(format.get_format_string(), format)
+        else:
+            network_format_registry.register(format.get_format_string(),
+                format.__class__)
 
     @classmethod
     def set_default_format(klass, format):
@@ -1699,6 +1724,34 @@ class BranchFormat(object):
     def supports_tags(self):
         """True if this format supports tags stored in the branch"""
         return False  # by default
+
+
+class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
+    """A factory for a BranchFormat object, permitting simple lazy registration.
+    
+    While none of the built in BranchFormats are lazy registered yet,
+    bzrlib.tests.test_branch.TestMetaDirBranchFormatFactory demonstrates how to
+    use it, and the bzr-loom plugin uses it as well (see
+    bzrlib.plugins.loom.formats).
+    """
+
+    def __init__(self, format_string, module_name, member_name):
+        """Create a MetaDirBranchFormatFactory.
+
+        :param format_string: The format string the format has.
+        :param module_name: Module to load the format class from.
+        :param member_name: Attribute name within the module for the format class.
+        """
+        registry._LazyObjectGetter.__init__(self, module_name, member_name)
+        self._format_string = format_string
+        
+    def get_format_string(self):
+        """See BranchFormat.get_format_string."""
+        return self._format_string
+
+    def __call__(self):
+        """Used for network_format_registry support."""
+        return self.get_obj()()
 
 
 class BranchHooks(Hooks):

@@ -14,10 +14,24 @@ bzr 2.2b4
 Compatibility Breaks
 ********************
 
+* bzrlib library users now need to call ``__enter__`` and ``__exit__`` on
+  the result of ``bzrlib.initialize``. This change was made when fixing
+  the bad habit recent bzr versions have had of leaving progress bars 
+  behind on the screen. That required calling another function before
+  exiting the program, and it made sense to provide a full context
+  manager at the same time. (Robert Collins)
+
+* The ``bzr`` front end now requires a ``bzrlib.ui.ui_factory`` which is a
+  context manager in the Python 2.5 and above sense. The bzrlib base class
+  is such a manager, but third party UI factories which do not derive from
+  ``bzrlib.ui.UIFactory`` will be incompatible with the command line front
+  end.
+  
 * URLs like ``foo:bar/baz`` are now always parsed as a URL with scheme "foo"
   and path "bar/baz", even if bzr does not recognize "foo" as a known URL
   scheme.  Previously these URLs would be treated as local paths.
   (Gordon Tyler)
+
 
 New Features
 ************
@@ -60,6 +74,8 @@ Bug Fixes
   full test suite to pass on gentoo.
   (Vincent Ladeuil, #392127)
 
+* Progress output is cleaned up when exiting.  (Aaron Bentley)
+
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
 
@@ -70,13 +86,24 @@ Bug Fixes
   which previously caused "SyntaxError: No command for line".
   (Martin Pool)
 
-* ``walkdirs`` now raises a useful message when the filenames are not using
-  the filesystem encoding. (Eric Moritz, #488519)
+* Show unicode filenames in diff headers using terminal encoding. 
+  (Alexander Belchenko, Bug #382699)
+  NOTE for Windows users: If user need to save diff to file then user need to
+  change encoding of the terminal to ANSI encoding with command ``chcp XXX``
+  (e.g. ``chcp 1251`` for Russian Windows).
 
 * URL displayed for use with ``break-lock`` when smart server sees lock
   contention are now valid. Default timeout for lock contention retry is
   now 30 seconds instead of 300 seconds.
   (Parth Malwankar, #250451)
+
+* ``walkdirs`` now raises a useful message when the filenames are not using
+  the filesystem encoding. (Eric Moritz, #488519)
+
+* Enable debugging of bzr on windows with pdb and other tools. This was 
+  broken because we call GetCommandLineW on windows. The fix adjusts the 
+  command line we get to be the same length as sys.argv.
+  (Jason Spashett, Alexander Belchenko, #587868)
 
 Improvements
 ************
@@ -89,6 +116,16 @@ Improvements
   a ``InterBranch`` multi-method. This permits ``bzr-loom`` and other
   plugins to intercept this even when a ``RemoteBranch`` proxy is in use.
   (Robert Collins, #201613)
+
+* ``Branch`` formats can now be loaded lazily by registering a
+  ``MetaDirBranchFormatFactory`` rather than an actual format. This will
+  cause the named format class to be loaded only when an enumeration of
+  formats is needed or when the format string for the object is
+  encountered. (Robert Collins, Jelmer Vernooij)
+
+* The encoding that bzr uses to output things other than file content can
+  now be overridden via the output_encoding configuration option.
+  (Martin Pool, #340394)
 
 * Use lazy imports in ``bzrlib/merge.py`` so that plugins like ``news_merge``
   do not cause modules to be loaded unnecessarily just because the plugin
@@ -105,6 +142,9 @@ Documentation
   ready-to-go for the next action (including other people doing
   development). (Robert Collins)
 
+* Remove obsolete discussion of PQM in documentation about how to
+  contribute to Bazaar.  (Martin Pool, #588444)
+
 API Changes
 ***********
 
@@ -116,6 +156,10 @@ API Changes
 * ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
   2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
   ``bzrlib.patiencediff`` instead. (Andrew Bennetts)
+
+* ``bzrlib.tests.blackbox.ExternalBase`` is deprecated.  It provided only
+  one method ``check_output``, and we now recommend checking command
+  output using ``run_script``. (Martin Pool)
 
 * ``bzrlib.transport.ssh.SSHVendor.connect_ssh`` now returns an object
   that implements the interface of ``bzrlib.transport.ssh.SSHConnection``.
@@ -135,10 +179,18 @@ Internals
 Testing
 *******
 
+<<<<<<< TREE
+* Add ``bzrlib.tests.fixtures`` to hold code for setting up objects
+  to test.  (Martin Pool)
+
+* ``test_import_tariff`` now respects BZR_PLUGINS_AT and BZR_PLUGINS_DISABLE.
+  (Vincent Ladeuil, #595587)
+=======
 * HTTP test servers would not leak threads (and sockets) anymore. They
   won't hang on AIX anymore either.
   (Vincent Ladeuil, #405745)
 
+>>>>>>> MERGE-SOURCE
 
 bzr 2.2b3
 #########
@@ -168,8 +220,7 @@ Compatibility Breaks
 
 * ``bzr`` does not try to guess the username as ``username@hostname``
   and requires it to be explictly set. This can be set using ``bzr
-  whoami``.
-  (Parth Malwankar, #549310)
+  whoami``. (Parth Malwankar, #549310)
 
 * ``bzrlib.commands.Command`` will now raise ValueError during
   construction if there is no __doc__ set. (Note, this will be reverted in
