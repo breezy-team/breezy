@@ -870,7 +870,15 @@ method of ``TestCaseWithTransport``).
 Please see bzrlib.treebuilder for more details.
 
 
-Cleaning Up
+Temporarily changing state
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If your test needs to temporarily mutate some global state, and you need
+it restored at the end, you can say for example::
+
+    self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
+
+Cleaning up
 ~~~~~~~~~~~
 
 Our base ``TestCase`` class provides an ``addCleanup`` method, which
