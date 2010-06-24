@@ -1168,6 +1168,29 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual(tree.branch.last_revision(),
                          target.open_branch().last_revision())
 
+    def test_sprout_with_revision_id_uses_default_stack_on(self):
+        # Make a branch with three commits to stack on.
+        builder = self.make_branch_builder('stack-on')
+        builder.start_series()
+        builder.build_commit(message='Rev 1.', rev_id='rev-1')
+        builder.build_commit(message='Rev 2.', rev_id='rev-2')
+        builder.build_commit(message='Rev 3.', rev_id='rev-3')
+        builder.finish_series()
+        stack_on = builder.get_branch()
+        # Make a bzrdir with a default stacking policy to stack on that branch.
+        config = self.make_bzrdir('policy-dir').get_config()
+        try:
+            config.set_default_stack_on(self.get_url('stack-on'))
+        except errors.BzrError:
+            raise TestNotApplicable('Only relevant for stackable formats.')
+        # Sprout the stacked-on branch into the bzrdir.
+        sprouted = stack_on.bzrdir.sprout(
+            self.get_url('policy-dir/sprouted'), revision_id='rev-3')
+        # Not all revisions are copied into the sprouted repository.
+        repo = sprouted.open_repository()
+        self.addCleanup(repo.lock_read().unlock)
+        self.assertEqual(None, repo.get_parent_map(['rev-1']).get('rev-1'))
+
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         if not self.bzrdir_format.is_supported():
