@@ -139,6 +139,7 @@ class _GrepDiffOutputter(object):
     """Precalculate formatting based on options given for diff grep.
     """
     def __init__(self, opts):
+        self.opts = opts
         self.outf = opts.outf
         if opts.show_color:
             pat = opts.pattern.encode(_user_encoding, 'replace')
@@ -154,11 +155,40 @@ class _GrepDiffOutputter(object):
         else:
             self.get_writer = self._get_writer_plain
 
+    def get_file_header_writer(self):
+        """Get function for writing file headers"""
+        write = self.outf.write
+        eol_marker = self.opts.eol_marker
+        def _line_writer(line):
+            write(line + eol_marker)
+        def _line_writer_color(line):
+            write(FG.BOLD_MAGENTA + line + FG.NONE + eol_marker)
+        if self.opts.show_color:
+            return _line_writer_color
+        else:
+            return _line_writer
+        return _line_writer
+
+    def get_revision_header_writer(self):
+        """Get function for writing revno lines"""
+        write = self.outf.write
+        eol_marker = self.opts.eol_marker
+        def _line_writer(line):
+            write(line + eol_marker)
+        def _line_writer_color(line):
+            write(FG.BOLD_BLUE + line + FG.NONE + eol_marker)
+        if self.opts.show_color:
+            return _line_writer_color
+        else:
+            return _line_writer
+        return _line_writer
+
     def _get_writer_plain(self):
         """Get function for writing uncoloured output"""
         write = self.outf.write
+        eol_marker = self.opts.eol_marker
         def _line_writer(line):
-            write(line)
+            write(line + eol_marker)
         return _line_writer
 
     def _get_writer_regexp_highlighted(self):
@@ -228,7 +258,10 @@ def grep_diff(opts):
         repo = branch.repository
         diff_pattern = re.compile("^[+\-].*(" + opts.pattern + ")")
         file_pattern = re.compile("=== (modified|added) file '.*'", re.UNICODE)
-        writeline = _GrepDiffOutputter(opts).get_writer()
+        outputter = _GrepDiffOutputter(opts)
+        writeline = outputter.get_writer()
+        writerevno = outputter.get_revision_header_writer()
+        writefileheader = outputter.get_file_header_writer()
         for revid, revno, merge_depth in given_revs:
             if opts.levels == 1 and merge_depth != 0:
                 # with level=1 show only top level
@@ -255,12 +288,12 @@ def grep_diff(opts):
                     display_file = True
                 if diff_pattern.search(line):
                     if display_revno:
-                        print "===", "revno:"+revno, "==="
+                        writerevno("===revno:%s ===" % (revno,))
                         display_revno = False
                     if display_file:
-                        print "  " + file_header
+                        writefileheader("  %s" % (file_header,))
                         display_file = False
-                    writeline("    " + line + "\n")
+                    writeline("    " + line)
     finally:
         branch.unlock()
 
