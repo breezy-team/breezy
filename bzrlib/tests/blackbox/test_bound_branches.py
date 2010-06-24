@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,17 +22,18 @@ from cStringIO import StringIO
 
 from bzrlib import (
     bzrdir,
-    errors
+    errors,
+    tests,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import (BzrDir, BzrDirFormat, BzrDirMetaFormat1)
 from bzrlib.osutils import getcwd
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import script
 import bzrlib.urlutils as urlutils
 from bzrlib.workingtree import WorkingTree
 
 
-class TestLegacyFormats(TestCaseWithTransport):
+class TestLegacyFormats(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestLegacyFormats, self).setUp()
@@ -61,7 +62,7 @@ class TestLegacyFormats(TestCaseWithTransport):
                          'upgrade your branch at %s/.\n' % cwd, err)
 
 
-class TestBoundBranches(TestCaseWithTransport):
+class TestBoundBranches(tests.TestCaseWithTransport):
 
     def create_branches(self):
         base_tree = self.make_branch_and_tree('base')
@@ -420,3 +421,39 @@ class TestBoundBranches(TestCaseWithTransport):
         # both the local and master should have been updated.
         self.check_revno(4)
         self.check_revno(4, '../base')
+
+    def test_bind_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('base')
+        self.build_tree(['base/a', 'base/b'])
+        tree.add('a', 'b')
+        tree.commit(message='init')
+        branch = tree.branch
+        tree.bzrdir.sprout('child')
+        self.run_bzr('bind --directory=child base')
+        d = BzrDir.open('child')
+        self.assertNotEqual(None, d.open_branch().get_master_branch())
+        self.run_bzr('unbind -d child')
+        self.assertEqual(None, d.open_branch().get_master_branch())
+        self.run_bzr('unbind --directory child', retcode=3)
+
+
+class TestBind(script.TestCaseWithTransportAndScript):
+
+    def test_bind_when_bound(self):
+        self.run_script("""
+$ bzr init trunk
+$ bzr init copy
+$ cd copy
+$ bzr bind ../trunk
+$ bzr bind
+2>bzr: ERROR: Branch is already bound
+""")
+
+    def test_bind_before_bound(self):
+        self.run_script("""
+$ bzr init trunk
+$ cd trunk
+$ bzr bind
+2>bzr: ERROR: No location supplied and no previous location known
+""")

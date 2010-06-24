@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2009 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,8 +28,8 @@ from bzrlib import (
     errors,
     workingtree,
     )
-from bzrlib.tests.blackbox import (
-    ExternalBase,
+from bzrlib.tests import (
+    TestCaseWithTransport,
     )
 from bzrlib.tests import (
     HardlinkFeature,
@@ -37,7 +37,7 @@ from bzrlib.tests import (
     )
 
 
-class TestCheckout(ExternalBase):
+class TestCheckout(TestCaseWithTransport):
 
     def setUp(self):
         super(TestCheckout, self).setUp()
@@ -64,7 +64,7 @@ class TestCheckout(ExternalBase):
                          result.open_branch().bzrdir.root_transport.base)
 
     def test_checkout_dash_r(self):
-        self.run_bzr('checkout -r -2 branch checkout')
+        out, err = self.run_bzr(['checkout', '-r', '-2', 'branch', 'checkout'])
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
@@ -72,7 +72,8 @@ class TestCheckout(ExternalBase):
         self.failIfExists('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
-        self.run_bzr('checkout --lightweight -r -2 branch checkout')
+        out, err = self.run_bzr(['checkout','--lightweight', '-r', '-2',
+            'branch', 'checkout'])
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')

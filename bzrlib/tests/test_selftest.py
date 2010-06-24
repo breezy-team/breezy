@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,11 +63,12 @@ from bzrlib.symbol_versioning import (
 from bzrlib.tests import (
     features,
     test_lsprof,
+    test_server,
     test_sftp_transport,
     TestUtil,
     )
 from bzrlib.trace import note
-from bzrlib.transport.memory import MemoryServer, MemoryTransport
+from bzrlib.transport import memory
 from bzrlib.version import _get_bzr_source_tree
 
 
@@ -608,12 +609,13 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
                 l.attempt_lock()
         test = TestDanglingLock('test_function')
         result = test.run()
+        total_failures = result.errors + result.failures
         if self._lock_check_thorough:
-            self.assertEqual(1, len(result.errors))
+            self.assertLength(1, total_failures)
         else:
             # When _lock_check_thorough is disabled, then we don't trigger a
             # failure
-            self.assertEqual(0, len(result.errors))
+            self.assertLength(0, total_failures)
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
@@ -621,9 +623,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
 
     def test_get_readonly_url_none(self):
         from bzrlib.transport import get_transport
-        from bzrlib.transport.memory import MemoryServer
         from bzrlib.transport.readonly import ReadonlyTransportDecorator
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         self.transport_readonly_server = None
         # calling get_readonly_transport() constructs a decorator on the url
         # for the server
@@ -638,9 +639,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     def test_get_readonly_url_http(self):
         from bzrlib.tests.http_server import HttpServer
         from bzrlib.transport import get_transport
-        from bzrlib.transport.local import LocalURLServer
         from bzrlib.transport.http import HttpTransportBase
-        self.transport_server = LocalURLServer
+        self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
         # calling get_readonly_transport() gives us a HTTP server instance.
         url = self.get_readonly_url()
@@ -677,13 +677,13 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestTestCaseTransports, self).setUp()
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
 
     def test_make_bzrdir_preserves_transport(self):
         t = self.get_transport()
         result_bzrdir = self.make_bzrdir('subdir')
         self.assertIsInstance(result_bzrdir.transport,
-                              MemoryTransport)
+                              memory.MemoryTransport)
         # should not be on disk, should only be in memory
         self.failIfExists('subdir')
 
@@ -754,13 +754,7 @@ class TestTestResult(tests.TestCase):
     def _patch_get_bzr_source_tree(self):
         # Reading from the actual source tree breaks isolation, but we don't
         # want to assume that thats *all* that would happen.
-        def _get_bzr_source_tree():
-            return None
-        orig_get_bzr_source_tree = bzrlib.version._get_bzr_source_tree
-        bzrlib.version._get_bzr_source_tree = _get_bzr_source_tree
-        def restore():
-            bzrlib.version._get_bzr_source_tree = orig_get_bzr_source_tree
-        self.addCleanup(restore)
+        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree', lambda: None)
 
     def test_assigned_benchmark_file_stores_date(self):
         self._patch_get_bzr_source_tree()
@@ -1201,14 +1195,10 @@ class TestRunner(tests.TestCase):
         # Reading from the actual source tree breaks isolation, but we don't
         # want to assume that thats *all* that would happen.
         self._get_source_tree_calls = []
-        def _get_bzr_source_tree():
+        def new_get():
             self._get_source_tree_calls.append("called")
             return None
-        orig_get_bzr_source_tree = bzrlib.version._get_bzr_source_tree
-        bzrlib.version._get_bzr_source_tree = _get_bzr_source_tree
-        def restore():
-            bzrlib.version._get_bzr_source_tree = orig_get_bzr_source_tree
-        self.addCleanup(restore)
+        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree',  new_get)
 
     def test_bench_history(self):
         # tests that the running the benchmark passes bench_history into
@@ -1322,12 +1312,7 @@ class TestTestCase(tests.TestCase):
         self.assertEqual(flags, bzrlib.debug.debug_flags)
 
     def change_selftest_debug_flags(self, new_flags):
-        orig_selftest_flags = tests.selftest_debug_flags
-        self.addCleanup(self._restore_selftest_debug_flags, orig_selftest_flags)
-        tests.selftest_debug_flags = set(new_flags)
-
-    def _restore_selftest_debug_flags(self, flags):
-        tests.selftest_debug_flags = flags
+        self.overrideAttr(tests, 'selftest_debug_flags', set(new_flags))
 
     def test_allow_debug_flag(self):
         """The -Eallow_debug flag prevents bzrlib.debug.debug_flags from being
@@ -1484,7 +1469,7 @@ class TestTestCase(tests.TestCase):
         # permitted.
         # Manually set one up (TestCase doesn't and shouldn't provide magic
         # machinery)
-        transport_server = MemoryServer()
+        transport_server = memory.MemoryServer()
         transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
         t = transport.get_transport(transport_server.get_url())
@@ -1572,7 +1557,7 @@ class TestTestCase(tests.TestCase):
             result.calls)
 
     def test_start_server_registers_url(self):
-        transport_server = MemoryServer()
+        transport_server = memory.MemoryServer()
         # A little strict, but unlikely to be changed soon.
         self.assertEqual([], self._bzr_selftest_roots)
         self.start_server(transport_server)
@@ -1633,6 +1618,42 @@ class TestTestCase(tests.TestCase):
 
         self.assertRaises(AssertionError,
             self.assertListRaises, _TestException, success_generator)
+
+    def test_overrideAttr_without_value(self):
+        self.test_attr = 'original' # Define a test attribute
+        obj = self # Make 'obj' visible to the embedded test
+        class Test(tests.TestCase):
+
+            def setUp(self):
+                tests.TestCase.setUp(self)
+                self.orig = self.overrideAttr(obj, 'test_attr')
+
+            def test_value(self):
+                self.assertEqual('original', self.orig)
+                self.assertEqual('original', obj.test_attr)
+                obj.test_attr = 'modified'
+                self.assertEqual('modified', obj.test_attr)
+
+        test = Test('test_value')
+        test.run(unittest.TestResult())
+        self.assertEqual('original', obj.test_attr)
+
+    def test_overrideAttr_with_value(self):
+        self.test_attr = 'original' # Define a test attribute
+        obj = self # Make 'obj' visible to the embedded test
+        class Test(tests.TestCase):
+
+            def setUp(self):
+                tests.TestCase.setUp(self)
+                self.orig = self.overrideAttr(obj, 'test_attr', new='modified')
+
+            def test_value(self):
+                self.assertEqual('original', self.orig)
+                self.assertEqual('modified', obj.test_attr)
+
+        test = Test('test_value')
+        test.run(unittest.TestResult())
+        self.assertEqual('original', obj.test_attr)
 
 
 # NB: Don't delete this; it's not actually from 0.11!
@@ -1783,8 +1804,7 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
         # make_branch_and_tree has to use local branch and repositories
         # when the vfs transport and local disk are colocated, even if
         # a different transport is in use for url generation.
-        from bzrlib.transport.fakevfat import FakeVFATServer
-        self.transport_server = FakeVFATServer
+        self.transport_server = test_server.FakeVFATServer
         self.assertFalse(self.get_url('t1').startswith('file://'))
         tree = self.make_branch_and_tree('t1')
         base = tree.bzrdir.root_transport.base
@@ -1927,10 +1947,11 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_transport_sftp(self):
         self.requireFeature(features.paramiko)
-        self.check_transport_set(bzrlib.transport.sftp.SFTPAbsoluteServer)
+        from bzrlib.tests import stub_sftp
+        self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
-        self.check_transport_set(bzrlib.transport.memory.MemoryServer)
+        self.check_transport_set(memory.MemoryServer)
 
 
 class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
@@ -2379,9 +2400,11 @@ class TestUnavailableFeature(tests.TestCase):
 
 
 simple_thunk_feature = tests._CompatabilityThunkFeature(
-    'bzrlib.tests', 'UnicodeFilename',
-    'bzrlib.tests.test_selftest.simple_thunk_feature',
-    deprecated_in((2,1,0)))
+    deprecated_in((2, 1, 0)),
+    'bzrlib.tests.test_selftest',
+    'simple_thunk_feature','UnicodeFilename',
+    replacement_module='bzrlib.tests'
+    )
 
 class Test_CompatibilityFeature(tests.TestCase):
 
@@ -2392,7 +2415,7 @@ class Test_CompatibilityFeature(tests.TestCase):
             simple_thunk_feature.available)
         self.assertEqual(tests.UnicodeFilename.available(), res)
 
-        
+
 class TestModuleAvailableFeature(tests.TestCase):
 
     def test_available_module(self):
@@ -2599,7 +2622,7 @@ class TestBlackboxSupport(tests.TestCase):
         # Running bzr in blackbox mode, normal/expected/user errors should be
         # caught in the regular way and turned into an error message plus exit
         # code.
-        transport_server = MemoryServer()
+        transport_server = memory.MemoryServer()
         transport_server.start_server()
         self.addCleanup(transport_server.stop_server)
         url = transport_server.get_url()
@@ -2751,6 +2774,10 @@ class TestTestSuite(tests.TestCase):
         # Test that a plausible list of modules to doctest is returned
         # by _test_suite_modules_to_doctest.
         test_list = tests._test_suite_modules_to_doctest()
+        if __doc__ is None:
+            # When docstrings are stripped, there are no modules to doctest
+            self.assertEqual([], test_list)
+            return
         self.assertSubset([
             'bzrlib.timestamp',
             ],
@@ -2763,35 +2790,34 @@ class TestTestSuite(tests.TestCase):
         # test doubles that supply a few sample tests to load, and check they
         # are loaded.
         calls = []
-        def _test_suite_testmod_names():
+        def testmod_names():
             calls.append("testmod_names")
             return [
                 'bzrlib.tests.blackbox.test_branch',
                 'bzrlib.tests.per_transport',
                 'bzrlib.tests.test_selftest',
                 ]
-        original_testmod_names = tests._test_suite_testmod_names
-        def _test_suite_modules_to_doctest():
+        self.overrideAttr(tests, '_test_suite_testmod_names', testmod_names)
+        def doctests():
             calls.append("modules_to_doctest")
+            if __doc__ is None:
+                return []
             return ['bzrlib.timestamp']
-        orig_modules_to_doctest = tests._test_suite_modules_to_doctest
-        def restore_names():
-            tests._test_suite_testmod_names = original_testmod_names
-            tests._test_suite_modules_to_doctest = orig_modules_to_doctest
-        self.addCleanup(restore_names)
-        tests._test_suite_testmod_names = _test_suite_testmod_names
-        tests._test_suite_modules_to_doctest = _test_suite_modules_to_doctest
+        self.overrideAttr(tests, '_test_suite_modules_to_doctest', doctests)
         expected_test_list = [
             # testmod_names
             'bzrlib.tests.blackbox.test_branch.TestBranch.test_branch',
             ('bzrlib.tests.per_transport.TransportTests'
              '.test_abspath(LocalTransport,LocalURLServer)'),
             'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
-            # modules_to_doctest
-            'bzrlib.timestamp.format_highres_date',
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
+        if __doc__ is not None:
+            expected_test_list.extend([
+                # modules_to_doctest
+                'bzrlib.timestamp.format_highres_date',
+                ])
         suite = tests.test_suite()
         self.assertEqual(set(["testmod_names", "modules_to_doctest"]),
             set(calls))

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,18 +20,62 @@ from bzrlib import (
     delta as _mod_delta,
     log,
     osutils,
-    tree,
     tsort,
     revision as _mod_revision,
     )
 import bzrlib.errors as errors
-from bzrlib.osutils import is_inside_any
-from bzrlib.symbol_versioning import (deprecated_function,
-        )
 from bzrlib.trace import mutter, warning
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
 # if known, but only if really going to the terminal (not into a file)
+
+
+def report_changes(to_file, old, new, specific_files, 
+                   show_short_reporter, show_long_callback, 
+                   short=False, want_unchanged=False, 
+                   want_unversioned=False, show_ids=False):
+    """Display summary of changes.
+
+    This compares two trees with regards to a list of files, and delegates 
+    the display to underlying elements.
+
+    For short output, it creates an iterator on all changes, and lets a given
+    reporter display these changes.
+
+    For stantard output, it creates a delta of the changes, and forwards it
+    to a callback
+
+    :param to_file: If set, write to this file (default stdout.)
+    :param old: Start tree for the comparison
+    :param end: End tree for the comparison
+    :param specific_files: If set, a list of filenames whose status should be
+        shown.  It is an error to give a filename that is not in the working
+        tree, or in the working inventory or in the basis inventory.
+    :param show_short_reporter: Reporter in charge of display for short output
+    :param show_long_callback: Callback in charge of display for normal output
+    :param short: If True, gives short SVN-style status lines.
+    :param want_unchanged: Deprecated parameter. If set, includes unchanged
+        files.
+    :param show_ids: If set, includes each file's id.
+    :param want_unversioned: If False, only shows versioned files.
+    """
+
+    if short:
+        changes = new.iter_changes(old, want_unchanged, specific_files,
+            require_versioned=False, want_unversioned=want_unversioned)
+        _mod_delta.report_changes(changes, show_short_reporter)
+        
+    else:
+        delta = new.changes_from(old, want_unchanged=want_unchanged,
+                              specific_files=specific_files,
+                              want_unversioned=want_unversioned)
+        # filter out unknown files. We may want a tree method for
+        # this
+        delta.unversioned = [unversioned for unversioned in
+            delta.unversioned if not new.is_ignored(unversioned[0])]
+        show_long_callback(to_file, delta, 
+                           show_ids=show_ids,
+                           show_unchanged=want_unchanged)
 
 
 def show_tree_status(wt, show_unchanged=None,
@@ -42,7 +86,8 @@ def show_tree_status(wt, show_unchanged=None,
                      revision=None,
                      short=False,
                      verbose=False,
-                     versioned=False):
+                     versioned=False,
+                     show_long_callback=_mod_delta.report_delta):
     """Display summary of changes.
 
     By default this compares the working tree to a previous revision.
@@ -71,6 +116,8 @@ def show_tree_status(wt, show_unchanged=None,
     :param verbose: If True, show all merged revisions, not just
         the merge tips
     :param versioned: If True, only shows versioned files.
+    :param show_long_callback: A callback: message = show_long_callback(to_file, delta, 
+        show_ids, show_unchanged, indent, filter), only used with the long output
     """
     if show_unchanged is not None:
         warn("show_tree_status with show_unchanged has been deprecated "
@@ -106,24 +153,29 @@ def show_tree_status(wt, show_unchanged=None,
             specific_files, nonexistents \
                 = _filter_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
-            if short:
-                changes = new.iter_changes(old, show_unchanged, specific_files,
-                    require_versioned=False, want_unversioned=want_unversioned)
-                reporter = _mod_delta._ChangeReporter(output_file=to_file,
-                    unversioned_filter=new.is_ignored)
-                _mod_delta.report_changes(changes, reporter)
-            else:
-                delta = new.changes_from(old, want_unchanged=show_unchanged,
-                                      specific_files=specific_files,
-                                      want_unversioned=want_unversioned)
-                # filter out unknown files. We may want a tree method for
-                # this
-                delta.unversioned = [unversioned for unversioned in
-                    delta.unversioned if not new.is_ignored(unversioned[0])]
-                delta.show(to_file,
-                           show_ids=show_ids,
-                           show_unchanged=show_unchanged,
-                           short_status=False)
+
+            # Reporter used for short outputs
+            reporter = _mod_delta._ChangeReporter(output_file=to_file,
+                unversioned_filter=new.is_ignored)
+            report_changes(to_file, old, new, specific_files, 
+                           reporter, show_long_callback, 
+                           short=short, want_unchanged=show_unchanged, 
+                           want_unversioned=want_unversioned, show_ids=show_ids)
+
+            # show the ignored files among specific files (i.e. show the files
+            # identified from input that we choose to ignore). 
+            if specific_files is not None:
+                # Ignored files is sorted because specific_files is already sorted
+                ignored_files = [specific for specific in
+                    specific_files if new.is_ignored(specific)]
+                if len(ignored_files) > 0 and not short:
+                    to_file.write("ignored:\n")
+                    prefix = ' '
+                else:
+                    prefix = 'I  '
+                for ignored_file in ignored_files:
+                    to_file.write("%s %s\n" % (prefix, ignored_file))
+
             # show the new conflicts only for now. XXX: get them from the
             # delta.
             conflicts = new.conflicts()

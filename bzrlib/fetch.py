@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,8 +28,6 @@ import operator
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    graph as _mod_graph,
-    static_tuple,
     tsort,
     versionedfile,
     )
@@ -37,7 +35,6 @@ from bzrlib import (
 import bzrlib
 from bzrlib import (
     errors,
-    symbol_versioning,
     ui,
     )
 from bzrlib.revision import NULL_REVISION
@@ -52,20 +49,13 @@ class RepoFetcher(object):
     """
 
     def __init__(self, to_repository, from_repository, last_revision=None,
-        pb=None, find_ghosts=True, fetch_spec=None):
+        find_ghosts=True, fetch_spec=None):
         """Create a repo fetcher.
 
         :param last_revision: If set, try to limit to the data this revision
             references.
         :param find_ghosts: If True search the entire history for ghosts.
-        :param pb: ProgressBar object to use; deprecated and ignored.
-            This method will just create one on top of the stack.
         """
-        if pb is not None:
-            symbol_versioning.warn(
-                symbol_versioning.deprecated_in((1, 14, 0))
-                % "pb parameter to RepoFetcher.__init__")
-            # and for simplicity it is in fact ignored
         # repository.fetch has the responsibility for short-circuiting
         # attempts to copy between a repository and itself.
         self.to_repository = to_repository
@@ -254,7 +244,9 @@ class Inter1and2Helper(object):
         root_id_order.sort(key=operator.itemgetter(0))
         # Create a record stream containing the roots to create.
         if len(revs) > 100:
-            graph = _get_rich_root_heads_graph(self.source_repo, revs)
+            # XXX: not covered by tests, should have a flag to always run
+            # this. -- mbp 20100129
+            graph = self.source_repo.get_known_graph_ancestry(revs)
         new_roots_stream = _new_root_data_stream(
             root_id_order, rev_id_to_root_id, parent_map, self.source, graph)
         return [('texts', new_roots_stream)]
@@ -262,11 +254,7 @@ class Inter1and2Helper(object):
 
 def _get_rich_root_heads_graph(source_repo, revision_ids):
     """Get a Graph object suitable for asking heads() for new rich roots."""
-    st = static_tuple.StaticTuple
-    revision_keys = [st(r_id).intern() for r_id in revision_ids]
-    known_graph = source_repo.revisions.get_known_graph_ancestry(
-                    revision_keys)
-    return _mod_graph.GraphThunkIdsToKeys(known_graph)
+    return 
 
 
 def _new_root_data_stream(

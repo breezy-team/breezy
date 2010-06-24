@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,7 +46,7 @@ def load_tests(standard_tests, module, loader):
 class TestMergeImplementation(TestCaseWithTransport):
 
     def do_merge(self, target_tree, source_tree, **kwargs):
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+        merger = _mod_merge.Merger.from_revision_ids(None,
             target_tree, source_tree.last_revision(),
             other_branch=source_tree.branch)
         merger.merge_type=self.merge_type
@@ -198,55 +198,85 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         TestCaseWithTransport.setUp(self)
         self.hook_log = []
 
-    def install_hook_noop(self):
-        def hook_na(merge_params):
-            # This hook unconditionally does nothing.
-            self.hook_log.append(('no-op',))
-            return 'not_applicable', None
+    def install_hook_inactive(self):
+        def inactive_factory(merger):
+            # This hook is never active
+            self.hook_log.append(('inactive',))
+            return None
         _mod_merge.Merger.hooks.install_named_hook(
-            'merge_file_content', hook_na, 'test hook (no-op)')
+            'merge_file_content', inactive_factory, 'test hook (inactive)')
+
+    def install_hook_noop(self):
+        test = self
+        class HookNA(_mod_merge.AbstractPerFileMerger):
+            def merge_contents(self, merge_params):
+                # This hook unconditionally does nothing.
+                test.hook_log.append(('no-op',))
+                return 'not_applicable', None
+        def hook_na_factory(merger):
+            return HookNA(merger)
+        _mod_merge.Merger.hooks.install_named_hook(
+            'merge_file_content', hook_na_factory, 'test hook (no-op)')
 
     def install_hook_success(self):
-        def hook_success(merge_params):
-            self.hook_log.append(('success',))
-            if merge_params.file_id == '1':
-                return 'success', ['text-merged-by-hook']
-            return 'not_applicable', None
+        test = self
+        class HookSuccess(_mod_merge.AbstractPerFileMerger):
+            def merge_contents(self, merge_params):
+                test.hook_log.append(('success',))
+                if merge_params.file_id == '1':
+                    return 'success', ['text-merged-by-hook']
+                return 'not_applicable', None
+        def hook_success_factory(merger):
+            return HookSuccess(merger)
         _mod_merge.Merger.hooks.install_named_hook(
-            'merge_file_content', hook_success, 'test hook (success)')
+            'merge_file_content', hook_success_factory, 'test hook (success)')
 
     def install_hook_conflict(self):
-        def hook_conflict(merge_params):
-            self.hook_log.append(('conflict',))
-            if merge_params.file_id == '1':
-                return 'conflicted', ['text-with-conflict-markers-from-hook']
-            return 'not_applicable', None
+        test = self
+        class HookConflict(_mod_merge.AbstractPerFileMerger):
+            def merge_contents(self, merge_params):
+                test.hook_log.append(('conflict',))
+                if merge_params.file_id == '1':
+                    return ('conflicted',
+                        ['text-with-conflict-markers-from-hook'])
+                return 'not_applicable', None
+        def hook_conflict_factory(merger):
+            return HookConflict(merger)
         _mod_merge.Merger.hooks.install_named_hook(
-            'merge_file_content', hook_conflict, 'test hook (delete)')
+            'merge_file_content', hook_conflict_factory, 'test hook (delete)')
 
     def install_hook_delete(self):
-        def hook_delete(merge_params):
-            self.hook_log.append(('delete',))
-            if merge_params.file_id == '1':
-                return 'delete', None
-            return 'not_applicable', None
+        test = self
+        class HookDelete(_mod_merge.AbstractPerFileMerger):
+            def merge_contents(self, merge_params):
+                test.hook_log.append(('delete',))
+                if merge_params.file_id == '1':
+                    return 'delete', None
+                return 'not_applicable', None
+        def hook_delete_factory(merger):
+            return HookDelete(merger)
         _mod_merge.Merger.hooks.install_named_hook(
-            'merge_file_content', hook_delete, 'test hook (delete)')
+            'merge_file_content', hook_delete_factory, 'test hook (delete)')
 
     def install_hook_log_lines(self):
         """Install a hook that saves the get_lines for the this, base and other
         versions of the file.
         """
-        def hook_log_lines(merge_params):
-            self.hook_log.append((
-                'log_lines',
-                merge_params.this_lines,
-                merge_params.other_lines,
-                merge_params.base_lines,
-                ))
-            return 'not_applicable', None
+        test = self
+        class HookLogLines(_mod_merge.AbstractPerFileMerger):
+            def merge_contents(self, merge_params):
+                test.hook_log.append((
+                    'log_lines',
+                    merge_params.this_lines,
+                    merge_params.other_lines,
+                    merge_params.base_lines,
+                    ))
+                return 'not_applicable', None
+        def hook_log_lines_factory(merger):
+            return HookLogLines(merger)
         _mod_merge.Merger.hooks.install_named_hook(
-            'merge_file_content', hook_log_lines, 'test hook (log_lines)')
+            'merge_file_content', hook_log_lines_factory,
+            'test hook (log_lines)')
 
     def make_merge_builder(self):
         builder = MergeBuilder(self.test_base_dir)
@@ -314,6 +344,18 @@ class TestHookMergeFileContent(TestCaseWithTransport):
         conflicts = builder.merge(self.merge_type)
         self.assertEqual(
             [('log_lines', ['text2'], ['text3'], ['text1'])], self.hook_log)
+
+    def test_chain_when_not_active(self):
+        """When a hook function returns None, merging still works."""
+        self.install_hook_inactive()
+        self.install_hook_success()
+        builder = self.make_merge_builder()
+        self.create_file_needing_contents_merge(builder, "1")
+        conflicts = builder.merge(self.merge_type)
+        self.assertEqual(conflicts, [])
+        self.assertEqual(
+            builder.this.get_file('1').read(), 'text-merged-by-hook')
+        self.assertEqual([('inactive',), ('success',)], self.hook_log)
 
     def test_chain_when_not_applicable(self):
         """When a hook function returns not_applicable, the next function is

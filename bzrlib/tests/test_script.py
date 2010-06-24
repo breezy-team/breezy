@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,6 +50,18 @@ class TestSyntax(tests.TestCase):
         self.assertEquals(
             [(['cat', '>file'], 'content\n', None, None)],
             script._script_to_commands('$ cat >file\n<content\n'))
+
+    def test_indented(self):
+        # scripts are commonly given indented within the test source code, and
+        # common indentation is stripped off
+        story = """
+            $ bzr add
+            adding file
+            adding file2
+            """
+        self.assertEquals([(['bzr', 'add'], None,
+                            'adding file\nadding file2\n', None)],
+                          script._script_to_commands(story))
 
     def test_command_with_output(self):
         story = """

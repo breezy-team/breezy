@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,7 +48,8 @@ class KernelLikeTreeCreator(TreeCreator):
         if self._url is not None:
             b = bzrdir.BzrDir.create_branch_convenience(self._url)
             d = bzrdir.BzrDir.create(root)
-            bzrlib.branch.BranchReferenceFormat().initialize(d, b)
+            bzrlib.branch.BranchReferenceFormat().initialize(d,
+                target_branch=b)
             tree = d.create_workingtree()
         else:
             tree = bzrdir.BzrDir.create_standalone_workingtree(root)

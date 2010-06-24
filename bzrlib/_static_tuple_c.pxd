@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,3 +42,4 @@ cdef extern from "_static_tuple_c.h":
     # not an 'object' return value.
     void *StaticTuple_GET_ITEM(StaticTuple key, Py_ssize_t offset)
     int StaticTuple_CheckExact(object)
+    Py_ssize_t StaticTuple_GET_SIZE(StaticTuple key)

@@ -514,9 +514,9 @@ class RemoteSSHTransport(RemoteTransport):
         if user is None:
             auth = config.AuthenticationConfig()
             user = auth.get_user('ssh', self._host, self._port)
-        client_medium = medium.SmartSSHClientMedium(self._host, self._port,
-            user, self._password, self.base,
-            bzr_remote_path=bzr_remote_path)
+        ssh_params = medium.SSHParams(self._host, self._port, user,
+            self._password, bzr_remote_path)
+        client_medium = medium.SmartSSHClientMedium(self.base, ssh_params)
         return client_medium, (user, self._password)
 
 
@@ -601,5 +601,5 @@ def get_test_permutations():
     """Return (transport, server) permutations for testing."""
     ### We may need a little more test framework support to construct an
     ### appropriate RemoteTransport in the future.
-    from bzrlib.smart import server
-    return [(RemoteTCPTransport, server.SmartTCPServer_for_testing)]
+    from bzrlib.tests import test_server
+    return [(RemoteTCPTransport, test_server.SmartTCPServer_for_testing)]

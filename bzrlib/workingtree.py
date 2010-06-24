@@ -29,12 +29,6 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-# TODO: Give the workingtree sole responsibility for the working inventory;
-# remove the variable and references to it from the branch.  This may require
-# updating the commit code so as to update the inventory within the working
-# copy, and making sure there's only one WorkingTree for any directory on disk.
-# At the moment they may alias the inventory and have old copies of it in
-# memory.  (Now done? -- mbp 20060309)
 
 from cStringIO import StringIO
 import os
@@ -83,6 +77,7 @@ from bzrlib.workingtree_4 import (
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.lock import LogicalLockResult
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
@@ -101,7 +96,6 @@ from bzrlib.osutils import (
 from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
-from bzrlib.progress import DummyProgress, ProgressPhase
 from bzrlib.revision import CURRENT_REVISION
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (
@@ -111,6 +105,9 @@ from bzrlib.symbol_versioning import (
 
 
 MERGE_MODIFIED_HEADER_1 = "BZR merge-modified list format 1"
+# TODO: Modifying the conflict objects or their type is currently nearly
+# impossible as there is no clear relationship between the working tree format
+# and the conflict list file format.
 CONFLICT_HEADER_1 = "BZR conflict list format 1"
 
 ERROR_PATH_NOT_FOUND = 3    # WindowsError errno code, equivalent to ENOENT
@@ -171,7 +168,8 @@ class TreeLink(TreeEntry):
         return ''
 
 
-class WorkingTree(bzrlib.mutabletree.MutableTree):
+class WorkingTree(bzrlib.mutabletree.MutableTree,
+    bzrdir.ControlComponent):
     """Working copy tree.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -249,6 +247,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._detect_case_handling()
         self._rules_searcher = None
         self.views = self._make_views()
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
@@ -457,7 +463,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return (file_obj, stat_value)
 
     def get_file_text(self, file_id, path=None, filtered=True):
-        return self.get_file(file_id, path=path, filtered=filtered).read()
+        my_file = self.get_file(file_id, path=path, filtered=filtered)
+        try:
+            return my_file.read()
+        finally:
+            my_file.close()
 
     def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
@@ -517,7 +527,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         # Now we have the parents of this content
         annotator = self.branch.repository.texts.get_annotator()
-        text = self.get_file(file_id).read()
+        text = self.get_file_text(file_id)
         this_key =(file_id, default_revision)
         annotator.add_special_text(this_key, file_parent_keys, text)
         annotations = [(key[-1], line)
@@ -909,43 +919,36 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             branch.last_revision().
         """
         from bzrlib.merge import Merger, Merge3Merger
-        pb = ui.ui_factory.nested_progress_bar()
-        try:
-            merger = Merger(self.branch, this_tree=self, pb=pb)
-            merger.pp = ProgressPhase("Merge phase", 5, pb)
-            merger.pp.next_phase()
-            # check that there are no local alterations
-            if not force and self.has_changes():
-                raise errors.UncommittedChanges(self)
-            if to_revision is None:
-                to_revision = _mod_revision.ensure_null(branch.last_revision())
-            merger.other_rev_id = to_revision
-            if _mod_revision.is_null(merger.other_rev_id):
-                raise errors.NoCommits(branch)
-            self.branch.fetch(branch, last_revision=merger.other_rev_id)
-            merger.other_basis = merger.other_rev_id
-            merger.other_tree = self.branch.repository.revision_tree(
-                merger.other_rev_id)
-            merger.other_branch = branch
-            merger.pp.next_phase()
-            if from_revision is None:
-                merger.find_base()
-            else:
-                merger.set_base_revision(from_revision, branch)
-            if merger.base_rev_id == merger.other_rev_id:
-                raise errors.PointlessMerge
-            merger.backup_files = False
-            if merge_type is None:
-                merger.merge_type = Merge3Merger
-            else:
-                merger.merge_type = merge_type
-            merger.set_interesting_files(None)
-            merger.show_base = False
-            merger.reprocess = False
-            conflicts = merger.do_merge()
-            merger.set_pending()
-        finally:
-            pb.finished()
+        merger = Merger(self.branch, this_tree=self)
+        # check that there are no local alterations
+        if not force and self.has_changes():
+            raise errors.UncommittedChanges(self)
+        if to_revision is None:
+            to_revision = _mod_revision.ensure_null(branch.last_revision())
+        merger.other_rev_id = to_revision
+        if _mod_revision.is_null(merger.other_rev_id):
+            raise errors.NoCommits(branch)
+        self.branch.fetch(branch, last_revision=merger.other_rev_id)
+        merger.other_basis = merger.other_rev_id
+        merger.other_tree = self.branch.repository.revision_tree(
+            merger.other_rev_id)
+        merger.other_branch = branch
+        if from_revision is None:
+            merger.find_base()
+        else:
+            merger.set_base_revision(from_revision, branch)
+        if merger.base_rev_id == merger.other_rev_id:
+            raise errors.PointlessMerge
+        merger.backup_files = False
+        if merge_type is None:
+            merger.merge_type = Merge3Merger
+        else:
+            merger.merge_type = merge_type
+        merger.set_interesting_files(None)
+        merger.show_base = False
+        merger.reprocess = False
+        conflicts = merger.do_merge()
+        merger.set_pending()
         return conflicts
 
     @needs_read_lock
@@ -1098,7 +1101,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         tree_transport = self.bzrdir.root_transport.clone(sub_path)
         if tree_transport.base != branch_transport.base:
             tree_bzrdir = format.initialize_on_transport(tree_transport)
-            branch.BranchReferenceFormat().initialize(tree_bzrdir, new_branch)
+            branch.BranchReferenceFormat().initialize(tree_bzrdir,
+                target_branch=new_branch)
         else:
             tree_bzrdir = branch_bzrdir
         wt = tree_bzrdir.create_workingtree(_mod_revision.NULL_REVISION)
@@ -1142,7 +1146,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         This does not include files that have been deleted in this
         tree. Skips the control directory.
 
-        :param include_root: if True, do not return an entry for the root
+        :param include_root: if True, return an entry for the root
         :param from_dir: start from this directory or None for the root
         :param recursive: whether to recurse into subdirectories or not
         """
@@ -1602,11 +1606,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False):
-        top_pb = ui.ui_factory.nested_progress_bar()
         source.lock_read()
         try:
-            pp = ProgressPhase("Pull phase", 2, top_pb)
-            pp.next_phase()
             old_revision_info = self.branch.last_revision_info()
             basis_tree = self.basis_tree()
             count = self.branch.pull(source, overwrite, stop_revision,
@@ -1614,9 +1615,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                      local=local)
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
-                pp.next_phase()
                 repository = self.branch.repository
-                pb = ui.ui_factory.nested_progress_bar()
                 basis_tree.lock_read()
                 try:
                     new_basis_tree = self.branch.basis_tree()
@@ -1625,14 +1624,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                                 new_basis_tree,
                                 basis_tree,
                                 this_tree=self,
-                                pb=pb,
+                                pb=None,
                                 change_reporter=change_reporter)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
                     if basis_root_id != new_root_id:
                         self.set_root_id(new_root_id)
                 finally:
-                    pb.finished()
                     basis_tree.unlock()
                 # TODO - dedup parents list with things merged by pull ?
                 # reuse the revisiontree we merged against to set the new
@@ -1651,7 +1649,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             return count
         finally:
             source.unlock()
-            top_pb.finished()
 
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
@@ -1806,34 +1803,48 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             raise errors.ObjectNotLocked(self)
 
     def lock_read(self):
-        """See Branch.lock_read, and WorkingTree.unlock."""
+        """Lock the tree for reading.
+
+        This also locks the branch, and can be unlocked via self.unlock().
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
-            return self._control_files.lock_read()
+            self._control_files.lock_read()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
 
     def lock_tree_write(self):
-        """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
 
     def lock_write(self):
-        """See MutableTree.lock_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_write()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
@@ -1904,7 +1915,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             # revision_id is set. We must check for this full string, because a
             # root node id can legitimately look like 'revision_id' but cannot
             # contain a '"'.
-            xml = self.branch.repository.get_inventory_xml(new_revision)
+            xml = self.branch.repository._get_inventory_xml(new_revision)
             firstline = xml.split('\n', 1)[0]
             if (not 'revision_id="' in firstline or
                 'format="7"' not in firstline):
@@ -1964,8 +1975,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_info, file_infos in\
-                self.walkdirs(directory):
+            for parent_info, file_infos in self.walkdirs(directory):
                 for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.path2id(relpath) or self.is_ignored(relpath):
@@ -2006,8 +2016,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                             # ... but not ignored
                             has_changed_files = True
                             break
-                    elif content_change and (kind[1] is not None):
-                        # Versioned and changed, but not deleted
+                    elif (content_change and (kind[1] is not None) and
+                            osutils.is_inside_any(files, path[1])):
+                        # Versioned and changed, but not deleted, and still
+                        # in one of the dirs to be deleted.
                         has_changed_files = True
                         break
 
@@ -2066,7 +2078,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     @needs_tree_write_lock
     def revert(self, filenames=None, old_tree=None, backups=True,
-               pb=DummyProgress(), report_changes=False):
+               pb=None, report_changes=False):
         from bzrlib.conflicts import resolve
         if filenames == []:
             filenames = None
@@ -2261,36 +2273,55 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         # We MUST save it even if an error occurs, because otherwise the users
         # local work is unreferenced and will appear to have been lost.
         #
-        result = 0
+        nb_conflicts = 0
         try:
             last_rev = self.get_parent_ids()[0]
         except IndexError:
             last_rev = _mod_revision.NULL_REVISION
         if revision is None:
             revision = self.branch.last_revision()
-        else:
-            if revision not in self.branch.revision_history():
-                raise errors.NoSuchRevision(self.branch, revision)
+
+        old_tip = old_tip or _mod_revision.NULL_REVISION
+
+        if not _mod_revision.is_null(old_tip) and old_tip != last_rev:
+            # the branch we are bound to was updated
+            # merge those changes in first
+            base_tree  = self.basis_tree()
+            other_tree = self.branch.repository.revision_tree(old_tip)
+            nb_conflicts = merge.merge_inner(self.branch, other_tree,
+                                             base_tree, this_tree=self,
+                                             change_reporter=change_reporter)
+            if nb_conflicts:
+                self.add_parent_tree((old_tip, other_tree))
+                trace.note('Rerun update after fixing the conflicts.')
+                return nb_conflicts
+
         if last_rev != _mod_revision.ensure_null(revision):
-            # merge tree state up to specified revision.
+            # the working tree is up to date with the branch
+            # we can merge the specified revision from master
+            to_tree = self.branch.repository.revision_tree(revision)
+            to_root_id = to_tree.get_root_id()
+
             basis = self.basis_tree()
             basis.lock_read()
             try:
-                to_tree = self.branch.repository.revision_tree(revision)
-                to_root_id = to_tree.get_root_id()
                 if (basis.inventory.root is None
                     or basis.inventory.root.file_id != to_root_id):
                     self.set_root_id(to_root_id)
                     self.flush()
-                result += merge.merge_inner(
-                                      self.branch,
-                                      to_tree,
-                                      basis,
-                                      this_tree=self,
-                                      change_reporter=change_reporter)
-                self.set_last_revision(revision)
             finally:
                 basis.unlock()
+
+            # determine the branch point
+            graph = self.branch.repository.get_graph()
+            base_rev_id = graph.find_unique_lca(self.branch.last_revision(),
+                                                last_rev)
+            base_tree = self.branch.repository.revision_tree(base_rev_id)
+
+            nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
+                                             this_tree=self,
+                                             change_reporter=change_reporter)
+            self.set_last_revision(revision)
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:
             parent_trees = [(revision, to_tree)]
@@ -2303,42 +2334,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             for parent in merges:
                 parent_trees.append(
                     (parent, self.branch.repository.revision_tree(parent)))
-            if (old_tip is not None and not _mod_revision.is_null(old_tip)):
+            if not _mod_revision.is_null(old_tip):
                 parent_trees.append(
                     (old_tip, self.branch.repository.revision_tree(old_tip)))
             self.set_parent_trees(parent_trees)
             last_rev = parent_trees[0][0]
-        else:
-            # the working tree had the same last-revision as the master
-            # branch did. We may still have pivot local work from the local
-            # branch into old_tip:
-            if (old_tip is not None and not _mod_revision.is_null(old_tip)):
-                self.add_parent_tree_id(old_tip)
-        if (old_tip is not None and not _mod_revision.is_null(old_tip)
-            and old_tip != last_rev):
-            # our last revision was not the prior branch last revision
-            # and we have converted that last revision to a pending merge.
-            # base is somewhere between the branch tip now
-            # and the now pending merge
-
-            # Since we just modified the working tree and inventory, flush out
-            # the current state, before we modify it again.
-            # TODO: jam 20070214 WorkingTree3 doesn't require this, dirstate
-            #       requires it only because TreeTransform directly munges the
-            #       inventory and calls tree._write_inventory(). Ultimately we
-            #       should be able to remove this extra flush.
-            self.flush()
-            graph = self.branch.repository.get_graph()
-            base_rev_id = graph.find_unique_lca(revision, old_tip)
-            base_tree = self.branch.repository.revision_tree(base_rev_id)
-            other_tree = self.branch.repository.revision_tree(old_tip)
-            result += merge.merge_inner(
-                                  self.branch,
-                                  other_tree,
-                                  base_tree,
-                                  this_tree=self,
-                                  change_reporter=change_reporter)
-        return result
+        return nb_conflicts
 
     def _write_hashcache_if_dirty(self):
         """Write out the hashcache if it is dirty."""
@@ -2655,10 +2656,14 @@ class WorkingTree2(WorkingTree):
 
         In Format2 WorkingTrees we have a single lock for the branch and tree
         so lock_tree_write() degrades to lock_write().
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
         """
         self.branch.lock_write()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return self
         except:
             self.branch.unlock()
             raise

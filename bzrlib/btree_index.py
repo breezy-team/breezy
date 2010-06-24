@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -567,7 +567,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
                     else:
                         # yield keys
                         for value in key_dict.itervalues():
-                            yield (self, ) + value
+                            yield (self, ) + tuple(value)
             else:
                 yield (self, ) + key_dict
 
@@ -647,7 +647,8 @@ class BTreeGraphIndex(object):
     memory except when very large walks are done.
     """
 
-    def __init__(self, transport, name, size, unlimited_cache=False):
+    def __init__(self, transport, name, size, unlimited_cache=False,
+                 offset=0):
         """Create a B+Tree index object on the index name.
 
         :param transport: The transport to read data for the index from.
@@ -660,6 +661,8 @@ class BTreeGraphIndex(object):
         :param unlimited_cache: If set to True, then instead of using an
             LRUCache with size _NODE_CACHE_SIZE, we will use a dict and always
             cache all leaf nodes.
+        :param offset: The start of the btree index data isn't byte 0 of the
+            file. Instead it starts at some point later.
         """
         self._transport = transport
         self._name = name
@@ -667,6 +670,7 @@ class BTreeGraphIndex(object):
         self._file = None
         self._recommended_pages = self._compute_recommended_pages()
         self._root_node = None
+        self._base_offset = offset
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
         if unlimited_cache:
@@ -1494,8 +1498,9 @@ class BTreeGraphIndex(object):
         # list of (offset, length) regions of the file that should, evenually
         # be read in to data_ranges, either from 'bytes' or from the transport
         ranges = []
+        base_offset = self._base_offset
         for index in nodes:
-            offset = index * _PAGE_SIZE
+            offset = (index * _PAGE_SIZE)
             size = _PAGE_SIZE
             if index == 0:
                 # Root node - special case
@@ -1505,9 +1510,11 @@ class BTreeGraphIndex(object):
                     # The only case where we don't know the size, is for very
                     # small indexes. So we read the whole thing
                     bytes = self._transport.get_bytes(self._name)
-                    self._size = len(bytes)
+                    num_bytes = len(bytes)
+                    self._size = num_bytes - base_offset
                     # the whole thing should be parsed out of 'bytes'
-                    ranges.append((0, len(bytes)))
+                    ranges = [(start, min(_PAGE_SIZE, num_bytes - start))
+                        for start in xrange(base_offset, num_bytes, _PAGE_SIZE)]
                     break
             else:
                 if offset > self._size:
@@ -1515,13 +1522,13 @@ class BTreeGraphIndex(object):
                                          ' of the file %s > %s'
                                          % (offset, self._size))
                 size = min(size, self._size - offset)
-            ranges.append((offset, size))
+            ranges.append((base_offset + offset, size))
         if not ranges:
             return
         elif bytes is not None:
             # already have the whole file
-            data_ranges = [(start, bytes[start:start+_PAGE_SIZE])
-                           for start in xrange(0, len(bytes), _PAGE_SIZE)]
+            data_ranges = [(start, bytes[start:start+size])
+                           for start, size in ranges]
         elif self._file is None:
             data_ranges = self._transport.readv(self._name, ranges)
         else:
@@ -1530,6 +1537,7 @@ class BTreeGraphIndex(object):
                 self._file.seek(offset)
                 data_ranges.append((offset, self._file.read(size)))
         for offset, data in data_ranges:
+            offset -= base_offset
             if offset == 0:
                 # extract the header
                 offset, data = self._parse_header_from_bytes(data)

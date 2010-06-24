@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1631,6 +1631,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         keys_to_add = []
         def flush():
             bytes = self._compressor.flush().to_bytes()
+            self._compressor = GroupCompressor()
             index, start, length = self._access.add_raw_records(
                 [(None, len(bytes))], bytes)[0]
             nodes = []
@@ -1639,7 +1640,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
             self._index.add_records(nodes, random_id=random_id)
             self._unadded_refs = {}
             del keys_to_add[:]
-            self._compressor = GroupCompressor()
 
         last_prefix = None
         max_fulltext_len = 0

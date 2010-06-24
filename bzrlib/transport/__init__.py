@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,8 +47,6 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        deprecated_method,
-        deprecated_function,
         DEPRECATED_PARAMETER,
         )
 from bzrlib.trace import (
@@ -539,6 +537,9 @@ class Transport(object):
 
         This function will only be defined for Transports which have a
         physical local filesystem representation.
+
+        :raises errors.NotLocalUrl: When no local path representation is
+            available.
         """
         raise errors.NotLocalUrl(self.abspath(relpath))
 
@@ -1060,7 +1061,11 @@ class Transport(object):
         """
         source = self.clone(from_relpath)
         target = self.clone(to_relpath)
-        target.mkdir('.')
+
+        # create target directory with the same rwx bits as source.
+        # use mask to ensure that bits other than rwx are ignored.
+        stat = self.stat(from_relpath)
+        target.mkdir('.', stat.st_mode & 0777)
         source.copy_tree_to_transport(target)
 
     def copy_tree_to_transport(self, to_transport):
@@ -1201,6 +1206,18 @@ class Transport(object):
 
         count = self._iterate_over(relpaths, gather, pb, 'stat', expand=False)
         return stats
+
+    def readlink(self, relpath):
+        """Return a string representing the path to which the symbolic link points."""
+        raise errors.TransportNotPossible("Dereferencing symlinks is not supported on %s" % self)
+
+    def hardlink(self, source, link_name):
+        """Create a hardlink pointing to source named link_name."""
+        raise errors.TransportNotPossible("Hard links are not supported on %s" % self)
+
+    def symlink(self, source, link_name):
+        """Create a symlink pointing to source named link_name."""
+        raise errors.TransportNotPossible("Symlinks are not supported on %s" % self)
 
     def listable(self):
         """Return True if this store supports listing."""
@@ -1534,9 +1551,6 @@ class ConnectedTransport(Transport):
         return transport
 
 
-# We try to recognize an url lazily (ignoring user, password, etc)
-_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<rest>.*)$')
-
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
@@ -1555,8 +1569,7 @@ def get_transport(base, possible_transports=None):
     base = directories.dereference(base)
 
     def convert_path_to_url(base, error_str):
-        m = _urlRE.match(base)
-        if m:
+        if urlutils.is_url(base):
             # This looks like a URL, but we weren't able to
             # instantiate it as such raise an appropriate error
             # FIXME: we have a 'error_str' unused and we use last_err below
@@ -1663,13 +1676,7 @@ def do_catching_redirections(action, transport, redirected):
 class Server(object):
     """A Transport Server.
 
-    The Server interface provides a server for a given transport. We use
-    these servers as loopback testing tools. For any given transport the
-    Servers it provides must either allow writing, or serve the contents
-    of os.getcwdu() at the time start_server is called.
-
-    Note that these are real servers - they must implement all the things
-    that we want bzr transports to take advantage of.
+    The Server interface provides a server for a given transport type.
     """
 
     def start_server(self):
@@ -1677,27 +1684,6 @@ class Server(object):
 
     def stop_server(self):
         """Remove the server and cleanup any resources it owns."""
-
-    def get_url(self):
-        """Return a url for this server.
-
-        If the transport does not represent a disk directory (i.e. it is
-        a database like svn, or a memory only transport, it should return
-        a connection to a newly established resource for this Server.
-        Otherwise it should return a url that will provide access to the path
-        that was os.getcwdu() when start_server() was called.
-
-        Subsequent calls will return the same resource.
-        """
-        raise NotImplementedError
-
-    def get_bogus_url(self):
-        """Return a url for this protocol, that will fail to connect.
-
-        This may raise NotImplementedError to indicate that this server cannot
-        provide bogus urls.
-        """
-        raise NotImplementedError
 
 
 # None is the default transport, for things with no url scheme
@@ -1750,33 +1736,28 @@ register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
+register_transport_proto('gio+', help="Access using any GIO supported protocols.")
+register_lazy_transport('gio+', 'bzrlib.transport.gio_transport', 'GioTransport')
 
-try:
-    import kerberos
-    kerberos_available = True
-except ImportError:
-    kerberos_available = False
 
-if kerberos_available:
-    # Default to trying GSSAPI authentication (if the kerberos module is
-    # available)
-    register_transport_proto('ftp+gssapi://', register_netloc=True)
-    register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                            'GSSAPIFtpTransport')
-    register_transport_proto('aftp+gssapi://', register_netloc=True)
-    register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                            'GSSAPIFtpTransport')
-    register_transport_proto('ftp+nogssapi://', register_netloc=True)
-    register_transport_proto('aftp+nogssapi://', register_netloc=True)
-
-    register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
-                            'GSSAPIFtpTransport')
-    register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
-                            'GSSAPIFtpTransport')
-    register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
-                            'FtpTransport')
-    register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
-                            'FtpTransport')
+# Default to trying GSSAPI authentication (if the kerberos module is
+# available)
+register_transport_proto('ftp+gssapi://', register_netloc=True)
+register_transport_proto('aftp+gssapi://', register_netloc=True)
+register_transport_proto('ftp+nogssapi://', register_netloc=True)
+register_transport_proto('aftp+nogssapi://', register_netloc=True)
+register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                        'GSSAPIFtpTransport')
+register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                        'GSSAPIFtpTransport')
+register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
+                        'GSSAPIFtpTransport')
+register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
+                        'GSSAPIFtpTransport')
+register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
+                        'FtpTransport')
+register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
+                        'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
@@ -1858,6 +1839,6 @@ register_lazy_transport('ssh:', 'bzrlib.transport.remote',
 
 
 transport_server_registry = registry.Registry()
-transport_server_registry.register_lazy('bzr', 'bzrlib.smart.server', 
+transport_server_registry.register_lazy('bzr', 'bzrlib.smart.server',
     'serve_bzr', help="The Bazaar smart server protocol over TCP. (default port: 4155)")
 transport_server_registry.default_key = 'bzr'

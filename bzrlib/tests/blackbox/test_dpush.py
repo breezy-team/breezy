@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005, 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     blackbox,
+    script,
     test_foreign,
     )
 from bzrlib.tests.blackbox import test_push
@@ -58,7 +59,7 @@ def load_tests(standard_tests, module, loader):
     return result
 
 
-class TestDpush(blackbox.ExternalBase):
+class TestDpush(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestDpush, self).setUp()
@@ -86,9 +87,11 @@ class TestDpush(blackbox.ExternalBase):
         self.build_tree(("dc/foo", "blaaaa"))
         dc.open_workingtree().commit('msg')
 
-        output, error = self.run_bzr("dpush -d dc d")
-        self.assertEquals(error, "Pushed up to revision 2.\n")
-        self.check_output("", "status dc")
+        script.run_script(self, """
+            $ bzr dpush -d dc d
+            2>Pushed up to revision 2.
+            $ bzr status dc
+            """)
 
     def test_dpush_new(self):
         b = self.make_dummy_builder('d').get_branch()
@@ -99,9 +102,12 @@ class TestDpush(blackbox.ExternalBase):
         dc_tree.add("foofile")
         dc_tree.commit("msg")
 
-        self.check_output("", "dpush -d dc d")
-        self.check_output("2\n", "revno dc")
-        self.check_output("", "status dc")
+        script.run_script(self, '''
+            $ bzr dpush -d dc d
+            $ bzr revno dc
+            2
+            $ bzr status dc
+            ''')
 
     def test_dpush_wt_diff(self):
         b = self.make_dummy_builder('d').get_branch()
@@ -113,11 +119,17 @@ class TestDpush(blackbox.ExternalBase):
         newrevid = dc_tree.commit('msg')
 
         self.build_tree_contents([("dc/foofile", "blaaaal")])
-        self.check_output("", "dpush -d dc d --no-strict")
+        script.run_script(self, '''
+            $ bzr dpush -d dc d --no-strict
+            ''')
         self.assertFileEqual("blaaaal", "dc/foofile")
         # if the dummy vcs wasn't that dummy we could uncomment the line below
         # self.assertFileEqual("blaaaa", "d/foofile")
-        self.check_output('modified:\n  foofile\n', "status dc")
+        script.run_script(self, '''
+            $ bzr status dc
+            modified:
+              foofile
+            ''')
 
     def test_diverged(self):
         builder = self.make_dummy_builder('d')
@@ -153,20 +165,6 @@ class TestDpushStrictMixin(object):
         conf.set_user_option('dpush_strict', value)
 
     _default_command = ['dpush', '../to']
-    _default_pushed_revid = False # Doesn't aplly for dpush
-
-    def assertPushSucceeds(self, args, pushed_revid=None):
-        self.run_bzr(self._default_command + args,
-                     working_dir=self._default_wd)
-        if pushed_revid is None:
-            # dpush change the revids, so we need to get back to it
-            branch_from = branch.Branch.open(self._default_wd)
-            pushed_revid = branch_from.last_revision()
-        branch_to = branch.Branch.open('to')
-        repo_to = branch_to.repository
-        self.assertTrue(repo_to.has_revision(pushed_revid))
-        self.assertEqual(branch_to.last_revision(), pushed_revid)
-
 
 
 class TestDpushStrictWithoutChanges(TestDpushStrictMixin,

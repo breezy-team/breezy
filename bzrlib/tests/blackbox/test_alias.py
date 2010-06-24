@@ -16,11 +16,14 @@
 #
 
 """Tests of the 'bzr alias' command."""
+import os
+import codecs
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
+from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
-class TestAlias(ExternalBase):
+class TestAlias(TestCaseWithTransport):
 
     def test_list_alias_with_none(self):
         """Calling alias with no parameters lists existing aliases."""
@@ -40,6 +43,26 @@ class TestAlias(ExternalBase):
         self.run_bzr('alias commit="commit --strict"')
         out, err = self.run_bzr('alias commit')
         self.assertEquals('bzr alias commit="commit --strict"\n', out)
+
+    def test_unicode_alias(self):
+        """Unicode aliases should work (Bug #529930)"""
+        config_enc = 'utf-8'
+        file_name = u'foo\xb6'
+
+        tree = self.make_branch_and_tree('.')
+        self.build_tree([file_name])
+        tree.add(file_name)
+        tree.commit('added')
+
+        ensure_config_dir_exists()
+        CONFIG=(u'[ALIASES]\n'
+                u'ust=st foo\xb6\n')
+
+        codecs.open(config_filename(),'w', config_enc).write(CONFIG)
+
+        out, err = self.run_bzr('ust')
+        self.assertEquals(err, '')
+        self.assertEquals(out, '')
 
     def test_alias_listing_alphabetical(self):
         self.run_bzr('alias commit="commit --strict"')

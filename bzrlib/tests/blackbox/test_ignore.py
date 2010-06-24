@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,11 +34,11 @@ from bzrlib.osutils import (
     pathjoin,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class TestCommands(ExternalBase):
+class TestCommands(TestCaseWithTransport):
 
     def test_ignore_absolutes(self):
         """'ignore' with an absolute path returns an error"""
@@ -106,12 +106,14 @@ class TestCommands(ExternalBase):
         """'ignore' with no arguments returns an error"""
         self.make_branch_and_tree('.')
         self.run_bzr_error(('bzr: ERROR: ignore requires at least one '
-                            'NAME_PATTERN or --old-default-rules\n',),
+                            'NAME_PATTERN or --default-rules.\n',),
                            'ignore')
 
-    def test_ignore_old_defaults(self):
-        out, err = self.run_bzr('ignore --old-default-rules')
-        self.assertContainsRe(out, 'CVS')
+    def test_ignore_default_rules(self):
+        out, err = self.run_bzr(['ignore', '--default-rules'])
+        reference_set = set(ignores.USER_DEFAULTS)
+        output_set = set(out.rstrip().split('\n'))
+        self.assertEqual(reference_set, output_set)
         self.assertEqual('', err)
 
     def test_ignore_versioned_file(self):
@@ -154,3 +156,9 @@ class TestCommands(ExternalBase):
                          " and match your ignore pattern:\nb\n"\
                          "These files will continue to be version controlled"\
                          " unless you 'bzr remove' them.\n")
+
+    def test_ignore_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('a')
+        self.run_bzr(['ignore', '--directory=a', 'README'])
+        self.check_file_contents('a/.bzrignore', 'README\n')

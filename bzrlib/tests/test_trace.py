@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,13 +29,14 @@ from bzrlib import (
     errors,
     trace,
     )
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import features, TestCaseInTempDir, TestCase
 from bzrlib.trace import (
     mutter, mutter_callsite, report_exception,
     set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
     pop_log_file,
     push_log_file,
     _rollover_trace_maybe,
+    show_error,
     )
 
 
@@ -102,6 +103,19 @@ class TestTrace(TestCase):
         # 'No such file' for open()
         self.assertContainsRe(msg,
             r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
+
+    def test_format_pywintypes_error(self):
+        self.requireFeature(features.pywintypes)
+        import pywintypes, win32file
+        try:
+            win32file.RemoveDirectory('nosuchfile22222')
+        except pywintypes.error:
+            pass
+        msg = _format_exception()
+        # GZ 2010-05-03: Formatting for pywintypes.error is basic, a 3-tuple
+        #                with errno, function name, and locale error message
+        self.assertContainsRe(msg,
+            r"^bzr: ERROR: \(2, 'RemoveDirectory[AW]?', .*\)")
 
     def test_format_unicode_error(self):
         try:
@@ -215,6 +229,26 @@ class TestTrace(TestCase):
         # have to do a replaceent here as well.
         self.assertContainsRe(log, "ascii argument: \xb5".decode('utf8',
             'replace'))
+        
+    def test_show_error(self):
+        show_error('error1')
+        show_error(u'error2 \xb5 blah')
+        show_error('arg: %s', 'blah')
+        show_error('arg2: %(key)s', {'key':'stuff'})
+        try:
+            raise Exception("oops")
+        except:
+            show_error('kwarg', exc_info=True)
+        log = self.get_log()
+        self.assertContainsRe(log, 'error1')
+        self.assertContainsRe(log, u'error2 \xb5 blah')
+        self.assertContainsRe(log, 'arg: blah')
+        self.assertContainsRe(log, 'arg2: stuff')
+        self.assertContainsRe(log, 'kwarg')
+        self.assertContainsRe(log, 'Traceback \\(most recent call last\\):')
+        self.assertContainsRe(log, 'File ".*test_trace.py", line .*, in test_show_error')
+        self.assertContainsRe(log, 'raise Exception\\("oops"\\)')
+        self.assertContainsRe(log, 'Exception: oops')
 
     def test_push_log_file(self):
         """Can push and pop log file, and this catches mutter messages.
@@ -253,16 +287,17 @@ class TestTrace(TestCase):
         # If _open_bzr_log cannot open the file, then we should write the
         # warning to stderr. Since this is normally happening before logging is
         # set up.
-        self.addCleanup(setattr, sys, 'stderr', sys.stderr)
-        self.addCleanup(setattr, trace, '_bzr_log_filename',
-                        trace._bzr_log_filename)
-        sys.stderr = StringIO()
+        self.overrideAttr(sys, 'stderr', StringIO())
         # Set the log file to something that cannot exist
+        # FIXME: A bit dangerous: we are not in an isolated dir here -- vilajam
+        # 20100125
         os.environ['BZR_LOG'] = os.getcwd() + '/no-dir/bzr.log'
+        self.overrideAttr(trace, '_bzr_log_filename')
         logf = trace._open_bzr_log()
         self.assertIs(None, logf)
         self.assertContainsRe(sys.stderr.getvalue(),
                               'failed to open trace file: .*/no-dir/bzr.log')
+
 
 class TestVerbosityLevel(TestCase):
 

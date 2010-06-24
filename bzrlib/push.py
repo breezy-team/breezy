@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,8 +17,6 @@
 """UI helper for the push command."""
 
 from bzrlib import (
-    builtins,
-    branch,
     bzrdir,
     errors,
     revision as _mod_revision,
@@ -110,6 +108,12 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                     "\nYou may supply --create-prefix to create all"
                     " leading parent directories."
                     % location)
+            # This shouldn't occur (because create_prefix is true, so
+            # create_clone_on_transport should be catching NoSuchFile and
+            # creating the missing directories) but if it does the original
+            # NoSuchFile error will be more informative than an
+            # UnboundLocalError for br_to.
+            raise
         except errors.TooManyRedirections:
             raise errors.BzrCommandError("Too many redirections trying "
                                          "to make %s." % location)

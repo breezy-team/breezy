@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,30 +17,25 @@
 """Tests for Knit data structure"""
 
 from cStringIO import StringIO
-import difflib
-import gzip
 import sys
 
 from bzrlib import (
     errors,
-    generate_ids,
     knit,
     multiparent,
     osutils,
     pack,
     tests,
+    tuned_gzip,
     )
 from bzrlib.errors import (
-    RevisionAlreadyPresent,
     KnitHeaderError,
-    RevisionNotPresent,
     NoSuchFile,
     )
 from bzrlib.index import *
 from bzrlib.knit import (
     AnnotatedKnitContent,
     KnitContent,
-    KnitSequenceMatcher,
     KnitVersionedFiles,
     PlainKnitContent,
     _VFContentMapGenerator,
@@ -50,18 +45,15 @@ from bzrlib.knit import (
     _KnitKeyAccess,
     make_file_factory,
     )
+from bzrlib.patiencediff import PatienceSequenceMatcher
 from bzrlib.repofmt import pack_repo
 from bzrlib.tests import (
-    Feature,
-    KnownFailure,
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestNotApplicable,
     )
 from bzrlib.transport import get_transport
-from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tuned_gzip import GzipFile
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
@@ -106,8 +98,8 @@ class KnitContentTestsMixin(object):
         line_delta = source_content.line_delta(target_content)
         delta_blocks = list(KnitContent.get_line_delta_blocks(line_delta,
             source_lines, target_lines))
-        matcher = KnitSequenceMatcher(None, source_lines, target_lines)
-        matcher_blocks = list(list(matcher.get_matching_blocks()))
+        matcher = PatienceSequenceMatcher(None, source_lines, target_lines)
+        matcher_blocks = list(matcher.get_matching_blocks())
         self.assertEqual(matcher_blocks, delta_blocks)
 
     def test_get_line_delta_blocks(self):
@@ -700,7 +692,7 @@ class LowLevelKnitDataTests(TestCase):
 
     def create_gz_content(self, text):
         sio = StringIO()
-        gz_file = gzip.GzipFile(mode='wb', fileobj=sio)
+        gz_file = tuned_gzip.GzipFile(mode='wb', fileobj=sio)
         gz_file.write(text)
         gz_file.close()
         return sio.getvalue()
@@ -862,12 +854,8 @@ class LowLevelKnitIndexTests(TestCase):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
         from bzrlib._knit_load_data_py import _load_data_py
-        knit._load_data = _load_data_py
+        self.overrideAttr(knit, '_load_data', _load_data_py)
         allow_writes = lambda: 'w' in mode
         return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
 
@@ -1302,14 +1290,11 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
         from bzrlib._knit_load_data_pyx import _load_data_c
-        knit._load_data = _load_data_c
+        self.overrideAttr(knit, '_load_data', _load_data_c)
         allow_writes = lambda: mode == 'w'
-        return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
+        return _KndxIndex(transport, mapper, lambda:None,
+                          allow_writes, lambda:True)
 
 
 class Test_KnitAnnotator(TestCaseWithMemoryTransport):

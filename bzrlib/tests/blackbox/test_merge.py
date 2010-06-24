@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -393,7 +393,7 @@ class TestMerge(tests.TestCaseWithTransport):
     def test_directive_cherrypick(self):
         source = self.make_branch_and_tree('source')
         source.commit("nothing")
-        # see https://bugs.edge.launchpad.net/bzr/+bug/409688 - trying to
+        # see https://bugs.launchpad.net/bzr/+bug/409688 - trying to
         # cherrypick from one branch into another unrelated branch with a
         # different root id will give shape conflicts.  as a workaround we
         # make sure they share the same root id.

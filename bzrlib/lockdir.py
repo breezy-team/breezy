@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -151,7 +151,7 @@ from bzrlib import rio
 # files/dirs created.
 
 
-_DEFAULT_TIMEOUT_SECONDS = 300
+_DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_POLL_SECONDS = 1.0
 
 
@@ -243,7 +243,7 @@ class LockDir(lock.Lock):
         # have a similar bug allowing someone to think they got the lock
         # when it's already held.
         #
-        # See <https://bugs.edge.launchpad.net/bzr/+bug/498378> for one case.
+        # See <https://bugs.launchpad.net/bzr/+bug/498378> for one case.
         #
         # Strictly the check is unnecessary and a waste of time for most
         # people, but probably worth trapping if something is wrong.
@@ -252,7 +252,7 @@ class LockDir(lock.Lock):
         if info is None:
             raise LockFailed(self, "lock was renamed into place, but "
                 "now is missing!")
-        if info['nonce'] != self.nonce:
+        if info.get('nonce') != self.nonce:
             self._trace("rename succeeded, "
                 "but lock is still held by someone else")
             raise LockContention(self)
@@ -430,7 +430,7 @@ class LockDir(lock.Lock):
     def peek(self):
         """Check if the lock is held by anyone.
 
-        If it is held, this returns the lock info structure as a rio Stanza,
+        If it is held, this returns the lock info structure as a dict
         which contains some information about the current lock holder.
         Otherwise returns None.
         """
@@ -447,9 +447,9 @@ class LockDir(lock.Lock):
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
         try:
-            user = config.user_email()
-        except errors.NoEmailInUsername:
             user = config.username()
+        except errors.NoWhoami:
+            user = osutils.getuser_unicode()
         s = rio.Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
@@ -459,8 +459,14 @@ class LockDir(lock.Lock):
         return s.to_string()
 
     def _parse_info(self, info_bytes):
-        # TODO: Handle if info_bytes is empty
-        return rio.read_stanza(osutils.split_lines(info_bytes)).as_dict()
+        stanza = rio.read_stanza(osutils.split_lines(info_bytes))
+        if stanza is None:
+            # see bug 185013; we fairly often end up with the info file being
+            # empty after an interruption; we could log a message here but
+            # there may not be much we can say
+            return {}
+        else:
+            return stanza.as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -533,24 +539,27 @@ class LockDir(lock.Lock):
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
+                # As local lock urls are correct we display them.
+                # We avoid displaying remote lock urls.
                 lock_url = self.transport.abspath(self.path)
-                # See <https://bugs.edge.launchpad.net/bzr/+bug/250451>
-                # the URL here is sometimes not one that is useful to the
-                # user, perhaps being wrapped in a lp-%d or chroot decorator,
-                # especially if this error is issued from the server.
-                self._report_function('%s %s\n'
-                    '%s\n' # held by
-                    '%s\n' # locked ... ago
-                    'Will continue to try until %s, unless '
-                    'you press Ctrl-C.\n'
-                    'See "bzr help break-lock" for more.',
-                    start,
-                    formatted_info[0],
-                    formatted_info[1],
-                    formatted_info[2],
-                    deadline_str,
-                    )
-
+                if lock_url.startswith('file://'):
+                    lock_url = lock_url.split('.bzr/')[0]
+                else:
+                    lock_url = ''
+                user, hostname, pid, time_ago = formatted_info
+                msg = ('%s lock %s '        # lock_url
+                    'held by '              # start
+                    '%s\n'                  # user
+                    'at %s '                # hostname
+                    '[process #%s], '       # pid
+                    'acquired %s.')         # time ago
+                msg_args = [start, lock_url, user, hostname, pid, time_ago]
+                if timeout > 0:
+                    msg += ('\nWill continue to try until %s, unless '
+                        'you press Ctrl-C.')
+                    msg_args.append(deadline_str)
+                msg += '\nSee "bzr help break-lock" for more.'
+                self._report_function(msg, *msg_args)
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
                 raise LockContention(self)
@@ -558,8 +567,11 @@ class LockDir(lock.Lock):
                 self._trace("waiting %ss", poll)
                 time.sleep(poll)
             else:
+                # As timeout is always 0 for remote locks
+                # this block is applicable only for local
+                # lock contention
                 self._trace("timeout after waiting %ss", timeout)
-                raise LockContention(self)
+                raise LockContention('(local)', lock_url)
 
     def leave_in_place(self):
         self._locked_via_token = True
@@ -610,12 +622,19 @@ class LockDir(lock.Lock):
 
     def _format_lock_info(self, info):
         """Turn the contents of peek() into something for the user"""
-        lock_url = self.transport.abspath(self.path)
-        delta = time.time() - int(info['start_time'])
+        start_time = info.get('start_time')
+        if start_time is None:
+            time_ago = '(unknown)'
+        else:
+            time_ago = format_delta(time.time() - int(info['start_time']))
+        user = info.get('user', '<unknown>')
+        hostname = info.get('hostname', '<unknown>')
+        pid = info.get('pid', '<unknown>')
         return [
-            'lock %s' % (lock_url,),
-            'held by %(user)s on host %(hostname)s [process #%(pid)s]' % info,
-            'locked %s' % (format_delta(delta),),
+            user,
+            hostname,
+            pid,
+            time_ago,
             ]
 
     def validate_token(self, token):

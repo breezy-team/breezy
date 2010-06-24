@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2010 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -191,22 +191,21 @@ class TestLockDir(TestCaseWithTransport):
                     "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
-        lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(1, len(self._logged_reports))
-        lock_url = lf2.transport.abspath(lf2.path)
-        self.assertEqual('%s %s\n'
-                         '%s\n%s\n'
-                         'Will continue to try until %s, unless '
-                         'you press Ctrl-C.\n'
-                         'See "bzr help break-lock" for more.',
-                         self._logged_reports[0][0])
-        args = self._logged_reports[0][1]
-        self.assertEqual('Unable to obtain', args[0])
-        self.assertEqual('lock %s' % (lock_base,), args[1])
-        self.assertStartsWith(args[2], 'held by ')
-        self.assertStartsWith(args[3], 'locked ')
-        self.assertEndsWith(args[3], ' ago')
-        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
+        self.assertEqual(self._logged_reports[0][0],
+            '%s lock %s held by %s\n'
+            'at %s [process #%s], acquired %s.\n'
+            'Will continue to try until %s, unless '
+            'you press Ctrl-C.\n'
+            'See "bzr help break-lock" for more.')
+        start, lock_url, user, hostname, pid, time_ago, deadline_str = \
+            self._logged_reports[0][1]
+        self.assertEqual(start, u'Unable to obtain')
+        self.assertEqual(user, u'jrandom@example.com')
+        # skip hostname
+        self.assertContainsRe(pid, r'\d+')
+        self.assertContainsRe(time_ago, r'.* ago')
+        self.assertContainsRe(deadline_str, r'\d{2}:\d{2}:\d{2}')
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.
@@ -597,11 +596,10 @@ class TestLockDir(TestCaseWithTransport):
             info_list = ld1._format_lock_info(ld1.peek())
         finally:
             ld1.unlock()
-        self.assertEqual('lock %s' % (ld1.transport.abspath(ld1.path),),
-                         info_list[0])
-        self.assertContainsRe(info_list[1],
-                              r'^held by .* on host .* \[process #\d*\]$')
-        self.assertContainsRe(info_list[2], r'locked \d+ seconds? ago$')
+        self.assertEqual(info_list[0], u'jrandom@example.com')
+        # info_list[1] is hostname. we skip this.
+        self.assertContainsRe(info_list[2], '^\d+$') # pid
+        self.assertContainsRe(info_list[3], r'^\d+ seconds? ago$') # time_ago
 
     def test_lock_without_email(self):
         global_config = config.GlobalConfig()
@@ -665,6 +663,23 @@ class TestLockDir(TestCaseWithTransport):
         self.assertRaises(errors.LockContention, ld2.attempt_lock)
         # no kibble
         check_dir(['held'])
+
+    def test_no_lockdir_info(self):
+        """We can cope with empty info files."""
+        # This seems like a fairly common failure case - see
+        # <https://bugs.launchpad.net/bzr/+bug/185103> and all its dupes.
+        # Processes are often interrupted after opening the file
+        # before the actual contents are committed.
+        t = self.get_transport()
+        t.mkdir('test_lock')
+        t.mkdir('test_lock/held')
+        t.put_bytes('test_lock/held/info', '')
+        lf = LockDir(t, 'test_lock')
+        info = lf.peek()
+        formatted_info = lf._format_lock_info(info)
+        self.assertEquals(
+            ['<unknown>', '<unknown>', '<unknown>', '(unknown)'],
+            formatted_info)
 
 
 class TestLockDirHooks(TestCaseWithTransport):

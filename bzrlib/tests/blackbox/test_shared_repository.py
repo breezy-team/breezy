@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 import os
 
+from bzrlib import osutils
 from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
 import bzrlib.errors as errors
 from bzrlib.tests import TestCaseInTempDir
@@ -138,3 +139,24 @@ Location:
         self.assertRaises(errors.NoRepositoryPresent, dir.open_repository)
         e = self.assertRaises(errors.NotBranchError, dir.open_branch)
         self.assertNotContainsRe(str(e), "location is a repository")
+
+    def test_init_repo_with_post_repo_init_hook(self):
+        calls = []
+        BzrDir.hooks.install_named_hook('post_repo_init', calls.append, None)
+        self.assertLength(0, calls)
+        self.run_bzr("init-repository a")
+        self.assertLength(1, calls)
+
+    def test_init_repo_without_username(self):
+        """Ensure init-repo works if username is not set.
+        """
+        # bzr makes user specified whoami mandatory for operations
+        # like commit as whoami is recorded. init-repo however is not so final
+        # and uses whoami only in a lock file. Without whoami the login name
+        # is used. This test is to ensure that init-repo passes even when whoami
+        # is not available.
+        osutils.set_or_unset_env('EMAIL', None)
+        osutils.set_or_unset_env('BZR_EMAIL', None)
+        out, err = self.run_bzr(['init-repo', 'foo'])
+        self.assertEqual(err, '')
+        self.assertTrue(os.path.exists('foo'))

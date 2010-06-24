@@ -15,12 +15,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import errno
 import os
 import shutil
-import sys
 
-from bzrlib.osutils import has_symlinks, isdir
+from bzrlib import bzrdir, errors
+from bzrlib.osutils import isdir
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
 
@@ -53,11 +52,14 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
     try:
         deletables = list(iter_deletables(tree, unknown=unknown,
             ignored=ignored, detritus=detritus))
+        deletables = _filter_out_nested_bzrdirs(deletables)
         if len(deletables) == 0:
             note('Nothing to delete.')
             return 0
         if not no_prompt:
             for path, subp in deletables:
+                # FIXME using print is very bad idea
+                # clean_tree should accept to_file argument to write the output
                 print subp
             val = raw_input('Are you sure you wish to delete these [y/N]?')
             if val.lower() not in ('y', 'yes'):
@@ -66,6 +68,27 @@ def clean_tree(directory, unknown=False, ignored=False, detritus=False,
         delete_items(deletables, dry_run=dry_run)
     finally:
         tree.unlock()
+
+
+def _filter_out_nested_bzrdirs(deletables):
+    result = []
+    for path, subp in deletables:
+        # bzr won't recurse into unknowns/ignored directories by default
+        # so we don't pay a penalty for checking subdirs of path for nested
+        # bzrdir.
+        # That said we won't detect the branch in the subdir of non-branch
+        # directory and therefore delete it. (worth to FIXME?)
+        if isdir(path):
+            try:
+                bzrdir.BzrDir.open(path)
+            except errors.NotBranchError:
+                result.append((path,subp))
+            else:
+                # TODO may be we need to notify user about skipped directories?
+                pass
+        else:
+            result.append((path,subp))
+    return result
 
 
 def delete_items(deletables, dry_run=False):

@@ -19,10 +19,11 @@
 
 import os
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib import shelf
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestRemoveTree(ExternalBase):
+class TestRemoveTree(TestCaseWithTransport):
 
     def setUp(self):
         super(TestRemoveTree, self).setUp()
@@ -42,6 +43,12 @@ class TestRemoveTree(ExternalBase):
     def test_remove_tree_original_branch_explicit(self):
         self.run_bzr('remove-tree branch1')
         self.failIfExists('branch1/foo')
+
+    def test_remove_tree_multiple_branch_explicit(self):
+        self.tree.bzrdir.sprout('branch2')
+        self.run_bzr('remove-tree branch1 branch2')
+        self.failIfExists('branch1/foo')
+        self.failIfExists('branch2/foo')
 
     def test_remove_tree_sprouted_branch(self):
         self.tree.bzrdir.sprout('branch2')
@@ -149,3 +156,22 @@ class TestRemoveTree(ExternalBase):
         self.run_bzr('remove-tree branch2 --force')
         self.failIfExists('branch2/foo')
         self.failIfExists('branch2/bar')
+
+    def test_remove_tree_shelved_changes(self):
+        # https://bugs.launchpad.net/bzr/+bug/586639
+        tree = self.make_branch_and_tree('.')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
+        self.addCleanup(creator.finalize)
+        shelf_id = tree.get_shelf_manager().shelve_changes(creator, 'Foo')
+        output = self.run_bzr_error(["Working tree .* has shelved changes"],
+                                    'remove-tree', retcode=3)
+
+    def test_remove_tree_shelved_changes_force(self):
+        tree = self.make_branch_and_tree('.')
+        creator = shelf.ShelfCreator(tree, tree.basis_tree(), [])
+        self.addCleanup(creator.finalize)
+        shelf_id = tree.get_shelf_manager().shelve_changes(creator, 'Foo')
+        self.run_bzr('remove-tree --force')
+        self.run_bzr('checkout')
+        # Ensure shelf is empty
+        self.assertIs(None, tree.get_shelf_manager().last_shelf())

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +16,17 @@
 
 """Test branches with inaccessible parents."""
 
-import os
+from bzrlib import (
+    branch,
+    errors,
+    )
+from bzrlib.tests import (
+    per_branch,
+    test_server,
+    )
 
-from bzrlib import branch, errors
-from bzrlib.tests.http_server import HttpServer
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
-from bzrlib.transport.local import LocalURLServer
-from bzrlib.transport.chroot import TestingChrootServer
 
-
-class InaccessibleParentTests(TestCaseWithBranch):
+class InaccessibleParentTests(per_branch.TestCaseWithBranch):
     """Tests with branches with "inaccessible" parents.
 
     An "inaccessible" parent location is one that cannot be represented, e.g. if
@@ -36,8 +37,8 @@ class InaccessibleParentTests(TestCaseWithBranch):
 
     def setUp(self):
         super(InaccessibleParentTests, self).setUp()
-        if self.transport_server in (LocalURLServer, None):
-            self.transport_readonly_server = TestingChrootServer
+        if self.transport_server in (test_server.LocalURLServer, None):
+            self.transport_readonly_server = test_server.TestingChrootServer
 
     def get_branch_with_invalid_parent(self):
         """Get a branch whose get_parent will raise InaccessibleParent."""

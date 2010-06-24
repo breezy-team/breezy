@@ -24,6 +24,7 @@ import time
 
 from bzrlib import (
     chk_map,
+    cleanup,
     debug,
     graph,
     osutils,
@@ -63,11 +64,13 @@ from bzrlib.index import (
     GraphIndex,
     InMemoryGraphIndex,
     )
+from bzrlib.lock import LogicalLockResult
 from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepositoryFormat,
     RepositoryFormat,
+    RepositoryWriteLockResult,
     RootCommitBuilder,
     StreamSource,
     )
@@ -586,26 +589,6 @@ class AggregateIndex(object):
                                              flush_func=flush_func)
         self.add_callback = None
 
-    def replace_indices(self, index_to_pack, indices):
-        """Replace the current mappings with fresh ones.
-
-        This should probably not be used eventually, rather incremental add and
-        removal of indices. It has been added during refactoring of existing
-        code.
-
-        :param index_to_pack: A mapping from index objects to
-            (transport, name) tuples for the pack file data.
-        :param indices: A list of indices.
-        """
-        # refresh the revision pack map dict without replacing the instance.
-        self.index_to_pack.clear()
-        self.index_to_pack.update(index_to_pack)
-        # XXX: API break - clearly a 'replace' method would be good?
-        self.combined_index._indices[:] = indices
-        # the current add nodes callback for the current writable index if
-        # there is one.
-        self.add_callback = None
-
     def add_index(self, index, pack):
         """Add index to the aggregate, which is an index for Pack pack.
 
@@ -618,7 +601,7 @@ class AggregateIndex(object):
         # expose it to the index map
         self.index_to_pack[index] = pack.access_tuple()
         # put it at the front of the linear index list
-        self.combined_index.insert_index(0, index)
+        self.combined_index.insert_index(0, index, pack.name)
 
     def add_writable_index(self, index, pack):
         """Add an index which is able to have data added to it.
@@ -644,16 +627,18 @@ class AggregateIndex(object):
         self.data_access.set_writer(None, None, (None, None))
         self.index_to_pack.clear()
         del self.combined_index._indices[:]
+        del self.combined_index._index_names[:]
         self.add_callback = None
 
-    def remove_index(self, index, pack):
+    def remove_index(self, index):
         """Remove index from the indices used to answer queries.
 
         :param index: An index from the pack parameter.
-        :param pack: A Pack instance.
         """
         del self.index_to_pack[index]
-        self.combined_index._indices.remove(index)
+        pos = self.combined_index._indices.index(index)
+        del self.combined_index._indices[pos]
+        del self.combined_index._index_names[pos]
         if (self.add_callback is not None and
             getattr(index, 'add_nodes', None) == self.add_callback):
             self.add_callback = None
@@ -1415,11 +1400,20 @@ class RepositoryPackCollection(object):
         self.inventory_index = AggregateIndex(self.reload_pack_names, flush)
         self.text_index = AggregateIndex(self.reload_pack_names, flush)
         self.signature_index = AggregateIndex(self.reload_pack_names, flush)
+        all_indices = [self.revision_index, self.inventory_index,
+                self.text_index, self.signature_index]
         if use_chk_index:
             self.chk_index = AggregateIndex(self.reload_pack_names, flush)
+            all_indices.append(self.chk_index)
         else:
             # used to determine if we're using a chk_index elsewhere.
             self.chk_index = None
+        # Tell all the CombinedGraphIndex objects about each other, so they can
+        # share hints about which pack names to search first.
+        all_combined = [agg_idx.combined_index for agg_idx in all_indices]
+        for combined_idx in all_combined:
+            combined_idx.set_sibling_indices(
+                set(all_combined).difference([combined_idx]))
         # resumed packs
         self._resumed_packs = []
 
@@ -1568,7 +1562,7 @@ class RepositoryPackCollection(object):
         """Is the collection already packed?"""
         return not (self.repo._format.pack_compresses or (len(self._names) > 1))
 
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Pack the pack collection totally."""
         self.ensure_loaded()
         total_packs = len(self._names)
@@ -1589,6 +1583,9 @@ class RepositoryPackCollection(object):
                 pack_operations[-1][0] += pack.get_revision_count()
                 pack_operations[-1][1].append(pack)
         self._execute_pack_operations(pack_operations, OptimisingPacker)
+
+        if clean_obsolete_packs:
+            self._clear_obsolete_packs()
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         """Plan a pack operation.
@@ -1840,14 +1837,22 @@ class RepositoryPackCollection(object):
         self._remove_pack_indices(pack)
         self.packs.remove(pack)
 
-    def _remove_pack_indices(self, pack):
-        """Remove the indices for pack from the aggregated indices."""
-        self.revision_index.remove_index(pack.revision_index, pack)
-        self.inventory_index.remove_index(pack.inventory_index, pack)
-        self.text_index.remove_index(pack.text_index, pack)
-        self.signature_index.remove_index(pack.signature_index, pack)
-        if self.chk_index is not None:
-            self.chk_index.remove_index(pack.chk_index, pack)
+    def _remove_pack_indices(self, pack, ignore_missing=False):
+        """Remove the indices for pack from the aggregated indices.
+        
+        :param ignore_missing: Suppress KeyErrors from calling remove_index.
+        """
+        for index_type in Pack.index_definitions.keys():
+            attr_name = index_type + '_index'
+            aggregate_index = getattr(self, attr_name)
+            if aggregate_index is not None:
+                pack_index = getattr(pack, attr_name)
+                try:
+                    aggregate_index.remove_index(pack_index)
+                except KeyError:
+                    if ignore_missing:
+                        continue
+                    raise
 
     def reset(self):
         """Clear all cached data."""
@@ -2091,24 +2096,21 @@ class RepositoryPackCollection(object):
         # FIXME: just drop the transient index.
         # forget what names there are
         if self._new_pack is not None:
-            try:
-                self._new_pack.abort()
-            finally:
-                # XXX: If we aborted while in the middle of finishing the write
-                # group, _remove_pack_indices can fail because the indexes are
-                # already gone.  If they're not there we shouldn't fail in this
-                # case.  -- mbp 20081113
-                self._remove_pack_indices(self._new_pack)
-                self._new_pack = None
+            operation = cleanup.OperationWithCleanups(self._new_pack.abort)
+            operation.add_cleanup(setattr, self, '_new_pack', None)
+            # If we aborted while in the middle of finishing the write
+            # group, _remove_pack_indices could fail because the indexes are
+            # already gone.  But they're not there we shouldn't fail in this
+            # case, so we pass ignore_missing=True.
+            operation.add_cleanup(self._remove_pack_indices, self._new_pack,
+                ignore_missing=True)
+            operation.run_simple()
         for resumed_pack in self._resumed_packs:
-            try:
-                resumed_pack.abort()
-            finally:
-                # See comment in previous finally block.
-                try:
-                    self._remove_pack_indices(resumed_pack)
-                except KeyError:
-                    pass
+            operation = cleanup.OperationWithCleanups(resumed_pack.abort)
+            # See comment in previous finally block.
+            operation.add_cleanup(self._remove_pack_indices, resumed_pack,
+                ignore_missing=True)
+            operation.run_simple()
         del self._resumed_packs[:]
 
     def _remove_resumed_pack_indices(self):
@@ -2340,6 +2342,10 @@ class KnitPackRepository(KnitRepository):
         return self._write_lock_count
 
     def lock_write(self, token=None):
+        """Lock the repository for writes.
+
+        :return: A bzrlib.repository.RepositoryWriteLockResult.
+        """
         locked = self.is_locked()
         if not self._write_lock_count and locked:
             raise errors.ReadOnlyError(self)
@@ -2354,8 +2360,13 @@ class KnitPackRepository(KnitRepository):
                 # Writes don't affect fallback repos
                 repo.lock_read()
             self._refresh_data()
+        return RepositoryWriteLockResult(self.unlock, None)
 
     def lock_read(self):
+        """Lock the repository for reads.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         locked = self.is_locked()
         if self._write_lock_count:
             self._write_lock_count += 1
@@ -2368,6 +2379,7 @@ class KnitPackRepository(KnitRepository):
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
+        return LogicalLockResult(self.unlock)
 
     def leave_lock_in_place(self):
         # not supported - raise an error
@@ -2378,13 +2390,13 @@ class KnitPackRepository(KnitRepository):
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
     @needs_write_lock
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This will pack all the data to a single pack. In future it may
         recompress deltas or do other such expensive operations.
         """
-        self._pack_collection.pack(hint=hint)
+        self._pack_collection.pack(hint=hint, clean_obsolete_packs=clean_obsolete_packs)
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
@@ -2546,7 +2558,9 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         utf8_files = [('format', self.get_format_string())]
 
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
-        return self.open(a_bzrdir=a_bzrdir, _found=True)
+        repository = self.open(a_bzrdir=a_bzrdir, _found=True)
+        self._run_post_repo_init_hooks(repository, a_bzrdir, shared)
+        return repository
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().
@@ -2615,6 +2629,7 @@ class RepositoryFormatKnitPack3(RepositoryFormatPack):
     repository_class = KnitPackRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
+    experimental = True
     supports_tree_reference = True
     @property
     def _serializer(self):
@@ -2888,6 +2903,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     repository_class = KnitPackRepository
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
+    experimental = True
     supports_tree_reference = True
     supports_external_lookups = True
     # What index classes to use

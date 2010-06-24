@@ -17,10 +17,10 @@
 """Tests for the 'check' CLI command."""
 
 from bzrlib.tests import ChrootedTestCase
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCheck(ExternalBase):
+class TestCheck(TestCaseWithTransport):
 
     def test_check_no_tree(self):
         self.make_branch('.')

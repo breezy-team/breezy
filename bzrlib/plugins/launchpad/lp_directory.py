@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,14 +17,13 @@
 
 """Directory lookup that uses Launchpad."""
 
-from urlparse import urlsplit, urlunsplit
+from urlparse import urlsplit
 import xmlrpclib
 
 from bzrlib import (
     debug,
     errors,
     trace,
-    urlutils,
     )
 from bzrlib.transport import (
     get_transport,

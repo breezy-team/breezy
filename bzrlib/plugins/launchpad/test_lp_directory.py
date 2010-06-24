@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -91,7 +91,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:apt', factory))
         # Make sure that resolve went to the production server.
-        self.assertEquals('https://xmlrpc.edge.launchpad.net/bazaar/',
+        self.assertEquals('https://xmlrpc.launchpad.net/bazaar/',
                           factory._service_url)
 
     def test_staging(self):
@@ -216,7 +216,7 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         directories.remove('lp:')
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
         self.addCleanup(_register_directory)
-        self.addCleanup(lambda: directories.remove('lp:'))
+        self.addCleanup(directories.remove, 'lp:')
         transport = get_transport('lp:///apt')
         branch = Branch.open_from_transport(transport)
         self.assertEqual(target_branch.base, branch.base)

@@ -32,19 +32,14 @@ from bzrlib.repofmt import (
     weaverepo,
     )
 from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
-from bzrlib.smart.server import (
-    ReadonlySmartTCPServer_for_testing,
-    ReadonlySmartTCPServer_for_testing_v2_only,
-    SmartTCPServer_for_testing,
-    SmartTCPServer_for_testing_v2_only,
-    )
 from bzrlib.tests import (
-                          default_transport,
-                          multiply_scenarios,
-                          multiply_tests,
-                          )
+    default_transport,
+    multiply_scenarios,
+    multiply_tests,
+    test_server,
+    )
 from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.transport.memory import MemoryServer
+from bzrlib.transport import memory
 
 
 def formats_to_scenarios(formats, transport_server, transport_readonly_server,
@@ -91,14 +86,14 @@ def all_repository_format_scenarios():
         None)
     format_scenarios.extend(formats_to_scenarios(
         [('-default', RemoteRepositoryFormat())],
-        SmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing,
-        MemoryServer))
+        test_server.SmartTCPServer_for_testing,
+        test_server.ReadonlySmartTCPServer_for_testing,
+        memory.MemoryServer))
     format_scenarios.extend(formats_to_scenarios(
         [('-v2', RemoteRepositoryFormat())],
-        SmartTCPServer_for_testing_v2_only,
-        ReadonlySmartTCPServer_for_testing_v2_only,
-        MemoryServer))
+        test_server.SmartTCPServer_for_testing_v2_only,
+        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
+        memory.MemoryServer))
     return format_scenarios
 
 

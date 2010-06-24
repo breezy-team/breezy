@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,10 @@ import os
 from bzrlib import (
     tests,
     )
-from bzrlib.tests import per_tree
+from bzrlib.tests import (
+    features,
+    per_tree,
+    )
 from bzrlib.mutabletree import MutableTree
 from bzrlib.tests import SymlinkFeature, TestSkipped
 from bzrlib.transform import _PreviewTree
@@ -131,6 +134,8 @@ class TestInventory(per_tree.TestCaseWithTree):
         work_tree.add(['dir', 'dir/file'])
         if commit:
             work_tree.commit('commit 1')
+        # XXX: this isn't actually guaranteed to return the class we want to
+        # test -- mbp 2010-02-12
         return work_tree
 
     def test_canonical_path(self):
@@ -163,3 +168,21 @@ class TestInventory(per_tree.TestCaseWithTree):
         work_tree = self._make_canonical_test_tree()
         self.assertEqual('dir/None',
                          work_tree.get_canonical_inventory_path('Dir/None'))
+
+    def test_canonical_tree_name_mismatch(self):
+        # see <https://bugs.launchpad.net/bzr/+bug/368931>
+        # some of the trees we want to use can only exist on a disk, not in
+        # memory - therefore we can only test this if the filesystem is
+        # case-sensitive.
+        self.requireFeature(tests.case_sensitive_filesystem_feature)
+        work_tree = self.make_branch_and_tree('.')
+        self.build_tree(['test/', 'test/file', 'Test'])
+        work_tree.add(['test/', 'test/file', 'Test'])
+
+        test_tree = self._convert_tree(work_tree)
+        test_tree.lock_read()
+        self.addCleanup(test_tree.unlock)
+
+        self.assertEqual(['test', 'test/file', 'Test', 'test/foo', 'Test/foo'],
+            test_tree.get_canonical_inventory_paths(
+                ['test', 'test/file', 'Test', 'test/foo', 'Test/foo']))

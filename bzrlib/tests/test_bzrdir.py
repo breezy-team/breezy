@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ from bzrlib import (
     )
 import bzrlib.branch
 from bzrlib.errors import (NotBranchError,
+                           NoColocatedBranchSupport,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
@@ -50,9 +51,11 @@ from bzrlib.tests import(
     http_utils,
     )
 from bzrlib.tests.test_http import TestWithTransport_pycurl
-from bzrlib.transport import get_transport
+from bzrlib.transport import (
+    get_transport,
+    memory,
+    )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
-from bzrlib.transport.memory import MemoryServer
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
 from bzrlib.transport.readonly import ReadonlyTransportDecorator
 from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
@@ -204,8 +207,10 @@ class SampleBzrDir(bzrdir.BzrDir):
         """See BzrDir.open_repository."""
         return SampleRepository(self)
 
-    def create_branch(self):
+    def create_branch(self, name=None):
         """See BzrDir.create_branch."""
+        if name is not None:
+            raise NoColocatedBranchSupport(self)
         return SampleBranch(self)
 
     def create_workingtree(self):
@@ -354,7 +359,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
 
     def test_create_branch_convenience_root(self):
         """Creating a branch at the root of a fs should work."""
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         # outside a repo the default convenience output is a repo+branch_tree
         format = bzrdir.format_registry.make_bzrdir('knit')
         branch = bzrdir.BzrDir.create_branch_convenience(self.get_url(),
@@ -466,7 +471,8 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
         # Make stackable source branch with an unstackable repo format.
         source_bzrdir = self.make_bzrdir('source')
         pack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
-        source_branch = bzrlib.branch.BzrBranchFormat7().initialize(source_bzrdir)
+        source_branch = bzrlib.branch.BzrBranchFormat7().initialize(
+            source_bzrdir)
         # Make a directory with a default stacking policy
         parent_bzrdir = self.make_bzrdir('parent')
         stacked_on = self.make_branch('parent/stacked-on', format='pack-0.92')
@@ -565,7 +571,7 @@ class ChrootedTests(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTests, self).setUp()
-        if not self.vfs_transport_factory == MemoryServer:
+        if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = http_server.HttpServer
 
     def local_branch_path(self, branch):
@@ -1049,7 +1055,7 @@ class NonLocalTests(TestCaseWithTransport):
 
     def setUp(self):
         super(NonLocalTests, self).setUp()
-        self.vfs_transport_factory = MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
 
     def test_create_branch_convenience(self):
         # outside a repo the default convenience output is a repo+branch_tree
@@ -1333,3 +1339,15 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         url = transport.base
         err = self.assertRaises(errors.BzrError, bzrdir.BzrDir.open, url)
         self.assertEqual('fail', err._preformatted_string)
+
+    def test_post_repo_init(self):
+        from bzrlib.bzrdir import RepoInitHookParams
+        calls = []
+        bzrdir.BzrDir.hooks.install_named_hook('post_repo_init',
+            calls.append, None)
+        self.make_repository('foo')
+        self.assertLength(1, calls)
+        params = calls[0]
+        self.assertIsInstance(params, RepoInitHookParams)
+        self.assertTrue(hasattr(params, 'bzrdir'))
+        self.assertTrue(hasattr(params, 'repository'))

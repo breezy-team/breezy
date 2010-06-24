@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -111,6 +111,12 @@ _bzr_logger = logging.getLogger('bzr')
 
 
 def note(*args, **kwargs):
+    """Output a note to the user.
+
+    Takes the same parameters as logging.info.
+
+    :return: None
+    """
     # FIXME note always emits utf-8, regardless of the terminal encoding
     #
     # FIXME: clearing the ui and then going through the abstract logging
@@ -145,7 +151,7 @@ def error(*args, **kwargs):
     _bzr_logger.error(*args, **kwargs)
 
 
-def show_error(msg):
+def show_error(*args, **kwargs):
     """Show an error message to the user.
 
     Don't use this for exceptions, use report_exception instead.
@@ -238,18 +244,46 @@ def _open_bzr_log():
     This sets the global _bzr_log_filename.
     """
     global _bzr_log_filename
+
+    def _open_or_create_log_file(filename):
+        """Open existing log file, or create with ownership and permissions
+
+        It inherits the ownership and permissions (masked by umask) from
+        the containing directory to cope better with being run under sudo
+        with $HOME still set to the user's homedir.
+        """
+        flags = os.O_WRONLY | os.O_APPEND | osutils.O_TEXT
+        while True:
+            try:
+                fd = os.open(filename, flags)
+                break
+            except OSError, e:
+                if e.errno != errno.ENOENT:
+                    raise
+            try:
+                fd = os.open(filename, flags | os.O_CREAT | os.O_EXCL, 0666)
+            except OSError, e:
+                if e.errno != errno.EEXIST:
+                    raise
+            else:
+                osutils.copy_ownership_from_path(filename)
+                break
+        return os.fdopen(fd, 'at', 0) # unbuffered
+
+
     _bzr_log_filename = _get_bzr_log_filename()
     _rollover_trace_maybe(_bzr_log_filename)
     try:
-        bzr_log_file = open(_bzr_log_filename, 'at', buffering=0) # unbuffered
-        # bzr_log_file.tell() on windows always return 0 until some writing done
+        bzr_log_file = _open_or_create_log_file(_bzr_log_filename)
         bzr_log_file.write('\n')
         if bzr_log_file.tell() <= 2:
             bzr_log_file.write("this is a debug log for diagnosing/reporting problems in bzr\n")
             bzr_log_file.write("you can delete or truncate this file, or include sections in\n")
             bzr_log_file.write("bug reports to https://bugs.launchpad.net/bzr/+filebug\n\n")
+
         return bzr_log_file
-    except IOError, e:
+
+    except EnvironmentError, e:
         # If we are failing to open the log, then most likely logging has not
         # been set up yet. So we just write to stderr rather than using
         # 'warning()'. If we using warning(), users get the unhelpful 'no
@@ -340,7 +374,7 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')
     bzr_logger.removeHandler(new_handler)
-    # must be closed, otherwise logging will try to close it atexit, and the
+    # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
     bzr_logger.handlers = old_handlers
@@ -464,7 +498,9 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif isinstance(exc_object, (OSError, IOError)):
+    elif isinstance(exc_object, (OSError, IOError)) or (
+        # GZ 2010-05-20: Like (exc_type is pywintypes.error) but avoid import
+        exc_type.__name__ == "error" and exc_type.__module__ == "pywintypes"):
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)
@@ -501,3 +537,23 @@ def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
     from bzrlib.crash import report_bug
     report_bug(exc_info, err_file)
+
+
+def _flush_stdout_stderr():
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
+    try:
+        sys.stdout.flush()
+        sys.stderr.flush()
+    except IOError, e:
+        import errno
+        if e.errno in [errno.EINVAL, errno.EPIPE]:
+            pass
+        else:
+            raise
+
+
+def _flush_trace():
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
+    global _trace_file
+    if _trace_file:
+        _trace_file.flush()
