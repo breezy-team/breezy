@@ -135,6 +135,51 @@ def is_fixed_string(s):
     return False
 
 
+class _GrepDiffOutputter(object):
+    """Precalculate formatting based on options given for diff grep.
+    """
+    def __init__(self, opts):
+        self.outf = opts.outf
+        if opts.show_color:
+            pat = opts.pattern.encode(_user_encoding, 'replace')
+            if opts.fixed_string:
+                self._old = pat
+                self._new = color_string(pat, FG.BOLD_RED)
+                self.get_writer = self._get_writer_fixed_highlighted
+            else:
+                flags = opts.patternc.flags
+                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._highlight = color_string("\\1", FG.BOLD_RED)
+                self.get_writer = self._get_writer_regexp_highlighted
+        else:
+            self.get_writer = self._get_writer_plain
+
+    def _get_writer_plain(self):
+        """Get function for writing uncoloured output"""
+        write = self.outf.write
+        def _line_writer(line):
+            write(line)
+        return _line_writer
+
+    def _get_writer_regexp_highlighted(self):
+        """Get function for writing output with regexp match highlighted"""
+        _line_writer = self._get_writer_plain()
+        sub, highlight = self._sub, self._highlight
+        def _line_writer_regexp_highlighted(line):
+            """Write formatted line with matched pattern highlighted"""
+            return _line_writer(line=sub(highlight, line))
+        return _line_writer_regexp_highlighted
+
+    def _get_writer_fixed_highlighted(self):
+        """Get function for writing output with search string highlighted"""
+        _line_writer = self._get_writer_plain()
+        old, new = self._old, self._new
+        def _line_writer_fixed_highlighted(line):
+            """Write formatted line with string searched for highlighted"""
+            return _line_writer(line=line.replace(old, new))
+        return _line_writer_fixed_highlighted
+
+
 def grep_diff(opts):
     wt, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch('.')
@@ -183,6 +228,7 @@ def grep_diff(opts):
         repo = branch.repository
         diff_pattern = re.compile("^[+\-].*(" + opts.pattern + ")")
         file_pattern = re.compile("=== (modified|added) file '.*'", re.UNICODE)
+        writeline = _GrepDiffOutputter(opts).get_writer()
         for revid, revno, merge_depth in given_revs:
             if opts.levels == 1 and merge_depth != 0:
                 # with level=1 show only top level
@@ -214,7 +260,7 @@ def grep_diff(opts):
                     if display_file:
                         print "  " + file_header
                         display_file = False
-                    print "    " + line
+                    writeline("    " + line + "\n")
     finally:
         branch.unlock()
 
