@@ -704,15 +704,6 @@ class TestStatus(TestCaseWithTransport):
 
 class TestStatusEncodings(TestCaseWithTransport):
 
-    def setUp(self):
-        TestCaseWithTransport.setUp(self)
-        saved_user_encoding = osutils._cached_user_encoding
-        saved_stdout = sys.stdout
-        def restore_stuff():
-            osutils._cached_user_encoding = saved_user_encoding
-            sys.stdout = saved_stdout
-        self.addCleanup(restore_stuff)
-
     def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""
         working_tree = self.make_branch_and_tree(u'.')
@@ -726,8 +717,7 @@ class TestStatusEncodings(TestCaseWithTransport):
         return working_tree
 
     def test_stdout_ascii(self):
-        sys.stdout = StringIO()
-        osutils._cached_user_encoding = 'ascii'
+        self.overrideAttr(osutils, '_cached_user_encoding', 'ascii')
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
@@ -737,8 +727,7 @@ added:
 """)
 
     def test_stdout_latin1(self):
-        sys.stdout = StringIO()
-        osutils._cached_user_encoding = 'latin-1'
+        self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 
