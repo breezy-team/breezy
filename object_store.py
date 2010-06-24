@@ -43,7 +43,7 @@ from bzrlib.plugins.git.mapping import (
     mapping_registry,
     symlink_to_blob,
     )
-from bzrlib.plugins.git.shamap import (
+from bzrlib.plugins.git.cache import (
     from_repository as cache_from_repository,
     )
 

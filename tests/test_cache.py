@@ -41,7 +41,7 @@ from bzrlib.tests import (
     UnavailableFeature,
     )
 
-from bzrlib.plugins.git.shamap import (
+from bzrlib.plugins.git.cache import (
     SqliteBzrGitCache,
     DictBzrGitCache,
     TdbBzrGitCache,
