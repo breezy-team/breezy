@@ -169,7 +169,7 @@ class TransportObjectStore(PackBasedObjectStore):
             return # Already there, no need to write again
         self.transport.put_bytes(path, obj.as_legacy_object())
 
-    def move_in_pack(self, path):
+    def move_in_pack(self, f):
         """Move a specific file containing a pack into the pack directory.
 
         :note: The file should be on the same file system as the
@@ -177,15 +177,17 @@ class TransportObjectStore(PackBasedObjectStore):
 
         :param path: Path to the pack file.
         """
-        import os
-        p = PackData(path)
+        f.seek(0)
+        p = PackData(None, f, len(f.getvalue()))
         entries = p.sorted_entries()
-        basename = os.path.join(self.pack_transport.local_abspath('.'),
-            "pack-%s" % iter_sha1(entry[0] for entry in entries))
-        write_pack_index_v2(basename+".idx", entries, p.get_stored_checksum())
-        p.close()
-        os.rename(path, basename + ".pack")
-        final_pack = Pack(basename)
+        basename = "pack-%s" % iter_sha1(entry[0] for entry in entries)
+        f.seek(0)
+        self.pack_transport.put_file(basename + ".pack", f)
+        index_path = self.pack_transport.local_abspath(basename+".idx")
+        write_pack_index_v2(index_path, entries, p.get_stored_checksum())
+        idx = load_pack_index_file(basename+".idx",
+                self.pack_transport.get(basename+".idx"))
+        final_pack = Pack.from_objects(p, idx)
         self._add_known_pack(final_pack)
         return final_pack
 
@@ -195,13 +197,11 @@ class TransportObjectStore(PackBasedObjectStore):
         :return: Fileobject to write to and a commit function to 
             call when the pack is finished.
         """
-        import os, tempfile
-        fd, path = tempfile.mkstemp(dir=self.pack_transport.local_abspath('.'), suffix=".pack")
-        f = os.fdopen(fd, 'wb')
+        from cStringIO import StringIO
+        f = StringIO()
         def commit():
-            f.close()
-            if os.path.getsize(path) > 0:
-                return self.move_in_pack(path)
+            if len(f.getvalue()) > 0:
+                return self.move_in_pack(f)
             else:
                 return None
         return f, commit
