@@ -43,6 +43,10 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr branch`` to a new repository with a default stacking policy no
+  longer transfers the full history unnecessarily.
+  (Andrew Bennetts, #597942)
+
 * ``bzr init`` does not recursively scan directory contents anymore
   leading to faster init for directories with existing content.
   (Martin [gz], Parth Malwankar, #501307)

@@ -1244,7 +1244,8 @@ class BzrDir(ControlComponent):
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
-        if is_new_repo and revision_id is not None and not stacked:
+        is_stacked = stacked or (len(result_repo._fallback_repositories) != 0)
+        if is_new_repo and revision_id is not None and not is_stacked:
             fetch_spec = graph.PendingAncestryResult(
                 [revision_id], source_repository)
         else:
