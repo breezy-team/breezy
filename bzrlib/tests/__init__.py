@@ -2408,9 +2408,11 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_smart_server(self, path):
+    def make_smart_server(self, path, backing_server=None):
+        if backing_server is None:
+            backing_server = self.get_server()
         smart_server = test_server.SmartTCPServer_for_testing()
-        self.start_server(smart_server, self.get_server())
+        self.start_server(smart_server, backing_server)
         remote_transport = get_transport(smart_server.get_url()).clone(path)
         return remote_transport
 

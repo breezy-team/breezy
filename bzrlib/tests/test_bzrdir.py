@@ -54,6 +54,7 @@ from bzrlib.tests.test_http import TestWithTransport_pycurl
 from bzrlib.transport import (
     get_transport,
     memory,
+    pathfilter,
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
@@ -807,6 +808,38 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqualBzrdirs([baz, foo, bar],
                                 bzrdir.BzrDir.find_bzrdirs(transport))
 
+    def make_fake_permission_denied_transport(self, transport, paths):
+        """Create a transport that raises PermissionDenied for some paths."""
+        def filter(path):
+            if path in paths:
+                raise errors.PermissionDenied(path)
+            return path
+        path_filter_server = pathfilter.PathFilteringServer(transport, filter)
+        path_filter_server.start_server()
+        self.addCleanup(path_filter_server.stop_server)
+        path_filter_transport = pathfilter.PathFilteringTransport(
+            path_filter_server, '.')
+        return (path_filter_server, path_filter_transport)
+
+    def assertBranchUrlsEndWith(self, expect_url_suffix, actual_bzrdirs):
+        """Check that each branch url ends with the given suffix."""
+        for actual_bzrdir in actual_bzrdirs:
+            self.assertEndsWith(actual_bzrdir.user_url, expect_url_suffix)
+
+    def test_find_bzrdirs_permission_denied(self):
+        foo, bar, baz = self.make_foo_bar_baz()
+        transport = get_transport(self.get_url())
+        path_filter_server, path_filter_transport = \
+            self.make_fake_permission_denied_transport(transport, ['foo'])
+        # local transport
+        self.assertBranchUrlsEndWith('/baz/',
+            bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
+        # smart server
+        smart_transport = self.make_smart_server('.',
+            backing_server=path_filter_server)
+        self.assertBranchUrlsEndWith('/baz/',
+            bzrdir.BzrDir.find_bzrdirs(smart_transport))
+
     def test_find_bzrdirs_list_current(self):
         def list_current(transport):
             return [s for s in transport.list_dir('') if s != 'baz']
@@ -816,7 +849,6 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqualBzrdirs([foo, bar],
                                 bzrdir.BzrDir.find_bzrdirs(transport,
                                     list_current=list_current))
-
 
     def test_find_bzrdirs_evaluate(self):
         def evaluate(bzrdir):

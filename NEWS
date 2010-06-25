@@ -58,6 +58,9 @@ Bug Fixes
   or pull location in locations.conf or branch.conf.
   (Gordon Tyler, #534787)
 
+* ``BzrDir.find_bzrdirs`` should ignore dirs that raises PermissionDenied.
+  (Marius Kruger, Robert Collins)
+
 * Ensure that wrong path specifications in ``BZR_PLUGINS_AT`` display
   proper error messages. (Vincent Ladeuil, #591215)
 
