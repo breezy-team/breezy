@@ -623,6 +623,11 @@ class InterGitRemoteLocalBranch(InterGitBranch):
 class InterToGitBranch(branch.InterBranch):
     """InterBranch implementation that pulls from Git into bzr."""
 
+    def __init__(self, source, target):
+        super(InterToGitBranch, self).__init__(source, target)
+        self.interrepo = repository.InterRepository.get(source.repository,
+                                           target.repository)
+
     @staticmethod
     def _get_branch_formats_to_test():
         return None, None
@@ -656,7 +661,7 @@ class InterToGitBranch(branch.InterBranch):
         refs = dict(old_refs)
         new_refs, main_ref = self._get_new_refs(stop_revision)
         refs.update(new_refs)
-        self.target.repository.fetch_refs(self.source.repository, refs)
+        self.interrepo.fetch_refs(refs)
         result.old_revid = self.target.lookup_foreign_revision_id(
             old_refs.get(main_ref, ZERO_SHA))
         result.new_revid = refs[main_ref]
@@ -673,7 +678,7 @@ class InterToGitBranch(branch.InterBranch):
         refs = dict(old_refs)
         new_refs, main_ref = self._get_new_refs(stop_revision)
         refs.update(new_refs)
-        self.target.repository.fetch_refs(self.source.repository, refs)
+        self.interrepo.fetch_refs(refs)
         result.old_revid = self.target.lookup_foreign_revision_id(
             old_refs.get(main_ref, ZERO_SHA))
         result.new_revid = refs[main_ref]
@@ -686,8 +691,7 @@ class InterToGitBranch(branch.InterBranch):
         result.target_branch = self.target
         # FIXME: Check for diverged branches
         refs, main_ref = self._get_new_refs(stop_revision)
-        result.revidmap, old_refs, new_refs = self.target.repository.dfetch_refs(
-            self.source.repository, refs)
+        result.revidmap, old_refs, new_refs = self.interrepo.dfetch_refs(refs)
         result.old_revid = self.target.lookup_foreign_revision_id(
             old_refs.get(self.target.ref, ZERO_SHA))
         result.new_revid = self.target.lookup_foreign_revision_id(

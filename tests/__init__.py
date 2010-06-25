@@ -239,16 +239,17 @@ def test_suite():
         'test_blackbox',
         'test_builder',
         'test_branch',
+        'test_cache',
         'test_dir',
         'test_fetch',
         'test_mapping',
         'test_object_store',
         'test_remote',
         'test_repository',
-        'test_shamap',
         'test_refs',
         'test_revspec',
         'test_roundtrip',
+        'test_transportgit',
         ]
     testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))

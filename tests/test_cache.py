@@ -44,7 +44,7 @@ from bzrlib.transport import (
     get_transport,
     )
 
-from bzrlib.plugins.git.shamap import (
+from bzrlib.plugins.git.cache import (
     DictBzrGitCache,
     IndexBzrGitCache,
     SqliteBzrGitCache,
