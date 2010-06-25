@@ -598,10 +598,10 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         interrepo = repository.InterRepository.get(self.source.repository,
             self.target.repository)
         if stop_revision is None:
-            refs = interrepo.fetch_refs(branches=["HEAD"])
+            refs = interrepo.fetch(branches=["HEAD"])
             stop_revision = self.target.lookup_foreign_revision_id(refs["HEAD"])
         else:
-            refs = interrepo.fetch_refs(revision_id=stop_revision)
+            refs = interrepo.fetch(revision_id=stop_revision)
         return refs, stop_revision
 
     def pull(self, stop_revision=None, overwrite=False,

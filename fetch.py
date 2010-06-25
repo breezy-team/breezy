@@ -469,17 +469,12 @@ class InterGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-        mapping=None, fetch_spec=None):
-        self.fetch_refs(revision_id=revision_id, pb=pb,
-            find_ghosts=find_ghosts, mapping=mapping, fetch_spec=fetch_spec)
-
 
 class InterGitNonGitRepository(InterGitRepository):
     """Base InterRepository that copies revisions from a Git into a non-Git
     repository."""
 
-    def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False,
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
               mapping=None, fetch_spec=None):
         if mapping is None:
             mapping = self.source.get_mapping()
@@ -626,7 +621,7 @@ class InterGitGitRepository(InterGitRepository):
         else:
             raise AssertionError
 
-    def fetch_refs(self, revision_id=None, pb=None, find_ghosts=False,
+    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
               mapping=None, fetch_spec=None, branches=None):
         if mapping is None:
             mapping = self.source.get_mapping()
