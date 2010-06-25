@@ -1764,7 +1764,7 @@ class Diff3Merger(Merge3Merger):
 
 class PathNotInTree(errors.BzrError):
 
-    _fmt = """%(tree)s does not contain %(path)s."""
+    _fmt = """Merge-into failed because %(tree)s does not contain %(path)s."""
 
     def __init__(self, path, tree):
         errors.BzrError.__init__(self, path=path, tree=tree)
@@ -1830,7 +1830,7 @@ class MergeIntoMerger(Merger):
 
 
 class _Wrapper(object):
-    """Wrap a class to provide extra parameters."""
+    """Wrap a merge-type class to provide extra parameters."""
 
     # Merger.do_merge() sets up its own set of parameters to pass to the
     # 'merge_type' member. And it is difficult override do_merge without
@@ -1853,6 +1853,16 @@ class Merge3MergeIntoMerger(Merge3Merger):
     """Merger that incorporates a tree (or part of a tree) into another."""
 
     def __init__(self, *args, **kwargs):
+        """Initialize the merger object.
+
+        :param args: See Merge3Merger.__init__'s args.
+        :param kwargs: See Merge3Merger.__init__'s keyword args, except for
+            source_subpath and target_subdir.
+        :keyword source_subpath: The relative path specifying the subtree of
+            other_tree to merge into this_tree.
+        :keyword target_subdir: The relative path where we want to merge
+            other_tree into this_tree
+        """
         # All of the interesting work happens during Merge3Merger.__init__(),
         # so we have have to hack in to get our extra parameters set.
         self._source_subpath = kwargs.pop('source_subpath')
