@@ -28,7 +28,7 @@ from bzrlib.transport import get_transport
 class FooService(object):
     """A directory service that maps the name to a FILE url"""
 
-    # eg 'file:///foo' on Linux, or 'file:///C:/foo' on Windows
+    # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
     base = urlutils.local_path_to_url('/foo')
 
     def look_up(self, name, url):

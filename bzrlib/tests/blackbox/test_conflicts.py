@@ -70,6 +70,12 @@ class TestConflicts(TestConflictsBase):
         out, err = self.run_bzr('conflicts --text')
         self.assertEqual(['my_other_file', 'myfile'], out.splitlines())
 
+    def test_conflicts_directory(self):
+        """Test --directory option"""
+        out, err = self.run_bzr('conflicts --directory a', working_dir='.')
+        self.assertEqual(3, len(out.splitlines()))
+        self.assertEqual('', err)
+
 
 class TestResolve(TestConflictsBase):
 
@@ -113,3 +119,10 @@ class TestResolve(TestConflictsBase):
         self.build_tree_contents([('tree/file', 'a\n')])
         note = self.run_bzr('resolve', working_dir='tree')[1]
         self.assertContainsRe(note, 'All conflicts resolved.')
+
+    def test_resolve_all_directory(self):
+        """Test --directory option"""
+        out, err = self.run_bzr('resolve --all -d a', working_dir='.')
+        self.assertEqual('', err)
+        out, err = self.run_bzr('conflicts')
+        self.assertEqual(0, len(out.splitlines()))

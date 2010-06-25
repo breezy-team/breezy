@@ -530,6 +530,9 @@ _global_option('message', type=unicode,
                short_name='m',
                help='Message string.')
 _global_option('no-recurse')
+_global_option('null', short_name='0',
+                 help='Use an ASCII NUL (\\0) separator rather than '
+                      'a newline.')
 _global_option('profile',
                help='Show performance profiling information.')
 _global_option('revision',

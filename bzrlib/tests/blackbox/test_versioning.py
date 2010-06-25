@@ -33,7 +33,7 @@ class TestMkdir(TestCaseWithTransport):
 
     def test_mkdir_fails_cleanly(self):
         """'mkdir' fails cleanly when no working tree is available.
-        https://bugs.edge.launchpad.net/bzr/+bug/138600
+        https://bugs.launchpad.net/bzr/+bug/138600
         """
         # Since there is a safety working tree above us, we create a bare repo
         # here locally.

@@ -403,14 +403,11 @@ class LocalTransport(transport.Transport):
         try:
             # *don't* call bzrlib.osutils.rename, because we want to
             # detect conflicting names on rename, and osutils.rename tries to
-            # mask cross-platform differences there; however we do update the
-            # exception to include the filenames
+            # mask cross-platform differences there
             os.rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
-            self._translate_error(
-                osutils._add_rename_error_details(e, path_from, path_to),
-                path_from)
+            self._translate_error(e, path_from)
 
     def move(self, rel_from, rel_to):
         """Move the item at rel_from to the location at rel_to"""

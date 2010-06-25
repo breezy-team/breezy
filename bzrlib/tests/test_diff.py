@@ -33,7 +33,8 @@ from bzrlib import (
     transform,
     )
 from bzrlib.symbol_versioning import deprecated_in
-from bzrlib.tests import test_win32utils
+from bzrlib.tests import features
+from bzrlib.tests.blackbox.test_diff import subst_dates
 
 
 class _AttribFeature(tests.Feature):
@@ -521,7 +522,6 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertNotContainsRe(d, r"file 'e'")
         self.assertNotContainsRe(d, r"file 'f'")
 
-
     def test_binary_unicode_filenames(self):
         """Test that contents of files are *not* encoded in UTF-8 when there
         is a binary file in the diff.
@@ -579,6 +579,49 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(d, "=== added file 'add_%s'"%autf8)
         self.assertContainsRe(d, "=== modified file 'mod_%s'"%autf8)
         self.assertContainsRe(d, "=== removed file 'del_%s'"%autf8)
+
+    def test_unicode_filename_path_encoding(self):
+        """Test for bug #382699: unicode filenames on Windows should be shown
+        in user encoding.
+        """
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        # The word 'test' in Russian
+        _russian_test = u'\u0422\u0435\u0441\u0442'
+        directory = _russian_test + u'/'
+        test_txt = _russian_test + u'.txt'
+        u1234 = u'\u1234.txt'
+
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            (test_txt, 'foo\n'),
+            (u1234, 'foo\n'),
+            (directory, None),
+            ])
+        tree.add([test_txt, u1234, directory])
+
+        sio = StringIO()
+        diff.show_diff_trees(tree.basis_tree(), tree, sio,
+            path_encoding='cp1251')
+
+        output = subst_dates(sio.getvalue())
+        shouldbe = ('''\
+=== added directory '%(directory)s'
+=== added file '%(test_txt)s'
+--- a/%(test_txt)s\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ b/%(test_txt)s\tYYYY-MM-DD HH:MM:SS +ZZZZ
+@@ -0,0 +1,1 @@
++foo
+
+=== added file '?.txt'
+--- a/?.txt\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ b/?.txt\tYYYY-MM-DD HH:MM:SS +ZZZZ
+@@ -0,0 +1,1 @@
++foo
+
+''' % {'directory': _russian_test.encode('cp1251'),
+       'test_txt': test_txt.encode('cp1251'),
+      })
+        self.assertEqualDiff(output, shouldbe)
 
 
 class DiffWasIs(diff.DiffPath):
@@ -1298,7 +1341,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
                          diff_obj._get_command('old-path', 'new-path'))
 
     def test_from_string_path_with_backslashes(self):
-        self.requireFeature(test_win32utils.BackslashDirSeparatorFeature)
+        self.requireFeature(features.backslashdir_feature)
         tool = 'C:\\Tools\\Diff.exe'
         diff_obj = diff.DiffFromTool.from_string(tool, None, None, None)
         self.addCleanup(diff_obj.finish)

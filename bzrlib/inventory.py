@@ -1652,11 +1652,7 @@ class CHKInventory(CommonInventory):
             # parent_to_children with at least the tree root.)
             return other
         cache = self._fileid_to_entry_cache
-        try:
-            remaining_children = collections.deque(parent_to_children[self.root_id])
-        except:
-            import pdb; pdb.set_trace()
-            raise
+        remaining_children = collections.deque(parent_to_children[self.root_id])
         while remaining_children:
             file_id = remaining_children.popleft()
             ie = cache[file_id]

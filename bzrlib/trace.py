@@ -374,7 +374,7 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')
     bzr_logger.removeHandler(new_handler)
-    # must be closed, otherwise logging will try to close it atexit, and the
+    # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
     bzr_logger.handlers = old_handlers
@@ -498,7 +498,9 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif isinstance(exc_object, (OSError, IOError)):
+    elif isinstance(exc_object, (OSError, IOError)) or (
+        # GZ 2010-05-20: Like (exc_type is pywintypes.error) but avoid import
+        exc_type.__name__ == "error" and exc_type.__module__ == "pywintypes"):
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)
@@ -538,7 +540,7 @@ def report_bug(exc_info, err_file):
 
 
 def _flush_stdout_stderr():
-    # installed into an atexit hook by bzrlib.initialize()
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     try:
         sys.stdout.flush()
         sys.stderr.flush()
@@ -551,7 +553,7 @@ def _flush_stdout_stderr():
 
 
 def _flush_trace():
-    # run from atexit hook
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     global _trace_file
     if _trace_file:
         _trace_file.flush()

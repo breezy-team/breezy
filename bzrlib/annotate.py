@@ -28,11 +28,16 @@
 import sys
 import time
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    patiencediff,
+    tsort,
+    )
+""")
 from bzrlib import (
     errors,
     osutils,
-    patiencediff,
-    tsort,
     )
 from bzrlib.config import extract_email_address
 from bzrlib.repository import _strip_NULL_ghosts
@@ -312,8 +317,7 @@ def _reannotate(parent_lines, new_lines, new_revision_id,
 
 
 def _get_matching_blocks(old, new):
-    matcher = patiencediff.PatienceSequenceMatcher(None,
-        old, new)
+    matcher = patiencediff.PatienceSequenceMatcher(None, old, new)
     return matcher.get_matching_blocks()
 
 
