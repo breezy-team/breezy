@@ -1814,7 +1814,7 @@ class MergeIntoMerger(Merger):
         self.show_base = False
         self.reprocess = False
         self.interesting_ids = None
-        self.merge_type = _Wrapper(Merge3MergeIntoMerger,
+        self.merge_type = _Wrapper(MergeIntoMergeType,
                                   target_subdir=self._target_subdir,
                                   source_subpath=self._source_subpath)
         if self._source_subpath != '':
@@ -1851,7 +1851,7 @@ class _Wrapper(object):
         return getattr(self._merge_type, name)
 
 
-class Merge3MergeIntoMerger(Merge3Merger):
+class MergeIntoMergeType(Merge3Merger):
     """Merger that incorporates a tree (or part of a tree) into another."""
 
     def __init__(self, *args, **kwargs):
@@ -1869,7 +1869,7 @@ class Merge3MergeIntoMerger(Merge3Merger):
         # so we have have to hack in to get our extra parameters set.
         self._source_subpath = kwargs.pop('source_subpath')
         self._target_subdir = kwargs.pop('target_subdir')
-        super(Merge3MergeIntoMerger, self).__init__(*args, **kwargs)
+        super(MergeIntoMergeType, self).__init__(*args, **kwargs)
 
     def _compute_transform(self):
         child_pb = ui.ui_factory.nested_progress_bar()
