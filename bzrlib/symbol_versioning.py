@@ -314,6 +314,7 @@ def suppress_deprecation_warnings(override=True):
 
     :param override: If True, always set the ignore, if False, only set the
         ignore if there isn't already a filter.
+    :return: A callable to remove the new warnings this added.
     """
     import warnings
     if not override and _check_for_filter(error_only=False):
@@ -321,6 +322,10 @@ def suppress_deprecation_warnings(override=True):
         # then skip it.
         return
     warnings.filterwarnings('ignore', category=DeprecationWarning)
+    filter = warnings.filters[0]
+    def cleanup():
+        warnings.filters.remove(filter)
+    return cleanup
 
 
 def activate_deprecation_warnings(override=True):

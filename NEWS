@@ -179,6 +179,10 @@ Internals
 
 * Improved ``bzrlib.urlutils`` to handle lp:foo/bar URLs. (Gordon Tyler)
 
+* The symbol_versioning module can now cleanup after itself -
+  ``suppress_deprecation_warnings`` now returns a cleanup function.
+  (Robert Collins)
+
 Testing
 *******
 
