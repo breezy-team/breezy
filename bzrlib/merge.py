@@ -1830,12 +1830,14 @@ class MergeIntoMerger(Merger):
 
 
 class _Wrapper(object):
-    """Wrap a merge-type class to provide extra parameters."""
-
-    # Merger.do_merge() sets up its own set of parameters to pass to the
-    # 'merge_type' member. And it is difficult override do_merge without
-    # re-writing the whole thing, so instead we create a wrapper which will
-    # pass the extra parameters.
+    """Wrap a merge-type class to provide extra parameters.
+    
+    This is hack used by MergeIntoMerger to pass some extra parameters to its
+    merge_type.  Merger.do_merge() sets up its own set of parameters to pass to
+    the 'merge_type' member.  It is difficult override do_merge without
+    re-writing the whole thing, so instead we create a wrapper which will pass
+    the extra parameters.
+    """
 
     def __init__(self, merge_type, **kwargs):
         self._extra_kwargs = kwargs
