@@ -17,11 +17,14 @@
 """Whitebox testing for merge_into functionality."""
 
 from bzrlib import (
+    branch as _mod_branch,
     cleanup,
     inventory,
     merge,
     osutils,
+    revision as _mod_revision,
     tests,
+    workingtree,
     )
 
 
@@ -61,10 +64,34 @@ class TestMergeIntoBase(tests.TestCaseWithTransport):
 
         return project_wt, lib_wt
 
-    def do_merge_into(self, location, merge_as=None):
-        """Invoke merge_into_helper."""
-        operation = cleanup.OperationWithCleanups(merge.merge_into_helper)
-        return operation.run_simple(location, operation.add_cleanup, merge_as)
+    def do_merge_into(self, location, merge_as):
+        """Helper for using MergeIntoMerger.
+        
+        :param location: location of directory to merge from, either the
+            location of a branch or of a path inside a branch.
+        :param merge_as: the path in a tree to add the new directory as.
+        :returns: the conflicts from 'do_merge'.
+        """
+        operation = cleanup.OperationWithCleanups(self._merge_into)
+        return operation.run(location, merge_as)
+
+    def _merge_into(self, op, location, merge_as):
+        # Open and lock the various tree and branch objects
+        wt, subdir_relpath = workingtree.WorkingTree.open_containing(merge_as)
+        op.add_cleanup(wt.lock_write().unlock)
+        branch_to_merge, subdir_to_merge = _mod_branch.Branch.open_containing(
+            location)
+        op.add_cleanup(branch_to_merge.lock_read().unlock)
+        other_tree = branch_to_merge.basis_tree()
+        op.add_cleanup(other_tree.lock_read().unlock)
+        # Perform the merge
+        merger = merge.MergeIntoMerger(this_tree=wt, other_tree=other_tree,
+            other_branch=branch_to_merge, target_subdir=subdir_relpath,
+            source_subpath=subdir_to_merge)
+        merger.set_base_revision(_mod_revision.NULL_REVISION, branch_to_merge)
+        conflicts = merger.do_merge()
+        merger.set_pending()
+        return conflicts
 
     def assertTreeEntriesEqual(self, expected_entries, tree):
         """Assert that 'tree' contains the expected inventory entries.

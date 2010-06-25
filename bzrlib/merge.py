@@ -35,6 +35,7 @@ from bzrlib import (
     tsort,
     ui,
     versionedfile,
+    workingtree,
     )
 from bzrlib.cleanup import OperationWithCleanups
 """)
@@ -427,7 +428,6 @@ class Merger(object):
         return self._cached_trees[revision_id]
 
     def _get_tree(self, treespec, possible_transports=None):
-        from bzrlib import workingtree
         location, revno = treespec
         if revno is None:
             tree = workingtree.WorkingTree.open_containing(location)[0]
@@ -1910,48 +1910,6 @@ class Merge3MergeIntoMerger(Merge3Merger):
                 # the root refer to the new ID.
                 parent_id = merge_into_root.file_id
             yield (entry, parent_id)
-
-
-def merge_into_helper(location, add_cleanup, subdir=None):
-    """Helper for cmd_merge_into.
-    
-    :param location: location of directory to merge from, either the location
-        of a branch or of a path inside a branch.
-    :param add_cleanup: callable for registering cleanup functions to be run
-        after this helper returns or raises, e.g. Command.add_cleanup.
-    :param subdir: the path in a tree to add the new directory as.  If not
-        given this will be the current working directory + basename of the
-        location parameter.
-
-    :raises PathNotInTree: if 'location' refers to a directory that could not
-        be found, or if 'subdir' assumes a containing directory that doesn't
-        exist.
-    :returns: the conflicts from 'do_merge'.
-    """
-    # Open and lock the various tree and branch objects
-    from bzrlib import workingtree
-    import os
-    if not subdir: # default to same name as source dir
-        subdir = os.path.basename(location)
-    wt, subdir_relpath = workingtree.WorkingTree.open_containing(subdir)
-    wt.lock_write()
-    add_cleanup(wt.unlock)
-    branch_to_merge, subdir_to_merge = _mod_branch.Branch.open_containing(
-        location)
-    branch_to_merge.lock_read()
-    add_cleanup(branch_to_merge.unlock)
-    other_tree = branch_to_merge.basis_tree()
-    other_tree.lock_read()
-    add_cleanup(other_tree.unlock)
-    # Perform the merge
-    merger = MergeIntoMerger(this_tree=wt, other_tree=other_tree,
-        other_branch=branch_to_merge, target_subdir=subdir_relpath,
-        source_subpath=subdir_to_merge)
-    merger.set_base_revision(
-        _mod_revision.NULL_REVISION, branch_to_merge)
-    conflicts = merger.do_merge()
-    merger.set_pending()
-    return conflicts
 
 
 def merge_inner(this_branch, other_tree, base_tree, ignore_zero=False,
