@@ -177,6 +177,12 @@ API Changes
 Internals
 *********
 
+* ``bzrlib.osutils.get_terminal_encoding`` will now only mutter its
+  selection when explicitly requested; this avoids many duplicate calls
+  being logged when helpers, wrappers and older code that manually calls
+  it are executed it is now logged deliberately by the ui setup code.
+  (Robert Collins)
+
 * Improved ``bzrlib.urlutils`` to handle lp:foo/bar URLs. (Gordon Tyler)
 
 * The symbol_versioning module can now cleanup after itself -
