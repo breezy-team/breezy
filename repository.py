@@ -91,14 +91,6 @@ class GitRepository(ForeignRepository):
         interrepo = repository.InterRepository.get(source, self)
         return interrepo.dfetch(stop_revision)
 
-    def dfetch_refs(self, source, stop_revision):
-        interrepo = repository.InterRepository.get(source, self)
-        return interrepo.dfetch_refs(stop_revision)
-
-    def fetch_refs(self, source, stop_revision):
-        interrepo = repository.InterRepository.get(source, self)
-        return interrepo.fetch_refs(stop_revision)
-
 
 class LocalGitRepository(GitRepository):
     """Git repository on the file system."""
