@@ -4051,35 +4051,6 @@ class cmd_merge(Command):
         return stored_location
 
 
-class cmd_merge_into(Command):
-    """Merge a branch into a subdirectory of the current one.
-
-    LOCATION is the branch, or subdirectory of a branch, that will be merged into
-       another.
-    MERGE-AS is the subdirectory to merge it into.
-      (defaults to basename of LOCATION in the current working directory)
-
-    After running 'bzr merge-into OTHER SUBDIR' all of the files from OTHER will be
-    present underneath the subdirectory SUBDIR.
-    """
-
-    takes_args = ['location', 'merge_as?']
-    takes_options = []
-
-    def run(self, location, merge_as=None):
-        try:
-            conflicts = _mod_merge.merge_into_helper(
-                location, self.add_cleanup, merge_as)
-        except _mod_merge.PathNotInTree, e:
-            raise errors.BzrCommandError(str(e))
-        # Report the results
-        if not conflicts:
-            self.outf.write('merge-into successful\n')
-        else:
-            self.outf.write('merge-into conflicts: %s\n' % (conflicts,))
-            return 1
-
-
 class cmd_remerge(Command):
     __doc__ = """Redo a merge.
 
