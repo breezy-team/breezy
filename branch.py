@@ -657,14 +657,15 @@ class InterToGitBranch(branch.InterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         # FIXME: Check for diverged branches
-        old_refs = self.target.repository._git.get_refs()
-        refs = dict(old_refs)
         new_refs, main_ref = self._get_new_refs(stop_revision)
-        refs.update(new_refs)
-        self.interrepo.fetch_refs(refs)
+        def update_refs(old_refs):
+            refs = dict(old_refs)
+            refs.update(new_refs)
+            return refs
+        old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
         result.old_revid = self.target.lookup_foreign_revision_id(
             old_refs.get(main_ref, ZERO_SHA))
-        result.new_revid = refs[main_ref]
+        result.new_revid = new_refs[main_ref]
         return result
 
     def push(self, overwrite=False, stop_revision=None,
@@ -674,14 +675,15 @@ class InterToGitBranch(branch.InterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         # FIXME: Check for diverged branches
-        old_refs = self.target.repository._git.get_refs()
-        refs = dict(old_refs)
         new_refs, main_ref = self._get_new_refs(stop_revision)
-        refs.update(new_refs)
-        self.interrepo.fetch_refs(refs)
+        def update_refs(old_refs):
+            refs = dict(old_refs)
+            refs.update(new_refs)
+            return refs
+        old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
         result.old_revid = self.target.lookup_foreign_revision_id(
             old_refs.get(main_ref, ZERO_SHA))
-        result.new_revid = refs[main_ref]
+        result.new_revid = new_refs[main_ref]
         return result
 
     def lossy_push(self, stop_revision=None):

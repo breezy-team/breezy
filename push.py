@@ -127,9 +127,12 @@ class InterToLocalGitRepository(InterToGitRepository):
             pb.finished()
         return graph.iter_topo_order(missing)
 
-    def fetch_refs(self, refs):
-        fetch_spec = PendingAncestryResult(refs.values(), self.source)
+    def fetch_refs(self, update_refs):
+        old_refs = self.target._git.get_refs()
+        new_refs = update_refs(old_refs)
+        fetch_spec = PendingAncestryResult(new_refs.values(), self.source)
         self.fetch(fetch_spec=fetch_spec)
+        return old_refs, new_refs
 
     def dfetch_refs(self, refs):
         old_refs = self.target._git.get_refs()
