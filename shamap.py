@@ -633,6 +633,7 @@ class IndexCacheUpdater(CacheUpdater):
                 (self.revid, obj.tree))
             self.cache.idmap._add_node(("commit", self.revid, "X"),
                 " ".join((obj.id, obj.tree)))
+            self.cache.content_cache.add(obj)
         elif obj.type_name == "blob":
             self.cache.idmap._add_git_sha(obj.id, "blob",
                 (ie.file_id, ie.revision))
