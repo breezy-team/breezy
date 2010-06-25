@@ -164,8 +164,15 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         BzrLibraryState directly.
     """
     import bzrlib.library_state
-    return bzrlib.library_state.BzrLibraryState(setup_ui=setup_ui, stdin=stdin,
-        stdout=stdout, stderr=stderr)
+    if setup_ui:
+        import bzrlib.ui
+        stdin = stdin or sys.stdin
+        stdout = stdout or sys.stdout
+        stderr = stderr or sys.stderr
+        ui_factory = bzrlib.ui.make_ui_for_terminal(stdin, stdout, stderr)
+    else:
+        ui_factory = None
+    return bzrlib.library_state.BzrLibraryState(ui=ui_factory)
 
 
 def test_suite():

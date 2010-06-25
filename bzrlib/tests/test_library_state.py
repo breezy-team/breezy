@@ -20,9 +20,20 @@ import bzrlib
 from bzrlib import (
     library_state,
     tests,
+    ui as _mod_ui
     )
 
 
-class TestLibraryState(tests.TestCase):
+# TODO: once sufficiently cleaned up this should be able to be TestCase.
+class TestLibraryState(tests.TestCaseWithTransport):
 
-    pass
+    def test_ui_is_used(self):
+        ui = _mod_ui.SilentUIFactory()
+        state = library_state.BzrLibraryState(ui=ui)
+        orig_ui = _mod_ui.ui_factory
+        state.__enter__()
+        try:
+            self.assertEqual(ui, _mod_ui.ui_factory)
+        finally:
+            state.__exit__(None, None, None)
+            self.assertEqual(orig_ui, _mod_ui.ui_factory)

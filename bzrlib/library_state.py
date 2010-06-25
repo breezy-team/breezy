@@ -39,12 +39,13 @@ class BzrLibraryState(object):
         in __enter__ and executed in __exit__.
     """
 
-    def __init__(self, setup_ui=True, stdin=None, stdout=None, stderr=None):
+    def __init__(self, ui=None):
         """Create library start for normal use of bzrlib.
 
         Most applications that embed bzrlib, including bzr itself, should just
         call bzrlib.initialize(), but it is possible to use the state class
-        directly.
+        directly. The initialize() function provides sensible defaults for a
+        CLI program, such as a text UI factory.
 
         More options may be added in future so callers should use named
         arguments.
@@ -54,16 +55,9 @@ class BzrLibraryState(object):
         global variables in use by bzr are set, and they are cleared on
         __exit__.
 
-        :param setup_ui: If true (default) use a terminal UI; otherwise 
-            some other ui_factory must be assigned to `bzrlib.ui.ui_factory` by
-            the caller.
-        :param stdin, stdout, stderr: If provided, use these for terminal IO;
-            otherwise use the files in `sys`.
+        :param ui: A bzrlib.ui.ui_factory to use.
         """
-        self.setup_ui = setup_ui
-        self.stdin = stdin
-        self.stdout = stdout
-        self.stderr = stderr
+        self._ui = ui
 
     def __enter__(self):
         # NB: This function tweaks so much global state it's hard to test it in
@@ -84,13 +78,10 @@ class BzrLibraryState(object):
             self.cleanups.add_cleanup(warning_cleanup)
         bzrlib.trace.enable_default_logging()
 
-        if self.setup_ui:
-            import bzrlib.ui
-            stdin = self.stdin or sys.stdin
-            stdout = self.stdout or sys.stdout
-            stderr = self.stderr or sys.stderr
-            bzrlib.ui.ui_factory = bzrlib.ui.make_ui_for_terminal(
-                stdin, stdout, stderr)
+        self._orig_ui = bzrlib.ui.ui_factory
+        bzrlib.ui.ui_factory = self._ui
+        self._ui.__enter__()
+
         self.saved_state = bzrlib.global_state
         bzrlib.global_state = self
         return self # This is bound to the 'as' clause in a with statement.
@@ -102,8 +93,8 @@ class BzrLibraryState(object):
         bzrlib.trace._flush_trace()
         import bzrlib.osutils
         bzrlib.osutils.report_extension_load_failures()
-        bzrlib.ui.ui_factory.__exit__(None, None, None)
-        bzrlib.ui.ui_factory = None
+        self._ui.__exit__(None, None, None)
+        bzrlib.ui.ui_factory = self._orig_ui
         global global_state
         global_state = self.saved_state
         return False # propogate exceptions.
