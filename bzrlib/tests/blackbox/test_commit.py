@@ -33,10 +33,10 @@ from bzrlib.tests import (
     probe_bad_non_ascii,
     TestSkipped,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCommit(ExternalBase):
+class TestCommit(TestCaseWithTransport):
 
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""
@@ -698,7 +698,7 @@ altered in u2
         self.assertContainsRe(err, r'modified test\nCommitted revision 2.')
 
     def test_commit_readonly_checkout(self):
-        # https://bugs.edge.launchpad.net/bzr/+bug/129701
+        # https://bugs.launchpad.net/bzr/+bug/129701
         # "UnlockableTransport error trying to commit in checkout of readonly
         # branch"
         self.make_branch('master')

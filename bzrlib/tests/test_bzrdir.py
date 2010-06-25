@@ -821,28 +821,23 @@ class ChrootedTests(TestCaseWithTransport):
             path_filter_server, '.')
         return (path_filter_server, path_filter_transport)
 
-    def assertBranchUrlsEndsWith(self, expect_url_suffixes, actual_bzrdirs):
-        """Check that each branch url ends with the corresponding suffix"""
-        actual_bzrdirs = list(actual_bzrdirs)
-        self.assertEqual(len(expect_url_suffixes), len(actual_bzrdirs))
-        for expect_url_suffix, actual_bzrdir in zip(
-                expect_url_suffixes, actual_bzrdirs):
+    def assertBranchUrlsEndWith(self, expect_url_suffix, actual_bzrdirs):
+        """Check that each branch url ends with the given suffix."""
+        for actual_bzrdir in actual_bzrdirs:
             self.assertEndsWith(actual_bzrdir.user_url, expect_url_suffix)
 
     def test_find_bzrdirs_permission_denied(self):
         foo, bar, baz = self.make_foo_bar_baz()
         transport = get_transport(self.get_url())
-        (path_filter_server, path_filter_transport
-            ) = self.make_fake_permission_denied_transport(transport, ['foo'])
-
+        path_filter_server, path_filter_transport = \
+            self.make_fake_permission_denied_transport(transport, ['foo'])
         # local transport
-        self.assertBranchUrlsEndsWith(['baz/'],
+        self.assertBranchUrlsEndWith('/baz/',
             bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
-
         # smart server
         smart_transport = self.make_smart_server('.',
             backing_server=path_filter_server)
-        self.assertBranchUrlsEndsWith(['baz/'],
+        self.assertBranchUrlsEndWith('/baz/',
             bzrdir.BzrDir.find_bzrdirs(smart_transport))
 
     def test_find_bzrdirs_list_current(self):

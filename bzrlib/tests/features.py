@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""A collection of commonly used 'Features' which bzrlib uses to skip tests."""
+
 import os
 import stat
 
@@ -24,7 +26,24 @@ from bzrlib.symbol_versioning import deprecated_in
 apport = tests.ModuleAvailableFeature('apport')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
+pywintypes = tests.ModuleAvailableFeature('pywintypes')
 subunit = tests.ModuleAvailableFeature('subunit')
+
+
+class _BackslashDirSeparatorFeature(tests.Feature):
+
+    def _probe(self):
+        try:
+            os.lstat(os.getcwd() + '\\')
+        except OSError:
+            return False
+        else:
+            return True
+
+    def feature_name(self):
+        return "Filesystem treats '\\' as a directory separator."
+
+backslashdir_feature = _BackslashDirSeparatorFeature()
 
 
 class _PosixPermissionsFeature(tests.Feature):
@@ -61,3 +80,36 @@ class _ChownFeature(tests.Feature):
 
 chown_feature = _ChownFeature()
 
+
+class ExecutableFeature(tests.Feature):
+    """Feature testing whether an executable of a given name is on the PATH."""
+
+    def __init__(self, name):
+        super(ExecutableFeature, self).__init__()
+        self.name = name
+        self._path = None
+
+    @property
+    def path(self):
+        # This is a property, so accessing path ensures _probe was called
+        self.available()
+        return self._path
+
+    def _probe(self):
+        path = os.environ.get('PATH')
+        if path is None:
+            return False
+        for d in path.split(os.pathsep):
+            if d:
+                f = os.path.join(d, self.name)
+                if os.access(f, os.X_OK):
+                    self._path = f
+                    return True
+        return False
+
+    def feature_name(self):
+        return '%s executable' % self.name
+
+
+bash_feature = ExecutableFeature('bash')
+sed_feature = ExecutableFeature('sed')

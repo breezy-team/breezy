@@ -668,7 +668,8 @@ class TestFormat(per_branch.TestCaseWithBranch):
         this_branch = self.make_branch('this')
         other_branch = self.make_branch('other')
         try:
-            this_branch._format.set_reference(this_branch.bzrdir, other_branch)
+            this_branch._format.set_reference(this_branch.bzrdir, None,
+                other_branch)
         except NotImplementedError:
             # that's ok
             pass

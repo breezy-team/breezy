@@ -125,9 +125,10 @@ class my_install_scripts(install_scripts):
                 f = file(batch_path, "w")
                 f.write(batch_str)
                 f.close()
-                print "Created:", batch_path
-            except Exception, e:
-                print "ERROR: Unable to create %s: %s" % (batch_path, e)
+                print("Created: %s" % batch_path)
+            except Exception:
+                e = sys.exc_info()[1]
+                print("ERROR: Unable to create %s: %s" % (batch_path, e))
 
     def _quoted_path(self, path):
         if ' ' in path:
@@ -171,18 +172,18 @@ try:
         from Pyrex.Distutils import build_ext
         from Pyrex.Compiler.Version import version as pyrex_version
     except ImportError:
-        print "No Pyrex, trying Cython..."
+        print("No Pyrex, trying Cython...")
         from Cython.Distutils import build_ext
         from Cython.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
-    print
-    print ("The python package 'Pyrex' is not available."
-           " If the .c files are available,")
-    print ("they will be built,"
-           " but modifying the .pyx files will not rebuild them.")
-    print
+    print("")
+    print("The python package 'Pyrex' is not available."
+          " If the .c files are available,")
+    print("they will be built,"
+          " but modifying the .pyx files will not rebuild them.")
+    print("")
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
@@ -204,7 +205,8 @@ class build_ext_if_possible(build_ext):
     def run(self):
         try:
             build_ext.run(self)
-        except DistutilsPlatformError, e:
+        except DistutilsPlatformError:
+            e = sys.exc_info()[1]
             if not self.allow_python_fallback:
                 log.warn('\n  Cannot build extensions.\n'
                          '  Use "build_ext --allow-python-fallback" to use'
@@ -289,11 +291,11 @@ else:
         # which is NULL safe with PY_DECREF which is not.)
         # <https://bugs.edge.launchpad.net/bzr/+bug/449372>
         # <https://bugs.edge.launchpad.net/bzr/+bug/276868>
-        print 'Cannot build extension "bzrlib._dirstate_helpers_pyx" using'
-        print 'your version of pyrex "%s". Please upgrade your pyrex' % (
-            pyrex_version,)
-        print 'install. For now, the non-compiled (python) version will'
-        print 'be used instead.'
+        print('Cannot build extension "bzrlib._dirstate_helpers_pyx" using')
+        print('your version of pyrex "%s". Please upgrade your pyrex' % (
+            pyrex_version,))
+        print('install. For now, the non-compiled (python) version will')
+        print('be used instead.')
     else:
         add_pyrex_extension('bzrlib._dirstate_helpers_pyx')
     add_pyrex_extension('bzrlib._readdir_pyx')
@@ -301,12 +303,12 @@ add_pyrex_extension('bzrlib._chk_map_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
 if have_pyrex and pyrex_version_info < (0, 9, 6, 3):
-    print
-    print 'Your Pyrex/Cython version %s is too old to build the simple_set' % (
-        pyrex_version)
-    print 'and static_tuple extensions.'
-    print 'Please upgrade to at least Pyrex 0.9.6.3'
-    print
+    print("")
+    print('Your Pyrex/Cython version %s is too old to build the simple_set' % (
+        pyrex_version))
+    print('and static_tuple extensions.')
+    print('Please upgrade to at least Pyrex 0.9.6.3')
+    print("")
     # TODO: Should this be a fatal error?
 else:
     # We only need 0.9.6.3 to build _simple_set_pyx, but static_tuple depends
@@ -318,10 +320,10 @@ add_pyrex_extension('bzrlib._btree_serializer_pyx')
 
 
 if unavailable_files:
-    print 'C extension(s) not found:'
-    print '   %s' % ('\n  '.join(unavailable_files),)
-    print 'The python versions will be used instead.'
-    print
+    print('C extension(s) not found:')
+    print('   %s' % ('\n  '.join(unavailable_files),))
+    print('The python versions will be used instead.')
+    print("")
 
 
 def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
@@ -532,17 +534,15 @@ elif 'py2exe' in sys.argv:
             install_data.run(self)
 
             py2exe = self.distribution.get_command_obj('py2exe', False)
-            optimize = py2exe.optimize
+            # GZ 2010-04-19: Setup has py2exe.optimize as 2, but give plugins
+            #                time before living with docstring stripping
+            optimize = 1
             compile_names = [f for f in self.outfiles if f.endswith('.py')]
             byte_compile(compile_names,
                          optimize=optimize,
                          force=self.force, prefix=self.install_dir,
                          dry_run=self.dry_run)
-            if optimize:
-                suffix = 'o'
-            else:
-                suffix = 'c'
-            self.outfiles.extend([f + suffix for f in compile_names])
+            self.outfiles.extend([f + 'o' for f in compile_names])
     # end of class install_data_with_bytecompile
 
     target = py2exe.build_exe.Target(script = "bzr",
@@ -679,8 +679,8 @@ elif 'py2exe' in sys.argv:
         # print this warning to stderr as output is redirected, so it is seen
         # at build time.  Also to stdout so it appears in the log
         for f in (sys.stderr, sys.stdout):
-            print >> f, \
-                "Skipping TBZR binaries - please set TBZR to a directory to enable"
+            f.write("Skipping TBZR binaries - "
+                "please set TBZR to a directory to enable\n")
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
@@ -690,17 +690,17 @@ elif 'py2exe' in sys.argv:
                                "excludes": excludes,
                                "dll_excludes": dll_excludes,
                                "dist_dir": "win32_bzr.exe",
-                               "optimize": 1,
+                               "optimize": 2,
                               },
                    }
-
-    setup(options=options_list,
-          console=console_targets,
-          windows=gui_targets,
-          zipfile='lib/library.zip',
-          data_files=data_files,
-          cmdclass={'install_data': install_data_with_bytecompile},
-          )
+    if __name__ == '__main__':
+        setup(options=options_list,
+              console=console_targets,
+              windows=gui_targets,
+              zipfile='lib/library.zip',
+              data_files=data_files,
+              cmdclass={'install_data': install_data_with_bytecompile},
+              )
 
 else:
     # ad-hoc for easy_install
@@ -734,4 +734,5 @@ else:
     ARGS.update(BZRLIB)
     ARGS.update(PKG_DATA)
 
-    setup(**ARGS)
+    if __name__ == '__main__':
+        setup(**ARGS)

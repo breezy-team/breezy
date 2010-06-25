@@ -21,9 +21,9 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
-class TestModified(ExternalBase):
+class TestModified(TestCaseWithTransport):
 
     def test_modified(self):
         """Test that 'modified' command reports modified files"""

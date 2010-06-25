@@ -70,6 +70,7 @@ from bzrlib import (
     diff,
     errors,
     foreign,
+    osutils,
     repository as _mod_repository,
     revision as _mod_revision,
     revisionspec,
@@ -432,8 +433,9 @@ class _DefaultLogGenerator(LogGenerator):
         else:
             specific_files = None
         s = StringIO()
+        path_encoding = osutils.get_diff_header_encoding()
         diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
-            new_label='')
+            new_label='', path_encoding=path_encoding)
         return s.getvalue()
 
     def _create_log_revision_iterator(self):
@@ -522,7 +524,7 @@ def _calc_view_revisions(branch, start_rev_id, end_rev_id, direction,
     elif not generate_merge_revisions:
         # If we only want to see linear revisions, we can iterate ...
         iter_revs = _generate_flat_revisions(branch, start_rev_id, end_rev_id,
-                                             direction)
+                                             direction, exclude_common_ancestry)
         if direction == 'forward':
             iter_revs = reversed(iter_revs)
     else:
@@ -544,8 +546,11 @@ def _generate_one_revision(branch, rev_id, br_rev_id, br_revno):
         return [(rev_id, revno_str, 0)]
 
 
-def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction):
-    result = _linear_view_revisions(branch, start_rev_id, end_rev_id)
+def _generate_flat_revisions(branch, start_rev_id, end_rev_id, direction,
+                             exclude_common_ancestry=False):
+    result = _linear_view_revisions(
+        branch, start_rev_id, end_rev_id,
+        exclude_common_ancestry=exclude_common_ancestry)
     # If a start limit was given and it's not obviously an
     # ancestor of the end limit, check it before outputting anything
     if direction == 'forward' or (start_rev_id
@@ -572,7 +577,7 @@ def _generate_all_revisions(branch, start_rev_id, end_rev_id, direction,
     if delayed_graph_generation:
         try:
             for rev_id, revno, depth in  _linear_view_revisions(
-                branch, start_rev_id, end_rev_id):
+                branch, start_rev_id, end_rev_id, exclude_common_ancestry):
                 if _has_merges(branch, rev_id):
                     # The end_rev_id can be nested down somewhere. We need an
                     # explicit ancestry check. There is an ambiguity here as we
@@ -643,14 +648,17 @@ def _is_obvious_ancestor(branch, start_rev_id, end_rev_id):
     return True
 
 
-def _linear_view_revisions(branch, start_rev_id, end_rev_id):
+def _linear_view_revisions(branch, start_rev_id, end_rev_id,
+                           exclude_common_ancestry=False):
     """Calculate a sequence of revisions to view, newest to oldest.
 
     :param start_rev_id: the lower revision-id
     :param end_rev_id: the upper revision-id
+    :param exclude_common_ancestry: Whether the start_rev_id should be part of
+        the iterated revisions.
     :return: An iterator of (revision_id, dotted_revno, merge_depth) tuples.
     :raises _StartNotLinearAncestor: if a start_rev_id is specified but
-      is not found walking the left-hand history
+        is not found walking the left-hand history
     """
     br_revno, br_rev_id = branch.last_revision_info()
     repo = branch.repository
@@ -667,7 +675,8 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id):
             revno = branch.revision_id_to_dotted_revno(revision_id)
             revno_str = '.'.join(str(n) for n in revno)
             if not found_start and revision_id == start_rev_id:
-                yield revision_id, revno_str, 0
+                if not exclude_common_ancestry:
+                    yield revision_id, revno_str, 0
                 found_start = True
                 break
             else:
@@ -1993,7 +2002,7 @@ def show_flat_log(repository, history, last_revno, lf):
         lf.log_revision(lr)
 
 
-def _get_info_for_log_files(revisionspec_list, file_list):
+def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
     """Find file-ids and kinds given a list of files and a revision range.
 
     We search for files at the end of the range. If not found there,
@@ -2003,6 +2012,8 @@ def _get_info_for_log_files(revisionspec_list, file_list):
     :param file_list: the list of paths given on the command line;
       the first of these can be a branch location or a file path,
       the remainder must be file paths
+    :param add_cleanup: When the branch returned is read locked,
+      an unlock call will be queued to the cleanup.
     :return: (branch, info_list, start_rev_info, end_rev_info) where
       info_list is a list of (relative_path, file_id, kind) tuples where
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
@@ -2010,7 +2021,7 @@ def _get_info_for_log_files(revisionspec_list, file_list):
     """
     from builtins import _get_revision_range, safe_relpath_files
     tree, b, path = bzrdir.BzrDir.open_containing_tree_or_branch(file_list[0])
-    b.lock_read()
+    add_cleanup(b.lock_read().unlock)
     # XXX: It's damn messy converting a list of paths to relative paths when
     # those paths might be deleted ones, they might be on a case-insensitive
     # filesystem and/or they might be in silly locations (like another branch).

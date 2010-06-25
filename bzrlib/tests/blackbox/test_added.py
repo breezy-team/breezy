@@ -21,10 +21,10 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestAdded(ExternalBase):
+class TestAdded(TestCaseWithTransport):
 
     def test_added(self):
         """Test that 'added' command reports added files"""

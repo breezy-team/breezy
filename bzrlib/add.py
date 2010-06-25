@@ -18,9 +18,7 @@
 
 import sys
 
-import bzrlib.bzrdir
 import bzrlib.osutils
-from bzrlib.symbol_versioning import *
 
 
 class AddAction(object):
@@ -95,14 +93,3 @@ class AddFromBaseAction(AddAction):
         full_base_path = bzrlib.osutils.pathjoin(self.base_path, path.raw_path)
         # This may return None, but it is our last attempt
         return self.base_tree.path2id(full_base_path), full_base_path
-
-
-# TODO: jam 20050105 These could be used for compatibility
-#       however, they bind against the current stdout, not the
-#       one which exists at the time they are called, so they
-#       don't work for the test suite.
-# deprecated
-add_action_add = AddAction()
-add_action_null = add_action_add
-add_action_add_and_print = AddAction(should_print=True)
-add_action_print = add_action_add_and_print

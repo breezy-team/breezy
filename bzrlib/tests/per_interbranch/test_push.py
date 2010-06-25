@@ -19,6 +19,11 @@
 from cStringIO import StringIO
 import os
 
+from testtools.matchers import (
+    Equals,
+    MatchesAny,
+    )
+
 from bzrlib import (
     branch,
     builtins,
@@ -145,7 +150,7 @@ class TestPush(TestCaseWithInterBranch):
         except (errors.IncompatibleFormat, errors.UninitializableFormat):
             # This Branch format cannot create shared repositories
             return
-        # This is a little bit trickier because make_branch_and_tree will not
+        # This is a little bit trickier because make_from_branch_and_tree will not
         # re-use a shared repository.
         try:
             a_branch = self.make_from_branch('repo/tree')
@@ -272,10 +277,14 @@ class TestPush(TestCaseWithInterBranch):
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
         # After inserting the stream the client has no reason to query the
         # remote graph any further.
-        self.assertEqual(
+        bzr_core_trace = Equals(
             ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'get', 'Branch.set_last_revision_info', 'Branch.unlock'],
-            calls_after_insert_stream)
+             'get', 'Branch.set_last_revision_info', 'Branch.unlock'])
+        bzr_loom_trace = Equals(
+            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
+             'get', 'Branch.set_last_revision_info', 'get', 'Branch.unlock'])
+        self.assertThat(calls_after_insert_stream,
+            MatchesAny(bzr_core_trace, bzr_loom_trace))
 
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking

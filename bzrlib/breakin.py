@@ -78,7 +78,7 @@ def determine_signal():
 def hook_debugger_to_signal():
     """Add a signal handler so we drop into the debugger.
 
-    On Linux and Mac, this is hooked into SIGQUIT (C-\\) on Windows, this is
+    On Unix, this is hooked into SIGQUIT (C-\\), and on Windows, this is
     hooked into SIGBREAK (C-Pause).
     """
 

@@ -260,8 +260,7 @@ class Config(object):
         $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
-        If none is found, a reasonable default is (hopefully)
-        created.
+        If no username can be found, errors.NoWhoami exception is raised.
 
         TODO: Check it's reasonably well-formed.
         """
@@ -280,7 +279,7 @@ class Config(object):
         raise errors.NoWhoami()
 
     def ensure_username(self):
-        """Raise BzrCommandError if username is not set.
+        """Raise errors.NoWhoami if username is not set.
 
         This method relies on the username() function raising the error.
         """
@@ -478,6 +477,14 @@ class IniBasedConfig(Config):
     def _get_nickname(self):
         return self.get_user_option('nickname')
 
+    def _write_config_file(self):
+        f = file(self._get_filename(), "wb")
+        try:
+            osutils.copy_ownership_from_path(f.name)
+            self._get_parser().write(f)
+        finally:
+            f.close()
+
 
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
@@ -518,13 +525,6 @@ class GlobalConfig(IniBasedConfig):
         ensure_config_dir_exists(conf_dir)
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
-
-    def _write_config_file(self):
-        path = self._get_filename()
-        f = open(path, 'wb')
-        osutils.copy_ownership_from_path(path)
-        self._get_parser().write(f)
-        f.close()
 
 
 class LocationConfig(IniBasedConfig):
@@ -665,7 +665,7 @@ class LocationConfig(IniBasedConfig):
         self._get_parser()[location][option]=value
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
-        self._get_parser().write(file(self._get_filename(), 'wb'))
+        self._write_config_file()
 
 
 class BranchConfig(Config):
@@ -843,7 +843,6 @@ def config_dir():
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
-        # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
@@ -992,7 +991,11 @@ class AuthenticationConfig(object):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
-        self._get_config().write(file(self._filename, 'wb'))
+        f = file(self._filename, 'wb')
+        try:
+            self._get_config().write(f)
+        finally:
+            f.close()
 
     def _set_option(self, section_name, option_name, value):
         """Set an authentication configuration option"""
@@ -1446,7 +1449,11 @@ class TransportConfig(object):
             return StringIO()
 
     def _get_configobj(self):
-        return ConfigObj(self._get_config_file(), encoding='utf-8')
+        f = self._get_config_file()
+        try:
+            return ConfigObj(f, encoding='utf-8')
+        finally:
+            f.close()
 
     def _set_configobj(self, configobj):
         out_file = StringIO()

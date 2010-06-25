@@ -609,7 +609,7 @@ class TestBzrDirOpenBranch(TestRemote):
         # _get_tree_branch is a form of open_branch, but it should only ask for
         # branch opening, not any other network requests.
         calls = []
-        def open_branch():
+        def open_branch(name=None):
             calls.append("Called")
             return "a-branch"
         transport = MemoryTransport()
@@ -1618,7 +1618,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
     def test_get_multi_line_branch_conf(self):
         # Make sure that multiple-line branch.conf files are supported
         #
-        # https://bugs.edge.launchpad.net/bzr/+bug/354075
+        # https://bugs.launchpad.net/bzr/+bug/354075
         client = FakeClient()
         client.add_expected_call(
             'Branch.get_stacked_on_url', ('memory:///',),
@@ -1652,6 +1652,32 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         branch.unlock()
         self.assertFinished(client)
 
+    def test_set_option_with_dict(self):
+        client = FakeClient()
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('memory:///',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.lock_write', ('memory:///', '', ''),
+            'success', ('ok', 'branch token', 'repo token'))
+        encoded_dict_value = 'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde'
+        client.add_expected_call(
+            'Branch.set_config_option_dict', ('memory:///', 'branch token',
+            'repo token', encoded_dict_value, 'foo', ''),
+            'success', ())
+        client.add_expected_call(
+            'Branch.unlock', ('memory:///', 'branch token', 'repo token'),
+            'success', ('ok',))
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        branch.lock_write()
+        config = branch._get_config()
+        config.set_option(
+            {'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'},
+            'foo')
+        branch.unlock()
+        self.assertFinished(client)
+
     def test_backwards_compat_set_option(self):
         self.setup_smart_server_with_call_log()
         branch = self.make_branch('.')
@@ -1663,6 +1689,20 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         branch._get_config().set_option('value', 'name')
         self.assertLength(10, self.hpss_calls)
         self.assertEqual('value', branch._get_config().get_option('name'))
+
+    def test_backwards_compat_set_option_with_dict(self):
+        self.setup_smart_server_with_call_log()
+        branch = self.make_branch('.')
+        verb = 'Branch.set_config_option_dict'
+        self.disable_verb(verb)
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        self.reset_smart_call_log()
+        config = branch._get_config()
+        value_dict = {'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'}
+        config.set_option(value_dict, 'name')
+        self.assertLength(10, self.hpss_calls)
+        self.assertEqual(value_dict, branch._get_config().get_option('name'))
 
 
 class TestBranchLockWrite(RemoteBranchTestCase):
@@ -2257,6 +2297,7 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         self.setup_smart_server_with_call_log()
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
+        tree.add('')
         rev1 = tree.commit('First')
         rev2 = tree.commit('Second')
         tree.unlock()
@@ -2301,11 +2342,11 @@ class TestRepositoryLockWrite(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response('ok', 'a token')
-        result = repo.lock_write()
+        token = repo.lock_write().repository_token
         self.assertEqual(
             [('call', 'Repository.lock_write', ('quack/', ''))],
             client._calls)
-        self.assertEqual('a token', result)
+        self.assertEqual('a token', token)
 
     def test_lock_write_already_locked(self):
         transport_path = 'quack'

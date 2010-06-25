@@ -159,6 +159,14 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
         self.assertLogRevnos(['-c1'], ['1'])
 
 
+class TestLogExcludeCommonAncestry(TestLogWithLogCatcher):
+
+    def test_exclude_common_ancestry_simple_revnos(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r1..3', '--exclude-common-ancestry'],
+                             ['3', '2'])
+
+
 class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
 
     def setUp(self):
@@ -167,6 +175,18 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         # stop calling run_bzr, there is no point) --vila 100118.
         builder = branchbuilder.BranchBuilder(self.get_transport())
         builder.start_series()
+        # 1
+        # | \
+        # 2  1.1.1
+        # | / |
+        # 3  1.1.2
+        # |   |
+        # |  1.1.3
+        # | / |
+        # 4  1.1.4
+        # | /
+        # 5
+
         # mainline
         builder.build_snapshot('1', None, [
             ('add', ('', 'root-id', 'directory', ''))])
