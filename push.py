@@ -106,6 +106,26 @@ class InterToGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
+    def dfetch_refs(self, update_refs):
+        """Fetch non-roundtripped revisions into the target repository.
+
+        :param update_refs: Generate refs to fetch. Receives dictionary 
+            with old names to old git shas. Should return a dictionary
+            of new names to Bazaar revision ids.
+        :return: revision id map, old refs dictionary and new refs dictionary
+        """
+        raise NotImplementedError(self.dfetch_refs)
+
+    def fetch_refs(self, update_refs):
+        """Fetch possibly roundtripped revisions into the target repository.
+
+        :param update_refs: Generate refs to fetch. Receives dictionary 
+            with old refs (git shas), returns dictionary of new names to 
+            git shas.
+        :return: old refs, new refs
+        """
+        raise NotImplementedError(self.fetch_refs)
+
 
 class InterToLocalGitRepository(InterToGitRepository):
 
