@@ -692,8 +692,13 @@ class InterToGitBranch(branch.InterBranch):
         result.source_branch = self.source
         result.target_branch = self.target
         # FIXME: Check for diverged branches
-        refs, main_ref = self._get_new_refs(stop_revision)
-        result.revidmap, old_refs, new_refs = self.interrepo.dfetch_refs(refs)
+        new_refs, main_ref = self._get_new_refs(stop_revision)
+        def update_refs(old_refs):
+            refs = dict(old_refs)
+            refs.update(new_refs)
+            return refs
+        result.revidmap, old_refs, new_refs = self.interrepo.dfetch_refs(
+            update_refs)
         result.old_revid = self.target.lookup_foreign_revision_id(
             old_refs.get(self.target.ref, ZERO_SHA))
         result.new_revid = self.target.lookup_foreign_revision_id(

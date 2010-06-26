@@ -134,17 +134,17 @@ class InterToLocalGitRepository(InterToGitRepository):
         self.fetch(fetch_spec=fetch_spec)
         return old_refs, new_refs
 
-    def dfetch_refs(self, refs):
+    def dfetch_refs(self, update_refs):
         old_refs = self.target._git.get_refs()
-        new_refs = dict(old_refs)
-        revidmap, gitidmap = self.dfetch(refs.values())
-        for name, revid in refs.iteritems():
+        new_refs = update_refs(old_refs)
+        revidmap, gitidmap = self.dfetch(new_refs.values())
+        for name, revid in new_refs.iteritems():
             try:
                 gitid = gitidmap[revid]
             except KeyError:
                 gitid = self.source_store._lookup_revision_sha1(revid)
             self.target._git.refs[name] = gitid
-            new_refs[name] = gitid
+            new_refs[name] = revid
         return revidmap, old_refs, new_refs
 
     def _find_missing_revs(self, stop_revisions):
@@ -218,14 +218,14 @@ class InterToLocalGitRepository(InterToGitRepository):
 
 class InterToRemoteGitRepository(InterToGitRepository):
 
-    def dfetch_refs(self, new_refs):
+    def dfetch_refs(self, update_refs):
         """Import the gist of the ancestry of a particular revision."""
         revidmap = {}
-        old_refs = {}
-        def determine_wants(refs):
+        def determine_wants(old_refs):
             ret = {}
-            old_refs.update(new_refs)
-            for name, revid in new_refs.iteritems():
+            self.old_refs = old_refs
+            self.new_refs = update_refs(self.old_refs)
+            for name, revid in self.new_refs.iteritems():
                 ret[name] = self.source_store._lookup_revision_sha1(revid)
             return ret
         self.source.lock_read()
@@ -234,7 +234,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
                     self.source_store.generate_lossy_pack_contents)
         finally:
             self.source.unlock()
-        return revidmap, old_refs, new_refs
+        return revidmap, self.old_refs, self.new_refs
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
