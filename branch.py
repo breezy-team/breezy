@@ -656,10 +656,10 @@ class InterToGitBranch(branch.InterBranch):
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        # FIXME: Check for diverged branches
         new_refs, main_ref = self._get_new_refs(stop_revision)
         def update_refs(old_refs):
             refs = dict(old_refs)
+            # FIXME: Check for diverged branches
             refs.update(new_refs)
             return refs
         old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
@@ -674,10 +674,10 @@ class InterToGitBranch(branch.InterBranch):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        # FIXME: Check for diverged branches
         new_refs, main_ref = self._get_new_refs(stop_revision)
         def update_refs(old_refs):
             refs = dict(old_refs)
+            # FIXME: Check for diverged branches
             refs.update(new_refs)
             return refs
         old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
@@ -691,10 +691,10 @@ class InterToGitBranch(branch.InterBranch):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        # FIXME: Check for diverged branches
         new_refs, main_ref = self._get_new_refs(stop_revision)
         def update_refs(old_refs):
             refs = dict(old_refs)
+            # FIXME: Check for diverged branches
             refs.update(new_refs)
             return refs
         result.revidmap, old_refs, new_refs = self.interrepo.dfetch_refs(
