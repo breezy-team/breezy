@@ -11,6 +11,8 @@
 	into a file and its (file/symlink) children are removed 
 	(rather than moved). (#597758, Jelmer Vernooij)
 
+  * Fix reading pack files over http. (#588724, Jelmer Vernooij)
+
 0.5.1	2010-05-22
 
  BUG FIXES

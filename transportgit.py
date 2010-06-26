@@ -45,6 +45,7 @@ from dulwich.repo import (
 from bzrlib.errors import (
     FileExists,
     NoSuchFile,
+    TransportNotPossible,
     )
 
 
@@ -130,8 +131,17 @@ class TransportObjectStore(PackBasedObjectStore):
         ret = []
         for name in self._pack_names():
             if name.startswith("pack-") and name.endswith(".pack"):
-                size = self.pack_transport.stat(name).st_size
-                pd = PackData(name, self.pack_transport.get(name), size=size)
+                try:
+                    size = self.pack_transport.stat(name).st_size
+                except TransportNotPossible:
+                    # FIXME: This reads the whole pack file at once
+                    from cStringIO import StringIO
+                    f = self.pack_transport.get(name)
+                    contents = f.read()
+                    pd = PackData(name, StringIO(contents), size=len(contents))
+                else:
+                    pd = PackData(name, self.pack_transport.get(name),
+                            size=size)
                 idxname = name.replace(".pack", ".idx")
                 idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
                 ret.append(Pack.from_objects(pd, idx))
