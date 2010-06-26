@@ -35,7 +35,6 @@ import time
 
 # Keep track of when bzrlib was first imported, so that we can give rough
 # timestamps relative to program start in the log file kept by bzrlib.trace.
-# XXX: GLOBAL
 _start_time = time.time()
 
 import sys
