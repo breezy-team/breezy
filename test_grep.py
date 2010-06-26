@@ -2165,3 +2165,113 @@ class TestColorGrep(GrepTestBase):
         self.assertEqual(out, nres)
         self.assertEqual(len(out.splitlines()), 1)
 
+
+# copied from bzrlib.tests.blackbox.test_diff
+def subst_dates(string):
+    """Replace date strings with constant values."""
+    return re.sub(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [-\+]\d{4}',
+                  'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
+
+
+class TestGrepDiff(tests.TestCaseWithTransport):
+
+    def make_example_branch(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('hello', 'foo\n'),
+            ('goodbye', 'baz\n')])
+        tree.add(['hello'])
+        tree.commit('setup')
+        tree.add(['goodbye'])
+        tree.commit('setup')
+        return tree
+
+    def test_grep_diff_basic(self):
+        """grep -p basic test."""
+        tree = self.make_example_branch()
+        self.build_tree_contents([('hello', 'hello world!\n')])
+        tree.commit('updated hello')
+        out, err = self.run_bzr(['grep', '-p', 'hello'])
+        self.assertEquals(err, '')
+        self.assertEqualDiff(subst_dates(out), '''\
+=== revno:3 ===
+  === modified file 'hello'
+    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +hello world!
+=== revno:1 ===
+  === added file 'hello'
+    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+''')
+
+    def test_grep_diff_revision(self):
+        """grep -p specific revision."""
+        tree = self.make_example_branch()
+        self.build_tree_contents([('hello', 'hello world!\n')])
+        tree.commit('updated hello')
+        out, err = self.run_bzr(['grep', '-p', '-r', '3', 'hello'])
+        self.assertEquals(err, '')
+        self.assertEqualDiff(subst_dates(out), '''\
+=== revno:3 ===
+  === modified file 'hello'
+    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +hello world!
+''')
+
+    def test_grep_diff_revision_range(self):
+        """grep -p revision range."""
+        tree = self.make_example_branch()
+        self.build_tree_contents([('hello', 'hello world!1\n')]) # rev 3
+        tree.commit('rev3')
+        self.build_tree_contents([('blah', 'hello world!2\n')]) # rev 4
+        tree.add('blah')
+        tree.commit('rev4')
+        open('hello', 'a').write('hello world!3\n')
+        #self.build_tree_contents([('hello', 'hello world!3\n')]) # rev 5
+        tree.commit('rev5')
+        out, err = self.run_bzr(['grep', '-p', '-r', '2..5', 'hello'])
+        self.assertEquals(err, '')
+        self.assertEqualDiff(subst_dates(out), '''\
+=== revno:5 ===
+  === modified file 'hello'
+    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +hello world!3
+=== revno:4 ===
+  === added file 'blah'
+    +hello world!2
+=== revno:3 ===
+  === modified file 'hello'
+    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +hello world!1
+''')
+
+    def test_grep_diff_color(self):
+        """grep -p color test."""
+        tree = self.make_example_branch()
+        self.build_tree_contents([('hello', 'hello world!\n')])
+        tree.commit('updated hello')
+        out, err = self.run_bzr(['grep', '--diff', '-r', '3',
+            '--color', 'always', 'hello'])
+        self.assertEquals(err, '')
+        revno = color_string('=== revno:3 ===', fg=FG.BOLD_BLUE) + '\n'
+        filename = color_string("  === modified file 'hello'", fg=FG.BOLD_MAGENTA) + '\n'
+        redhello = color_string('hello', fg=FG.BOLD_RED)
+        diffstr = '''\
+    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +hello world!
+'''
+        diffstr = diffstr.replace('hello', redhello)
+        self.assertEqualDiff(subst_dates(out), revno + filename + diffstr)
+
+    def test_grep_norevs(self):
+        """grep -p with zero revisions."""
+        out, err = self.run_bzr(['init'])
+        out, err = self.run_bzr(['grep', '--diff', 'foo'], 3)
+        self.assertEquals(out, '')
+        self.assertContainsRe(err, "ERROR:.*revision.* does not exist in branch")
+

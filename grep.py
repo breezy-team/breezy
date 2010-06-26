@@ -21,17 +21,25 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from fnmatch import fnmatch
 import re
+from cStringIO import StringIO
 
 from termcolor import color_string, re_color_string, FG
 
-
-from bzrlib import bzrdir
 from bzrlib.workingtree import WorkingTree
-from bzrlib.revisionspec import RevisionSpec, RevisionSpec_revid, RevisionSpec_revno
+from bzrlib.revision import Revision
+from bzrlib.revisionspec import (
+    RevisionSpec,
+    RevisionSpec_revid,
+    RevisionSpec_revno,
+    RevisionInfo,
+    )
 from bzrlib import (
+    bzrdir,
+    diff,
     errors,
     lazy_regex,
     osutils,
+    revision as _mod_revision,
     textfile,
     trace,
     )
@@ -125,6 +133,173 @@ def is_fixed_string(s):
     if re.match("^([A-Za-z0-9_]|\s)*$", s):
         return True
     return False
+
+
+class _GrepDiffOutputter(object):
+    """Precalculate formatting based on options given for diff grep.
+    """
+    def __init__(self, opts):
+        self.opts = opts
+        self.outf = opts.outf
+        if opts.show_color:
+            pat = opts.pattern.encode(_user_encoding, 'replace')
+            if opts.fixed_string:
+                self._old = pat
+                self._new = color_string(pat, FG.BOLD_RED)
+                self.get_writer = self._get_writer_fixed_highlighted
+            else:
+                flags = opts.patternc.flags
+                self._sub = re.compile(pat.join(("((?:",")+)")), flags).sub
+                self._highlight = color_string("\\1", FG.BOLD_RED)
+                self.get_writer = self._get_writer_regexp_highlighted
+        else:
+            self.get_writer = self._get_writer_plain
+
+    def get_file_header_writer(self):
+        """Get function for writing file headers"""
+        write = self.outf.write
+        eol_marker = self.opts.eol_marker
+        def _line_writer(line):
+            write(line + eol_marker)
+        def _line_writer_color(line):
+            write(FG.BOLD_MAGENTA + line + FG.NONE + eol_marker)
+        if self.opts.show_color:
+            return _line_writer_color
+        else:
+            return _line_writer
+        return _line_writer
+
+    def get_revision_header_writer(self):
+        """Get function for writing revno lines"""
+        write = self.outf.write
+        eol_marker = self.opts.eol_marker
+        def _line_writer(line):
+            write(line + eol_marker)
+        def _line_writer_color(line):
+            write(FG.BOLD_BLUE + line + FG.NONE + eol_marker)
+        if self.opts.show_color:
+            return _line_writer_color
+        else:
+            return _line_writer
+        return _line_writer
+
+    def _get_writer_plain(self):
+        """Get function for writing uncoloured output"""
+        write = self.outf.write
+        eol_marker = self.opts.eol_marker
+        def _line_writer(line):
+            write(line + eol_marker)
+        return _line_writer
+
+    def _get_writer_regexp_highlighted(self):
+        """Get function for writing output with regexp match highlighted"""
+        _line_writer = self._get_writer_plain()
+        sub, highlight = self._sub, self._highlight
+        def _line_writer_regexp_highlighted(line):
+            """Write formatted line with matched pattern highlighted"""
+            return _line_writer(line=sub(highlight, line))
+        return _line_writer_regexp_highlighted
+
+    def _get_writer_fixed_highlighted(self):
+        """Get function for writing output with search string highlighted"""
+        _line_writer = self._get_writer_plain()
+        old, new = self._old, self._new
+        def _line_writer_fixed_highlighted(line):
+            """Write formatted line with string searched for highlighted"""
+            return _line_writer(line=line.replace(old, new))
+        return _line_writer_fixed_highlighted
+
+
+def grep_diff(opts):
+    wt, branch, relpath = \
+        bzrdir.BzrDir.open_containing_tree_or_branch('.')
+    branch.lock_read()
+    try:
+        if opts.revision:
+            start_rev = opts.revision[0]
+        else:
+            # if no revision is sepcified for diff grep we grep all changesets.
+            opts.revision = [RevisionSpec.from_string('revno:1'),
+                RevisionSpec.from_string('last:1')]
+            start_rev = opts.revision[0]
+        start_revid = start_rev.as_revision_id(branch)
+        if start_revid == 'null:':
+            return
+        srevno_tuple = branch.revision_id_to_dotted_revno(start_revid)
+        if len(opts.revision) == 2:
+            end_rev = opts.revision[1]
+            end_revid = end_rev.as_revision_id(branch)
+            if end_revid == None:
+                end_revno, end_revid = branch.last_revision_info()
+            erevno_tuple = branch.revision_id_to_dotted_revno(end_revid)
+
+            grep_mainline = (_rev_on_mainline(srevno_tuple) and
+                _rev_on_mainline(erevno_tuple))
+
+            # ensure that we go in reverse order
+            if srevno_tuple > erevno_tuple:
+                srevno_tuple, erevno_tuple = erevno_tuple, srevno_tuple
+                start_revid, end_revid = end_revid, start_revid
+
+            # Optimization: Traversing the mainline in reverse order is much
+            # faster when we don't want to look at merged revs. We try this
+            # with _linear_view_revisions. If all revs are to be grepped we
+            # use the slower _graph_view_revisions
+            if opts.levels==1 and grep_mainline:
+                given_revs = _linear_view_revisions(branch, start_revid, end_revid)
+            else:
+                given_revs = _graph_view_revisions(branch, start_revid, end_revid)
+        else:
+            # We do an optimization below. For grepping a specific revison
+            # We don't need to call _graph_view_revisions which is slow.
+            # We create the start_rev_tuple for only that specific revision.
+            # _graph_view_revisions is used only for revision range.
+            start_revno = '.'.join(map(str, srevno_tuple))
+            start_rev_tuple = (start_revid, start_revno, 0)
+            given_revs = [start_rev_tuple]
+        repo = branch.repository
+        diff_pattern = re.compile("^[+\-].*(" + opts.pattern + ")")
+        file_pattern = re.compile("=== (modified|added|removed) file '.*'", re.UNICODE)
+        outputter = _GrepDiffOutputter(opts)
+        writeline = outputter.get_writer()
+        writerevno = outputter.get_revision_header_writer()
+        writefileheader = outputter.get_file_header_writer()
+        file_encoding = _user_encoding
+        for revid, revno, merge_depth in given_revs:
+            if opts.levels == 1 and merge_depth != 0:
+                # with level=1 show only top level
+                continue
+
+            rev_spec = RevisionSpec_revid.from_string("revid:"+revid)
+            new_rev = repo.get_revision(revid)
+            new_tree = rev_spec.as_tree(branch)
+            if len(new_rev.parent_ids) == 0:
+                ancestor_id = _mod_revision.NULL_REVISION
+            else:
+                ancestor_id = new_rev.parent_ids[0]
+            old_tree = repo.revision_tree(ancestor_id)
+            s = StringIO()
+            diff.show_diff_trees(old_tree, new_tree, s,
+                old_label='', new_label='')
+            display_revno = True
+            display_file = False
+            file_header = None
+            text = s.getvalue()
+            for line in text.splitlines():
+                if file_pattern.search(line):
+                    file_header = line
+                    display_file = True
+                elif diff_pattern.search(line):
+                    if display_revno:
+                        writerevno("=== revno:%s ===" % (revno,))
+                        display_revno = False
+                    if display_file:
+                        writefileheader("  %s" % (file_header,))
+                        display_file = False
+                    line = line.decode(file_encoding, 'replace')
+                    writeline("    %s" % (line,))
+    finally:
+        branch.unlock()
 
 
 def versioned_grep(opts):

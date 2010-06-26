@@ -78,6 +78,7 @@ class GrepOptions(object):
     files_with_matches = False
     files_without_match = False
     color = None
+    diff = False
 
     # derived options
     recursive = None
@@ -124,6 +125,8 @@ class cmd_grep(Command):
         'revision',
         Option('color', type=str, argname='when',
                help='Show match in color. WHEN is never, always or auto.'),
+        Option('diff', short_name='p',
+               help='Grep for pattern in changeset for each revision.'),
         ListOption('exclude', type=str, argname='glob', short_name='X',
             help="Skip files whose base name matches GLOB."),
         ListOption('include', type=str, argname='glob', short_name='I',
@@ -161,7 +164,7 @@ class cmd_grep(Command):
             from_root=False, null=False, levels=None, line_number=False,
             path_list=None, revision=None, pattern=None, include=None,
             exclude=None, fixed_string=False, files_with_matches=False,
-            files_without_match=False, color='never'):
+            files_without_match=False, color='never', diff=False):
 
         if path_list == None:
             path_list = ['.']
@@ -229,6 +232,7 @@ class cmd_grep(Command):
         GrepOptions.files_with_matches = files_with_matches
         GrepOptions.files_without_match = files_without_match
         GrepOptions.color = color
+        GrepOptions.diff = False
 
         GrepOptions.eol_marker = eol_marker
         GrepOptions.print_revno = print_revno
@@ -238,7 +242,14 @@ class cmd_grep(Command):
         GrepOptions.outf = self.outf
         GrepOptions.show_color = show_color
 
-        if revision == None:
+        if diff == True:
+            # options not used:
+            # files_with_matches, files_without_match
+            # levels(?), line_number, from_root
+            # include, exclude
+            # These are silently ignored.
+            grep.grep_diff(GrepOptions)
+        elif revision == None:
             grep.workingtree_grep(GrepOptions)
         else:
             grep.versioned_grep(GrepOptions)
