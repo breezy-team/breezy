@@ -256,8 +256,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             self.source.unlock()
         return revidmap, self.old_refs, self.new_refs
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
+    def fetch_refs(self, update_refs):
         raise NoPushSupport()
 
     @staticmethod
