@@ -35,6 +35,7 @@ import time
 
 # Keep track of when bzrlib was first imported, so that we can give rough
 # timestamps relative to program start in the log file kept by bzrlib.trace.
+# XXX: GLOBAL
 _start_time = time.time()
 
 import sys
@@ -172,7 +173,8 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         ui_factory = bzrlib.ui.make_ui_for_terminal(stdin, stdout, stderr)
     else:
         ui_factory = None
-    return bzrlib.library_state.BzrLibraryState(ui=ui_factory)
+    tracer = bzrlib.trace.DefaultConfig()
+    return bzrlib.library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
 
 
 def test_suite():

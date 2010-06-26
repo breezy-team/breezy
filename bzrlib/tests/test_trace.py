@@ -333,3 +333,21 @@ class TestBzrLog(TestCaseInTempDir):
         _rollover_trace_maybe(temp_log_name)
         # should have been rolled over
         self.assertFalse(os.access(temp_log_name, os.R_OK))
+
+
+class TestTraceConfiguration(TestCaseInTempDir):
+
+    def test_default_config(self):
+        config = trace.DefaultConfig()
+        self.overrideAttr(trace, "_bzr_log_filename", None)
+        trace._bzr_log_filename = None
+        expected_filename = trace._get_bzr_log_filename()
+        self.assertEqual(None, trace._bzr_log_filename)
+        config.__enter__()
+        try:
+            # Should have entered and setup a default filename.
+            self.assertEqual(expected_filename, trace._bzr_log_filename)
+        finally:
+            config.__exit__(None, None, None)
+            # Should have exited and cleaned up.
+            self.assertEqual(None, trace._bzr_log_filename)

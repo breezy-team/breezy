@@ -39,7 +39,7 @@ class BzrLibraryState(object):
         in __enter__ and executed in __exit__.
     """
 
-    def __init__(self, ui=None):
+    def __init__(self, ui, trace):
         """Create library start for normal use of bzrlib.
 
         Most applications that embed bzrlib, including bzr itself, should just
@@ -56,8 +56,11 @@ class BzrLibraryState(object):
         __exit__.
 
         :param ui: A bzrlib.ui.ui_factory to use.
+        :param trace: A bzrlib.trace.Config context manager to use, perhaps
+            bzrlib.trace.DefaultConfig.
         """
         self._ui = ui
+        self._trace = trace
 
     def __enter__(self):
         # NB: This function tweaks so much global state it's hard to test it in
@@ -72,11 +75,10 @@ class BzrLibraryState(object):
             warning_cleanup = None
 
         import bzrlib.cleanup
-        import bzrlib.trace
         self.cleanups = bzrlib.cleanup.ObjectWithCleanups()
         if warning_cleanup:
             self.cleanups.add_cleanup(warning_cleanup)
-        bzrlib.trace.enable_default_logging()
+        self._trace.__enter__()
 
         self._orig_ui = bzrlib.ui.ui_factory
         bzrlib.ui.ui_factory = self._ui
@@ -94,6 +96,7 @@ class BzrLibraryState(object):
         import bzrlib.osutils
         bzrlib.osutils.report_extension_load_failures()
         self._ui.__exit__(None, None, None)
+        self._trace.__exit__(None, None, None)
         bzrlib.ui.ui_factory = self._orig_ui
         global global_state
         global_state = self.saved_state

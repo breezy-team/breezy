@@ -22,6 +22,7 @@ from bzrlib import (
     tests,
     ui as _mod_ui
     )
+from bzrlib.tests import fixtures
 
 
 # TODO: once sufficiently cleaned up this should be able to be TestCase.
@@ -29,7 +30,8 @@ class TestLibraryState(tests.TestCaseWithTransport):
 
     def test_ui_is_used(self):
         ui = _mod_ui.SilentUIFactory()
-        state = library_state.BzrLibraryState(ui=ui)
+        state = library_state.BzrLibraryState(
+            ui=ui, trace=fixtures.RecordingContextManager())
         orig_ui = _mod_ui.ui_factory
         state.__enter__()
         try:
@@ -37,3 +39,14 @@ class TestLibraryState(tests.TestCaseWithTransport):
         finally:
             state.__exit__(None, None, None)
             self.assertEqual(orig_ui, _mod_ui.ui_factory)
+
+    def test_trace_context(self):
+        tracer = fixtures.RecordingContextManager()
+        ui = _mod_ui.SilentUIFactory()
+        state = library_state.BzrLibraryState(ui=ui, trace=tracer)
+        state.__enter__()
+        try:
+            self.assertEqual(['__enter__'], tracer._calls)
+        finally:
+            state.__exit__(None, None, None)
+            self.assertEqual(['__enter__', '__exit__'], tracer._calls)

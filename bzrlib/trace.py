@@ -306,6 +306,8 @@ def enable_default_logging():
     logging.getLogger("bzr").
 
     Output can be redirected away by calling _push_log_file.
+
+    :return: A memento from push_log_file for restoring the log state.
     """
     start_time = osutils.format_local_date(_bzr_log_start_time,
                                            timezone='local')
@@ -313,7 +315,7 @@ def enable_default_logging():
     bzr_log_file = _open_bzr_log()
     if bzr_log_file is not None:
         bzr_log_file.write(start_time.encode('utf-8') + '\n')
-    push_log_file(bzr_log_file,
+    memento = push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into bzr_log, we also need to attach a stderr
@@ -324,6 +326,7 @@ def enable_default_logging():
     stderr_handler = logging.StreamHandler(encoded_stderr)
     stderr_handler.setLevel(logging.INFO)
     logging.getLogger('bzr').addHandler(stderr_handler)
+    return memento
 
 
 def push_log_file(to_file, log_format=None, date_format=None):
@@ -555,3 +558,36 @@ def _flush_trace():
     global _trace_file
     if _trace_file:
         _trace_file.flush()
+
+
+class Config(object):
+    """Configuration of message tracing in bzrlib.
+
+    This implements the context manager protocol and should manage any global
+    variables still used. The default config used is DefaultConfig, but
+    embedded uses of bzrlib may wish to use a custom manager.
+    """
+
+    def __enter__(self):
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False # propogate exceptions.
+
+
+class DefaultConfig(Config):
+    """A default configuration for tracing of messages in bzrlib.
+
+    This implements the context manager protocol.
+    """
+
+    def __enter__(self):
+        self._original_filename = _bzr_log_filename
+        self._original_state = enable_default_logging()
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pop_log_file(self._original_state)
+        global _bzr_log_filename
+        _bzr_log_filename = self._original_filename
+        return False # propogate exceptions.
