@@ -218,7 +218,9 @@ def grep_diff(opts):
         if opts.revision:
             start_rev = opts.revision[0]
         else:
-            opts.revision = [RevisionSpec.from_string('last:1')]
+            # if no revision is sepcified for diff grep we grep all changesets.
+            opts.revision = [RevisionSpec.from_string('revno:1'),
+                RevisionSpec.from_string('last:1')]
             start_rev = opts.revision[0]
         start_revid = start_rev.as_revision_id(branch)
         if start_revid == 'null:':

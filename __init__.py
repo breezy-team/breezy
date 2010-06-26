@@ -243,10 +243,11 @@ class cmd_grep(Command):
         GrepOptions.show_color = show_color
 
         if diff == True:
-            # options not allowed:
+            # options not used:
             # files_with_matches, files_without_match
             # levels(?), line_number, from_root
             # include, exclude
+            # These are silently ignored.
             grep.grep_diff(GrepOptions)
         elif revision == None:
             grep.workingtree_grep(GrepOptions)

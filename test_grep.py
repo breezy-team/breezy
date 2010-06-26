@@ -2165,3 +2165,44 @@ class TestColorGrep(GrepTestBase):
         self.assertEqual(out, nres)
         self.assertEqual(len(out.splitlines()), 1)
 
+
+# copied from bzrlib.tests.blackbox.test_diff
+def subst_dates(string):
+    """Replace date strings with constant values."""
+    return re.sub(r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [-\+]\d{4}',
+                  'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
+
+
+class TestGrepDiff(tests.TestCaseWithTransport):
+
+    def make_example_branch(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            ('hello', 'foo\n'),
+            ('goodbye', 'baz\n')])
+        tree.add(['hello'])
+        tree.commit('setup')
+        tree.add(['goodbye'])
+        tree.commit('setup')
+        return tree
+
+    def test_grep_diff_basic(self):
+        """grep -p basic test."""
+        tree = self.make_example_branch()
+        self.build_tree_contents([('hello', 'hello world!\n')])
+        tree.commit('updated hello')
+        out, err = self.run_bzr(['grep', '-p', 'hello'])
+        self.assertEquals(err, '')
+        self.assertEqualDiff(subst_dates(out), '''\
+===revno:3 ===
+  === modified file 'hello'
+    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +hello world!
+===revno:1 ===
+  === added file 'hello'
+    --- hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+    +++ hello	YYYY-MM-DD HH:MM:SS +ZZZZ
+''')
+
+
