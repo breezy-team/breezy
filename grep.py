@@ -259,11 +259,12 @@ def grep_diff(opts):
             given_revs = [start_rev_tuple]
         repo = branch.repository
         diff_pattern = re.compile("^[+\-].*(" + opts.pattern + ")")
-        file_pattern = re.compile("=== (modified|added) file '.*'", re.UNICODE)
+        file_pattern = re.compile("=== (modified|added|removed) file '.*'", re.UNICODE)
         outputter = _GrepDiffOutputter(opts)
         writeline = outputter.get_writer()
         writerevno = outputter.get_revision_header_writer()
         writefileheader = outputter.get_file_header_writer()
+        file_encoding = _user_encoding
         for revid, revno, merge_depth in given_revs:
             if opts.levels == 1 and merge_depth != 0:
                 # with level=1 show only top level
@@ -288,14 +289,15 @@ def grep_diff(opts):
                 if file_pattern.search(line):
                     file_header = line
                     display_file = True
-                if diff_pattern.search(line):
+                elif diff_pattern.search(line):
                     if display_revno:
                         writerevno("=== revno:%s ===" % (revno,))
                         display_revno = False
                     if display_file:
                         writefileheader("  %s" % (file_header,))
                         display_file = False
-                    writeline("    " + line)
+                    line = line.decode(file_encoding, 'replace')
+                    writeline("    %s" % (line,))
     finally:
         branch.unlock()
 
