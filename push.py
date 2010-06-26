@@ -61,6 +61,11 @@ class MissingObjectsIterator(object):
         self.pb = pb
 
     def import_revisions(self, revids, roundtrip):
+        """Import a set of revisions into this git repository.
+
+        :param revids: Revision ids of revisions to import
+        :param roundtrip: Whether to roundtrip bzr metadata
+        """
         for i, revid in enumerate(revids):
             if self.pb:
                 self.pb.update("pushing revisions", i, len(revids))
@@ -68,8 +73,10 @@ class MissingObjectsIterator(object):
             yield (revid, git_commit)
 
     def import_revision(self, revid, roundtrip):
-        """Import the gist of a revision into this Git repository.
+        """Import a revision into this Git repository.
 
+        :param revid: Revision id of the revision
+        :param roundtrip: Whether to roundtrip bzr metadata
         """
         tree = self._object_store.tree_cache.revision_tree(revid)
         rev = self.source.get_revision(revid)
@@ -179,6 +186,9 @@ class InterToLocalGitRepository(InterToGitRepository):
                 return True
         return list(self.missing_revisions(stop_revisions, check_revid))
 
+    def _get_missing_objects_iterator(self, pb):
+        return MissingObjectsIterator(self.source_store, self.source, pb)
+
     def dfetch(self, stop_revisions):
         """Import the gist of the ancestry of a particular revision."""
         gitidmap = {}
@@ -188,8 +198,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             todo = self._find_missing_revs(stop_revisions)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                object_generator = MissingObjectsIterator(self.source_store,
-                    self.source, pb)
+                object_generator = self._get_missing_objects_iterator()
                 for old_bzr_revid, git_commit in object_generator.import_revisions(
                     todo, roundtrip=False):
                     new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
@@ -215,8 +224,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             todo = self._find_missing_revs(stop_revisions)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                object_generator = MissingObjectsIterator(self.source_store,
-                    self.source, pb)
+                object_generator = self._get_missing_objects_iterator(pb)
                 for (revid, git_sha) in object_generator.import_revisions(
                     todo, roundtrip=True):
                     try:
