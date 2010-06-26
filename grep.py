@@ -290,7 +290,7 @@ def grep_diff(opts):
                     display_file = True
                 if diff_pattern.search(line):
                     if display_revno:
-                        writerevno("===revno:%s ===" % (revno,))
+                        writerevno("=== revno:%s ===" % (revno,))
                         display_revno = False
                     if display_file:
                         writefileheader("  %s" % (file_header,))
