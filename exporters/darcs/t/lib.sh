@@ -229,6 +229,10 @@ third line" | git commit -a -F -
 	echo f > file
 	git add file
 	git commit -a -m "file: other -> f"
+	# this is a boring file for Darcs
+	touch foo.pyc
+	git add foo.pyc
+	git commit -a -m "boring file"
 	cd ..
 }
 

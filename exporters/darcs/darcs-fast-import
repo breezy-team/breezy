@@ -108,6 +108,9 @@ class Handler:
 		if os.system("darcs %s" % cmdline) != 0:
 			self.bug("darcs failed")
 
+	def invoke_add(self, path):
+		self.invoke_darcs("add --boring %s" % path)
+
 	def handle_mark(self):
 		if self.line.startswith("mark :"):
 			self.mark_num = int(self.line[6:-1])
@@ -199,7 +202,7 @@ class Handler:
 			elif self.line.startswith("C "):
 				src, dest = self.line[:-1].split(' ')[1:]
 				shutil.copy(src.strip('"'), dest.strip('"'))
-				self.invoke_darcs("add %s" % dest)
+				self.invoke_add(dest)
 			elif self.line.startswith("M "):
 				items = self.line.split(' ')
 				if items[1] == "120000":
@@ -230,7 +233,7 @@ class Handler:
 				break
 
 		for i in adds:
-			self.invoke_darcs("add %s" % i)
+			self.invoke_add(i)
 		sock = subprocess.Popen(["darcs", "record", "--ignore-times", "-a", "--pipe"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 		buf = [self.date, self.ident, self.short, self.long]
 		sock.stdin.write("\n".join(buf))
