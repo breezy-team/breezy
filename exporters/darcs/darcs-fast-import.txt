@@ -42,6 +42,12 @@ as well, via the --import-marks / --export-marks switches.
 	subdirectory. So the hack can be useful, but be extremely careful when
 	you use it.
 
+--progress=<n>::
+	Insert progress statements after every <n> created patches. The
+	default is not to print anything as progress info is usually provided by
+	the exporter. Use this option in case the exporter does not have such a
+	switch but you still want to get some feedback.
+
 == EXIT CODES
 
 The exit code is:

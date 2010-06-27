@@ -268,7 +268,7 @@ class Handler:
 			self.export_marks.append(":%s %s" % (self.mark_num, hash))
 
 	def handle_progress(self, s):
-		print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s.strip())
+		print "import progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s.strip())
 		sys.stdout.flush()
 
 	def handle_opts(self):
@@ -284,6 +284,8 @@ class Handler:
 			help="log file which contains the output of external programs invoked during the conversion")
 		opp.add_option("--symhack", action="store_true", dest="symhack",
 			help="Do not error out when a symlink would be created, just create it in the workdir")
+		opp.add_option("--progress", metavar="P",
+			help="insert progress statements after every n commit [default: 100]")
 		(self.options, args) = opp.parse_args()
 
 		if self.options.logfile:
@@ -291,6 +293,11 @@ class Handler:
 		else:
 			logfile = "_darcs/import.log"
 		self.logsock = open(os.path.abspath(logfile), "a")
+
+		if self.options.progress:
+			self.prognum = int(self.options.progress)
+		else:
+			self.prognum = 0
 	
 	def log(self, s):
 		self.logsock.write("[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s))
@@ -318,6 +325,7 @@ class Handler:
 		self.handle_opts()
 		self.handle_import_marks()
 
+		commitcount = 0
 		while not self.eof:
 			self.read_next_line()
 			if not len(self.line[:-1]):
@@ -326,6 +334,9 @@ class Handler:
 				self.handle_blob()
 			elif self.line.startswith("commit"):
 				self.handle_commit()
+				commitcount += 1
+				if self.prognum != 0 and commitcount % self.prognum == 0:
+					self.handle_progress("%d patches" % commitcount)
 			elif self.line.startswith("tag"):
 				self.handle_tag()
 			elif self.line.startswith("reset"):
