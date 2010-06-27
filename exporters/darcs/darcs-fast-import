@@ -109,7 +109,7 @@ class Handler:
 			self.bug("darcs failed")
 
 	def invoke_add(self, path):
-		self.invoke_darcs("add --boring %s" % path)
+		self.invoke_darcs("add --boring --case-ok %s" % path)
 
 	def handle_mark(self):
 		if self.line.startswith("mark :"):

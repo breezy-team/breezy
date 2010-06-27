@@ -233,6 +233,14 @@ third line" | git commit -a -F -
 	touch foo.pyc
 	git add foo.pyc
 	git commit -a -m "boring file"
+	# replace an uppercase file to a lowercase one
+	echo SPAM > SPAM
+	git add SPAM
+	git commit -a -m SPAM
+	rm SPAM
+	echo spam > spam
+	git add spam
+	git commit -a -m "SPAM -> spam"
 	cd ..
 }
 
