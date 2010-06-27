@@ -34,6 +34,14 @@ as well, via the --import-marks / --export-marks switches.
 	The output of external commands are redirected to a log file. You can
 	specify the path of that file with this parameter.
 
+--symhack::
+	Enable hack for symbolic links. darcs add does not handle them
+	but in case they are just added, we can create them in the working
+	directory. This can be handy in case for example the symbolic link is in
+	a subdirectory of the project and you don't even care about that
+	subdirectory. So the hack can be useful, but be extremely careful when
+	you use it.
+
 == EXIT CODES
 
 The exit code is:
