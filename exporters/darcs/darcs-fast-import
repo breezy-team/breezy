@@ -198,6 +198,9 @@ class Handler:
 				os.system("darcs add %s" % dest)
 			elif self.line.startswith("M "):
 				items = self.line.split(' ')
+				if items[1] == "120000":
+					print "Adding symbolic links (symlinks) is not supported by Darcs."
+					sys.exit(2)
 				path = items[3][:-1]
 				dir = os.path.split(path)[0]
 				if len(dir) and not os.path.exists(dir):

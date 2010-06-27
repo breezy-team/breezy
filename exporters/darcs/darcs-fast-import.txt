@@ -33,3 +33,11 @@ as well, via the --import-marks / --export-marks switches.
 --logfile::
 	The output of external commands are redirected to a log file. You can
 	specify the path of that file with this parameter.
+
+== EXIT CODES
+
+The exit code is:
+
+* 0 on success
+* 1 on unhandled exception
+* 2 in case the stream would try to let the importer create a symlink
