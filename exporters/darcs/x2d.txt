@@ -6,7 +6,7 @@ x2d - convert git, bzr or hg repos to a darcs one using fast-export
 
 == SYNOPSIS
 
-x2d -f <format> <otherrepo>
+x2d -f <format> [<importoptions>] <otherrepo>
 
 == DESCRIPTION
 
@@ -24,3 +24,5 @@ importer's standard input.
 -f <format>::
 	Specify the format of the source repo. Currently supported sources are
 	git, bzr and hg. Incremental conversion is supported for all of them.
+
+The rest of the options is directly passed to darcs-fast-import.
