@@ -104,6 +104,10 @@ class Handler:
 		items = s.split(' ')
 		return " ".join(items[:-1]) + " " + tz + " " + items[-1]
 
+	def invoke_darcs(self, cmdline):
+		if os.system("darcs %s" % cmdline) != 0:
+			self.bug("darcs failed")
+
 	def handle_mark(self):
 		if self.line.startswith("mark :"):
 			self.mark_num = int(self.line[6:-1])
@@ -191,11 +195,11 @@ class Handler:
 				if path in self.files:
 					self.files.remove(path)
 			elif self.line.startswith("R "):
-				os.system("darcs mv %s" % self.line[2:])
+				self.invoke_darcs("mv %s" % self.line[2:])
 			elif self.line.startswith("C "):
 				src, dest = self.line[:-1].split(' ')[1:]
 				shutil.copy(src.strip('"'), dest.strip('"'))
-				os.system("darcs add %s" % dest)
+				self.invoke_darcs("add %s" % dest)
 			elif self.line.startswith("M "):
 				items = self.line.split(' ')
 				if items[1] == "120000":
@@ -226,7 +230,7 @@ class Handler:
 				break
 
 		for i in adds:
-			os.system("darcs add %s" % i)
+			self.invoke_darcs("add %s" % i)
 		sock = subprocess.Popen(["darcs", "record", "--ignore-times", "-a", "--pipe"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 		buf = [self.date, self.ident, self.short, self.long]
 		sock.stdin.write("\n".join(buf))
