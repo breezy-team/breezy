@@ -240,6 +240,13 @@ class Handler:
 
 		for i in adds:
 			self.invoke_add(i)
+		sock = subprocess.Popen(["darcs", "record", "--ignore-times", "-a", "--pipe"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+		buf = [self.date, self.ident, self.short, self.long]
+		sock.stdin.write("\n".join(buf))
+		sock.stdin.close()
+		self.log("Recording :%s:\n%s" % (self.mark_num, sock.stdout.read()))
+		sock.stdout.close()
+
 		for src, path in symlinks:
 			# symlink does not do what we want if path is
 			# already there
@@ -250,13 +257,6 @@ class Handler:
 				else:
 					shutil.rmtree(path)
 			os.symlink(src, path)
-		sock = subprocess.Popen(["darcs", "record", "--ignore-times", "-a", "--pipe"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-		buf = [self.date, self.ident, self.short, self.long]
-		sock.stdin.write("\n".join(buf))
-		sock.stdin.close()
-		self.log("Recording :%s:\n%s" % (self.mark_num, sock.stdout.read()))
-		sock.stdout.close()
-
 		if self.options.export_marks:
 			# yeah, an xml parser would be better, but
 			# should we mess with encodings just because of
