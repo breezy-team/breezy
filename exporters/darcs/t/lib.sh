@@ -224,6 +224,11 @@ third line" | git commit -a -F -
 	git commit -a -m "add empty file"
 	rm file3
 	git commit -a -m "remove file"
+	# now add back 'file' with its old conents, so the mark gets
+	# reused
+	echo f > file
+	git add file
+	git commit -a -m "file: other -> f"
 	cd ..
 }
 

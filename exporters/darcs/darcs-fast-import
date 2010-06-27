@@ -206,7 +206,6 @@ class Handler:
 				if items[2] != "inline":
 					idx = int(items[2][1:])
 					sock.write(self.marks[idx])
-					del self.marks[idx]
 				else:
 					self.read_next_line()
 					self.handle_data()
