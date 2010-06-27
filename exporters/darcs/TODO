@@ -4,3 +4,5 @@ not enabled, etc.
 parse the patches manually so we can avoid re-adding existing files manually.
 
 avoid darcs apply.
+
+import: handle evil merges (git-subtree), maybe using git log --first-parent

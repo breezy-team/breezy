@@ -191,6 +191,7 @@ create_git()
 	mkdir -p $1
 	cd $1
 	git init $2
+	git commit --allow-empty -m 'root commit'
 	echo A > file
 	git add file
 	git commit -a -m A

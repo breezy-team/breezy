@@ -186,24 +186,29 @@ class Handler:
 			self.read_next_line()
 		while self.line.startswith("merge "):
 			self.read_next_line()
+		change = False
 		while len(self.line) > 0:
 			if self.line.startswith("deleteall"):
 				path = self.line[2:-1]
 				for path in self.files:
 					os.unlink(path)
 				self.files = []
+				change = True
 			elif self.line.startswith("D "):
 				path = self.line[2:-1]
 				if os.path.exists(path):
 					os.unlink(path)
 				if path in self.files:
 					self.files.remove(path)
+				change = True
 			elif self.line.startswith("R "):
 				self.invoke_darcs("mv %s" % self.line[2:])
+				change = True
 			elif self.line.startswith("C "):
 				src, dest = self.line[:-1].split(' ')[1:]
 				shutil.copy(src.strip('"'), dest.strip('"'))
 				self.invoke_add(dest)
+				change = True
 			elif self.line.startswith("M "):
 				items = self.line.split(' ')
 				path = items[3][:-1]
@@ -231,6 +236,7 @@ class Handler:
 					adds.append(path)
 				if path not in self.files:
 					self.files.append(path)
+				change = True
 			else:
 				self.unread_line = True
 				break
@@ -238,6 +244,9 @@ class Handler:
 			if not len(self.line):
 				break
 
+		if not change:
+			# darcs does not support empty commits
+			return
 		for i in adds:
 			self.invoke_add(i)
 		sock = subprocess.Popen(["darcs", "record", "--ignore-times", "-a", "--pipe"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
