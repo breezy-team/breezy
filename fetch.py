@@ -163,7 +163,7 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
         old_path = None
     invdelta.append((old_path, path, file_id, ie))
     if base_hexsha != hexsha:
-        store_updater.add_object(blob, ie)
+        store_updater.add_object(blob, ie, path)
     return invdelta
 
 
@@ -291,7 +291,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     if base_tree is not None and type(base_tree) is Tree:
         invdelta.extend(remove_disappeared_children(base_inv, old_path, 
             base_tree, existing_children, lookup_object))
-    store_updater.add_object(tree, ie)
+    store_updater.add_object(tree, ie, path)
     return invdelta, child_modes
 
 
@@ -350,7 +350,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_tree = lookup_object(o.parents[0]).tree
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
-    store_updater.add_object(o, None)
+    store_updater.add_object(o, None, None)
     lookup_file_id = mapping.get_fileid_map(lookup_object, o.tree).lookup_file_id
     inv_delta, unusual_modes = import_git_tree(repo.texts,
             mapping, "", u"", (base_tree, o.tree), base_inv, 

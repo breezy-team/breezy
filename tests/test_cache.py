@@ -47,6 +47,7 @@ from bzrlib.transport import (
 from bzrlib.plugins.git.cache import (
     DictBzrGitCache,
     IndexBzrGitCache,
+    IndexGitCacheFormat,
     SqliteBzrGitCache,
     TdbBzrGitCache,
     )
@@ -69,7 +70,7 @@ class TestGitShaMap:
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
         c = self._get_test_commit()
-        updater.add_object(c, None)
+        updater.add_object(c, None, None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(
@@ -84,12 +85,12 @@ class TestGitShaMap:
     def test_blob(self):
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
-        updater.add_object(self._get_test_commit(), None)
+        updater.add_object(self._get_test_commit(), None, None)
         b = Blob()
         b.data = "TEH BLOB"
         ie = InventoryFile("myfileid", "somename", ROOT_ID)
         ie.revision = "myrevid"
-        updater.add_object(b, ie)
+        updater.add_object(b, ie, None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(
@@ -101,12 +102,12 @@ class TestGitShaMap:
     def test_tree(self):
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
-        updater.add_object(self._get_test_commit(), None)
+        updater.add_object(self._get_test_commit(), None, None)
         t = Tree()
         t.add(stat.S_IFREG, "somename", Blob().id)
         ie = InventoryDirectory("fileid", "myname", ROOT_ID)
         ie.revision = "irrelevant"
-        updater.add_object(t, ie)
+        updater.add_object(t, ie, "")
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(("tree", ("fileid", "myrevid")),
@@ -122,7 +123,7 @@ class TestGitShaMap:
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
         c = self._get_test_commit()
-        updater.add_object(c, None)
+        updater.add_object(c, None, None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(["myrevid"], list(self.map.revids()))
@@ -131,7 +132,7 @@ class TestGitShaMap:
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
         c = self._get_test_commit()
-        updater.add_object(c, None)
+        updater.add_object(c, None, None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(set(["lala", "bla"]),
@@ -170,6 +171,6 @@ class IndexGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
     def setUp(self):
         TestCaseInTempDir.setUp(self)
         transport = get_transport(self.test_dir)
-        transport.mkdir("index")
+        IndexGitCacheFormat().initialize(transport)
         self.cache = IndexBzrGitCache(transport)
         self.map = self.cache.idmap

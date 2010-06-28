@@ -143,6 +143,15 @@ class GitShaMap(object):
 class ContentCache(object):
     """Object that can cache Git objects."""
 
+    def add(self, object):
+        """Add an object."""
+        raise NotImplementedError(self.add)
+
+    def add_multi(self, objects):
+        """Add multiple objects."""
+        for obj in objects:
+            self.add(obj)
+
     def __getitem__(self, sha):
         """Retrieve an item, by SHA."""
         raise NotImplementedError(self.__getitem__)
@@ -207,7 +216,7 @@ class BzrGitCacheFormat(object):
 class CacheUpdater(object):
     """Base class for objects that can update a bzr-git cache."""
 
-    def add_object(self, obj, ie):
+    def add_object(self, obj, ie, path):
         raise NotImplementedError(self.add_object)
 
     def finish(self):
@@ -242,7 +251,7 @@ class DictCacheUpdater(CacheUpdater):
         self._commit = None
         self._entries = []
 
-    def add_object(self, obj, ie):
+    def add_object(self, obj, ie, path):
         if obj.type_name == "commit":
             self._commit = obj
             assert ie is None
@@ -306,7 +315,7 @@ class SqliteCacheUpdater(CacheUpdater):
         self._trees = []
         self._blobs = []
 
-    def add_object(self, obj, ie):
+    def add_object(self, obj, ie, path):
         if obj.type_name == "commit":
             self._commit = obj
             assert ie is None
@@ -452,7 +461,7 @@ class TdbCacheUpdater(CacheUpdater):
         self._commit = None
         self._entries = []
 
-    def add_object(self, obj, ie):
+    def add_object(self, obj, ie, path):
         sha = obj.sha().digest()
         if obj.type_name == "commit":
             self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
@@ -608,7 +617,10 @@ class GitObjectStoreContentCache(ContentCache):
     def __init__(self, store):
         self.store = store
 
-    def add(self, obj):
+    def add_multi(self, objs):
+        self.store.add_objects(objs)
+
+    def add(self, obj, path):
         self.store.add_object(obj)
 
     def __getitem__(self, sha):
@@ -623,8 +635,9 @@ class IndexCacheUpdater(CacheUpdater):
         self.parent_revids = rev.parent_ids
         self._commit = None
         self._entries = []
+        self._cache_objs = set()
 
-    def add_object(self, obj, ie):
+    def add_object(self, obj, ie, path):
         if obj.type_name == "commit":
             self._commit = obj
             assert ie is None
@@ -632,21 +645,22 @@ class IndexCacheUpdater(CacheUpdater):
                 (self.revid, obj.tree))
             self.cache.idmap._add_node(("commit", self.revid, "X"),
                 " ".join((obj.id, obj.tree)))
-            self.cache.content_cache.add(obj)
+            self._cache_objs.add((obj, path))
         elif obj.type_name == "blob":
             self.cache.idmap._add_git_sha(obj.id, "blob",
                 (ie.file_id, ie.revision))
             self.cache.idmap._add_node(("blob", ie.file_id, ie.revision), obj.id)
             if ie.kind == "symlink":
-                self.cache.content_cache.add(obj)
+                self._cache_objs.add((obj, path))
         elif obj.type_name == "tree":
             self.cache.idmap._add_git_sha(obj.id, "tree",
                 (ie.file_id, self.revid))
-            self.cache.content_cache.add(obj)
+            self._cache_objs.add((obj, path))
         else:
             raise AssertionError
 
     def finish(self):
+        self.cache.content_cache.add_multi(self._cache_objs)
         return self._commit
 
 

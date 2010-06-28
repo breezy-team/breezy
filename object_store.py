@@ -398,7 +398,7 @@ class BazaarObjectStore(BaseObjectStore):
         updater = self._get_updater(rev)
         for path, obj, ie in self._revision_to_objects(rev, tree,
             roundtrip=True):
-            updater.add_object(obj, ie)
+            updater.add_object(obj, ie, path)
         commit_obj = updater.finish()
         return commit_obj.id
 

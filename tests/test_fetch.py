@@ -259,7 +259,7 @@ class LocalRepositoryFetchTests(RepositoryFetchTests, TestCaseWithTransport):
 
 class DummyStoreUpdater(object):
 
-    def add_object(self, obj, ie):
+    def add_object(self, obj, ie, path):
         pass
 
     def finish(self):

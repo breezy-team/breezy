@@ -16,6 +16,7 @@
 
 """A Git repository implementation that uses a Bazaar transport."""
 
+from cStringIO import StringIO
 
 from dulwich.errors import (
     NotGitRepository,
@@ -136,7 +137,6 @@ class TransportObjectStore(PackBasedObjectStore):
                 except TransportNotPossible:
                     def pd():
                         # FIXME: This reads the whole pack file at once
-                        from cStringIO import StringIO
                         f = self.pack_transport.get(name)
                         contents = f.read()
                         return PackData(name, StringIO(contents), size=len(contents))
@@ -195,10 +195,12 @@ class TransportObjectStore(PackBasedObjectStore):
         basename = "pack-%s" % iter_sha1(entry[0] for entry in entries)
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
-        index_path = self.pack_transport.local_abspath(basename+".idx")
-        write_pack_index_v2(index_path, entries, p.get_stored_checksum())
-        idx = load_pack_index_file(basename+".idx",
-                self.pack_transport.get(basename+".idx"))
+        idxfile = StringIO()
+        write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
+        idxfile.seek(0)
+        self.pack_transport.put_file(basename + ".idx", idxfile)
+        idxfile.seek(0)
+        idx = load_pack_index_file(basename+".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
         self._add_known_pack(final_pack)
         return final_pack
