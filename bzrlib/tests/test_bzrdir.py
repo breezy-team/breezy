@@ -24,6 +24,7 @@ import subprocess
 import sys
 
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     help_topics,
@@ -886,6 +887,21 @@ class ChrootedTests(TestCaseWithTransport):
         branches = bzrdir.BzrDir.find_branches(transport.clone('foo'))
         self.assertEqual(foo.root_transport.base, branches[0].base)
         self.assertEqual(bar.root_transport.base, branches[1].base)
+
+
+class TestMissingRepoBranchesSkipped(TestCaseWithMemoryTransport):
+
+    def test_find_bzrdirs_missing_repo(self):
+        transport = get_transport(self.get_url())
+        arepo = self.make_repository('arepo', shared=True)
+        abranch_url = arepo.user_url + '/abranch'
+        abranch = bzrdir.BzrDir.create(abranch_url).create_branch()
+        transport.delete_tree('arepo/.bzr')
+        self.assertRaises(errors.NoRepositoryPresent,
+            branch.Branch.open, abranch_url)
+        self.make_branch('baz')
+        for actual_bzrdir in bzrdir.BzrDir.find_branches(transport):
+            self.assertEndsWith(actual_bzrdir.user_url, '/baz/')
 
 
 class TestMeta1DirFormat(TestCaseWithTransport):

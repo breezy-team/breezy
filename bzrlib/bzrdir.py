@@ -394,7 +394,7 @@ class BzrDir(ControlComponent):
         """
         try:
             return [self.open_branch()]
-        except errors.NotBranchError:
+        except (errors.NotBranchError, errors.NoRepositoryPresent):
             return []
 
     @staticmethod
