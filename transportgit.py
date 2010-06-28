@@ -196,10 +196,11 @@ class TransportRefsContainer(RefsContainer):
         del self._packed_refs[name]
         if name in self._peeled_refs:
             del self._peeled_refs[name]
-        f = StringIO()
-        write_packed_refs(f, self._packed_refs, self._peeled_refs)
-        f.seek(0)
-        self.transport.put_file("packed-refs", f)
+        f = self.transport.open_write_stream("packed-refs")
+        try:
+            write_packed_refs(f, self._packed_refs, self._peeled_refs)
+        finally:
+            f.close()
 
     def set_symbolic_ref(self, name, other):
         """Make a ref point at another ref.
@@ -432,11 +433,12 @@ class TransportObjectStore(PackBasedObjectStore):
         basename = "pack-%s" % iter_sha1(entry[0] for entry in entries)
         f.seek(0)
         self.pack_transport.put_file(basename + ".pack", f)
-        idxfile = StringIO()
-        write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
-        idxfile.seek(0)
-        self.pack_transport.put_file(basename + ".idx", idxfile)
-        idxfile.seek(0)
+        idxfile = self.pack_transport.open_write_stream(basename + ".idx")
+        try:
+            write_pack_index_v2(idxfile, entries, p.get_stored_checksum())
+        finally:
+            idxfile.close()
+        idxfile = self.pack_transport.get(basename + ".idx")
         idx = load_pack_index_file(basename+".idx", idxfile)
         final_pack = Pack.from_objects(p, idx)
         self._add_known_pack(final_pack)
