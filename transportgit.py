@@ -134,17 +134,19 @@ class TransportObjectStore(PackBasedObjectStore):
                 try:
                     size = self.pack_transport.stat(name).st_size
                 except TransportNotPossible:
-                    # FIXME: This reads the whole pack file at once
-                    from cStringIO import StringIO
-                    f = self.pack_transport.get(name)
-                    contents = f.read()
-                    pd = PackData(name, StringIO(contents), size=len(contents))
+                    def pd():
+                        # FIXME: This reads the whole pack file at once
+                        from cStringIO import StringIO
+                        f = self.pack_transport.get(name)
+                        contents = f.read()
+                        return PackData(name, StringIO(contents), size=len(contents))
                 else:
-                    pd = PackData(name, self.pack_transport.get(name),
+                    pd = lambda: PackData(name, self.pack_transport.get(name),
                             size=size)
                 idxname = name.replace(".pack", ".idx")
-                idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
-                ret.append(Pack.from_objects(pd, idx))
+                idx = lambda: load_pack_index_file(idxname, self.pack_transport.get(idxname))
+                pack = Pack.from_lazy_objects(pd, idx)
+                ret.append(pack)
         return ret
 
     def _iter_loose_objects(self):
