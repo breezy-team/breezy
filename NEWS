@@ -58,6 +58,9 @@ Bug Fixes
   or pull location in locations.conf or branch.conf.
   (Gordon Tyler, #534787)
 
+* ``BzrDir.find_branches`` should ignore branches with missing repositories.
+  (Marius Kruger, Robert Collins)
+
 * ``BzrDir.find_bzrdirs`` should ignore dirs that raises PermissionDenied.
   (Marius Kruger, Robert Collins)
 
