@@ -368,7 +368,8 @@ def push_log_file(to_file, log_format=None, date_format=None):
 def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_file)):
     """Undo changes to logging/tracing done by _push_log_file.
 
-    This flushes, but does not close the trace file.
+    This flushes, but does not close the trace file (so that anything that was
+    in it is output.
 
     Takes the memento returned from _push_log_file."""
     global _trace_file
@@ -379,7 +380,8 @@ def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_fi
     # file will likely already be closed underneath.
     new_handler.close()
     bzr_logger.handlers = old_handlers
-    new_trace_file.flush()
+    if new_trace_file is not None:
+        new_trace_file.flush()
 
 
 def log_exception_quietly():
