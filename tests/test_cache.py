@@ -40,10 +40,14 @@ from bzrlib.tests import (
     TestCaseInTempDir,
     UnavailableFeature,
     )
+from bzrlib.transport import (
+    get_transport,
+    )
 
 from bzrlib.plugins.git.cache import (
-    SqliteBzrGitCache,
     DictBzrGitCache,
+    IndexBzrGitCache,
+    SqliteBzrGitCache,
     TdbBzrGitCache,
     )
 
@@ -158,4 +162,14 @@ class TdbGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
             self.cache = TdbBzrGitCache(os.path.join(self.test_dir, 'foo.tdb'))
         except ImportError:
             raise UnavailableFeature("Missing tdb")
+        self.map = self.cache.idmap
+
+
+class IndexGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
+
+    def setUp(self):
+        TestCaseInTempDir.setUp(self)
+        transport = get_transport(self.test_dir)
+        transport.mkdir("index")
+        self.cache = IndexBzrGitCache(transport)
         self.map = self.cache.idmap
