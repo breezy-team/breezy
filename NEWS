@@ -54,6 +54,10 @@ Bug Fixes
 * ``bzr log --exclude-common-ancestry`` is now taken into account for
   linear ancetries. (Vincent Ladeuil, #575631)
 
+* ``bzr log -r branch:REMOTE`` can now properly log the remote branch,
+  rather than trying to fetch the data locally and failing because of a
+  readonly error. (Martin von Gagern, #149270)
+
 * ``bzr pull`` now works when a lp: URL is explicitly defined as the parent
   or pull location in locations.conf or branch.conf.
   (Gordon Tyler, #534787)
