@@ -17,16 +17,25 @@
 """Tests for bzr-git's object store."""
 
 
-from dulwich.tests.test_object_store import ObjectStoreTests
+from dulwich.tests.test_object_store import PackBasedObjectStoreTests
+from dulwich.tests.test_repository import RefsContainerTests
 
 from bzrlib.tests import TestCaseWithTransport
 
-from bzrlib.plugins.git.transportgit import TransportObjectStore
+from bzrlib.plugins.git.transportgit import TransportObjectStore, TransportRefsContainer
 
 
-class TransportObjectStoreTests(ObjectStoreTests, TestCaseWithTransport):
+class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport):
 
     def setUp(self):
         TestCaseWithTransport.setUp(self)
         self.store = TransportObjectStore.init(self.get_transport())
+
+# FIXME: Unfortunately RefsContainerTests requires on a specific set of refs existing.
+
+# class TransportRefContainerTests(RefsContainerTests, TestCaseWithTransport):
+#
+#    def setUp(self):
+#        TestCaseWithTransport.setUp(self)
+#        self._refs = TransportRefsContainer(self.get_transport())
 

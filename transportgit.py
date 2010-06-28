@@ -67,19 +67,22 @@ class TransportRefsContainer(RefsContainer):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.transport)
 
+    def _ensure_dir_exists(self, path):
+        for n in range(path.count("/")):
+            dirname = "/".join(path.split("/")[:n+1])
+            try:
+                self.transport.mkdir(dirname)
+            except FileExists:
+                pass
+
     def subkeys(self, base):
         keys = set()
-        path = self.refpath(base)
         try:
             iter_files = self.transport.clone(base).iter_files_recursive()
-        except TransportNotPossible:
+            keys.update(("%s/%s" % (base, refname)).strip("/") for 
+                    refname in iter_files if check_ref_format("%s/%s" % (base, refname)))
+        except (TransportNotPossible, NoSuchFile):
             pass
-        else:
-            for refname in iter_files:
-                # check_ref_format requires at least one /, so we prepend the
-                # base before calling it.
-                if check_ref_format("%s/%s" % (base, refname)):
-                    keys.add(("%s/%s" % refname).strip("/"))
         for key in self.get_packed_refs():
             if key.startswith(base):
                 keys.add(key[len(base):].strip("/"))
@@ -91,13 +94,13 @@ class TransportRefsContainer(RefsContainer):
             keys.add("HEAD")
         path = ""
         try:
-            iter_files = self.transport.clone("refs").iter_files_recursive()
-        except TransportNotPossible:
-            pass
-        else:
-            for refname in iter_files:
+            iter_files = list(self.transport.clone("refs").iter_files_recursive())
+            for filename in iter_files:
+                refname = "refs/%s" % filename
                 if check_ref_format(refname):
                     keys.add(refname)
+        except (TransportNotPossible, NoSuchFile):
+            pass
         keys.update(self.get_packed_refs())
         return keys
 
@@ -206,6 +209,7 @@ class TransportRefsContainer(RefsContainer):
         """
         self._check_refname(name)
         self._check_refname(other)
+        self._ensure_dir_exists(name)
         self.transport.put_bytes(name, SYMREF + other + '\n')
 
     def set_if_equals(self, name, old_ref, new_ref):
@@ -224,8 +228,8 @@ class TransportRefsContainer(RefsContainer):
             realname, _ = self._follow(name)
         except KeyError:
             realname = name
-        self.transport.put_bytes_non_atomic(realname, new_ref+"\n",
-                create_parent_dir=True)
+        self._ensure_dir_exists(realname)
+        self.transport.put_bytes(realname, new_ref+"\n")
         return True
 
     def add_if_new(self, name, ref):
@@ -245,8 +249,8 @@ class TransportRefsContainer(RefsContainer):
         except KeyError:
             realname = name
         self._check_refname(realname)
-        self.transport.put_bytes_non_atomic(realname, ref+"\n",
-                create_parent_dir=True)
+        self._ensure_dir_exists(realname)
+        self.transport.put_bytes(realname, ref+"\n")
         return True
 
     def remove_if_equals(self, name, old_ref):
@@ -263,7 +267,7 @@ class TransportRefsContainer(RefsContainer):
         self._check_refname(name)
         # may only be packed
         try:
-            self.transport.remove(name)
+            self.transport.delete(name)
         except NoSuchFile:
             pass
         self._remove_packed_ref(name)
@@ -317,7 +321,10 @@ class TransportRepo(BaseRepo):
         return Index(self.index_path())
 
     def has_index(self):
-        return self._controltransport.has(INDEX_FILENAME)
+        """Check if an index is present."""
+        # Bare repos must never have index files; non-bare repos may have a
+        # missing index file, which is treated as empty.
+        return not self.bare
 
     def __repr__(self):
         return "<TransportRepo for %r>" % self.transport
@@ -362,17 +369,16 @@ class TransportObjectStore(PackBasedObjectStore):
                 try:
                     size = self.pack_transport.stat(name).st_size
                 except TransportNotPossible:
-                    def pd():
-                        # FIXME: This reads the whole pack file at once
-                        f = self.pack_transport.get(name)
-                        contents = f.read()
-                        return PackData(name, StringIO(contents), size=len(contents))
+                    # FIXME: This reads the whole pack file at once
+                    f = self.pack_transport.get(name)
+                    contents = f.read()
+                    pd = PackData(name, StringIO(contents), size=len(contents))
                 else:
-                    pd = lambda: PackData(name, self.pack_transport.get(name),
+                    pd = PackData(name, self.pack_transport.get(name),
                             size=size)
                 idxname = name.replace(".pack", ".idx")
-                idx = lambda: load_pack_index_file(idxname, self.pack_transport.get(idxname))
-                pack = Pack.from_lazy_objects(pd, idx)
+                idx = load_pack_index_file(idxname, self.pack_transport.get(idxname))
+                pack = Pack.from_objects(pd, idx)
                 ret.append(pack)
         return ret
 
@@ -388,7 +394,7 @@ class TransportObjectStore(PackBasedObjectStore):
 
     def _remove_loose_object(self, sha):
         path = '%s/%s' % self._split_loose_object(sha)
-        self.transport.remove(path)
+        self.transport.delete(path)
 
     def _get_loose_object(self, sha):
         path = '%s/%s' % self._split_loose_object(sha)
