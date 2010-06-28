@@ -25,12 +25,16 @@ import errno
 from dulwich.objects import (
     Blob,
     )
+from dulwich.protocol import (
+    ZERO_SHA,
+    )
 import os
 import stat
 
 from bzrlib import (
     errors,
     ignores,
+    inventory,
     lockable_files,
     lockdir,
     osutils,
@@ -177,9 +181,13 @@ class GitWorkingTree(workingtree.WorkingTree):
             raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
         basis_inv = self.repository.get_inventory(self.branch.lookup_foreign_revision_id(head))
         store = self.repository._git.object_store
-        fileid_map = self.mapping.get_fileid_map(store.__getitem__,
-            store[head].tree)
-        result = GitIndexInventory(basis_inv, fileid_map, self.index, store)
+        if head == ZERO_SHA:
+            fileid_map = {}
+            result = inventory.Inventory(root_id=None)
+        else:
+            fileid_map = self.mapping.get_fileid_map(store.__getitem__,
+                store[head].tree)
+            result = GitIndexInventory(basis_inv, fileid_map, self.index, store)
         self._set_inventory(result, dirty=False)
 
     @needs_read_lock
