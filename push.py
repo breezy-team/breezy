@@ -61,6 +61,11 @@ class MissingObjectsIterator(object):
         self.pb = pb
 
     def import_revisions(self, revids, roundtrip):
+        """Import a set of revisions into this git repository.
+
+        :param revids: Revision ids of revisions to import
+        :param roundtrip: Whether to roundtrip bzr metadata
+        """
         for i, revid in enumerate(revids):
             if self.pb:
                 self.pb.update("pushing revisions", i, len(revids))
@@ -68,8 +73,10 @@ class MissingObjectsIterator(object):
             yield (revid, git_commit)
 
     def import_revision(self, revid, roundtrip):
-        """Import the gist of a revision into this Git repository.
+        """Import a revision into this Git repository.
 
+        :param revid: Revision id of the revision
+        :param roundtrip: Whether to roundtrip bzr metadata
         """
         tree = self._object_store.tree_cache.revision_tree(revid)
         rev = self.source.get_revision(revid)
@@ -106,6 +113,26 @@ class InterToGitRepository(InterRepository):
         """See InterRepository.copy_content."""
         self.fetch(revision_id, pb, find_ghosts=False)
 
+    def dfetch_refs(self, update_refs):
+        """Fetch non-roundtripped revisions into the target repository.
+
+        :param update_refs: Generate refs to fetch. Receives dictionary 
+            with old names to old git shas. Should return a dictionary
+            of new names to Bazaar revision ids.
+        :return: revision id map, old refs dictionary and new refs dictionary
+        """
+        raise NotImplementedError(self.dfetch_refs)
+
+    def fetch_refs(self, update_refs):
+        """Fetch possibly roundtripped revisions into the target repository.
+
+        :param update_refs: Generate refs to fetch. Receives dictionary 
+            with old refs (git shas), returns dictionary of new names to 
+            git shas.
+        :return: old refs, new refs
+        """
+        raise NotImplementedError(self.fetch_refs)
+
 
 class InterToLocalGitRepository(InterToGitRepository):
 
@@ -127,21 +154,24 @@ class InterToLocalGitRepository(InterToGitRepository):
             pb.finished()
         return graph.iter_topo_order(missing)
 
-    def fetch_refs(self, refs):
-        fetch_spec = PendingAncestryResult(refs.values(), self.source)
-        self.fetch(fetch_spec=fetch_spec)
-
-    def dfetch_refs(self, refs):
+    def fetch_refs(self, update_refs):
         old_refs = self.target._git.get_refs()
-        new_refs = dict(old_refs)
-        revidmap, gitidmap = self.dfetch(refs.values())
-        for name, revid in refs.iteritems():
+        new_refs = update_refs(old_refs)
+        fetch_spec = PendingAncestryResult(new_refs.values(), self.source)
+        self.fetch(fetch_spec=fetch_spec)
+        return old_refs, new_refs
+
+    def dfetch_refs(self, update_refs):
+        old_refs = self.target._git.get_refs()
+        new_refs = update_refs(old_refs)
+        revidmap, gitidmap = self.dfetch(new_refs.values())
+        for name, revid in new_refs.iteritems():
             try:
                 gitid = gitidmap[revid]
             except KeyError:
                 gitid = self.source_store._lookup_revision_sha1(revid)
             self.target._git.refs[name] = gitid
-            new_refs[name] = gitid
+            new_refs[name] = revid
         return revidmap, old_refs, new_refs
 
     def _find_missing_revs(self, stop_revisions):
@@ -156,6 +186,9 @@ class InterToLocalGitRepository(InterToGitRepository):
                 return True
         return list(self.missing_revisions(stop_revisions, check_revid))
 
+    def _get_missing_objects_iterator(self, pb):
+        return MissingObjectsIterator(self.source_store, self.source, pb)
+
     def dfetch(self, stop_revisions):
         """Import the gist of the ancestry of a particular revision."""
         gitidmap = {}
@@ -165,8 +198,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             todo = self._find_missing_revs(stop_revisions)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                object_generator = MissingObjectsIterator(self.source_store,
-                    self.source, pb)
+                object_generator = self._get_missing_objects_iterator()
                 for old_bzr_revid, git_commit in object_generator.import_revisions(
                     todo, roundtrip=False):
                     new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
@@ -192,8 +224,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             todo = self._find_missing_revs(stop_revisions)
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                object_generator = MissingObjectsIterator(self.source_store,
-                    self.source, pb)
+                object_generator = self._get_missing_objects_iterator(pb)
                 for (revid, git_sha) in object_generator.import_revisions(
                     todo, roundtrip=True):
                     try:
@@ -215,14 +246,14 @@ class InterToLocalGitRepository(InterToGitRepository):
 
 class InterToRemoteGitRepository(InterToGitRepository):
 
-    def dfetch_refs(self, new_refs):
+    def dfetch_refs(self, update_refs):
         """Import the gist of the ancestry of a particular revision."""
         revidmap = {}
-        old_refs = {}
-        def determine_wants(refs):
+        def determine_wants(old_refs):
             ret = {}
-            old_refs.update(new_refs)
-            for name, revid in new_refs.iteritems():
+            self.old_refs = old_refs
+            self.new_refs = update_refs(self.old_refs)
+            for name, revid in self.new_refs.iteritems():
                 ret[name] = self.source_store._lookup_revision_sha1(revid)
             return ret
         self.source.lock_read()
@@ -231,10 +262,9 @@ class InterToRemoteGitRepository(InterToGitRepository):
                     self.source_store.generate_lossy_pack_contents)
         finally:
             self.source.unlock()
-        return revidmap, old_refs, new_refs
+        return revidmap, self.old_refs, self.new_refs
 
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
+    def fetch_refs(self, update_refs):
         raise NoPushSupport()
 
     @staticmethod

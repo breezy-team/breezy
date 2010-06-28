@@ -11,6 +11,13 @@
 	into a file and its (file/symlink) children are removed 
 	(rather than moved). (#597758, Jelmer Vernooij)
 
+  * Fix reading pack files over http. (#588724, Jelmer Vernooij)
+
+ FEATURES
+
+  * Support specifying alternative paths for git-upload-pack and 
+    git-receive-pack. (Ross Light, #585204)
+
 0.5.1	2010-05-22
 
  BUG FIXES
