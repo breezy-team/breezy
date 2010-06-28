@@ -180,11 +180,21 @@ API Changes
 Internals
 *********
 
+* ``bzrlib.osutils.get_terminal_encoding`` will now only mutter its
+  selection when explicitly requested; this avoids many duplicate calls
+  being logged when helpers, wrappers and older code that manually calls
+  it are executed it is now logged deliberately by the ui setup code.
+  (Robert Collins)
+
 * Improved ``bzrlib.urlutils`` to handle lp:foo/bar URLs. (Gordon Tyler)
 
 * ``bzrlib._c_static_tuple.StaticTuple`` now implements ``__sizeof__``, so
   that ``sys.getsizeof`` and other memory analysis tools will report more
   accurate results. (Andrew Bennetts)
+
+* The symbol_versioning module can now cleanup after itself -
+  ``suppress_deprecation_warnings`` now returns a cleanup function.
+  (Robert Collins)
 
 Testing
 *******

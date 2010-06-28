@@ -3733,6 +3733,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_knit',
         'bzrlib.tests.test_lazy_import',
         'bzrlib.tests.test_lazy_regex',
+        'bzrlib.tests.test_library_state',
         'bzrlib.tests.test_lock',
         'bzrlib.tests.test_lockable_files',
         'bzrlib.tests.test_lockdir',

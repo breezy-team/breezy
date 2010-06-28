@@ -114,6 +114,26 @@ class TestTerminalEncoding(TestCase):
         # and in the worst case, use osutils.get_user_encoding()
         self.assertEqual('user_encoding', osutils.get_terminal_encoding())
 
+    def test_get_terminal_encoding_silent(self):
+        self.make_wrapped_streams('stdout_encoding',
+                                  'stderr_encoding',
+                                  'stdin_encoding')
+        # Calling get_terminal_encoding should not mutter when silent=True is
+        # passed.
+        log = self.get_log()
+        osutils.get_terminal_encoding()
+        self.assertEqual(log, self.get_log())
+
+    def test_get_terminal_encoding_trace(self):
+        self.make_wrapped_streams('stdout_encoding',
+                                  'stderr_encoding',
+                                  'stdin_encoding')
+        # Calling get_terminal_encoding should not mutter when silent=True is
+        # passed.
+        log = self.get_log()
+        osutils.get_terminal_encoding(trace=True)
+        self.assertNotEqual(log, self.get_log())
+
     def test_terminal_cp0(self):
         # test cp0 encoding (Windows returns cp0 when there is no encoding)
         self.make_wrapped_streams('cp0',
