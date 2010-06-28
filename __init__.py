@@ -133,15 +133,8 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
 
         """
         lazy_check_versions()
-        # we dont grok readonly - git isn't integrated with transport.
-        from bzrlib.transport.local import LocalTransport
-        if isinstance(transport, LocalTransport):
-            import dulwich
-            path = transport.local_abspath(".").encode(osutils._fs_enc)
-            gitrepo = dulwich.repo.Repo(path)
-        else:
-            from bzrlib.plugins.git.transportgit import TransportRepo
-            gitrepo = TransportRepo(transport)
+        from bzrlib.plugins.git.transportgit import TransportRepo
+        gitrepo = TransportRepo(transport)
         from bzrlib.plugins.git.dir import LocalGitDir, GitLockableFiles, GitLock
         lockfiles = GitLockableFiles(transport, GitLock())
         return LocalGitDir(transport, lockfiles, gitrepo, self)

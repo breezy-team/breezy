@@ -69,7 +69,7 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         GitRepo.init(self.test_dir)
 
         repo = Repository.open('.')
-        self.assertIsInstance(repo._git, dulwich.repo.Repo)
+        self.assertIsInstance(repo._git, dulwich.repo.BaseRepo)
 
     def test_has_revision(self):
         GitRepo.init(self.test_dir)
@@ -118,6 +118,11 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
             timestamp=1205433193)
         mapping = builder.finish()
         return mapping[commit_handle]
+
+    def test_pack(self):
+        commit_id = self.simple_commit()
+        repo = Repository.open('.')
+        repo.pack()
 
     def test_revision_tree(self):
         commit_id = self.simple_commit()

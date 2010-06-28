@@ -279,7 +279,7 @@ class LocalGitBranch(GitBranch):
             return tree
         else:
             return self._create_heavyweight_checkout(to_location, revision_id,
-            hardlink)
+                hardlink)
 
     def _create_heavyweight_checkout(self, to_location, revision_id=None,
                                      hardlink=False):
