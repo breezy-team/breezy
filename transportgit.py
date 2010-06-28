@@ -38,9 +38,15 @@ from dulwich.pack import (
     )
 from dulwich.repo import (
     BaseRepo,
-    DictRefsContainer,
+    RefsContainer,
+    INDEX_FILENAME,
     OBJECTDIR,
-    read_info_refs,
+    REFSDIR,
+    SYMREF,
+    check_ref_format,
+    read_packed_refs_with_peeled,
+    read_packed_refs,
+    write_packed_refs,
     )
 
 from bzrlib.errors import (
@@ -50,15 +56,229 @@ from bzrlib.errors import (
     )
 
 
+class TransportRefsContainer(RefsContainer):
+    """Refs container that reads refs from a transport."""
+
+    def __init__(self, transport):
+        self.transport = transport
+        self._packed_refs = None
+        self._peeled_refs = None
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.transport)
+
+    def subkeys(self, base):
+        keys = set()
+        path = self.refpath(base)
+        try:
+            iter_files = self.transport.clone(base).iter_files_recursive()
+        except TransportNotPossible:
+            pass
+        else:
+            for refname in iter_files:
+                # check_ref_format requires at least one /, so we prepend the
+                # base before calling it.
+                if check_ref_format("%s/%s" % (base, refname)):
+                    keys.add(("%s/%s" % refname).strip("/"))
+        for key in self.get_packed_refs():
+            if key.startswith(base):
+                keys.add(key[len(base):].strip("/"))
+        return keys
+
+    def allkeys(self):
+        keys = set()
+        if self.transport.has("HEAD"):
+            keys.add("HEAD")
+        path = ""
+        try:
+            iter_files = self.transport.clone("refs").iter_files_recursive()
+        except TransportNotPossible:
+            pass
+        else:
+            for refname in iter_files:
+                if check_ref_format(refname):
+                    keys.add(refname)
+        keys.update(self.get_packed_refs())
+        return keys
+
+    def get_packed_refs(self):
+        """Get contents of the packed-refs file.
+
+        :return: Dictionary mapping ref names to SHA1s
+
+        :note: Will return an empty dictionary when no packed-refs file is
+            present.
+        """
+        # TODO: invalidate the cache on repacking
+        if self._packed_refs is None:
+            # set both to empty because we want _peeled_refs to be
+            # None if and only if _packed_refs is also None.
+            self._packed_refs = {}
+            self._peeled_refs = {}
+            try:
+                f = self.transport.get("packed-refs")
+            except NoSuchFile:
+                return {}
+            try:
+                first_line = iter(f).next().rstrip()
+                if (first_line.startswith("# pack-refs") and " peeled" in
+                        first_line):
+                    for sha, name, peeled in read_packed_refs_with_peeled(f):
+                        self._packed_refs[name] = sha
+                        if peeled:
+                            self._peeled_refs[name] = peeled
+                else:
+                    f.seek(0)
+                    for sha, name in read_packed_refs(f):
+                        self._packed_refs[name] = sha
+            finally:
+                f.close()
+        return self._packed_refs
+
+    def get_peeled(self, name):
+        """Return the cached peeled value of a ref, if available.
+
+        :param name: Name of the ref to peel
+        :return: The peeled value of the ref. If the ref is known not point to a
+            tag, this will be the SHA the ref refers to. If the ref may point to
+            a tag, but no cached information is available, None is returned.
+        """
+        self.get_packed_refs()
+        if self._peeled_refs is None or name not in self._packed_refs:
+            # No cache: no peeled refs were read, or this ref is loose
+            return None
+        if name in self._peeled_refs:
+            return self._peeled_refs[name]
+        else:
+            # Known not peelable
+            return self[name]
+
+    def read_loose_ref(self, name):
+        """Read a reference file and return its contents.
+
+        If the reference file a symbolic reference, only read the first line of
+        the file. Otherwise, only read the first 40 bytes.
+
+        :param name: the refname to read, relative to refpath
+        :return: The contents of the ref file, or None if the file does not
+            exist.
+        :raises IOError: if any other error occurs
+        """
+        try:
+            f = self.transport.get(name)
+        except NoSuchFile:
+            return None
+        try:
+            header = f.read(len(SYMREF))
+            if header == SYMREF:
+                # Read only the first line
+                return header + iter(f).next().rstrip("\r\n")
+            else:
+                # Read only the first 40 bytes
+                return header + f.read(40-len(SYMREF))
+        finally:
+            f.close()
+
+    def _remove_packed_ref(self, name):
+        if self._packed_refs is None:
+            return
+        # reread cached refs from disk, while holding the lock
+
+        self._packed_refs = None
+        self.get_packed_refs()
+
+        if name not in self._packed_refs:
+            return
+
+        del self._packed_refs[name]
+        if name in self._peeled_refs:
+            del self._peeled_refs[name]
+        f = StringIO()
+        write_packed_refs(f, self._packed_refs, self._peeled_refs)
+        f.seek(0)
+        self.transport.put_file("packed-refs", f)
+
+    def set_symbolic_ref(self, name, other):
+        """Make a ref point at another ref.
+
+        :param name: Name of the ref to set
+        :param other: Name of the ref to point at
+        """
+        self._check_refname(name)
+        self._check_refname(other)
+        self.transport.put_bytes(name, SYMREF + other + '\n')
+
+    def set_if_equals(self, name, old_ref, new_ref):
+        """Set a refname to new_ref only if it currently equals old_ref.
+
+        This method follows all symbolic references, and can be used to perform
+        an atomic compare-and-swap operation.
+
+        :param name: The refname to set.
+        :param old_ref: The old sha the refname must refer to, or None to set
+            unconditionally.
+        :param new_ref: The new sha the refname will refer to.
+        :return: True if the set was successful, False otherwise.
+        """
+        try:
+            realname, _ = self._follow(name)
+        except KeyError:
+            realname = name
+        self.transport.put_bytes_non_atomic(realname, new_ref+"\n",
+                create_parent_dir=True)
+        return True
+
+    def add_if_new(self, name, ref):
+        """Add a new reference only if it does not already exist.
+
+        This method follows symrefs, and only ensures that the last ref in the
+        chain does not exist.
+
+        :param name: The refname to set.
+        :param ref: The new sha the refname will refer to.
+        :return: True if the add was successful, False otherwise.
+        """
+        try:
+            realname, contents = self._follow(name)
+            if contents is not None:
+                return False
+        except KeyError:
+            realname = name
+        self._check_refname(realname)
+        self.transport.put_bytes_non_atomic(realname, ref+"\n",
+                create_parent_dir=True)
+        return True
+
+    def remove_if_equals(self, name, old_ref):
+        """Remove a refname only if it currently equals old_ref.
+
+        This method does not follow symbolic references. It can be used to
+        perform an atomic compare-and-delete operation.
+
+        :param name: The refname to delete.
+        :param old_ref: The old sha the refname must refer to, or None to delete
+            unconditionally.
+        :return: True if the delete was successful, False otherwise.
+        """
+        self._check_refname(name)
+        # may only be packed
+        try:
+            self.transport.remove(name)
+        except NoSuchFile:
+            pass
+        self._remove_packed_ref(name)
+        return True
+
+
 class TransportRepo(BaseRepo):
 
     def __init__(self, transport):
         self.transport = transport
         try:
-            if self.transport.has(".git/info/refs"):
+            if self.transport.has(".git/%s" % OBJECTDIR):
                 self.bare = False
                 self._controltransport = self.transport.clone('.git')
-            elif self.transport.has("info/refs"):
+            elif self.transport.has(OBJECTDIR) or self.transport.has(REFSDIR):
                 self.bare = True
                 self._controltransport = self.transport
             else:
@@ -67,11 +287,8 @@ class TransportRepo(BaseRepo):
             raise NotGitRepository(self.transport)
         object_store = TransportObjectStore(
             self._controltransport.clone(OBJECTDIR))
-        refs = {}
-        refs["HEAD"] = self._controltransport.get_bytes("HEAD").rstrip("\n")
-        refs.update(read_info_refs(self._controltransport.get('info/refs')))
         super(TransportRepo, self).__init__(object_store, 
-                DictRefsContainer(refs))
+                TransportRefsContainer(self._controltransport))
 
     def get_named_file(self, path):
         """Get a file from the control dir with a specific name.
@@ -88,9 +305,19 @@ class TransportRepo(BaseRepo):
         except NoSuchFile:
             return None
 
+    def index_path(self):
+        """Return the path to the index file."""
+        return self._controltransport.local_abspath(INDEX_FILENAME)
+
     def open_index(self):
         """Open the index for this repository."""
-        raise NoIndexPresent()
+        from dulwich.index import Index
+        if not self.has_index():
+            raise NoIndexPresent()
+        return Index(self.index_path())
+
+    def has_index(self):
+        return self._controltransport.has(INDEX_FILENAME)
 
     def __repr__(self):
         return "<TransportRepo for %r>" % self.transport
@@ -158,6 +385,10 @@ class TransportObjectStore(PackBasedObjectStore):
 
     def _split_loose_object(self, sha):
         return (sha[:2], sha[2:])
+
+    def _remove_loose_object(self, sha):
+        path = '%s/%s' % self._split_loose_object(sha)
+        self.transport.remove(path)
 
     def _get_loose_object(self, sha):
         path = '%s/%s' % self._split_loose_object(sha)

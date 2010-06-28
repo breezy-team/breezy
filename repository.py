@@ -150,6 +150,9 @@ class LocalGitRepository(GitRepository):
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
 
+    def pack(self, hint=None, clean_obsolete_packs=False):
+        self._git.object_store.pack_loose_objects()
+
     def lookup_foreign_revision_id(self, foreign_revid, mapping=None):
         """Lookup a revision id.
 
