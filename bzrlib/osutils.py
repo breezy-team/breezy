@@ -28,10 +28,16 @@ from datetime import datetime
 import getpass
 import ntpath
 import posixpath
+# We need to import both shutil and rmtree as we export the later on posix
+# and need the former on windows
+import shutil
 from shutil import rmtree
 import socket
 import subprocess
-import tempfile import mkdtemp
+# We need to import both tempfile and mkdtemp as we export the later on posix
+# and need the former on windows
+import tempfile
+from tempfile import mkdtemp
 import unicodedata
 
 from bzrlib import (
@@ -346,7 +352,7 @@ def _win32_getcwd():
 
 
 def _win32_mkdtemp(*args, **kwargs):
-    return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
+    return _win32_fixdrive(mkdtemp(*args, **kwargs).replace('\\', '/'))
 
 
 def _win32_rename(old, new):
