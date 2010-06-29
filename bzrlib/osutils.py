@@ -428,7 +428,7 @@ elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
 
-def get_terminal_encoding():
+def get_terminal_encoding(trace=False):
     """Find the best encoding for printing to the screen.
 
     This attempts to check both sys.stdout and sys.stdin to see
@@ -440,6 +440,8 @@ def get_terminal_encoding():
 
     On my standard US Windows XP, the preferred encoding is
     cp1252, but the console is cp437
+
+    :param trace: If True trace the selected encoding via mutter().
     """
     from bzrlib.trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
@@ -447,17 +449,22 @@ def get_terminal_encoding():
         input_encoding = getattr(sys.stdin, 'encoding', None)
         if not input_encoding:
             output_encoding = get_user_encoding()
-            mutter('encoding stdout as osutils.get_user_encoding() %r',
+            if trace:
+                mutter('encoding stdout as osutils.get_user_encoding() %r',
                    output_encoding)
         else:
             output_encoding = input_encoding
-            mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
+            if trace:
+                mutter('encoding stdout as sys.stdin encoding %r',
+                    output_encoding)
     else:
-        mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+        if trace:
+            mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
     if output_encoding == 'cp0':
         # invalid encoding (cp0 means 'no codepage' on Windows)
         output_encoding = get_user_encoding()
-        mutter('cp0 is invalid encoding.'
+        if trace:
+            mutter('cp0 is invalid encoding.'
                ' encoding stdout as osutils.get_user_encoding() %r',
                output_encoding)
     # check encoding
