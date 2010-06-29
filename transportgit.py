@@ -92,7 +92,6 @@ class TransportRefsContainer(RefsContainer):
         keys = set()
         if self.transport.has("HEAD"):
             keys.add("HEAD")
-        path = ""
         try:
             iter_files = list(self.transport.clone("refs").iter_files_recursive())
             for filename in iter_files:
