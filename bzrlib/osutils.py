@@ -28,10 +28,10 @@ from datetime import datetime
 import getpass
 import ntpath
 import posixpath
-import shutil
+from shutil import rmtree
 import socket
 import subprocess
-import tempfile
+import tempfile import mkdtemp
 import unicodedata
 
 from bzrlib import (
@@ -383,8 +383,9 @@ dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
 splitext = os.path.splitext
-mkdtemp = tempfile.mkdtemp
-rmtree = shutil.rmtree
+# These were already lazily imported into local scope
+# mkdtemp = tempfile.mkdtemp
+# rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
