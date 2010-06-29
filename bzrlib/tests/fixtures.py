@@ -82,3 +82,18 @@ def generate_unicode_encodings(universal_encoding=None):
     else:
         e = [n for (n, u) in interesting_encodings]
     return itertools.cycle(iter(e))
+
+
+class RecordingContextManager(object):
+    """A context manager that records."""
+
+    def __init__(self):
+        self._calls = []
+
+    def __enter__(self):
+        self._calls.append('__enter__')
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._calls.append('__exit__')
+        return False # propogate exceptions.

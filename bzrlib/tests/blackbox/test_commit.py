@@ -129,7 +129,7 @@ class TestCommit(TestCaseWithTransport):
         # by ui.text.show_warning
         default_get_terminal_enc = osutils.get_terminal_encoding
         try:
-            osutils.get_terminal_encoding = lambda: 'ascii'
+            osutils.get_terminal_encoding = lambda trace=None: 'ascii'
             file_name = u'foo\u1234'
             open(file_name, 'w').write('hello world')
             self.run_bzr(['add'])
