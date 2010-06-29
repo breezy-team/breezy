@@ -192,7 +192,7 @@ class UIFactory(object):
             encoding = config.GlobalConfig().get_user_option(
                 'output_encoding')
         if encoding is None:
-            encoding = osutils.get_terminal_encoding()
+            encoding = osutils.get_terminal_encoding(trace=True)
         if encoding_type is None:
             encoding_type = 'replace'
         out_stream = self._make_output_stream_explicit(encoding, encoding_type)
