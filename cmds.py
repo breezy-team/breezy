@@ -461,34 +461,46 @@ class cmd_merge_upstream(Command):
 
     You must supply the source to import from, and the version number of the
     new release. The source can be a .tar.gz, .tar, .tar.bz2, .tgz or .zip
-    archive, or a directory. The source may also be a remote file.
+    archive, or a directory. The source may also be a remote file described by a URL.
 
     You must supply the version number of the new upstream release
-    using --version.
+    using --version, unless you're importing from an upstream branch, in which
+    case it can be guessed from that.
 
     The distribution this version is targetted at can be specified with
-    --distribution. This will be used to guess the version number, so you
-    can always correct it in the changelog.
+    --distribution. 
 
     If there is no debian changelog in the branch to retrieve the package
     name from then you must pass the --package option. If this version
     will change the name of the source package then you can use this option
     to set the new name.
+
+    examples::
+
+        bzr merge-upstream --version 0.2 \
+            http://example.org/releases/scruff-0.2.tar.gz
+
+    If there is no upstream release tarball, and you want bzr-builddeb to
+    create the tarball for you::
+
+        bzr merge-upstream --version 0.2 http://scruff.org/bzr/scruff.dev
+      
     """
     takes_args = ['location?', 'upstream_branch?']
     aliases = ['mu']
 
     package_opt = Option('package', help="The name of the source package.",
                          type=str)
-    version_opt = Option('version', help="The version number of this release.",
-                         type=str)
+    version_opt = Option('version',
+        help="The version number of this release, for example \"0.2\".",
+        type=str)
     distribution_opt = Option('distribution', help="The distribution that "
             "this release is targetted at.", type=str)
     directory_opt = Option('directory',
                            help='Working tree into which to merge.',
                            short_name='d', type=unicode)
     last_version_opt = Option('last-version',
-                              help='The previous version that was merged..',
+                              help='The previous version that was merged.',
                               type=str)
     force_opt = Option('force',
                        help=('Force a merge even if the upstream branch '
