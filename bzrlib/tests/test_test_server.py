@@ -224,7 +224,7 @@ class TestTCPServerInAThread(tests.TestCase):
 
             def handle_connection(self):
                 req = self.rfile.readline()
-                threading.currentThread().set_event(sync)
+                threading.currentThread().set_ready_event(sync)
                 raise FailToRespond()
 
         server = self.get_server(
@@ -246,7 +246,7 @@ class TestTCPServerInAThread(tests.TestCase):
             def handle(self):
                 # We want to sync with the thread that is serving the
                 # connection.
-                threading.currentThread().set_event(sync)
+                threading.currentThread().set_ready_event(sync)
                 raise CantServe()
 
         server = self.get_server(

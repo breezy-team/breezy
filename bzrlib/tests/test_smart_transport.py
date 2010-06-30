@@ -2866,9 +2866,10 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.responder = protocol.ProtocolThreeResponder(self.writes.append)
 
     def assertWriteCount(self, expected_count):
+        # self.writes can be quite large; don't show the whole thing
         self.assertEqual(
             expected_count, len(self.writes),
-            "Too many writes: %r" % (self.writes,))
+            "Too many writes: %d, expected %d" % (len(self.writes), expected_count))
 
     def test_send_error_writes_just_once(self):
         """An error response is written to the medium all at once."""
@@ -2897,22 +2898,9 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         response = _mod_request.SuccessfulSmartServerResponse(
             ('arg', 'arg'), body_stream=['chunk1', 'chunk2'])
         self.responder.send_response(response)
-        # We will write just once, despite the multiple chunks, due to
-        # buffering.
-        self.assertWriteCount(1)
-
-    def test_send_response_with_body_stream_flushes_buffers_sometimes(self):
-        """When there are many bytes (>1MB), multiple writes will occur rather
-        than buffering indefinitely.
-        """
-        # Construct a response with stream with ~1.5MB in it. This should
-        # trigger 2 writes, but not 3
-        onekib = '12345678' * 128
-        body_stream = [onekib] * (1024 + 512)
-        response = _mod_request.SuccessfulSmartServerResponse(
-            ('arg', 'arg'), body_stream=body_stream)
-        self.responder.send_response(response)
-        self.assertWriteCount(2)
+        # Per the discussion in bug 590638 we flush once after the header and
+        # then once after each chunk
+        self.assertWriteCount(3)
 
 
 class TestSmartClientUnicode(tests.TestCase):
