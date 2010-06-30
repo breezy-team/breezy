@@ -236,7 +236,7 @@ class RecordingServer(object):
             event=self._ready, target=self._accept_read_and_reply)
         self._thread.start()
         if 'threads' in tests.selftest_debug_flags:
-            print 'Thread started: %s' % (self._thread.ident,)
+            sys.stderr.write('Thread started: %s\n' % (self._thread.ident,))
         self._ready.wait()
 
     def _accept_read_and_reply(self):
@@ -266,7 +266,7 @@ class RecordingServer(object):
         self.port = None
         self._thread.join()
         if 'threads' in tests.selftest_debug_flags:
-            print 'Thread  joined: %s' % (self._thread.ident,)
+            sys.stderr.write('Thread  joined: %s\n' % (self._thread.ident,))
 
 
 class TestAuthHeader(tests.TestCase):

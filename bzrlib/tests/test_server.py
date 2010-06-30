@@ -506,7 +506,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         t.start()
         started.wait()
         if debug_threads():
-            print 'Client thread %s started' % (t.name,)
+            sys.stderr.write('Client thread %s started\n' % (t.name,))
         # If an exception occured during the thread start, it will get raised.
         t.pending_exception()
 
@@ -521,8 +521,8 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
             # shutdown. If an exception occurred in the thread it will be
             # re-raised
             if debug_threads():
-                print 'Client thread %s will be joined' % (
-                    connection_thread.name,)
+                sys.stderr.write('Client thread %s will be joined\n'
+                                 % (connection_thread.name,))
             connection_thread.join()
 
     def set_ignored_exceptions(self, thread, ignored_exceptions):
@@ -569,7 +569,8 @@ class TestingTCPServerInAThread(transport.Server):
         self.server_address = self.server.server_address
         self._server_thread.name = self.server.server_address
         if debug_threads():
-            print 'Server thread %s started' % (self._server_thread.name,)
+            sys.stderr.write('Server thread %s started\n'
+                             % (self._server_thread.name,))
         # If an exception occured during the server start, it will get raised,
         # otherwise, the server is blocked on its accept() call.
         self._server_thread.pending_exception()
@@ -591,8 +592,8 @@ class TestingTCPServerInAThread(transport.Server):
                 self.server.ignored_exceptions_during_shutdown)
             self.server.serving.clear()
             if debug_threads():
-                print 'Server thread %s will be joined' % (
-                    self._server_thread.name,)
+                sys.stderr.write('Server thread %s will be joined\n'
+                                 % (self._server_thread.name,))
             # The server is listening for a last connection, let's give it:
             last_conn = None
             try:

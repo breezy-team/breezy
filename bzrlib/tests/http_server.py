@@ -375,21 +375,21 @@ class TestingHTTPServerMixin:
         self.serving.set()
         self.is_shut_down.clear()
         if 'threads' in tests.selftest_debug_flags:
-            print 'Starting %r' % (self.server_address,)
+            sys.stderr.write('Starting %r\n' % (self.server_address,))
         # We are listening and ready to accept connections
         started.set()
         while self.serving.isSet():
             if 'threads' in tests.selftest_debug_flags:
-                print 'Accepting on %r' % (self.server_address,)
+                sys.stderr.write('Accepting on %r\n' % (self.server_address,))
             # Really a connection but the python framework is generic and
             # call them requests
             self.handle_request()
         if 'threads' in tests.selftest_debug_flags:
-            print 'Closing  %r' % (self.server_address,)
+            sys.stderr.write('Closing  %r\n' % (self.server_address,))
         # Let's close the listening socket
         self.server_close()
         if 'threads' in tests.selftest_debug_flags:
-            print 'Closed   %r' % (self.server_address,)
+            sys.stderr.write('Closed   %r\n' % (self.server_address,))
         self.is_shut_down.set()
 
     def join_thread(self, thread, timeout=2):
@@ -461,7 +461,8 @@ class TestingHTTPServerMixin:
                 # Right, the socket is already down
                 pass
             else:
-                print 'exception in shutdown_client_socket: %r' % (e,)
+                sys.stderr.write('exception in shutdown_client_socket: %r\n'
+                                 % (e,))
                 raise
 
 
@@ -506,7 +507,8 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
 
     def process_request_thread(self, started, request, client_address):
         if 'threads' in tests.selftest_debug_flags:
-            print 'Processing: %s' % (threading.currentThread().name,)
+            sys.stderr.write('Processing: %s\n'
+                             % (threading.currentThread().name,))
         started.set()
         SocketServer.ThreadingTCPServer.process_request_thread(
             self, request, client_address)
@@ -524,7 +526,8 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
             args = (started, request, client_address))
         t.name = '%s -> %s' % (client_address, self.server_address)
         if 'threads' in tests.selftest_debug_flags:
-            print 'Thread for: %s started' % (threading.currentThread().name,)
+            sys.stderr.write('Thread for: %s started\n'
+                             % (threading.currentThread().name,))
         client.append(t)
         self.clients.append(client)
         if self.daemon_threads:
@@ -540,7 +543,7 @@ class TestingThreadingHTTPServer(TestingHTTPServerMixin,
             # shutdown.
             sock, addr, thread = client
             if 'threads' in tests.selftest_debug_flags:
-                print 'Try    joining: %s' % (thread.name,)
+                sys.stderr.write('Try    joining: %s\n' % (thread.name,))
             self.join_thread(thread)
 
     def server_bind(self):
@@ -666,11 +669,13 @@ class HttpServer(transport.Server):
         started.wait()
         if self._httpd is None:
             if 'threads' in tests.selftest_debug_flags:
-                print 'Server %s:% start failed ' % (self.host, self.port)
+                sys.stderr.write('Server %s:% start failed \n'
+                                 % (self.host, self.port))
         else:
             self._http_thread.name = self._http_base_url
             if 'threads' in tests.selftest_debug_flags:
-                print 'Thread started: %s' % (self._http_thread.name,)
+                sys.stderr.write('Thread started: %s\n'
+                                 % (self._http_thread.name,))
 
         # If an exception occured during the server start, it will get raised
         self._http_thread.join(timeout=0)
@@ -681,10 +686,12 @@ class HttpServer(transport.Server):
             # The server has been started successfully, shut it down now
             self._httpd.shutdown_server()
             if 'threads' in tests.selftest_debug_flags:
-                print 'Try    joining: %s' % (self._http_thread.name,)
+                sys.stderr.write('Try    joining: %s\n'
+                                 % (self._http_thread.name,))
             self._httpd.join_thread(self._http_thread)
             if 'threads' in tests.selftest_debug_flags:
-                print 'Thread  joined: %s' % (self._http_thread.name,)
+                sys.stderr.write('Thread  joined: %s\n'
+                                 % (self._http_thread.name,))
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""

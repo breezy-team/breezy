@@ -185,7 +185,8 @@ class FTPTestServer(test_server.TestServer):
         self._ftpd_thread = threading.Thread(target=self._run_server,)
         self._ftpd_thread.start()
         if 'threads' in tests.selftest_debug_flags:
-            print 'Thread started: %s' % (self._ftpd_thread.ident,)
+            sys.stderr.write('Thread started: %s\n'
+                             % (self._ftpd_thread.ident,))
         # Wait for the server thread to start (i.e release the lock)
         self._ftpd_starting.acquire()
         self._ftpd_starting.release()
@@ -199,7 +200,8 @@ class FTPTestServer(test_server.TestServer):
         self._ftpd_running = False
         self._ftpd_thread.join()
         if 'threads' in tests.selftest_debug_flags:
-            print 'Thread  joined: %s' % (self._ftpd_thread.ident,)
+            sys.stderr.write('Thread  joined: %s\n'
+                             % (self._ftpd_thread.ident,))
 
     def _run_server(self):
         """Run the server until stop_server is called, shut it down properly then.
