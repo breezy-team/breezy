@@ -4920,17 +4920,17 @@ class cmd_serve(Command):
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False,
             protocol=None):
-        from bzrlib.transport import get_transport, transport_server_registry
+        from bzrlib import transport
         if directory is None:
             directory = os.getcwd()
         if protocol is None:
-            protocol = transport_server_registry.get()
+            protocol = transport.transport_server_registry.get()
         host, port = self.get_host_and_port(port)
         url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
-        transport = get_transport(url)
-        protocol(transport, host, port, inet)
+        t = transport.get_transport(url)
+        protocol(t, host, port, inet)
 
 
 class cmd_join(Command):

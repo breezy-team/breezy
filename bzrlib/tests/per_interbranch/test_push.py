@@ -44,7 +44,6 @@ from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests.per_interbranch import (
     TestCaseWithInterBranch,
     )
-from bzrlib.transport import get_transport
 from bzrlib.tests import test_server
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -46,7 +46,6 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     multiply_tests,
     )
-from bzrlib.transport import get_transport
 
 
 def make_scenarios(test_list):

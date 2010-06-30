@@ -861,7 +861,7 @@ class TestWin32Funcs(tests.TestCase):
         self.assertEqual('//HOST/path', osutils._win98_abspath('//HOST/path'))
         # relative path
         cwd = osutils.getcwd().rstrip('/')
-        drive = osutils._nt_splitdrive(cwd)[0]
+        drive = osutils.ntpath.splitdrive(cwd)[0]
         self.assertEqual(cwd+'/path', osutils._win98_abspath('path'))
         self.assertEqual(drive+'/path', osutils._win98_abspath('/path'))
         # unicode path
