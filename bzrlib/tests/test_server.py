@@ -406,7 +406,11 @@ class TestingTCPServerMixin:
     def handle_error(self, request, client_address):
         # Stop serving and re-raise the last exception seen
         self.serving = False
-#        self.sibling_class.handle_error(self, request, client_address)
+        # The following can be used for debugging purposes, it will display the
+        # exception and the traceback just when it occurs instead of waiting
+        # for the thread to be joined.
+
+        # SocketServer.BaseServer.handle_error(self, request, client_address)
         raise
 
     def ignored_exceptions_during_shutdown(self, e):
