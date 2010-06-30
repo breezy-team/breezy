@@ -308,6 +308,18 @@ class TestGlobster(TestCase):
             self.assertEqual(patterns[x],globster.match(filename))
         self.assertEqual(None,globster.match('foobar.300'))
 
+    def test_bad_pattern(self):
+        """Ensure that globster handles bad patterns cleanly."""
+        patterns = [u'foo', u'RE:[', u'bar']
+        globster = Globster(patterns)
+        try:
+            globster.match('foo')
+        except errors.InvalidPattern, e:
+            self.assertContainsRe("File.*ignore.*contains errors", e.message)
+        else:
+            self.failureException('"errors.InvalidPattern" not raised')
+
+
 class TestExceptionGlobster(TestCase):
 
     def test_exclusion_patterns(self):
