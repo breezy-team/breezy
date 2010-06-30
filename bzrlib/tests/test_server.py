@@ -351,7 +351,7 @@ class TestingTCPServerMixin:
     def __init__(self, sibling_class):
         self.sibling_class = sibling_class
         self.started = threading.Event()
-        self.serving = threading.Event()
+        self.serving = None
         self.stopped = threading.Event()
         # We collect the resources used by the clients so we can release them
         # when shutting down
@@ -368,12 +368,12 @@ class TestingTCPServerMixin:
             self.server_address = self.socket.getsockname()
 
     def serve(self):
-        self.serving.set()
+        self.serving = True
         self.stopped.clear()
         # We are listening and ready to accept connections
         self.started.set()
         try:
-            while self.serving.isSet():
+            while self.serving:
                 # Really a connection but the python framework is generic and
                 # call them requests
                 self.handle_request()
@@ -403,11 +403,11 @@ class TestingTCPServerMixin:
         not even touch a single byte in the socket ! This is useful when we
         stop the server with a dummy last connection.
         """
-        return self.serving.isSet()
+        return self.serving
 
     def handle_error(self, request, client_address):
         # Stop serving and re-raise the last exception seen
-        self.serving.clear()
+        self.serving = False
         raise
 
     def ignored_exceptions_during_shutdown(self, e):
@@ -600,7 +600,7 @@ class TestingTCPServerInAThread(transport.Server):
             # one to get out of the blocking listen.
             self.set_ignored_exceptions(
                 self.server.ignored_exceptions_during_shutdown)
-            self.server.serving.clear()
+            self.server.serving = False
             if debug_threads():
                 sys.stderr.write('Server thread %s will be joined\n'
                                  % (self._server_thread.name,))

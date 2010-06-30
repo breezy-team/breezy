@@ -44,7 +44,7 @@ class TestingHTTPSServerMixin:
         Return True if we should proceed with this request, False if we should
         not even touch a single byte in the socket !
         """
-        serving = self.serving is not None and self.serving.isSet()
+        serving = self.serving
         if serving:
             request.do_handshake()
         return serving

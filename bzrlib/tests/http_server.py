@@ -344,7 +344,7 @@ class TestingHTTPServerMixin:
         Return True if we should proceed with this request, False if we should
         not even touch a single byte in the socket !
         """
-        return self.serving is not None and self.serving.isSet()
+        return self.serving
 
     def handle_request(self):
         request, client_address = self.get_request()
@@ -352,7 +352,7 @@ class TestingHTTPServerMixin:
             if self.verify_request(request, client_address):
                 self.process_request(request, client_address)
         except:
-            if self.serving is not None and self.serving.isSet():
+            if self.serving:
                 self.handle_error(request, client_address)
             else:
                 # Exceptions raised while we shut down are just noise, but feel
@@ -371,14 +371,15 @@ class TestingHTTPServerMixin:
             self.server_address = self.socket.getsockname()
 
     def serve(self, started):
-        self.serving  = threading.Event()
-        self.serving.set()
+        # From now on we serve
+        self.serving  = True
+        # We should be ready to shut down
         self.is_shut_down.clear()
         if 'threads' in tests.selftest_debug_flags:
             sys.stderr.write('Starting %r\n' % (self.server_address,))
         # We are listening and ready to accept connections
         started.set()
-        while self.serving.isSet():
+        while self.serving:
             if 'threads' in tests.selftest_debug_flags:
                 sys.stderr.write('Accepting on %r\n' % (self.server_address,))
             # Really a connection but the python framework is generic and
@@ -390,6 +391,7 @@ class TestingHTTPServerMixin:
         self.server_close()
         if 'threads' in tests.selftest_debug_flags:
             sys.stderr.write('Closed   %r\n' % (self.server_address,))
+        # Shut down has been finalized, release the caller thread
         self.is_shut_down.set()
 
     def join_thread(self, thread, timeout=2):
@@ -412,7 +414,7 @@ class TestingHTTPServerMixin:
             return
         # As soon as we stop serving, no more connection are accepted except
         # one to get out of the blocking listen.
-        self.serving.clear()
+        self.serving = False
         # The server is listening for a last connection, let's give it:
         last_conn = None
         try:
