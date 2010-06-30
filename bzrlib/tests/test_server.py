@@ -258,7 +258,7 @@ class ThreadWithException(threading.Thread):
             # If the caller didn't pass a specific event, create our own
             event = threading.Event()
         super(ThreadWithException, self).__init__(*args, **kwargs)
-        self.set_event(event)
+        self.set_ready_event(event)
         self.exception = None
         self.ignored_exceptions = None # see set_ignored_exceptions
 
@@ -266,7 +266,17 @@ class ThreadWithException(threading.Thread):
     if sys.version_info < (2, 6):
         name = property(threading.Thread.getName, threading.Thread.setName)
 
-    def set_event(self, event):
+    def set_ready_event(self, event):
+        """Set the ``ready`` event used to synchronize exception catching.
+
+        When the thread uses an event to synchronize itself with another thread
+        (setting it when the other thread can wake up from a ``wait`` call),
+        the event must be set after catching an exception or the other thread
+        will hang.
+
+        Some threads require multiple events and should set the relevant one
+        when appropriate.
+        """
         self.ready = event
 
     def set_ignored_exceptions(self, ignored):
@@ -576,7 +586,7 @@ class TestingTCPServerInAThread(transport.Server):
         self._server_thread.pending_exception()
         # From now on, we'll use a different event to ensure the server can set
         # its exception
-        self._server_thread.set_event(self.server.stopped)
+        self._server_thread.set_ready_event(self.server.stopped)
 
     def run_server(self):
         self.server.serve()
