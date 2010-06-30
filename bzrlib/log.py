@@ -86,7 +86,6 @@ from bzrlib.osutils import (
     format_date,
     format_date_with_offset_in_original_timezone,
     get_terminal_encoding,
-    re_compile_checked,
     terminal_width,
     )
 from bzrlib.symbol_versioning import (
@@ -811,8 +810,7 @@ def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
     """
     if search is None:
         return log_rev_iterator
-    searchRE = re_compile_checked(search, re.IGNORECASE,
-            'log message filter')
+    searchRE = re.compile(search, re.IGNORECASE)
     return _filter_message_re(searchRE, log_rev_iterator)
 
 

@@ -23,7 +23,8 @@ expressions.
 import re
 
 from bzrlib.trace import (
-    warning
+    errors,
+    warning,
     )
 
 
@@ -209,10 +210,17 @@ class Globster(object):
 
         :return A matching pattern or None if there is no matching pattern.
         """
-        for regex, patterns in self._regex_patterns:
-            match = regex.match(filename)
-            if match:
-                return patterns[match.lastindex -1]
+        try:
+            for regex, patterns in self._regex_patterns:
+                match = regex.match(filename)
+                if match:
+                    return patterns[match.lastindex -1]
+        except errors.InvalidPattern, e:
+            # We can't show the default e.message to the user as thats for
+            # the combined pattern we sent to regex. Instead we indicate to
+            # the user that an ignore file needs fixing.
+            e.message = "File ~/.bazaar/ignore or .bzrignore contains errors."
+            raise e
         return None
 
 class ExceptionGlobster(object):
