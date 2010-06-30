@@ -15,6 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+from bzrlib import errors
 from bzrlib.globbing import (
     Globster,
     ExceptionGlobster,
@@ -310,14 +311,10 @@ class TestGlobster(TestCase):
 
     def test_bad_pattern(self):
         """Ensure that globster handles bad patterns cleanly."""
-        patterns = [u'foo', u'RE:[', u'bar']
-        globster = Globster(patterns)
-        try:
-            globster.match('foo')
-        except errors.InvalidPattern, e:
-            self.assertContainsRe("File.*ignore.*contains errors", e.message)
-        else:
-            self.failureException('"errors.InvalidPattern" not raised')
+        patterns = [u'RE:[']
+        g = Globster(patterns)
+        e = self.assertRaises(errors.InvalidPattern, g.match, 'foo')
+        self.assertContainsRe(e.message, "File.*ignore.*contains errors")
 
 
 class TestExceptionGlobster(TestCase):
