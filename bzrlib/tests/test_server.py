@@ -258,7 +258,7 @@ class ThreadWithException(threading.Thread):
             # If the caller didn't pass a specific event, create our own
             event = threading.Event()
         super(ThreadWithException, self).__init__(*args, **kwargs)
-        self.set_event(event)
+        self.set_ready_event(event)
         self.exception = None
         self.ignored_exceptions = None # see set_ignored_exceptions
 
@@ -266,7 +266,17 @@ class ThreadWithException(threading.Thread):
     if sys.version_info < (2, 6):
         name = property(threading.Thread.getName, threading.Thread.setName)
 
-    def set_event(self, event):
+    def set_ready_event(self, event):
+        """Set the ``ready`` event used to synchronize exception catching.
+
+        When the thread uses an event to synchronize itself with another thread
+        (setting it when the other thread can wake up from a ``wait`` call),
+        the event must be set after catching an exception or the other thread
+        will hang.
+
+        Some threads require multiple events and should set the relevant one
+        when appropriate.
+        """
         self.ready = event
 
     def set_ignored_exceptions(self, ignored):
@@ -339,11 +349,9 @@ class TestingTCPServerMixin:
     separate thread.
     """
 
-    # FIXME: sibling_class is a hack -- vila 20100604
-    def __init__(self, sibling_class):
-        self.sibling_class = sibling_class
+    def __init__(self):
         self.started = threading.Event()
-        self.serving = threading.Event()
+        self.serving = None
         self.stopped = threading.Event()
         # We collect the resources used by the clients so we can release them
         # when shutting down
@@ -351,21 +359,16 @@ class TestingTCPServerMixin:
         self.ignored_exceptions = None
 
     def server_bind(self):
-        # We need to override the SocketServer bind, yet, we still want to use
-        # it so we need to use the sibling class to call it explicitly
-        self.sibling_class.server_bind(self)
-        # The following has been fixed in 2.5 so we need to provide it for
-        # older python versions.
-        if sys.version < (2, 5):
-            self.server_address = self.socket.getsockname()
+        self.socket.bind(self.server_address)
+        self.server_address = self.socket.getsockname()
 
     def serve(self):
-        self.serving.set()
+        self.serving = True
         self.stopped.clear()
         # We are listening and ready to accept connections
         self.started.set()
         try:
-            while self.serving.isSet():
+            while self.serving:
                 # Really a connection but the python framework is generic and
                 # call them requests
                 self.handle_request()
@@ -388,6 +391,9 @@ class TestingTCPServerMixin:
                 self.handle_error(request, client_address)
                 self.close_request(request)
 
+    def get_request(self):
+        return self.socket.accept()
+
     def verify_request(self, request, client_address):
         """Verify the request.
 
@@ -395,11 +401,11 @@ class TestingTCPServerMixin:
         not even touch a single byte in the socket ! This is useful when we
         stop the server with a dummy last connection.
         """
-        return self.serving.isSet()
+        return self.serving
 
     def handle_error(self, request, client_address):
         # Stop serving and re-raise the last exception seen
-        self.serving.clear()
+        self.serving = False
 #        self.sibling_class.handle_error(self, request, client_address)
         raise
 
@@ -452,13 +458,13 @@ class TestingTCPServerMixin:
 class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
 
     def __init__(self, server_address, request_handler_class):
-        TestingTCPServerMixin.__init__(self, SocketServer.TCPServer)
+        TestingTCPServerMixin.__init__(self)
         SocketServer.TCPServer.__init__(self, server_address,
                                         request_handler_class)
 
     def get_request(self):
         """Get the request and client address from the socket."""
-        sock, addr = self.sibling_class.get_request(self)
+        sock, addr = TestingTCPServerMixin.get_request(self)
         self.clients.append((sock, addr))
         return sock, addr
 
@@ -473,13 +479,13 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
                                 SocketServer.ThreadingTCPServer):
 
     def __init__(self, server_address, request_handler_class):
-        TestingTCPServerMixin.__init__(self, SocketServer.ThreadingTCPServer)
-        SocketServer.TCPServer.__init__(self, server_address,
-                                        request_handler_class)
+        TestingTCPServerMixin.__init__(self)
+        SocketServer.ThreadingTCPServer.__init__(self, server_address,
+                                                 request_handler_class)
 
     def get_request (self):
         """Get the request and client address from the socket."""
-        sock, addr = self.sibling_class.get_request(self)
+        sock, addr = TestingTCPServerMixin.get_request(self)
         # The thread is not create yet, it will be updated in process_request
         self.clients.append((sock, addr, None))
         return sock, addr
@@ -509,7 +515,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         t.start()
         started.wait()
         if debug_threads():
-            print 'Client thread %s started' % (t.name,)
+            sys.stderr.write('Client thread %s started\n' % (t.name,))
         # If an exception occured during the thread start, it will get raised.
         t.pending_exception()
 
@@ -524,8 +530,8 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
             # shutdown. If an exception occurred in the thread it will be
             # re-raised
             if debug_threads():
-                print 'Client thread %s will be joined' % (
-                    connection_thread.name,)
+                sys.stderr.write('Client thread %s will be joined\n'
+                                 % (connection_thread.name,))
             connection_thread.join()
 
     def set_ignored_exceptions(self, thread, ignored_exceptions):
@@ -572,13 +578,14 @@ class TestingTCPServerInAThread(transport.Server):
         self.host, self.port = self.server.server_address
         self._server_thread.name = self.server.server_address
         if debug_threads():
-            print 'Server thread %s started' % (self._server_thread.name,)
+            sys.stderr.write('Server thread %s started\n'
+                             % (self._server_thread.name,))
         # If an exception occured during the server start, it will get raised,
         # otherwise, the server is blocked on its accept() call.
         self._server_thread.pending_exception()
         # From now on, we'll use a different event to ensure the server can set
         # its exception
-        self._server_thread.set_event(self.server.stopped)
+        self._server_thread.set_ready_event(self.server.stopped)
 
     def run_server(self):
         self.server.serve()
@@ -592,10 +599,10 @@ class TestingTCPServerInAThread(transport.Server):
             # one to get out of the blocking listen.
             self.set_ignored_exceptions(
                 self.server.ignored_exceptions_during_shutdown)
-            self.server.serving.clear()
+            self.server.serving = False
             if debug_threads():
-                print 'Server thread %s will be joined' % (
-                    self._server_thread.name,)
+                sys.stderr.write('Server thread %s will be joined\n'
+                                 % (self._server_thread.name,))
             # The server is listening for a last connection, let's give it:
             last_conn = None
             try:
