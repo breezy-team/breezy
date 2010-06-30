@@ -815,11 +815,14 @@ class Branch(bzrdir.ControlComponent):
                 raise AssertionError("didn't expect %r to have "
                     "fallback_repositories"
                     % (self.repository,))
-            # Do our best to transfer the lock state  (i.e. lock-tokens and
+            # Replace self.repository with the new repository.
+            # Do our best to transfer the lock state (i.e. lock-tokens and
             # lock count) of self.repository to the new repository.
             lock_token = old_repository.lock_write().repository_token
             self.repository = new_repository
             if isinstance(self, remote.RemoteBranch):
+                # Remote branches can have a second reference to the old
+                # repository that need to be replaced.
                 if self._real_branch is not None:
                     self._real_branch.repository = new_repository
             self.repository.lock_write(token=lock_token)
@@ -829,7 +832,8 @@ class Branch(bzrdir.ControlComponent):
             if lock_token is not None:
                 # XXX: self.repository.leave_lock_in_place() before this
                 # function will not be preserved.  Fortunately that doesn't
-                # affect the current default format (2a).
+                # affect the current default format (2a), and would be a
+                # corner-case anyway.
                 #  - Andrew Bennetts, 2010/06/30
                 self.repository.dont_leave_lock_in_place()
             old_lock_count = 0
