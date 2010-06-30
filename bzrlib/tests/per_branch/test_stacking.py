@@ -207,6 +207,21 @@ class TestStacking(TestCaseWithBranch):
         self.assertRaises(errors.NotStacked,
             new_branch.get_stacked_on_url)
 
+    def test_unstack_locking_robustness(self):
+        """Removing the stacked-on branch with an already write-locked branch
+        works.
+
+        This was bug 551525.
+        """
+        try:
+            stacked_bzrdir = self.make_stacked_bzrdir()
+        except unstackable_format_errors, e:
+            raise TestNotApplicable(e)
+        stacked_branch = stacked_bzrdir.open_branch()
+        stacked_branch.lock_write()
+        stacked_branch.set_stacked_on_url(None)
+        stacked_branch.unlock()
+
     def make_stacked_bzrdir(self, in_directory=None):
         """Create a stacked branch and return its bzrdir.
 
@@ -222,7 +237,8 @@ class TestStacking(TestCaseWithBranch):
         tree = self.make_branch_and_tree(prefix + 'stacked-on')
         tree.commit('Added foo')
         stacked_bzrdir = tree.branch.bzrdir.sprout(
-            prefix + 'stacked', tree.branch.last_revision(), stacked=True)
+            self.get_url(prefix + 'stacked'), tree.branch.last_revision(),
+            stacked=True)
         return stacked_bzrdir
 
     def test_clone_from_stacked_branch_preserve_stacking(self):
