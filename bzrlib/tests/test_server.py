@@ -348,8 +348,7 @@ class TestingTCPServerMixin:
     separate thread.
     """
 
-    def __init__(self, sibling_class):
-        self.sibling_class = sibling_class
+    def __init__(self):
         self.started = threading.Event()
         self.serving = None
         self.stopped = threading.Event()
@@ -359,13 +358,8 @@ class TestingTCPServerMixin:
         self.ignored_exceptions = None
 
     def server_bind(self):
-        # We need to override the SocketServer bind, yet, we still want to use
-        # it so we need to use the sibling class to call it explicitly
-        self.sibling_class.server_bind(self)
-        # The following has been fixed in 2.5 so we need to provide it for
-        # older python versions.
-        if sys.version < (2, 5):
-            self.server_address = self.socket.getsockname()
+        self.socket.bind(self.server_address)
+        self.server_address = self.socket.getsockname()
 
     def serve(self):
         self.serving = True
@@ -395,6 +389,9 @@ class TestingTCPServerMixin:
             except:
                 self.handle_error(request, client_address)
                 self.close_request(request)
+
+    def get_request(self):
+        return self.socket.accept()
 
     def verify_request(self, request, client_address):
         """Verify the request.
@@ -459,13 +456,13 @@ class TestingTCPServerMixin:
 class TestingTCPServer(TestingTCPServerMixin, SocketServer.TCPServer):
 
     def __init__(self, server_address, request_handler_class):
-        TestingTCPServerMixin.__init__(self, SocketServer.TCPServer)
+        TestingTCPServerMixin.__init__(self)
         SocketServer.TCPServer.__init__(self, server_address,
                                         request_handler_class)
 
     def get_request(self):
         """Get the request and client address from the socket."""
-        sock, addr = self.sibling_class.get_request(self)
+        sock, addr = TestingTCPServerMixin.get_request(self)
         self.clients.append((sock, addr))
         return sock, addr
 
@@ -480,13 +477,13 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
                                 SocketServer.ThreadingTCPServer):
 
     def __init__(self, server_address, request_handler_class):
-        TestingTCPServerMixin.__init__(self, SocketServer.ThreadingTCPServer)
-        SocketServer.TCPServer.__init__(self, server_address,
-                                        request_handler_class)
+        TestingTCPServerMixin.__init__(self)
+        SocketServer.ThreadingTCPServer.__init__(self, server_address,
+                                                 request_handler_class)
 
     def get_request (self):
         """Get the request and client address from the socket."""
-        sock, addr = self.sibling_class.get_request(self)
+        sock, addr = TestingTCPServerMixin.get_request(self)
         # The thread is not create yet, it will be updated in process_request
         self.clients.append((sock, addr, None))
         return sock, addr
