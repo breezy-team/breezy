@@ -222,6 +222,20 @@ class TestStacking(TestCaseWithBranch):
         stacked_branch.set_stacked_on_url(None)
         stacked_branch.unlock()
 
+    def test_unstack_locking_lots(self):
+        try:
+            stacked_bzrdir = self.make_stacked_bzrdir()
+        except unstackable_format_errors, e:
+            raise TestNotApplicable(e)
+        stacked_branch = stacked_bzrdir.open_branch()
+        stacked_branch.lock_write()
+        stacked_branch.lock_write()
+        stacked_branch.lock_write()
+        stacked_branch.set_stacked_on_url(None)
+        stacked_branch.unlock()
+        stacked_branch.unlock()
+        stacked_branch.unlock()
+
     def make_stacked_bzrdir(self, in_directory=None):
         """Create a stacked branch and return its bzrdir.
 
