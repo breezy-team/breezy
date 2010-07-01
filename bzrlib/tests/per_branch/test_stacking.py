@@ -23,10 +23,8 @@ from bzrlib import (
     errors,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import server
-from bzrlib.tests import TestNotApplicable, KnownFailure, transport_util
+from bzrlib.tests import TestNotApplicable, transport_util
 from bzrlib.tests.per_branch import TestCaseWithBranch
-from bzrlib.transport import get_transport
 
 
 unstackable_format_errors = (
@@ -285,7 +283,8 @@ class TestStacking(TestCaseWithBranch):
         except unstackable_format_errors, e:
             raise TestNotApplicable(e)
         stacked_bzrdir.open_branch().set_stacked_on_url('../stacked-on')
-        cloned_bzrdir = stacked_bzrdir.clone('cloned', preserve_stacking=True)
+        cloned_bzrdir = stacked_bzrdir.clone(
+            self.get_url('cloned'), preserve_stacking=True)
         self.assertEqual(
             '../dir/stacked-on',
             cloned_bzrdir.open_branch().get_stacked_on_url())
