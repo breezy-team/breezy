@@ -137,6 +137,14 @@ def set_merge_tools(merge_tools, conf=config.GlobalConfig()):
                                              for merge_tool in merge_tools))
 
 
+def find_merge_tool(name, conf=config.GlobalConfig()):
+    merge_tools = get_merge_tools(conf)
+    for merge_tool in merge_tools:
+        if merge_tool.get_name() == name:
+            return merge_tool
+    return None
+
+
 def _optional_quote_arg(arg):
     if ' ' in arg and not _is_arg_quoted(arg):
         return '"%s"' % arg
