@@ -38,13 +38,6 @@ import time
 _start_time = time.time()
 
 import sys
-if getattr(sys, '_bzr_lazy_regex', False):
-    # The 'bzr' executable sets _bzr_lazy_regex.  We install the lazy regex
-    # hack as soon as possible so that as much of the standard library can
-    # benefit, including the 'string' module.
-    del sys._bzr_lazy_regex
-    import bzrlib.lazy_regex
-    bzrlib.lazy_regex.install_lazy_compile()
 
 
 IGNORE_FILENAME = ".bzrignore"
@@ -124,6 +117,18 @@ def _format_version_tuple(version_info):
         raise ValueError("version_info %r not valid" % (version_info,))
 
     return main_version + sub_string
+
+
+# lazy_regex import must be done after _format_version_tuple definition
+# to avoid "no attribute '_format_version_tuple'" error when using
+# deprecated_function in the lazy_regex module.
+if getattr(sys, '_bzr_lazy_regex', False):
+    # The 'bzr' executable sets _bzr_lazy_regex.  We install the lazy regex
+    # hack as soon as possible so that as much of the standard library can
+    # benefit, including the 'string' module.
+    del sys._bzr_lazy_regex
+    import bzrlib.lazy_regex
+    bzrlib.lazy_regex.install_lazy_compile()
 
 
 __version__ = _format_version_tuple(version_info)
