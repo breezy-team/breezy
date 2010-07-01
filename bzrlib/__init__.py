@@ -120,7 +120,8 @@ def _format_version_tuple(version_info):
 
 
 # lazy_regex import must be done after _format_version_tuple definition
-# to avoid "no attribute '_format_version_tuple'" error.
+# to avoid "no attribute '_format_version_tuple'" error when using
+# deprecated_function in the lazy_regex module.
 if getattr(sys, '_bzr_lazy_regex', False):
     # The 'bzr' executable sets _bzr_lazy_regex.  We install the lazy regex
     # hack as soon as possible so that as much of the standard library can
