@@ -1716,8 +1716,8 @@ class TestReCompile(tests.TestCase):
             errors.BzrCommandError,
             osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
         self.assertEqual(
-            "Invalid regular expression in test case: '*': "
-            "nothing to repeat",
+            'Invalid regular expression in test case: '
+            '"*" nothing to repeat',
             str(err))
 
 

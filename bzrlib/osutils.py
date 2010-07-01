@@ -2163,6 +2163,30 @@ def until_no_eintr(f, *a, **kw):
             raise
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
+def re_compile_checked(re_string, flags=0, where=""):
+    """Return a compiled re, or raise a sensible error.
+
+    This should only be used when compiling user-supplied REs.
+
+    :param re_string: Text form of regular expression.
+    :param flags: eg re.IGNORECASE
+    :param where: Message explaining to the user the context where
+        it occurred, eg 'log search filter'.
+    """
+    # from https://bugs.launchpad.net/bzr/+bug/251352
+    try:
+        re_obj = re.compile(re_string, flags)
+        re_obj.search("")
+        return re_obj
+    except errors.InvalidPattern, e:
+        if where:
+            where = ' in ' + where
+        # despite the name 'error' is a type
+        raise errors.BzrCommandError('Invalid regular expression%s: %s'
+            % (where, e.message))
+
+
 if sys.platform == "win32":
     import msvcrt
     def getchar():
