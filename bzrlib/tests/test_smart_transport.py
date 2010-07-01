@@ -40,7 +40,10 @@ from bzrlib.smart import (
         server,
         vfs,
 )
-from bzrlib.tests import test_smart
+from bzrlib.tests import (
+    test_smart,
+    test_server,
+    )
 from bzrlib.transport import (
         http,
         local,
@@ -972,19 +975,21 @@ class TestSmartTCPServer(tests.TestCase):
             base = 'a_url'
             def external_url(self):
                 return self.base
-            def get_bytes(self, path):
+            def get(self, path):
                 raise Exception("some random exception from inside server")
-        smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
-        smart_server._create_server_socket('127.0.0.1', 0)
-        smart_server.start_background_thread('-' + self.id())
-        try:
-            transport = remote.RemoteTCPTransport(smart_server.get_url())
-            err = self.assertRaises(errors.UnknownErrorFromSmartServer,
-                transport.get, 'something')
-            self.assertContainsRe(str(err), 'some random exception')
-            transport.disconnect()
-        finally:
-            smart_server.stop_background_thread()
+
+        class FlakyServer(test_server.SmartTCPServer_for_testing):
+            def get_backing_transport(self, backing_transport_server):
+                return FlakyTransport()
+
+        smart_server = FlakyServer()
+        smart_server.start_server()
+        self.addCleanup(smart_server.stop_server)
+        t = remote.RemoteTCPTransport(smart_server.get_url())
+        self.addCleanup(t.disconnect)
+        err = self.assertRaises(errors.UnknownErrorFromSmartServer,
+                                t.get, 'something')
+        self.assertContainsRe(str(err), 'some random exception')
 
 
 class SmartTCPTests(tests.TestCase):
