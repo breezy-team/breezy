@@ -115,7 +115,7 @@ class TestGitBranch(tests.TestCaseInTempDir):
         self.assertEquals({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
                           thebranch.tags.get_tag_dict())
 
-        
+
 
 class TestWithGitBranch(tests.TestCaseWithTransport):
 
@@ -129,7 +129,7 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
         self.assertIs(None, self.git_branch.get_parent())
 
     def test_get_stacked_on_url(self):
-        self.assertRaises(errors.UnstackableBranchFormat, 
+        self.assertRaises(errors.UnstackableBranchFormat,
             self.git_branch.get_stacked_on_url)
 
     def test_get_physical_lock_status(self):
@@ -145,6 +145,11 @@ class TestGitBranchFormat(tests.TestCase):
     def test_get_format_description(self):
         self.assertEquals("Git Branch", self.format.get_format_description())
 
+    def test_get_network_name(self):
+        self.assertEquals("git", self.format.network_name())
+
+    def test_supports_tags(self):
+        self.assertTrue(self.format.supports_tags())
 
 
 class BranchTests(tests.TestCaseInTempDir):

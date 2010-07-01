@@ -48,7 +48,6 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 from bzrlib.plugins.git.refs import (
-    branch_name_to_ref,
     ref_to_branch_name,
     extract_tags,
     tag_name_to_ref,
@@ -58,6 +57,7 @@ from bzrlib.foreign import ForeignBranch
 
 
 class GitPullResult(branch.PullResult):
+    """Result of a pull from a Git branch."""
 
     def _lookup_revno(self, revid):
         assert isinstance(revid, str), "was %r" % revid
@@ -108,7 +108,7 @@ class LocalGitTagDict(tag.BasicTags):
         for name in extra:
             if name.startswith("refs/tags/"):
                 del self.repository._git[name]
-        
+
     def set_tag(self, name, revid):
         self.repository._git.refs[tag_name_to_ref(name)], _ = \
             self.branch.mapping.revision_id_bzr_to_foreign(revid)
@@ -251,7 +251,7 @@ class GitBranch(ForeignBranch):
             overwrite, stop_revision)
 
     def lookup_foreign_revision_id(self, foreign_revid):
-        return self.repository.lookup_foreign_revision_id(foreign_revid, 
+        return self.repository.lookup_foreign_revision_id(foreign_revid,
             self.mapping)
 
 
@@ -259,7 +259,7 @@ class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
     def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
-        super(LocalGitBranch, self).__init__(bzrdir, repository, name, 
+        super(LocalGitBranch, self).__init__(bzrdir, repository, name,
               lockfiles, tagsdict)
         refs = repository._git.get_refs()
         if not (name in refs.keys() or "HEAD" in refs.keys()):
@@ -342,7 +342,7 @@ class LocalGitBranch(GitBranch):
 
     def supports_tags(self):
         return True
-    
+
 
 class GitBranchPullResult(branch.PullResult):
 
@@ -389,7 +389,7 @@ class GitBranchPullResult(branch.PullResult):
 
     def _set_new_revno(self, revno):
         self._new_revno = revno
-    
+
     new_revno = property(_get_new_revno, _set_new_revno)
 
 
