@@ -65,7 +65,7 @@ class SmartTCPServer(object):
         self.backing_transport = backing_transport
         self.root_client_path = root_client_path
 
-    def _create_server_socket(self, host, port):
+    def start_server(self, host, port):
         """Create the server listening socket.
 
         :param host: Name of the interface to listen on.
@@ -344,7 +344,7 @@ class BzrServerFactory(object):
             if port is None:
                 port = medium.BZR_DEFAULT_PORT
             smart_server = SmartTCPServer(self.transport)
-            smart_server._create_server_socket(host, port)
+            smart_server.start_server(host, port)
             trace.note('listening on port: %s' % smart_server.port)
         self.smart_server = smart_server
 

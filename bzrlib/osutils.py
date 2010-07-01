@@ -28,10 +28,16 @@ from datetime import datetime
 import getpass
 import ntpath
 import posixpath
+# We need to import both shutil and rmtree as we export the later on posix
+# and need the former on windows
 import shutil
+from shutil import rmtree
 import socket
 import subprocess
+# We need to import both tempfile and mkdtemp as we export the later on posix
+# and need the former on windows
 import tempfile
+from tempfile import mkdtemp
 import unicodedata
 
 from bzrlib import (
@@ -346,7 +352,7 @@ def _win32_getcwd():
 
 
 def _win32_mkdtemp(*args, **kwargs):
-    return _win32_fixdrive(tempfile.mkdtemp(*args, **kwargs).replace('\\', '/'))
+    return _win32_fixdrive(mkdtemp(*args, **kwargs).replace('\\', '/'))
 
 
 def _win32_rename(old, new):
@@ -383,8 +389,9 @@ dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
 splitext = os.path.splitext
-mkdtemp = tempfile.mkdtemp
-rmtree = shutil.rmtree
+# These were already lazily imported into local scope
+# mkdtemp = tempfile.mkdtemp
+# rmtree = shutil.rmtree
 
 MIN_ABS_PATHLENGTH = 1
 
@@ -428,7 +435,7 @@ elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
 
-def get_terminal_encoding():
+def get_terminal_encoding(trace=False):
     """Find the best encoding for printing to the screen.
 
     This attempts to check both sys.stdout and sys.stdin to see
@@ -440,6 +447,8 @@ def get_terminal_encoding():
 
     On my standard US Windows XP, the preferred encoding is
     cp1252, but the console is cp437
+
+    :param trace: If True trace the selected encoding via mutter().
     """
     from bzrlib.trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
@@ -447,17 +456,22 @@ def get_terminal_encoding():
         input_encoding = getattr(sys.stdin, 'encoding', None)
         if not input_encoding:
             output_encoding = get_user_encoding()
-            mutter('encoding stdout as osutils.get_user_encoding() %r',
+            if trace:
+                mutter('encoding stdout as osutils.get_user_encoding() %r',
                    output_encoding)
         else:
             output_encoding = input_encoding
-            mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
+            if trace:
+                mutter('encoding stdout as sys.stdin encoding %r',
+                    output_encoding)
     else:
-        mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+        if trace:
+            mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
     if output_encoding == 'cp0':
         # invalid encoding (cp0 means 'no codepage' on Windows)
         output_encoding = get_user_encoding()
-        mutter('cp0 is invalid encoding.'
+        if trace:
+            mutter('cp0 is invalid encoding.'
                ' encoding stdout as osutils.get_user_encoding() %r',
                output_encoding)
     # check encoding
@@ -2051,11 +2065,12 @@ def send_all(sock, bytes, report_activity=None):
             report_activity(sent, 'write')
 
 
-def connect_socket(address, timeout=None):
-    # Slight variation of the socket.create_connection() function (provided
-    # by python-2.6) that can fail if getaddrinfo returns an empty list. We
-    # also provide it for previous python versions. Also, we don't use the
-    # timeout parameter so we don't implement it either.
+def connect_socket(address):
+    # Slight variation of the socket.create_connection() function (provided by
+    # python-2.6) that can fail if getaddrinfo returns an empty list. We also
+    # provide it for previous python versions. Also, we don't use the timeout
+    # parameter (provided by the python implementation) so we don't implement
+    # it either).
     err = socket.error('getaddrinfo returns an empty list')
     host, port = address
     for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
