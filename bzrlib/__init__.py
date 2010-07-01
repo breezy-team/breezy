@@ -164,6 +164,7 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         BzrLibraryState directly.
     """
     import bzrlib.library_state
+    import bzrlib.trace as bzrtrace
     if setup_ui:
         import bzrlib.ui
         stdin = stdin or sys.stdin
@@ -172,7 +173,7 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         ui_factory = bzrlib.ui.make_ui_for_terminal(stdin, stdout, stderr)
     else:
         ui_factory = None
-    tracer = bzrlib.trace.DefaultConfig()
+    tracer = bzrtrace.DefaultConfig()
     return bzrlib.library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
 
 
