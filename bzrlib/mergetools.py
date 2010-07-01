@@ -147,7 +147,7 @@ def find_merge_tool(name, conf=config.GlobalConfig()):
 
 def _optional_quote_arg(arg):
     if ' ' in arg and not _is_arg_quoted(arg):
-        return '"%s"' % arg
+        return '"%s"' % _escape_quotes(arg)
     else:
         return arg
 
@@ -155,3 +155,7 @@ def _optional_quote_arg(arg):
 def _is_arg_quoted(arg):
     return (arg[0] == "'" and arg[-1] == "'") or \
            (arg[0] == '"' and arg[-1] == '"')
+
+
+def _escape_quotes(arg):
+    return arg.replace('"', '\\"')

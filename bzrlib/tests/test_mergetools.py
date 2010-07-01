@@ -45,6 +45,10 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals(
             'kdiff3 "file with space.txt.BASE" "file with space.txt.THIS" "file with space.txt.OTHER" -o "file with space.txt"',
             commandline)
+        commandline, _ = mt._expand_commandline('file with "space and quotes".txt')
+        self.assertEquals(
+            'kdiff3 "file with \\"space and quotes\\".txt.BASE" "file with \\"space and quotes\\".txt.THIS" "file with \\"space and quotes\\".txt.OTHER" -o "file with \\"space and quotes\\".txt"',
+            commandline)
         
     def test_expand_commandline_tempfile(self):
         self.build_tree(('test.txt', 'test.txt.BASE', 'test.txt.THIS',
