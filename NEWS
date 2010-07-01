@@ -62,6 +62,9 @@ Bug Fixes
   or pull location in locations.conf or branch.conf.
   (Gordon Tyler, #534787)
 
+* ``bzr reconfigure --unstacked`` now works with branches accessed via a
+  smart server. (Andrew Bennetts, #551525)
+
 * ``BzrDir.find_branches`` should ignore branches with missing repositories.
   (Marius Kruger, Robert Collins)
 
