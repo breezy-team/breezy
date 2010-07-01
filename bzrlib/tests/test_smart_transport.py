@@ -995,7 +995,7 @@ class TestSmartTCPServer(tests.TestCase):
 class SmartTCPTests(tests.TestCase):
     """Tests for connection/end to end behaviour using the TCP server.
 
-    All of these tests are run with a server running on another thread serving
+    All of these tests are run with a server running in another thread serving
     a MemoryTransport, and a connection to it already open.
 
     the server is obtained by calling self.start_server(readonly=False).
@@ -1009,7 +1009,7 @@ class SmartTCPTests(tests.TestCase):
         # NB: Tests using this fall into two categories: tests of the server,
         # tests wanting a server. The latter should be updated to use
         # self.vfs_transport_factory etc.
-        if not backing_transport:
+        if backing_transport is None:
             mem_server = memory.MemoryServer()
             mem_server.start_server()
             self.addCleanup(mem_server.stop_server)
@@ -1023,7 +1023,7 @@ class SmartTCPTests(tests.TestCase):
             self.backing_transport = transport.get_transport(
                 "readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
-        self.server._create_server_socket('127.0.0.1', 0)
+        self.server.start_server('127.0.0.1', 0)
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.tearDownServer)
@@ -1044,10 +1044,9 @@ class TestServerSocketUsage(SmartTCPTests):
     def test_server_setup_teardown(self):
         """It should be safe to teardown the server with no requests."""
         self.start_server()
-        server = self.server
-        transport = remote.RemoteTCPTransport(self.server.get_url())
+        t = remote.RemoteTCPTransport(self.server.get_url())
         self.tearDownServer()
-        self.assertRaises(errors.ConnectionError, transport.has, '.')
+        self.assertRaises(errors.ConnectionError, t.has, '.')
 
     def test_server_closes_listening_sock_on_shutdown_after_request(self):
         """The server should close its listening socket when it's stopped."""
@@ -1057,8 +1056,8 @@ class TestServerSocketUsage(SmartTCPTests):
         self.tearDownServer()
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
-        transport = remote.RemoteTCPTransport(server.get_url())
-        self.assertRaises(errors.ConnectionError, transport.has, '.')
+        t = remote.RemoteTCPTransport(server.get_url())
+        self.assertRaises(errors.ConnectionError, t.has, '.')
 
 
 class WritableEndToEndTests(SmartTCPTests):

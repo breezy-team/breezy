@@ -65,8 +65,7 @@ class SmartTCPServer(object):
         self.backing_transport = backing_transport
         self.root_client_path = root_client_path
 
-    # FIXME: Needs to be public and be called start_server ? -- vila 20100624
-    def _create_server_socket(self, host, port):
+    def start_server(self, host, port):
         """Create the server listening socket.
 
         :param host: Name of the interface to listen on.
@@ -195,7 +194,6 @@ class SmartTCPServer(object):
         connection_thread.start()
         return connection_thread
 
-    # FIXME: Not needed if we use SmartTCPServer_for_testing ? -- vila 20100624
     def start_background_thread(self, thread_name_suffix=''):
         self._started.clear()
         self._server_thread = threading.Thread(None,
@@ -346,7 +344,7 @@ class BzrServerFactory(object):
             if port is None:
                 port = medium.BZR_DEFAULT_PORT
             smart_server = SmartTCPServer(self.transport)
-            smart_server._create_server_socket(host, port)
+            smart_server.start_server(host, port)
             trace.note('listening on port: %s' % smart_server.port)
         self.smart_server = smart_server
 
