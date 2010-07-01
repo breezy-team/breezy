@@ -24,6 +24,7 @@ import re
 
 from bzrlib.trace import (
     errors,
+    mutter,
     warning,
     )
 
@@ -219,6 +220,7 @@ class Globster(object):
             # We can't show the default e.message to the user as thats for
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
+            mutter('Invalid pattern found in regex: %s.', e.message)
             e.message = "File ~/.bazaar/ignore or .bzrignore contains errors."
             raise e
         return None
