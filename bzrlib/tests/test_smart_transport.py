@@ -42,6 +42,7 @@ from bzrlib.smart import (
 )
 from bzrlib.tests import (
     test_smart,
+    test_server,
     )
 from bzrlib.transport import (
         http,
@@ -974,25 +975,27 @@ class TestSmartTCPServer(tests.TestCase):
             base = 'a_url'
             def external_url(self):
                 return self.base
-            def get_bytes(self, path):
+            def get(self, path):
                 raise Exception("some random exception from inside server")
-        smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
-        smart_server._create_server_socket('127.0.0.1', 0)
-        smart_server.start_background_thread('-' + self.id())
-        try:
-            transport = remote.RemoteTCPTransport(smart_server.get_url())
-            err = self.assertRaises(errors.UnknownErrorFromSmartServer,
-                transport.get, 'something')
-            self.assertContainsRe(str(err), 'some random exception')
-            transport.disconnect()
-        finally:
-            smart_server.stop_background_thread()
+
+        class FlakyServer(test_server.SmartTCPServer_for_testing):
+            def get_backing_transport(self, backing_transport_server):
+                return FlakyTransport()
+
+        smart_server = FlakyServer()
+        smart_server.start_server()
+        self.addCleanup(smart_server.stop_server)
+        t = remote.RemoteTCPTransport(smart_server.get_url())
+        self.addCleanup(t.disconnect)
+        err = self.assertRaises(errors.UnknownErrorFromSmartServer,
+                                t.get, 'something')
+        self.assertContainsRe(str(err), 'some random exception')
 
 
 class SmartTCPTests(tests.TestCase):
     """Tests for connection/end to end behaviour using the TCP server.
 
-    All of these tests are run with a server running on another thread serving
+    All of these tests are run with a server running in another thread serving
     a MemoryTransport, and a connection to it already open.
 
     the server is obtained by calling self.start_server(readonly=False).
@@ -1006,7 +1009,7 @@ class SmartTCPTests(tests.TestCase):
         # NB: Tests using this fall into two categories: tests of the server,
         # tests wanting a server. The latter should be updated to use
         # self.vfs_transport_factory etc.
-        if not backing_transport:
+        if backing_transport is None:
             mem_server = memory.MemoryServer()
             mem_server.start_server()
             self.addCleanup(mem_server.stop_server)
@@ -1020,7 +1023,7 @@ class SmartTCPTests(tests.TestCase):
             self.backing_transport = transport.get_transport(
                 "readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
-        self.server._create_server_socket('127.0.0.1', 0)
+        self.server.start_server('127.0.0.1', 0)
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
         self.addCleanup(self.stop_server)
@@ -1045,9 +1048,9 @@ class TestServerSocketUsage(SmartTCPTests):
     def test_server_start_stop(self):
         """It should be safe to stop the server with no requests."""
         self.start_server()
-        transport = remote.RemoteTCPTransport(self.server.get_url())
+        t = remote.RemoteTCPTransport(self.server.get_url())
         self.stop_server()
-        self.assertRaises(errors.ConnectionError, transport.has, '.')
+        self.assertRaises(errors.ConnectionError, t.has, '.')
 
     def test_server_closes_listening_sock_on_shutdown_after_request(self):
         """The server should close its listening socket when it's stopped."""
@@ -1057,8 +1060,8 @@ class TestServerSocketUsage(SmartTCPTests):
         self.stop_server()
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
-        transport = remote.RemoteTCPTransport(server_url)
-        self.assertRaises(errors.ConnectionError, transport.has, '.')
+        t = remote.RemoteTCPTransport(server_url)
+        self.assertRaises(errors.ConnectionError, t.has, '.')
 
 
 class WritableEndToEndTests(SmartTCPTests):
@@ -2871,9 +2874,10 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.responder = protocol.ProtocolThreeResponder(self.writes.append)
 
     def assertWriteCount(self, expected_count):
+        # self.writes can be quite large; don't show the whole thing
         self.assertEqual(
             expected_count, len(self.writes),
-            "Too many writes: %r" % (self.writes,))
+            "Too many writes: %d, expected %d" % (len(self.writes), expected_count))
 
     def test_send_error_writes_just_once(self):
         """An error response is written to the medium all at once."""
@@ -2902,22 +2906,9 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         response = _mod_request.SuccessfulSmartServerResponse(
             ('arg', 'arg'), body_stream=['chunk1', 'chunk2'])
         self.responder.send_response(response)
-        # We will write just once, despite the multiple chunks, due to
-        # buffering.
-        self.assertWriteCount(1)
-
-    def test_send_response_with_body_stream_flushes_buffers_sometimes(self):
-        """When there are many bytes (>1MB), multiple writes will occur rather
-        than buffering indefinitely.
-        """
-        # Construct a response with stream with ~1.5MB in it. This should
-        # trigger 2 writes, but not 3
-        onekib = '12345678' * 128
-        body_stream = [onekib] * (1024 + 512)
-        response = _mod_request.SuccessfulSmartServerResponse(
-            ('arg', 'arg'), body_stream=body_stream)
-        self.responder.send_response(response)
-        self.assertWriteCount(2)
+        # Per the discussion in bug 590638 we flush once after the header and
+        # then once after each chunk
+        self.assertWriteCount(3)
 
 
 class TestSmartClientUnicode(tests.TestCase):

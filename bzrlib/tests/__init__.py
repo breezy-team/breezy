@@ -2406,9 +2406,11 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_smart_server(self, path):
+    def make_smart_server(self, path, backing_server=None):
+        if backing_server is None:
+            backing_server = self.get_server()
         smart_server = test_server.SmartTCPServer_for_testing()
-        self.start_server(smart_server, self.get_server())
+        self.start_server(smart_server, backing_server)
         remote_transport = _mod_transport.get_transport(smart_server.get_url()
                                                    ).clone(path)
         return remote_transport
@@ -3744,6 +3746,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_knit',
         'bzrlib.tests.test_lazy_import',
         'bzrlib.tests.test_lazy_regex',
+        'bzrlib.tests.test_library_state',
         'bzrlib.tests.test_lock',
         'bzrlib.tests.test_lockable_files',
         'bzrlib.tests.test_lockdir',

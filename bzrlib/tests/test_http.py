@@ -236,7 +236,7 @@ class RecordingServer(object):
             event=self._ready, target=self._accept_read_and_reply)
         self._thread.start()
         if 'threads' in tests.selftest_debug_flags:
-            print 'Thread started: %s' % (self._thread.ident,)
+            sys.stderr.write('Thread started: %s\n' % (self._thread.ident,))
         self._ready.wait()
 
     def _accept_read_and_reply(self):
@@ -266,7 +266,7 @@ class RecordingServer(object):
         self.port = None
         self._thread.join()
         if 'threads' in tests.selftest_debug_flags:
-            print 'Thread  joined: %s' % (self._thread.ident,)
+            sys.stderr.write('Thread  joined: %s\n' % (self._thread.ident,))
 
 
 class TestAuthHeader(tests.TestCase):
@@ -329,7 +329,7 @@ class TestHTTPServer(tests.TestCase):
         server.start_server()
         self.assertTrue(server.server is not None)
         self.assertTrue(server.server.serving is not None)
-        self.assertTrue(server.server.serving.isSet())
+        self.assertTrue(server.server.serving)
 
     def test_create_http_server_one_zero(self):
         class RequestHandlerOneZero(http_server.TestingHTTPRequestHandler):

@@ -61,7 +61,7 @@ class TestingHTTPSServer(TestingHTTPSServerMixin,
         http_server.TestingHTTPServer.__init__(
             self, server_address, request_handler_class, test_case_server)
 
-    def get_request (self):
+    def get_request(self):
         sock, addr = http_server.TestingHTTPServer.get_request(self)
         return self._get_ssl_request(sock, addr)
 
@@ -75,7 +75,7 @@ class TestingThreadingHTTPSServer(TestingHTTPSServerMixin,
         http_server.TestingThreadingHTTPServer.__init__(
             self, server_address, request_handler_class, test_case_server)
 
-    def get_request (self):
+    def get_request(self):
         sock, addr = http_server.TestingThreadingHTTPServer.get_request(self)
         return self._get_ssl_request(sock, addr)
 

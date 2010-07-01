@@ -345,14 +345,7 @@ class TestingSFTPConnectionHandler(SocketServer.BaseRequestHandler):
         self.wrap_for_latency()
         tcs = self.server.test_case_server
         ssh_server = paramiko.Transport(self.request)
-        # FIXME: The server key file should be created only once, not for each
-        # connection -- vila 20100623
-        key_file = osutils.pathjoin(tcs._homedir, 'test_rsa.key')
-        f = open(key_file, 'w')
-        f.write(STUB_SERVER_KEY)
-        f.close()
-        host_key = paramiko.RSAKey.from_private_key_file(key_file)
-        ssh_server.add_server_key(host_key)
+        ssh_server.add_server_key(tcs.get_host_key())
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                          StubSFTPServer, root=tcs._root,
                                          home=tcs._server_homedir)
@@ -442,6 +435,7 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
         self._original_vendor = None
         self._vendor = ssh.ParamikoVendor()
         self._server_interface = server_interface
+        self._host_key = None
         self.logs = []
         self.add_latency = 0
         self._homedir = None
@@ -461,6 +455,17 @@ class SFTPServer(test_server.TestingTCPServerInAThread):
                                    self.request_handler_class,
                                    self)
         return server
+
+    def get_host_key(self):
+        if self._host_key is None:
+            key_file = osutils.pathjoin(self._homedir, 'test_rsa.key')
+            f = open(key_file, 'w')
+            try:
+                f.write(STUB_SERVER_KEY)
+            finally:
+                f.close()
+            self._host_key = paramiko.RSAKey.from_private_key_file(key_file)
+        return self._host_key
 
     def start_server(self, backing_server=None):
         # XXX: TODO: make sftpserver back onto backing_server rather than local
@@ -522,6 +527,9 @@ class SFTPServerWithoutSSH(SFTPServer):
         super(SFTPServerWithoutSSH, self).__init__()
         self._vendor = ssh.LoopbackVendor()
         self.request_handler_class = TestingSFTPWithoutSSHConnectionHandler
+
+    def get_host_key():
+        return None
 
 
 class SFTPAbsoluteServer(SFTPServerWithoutSSH):
