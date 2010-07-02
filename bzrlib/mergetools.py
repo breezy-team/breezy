@@ -21,7 +21,11 @@ import shutil
 import subprocess
 import tempfile
 
-from bzrlib import cmdline, config
+from bzrlib import (
+    cmdline,
+    config,
+    errors,
+)
 
 
 substitution_help = {
@@ -143,6 +147,21 @@ def find_merge_tool(name, conf=config.GlobalConfig()):
         if merge_tool.get_name() == name:
             return merge_tool
     return None
+
+
+def get_user_selected_merge_tool(conf=config.GlobalConfig()):
+    name = conf.get_user_option('selected_mergetool')
+    if name is None:
+        return None
+    return find_merge_tool(name, conf)
+
+
+def set_user_selected_merge_tool(name, conf=config.GlobalConfig()):
+    if isinstance(name, MergeTool):
+        name = name.get_name()
+    if find_merge_tool(name, conf) is None:
+        raise errors.BzrError('invalid merge tool name: %r' % name)
+    conf.set_user_option('selected_mergetool', name)
 
 
 def _optional_quote_arg(arg):
