@@ -511,10 +511,8 @@ class GlobalConfig(IniBasedConfig):
         self._write_config_file()
 
     def _write_config_file(self):
-        f = StringIO()
-        self._get_parser().write(f)
         atomic_file = atomicfile.AtomicFile(self._get_filename())
-        atomic_file.write(f.getvalue())
+        self._get_parser().write(atomic_file)
         atomic_file.commit()
         atomic_file.close()
 
@@ -657,10 +655,8 @@ class LocationConfig(IniBasedConfig):
         self._get_parser()[location][option]=value
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
-        f = StringIO()
-        self._get_parser().write(f)
         atomic_file = atomicfile.AtomicFile(self._get_filename())
-        atomic_file.write(f.getvalue())
+        self._get_parser().write(atomic_file)
         atomic_file.commit()
         atomic_file.close()
 
