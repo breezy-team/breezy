@@ -20,6 +20,10 @@ New Features
 Bug Fixes
 *********
 
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
 

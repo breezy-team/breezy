@@ -81,6 +81,7 @@ from bzrlib import (
     registry,
     symbol_versioning,
     trace,
+    transport,
     ui,
     urlutils,
     win32utils,
@@ -510,9 +511,12 @@ class GlobalConfig(IniBasedConfig):
         self._write_config_file()
 
     def _write_config_file(self):
-        f = open(self._get_filename(), 'wb')
+        fname = osutils.safe_unicode(self._get_filename())
+        conf_dir = os.path.dirname(fname)
+        t = transport.get_transport(conf_dir)
+        f = StringIO()
         self._get_parser().write(f)
-        f.close()
+        t.put_bytes(os.path.basename(fname), f.getvalue())
 
 
 class LocationConfig(IniBasedConfig):
@@ -653,7 +657,12 @@ class LocationConfig(IniBasedConfig):
         self._get_parser()[location][option]=value
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
-        self._get_parser().write(file(self._get_filename(), 'wb'))
+        fname = osutils.safe_unicode(self._get_filename())
+        conf_dir = os.path.dirname(fname)
+        t = transport.get_transport(conf_dir)
+        f = StringIO()
+        self._get_parser().write(f)
+        t.put_bytes(os.path.basename(fname), f.getvalue())
 
 
 class BranchConfig(Config):
