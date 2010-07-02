@@ -168,7 +168,7 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         otherwise stopping use of bzrlib. Advanced callers can use
         BzrLibraryState directly.
     """
-    import bzrlib.library_state
+    from bzrlib import library_state, trace
     if setup_ui:
         import bzrlib.ui
         stdin = stdin or sys.stdin
@@ -177,8 +177,8 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         ui_factory = bzrlib.ui.make_ui_for_terminal(stdin, stdout, stderr)
     else:
         ui_factory = None
-    tracer = bzrlib.trace.DefaultConfig()
-    return bzrlib.library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
+    tracer = trace.DefaultConfig()
+    return library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
 
 
 def test_suite():
