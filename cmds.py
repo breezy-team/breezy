@@ -461,35 +461,63 @@ class cmd_merge_upstream(Command):
 
     You must supply the source to import from, and the version number of the
     new release. The source can be a .tar.gz, .tar, .tar.bz2, .tgz or .zip
-    archive, or a directory. The source may also be a remote file.
+    archive, or a directory. The source may also be a remote file described by
+    a URL.
 
     You must supply the version number of the new upstream release
-    using --version.
+    using --version, unless you're importing from an upstream branch, in which
+    case it can be guessed from that.
 
     The distribution this version is targetted at can be specified with
-    --distribution. This will be used to guess the version number, so you
-    can always correct it in the changelog.
+    --distribution. This will be used to guess the version number suffix
+    that you want, but you can always correct it in the resulting
+    debian/changelog.
 
     If there is no debian changelog in the branch to retrieve the package
     name from then you must pass the --package option. If this version
     will change the name of the source package then you can use this option
     to set the new name.
+
+    examples::
+
+        bzr merge-upstream --version 0.2 \
+            http://example.org/releases/scruff-0.2.tar.gz
+
+    If you are merging a branch as well as the tarball then you can
+    specify the branch after the tarball, along with -r to specify the
+    revision of that branch to take::
+
+        bzr merge-upstream --version 0.2 \
+            http://example.org/releases/scruff-0.2.tar.gz \
+            http://scruff.org/bzr/scruff.dev -r tag:0.2
+
+    If there is no upstream release tarball, and you want bzr-builddeb to
+    create the tarball for you::
+
+        bzr merge-upstream --version 0.2 http://scruff.org/bzr/scruff.dev
+
+    Note that the created tarball is just the same as the contents of
+    the branch at the specified revision. If you wish to have something
+    different, for instance the results of running "make dist", then you
+    should create the tarball first, and pass it to the command as in
+    the second example.
     """
     takes_args = ['location?', 'upstream_branch?']
     aliases = ['mu']
 
     package_opt = Option('package', help="The name of the source package.",
                          type=str)
-    version_opt = Option('version', help="The version number of this release.",
-                         type=str)
+    version_opt = Option('version',
+        help="The upstream version number of this release, for example "
+        "\"0.2\".", type=str)
     distribution_opt = Option('distribution', help="The distribution that "
             "this release is targetted at.", type=str)
     directory_opt = Option('directory',
                            help='Working tree into which to merge.',
                            short_name='d', type=unicode)
     last_version_opt = Option('last-version',
-                              help='The previous version that was merged..',
-                              type=str)
+                              help='The full version of the last time '
+                              'upstream was merged.', type=str)
     force_opt = Option('force',
                        help=('Force a merge even if the upstream branch '
                              'has not changed.'))
@@ -500,9 +528,10 @@ class cmd_merge_upstream(Command):
             distribution_opt, directory_opt, last_version_opt,
             force_opt, v3_opt, 'revision', 'merge-type']
 
-    def run(self, location=None, upstream_branch=None, version=None, distribution=None,
-            package=None, no_user_config=None, directory=".", revision=None,
-            merge_type=None, last_version=None, force=None, v3=None):
+    def run(self, location=None, upstream_branch=None, version=None,
+            distribution=None, package=None, no_user_config=None,
+            directory=".", revision=None, merge_type=None,
+            last_version=None, force=None, v3=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         from bzrlib.plugins.builddeb.merge_upstream import (changelog_add_new_version,
