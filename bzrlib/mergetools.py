@@ -52,7 +52,7 @@ class MergeTool(object):
         self._commandline = commandline
         
     def __repr__(self):
-        return repr(self._commandline)
+        return '<MergeTool %r>' % self._commandline
         
     def __str__(self):
         return self._commandline
