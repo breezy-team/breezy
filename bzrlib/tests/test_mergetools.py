@@ -18,6 +18,7 @@
 
 import os
 import re
+import sys
 
 from bzrlib import (
     config,
@@ -35,6 +36,8 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals('tool', mt.get_name())
         mt.set_commandline('/new/path/to/bettertool %b %t %o %r')
         self.assertEquals('/new/path/to/bettertool %b %t %o %r', mt.get_commandline())
+        self.assertEquals('/new/path/to/bettertool', mt.get_executable())
+        self.assertEquals('%b %t %o %r', mt.get_arguments())
         mt.set_executable('othertool')
         self.assertEquals('othertool', mt.get_executable())
         self.assertEquals('othertool %b %t %o %r', mt.get_commandline())
@@ -71,3 +74,10 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals(tmpfile, m.group(1))
         self.failUnlessExists(m.group(1))
         os.remove(tmpfile)
+        
+    def test_is_available(self):
+        mt = mergetools.MergeTool('%s' % sys.executable)
+        self.assertTrue(mt.is_available())
+        self.knownFailure('is_available cannot find executables on the PATH yet')
+        #mt.set_executable("ThisExecutableShouldReallyNotExist")
+        #self.assertFalse(mt.is_available())
