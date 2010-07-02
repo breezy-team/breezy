@@ -74,6 +74,7 @@ from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
+    atomicfile,
     debug,
     errors,
     mail_client,
@@ -510,9 +511,12 @@ class GlobalConfig(IniBasedConfig):
         self._write_config_file()
 
     def _write_config_file(self):
-        f = open(self._get_filename(), 'wb')
+        f = StringIO()
         self._get_parser().write(f)
-        f.close()
+        atomic_file = atomicfile.AtomicFile(self._get_filename())
+        atomic_file.write(f.getvalue())
+        atomic_file.commit()
+        atomic_file.close()
 
 
 class LocationConfig(IniBasedConfig):
@@ -653,7 +657,12 @@ class LocationConfig(IniBasedConfig):
         self._get_parser()[location][option]=value
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
-        self._get_parser().write(file(self._get_filename(), 'wb'))
+        f = StringIO()
+        self._get_parser().write(f)
+        atomic_file = atomicfile.AtomicFile(self._get_filename())
+        atomic_file.write(f.getvalue())
+        atomic_file.commit()
+        atomic_file.close()
 
 
 class BranchConfig(Config):
