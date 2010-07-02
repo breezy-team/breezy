@@ -19,6 +19,7 @@
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 
 from bzrlib import (
@@ -84,12 +85,7 @@ class MergeTool(object):
 
     def is_available(self):
         executable = self.get_executable()
-        if os.path.isabs(executable):
-            return os.path.exists(executable)
-        else:
-            # Assume non-absolute path is resolvable on PATH
-            # TODO: Search PATH for executable
-            return True
+        return os.path.exists(executable) or _find_executable(executable)
         
     def invoke(self, filename):
         commandline, tmp_file = self._expand_commandline(filename)
@@ -178,3 +174,32 @@ def _is_arg_quoted(arg):
 
 def _escape_quotes(arg):
     return arg.replace('"', '\\"')
+
+
+# courtesy of 'techtonik' at http://snippets.dzone.com/posts/show/6313
+def _find_executable(executable, path=None):
+    """Try to find 'executable' in the directories listed in 'path' (a
+    string listing directories separated by 'os.pathsep'; defaults to
+    os.environ['PATH']).  Returns the complete filename or None if not
+    found
+    """
+    if path is None:
+        path = os.environ['PATH']
+    paths = path.split(os.pathsep)
+    extlist = ['']
+    if sys.platform == 'win32':
+        pathext = os.environ['PATHEXT'].lower().split(os.pathsep)
+        (base, ext) = os.path.splitext(executable)
+        if ext.lower() not in pathext:
+            extlist = pathext
+    for ext in extlist:
+        execname = executable + ext
+        if os.path.isfile(execname):
+            return execname
+        else:
+            for p in paths:
+                f = os.path.join(p, execname)
+                if os.path.isfile(f):
+                    return f
+    else:
+        return None

@@ -78,6 +78,7 @@ class TestMergeTool(tests.TestCaseInTempDir):
     def test_is_available(self):
         mt = mergetools.MergeTool('%s' % sys.executable)
         self.assertTrue(mt.is_available())
-        self.knownFailure('is_available cannot find executables on the PATH yet')
-        #mt.set_executable("ThisExecutableShouldReallyNotExist")
-        #self.assertFalse(mt.is_available())
+        mt.set_executable(os.path.basename(sys.executable))
+        self.assertTrue(mt.is_available())
+        mt.set_executable("ThisExecutableShouldReallyNotExist")
+        self.assertFalse(mt.is_available())
