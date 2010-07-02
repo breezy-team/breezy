@@ -77,7 +77,7 @@ class MergeTool(object):
     def set_arguments(self, args):
         if not isinstance(args, str) and not isinstance(args, unicode):
             args = ' '.join([_optional_quote_arg(arg) for arg in args])
-        self._commandline = self.get_executable + ' ' + args
+        self._commandline = self.get_executable() + ' ' + args
     
     def set_commandline(self, commandline):
         self._commandline = commandline

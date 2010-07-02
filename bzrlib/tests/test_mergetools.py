@@ -27,11 +27,22 @@ from bzrlib import (
 
 
 class TestMergeTool(tests.TestCaseInTempDir):
-    def test_get_name(self):
-        mt = mergetools.MergeTool('kdiff3 %b %t %o -o %r')
-        self.assertEquals('kdiff3', mt.get_name())
-        mt = mergetools.MergeTool('/foo/bar/kdiff3 %b %t %o -o %r')
-        self.assertEquals('kdiff3', mt.get_name())
+    def test_basics(self):
+        mt = mergetools.MergeTool('/path/to/tool --opt %b -x %t %o --stuff %r')
+        self.assertEquals('/path/to/tool --opt %b -x %t %o --stuff %r', mt.get_commandline())
+        self.assertEquals('/path/to/tool', mt.get_executable())
+        self.assertEquals('--opt %b -x %t %o --stuff %r', mt.get_arguments())
+        self.assertEquals('tool', mt.get_name())
+        mt.set_commandline('/new/path/to/bettertool %b %t %o %r')
+        self.assertEquals('/new/path/to/bettertool %b %t %o %r', mt.get_commandline())
+        mt.set_executable('othertool')
+        self.assertEquals('othertool', mt.get_executable())
+        self.assertEquals('othertool %b %t %o %r', mt.get_commandline())
+        mt.set_arguments('%r %b %t %o')
+        self.assertEquals('%r %b %t %o', mt.get_arguments())
+        self.assertEquals('othertool %r %b %t %o', mt.get_commandline())
+        
+    def test_quoted_executable(self):
         mt = mergetools.MergeTool('"C:\\Program Files\\KDiff3\\kdiff3.exe" %b %t %o -o %r')
         self.assertEquals('kdiff3.exe', mt.get_name())
 
