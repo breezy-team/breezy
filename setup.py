@@ -538,6 +538,13 @@ elif 'py2exe' in sys.argv:
             #                time before living with docstring stripping
             optimize = 1
             compile_names = [f for f in self.outfiles if f.endswith('.py')]
+            # Round mtime to nearest even second so that installing on a FAT
+            # filesystem bytecode internal and script timestamps will match
+            for f in compile_names:
+                mtime = os.stat(f).st_mtime
+                if mtime % 2:
+                    mtime += 1
+                    os.utime(f, (mtime, mtime))
             byte_compile(compile_names,
                          optimize=optimize,
                          force=self.force, prefix=self.install_dir,
