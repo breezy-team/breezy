@@ -197,12 +197,20 @@ def import_dir(tree, dir, file_ids_from=None):
     import_archive(tree, dir_file, file_ids_from=file_ids_from)
 
 def import_archive(tree, archive_file, file_ids_from=None):
-    prefix = common_directory(names_of_files(archive_file))
-    tt = TreeTransform(tree)
-
     if file_ids_from is None:
         file_ids_from = []
+    for other_tree in file_ids_from:
+        other_tree.lock_read()
+    try:
+        return _import_archive(tree, archive_file, file_ids_from)
+    finally:
+        for other_tree in file_ids_from:
+            other_tree.unlock()
 
+
+def _import_archive(tree, archive_file, file_ids_from):
+    prefix = common_directory(names_of_files(archive_file))
+    tt = TreeTransform(tree)
     removed = set()
     for path, entry in tree.inventory.iter_entries():
         if entry.parent_id is None:
@@ -231,6 +239,26 @@ def import_archive(tree, archive_file, file_ids_from=None):
         add_implied_parents(implied_parents, relative_path)
         trans_id = tt.trans_id_tree_path(relative_path)
         added.add(relative_path.rstrip('/'))
+        # To handle renames, we need to not use the preserved file id, rather
+        # we need to lookup the file id in a from_tree, if there is one. If
+        # there isn't, we should use the one in the current tree, and failing
+        # that we will allocate one. In this importer we want the file_ids_from
+        # tree to authoritative about id2path, which is why we consult it
+        # first.
+        existing_file_id = tt.tree_file_id(trans_id)
+        for other_tree in file_ids_from:
+            found_file_id = other_tree.path2id(relative_path)
+            if found_file_id:
+                if found_file_id != existing_file_id:
+                    # Found a specific file id in one of the source trees
+                    tt.version_file(found_file_id, trans_id)
+                break
+        if not found_file_id and not existing_file_id:
+            # No file_id in any of the source trees and no file id in the base
+            # tree.
+            name = basename(member.name.rstrip('/'))
+            file_id = generate_ids.gen_file_id(name)
+            tt.version_file(file_id, trans_id)
         path = tree.abspath(relative_path)
         if member.name in seen:
             if tt.final_kind(trans_id) == 'file':
@@ -248,23 +276,6 @@ def import_archive(tree, archive_file, file_ids_from=None):
             tt.create_symlink(member.linkname, trans_id)
         else:
             raise UnknownType(relative_path)
-        if tt.tree_file_id(trans_id) is None:
-            found = False
-            for other_tree in file_ids_from:
-                other_tree.lock_read()
-                try:
-                    if other_tree.has_filename(relative_path):
-                        file_id = other_tree.path2id(relative_path)
-                        if file_id is not None:
-                            tt.version_file(file_id, trans_id)
-                            found = True
-                            break
-                finally:
-                    other_tree.unlock()
-            if not found:
-                name = basename(member.name.rstrip('/'))
-                file_id = generate_ids.gen_file_id(name)
-                tt.version_file(file_id, trans_id)
 
     for relative_path in implied_parents.difference(added):
         if relative_path == "":

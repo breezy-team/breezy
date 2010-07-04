@@ -1,3 +1,10 @@
+bzr-builddeb (2.5lifeless1) UNRELEASED; urgency=low
+
+  * (No tests yet) treat the upstream branch as authoritative for file ids -
+    causes renamed to be honoured. (LP: #588060)
+
+ -- Robert Collins <robertc@robertcollins.net>  Sun, 04 Jul 2010 20:29:17 +1000
+
 bzr-builddeb (2.5) UNRELEASED; urgency=low
 
   [ Colin Watson ]
