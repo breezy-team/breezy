@@ -542,8 +542,9 @@ elif 'py2exe' in sys.argv:
             # filesystem bytecode internal and script timestamps will match
             for f in compile_names:
                 mtime = os.stat(f).st_mtime
-                if mtime % 2:
-                    mtime += 1
+                remainder = mtime % 2
+                if remainder:
+                    mtime -= remainder
                     os.utime(f, (mtime, mtime))
             byte_compile(compile_names,
                          optimize=optimize,
