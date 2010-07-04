@@ -166,6 +166,11 @@ API Changes
   InterBranch objects that work with multiple permutations to be
   comprehensively tested. (Robert Collins)
 
+* ``bzrlib.lsprof.profile`` will no longer silently generate bad threaded
+  profiles when concurrent profile requests are made. Instead the profile
+  requests will be serialised. Reentrant requests will now deadlock.
+  (Robert Collins)
+
 * ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
   2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
   ``bzrlib.patiencediff`` instead. (Andrew Bennetts)
