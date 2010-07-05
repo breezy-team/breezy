@@ -3384,6 +3384,9 @@ class ProfileResult(ForwardingResult):
 
     def startTest(self, test):
         self.profiler = bzrlib.lsprof.BzrProfiler()
+        # Prevent deadlocks in tests that use lsprof: those tests will
+        # unavoidably fail.
+        bzrlib.lsprof.BzrProfiler.profiler_block = 0
         self.profiler.start()
         ForwardingResult.startTest(self, test)
 

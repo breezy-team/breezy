@@ -62,6 +62,9 @@ Bug Fixes
   or pull location in locations.conf or branch.conf.
   (Gordon Tyler, #534787)
 
+* ``bzr reconfigure --unstacked`` now works with branches accessed via a
+  smart server. (Andrew Bennetts, #551525)
+
 * ``BzrDir.find_branches`` should ignore branches with missing repositories.
   (Marius Kruger, Robert Collins)
 
@@ -170,6 +173,11 @@ API Changes
   an iterable of format pairs, rather than just a single pair, permitting
   InterBranch objects that work with multiple permutations to be
   comprehensively tested. (Robert Collins)
+
+* ``bzrlib.lsprof.profile`` will no longer silently generate bad threaded
+  profiles when concurrent profile requests are made. Instead the profile
+  requests will be serialised. Reentrant requests will now deadlock.
+  (Robert Collins)
 
 * ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
   2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
