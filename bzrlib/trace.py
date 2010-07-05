@@ -111,6 +111,12 @@ _bzr_logger = logging.getLogger('bzr')
 
 
 def note(*args, **kwargs):
+    """Output a note to the user.
+
+    Takes the same parameters as logging.info.
+
+    :return: None
+    """
     # FIXME note always emits utf-8, regardless of the terminal encoding
     #
     # FIXME: clearing the ui and then going through the abstract logging
@@ -300,26 +306,27 @@ def enable_default_logging():
     logging.getLogger("bzr").
 
     Output can be redirected away by calling _push_log_file.
+
+    :return: A memento from push_log_file for restoring the log state.
     """
-    # Do this before we open the log file, so we prevent
-    # get_terminal_encoding() from mutter()ing multiple times
-    term_encoding = osutils.get_terminal_encoding()
     start_time = osutils.format_local_date(_bzr_log_start_time,
                                            timezone='local')
     # create encoded wrapper around stderr
     bzr_log_file = _open_bzr_log()
     if bzr_log_file is not None:
         bzr_log_file.write(start_time.encode('utf-8') + '\n')
-    push_log_file(bzr_log_file,
+    memento = push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into bzr_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
+    term_encoding = osutils.get_terminal_encoding()
     writer_factory = codecs.getwriter(term_encoding)
     encoded_stderr = writer_factory(sys.stderr, errors='replace')
     stderr_handler = logging.StreamHandler(encoded_stderr)
     stderr_handler.setLevel(logging.INFO)
     logging.getLogger('bzr').addHandler(stderr_handler)
+    return memento
 
 
 def push_log_file(to_file, log_format=None, date_format=None):
@@ -361,18 +368,20 @@ def push_log_file(to_file, log_format=None, date_format=None):
 def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_file)):
     """Undo changes to logging/tracing done by _push_log_file.
 
-    This flushes, but does not close the trace file.
+    This flushes, but does not close the trace file (so that anything that was
+    in it is output.
 
     Takes the memento returned from _push_log_file."""
     global _trace_file
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')
     bzr_logger.removeHandler(new_handler)
-    # must be closed, otherwise logging will try to close it atexit, and the
+    # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
     bzr_logger.handlers = old_handlers
-    new_trace_file.flush()
+    if new_trace_file is not None:
+        new_trace_file.flush()
 
 
 def log_exception_quietly():
@@ -492,7 +501,9 @@ def report_exception(exc_info, err_file):
     elif not getattr(exc_object, 'internal_error', True):
         report_user_error(exc_info, err_file)
         return errors.EXIT_ERROR
-    elif isinstance(exc_object, (OSError, IOError)):
+    elif isinstance(exc_object, (OSError, IOError)) or (
+        # GZ 2010-05-20: Like (exc_type is pywintypes.error) but avoid import
+        exc_type.__name__ == "error" and exc_type.__module__ == "pywintypes"):
         # Might be nice to catch all of these and show them as something more
         # specific, but there are too many cases at the moment.
         report_user_error(exc_info, err_file)
@@ -532,7 +543,7 @@ def report_bug(exc_info, err_file):
 
 
 def _flush_stdout_stderr():
-    # installed into an atexit hook by bzrlib.initialize()
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     try:
         sys.stdout.flush()
         sys.stderr.flush()
@@ -545,7 +556,40 @@ def _flush_stdout_stderr():
 
 
 def _flush_trace():
-    # run from atexit hook
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     global _trace_file
     if _trace_file:
         _trace_file.flush()
+
+
+class Config(object):
+    """Configuration of message tracing in bzrlib.
+
+    This implements the context manager protocol and should manage any global
+    variables still used. The default config used is DefaultConfig, but
+    embedded uses of bzrlib may wish to use a custom manager.
+    """
+
+    def __enter__(self):
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False # propogate exceptions.
+
+
+class DefaultConfig(Config):
+    """A default configuration for tracing of messages in bzrlib.
+
+    This implements the context manager protocol.
+    """
+
+    def __enter__(self):
+        self._original_filename = _bzr_log_filename
+        self._original_state = enable_default_logging()
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pop_log_file(self._original_state)
+        global _bzr_log_filename
+        _bzr_log_filename = self._original_filename
+        return False # propogate exceptions.

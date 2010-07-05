@@ -35,15 +35,7 @@ from bzrlib.tests.per_bzrdir_colo import (
 
 class TestNoColocatedSupport(TestCaseWithBzrDir):
 
-    def test_destroy_colocated_branch(self):
-        branch = self.make_branch('branch')
-        # Colocated branches should not be supported *or* 
-        # destroy_branch should not be supported at all
-        self.assertRaises(
-            (errors.NoColocatedBranchSupport, errors.UnsupportedOperation),
-            branch.bzrdir.destroy_branch, 'colo')
-
-    def test_create_colo_branch(self):
+    def make_bzrdir_with_repo(self):
         # a bzrdir can construct a branch and repository for itself.
         if not self.bzrdir_format.is_supported():
             # unsupported formats are not loopback testable
@@ -53,7 +45,27 @@ class TestNoColocatedSupport(TestCaseWithBzrDir):
         t = get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
+        return made_control
+
+    def test_destroy_colocated_branch(self):
+        branch = self.make_branch('branch')
+        # Colocated branches should not be supported *or* 
+        # destroy_branch should not be supported at all
+        self.assertRaises(
+            (errors.NoColocatedBranchSupport, errors.UnsupportedOperation),
+            branch.bzrdir.destroy_branch, 'colo')
+
+    def test_create_colo_branch(self):
+        made_control = self.make_bzrdir_with_repo()
         self.assertRaises(errors.NoColocatedBranchSupport, 
             made_control.create_branch, "colo")
 
+    def test_branch_transport(self):
+        made_control = self.make_bzrdir_with_repo()
+        self.assertRaises(errors.NoColocatedBranchSupport,
+            made_control.get_branch_transport, None, "colo")
 
+    def test_get_branch_reference(self):
+        made_control = self.make_bzrdir_with_repo()
+        self.assertRaises(errors.NoColocatedBranchSupport,
+            made_control.get_branch_reference, "colo")

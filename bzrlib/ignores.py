@@ -17,6 +17,8 @@
 """Lists of ignore files, etc."""
 
 import errno
+import os
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
@@ -176,35 +178,52 @@ def get_runtime_ignores():
 
 
 def tree_ignores_add_patterns(tree, name_pattern_list):
-    """Retrieve a list of ignores from the ignore file in a tree.
+    """Add more ignore patterns to the ignore file in a tree.
+    If ignore file does not exist then it will be created.
+    The ignore file will be automatically added under version control.
 
-    :param tree: Tree to retrieve the ignore list from.
-    :return:
+    :param tree: Working tree to update the ignore list.
+    :param name_pattern_list: List of ignore patterns.
+    :return: None
     """
+    # read in the existing ignores set
     ifn = tree.abspath(bzrlib.IGNORE_FILENAME)
     if tree.has_filename(ifn):
-        f = open(ifn, 'rt')
+        f = open(ifn, 'rU')
         try:
-            igns = f.read().decode('utf-8')
+            file_contents = f.read()
+            # figure out what kind of line endings are used
+            newline = getattr(f, 'newlines', None)
+            if type(newline) is tuple:
+                newline = newline[0]
+            elif newline is None:
+                newline = os.linesep
         finally:
             f.close()
     else:
-        igns = ""
-
-    # TODO: If the file already uses crlf-style termination, maybe
-    # we should use that for the newly added lines?
-
-    if igns and igns[-1] != '\n':
-        igns += '\n'
-    for name_pattern in name_pattern_list:
-        igns += name_pattern + '\n'
-
+        file_contents = ""
+        newline = os.linesep
+    
+    sio = StringIO(file_contents)
+    try:
+        ignores = parse_ignore_file(sio)
+    finally:
+        sio.close()
+    
+    # write out the updated ignores set
     f = atomicfile.AtomicFile(ifn, 'wb')
     try:
-        f.write(igns.encode('utf-8'))
+        # write the original contents, preserving original line endings
+        f.write(newline.join(file_contents.split('\n')))
+        if len(file_contents) > 0 and not file_contents.endswith('\n'):
+            f.write(newline)
+        for pattern in name_pattern_list:
+            if not pattern in ignores:
+                f.write(pattern.encode('utf-8'))
+                f.write(newline)
         f.commit()
     finally:
         f.close()
 
-    if not tree.path2id('.bzrignore'):
-        tree.add(['.bzrignore'])
+    if not tree.path2id(bzrlib.IGNORE_FILENAME):
+        tree.add([bzrlib.IGNORE_FILENAME])

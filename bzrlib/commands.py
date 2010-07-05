@@ -397,6 +397,12 @@ class Command(object):
             will not mangled.
 
     :cvar hooks: An instance of CommandHooks.
+    :ivar __doc__: The help shown by 'bzr help command' for this command.
+        This is set by assigning explicitly to __doc__ so that -OO can
+        be used::
+
+        class Foo(Command):
+            __doc__ = "My help goes here"
     """
     aliases = []
     takes_args = []
@@ -407,8 +413,6 @@ class Command(object):
 
     def __init__(self):
         """Construct an instance of this command."""
-        if self.__doc__ == Command.__doc__:
-            warn("No help message set for %r" % self)
         # List of standard options directly supported
         self.supported_std_options = []
         self._setup_run()
@@ -482,8 +486,8 @@ class Command(object):
             message explaining how to obtain full help.
         """
         doc = self.help()
-        if doc is None:
-            raise NotImplementedError("sorry, no detailed help yet for %r" % self.name())
+        if not doc:
+            doc = "No help for this command."
 
         # Extract the summary (purpose) and sections out from the text
         purpose,sections,order = self._get_help_parts(doc)
@@ -1050,6 +1054,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
             i += 1
+        elif a == '--profile-imports':
+            pass # already handled in startup script Bug #588277
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
         else:
@@ -1077,15 +1083,9 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     if not opt_no_aliases:
         alias_argv = get_alias(argv[0])
         if alias_argv:
-            user_encoding = osutils.get_user_encoding()
-            alias_argv = [a.decode(user_encoding) for a in alias_argv]
             argv[0] = alias_argv.pop(0)
 
     cmd = argv.pop(0)
-    # We want only 'ascii' command names, but the user may have typed
-    # in a Unicode name. In that case, they should just get a
-    # 'command not found' error later.
-
     cmd_obj = get_cmd_object(cmd, plugins_override=not opt_builtin)
     run = cmd_obj.run_argv_aliases
     run_argv = [argv, alias_argv]

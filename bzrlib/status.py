@@ -20,14 +20,10 @@ from bzrlib import (
     delta as _mod_delta,
     log,
     osutils,
-    tree,
     tsort,
     revision as _mod_revision,
     )
 import bzrlib.errors as errors
-from bzrlib.osutils import is_inside_any
-from bzrlib.symbol_versioning import (deprecated_function,
-        )
 from bzrlib.trace import mutter, warning
 
 # TODO: when showing single-line logs, truncate to the width of the terminal

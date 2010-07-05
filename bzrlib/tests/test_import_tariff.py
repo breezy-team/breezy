@@ -55,13 +55,15 @@ class TestImportTariffs(TestCaseWithTransport):
         # explicitly do want to test against things installed there, therefore
         # we pass it through.
         env_changes = dict(PYTHONVERBOSE='1')
-        for name in ['BZR_HOME', 'BZR_PLUGIN_PATH', 'HOME',]:
+        for name in ['BZR_HOME', 'BZR_PLUGIN_PATH',
+                     'BZR_DISABLE_PLUGINS', 'BZR_PLUGINS_AT',
+                     'HOME',]:
             env_changes[name] = self._old_env.get(name)
         out, err = self.run_bzr_subprocess(args,
             allow_plugins=(not are_plugins_disabled()),
             env_changes=env_changes)
 
-        self.addDetail('subprocess_stderr', 
+        self.addDetail('subprocess_stderr',
             content.Content(content.ContentType("text", "plain"),
                 lambda:[err]))
 
@@ -71,7 +73,7 @@ class TestImportTariffs(TestCaseWithTransport):
                 bad_modules.append(module_name)
 
         if bad_modules:
-            self.fail("command %r loaded forbidden modules %r" 
+            self.fail("command %r loaded forbidden modules %r"
                 % (args, bad_modules))
         return out, err
 
@@ -93,13 +95,17 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.bundle.commands',
             'bzrlib.cmd_version_info',
             'bzrlib.foreign',
+            'bzrlib.merge3',
+            'bzrlib.patiencediff',
             'bzrlib.remote',
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
+            'bzrlib.transform',
+            'kerberos',
             'smtplib',
             'tarfile',
             ])
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
         #
-        # See https://bugs.edge.launchpad.net/bzr/+bug/553017
+        # See https://bugs.launchpad.net/bzr/+bug/553017

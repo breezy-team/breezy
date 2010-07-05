@@ -24,6 +24,7 @@ import subprocess
 import sys
 
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     help_topics,
@@ -54,6 +55,7 @@ from bzrlib.tests.test_http import TestWithTransport_pycurl
 from bzrlib.transport import (
     get_transport,
     memory,
+    pathfilter,
     )
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
@@ -807,6 +809,38 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqualBzrdirs([baz, foo, bar],
                                 bzrdir.BzrDir.find_bzrdirs(transport))
 
+    def make_fake_permission_denied_transport(self, transport, paths):
+        """Create a transport that raises PermissionDenied for some paths."""
+        def filter(path):
+            if path in paths:
+                raise errors.PermissionDenied(path)
+            return path
+        path_filter_server = pathfilter.PathFilteringServer(transport, filter)
+        path_filter_server.start_server()
+        self.addCleanup(path_filter_server.stop_server)
+        path_filter_transport = pathfilter.PathFilteringTransport(
+            path_filter_server, '.')
+        return (path_filter_server, path_filter_transport)
+
+    def assertBranchUrlsEndWith(self, expect_url_suffix, actual_bzrdirs):
+        """Check that each branch url ends with the given suffix."""
+        for actual_bzrdir in actual_bzrdirs:
+            self.assertEndsWith(actual_bzrdir.user_url, expect_url_suffix)
+
+    def test_find_bzrdirs_permission_denied(self):
+        foo, bar, baz = self.make_foo_bar_baz()
+        transport = get_transport(self.get_url())
+        path_filter_server, path_filter_transport = \
+            self.make_fake_permission_denied_transport(transport, ['foo'])
+        # local transport
+        self.assertBranchUrlsEndWith('/baz/',
+            bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
+        # smart server
+        smart_transport = self.make_smart_server('.',
+            backing_server=path_filter_server)
+        self.assertBranchUrlsEndWith('/baz/',
+            bzrdir.BzrDir.find_bzrdirs(smart_transport))
+
     def test_find_bzrdirs_list_current(self):
         def list_current(transport):
             return [s for s in transport.list_dir('') if s != 'baz']
@@ -816,7 +850,6 @@ class ChrootedTests(TestCaseWithTransport):
         self.assertEqualBzrdirs([foo, bar],
                                 bzrdir.BzrDir.find_bzrdirs(transport,
                                     list_current=list_current))
-
 
     def test_find_bzrdirs_evaluate(self):
         def evaluate(bzrdir):
@@ -854,6 +887,21 @@ class ChrootedTests(TestCaseWithTransport):
         branches = bzrdir.BzrDir.find_branches(transport.clone('foo'))
         self.assertEqual(foo.root_transport.base, branches[0].base)
         self.assertEqual(bar.root_transport.base, branches[1].base)
+
+
+class TestMissingRepoBranchesSkipped(TestCaseWithMemoryTransport):
+
+    def test_find_bzrdirs_missing_repo(self):
+        transport = get_transport(self.get_url())
+        arepo = self.make_repository('arepo', shared=True)
+        abranch_url = arepo.user_url + '/abranch'
+        abranch = bzrdir.BzrDir.create(abranch_url).create_branch()
+        transport.delete_tree('arepo/.bzr')
+        self.assertRaises(errors.NoRepositoryPresent,
+            branch.Branch.open, abranch_url)
+        self.make_branch('baz')
+        for actual_bzrdir in bzrdir.BzrDir.find_branches(transport):
+            self.assertEndsWith(actual_bzrdir.user_url, '/baz/')
 
 
 class TestMeta1DirFormat(TestCaseWithTransport):
@@ -1111,9 +1159,11 @@ class TestHTTPRedirections(object):
     """
 
     def create_transport_readonly_server(self):
+        # We don't set the http protocol version, relying on the default
         return http_utils.HTTPServerRedirecting()
 
     def create_transport_secondary_server(self):
+        # We don't set the http protocol version, relying on the default
         return http_utils.HTTPServerRedirecting()
 
     def setUp(self):

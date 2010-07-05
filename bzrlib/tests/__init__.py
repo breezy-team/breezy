@@ -29,7 +29,7 @@
 
 import atexit
 import codecs
-from copy import copy
+import copy
 from cStringIO import StringIO
 import difflib
 import doctest
@@ -37,12 +37,12 @@ import errno
 import logging
 import math
 import os
-from pprint import pformat
+import pprint
 import random
 import re
 import shlex
 import stat
-from subprocess import Popen, PIPE, STDOUT
+import subprocess
 import sys
 import tempfile
 import threading
@@ -74,6 +74,7 @@ from bzrlib import (
     ui,
     urlutils,
     registry,
+    transport as _mod_transport,
     workingtree,
     )
 import bzrlib.branch
@@ -103,22 +104,20 @@ from bzrlib.symbol_versioning import (
     )
 import bzrlib.trace
 from bzrlib.transport import (
-    get_transport,
     memory,
     pathfilter,
     )
-import bzrlib.transport
 from bzrlib.trace import mutter, note
 from bzrlib.tests import (
     test_server,
     TestUtil,
+    treeshape,
     )
 from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
                           )
-from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
@@ -749,7 +748,7 @@ class TestUIFactory(TextUIFactory):
     # XXX: Should probably unify more with CannedInputUIFactory or a
     # particular configuration of TextUIFactory, or otherwise have a clearer
     # idea of how they're supposed to be different.
-    # See https://bugs.edge.launchpad.net/bzr/+bug/408213
+    # See https://bugs.launchpad.net/bzr/+bug/408213
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
@@ -943,7 +942,7 @@ class TestCase(testtools.TestCase):
 
     def permit_dir(self, name):
         """Permit a directory to be used by this test. See permit_url."""
-        name_transport = get_transport(name)
+        name_transport = _mod_transport.get_transport(name)
         self.permit_url(name)
         self.permit_url(name_transport.base)
 
@@ -1028,7 +1027,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(transport_server.stop_server)
         # Obtain a real transport because if the server supplies a password, it
         # will be hidden from the base on the client side.
-        t = get_transport(transport_server.get_url())
+        t = _mod_transport.get_transport(transport_server.get_url())
         # Some transport servers effectively chroot the backing transport;
         # others like SFTPServer don't - users of the transport can walk up the
         # transport to read the entire backing transport. This wouldn't matter
@@ -1095,7 +1094,7 @@ class TestCase(testtools.TestCase):
             message += '\n'
         raise AssertionError("%snot equal:\na = %s\nb = %s\n"
             % (message,
-               pformat(a), pformat(b)))
+               pprint.pformat(a), pprint.pformat(b)))
 
     assertEquals = assertEqual
 
@@ -1524,7 +1523,7 @@ class TestCase(testtools.TestCase):
             'EDITOR': None,
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
-            'EMAIL': None,
+            'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
@@ -1986,7 +1985,9 @@ class TestCase(testtools.TestCase):
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
-            process = self._popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            process = self._popen(command, stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
         finally:
             restore_environment()
             if cwd is not None:
@@ -2000,7 +2001,7 @@ class TestCase(testtools.TestCase):
         Allows tests to override this method to intercept the calls made to
         Popen for introspection.
         """
-        return Popen(*args, **kwargs)
+        return subprocess.Popen(*args, **kwargs)
 
     def get_source_path(self):
         """Return the path of the directory containing bzrlib."""
@@ -2186,7 +2187,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = get_transport(self.get_url(relpath))
+        t = _mod_transport.get_transport(self.get_url(relpath))
         self.assertFalse(t.is_readonly())
         return t
 
@@ -2198,7 +2199,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = get_transport(self.get_readonly_url(relpath))
+        t = _mod_transport.get_transport(self.get_readonly_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -2334,7 +2335,7 @@ class TestCaseWithMemoryTransport(TestCase):
         propagating. This method ensures than a test did not leaked.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        self.permit_url(get_transport(root).base)
+        self.permit_url(_mod_transport.get_transport(root).base)
         wt = workingtree.WorkingTree.open(root)
         last_rev = wt.last_revision()
         if last_rev != 'null:':
@@ -2385,7 +2386,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
             segments = maybe_a_url.rsplit('/', 1)
-            t = get_transport(maybe_a_url)
+            t = _mod_transport.get_transport(maybe_a_url)
             if len(segments) > 1 and segments[-1] not in ('', '.'):
                 t.ensure_base()
             if format is None:
@@ -2408,10 +2409,13 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_smart_server(self, path):
+    def make_smart_server(self, path, backing_server=None):
+        if backing_server is None:
+            backing_server = self.get_server()
         smart_server = test_server.SmartTCPServer_for_testing()
-        self.start_server(smart_server, self.get_server())
-        remote_transport = get_transport(smart_server.get_url()).clone(path)
+        self.start_server(smart_server, backing_server)
+        remote_transport = _mod_transport.get_transport(smart_server.get_url()
+                                                   ).clone(path)
         return remote_transport
 
     def make_branch_and_memory_tree(self, relpath, format=None):
@@ -2482,7 +2486,11 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        contents = file(filename, 'r').read()
+        f = file(filename)
+        try:
+            contents = f.read()
+        finally:
+            f.close()
         if contents != expect:
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
@@ -2562,7 +2570,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 "a list or a tuple. Got %r instead" % (shape,))
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
-            transport = get_transport(".")
+            transport = _mod_transport.get_transport(".")
         for name in shape:
             self.assertIsInstance(name, basestring)
             if name[-1] == '/':
@@ -2578,8 +2586,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
-    def build_tree_contents(self, shape):
-        build_tree_contents(shape)
+    build_tree_contents = staticmethod(treeshape.build_tree_contents)
 
     def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
@@ -3310,10 +3317,12 @@ def reinvoke_for_tests(suite):
                 '--subunit']
             if '--no-plugins' in sys.argv:
                 argv.append('--no-plugins')
-            # stderr=STDOUT would be ideal, but until we prevent noise on
-            # stderr it can interrupt the subunit protocol.
-            process = Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                bufsize=1)
+            # stderr=subprocess.STDOUT would be ideal, but until we prevent
+            # noise on stderr it can interrupt the subunit protocol.
+            process = subprocess.Popen(argv, stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE,
+                                      bufsize=1)
             test = TestInSubprocess(process, test_list_file_name)
             result.append(test)
         except:
@@ -3368,6 +3377,9 @@ class ProfileResult(ForwardingResult):
 
     def startTest(self, test):
         self.profiler = bzrlib.lsprof.BzrProfiler()
+        # Prevent deadlocks in tests that use lsprof: those tests will
+        # unavoidably fail.
+        bzrlib.lsprof.BzrProfiler.profiler_block = 0
         self.profiler.start()
         ForwardingResult.startTest(self, test)
 
@@ -3702,6 +3714,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_export',
         'bzrlib.tests.test_extract',
         'bzrlib.tests.test_fetch',
+        'bzrlib.tests.test_fixtures',
         'bzrlib.tests.test_fifo_cache',
         'bzrlib.tests.test_filters',
         'bzrlib.tests.test_ftp_transport',
@@ -3728,6 +3741,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_knit',
         'bzrlib.tests.test_lazy_import',
         'bzrlib.tests.test_lazy_regex',
+        'bzrlib.tests.test_library_state',
         'bzrlib.tests.test_lock',
         'bzrlib.tests.test_lockable_files',
         'bzrlib.tests.test_lockdir',
@@ -3735,6 +3749,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_lru_cache',
         'bzrlib.tests.test_lsprof',
         'bzrlib.tests.test_mail_client',
+        'bzrlib.tests.test_matchers',
         'bzrlib.tests.test_memorytree',
         'bzrlib.tests.test_merge',
         'bzrlib.tests.test_merge3',
@@ -3836,6 +3851,7 @@ def _test_suite_modules_to_doctest():
         'bzrlib.option',
         'bzrlib.symbol_versioning',
         'bzrlib.tests',
+        'bzrlib.tests.fixtures',
         'bzrlib.timestamp',
         'bzrlib.version_info_formats.format_custom',
         ]
@@ -4035,7 +4051,7 @@ def clone_test(test, new_id):
     :param new_id: The id to assign to it.
     :return: The new test.
     """
-    new_test = copy(test)
+    new_test = copy.copy(test)
     new_test.id = lambda: new_id
     return new_test
 
@@ -4102,8 +4118,11 @@ def _rmtree_temp_dir(dirname, test_id=None):
         if test_id != None:
             ui.ui_factory.clear_term()
             sys.stderr.write('\nWhile running: %s\n' % (test_id,))
+        # Ugly, but the last thing we want here is fail, so bear with it.
+        printable_e = str(e).decode(osutils.get_user_encoding(), 'replace'
+                                    ).encode('ascii', 'replace')
         sys.stderr.write('Unable to remove testing dir %s\n%s'
-                         % (os.path.basename(dirname), e))
+                         % (os.path.basename(dirname), printable_e))
 
 
 class Feature(object):
@@ -4337,6 +4356,17 @@ class _UnicodeFilename(Feature):
             return True
 
 UnicodeFilename = _UnicodeFilename()
+
+
+class _ByteStringNamedFilesystem(Feature):
+    """Is the filesystem based on bytes?"""
+
+    def _probe(self):
+        if os.name == "posix":
+            return True
+        return False
+
+ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
 
 
 class _UTF8Filesystem(Feature):

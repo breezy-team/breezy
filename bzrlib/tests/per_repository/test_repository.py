@@ -47,6 +47,7 @@ from bzrlib.tests import (
     per_repository,
     test_server,
     )
+from bzrlib.tests.matchers import *
 
 
 class TestRepositoryMakeBranchAndTree(per_repository.TestCaseWithRepository):
@@ -1087,7 +1088,7 @@ class TestRepositoryLocking(per_repository.TestCaseWithRepository):
         repo = self.make_repository('r')
         # Lock the repository, then use leave_lock_in_place so that when we
         # unlock the repository the lock is still held on disk.
-        token = repo.lock_write()
+        token = repo.lock_write().repository_token
         try:
             if token is None:
                 # This test does not apply, because this repository refuses lock
@@ -1107,7 +1108,7 @@ class TestRepositoryLocking(per_repository.TestCaseWithRepository):
     def test_dont_leave_lock_in_place(self):
         repo = self.make_repository('r')
         # Create a lock on disk.
-        token = repo.lock_write()
+        token = repo.lock_write().repository_token
         try:
             if token is None:
                 # This test does not apply, because this repository refuses lock
@@ -1140,6 +1141,14 @@ class TestRepositoryLocking(per_repository.TestCaseWithRepository):
         repo = self.make_repository('r')
         repo.lock_read()
         repo.unlock()
+
+    def test_lock_read_returns_unlockable(self):
+        repo = self.make_repository('r')
+        self.assertThat(repo.lock_read, ReturnsUnlockable(repo))
+
+    def test_lock_write_returns_unlockable(self):
+        repo = self.make_repository('r')
+        self.assertThat(repo.lock_write, ReturnsUnlockable(repo))
 
 
 class TestCaseWithComplexRepository(per_repository.TestCaseWithRepository):
