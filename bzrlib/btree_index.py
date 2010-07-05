@@ -33,9 +33,9 @@ from bzrlib import (
     osutils,
     static_tuple,
     trace,
+    transport,
     )
 from bzrlib.index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
-from bzrlib.transport import get_transport
 
 
 _BTSIGNATURE = "B+Tree Graph Index 2\n"
@@ -193,7 +193,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             new_backing_file, size = self._spill_mem_keys_without_combining()
         # Note: The transport here isn't strictly needed, because we will use
         #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(get_transport('.'), '<temp>', size)
+        new_backing = BTreeGraphIndex(transport.get_transport('.'),
+                                      '<temp>', size)
         # GC will clean up the file
         new_backing._file = new_backing_file
         if self._combine_backing_indices:

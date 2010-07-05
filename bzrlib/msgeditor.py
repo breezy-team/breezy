@@ -18,7 +18,6 @@
 """Commit message editor support."""
 
 import codecs
-import errno
 import os
 from subprocess import call
 import sys

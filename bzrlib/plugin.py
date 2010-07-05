@@ -81,6 +81,33 @@ def _strip_trailing_sep(path):
     return path.rstrip("\\/")
 
 
+def _get_specific_plugin_paths(paths):
+    """Returns the plugin paths from a string describing the associations.
+
+    :param paths: A string describing the paths associated with the plugins.
+
+    :returns: A list of (plugin name, path) tuples.
+
+    For example, if paths is my_plugin@/test/my-test:her_plugin@/production/her,
+    [('my_plugin', '/test/my-test'), ('her_plugin', '/production/her')] 
+    will be returned.
+
+    Note that ':' in the example above depends on the os.
+    """
+    if not paths:
+        return []
+    specs = []
+    for spec in paths.split(os.pathsep):
+        try:
+            name, path = spec.split('@')
+        except ValueError:
+            raise errors.BzrCommandError(
+                '"%s" is not a valid <plugin_name>@<plugin_path> description '
+                % spec)
+        specs.append((name, path))
+    return specs
+
+
 def set_plugins_path(path=None):
     """Set the path for plugins to be loaded from.
 
@@ -98,10 +125,8 @@ def set_plugins_path(path=None):
         for name in disabled_plugins.split(os.pathsep):
             PluginImporter.blacklist.add('bzrlib.plugins.' + name)
     # Set up a the specific paths for plugins
-    specific_plugins = os.environ.get('BZR_PLUGINS_AT', None)
-    if specific_plugins is not None:
-        for spec in specific_plugins.split(os.pathsep):
-            plugin_name, plugin_path = spec.split('@')
+    for plugin_name, plugin_path in _get_specific_plugin_paths(os.environ.get(
+            'BZR_PLUGINS_AT', None)):
             PluginImporter.specific_paths[
                 'bzrlib.plugins.%s' % plugin_name] = plugin_path
     return path
@@ -562,7 +587,6 @@ class _PluginImporter(object):
         # We are called only for specific paths
         plugin_path = self.specific_paths[fullname]
         loading_path = None
-        package = False
         if os.path.isdir(plugin_path):
             for suffix, mode, kind in imp.get_suffixes():
                 if kind not in (imp.PY_SOURCE, imp.PY_COMPILED):
@@ -570,8 +594,12 @@ class _PluginImporter(object):
                     continue
                 init_path = osutils.pathjoin(plugin_path, '__init__' + suffix)
                 if os.path.isfile(init_path):
-                    loading_path = init_path
-                    package = True
+                    # We've got a module here and load_module needs specific
+                    # parameters.
+                    loading_path = plugin_path
+                    suffix = ''
+                    mode = ''
+                    kind = imp.PKG_DIRECTORY
                     break
         else:
             for suffix, mode, kind in imp.get_suffixes():
@@ -581,17 +609,18 @@ class _PluginImporter(object):
         if loading_path is None:
             raise ImportError('%s cannot be loaded from %s'
                               % (fullname, plugin_path))
-        f = open(loading_path, mode)
+        if kind is imp.PKG_DIRECTORY:
+            f = None
+        else:
+            f = open(loading_path, mode)
         try:
             mod = imp.load_module(fullname, f, loading_path,
                                   (suffix, mode, kind))
-            if package:
-                # The plugin can contain modules, so be ready
-                mod.__path__ = [plugin_path]
             mod.__package__ = fullname
             return mod
         finally:
-            f.close()
+            if f is not None:
+                f.close()
 
 
 # Install a dedicated importer for plugins requiring special handling

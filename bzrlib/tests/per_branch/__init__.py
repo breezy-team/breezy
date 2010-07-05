@@ -132,7 +132,7 @@ def branch_scenarios():
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
     combinations = [(format, format._matchingbzrdir) for format in
-         BranchFormat._formats.values() + _legacy_formats]
+         BranchFormat.get_formats() + _legacy_formats]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
         None,
@@ -165,6 +165,7 @@ def load_tests(standard_tests, module, loader):
         'branch',
         'break_lock',
         'check',
+        'config',
         'create_checkout',
         'create_clone',
         'commit',

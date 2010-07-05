@@ -65,6 +65,16 @@ You probably want this configuration in ``~/.bazaar/locations.conf``::
 with your local and Launchpad usernames inserted.
 
 
+
+Publishing your changes
+-----------------------
+
+After you've locally committed your changes, the configuration above
+should be enough that you can push them to Launchpad with a simple ::
+
+    $ bzr push
+
+
 Writing tests
 -------------
 

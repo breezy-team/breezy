@@ -16,7 +16,6 @@
 
 
 import os
-import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """

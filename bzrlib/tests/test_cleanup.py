@@ -20,6 +20,7 @@ import re
 from bzrlib.cleanup import (
     _do_with_cleanups,
     _run_cleanup,
+    ObjectWithCleanups,
     OperationWithCleanups,
     )
 from bzrlib.tests import TestCase
@@ -276,3 +277,17 @@ class TestOperationWithCleanups(CleanupsTestCase):
             [('func called', 'foo'), 'cleanup 1', 'cleanup 2', 'cleanup 3',
             'cleanup 4'], call_log)
 
+
+class SampleWithCleanups(ObjectWithCleanups):
+
+    pass
+
+
+class TestObjectWithCleanups(TestCase):
+
+    def test_object_with_cleanups(self):
+        a = []
+        s = SampleWithCleanups()
+        s.add_cleanup(a.append, 42)
+        s.cleanup_now()
+        self.assertEqual(a, [42])

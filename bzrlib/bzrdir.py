@@ -375,14 +375,14 @@ class BzrDir(ControlComponent):
             recurse = True
             try:
                 bzrdir = BzrDir.open_from_transport(current_transport)
-            except errors.NotBranchError:
+            except (errors.NotBranchError, errors.PermissionDenied):
                 pass
             else:
                 recurse, value = evaluate(bzrdir)
                 yield value
             try:
                 subdirs = list_current(current_transport)
-            except errors.NoSuchFile:
+            except (errors.NoSuchFile, errors.PermissionDenied):
                 continue
             if recurse:
                 for subdir in sorted(subdirs, reverse=True):
@@ -394,7 +394,7 @@ class BzrDir(ControlComponent):
         """
         try:
             return [self.open_branch()]
-        except errors.NotBranchError:
+        except (errors.NotBranchError, errors.NoRepositoryPresent):
             return []
 
     @staticmethod
@@ -737,13 +737,18 @@ class BzrDir(ControlComponent):
             raise errors.NoRepositoryPresent(self)
         return found_repo
 
-    def get_branch_reference(self):
+    def get_branch_reference(self, name=None):
         """Return the referenced URL for the branch in this bzrdir.
 
+        :param name: Optional colocated branch name
         :raises NotBranchError: If there is no Branch.
+        :raises NoColocatedBranchSupport: If a branch name was specified
+            but colocated branches are not supported.
         :return: The URL the branch in this bzrdir references if it is a
             reference branch, or None for regular branches.
         """
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         return None
 
     def get_branch_transport(self, branch_format, name=None):
@@ -994,8 +999,10 @@ class BzrDir(ControlComponent):
                 raise errors.NotBranchError(path=url)
             a_transport = new_t
 
-    def _get_tree_branch(self):
+    def _get_tree_branch(self, name=None):
         """Return the branch and tree, if any, for this bzrdir.
+
+        :param name: Name of colocated branch to open.
 
         Return None for tree if not present or inaccessible.
         Raise NotBranchError if no branch is present.
@@ -1005,9 +1012,12 @@ class BzrDir(ControlComponent):
             tree = self.open_workingtree()
         except (errors.NoWorkingTree, errors.NotLocalUrl):
             tree = None
-            branch = self.open_branch()
+            branch = self.open_branch(name=name)
         else:
-            branch = tree.branch
+            if name is not None:
+                branch = self.open_branch(name=name)
+            else:
+                branch = tree.branch
         return tree, branch
 
     @classmethod
@@ -1234,7 +1244,8 @@ class BzrDir(ControlComponent):
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
-        if is_new_repo and revision_id is not None and not stacked:
+        is_stacked = stacked or (len(result_repo._fallback_repositories) != 0)
+        if is_new_repo and revision_id is not None and not is_stacked:
             fetch_spec = graph.PendingAncestryResult(
                 [revision_id], source_repository)
         else:
@@ -1736,13 +1747,13 @@ class BzrDirMeta1(BzrDir):
     def destroy_workingtree_metadata(self):
         self.transport.delete_tree('checkout')
 
-    def find_branch_format(self):
+    def find_branch_format(self, name=None):
         """Find the branch 'format' for this bzrdir.
 
         This might be a synthetic object for e.g. RemoteBranch and SVN.
         """
         from bzrlib.branch import BranchFormat
-        return BranchFormat.find_format(self)
+        return BranchFormat.find_format(self, name=name)
 
     def _get_mkdir_mode(self):
         """Figure out the mode to use when creating a bzrdir subdir."""
@@ -1750,11 +1761,11 @@ class BzrDirMeta1(BzrDir):
                                      lockable_files.TransportLock)
         return temp_control._dir_mode
 
-    def get_branch_reference(self):
+    def get_branch_reference(self, name=None):
         """See BzrDir.get_branch_reference()."""
         from bzrlib.branch import BranchFormat
-        format = BranchFormat.find_format(self)
-        return format.get_reference(self)
+        format = BranchFormat.find_format(self, name=name)
+        return format.get_reference(self, name=name)
 
     def get_branch_transport(self, branch_format, name=None):
         """See BzrDir.get_branch_transport()."""
@@ -1854,7 +1865,7 @@ class BzrDirMeta1(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        format = self.find_branch_format()
+        format = self.find_branch_format(name=name)
         self._check_supported(format, unsupported)
         return format.open(self, name=name,
             _found=True, ignore_fallbacks=ignore_fallbacks)
@@ -1948,7 +1959,6 @@ class BzrDirFormat(object):
             format_string = transport.get_bytes(".bzr/branch-format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
-
         try:
             return klass._formats[format_string]
         except KeyError:
@@ -2863,7 +2873,11 @@ class ConvertBzrDir4To5(Converter):
             self.revisions[rev_id] = rev
 
     def _load_old_inventory(self, rev_id):
-        old_inv_xml = self.branch.repository.inventory_store.get(rev_id).read()
+        f = self.branch.repository.inventory_store.get(rev_id)
+        try:
+            old_inv_xml = f.read()
+        finally:
+            f.close()
         inv = xml4.serializer_v4.read_inventory_from_string(old_inv_xml)
         inv.revision_id = rev_id
         rev = self.revisions[rev_id]
@@ -2947,8 +2961,11 @@ class ConvertBzrDir4To5(Converter):
                 ie.revision = previous_ie.revision
                 return
         if ie.has_text():
-            text = self.branch.repository._text_store.get(ie.text_id)
-            file_lines = text.readlines()
+            f = self.branch.repository._text_store.get(ie.text_id)
+            try:
+                file_lines = f.readlines()
+            finally:
+                f.close()
             w.add_lines(rev_id, previous_revisions, file_lines)
             self.text_count += 1
         else:
@@ -3235,7 +3252,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         # XXX: It's a bit ugly that the network name is here, because we'd
         # like to believe that format objects are stateless or at least
         # immutable,  However, we do at least avoid mutating the name after
-        # it's returned.  See <https://bugs.edge.launchpad.net/bzr/+bug/504102>
+        # it's returned.  See <https://bugs.launchpad.net/bzr/+bug/504102>
         self._network_name = None
 
     def __repr__(self):

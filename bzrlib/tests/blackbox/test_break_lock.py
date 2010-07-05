@@ -25,10 +25,10 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestBreakLock(ExternalBase):
+class TestBreakLock(TestCaseWithTransport):
 
     # General principal for break-lock: All the elements that might be locked
     # by a bzr operation on PATH, are candidates that break-lock may unlock.
@@ -93,7 +93,7 @@ class TestBreakLock(ExternalBase):
         self.assertRaises(errors.LockBroken, self.master_branch.unlock)
 
 
-class TestBreakLockOldBranch(ExternalBase):
+class TestBreakLockOldBranch(TestCaseWithTransport):
 
     def test_break_lock_format_5_bzrdir(self):
         # break lock on a format 5 bzrdir should just return

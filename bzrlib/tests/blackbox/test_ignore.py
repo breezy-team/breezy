@@ -34,11 +34,11 @@ from bzrlib.osutils import (
     pathjoin,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class TestCommands(ExternalBase):
+class TestCommands(TestCaseWithTransport):
 
     def test_ignore_absolutes(self):
         """'ignore' with an absolute path returns an error"""
@@ -156,3 +156,9 @@ class TestCommands(ExternalBase):
                          " and match your ignore pattern:\nb\n"\
                          "These files will continue to be version controlled"\
                          " unless you 'bzr remove' them.\n")
+
+    def test_ignore_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('a')
+        self.run_bzr(['ignore', '--directory=a', 'README'])
+        self.check_file_contents('a/.bzrignore', 'README\n')

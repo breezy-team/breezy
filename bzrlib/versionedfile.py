@@ -45,7 +45,6 @@ from bzrlib import (
 from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
 from bzrlib.transport.memory import MemoryTransport
 """)
-from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
 from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
