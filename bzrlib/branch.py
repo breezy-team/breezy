@@ -801,28 +801,56 @@ class Branch(bzrdir.ControlComponent):
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError("can't cope with fallback repositories "
                     "of %r" % (self.repository,))
-            # unlock it, including unlocking the fallback
+            # Open the new repository object.
+            # Repositories don't offer an interface to remove fallback
+            # repositories today; take the conceptually simpler option and just
+            # reopen it.  We reopen it starting from the URL so that we
+            # get a separate connection for RemoteRepositories and can
+            # stream from one of them to the other.  This does mean doing
+            # separate SSH connection setup, but unstacking is not a
+            # common operation so it's tolerable.
+            new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
+            new_repository = new_bzrdir.find_repository()
+            if new_repository._fallback_repositories:
+                raise AssertionError("didn't expect %r to have "
+                    "fallback_repositories"
+                    % (self.repository,))
+            # Replace self.repository with the new repository.
+            # Do our best to transfer the lock state (i.e. lock-tokens and
+            # lock count) of self.repository to the new repository.
+            lock_token = old_repository.lock_write().repository_token
+            self.repository = new_repository
+            if isinstance(self, remote.RemoteBranch):
+                # Remote branches can have a second reference to the old
+                # repository that need to be replaced.
+                if self._real_branch is not None:
+                    self._real_branch.repository = new_repository
+            self.repository.lock_write(token=lock_token)
+            if lock_token is not None:
+                old_repository.leave_lock_in_place()
             old_repository.unlock()
+            if lock_token is not None:
+                # XXX: self.repository.leave_lock_in_place() before this
+                # function will not be preserved.  Fortunately that doesn't
+                # affect the current default format (2a), and would be a
+                # corner-case anyway.
+                #  - Andrew Bennetts, 2010/06/30
+                self.repository.dont_leave_lock_in_place()
+            old_lock_count = 0
+            while True:
+                try:
+                    old_repository.unlock()
+                except errors.LockNotHeld:
+                    break
+                old_lock_count += 1
+            if old_lock_count == 0:
+                raise AssertionError(
+                    'old_repository should have been locked at least once.')
+            for i in range(old_lock_count-1):
+                self.repository.lock_write()
+            # Fetch from the old repository into the new.
             old_repository.lock_read()
             try:
-                # Repositories don't offer an interface to remove fallback
-                # repositories today; take the conceptually simpler option and just
-                # reopen it.  We reopen it starting from the URL so that we
-                # get a separate connection for RemoteRepositories and can
-                # stream from one of them to the other.  This does mean doing
-                # separate SSH connection setup, but unstacking is not a
-                # common operation so it's tolerable.
-                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
-                new_repository = new_bzrdir.find_repository()
-                self.repository = new_repository
-                if self.repository._fallback_repositories:
-                    raise AssertionError("didn't expect %r to have "
-                        "fallback_repositories"
-                        % (self.repository,))
-                # this is not paired with an unlock because it's just restoring
-                # the previous state; the lock's released when set_stacked_on_url
-                # returns
-                self.repository.lock_write()
                 # XXX: If you unstack a branch while it has a working tree
                 # with a pending merge, the pending-merged revisions will no
                 # longer be present.  You can (probably) revert and remerge.
