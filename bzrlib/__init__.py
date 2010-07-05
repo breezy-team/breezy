@@ -38,13 +38,6 @@ import time
 _start_time = time.time()
 
 import sys
-if getattr(sys, '_bzr_lazy_regex', False):
-    # The 'bzr' executable sets _bzr_lazy_regex.  We install the lazy regex
-    # hack as soon as possible so that as much of the standard library can
-    # benefit, including the 'string' module.
-    del sys._bzr_lazy_regex
-    import bzrlib.lazy_regex
-    bzrlib.lazy_regex.install_lazy_compile()
 
 
 IGNORE_FILENAME = ".bzrignore"
@@ -126,6 +119,18 @@ def _format_version_tuple(version_info):
     return main_version + sub_string
 
 
+# lazy_regex import must be done after _format_version_tuple definition
+# to avoid "no attribute '_format_version_tuple'" error when using
+# deprecated_function in the lazy_regex module.
+if getattr(sys, '_bzr_lazy_regex', False):
+    # The 'bzr' executable sets _bzr_lazy_regex.  We install the lazy regex
+    # hack as soon as possible so that as much of the standard library can
+    # benefit, including the 'string' module.
+    del sys._bzr_lazy_regex
+    import bzrlib.lazy_regex
+    bzrlib.lazy_regex.install_lazy_compile()
+
+
 __version__ = _format_version_tuple(version_info)
 version_string = __version__
 
@@ -163,7 +168,7 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         otherwise stopping use of bzrlib. Advanced callers can use
         BzrLibraryState directly.
     """
-    import bzrlib.library_state
+    from bzrlib import library_state, trace
     if setup_ui:
         import bzrlib.ui
         stdin = stdin or sys.stdin
@@ -172,8 +177,8 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
         ui_factory = bzrlib.ui.make_ui_for_terminal(stdin, stdout, stderr)
     else:
         ui_factory = None
-    tracer = bzrlib.trace.DefaultConfig()
-    return bzrlib.library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
+    tracer = trace.DefaultConfig()
+    return library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
 
 
 def test_suite():
