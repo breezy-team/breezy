@@ -64,7 +64,7 @@ Let's create a directory and some files to use with Bazaar::
  $ mkdir subdirectory
  $ touch test1.txt test2.txt test3.txt subdirectory/test4.txt
 
-**Note for Windows users:** use Windows Explorer to create your
+**Note for Windows users**: use Windows Explorer to create your
 directories, then right-click in those directories and select
 ``New file`` to create your files.
 
@@ -164,7 +164,7 @@ Now anyone can create their own copy of your branch by typing::
 
  $ bzr branch http://www.example.com/myproject
 
-**Note:** to use sftp, you may need to install ``paramiko`` and
+**Note**: to use sftp, you may need to install ``paramiko`` and
 ``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
 
 
@@ -186,7 +186,7 @@ Replacing ``john.doe`` with your own Launchpad username, type [#]_::
 
 .. [#] Use of the ``lp:`` URL scheme requires bzr 0.92 or later.
 
-**Note:** ``+junk`` means that this branch isn't associated with any particular
+**Note**: ``+junk`` means that this branch isn't associated with any particular
 project in Launchpad.
 
 Now, anyone can create their own copy of your branch by typing::
