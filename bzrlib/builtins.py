@@ -2721,14 +2721,13 @@ class cmd_ignore(Command):
         ignores.tree_ignores_add_patterns(tree, name_pattern_list)
         ignored = globbing.Globster(name_pattern_list)
         matches = []
-        tree.lock_read()
+        self.add_cleanup(tree.lock_read().unlock)
         for entry in tree.list_files():
             id = entry[3]
             if id is not None:
                 filename = entry[0]
                 if ignored.match(filename):
                     matches.append(filename)
-        tree.unlock()
         if len(matches) > 0:
             self.outf.write("Warning: the following files are version controlled and"
                   " match your ignore pattern:\n%s"
