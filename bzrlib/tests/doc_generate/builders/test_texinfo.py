@@ -163,7 +163,7 @@ class TestDocumentAttributesGeneration(TestSphinx):
 Bazaar Release Notes
 ####################
 ''')
-        self.assertContent('''@chapter Bazaar Release Notes\n''', end='')
+        self.assertContent('@chapter Bazaar Release Notes\n', end='')
 
 
 class TestListGeneration(TestSphinx):

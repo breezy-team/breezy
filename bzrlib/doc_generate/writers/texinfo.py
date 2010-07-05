@@ -60,22 +60,14 @@ class TexinfoTranslator(nodes.NodeVisitor):
     def __init__(self, document, builder):
         nodes.NodeVisitor.__init__(self, document)
         # toctree uses some nodes for different purposes (namely:
-        # compact_paragraph, bullet_list, reference, list_item) that needs to
-        # know when they are proessing a toctree. The following attributes take
-        # care of the needs.
+        # compact_paragraph, bullet_list) that needs to know when they are
+        # proessing a toctree. The following attributes take care of the needs.
         self.in_toctree = False
-        self.toctree_current_ref = None
         # sections can be embedded and produce different directives depending
         # on the depth.
         self.section_level = -1
-        # The title text is in a Text node that shouldn't be output literally
-        self.in_title = False
-        # Tables has some specific nodes but need more help
-        self.in_table = False
-        self.tab_nb_cols = None
-        self.tab_item_cmd = None
-        self.tab_tab_cmd = None
-        self.tab_entry_num = None
+        # By default paragraghs are separated by newlines, but there are some
+        # exceptions that set it to '' for some subtrees instead
         self.paragraph_sep = '\n'
 
     # The whole document
@@ -194,8 +186,7 @@ class TexinfoTranslator(nodes.NodeVisitor):
         set_item_collector(node, 'text')
 
     def depart_title(self, node):
-        text = get_collected_item(node, 'text')
-        node.parent['title'] = text
+        node.parent['title'] = node['text']
 
     def visit_label(self, node):
         raise nodes.SkipNode # Not implemented yet
@@ -209,16 +200,15 @@ class TexinfoTranslator(nodes.NodeVisitor):
         pass
 
     def depart_Text(self, node):
-        text = node.data
+        text = node.astext()
         if '@' in text:
             text = text.replace('@', '@@')
         if '{' in text:
             text = text.replace('{', '@{')
         if '}' in text:
             text = text.replace('}', '@}')
-        if node.parent is None:
-            import pdb; pdb.set_trace()
         node.parent.collect_text(text)
+
 
     # Styled text
 
@@ -226,21 +216,21 @@ class TexinfoTranslator(nodes.NodeVisitor):
         set_item_collector(node, 'text')
 
     def depart_emphasis(self, node):
-        text = '@emph{%s}' % get_collected_item(node, 'text')
+        text = '@emph{%s}' % node['text']
         node.parent.collect_text(text)
 
     def visit_strong(self, node):
         set_item_collector(node, 'text')
 
     def depart_strong(self, node):
-        text = '@strong{%s}' % get_collected_item(node, 'text')
+        text = '@strong{%s}' % node['text']
         node.parent.collect_text(text)
 
     def visit_literal(self, node):
         set_item_collector(node, 'text')
 
     def depart_literal(self, node):
-        text = '@code{%s}' % get_collected_item(node, 'text')
+        text = '@code{%s}' % node['text']
         node.parent.collect_text(text)
 
     # Lists
@@ -486,19 +476,11 @@ def set_item_collector(node, name):
     setattr(node, 'collect_' + name, set_item)
 
 
-def get_collected_item(node, name):
-    return node[name]
-
-
 def set_item_list_collector(node, name, sep=''):
     node[name] = []
     node[name + '_sep'] = sep
     def append_item(item):
         node[name].append(item)
     setattr(node, 'collect_' + name, append_item)
-
-
-def get_collected_item_list(node, name):
-    return node[name + '_sep'].join(node[name])
 
 
