@@ -193,6 +193,16 @@ combinations including testing plugins.  See
 <http://babune.ladeuil.net:24842/>.  (Babune = Bazaar Buildbot Network.)
 
 
+Running tests in parallel
+-------------------------
+
+Bazaar can use subunit to spawn multiple test processes.  There is
+slightly more chance you will hit ordering or timing-dependent bugs but
+it's much faster::
+
+  $ ./bzr selftest --parallel=fork
+
+
 Running tests from a ramdisk
 ----------------------------
 
