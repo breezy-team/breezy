@@ -899,6 +899,39 @@ method of ``TestCaseWithTransport``).
 Please see bzrlib.treebuilder for more details.
 
 
+Manual testing
+==============
+
+Generally we prefer automated testing but sometimes a manual test is the
+right thing, especially for performance tests that want to measure elapsed
+time rather than effort.
+
+Simulating slow networks
+------------------------
+
+To get realistically slow network performance for manually measuring
+performance, we can simulate 500ms latency (thus 1000ms round trips)::
+
+  $ sudo tc qdisc add dev lo root netem delay 500ms
+
+Normal system behaviour is restored with ::
+
+  $ sudo tc qdisc del dev lo root
+
+A more precise version that only filters traffic to port 4155 is::
+
+    tc qdisc add dev lo root handle 1: prio
+    tc qdisc add dev lo parent 1:3 handle 30: netem delay 500ms 
+    tc qdisc add dev lo parent 30:1 handle 40: prio
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip dport 4155 0xffff flowid 1:3 handle 800::800
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip sport 4155 0xffff flowid 1:3 handle 800::801
+
+and to remove this::
+
+    tc filter del dev lo protocol ip parent 1: pref 3 u32
+    tc qdisc del dev lo root handle 1:
+
+
 .. |--| unicode:: U+2014
 
 ..
