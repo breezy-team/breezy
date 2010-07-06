@@ -176,6 +176,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
     It is possible for a `WorkingTree` to have a filename which is
     not listed in the Inventory and vice versa.
+
+    :ivar basedir: The root of the tree on disk.
     """
 
     # override this to set the strategy for storing views
