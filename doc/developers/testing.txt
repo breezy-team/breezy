@@ -193,6 +193,25 @@ combinations including testing plugins.  See
 <http://babune.ladeuil.net:24842/>.  (Babune = Bazaar Buildbot Network.)
 
 
+Running tests from a ramdisk
+----------------------------
+
+The tests create and delete a lot of temporary files.  In some cases you
+can make the test suite run much faster by running it on a ramdisk.  For
+example::
+
+  $ sudo mkdir /ram
+  $ sudo mount -t tmpfs none /ram
+  $ TMPDIR=/ram ./bzr selftest ...
+
+You could also change ``/tmp`` in ``/etc/fstab`` to have type ``tmpfs``,
+if you don't mind possibly losing other files in there when the machine
+restarts.
+
+With a 6-core machine and ``--parallel=fork`` using a tmpfs doubles the
+test execution speed.
+
+
 Writing Tests
 =============
 
