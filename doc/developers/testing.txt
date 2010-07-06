@@ -202,6 +202,10 @@ it's much faster::
 
   $ ./bzr selftest --parallel=fork
 
+Note that you will need the Subunit library
+<https://launchpad.net/subunit/> to use this, which is in
+``python-subunit`` on Ubuntu.
+
 
 Running tests from a ramdisk
 ----------------------------
@@ -216,7 +220,9 @@ example::
 
 You could also change ``/tmp`` in ``/etc/fstab`` to have type ``tmpfs``,
 if you don't mind possibly losing other files in there when the machine
-restarts.
+restarts.  Add this line (if there is none for ``/tmp`` already)::
+
+  none           /tmp            tmpfs  defaults        0       0
 
 With a 6-core machine and ``--parallel=fork`` using a tmpfs doubles the
 test execution speed.
@@ -930,6 +936,10 @@ and to remove this::
 
     tc filter del dev lo protocol ip parent 1: pref 3 u32
     tc qdisc del dev lo root handle 1:
+
+You can use similar code to add additional delay to a real network
+interface, perhaps only when talking to a particular server or pointing at
+a VM.  For more information see <http://lartc.org/>.
 
 
 .. |--| unicode:: U+2014
