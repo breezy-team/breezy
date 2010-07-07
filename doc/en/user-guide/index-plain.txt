@@ -115,3 +115,5 @@ Appendices
 .. include:: http_smart_server.txt
 .. include:: writing_a_plugin.txt
 
+.. |--| unicode:: U+2014
+
