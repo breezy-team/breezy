@@ -110,3 +110,5 @@ Apéndice
 .. include later - setting_up_email.txt
 .. include later - http_smart_server.txt
 .. include later - writing_a_plugin.txt
+
+.. |--| unicode:: U+2014

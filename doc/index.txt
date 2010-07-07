@@ -37,17 +37,17 @@ Tutorials
 Developer Documentation
 =======================
 
-* `Developer Document Catalog <developers/index-plain.html>`_ -- for developers
+* `Developer Document Catalog <developers/index-plain.html>`_ |--| for developers
   of Bazaar and plugins
 
 Web links
 =========
 
 * `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_
-  -- for users moving from another VCS tool
+  |--| for users moving from another VCS tool
 
 * `Migration Guide <http://bazaar-vcs.org/BzrMigration>`_
-  -- for teams migrating history from another VCS tool
+  |--| for teams migrating history from another VCS tool
 
 * `Glossary <http://bazaar-vcs.org/BzrGlossary>`_
 
@@ -58,8 +58,10 @@ Other Languages
 ===============
 
 * `Spanish Documentation <index.es.html>`_
-* `Russian Documentation <index.ru.html>`_ -- документация на русском
-* `Japanese Documentation <index.ja.html>`_ -- 日本語のドキュメント
+* `Russian Documentation <index.ru.html>`_ |--| документация на русском
+* `Japanese Documentation <index.ja.html>`_ |--| 日本語のドキュメント
+
+.. |--| unicode:: U+2014
 
 ..
    vim: ft=rst tw=74 ai
