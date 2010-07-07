@@ -137,5 +137,3 @@ Appendices
    setting_up_email
    http_smart_server
    writing_a_plugin
-
-.. |--| unicode:: U+2014

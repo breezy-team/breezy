@@ -21,10 +21,10 @@ Bazaarのメインドキュメント
 =============
 
 * `切り替えガイド <http://bazaar-vcs.org/BzrSwitching>`_
-  |--| 別のVCSツールから移ってきたユーザー用
+  -- 別のVCSツールから移ってきたユーザー用
 
 * `移行ガイド <http://bazaar-vcs.org/BzrMigration>`_
-  |--| 別のVCSツールから履歴を移行するチーム用
+  -- 別のVCSツールから履歴を移行するチーム用
 
 * `用語 <http://bazaar-vcs.org/BzrGlossary>`_
 
@@ -48,9 +48,6 @@ bzr.exe(デフォルトでは ``C:\Program Files\Bazaar`` )よりもbzr.bat(``C:
 優先されるので、コマンドプロンプトでbzrと入力したときにbzr.exeが実行されるようにするには、
 bzr.batをbzr.txtなどにリネームします。
 
-
-
-.. |--| unicode:: U+2014
 
 ..
    vim: ft=rst tw=74 ai

@@ -117,5 +117,3 @@
 .. include:: ../../en/user-guide/setting_up_email.txt
 .. include:: ../../en/user-guide/http_smart_server.txt
 .. include:: ../../en/user-guide/writing_a_plugin.txt
-
-.. |--| unicode:: U+2014

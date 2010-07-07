@@ -67,8 +67,5 @@ Other documents
    implementation-notes
    miscellaneous-notes
 
-
-.. |--| unicode:: U+2014
-
 ..
    vim: ft=rst tw=74 ai

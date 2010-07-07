@@ -35,7 +35,7 @@ Bazaarのメインドキュメント
 Developer Documentation
 =======================
 
-* `Developer Document Catalog <developers/index-plain.html>`_ |--| for developers
+* `Developer Document Catalog <developers/index-plain.html>`_ -- for developers
   of Bazaar and plugins
 
 
@@ -43,10 +43,10 @@ Developer Documentation
 =============
 
 * `切り替えガイド <http://bazaar-vcs.org/BzrSwitching>`_
-  |--| 別のVCSツールから移ってきたユーザー用
+  -- 別のVCSツールから移ってきたユーザー用
 
 * `移行ガイド <http://bazaar-vcs.org/BzrMigration>`_
-  |--| 別のVCSツールから履歴を移行するチーム用
+  -- 別のVCSツールから履歴を移行するチーム用
 
 * `用語 <http://bazaar-vcs.org/BzrGlossary>`_
 
@@ -75,11 +75,8 @@ Other Languages
 ===============
 
 * `Spanish Documentation <index.es.html>`_
-* `Russian Documentation <index.ru.html>`_ |--| документация на русском
-* `Japanese Documentation <index.ja.html>`_ |--| 日本語ドキュメント
-
-
-.. |--| unicode:: U+2014
+* `Russian Documentation <index.ru.html>`_ -- документация на русском
+* `Japanese Documentation <index.ja.html>`_ -- 日本語ドキュメント
 
 ..
    vim: ft=rst tw=74 ai

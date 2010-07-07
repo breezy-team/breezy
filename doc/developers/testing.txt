@@ -293,7 +293,7 @@ Doctests
 
 We make selective use of doctests__.  In general they should provide
 *examples* within the API documentation which can incidentally be tested.  We
-don't try to test every important case using doctests |--| regular Python
+don't try to test every important case using doctests -- regular Python
 tests are generally a better solution.  That is, we just use doctests to
 make our documentation testable, rather than as a way to make tests.
 
@@ -511,7 +511,7 @@ In our enhancements to unittest we allow for some addition results beyond
 just success or failure.
 
 If a test can't be run, it can say that it's skipped by raising a special
-exception.  This is typically used in parameterized tests |--| for example
+exception.  This is typically used in parameterized tests -- for example
 if a transport doesn't support setting permissions, we'll skip the tests
 that relating to that.  ::
 
@@ -689,7 +689,7 @@ In general we want to test errors at two levels:
 
 In some cases blackbox tests will also want to check error reporting.  But
 it can be difficult to provoke every error through the commandline
-interface, so those tests are only done as needed |--| eg in response to a
+interface, so those tests are only done as needed -- eg in response to a
 particular bug or if the error is reported in an unusual way(?)  Blackbox
 tests should mostly be testing how the command-line interface works, so
 should only test errors if there is something particular to the cli in how
@@ -868,9 +868,6 @@ method of ``TestCaseWithMemoryTransport``) or ``make_branch_and_tree`` (a
 method of ``TestCaseWithTransport``).
 
 Please see bzrlib.treebuilder for more details.
-
-
-.. |--| unicode:: U+2014
 
 ..
    vim: ft=rst tw=74 ai et sw=4
