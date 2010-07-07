@@ -47,6 +47,10 @@ or
 <lp:~bzr/bzr/packaging-hardy>.  These branches are intended to be used
 with the ``bzr-builddeb`` plugin.
 
+**You should almost always upload to the beta ppa first** and then either 
+upload again or copy the packages into the release ppa.  That reduces the 
+risk of breaking the main archive from which people get bzr updates.
+
 Preconditions
 -------------
 
@@ -55,26 +59,15 @@ Preconditions
 
 * You must have a GPG key registered to your Launchpad account.
 
-* Configure ``dput`` to upload to our PPA with this section in your
-  ``~/.dput.cf``::
+On reasonably recent versions of Ubuntu you no longer need special dput
+configuration, because you can just say ::
 
-    [bzr-beta-ppa]
-    fqdn = ppa.launchpad.net
-    method = ftp
-    incoming = ~bzr-beta-ppa/ubuntu
-    login = anonymous
-    allow_unsigned_uploads = 0
+  dput ppa:bzr/2.1-proposed <source.changes
+  
 
-    [bzr-ppa]
-    fqdn = ppa.launchpad.net
-    method = ftp
-    incoming = ~bzr/ubuntu
-    login = anonymous
-    allow_unsigned_uploads = 0
-
-  You may also want to add these lines to prevent inadvertently attempting
-  to upload into Ubuntu or Debian, which will give a somewhat unclear
-  error::
+However, you may still want to add these lines to ``~/.dput.cf`` prevent 
+inadvertently attempting to upload into Ubuntu or Debian, which will
+give a somewhat unclear error::
 
     [DEFAULT]
     default_host_main = notspecified
@@ -102,6 +95,25 @@ Preconditions
 
 Packaging Bazaar
 ----------------
+
+Overview of packaging with builddeb
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* First update the oldest supported branch, using ``bzr merge-upstream``.
+
+* Run ``bzr builddeb -S -- -sa`` to build a source package, then put 
+  that into the ppa.
+
+* Now merge across that change into each supported branch with a 
+  simple ``bzr merge``.
+  
+Locally testing builds
+~~~~~~~~~~~~~~~~~~~~~~
+
+It may be useful to locally test builds inside pbuilder.  You may want to 
+use the script from <http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=255165> 
+to wrap it.
+
 
 Short form
 ~~~~~~~~~~
@@ -285,6 +297,16 @@ If you add all the bzr PPAs to your ``sources.list`` then you can see a
 summary of current package versions with::
 
   apt-cache madison bzr
+  
+  
+  
+Packaging dependencies
+----------------------
+
+Some of our updates to bzr in previous releases require backports of our
+dependencies.  Specific branches holding these backports:
+
+ * ``lp:~bzr/ubuntu/dapper/configobj/dapper-backport``
 
 
 ..
