@@ -33,6 +33,11 @@ On Unix you typically want to set these in ``/etc/environment`` or
   http_proxy=http://proxy.example.com:3128/
   https_proxy=http://proxy.example.com:3128/
 
+The ``no_proxy`` variable can be set to a comma-separated list of hosts
+which shouldn't be reached by the proxy.  (See
+<http://docs.python.org/library/urllib.html> for more details.)
+
+
 Configuration files
 -------------------
 
