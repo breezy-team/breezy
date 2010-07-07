@@ -20,7 +20,7 @@ Installation
 This plugin requires `python-debian`_ (at least version 0.1.11),
 and a version of bzr at least 1.2. These are available in Debian
 (though maybe not at the required versions for a development version
- of builddeb).
+of builddeb).
 
 .. _python-debian: http://bzr.debian.org/pkg-python-debian/trunk/
 
@@ -260,7 +260,7 @@ Now add all the project files to the branch, and add the to bzr::
   $ bzr ci
 
 There are two options when you want to build a Debian package, whether
-it is a native package or not. Most packages are non-native so I will desribe
+it is a native package or not. Most packages are non-native so I will describe
 that first.
 
 To create a non-native package you need an upstream tarball to build against.
