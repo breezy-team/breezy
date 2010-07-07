@@ -413,19 +413,12 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
 
 def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     # PyQt4 itself still escapes the plugin detection code for some reason...
-    packages.append('PyQt4')
-    excludes.append('PyQt4.elementtree.ElementTree')
-    excludes.append('PyQt4.uic.port_v3')
+    includes.append('PyQt4.QtCore')
+    includes.append('PyQt4.QtGui')
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
     packages.append('docutils') # html formatting
     includes.append('win32event')  # for qsubprocess stuff
-    # but we can avoid many Qt4 Dlls.
-    dll_excludes.extend(
-        """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
-        QtHelp4.dll QtNetwork4.dll QtOpenGL4.dll QtScript4.dll
-        QtSql4.dll QtTest4.dll QtWebKit4.dll QtXml4.dll
-        qscintilla2.dll""".split())
     # the qt binaries might not be on PATH...
     # They seem to install to a place like C:\Python25\PyQt4\*
     # Which is not the same as C:\Python25\Lib\site-packages\PyQt4
