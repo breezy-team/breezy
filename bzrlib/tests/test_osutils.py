@@ -28,6 +28,7 @@ import time
 from bzrlib import (
     errors,
     osutils,
+    symbol_versioning,
     tests,
     trace,
     win32utils,
@@ -1705,8 +1706,12 @@ class TestResourceLoading(tests.TestCaseInTempDir):
 
 class TestReCompile(tests.TestCase):
 
+    def _deprecated_re_compile_checked(self, *args, **kwargs):
+        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
+            osutils.re_compile_checked, *args, **kwargs)
+
     def test_re_compile_checked(self):
-        r = osutils.re_compile_checked(r'A*', re.IGNORECASE)
+        r = self._deprecated_re_compile_checked(r'A*', re.IGNORECASE)
         self.assertTrue(r.match('aaaa'))
         self.assertTrue(r.match('aAaA'))
 
@@ -1714,7 +1719,7 @@ class TestReCompile(tests.TestCase):
         # like https://bugs.launchpad.net/bzr/+bug/251352
         err = self.assertRaises(
             errors.BzrCommandError,
-            osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
+            self._deprecated_re_compile_checked, '*', re.IGNORECASE, 'test case')
         self.assertEqual(
             'Invalid regular expression in test case: '
             '"*" nothing to repeat',
