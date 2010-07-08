@@ -2717,7 +2717,7 @@ class cmd_ignore(Command):
             if not globbing.Globster.is_pattern_valid(p):
                 bad_patterns.append(p)
         if bad_patterns:
-            msg = 'Invalid ignore patterns found.'
+            msg = 'Invalid ignore pattern(s) found.'
             pats = ''
             for p in bad_patterns:
                 pats += ('\n  %s' % p)

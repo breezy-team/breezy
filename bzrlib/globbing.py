@@ -203,20 +203,18 @@ class Globster(object):
 
     def __init__(self, patterns):
         self._regex_patterns = []
-        path_patterns = []
-        base_patterns = []
-        ext_patterns = []
         pattern_lists = {
-            Globster.TYPE_FULLPATH : path_patterns,
-            Globster.TYPE_EXTENSION : ext_patterns,
-            Globster.TYPE_BASENAME : base_patterns,
+            Globster.TYPE_FULLPATH : [],
+            Globster.TYPE_EXTENSION : [],
+            Globster.TYPE_BASENAME : [],
         }
         for pat in patterns:
             pat = normalize_pattern(pat)
             pattern_lists[Globster.identify(pat)].append(pat)
-        for k, v in pattern_lists.iteritems():
-            self._add_patterns(v, Globster.translators[k],
-                Globster.prefixes[k])
+        for pattern_type, patterns in pattern_lists.iteritems():
+            self._add_patterns(patterns,
+                Globster.translators[pattern_type],
+                Globster.prefixes[pattern_type])
 
     def _add_patterns(self, patterns, translator, prefix=''):
         while patterns:
