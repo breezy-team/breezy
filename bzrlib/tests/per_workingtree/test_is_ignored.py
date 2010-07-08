@@ -56,10 +56,10 @@ class TestIsIgnored(TestCaseWithWorkingTree):
                            '#comment\n'
                            ' xx \n' # whitespace
             )])
-        # we set user ignore file to contain '' to avoid patterns from
-        # user ignore being used instead of bzrignore. For .e.g.
-        # 'foo.~1~' may match '*~' default user ignore pattern instead of
-        # '*.~*' from bzr ignore as we expect below.
+        # We set user ignore file to contain '' to avoid patterns from
+        # user ignore being used instead of bzrignore. For .e.g. If we
+        # don't do this 'foo.~1~' will match '*~' default user ignore
+        # pattern instead of '*.~*' from bzr ignore as we expect below.
         self._set_user_ignore_content('')
         # is_ignored returns the matching ignore regex when a path is ignored.
         # we check some expected matches for each rule, and one or more

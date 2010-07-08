@@ -94,6 +94,7 @@ Bug Fixes
 
 * Invalid patterns supplied to ``Globster`` or ``lazy_regex`` now raise
   ``InvalidPattern`` exception showing clear error message to the user.
+  ``bzr ignore PATTERNS`` exits with error if a bad pattern is supplied.
   (Parth Malwankar #300062)
 
 * Progress output is cleaned up when exiting.  (Aaron Bentley)
