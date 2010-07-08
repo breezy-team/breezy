@@ -27,6 +27,7 @@ import time
 
 from bzrlib import (
     errors,
+    lazy_regex,
     osutils,
     symbol_versioning,
     tests,
@@ -1717,6 +1718,10 @@ class TestReCompile(tests.TestCase):
 
     def test_re_compile_checked_error(self):
         # like https://bugs.launchpad.net/bzr/+bug/251352
+
+        # Due to possible test isolation error, re.compile is not lazy at
+        # this point. We re-install lazy compile.
+        lazy_regex.install_lazy_compile()
         err = self.assertRaises(
             errors.BzrCommandError,
             self._deprecated_re_compile_checked, '*', re.IGNORECASE, 'test case')
