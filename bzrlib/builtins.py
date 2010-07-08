@@ -40,6 +40,7 @@ from bzrlib import (
     log,
     merge as _mod_merge,
     merge_directive,
+    mergetools,
     osutils,
     reconfigure,
     rename_map,
@@ -3794,7 +3795,9 @@ class cmd_merge(Command):
         Option('preview', help='Instead of merging, show a diff of the'
                ' merge.'),
         Option('interactive', help='Select changes interactively.',
-            short_name='i')
+            short_name='i'),
+        Option('tool', help='Invokes the specified or the user\'s default'
+               ' external merge tool for files with conflicts.', type=str),
     ]
 
     def run(self, location=None, revision=None, force=False,
@@ -3803,6 +3806,7 @@ class cmd_merge(Command):
             directory=None,
             preview=False,
             interactive=False,
+            tool=None
             ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
@@ -3879,12 +3883,20 @@ class cmd_merge(Command):
                 "This branch has no commits."
                 " (perhaps you would prefer 'bzr pull')")
         if preview:
-            return self._do_preview(merger)
+            retval = self._do_preview(merger)
         elif interactive:
-            return self._do_interactive(merger)
+            retval = self._do_interactive(merger)
         else:
-            return self._do_merge(merger, change_reporter, allow_pending,
-                                  verified)
+            retval = self._do_merge(merger, change_reporter, allow_pending,
+                                    verified)
+        if retval != 0:
+            merge_tool = None
+            if tool is not None:
+                merge_tool = mergetools.find_merge_tool(tool)
+            if merge_tool is not None:
+                for conflict in tree.conflicts():
+                    merge_tool.invoke(conflict.path)
+        return retval
 
     def _get_preview(self, merger):
         tree_merger = merger.make_merger()
