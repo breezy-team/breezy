@@ -22,6 +22,16 @@ from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 class TestIsIgnored(TestCaseWithWorkingTree):
 
+    def _set_user_ignore_content(self, ignores):
+        """Create user ignore file and set its content to ignores."""
+        config.ensure_config_dir_exists()
+        user_ignore_file = config.user_ignore_config_filename()
+        f = open(user_ignore_file, 'wb')
+        try:
+            f.write(ignores)
+        finally:
+            f.close()
+
     def test_is_ignored(self):
         tree = self.make_branch_and_tree('.')
         # this will break if a tree changes the ignored format. That is fine
@@ -46,6 +56,11 @@ class TestIsIgnored(TestCaseWithWorkingTree):
                            '#comment\n'
                            ' xx \n' # whitespace
             )])
+        # we set user ignore file to contain '' to avoid patterns from
+        # user ignore being used instead of bzrignore. For .e.g.
+        # 'foo.~1~' may match '*~' default user ignore pattern instead of
+        # '*.~*' from bzr ignore as we expect below.
+        self._set_user_ignore_content('')
         # is_ignored returns the matching ignore regex when a path is ignored.
         # we check some expected matches for each rule, and one or more
         # relevant not-matches that look plausible as cases for bugs.
@@ -119,19 +134,16 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
         config.ensure_config_dir_exists()
         user_ignore_file = config.user_ignore_config_filename()
-        f = open(user_ignore_file, 'wb')
-        try:
-            f.write('*.py[co]\n'
-                    './.shelf\n'
-                    '# comment line\n'
-                    '\n' #Blank line
-                    '\r\n' #Blank dos line
-                    ' * \n' #Trailing and suffix spaces
-                    'crlf\r\n' # dos style line
-                    '*\xc3\xa5*\n' # u'\xe5'.encode('utf8')
-                    )
-        finally:
-            f.close()
+        self._set_user_ignore_content(
+            '*.py[co]\n'
+            './.shelf\n'
+            '# comment line\n'
+            '\n' #Blank line
+            '\r\n' #Blank dos line
+            ' * \n' #Trailing and suffix spaces
+            'crlf\r\n' # dos style line
+            '*\xc3\xa5*\n' # u'\xe5'.encode('utf8')
+            )
 
         # Rooted
         self.assertEqual('./.shelf', tree.is_ignored('.shelf'))
