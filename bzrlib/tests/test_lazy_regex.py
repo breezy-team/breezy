@@ -18,6 +18,7 @@
 
 import re
 
+from bzrlib import errors
 from bzrlib import (
     lazy_regex,
     tests,
@@ -62,6 +63,15 @@ class TestLazyRegex(tests.TestCase):
                           ('__getattr__', 'match'),
                           ('_real_re_compile', ('foo',), {}),
                          ], actions)
+
+    def test_bad_pattern(self):
+        """Ensure lazy regex handles bad patterns cleanly."""
+        p = lazy_regex.lazy_compile('RE:[')
+        # As p.match is lazy, we make it into a lambda so its handled
+        # by assertRaises correctly.
+        e = self.assertRaises(errors.InvalidPattern, lambda: p.match('foo'))
+        self.assertEqual(e.message,
+            '"RE:[" unexpected end of regular expression')
 
 
 class TestLazyCompile(tests.TestCase):

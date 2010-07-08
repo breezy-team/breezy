@@ -2163,6 +2163,7 @@ def until_no_eintr(f, *a, **kw):
             raise
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
 
@@ -2178,12 +2179,12 @@ def re_compile_checked(re_string, flags=0, where=""):
         re_obj = re.compile(re_string, flags)
         re_obj.search("")
         return re_obj
-    except re.error, e:
+    except errors.InvalidPattern, e:
         if where:
             where = ' in ' + where
         # despite the name 'error' is a type
-        raise errors.BzrCommandError('Invalid regular expression%s: %r: %s'
-            % (where, re_string, e))
+        raise errors.BzrCommandError('Invalid regular expression%s: %s'
+            % (where, e.message))
 
 
 if sys.platform == "win32":
