@@ -278,3 +278,17 @@ Far tooo deep to get a name
 
 @heading thing one
 No idea how to call that, but sphinx says it's a paragraph.''')
+
+
+class TestReferences(test_dg.TestSphinx):
+
+    def test_uref(self):
+        self.create_content('''\
+The `example web site`_ is nice.
+
+.. _example web site: http://www.example.com/
+''')
+        self.assertContent('''\
+The @uref{http://www.example.com/,example web site} is nice.''')
+
+

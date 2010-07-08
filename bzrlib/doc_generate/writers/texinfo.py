@@ -59,9 +59,10 @@ class TexinfoTranslator(nodes.NodeVisitor):
 
     def __init__(self, document, builder):
         nodes.NodeVisitor.__init__(self, document)
+        self.builder = builder
         # toctree uses some nodes for different purposes (namely:
         # compact_paragraph, bullet_list) that needs to know when they are
-        # proessing a toctree. The following attributes take care of the needs.
+        # processing a toctree.
         self.in_toctree = False
         # sections can be embedded and produce different directives depending
         # on the depth.
@@ -121,6 +122,8 @@ class TexinfoTranslator(nodes.NodeVisitor):
             set_item_collector(node, 'reference')
 
     def depart_compact_paragraph(self, node):
+        # FIXME: Using a different visitor specific to toctree may be a better
+        # design and makes code clearer. -- vila 20100708
         if node.has_key('toctree'):
             node.parent.collect_text('@menu\n')
             node.parent.collect_text(''.join(node['text']))
@@ -438,13 +441,22 @@ class TexinfoTranslator(nodes.NodeVisitor):
         set_item_collector(node, 'text')
 
     def depart_reference(self, node):
+        anchorname = node.get('anchorname', None)
+        refuri = node.get('refuri', None)
+        refid = node.get('refid', None)
+        text = ''.join(node['text'])
         collect = getattr(node.parent, 'collect_reference', None)
         if collect is not None:
-            # FIXME: this handle only the toctree references so far.
-            collect((node.get('anchorname', ''),
-                     node.get('refuri', ''),
-                     ''.join(node['text']),
-                     ))
+            if not self.in_toctree:
+                raise AssertionError('collect_reference is specific to toctree')
+            # FIXME: this handles only the toctree references so far.
+            if anchorname is None:
+                anchorname = ''
+            if refuri is None:
+                refuri = ''
+            collect((anchorname, refuri, text))
+        elif refuri is not None:
+           node.parent.collect_text('@uref{%s,%s}' % (refuri, text))
 
     def visit_footnote_reference(self, node):
         raise nodes.SkipNode # Not implemented yet
