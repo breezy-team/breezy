@@ -191,14 +191,10 @@ class Globster(object):
 
     # Prefixes used to combine various patterns.
     # See: Globster._add_patterns
-    PREFIX_EXTENSION = r'(?:.*/)?(?!.*/)(?:.*\.)'
-    PREFIX_BASENAME = r'(?:.*/)?(?!.*/)'
-    PREFIX_FULLPATH = r''
-
     prefixes = {
-        TYPE_FULLPATH : PREFIX_FULLPATH,
-        TYPE_BASENAME : PREFIX_BASENAME,
-        TYPE_EXTENSION : PREFIX_EXTENSION,
+        TYPE_FULLPATH : r'',
+        TYPE_BASENAME : r'(?:.*/)?(?!.*/)',
+        TYPE_EXTENSION : r'(?:.*/)?(?!.*/)(?:.*\.)',
     }
 
     def __init__(self, patterns):
