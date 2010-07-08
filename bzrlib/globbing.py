@@ -22,8 +22,8 @@ expressions.
 
 import re
 
+from bzrlib import errors
 from bzrlib.trace import (
-    errors,
     mutter,
     warning,
     )
