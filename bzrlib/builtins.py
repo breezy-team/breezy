@@ -2712,6 +2712,17 @@ class cmd_ignore(Command):
                 "NAME_PATTERN or --default-rules.")
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
+        bad_patterns = []
+        for p in name_pattern_list:
+            if not globbing.Globster.is_pattern_valid(p):
+                bad_patterns.append(p)
+        if bad_patterns:
+            msg = 'Invalid ignore patterns found.'
+            pats = ''
+            for p in bad_patterns:
+                pats += ('\n  %s' % p)
+            ui.ui_factory.show_error(msg + pats)
+            raise errors.InvalidPattern('')
         for name_pattern in name_pattern_list:
             if (name_pattern[0] == '/' or
                 (len(name_pattern) > 1 and name_pattern[1] == ':')):
