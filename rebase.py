@@ -505,6 +505,8 @@ class WorkingTreeRevisionRewriter(object):
         if self.merge_type is None:
             from bzrlib.merge import Merge3Merger
             merge_type = Merge3Merger
+        else:
+            merge_type = self.merge_type
         oldrev = self.wt.branch.repository.get_revision(oldrevid)
         # Make sure there are no conflicts or pending merges/changes
         # in the working tree
