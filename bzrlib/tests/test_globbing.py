@@ -314,7 +314,7 @@ class TestGlobster(TestCase):
         patterns = [u'RE:[']
         g = Globster(patterns)
         e = self.assertRaises(errors.InvalidPattern, g.match, 'foo')
-        self.assertContainsRe(e.message, "File.*ignore.*contains errors")
+        self.assertContainsRe(e.msg, "File.*ignore.*contains errors")
 
 
 class TestExceptionGlobster(TestCase):

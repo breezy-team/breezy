@@ -387,6 +387,7 @@ class TestLogErrors(TestLog):
         self.make_minimal_branch()
         out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
         self.assertContainsRe(err, "ERROR.*Invalid pattern.*nothing to repeat")
+        self.assertNotContainsRe(err, "Unprintable exception")
         self.assertEqual(out, '')
 
     def test_log_unsupported_timezone(self):

@@ -70,8 +70,7 @@ class TestLazyRegex(tests.TestCase):
         # As p.match is lazy, we make it into a lambda so its handled
         # by assertRaises correctly.
         e = self.assertRaises(errors.InvalidPattern, lambda: p.match('foo'))
-        self.assertEqual(e.message,
-            '"RE:[" unexpected end of regular expression')
+        self.assertEqual(e.msg, '"RE:[" unexpected end of regular expression')
 
 
 class TestLazyCompile(tests.TestCase):
