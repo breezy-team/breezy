@@ -83,17 +83,20 @@ class TestSphinx(tests.TestCaseInTempDir):
         self.build_tree_contents([('index.txt', content),])
         self.build(app)
 
-    def assertContent(self, expected, end=None):
+    def assertContent(self, expected, header=None, end=None):
         """Check the content of the file created with creste_content().
 
         Most texinfo constructs can be tested this way without caring for any
         boilerplate that texinfo may require at the beginning or the end of the
         file.
         """
+        if header is None:
+            # default boilerplate
+            header = '@node Top\n@top Placeholder\n'
         if end is None:
             # By default we test constructs that are embedded into a paragraph
             # which always end with two \n (even if the input has none)
             end = '\n\n'
-        self.assertFileEqual(expected + end, 'index.texi')
+        self.assertFileEqual(header + expected + end, 'index.texi')
 
 

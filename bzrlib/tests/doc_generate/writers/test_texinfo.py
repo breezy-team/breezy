@@ -97,7 +97,11 @@ class TestDocumentAttributesGeneration(test_dg.TestSphinx):
 Bazaar Release Notes
 ####################
 ''')
-        self.assertContent('@chapter Bazaar Release Notes\n', end='')
+        self.assertContent('''\
+@node bazaar-release-notes
+@chapter Bazaar Release Notes
+''',
+                           end='')
 
 
 class TestListGeneration(test_dg.TestSphinx):
@@ -197,6 +201,9 @@ Improvements
         app, out, err = self.make_sphinx()
         self.build(app)
         self.assertFileEqual("""\
+@node Top
+@top Placeholder
+@node table-of-contents
 @chapter Table of Contents
 @menu
 * bzr 0.0.8: (bzr-0.0.8.info)bzr 0.0.8. 
@@ -204,7 +211,11 @@ Improvements
 """,
                              'index.texi')
         self.assertFileEqual("""\
+@node Top
+@top Placeholder
+@node bzr-0-0-8
 @chapter bzr 0.0.8
+@node improvements
 @section Improvements
 @itemize @bullet
 @item
@@ -258,24 +269,31 @@ thing one
 No idea how to call that, but sphinx says it's a paragraph.
 ''')
         self.assertContent('''\
+@node chapter-one
 @chapter Chapter one
 Chapter introduction.
 
+@node section-one
 @section section one
 The first section.
 
+@node subsection-one
 @subsection subsection one
 The first subsection.
 
+@node subsection-two
 @subsection subsection two
 The second subsection.
 
+@node subsubsection-one
 @subsubsection subsubsection one
 Here is sus sub section one.
 
+@node blob-one
 @heading blob one
 Far tooo deep to get a name
 
+@node thing-one
 @heading thing one
 No idea how to call that, but sphinx says it's a paragraph.''')
 
