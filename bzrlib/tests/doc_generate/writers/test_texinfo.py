@@ -300,10 +300,12 @@ Example web site
 ----------------
 
 Here we have a lot of nice examples.
+
 ''')
         self.assertContent('''\
 The example web site (@pxref{example-web-site}) contains more examples.
 
+@node example-web-site
 @chapter Example web site
 Here we have a lot of nice examples.''')
 

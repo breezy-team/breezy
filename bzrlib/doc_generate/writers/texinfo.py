@@ -89,14 +89,22 @@ class TexinfoTranslator(nodes.NodeVisitor):
         set_item_list_collector(node, 'text')
 
     def depart_section(self, node):
+        title = node['title']
+        ids = node.get('ids', [])
         try:
             section_name = self.section_names[self.section_level]
         except IndexError:
             # Just use @heading, it's not numbered anyway
             section_name = 'heading'
-        section_cmd = '@%s %s\n' % (section_name, node['title'])
+        if ids:
+            # There shouldn't be different ids for a section, so until we
+            # encounter bugs, just take the first one.
+            node_cmd = '@node %s\n' % (ids[0],)
+        else:
+            node_cmd = ''
+        section_cmd = '@%s %s\n' % (section_name, title)
         text = ''.join(node['text'])
-        node.parent.collect_text(section_cmd + text)
+        node.parent.collect_text(node_cmd + section_cmd + text)
         self.section_level -= 1
 
     def visit_topic(self, node):
@@ -457,8 +465,6 @@ class TexinfoTranslator(nodes.NodeVisitor):
         elif refuri is not None:
             node.parent.collect_text('@uref{%s,%s}' % (refuri, text))
         elif refid is not None:
-            # XXX: refid should exist in self.document.ids
-
             # Info format requires that a reference is followed by some
             # punctuation char ('.', ','. ')', etc). Rest is more liberal. To
             # accommodate, we use pxref inside parenthesis.
