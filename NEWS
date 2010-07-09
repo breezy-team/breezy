@@ -97,7 +97,8 @@ Bug Fixes
   (Parth Malwankar #300062)
 
 * Progress bars prefer to truncate the text message rather than the
-  counters.  (Martin Pool)
+  counters.  The spinner is shown between the network transfer indicator
+  and the progress message.  (Martin Pool)
 
 * Progress output is cleaned up when exiting.  (Aaron Bentley)
 

@@ -309,12 +309,6 @@ class TextProgressView(object):
             return w - 1
 
     def _show_line(self, s):
-        width = self._avail_width()
-        if width is not None:
-            if len(s) < width:
-                s = s.ljust(width)
-            elif len(s) > width:
-                s = s[:width]
         self._term_file.write('\r' + s + '\r')
 
     def clear(self):
@@ -387,18 +381,27 @@ class TextProgressView(object):
             trans = ''
         else:
             trans = self._last_transport_msg
-            if trans:
-                trans += ' | '
+        # the bar separates the transport activity from the message, so even
+        # if there's no bar or spinner, we must show something if both those
+        # fields are present
+        if (task_part or trans) and not bar_string:
+            bar_string = '| '
         # preferentially truncate the task message if we don't have enough
         # space
-        avail_len = self._avail_width()
-        if avail_len is not None:
-            # if terminal width is unknown, don't truncate
+        avail_width = self._avail_width()
+        if avail_width is not None:
+            # if terminal avail_width is unknown, don't truncate
             current_len = len(bar_string) + len(trans) + len(task_part) + len(counter_part)
-            gap = current_len - avail_len
+            gap = current_len - avail_width
             if gap > 0:
                 task_part = task_part[:-gap-2] + '..'
-        return (bar_string + trans + task_part + counter_part)
+        s = trans + bar_string + task_part + counter_part
+        if avail_width is not None:
+            if len(s) < avail_width:
+                s = s.ljust(avail_width)
+            elif len(s) > avail_width:
+                s = s[:avail_width]
+        return s
 
     def _repaint(self):
         s = self._render_line()
@@ -460,7 +463,7 @@ class TextProgressView(object):
             rate = (self._bytes_since_update
                     / (now - self._transport_update_time))
             # using base-10 units (see HACKING.txt).
-            msg = ("%6dkB %5dkB/s" %
+            msg = ("%6dkB %5dkB/s " %
                     (self._total_byte_count / 1000, int(rate) / 1000,))
             self._transport_update_time = now
             self._last_repaint = now
