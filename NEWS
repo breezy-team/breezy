@@ -96,6 +96,9 @@ Bug Fixes
   ``InvalidPattern`` exception showing clear error message to the user.
   (Parth Malwankar #300062)
 
+* Progress bars prefer to truncate the text message rather than the
+  counters.  (Martin Pool)
+
 * Progress output is cleaned up when exiting.  (Aaron Bentley)
 
 * Raise ValueError instead of a string exception.

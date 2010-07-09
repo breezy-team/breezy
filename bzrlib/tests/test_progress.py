@@ -58,7 +58,7 @@ class TestTextProgressView(TestCase):
     def make_view(self):
         out = StringIO()
         view = TextProgressView(out)
-        view._width = 80
+        view._avail_width = lambda: 79
         return out, view
     
     def make_task(self, parent_task, view, msg, curr, total):
@@ -125,3 +125,17 @@ r'[#########\          ] reticulating splines:stage2 2/2'
         self.assertEqual(
             r'[####|               ] a:b:c 1/2'
             , view._render_line())
+
+    def test_render_truncated(self):
+        # when the bar is too long for the terminal, we prefer not to truncate
+        # the counters because they might be interesting, and because
+        # truncating the numbers might be misleading
+        out, view = self.make_view()
+        task_a = ProgressTask(None, progress_view=view)
+        task_a.update('start_' + 'a' * 200 + '_end', 2000, 5000)
+        line = view._render_line()
+        self.assertEqual(
+'- start_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.. 2000/5000',
+           line) 
+        self.assertEqual(len(line), 79)
+
