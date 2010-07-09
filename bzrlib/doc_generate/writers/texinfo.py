@@ -162,13 +162,13 @@ class TexinfoTranslator(nodes.NodeVisitor):
         node.parent.collect_text(''.join(node['text']))
         node.parent.collect_text('@end example\n\n')
 
-    def visit_note(self, node):
-        raise nodes.SkipNode # Not implemented yet
-
     def depart_warning(self, node):
         pass
 
     def visit_warning(self, node):
+        raise nodes.SkipNode # Not implemented yet
+
+    def visit_note(self, node):
         raise nodes.SkipNode # Not implemented yet
 
     def depart_note(self, node):
@@ -449,14 +449,20 @@ class TexinfoTranslator(nodes.NodeVisitor):
         if collect is not None:
             if not self.in_toctree:
                 raise AssertionError('collect_reference is specific to toctree')
-            # FIXME: this handles only the toctree references so far.
             if anchorname is None:
                 anchorname = ''
             if refuri is None:
                 refuri = ''
             collect((anchorname, refuri, text))
         elif refuri is not None:
-           node.parent.collect_text('@uref{%s,%s}' % (refuri, text))
+            node.parent.collect_text('@uref{%s,%s}' % (refuri, text))
+        elif refid is not None:
+            # XXX: refid should exist in self.document.ids
+
+            # Info format requires that a reference is followed by some
+            # punctuation char ('.', ','. ')', etc). Rest is more liberal. To
+            # accommodate, we use pxref inside parenthesis.
+            node.parent.collect_text('%s (@pxref{%s})' % (text, refid))
 
     def visit_footnote_reference(self, node):
         raise nodes.SkipNode # Not implemented yet

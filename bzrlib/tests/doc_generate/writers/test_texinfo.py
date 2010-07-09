@@ -282,7 +282,7 @@ No idea how to call that, but sphinx says it's a paragraph.''')
 
 class TestReferences(test_dg.TestSphinx):
 
-    def test_uref(self):
+    def test_external_reference(self):
         self.create_content('''\
 The `example web site`_ is nice.
 
@@ -291,4 +291,19 @@ The `example web site`_ is nice.
         self.assertContent('''\
 The @uref{http://www.example.com/,example web site} is nice.''')
 
+
+    def test_internal_reference(self):
+        self.create_content('''\
+The `example web site`_ contains more examples.
+
+Example web site
+----------------
+
+Here we have a lot of nice examples.
+''')
+        self.assertContent('''\
+The example web site (@pxref{example-web-site}) contains more examples.
+
+@chapter Example web site
+Here we have a lot of nice examples.''')
 
