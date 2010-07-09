@@ -24,8 +24,12 @@ import tempfile
 
 from bzrlib import (
     cmdline,
+    commands,
     config,
     errors,
+    option,
+    ui,
+    workingtree,
 )
 
 
@@ -36,6 +40,60 @@ substitution_help = {
     '%r' : 'file (output)',
     '%T' : 'file.THIS (temp copy, used to overwrite "file" if merge succeeds)'
 }
+
+
+class cmd_mergetool(commands.Command):
+    __doc__ = """Invokes an external merge tool."""
+    takes_args = ['file*']
+    takes_options = [
+        'directory',
+        option.Option('tool', help='Use the specified external merge tool',
+                      type=str),
+        'verbose',
+    ]
+
+    def run(self, file_list=None, directory=u'.', tool=None, verbose=False):
+        uif = ui.ui_factory
+        if tool is not None:
+            merge_tool = find_merge_tool(tool)
+            if merge_tool is None:
+                raise errors.BzrCommandError(
+                    'Unrecognized merge tool: %s' % tool)
+            if merge_tool is not None and not merge_tool.is_available():
+                raise errors.BzrCommandError(
+                    'Merge tool is not available: %s' % merge_tool.get_name())
+        else:
+            merge_tool = get_user_selected_merge_tool()
+            if merge_tool is None:
+                merge_tool = find_first_available_merge_tool()
+                if merge_tool is None:
+                    raise errors.BzrCommandError(
+                        'No external merge tools are available')
+                uif.show_warning('User default merge tool is not set; using '
+                                 'first available merge tool: %s' %
+                                 merge_tool.get_name())
+            else:
+                if merge_tool is not None and not merge_tool.is_available():
+                    raise errors.BzrCommandError(
+                        'User default merge tool is not available: %s' %
+                        merge_tool.get_name())
+                if verbose:
+                    uif.show_message('Using user default merge tool: %s' %
+                                     merge_tool.get_name())
+        if file_list is None:
+            tree = workingtree.WorkingTree.open_containing(directory)[0]
+            file_list = []
+            for conflict in tree.conflicts():
+                if directory != u'.':
+                    file = os.path.join(directory, conflict.path)
+                else: # to avoid unnecessary './' prefix on file names
+                    file = conflict.path
+                file_list.append(file)
+        for file in file_list:
+            if verbose:
+                uif.show_message('Invoking %s on %s...' %
+                                 (merge_tool.get_name(), file))
+            merge_tool.invoke(file)
 
 
 class MergeTool(object):
@@ -141,6 +199,14 @@ def find_merge_tool(name, conf=config.GlobalConfig()):
     merge_tools = get_merge_tools(conf)
     for merge_tool in merge_tools:
         if merge_tool.get_name() == name:
+            return merge_tool
+    return None
+
+
+def find_first_available_merge_tool(conf=config.GlobalConfig()):
+    merge_tools = get_merge_tools(conf)
+    for merge_tool in merge_tools:
+        if merge_tool.is_available():
             return merge_tool
     return None
 

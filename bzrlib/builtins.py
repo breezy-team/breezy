@@ -6034,5 +6034,6 @@ def _register_lazy_builtins():
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ('cmd_mergetool', [], 'bzrlib.mergetools'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)
