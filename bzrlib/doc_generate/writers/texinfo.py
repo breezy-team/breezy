@@ -80,7 +80,11 @@ class TexinfoTranslator(nodes.NodeVisitor):
         set_item_list_collector(node, 'text')
 
     def depart_document(self, node):
-        self.body = ''.join(node['text'])
+        # FIXME: info requires a Top node for each info file, but unless we
+        # chose a global layout to divide the overall documentation into a set
+        # of info files, there is no criteria to decide for a title.
+        top_cmd = '@node Top\n@top Placeholder\n'
+        self.body = top_cmd + ''.join(node['text'])
 
     # Layout
 
