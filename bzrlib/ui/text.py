@@ -311,7 +311,10 @@ class TextProgressView(object):
     def _show_line(self, s):
         width = self._avail_width()
         if width is not None:
-            s = '%-*.*s' % (width, width, s)
+            if len(s) < width:
+                s = s.ljust(width)
+            elif len(s) > width:
+                s = s[:width]
         self._term_file.write('\r' + s + '\r')
 
     def clear(self):
