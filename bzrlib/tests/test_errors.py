@@ -655,6 +655,11 @@ class TestErrors(TestCaseWithTransport):
         str(err)
         self.assertEqual(['open_repository'], fake_bzrdir.calls)
 
+    def test_invalid_pattern(self):
+        error = errors.InvalidPattern('Bad pattern msg.')
+        self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
+            str(error))
+
 
 class PassThroughError(errors.BzrError):
 

@@ -3157,8 +3157,8 @@ class NoWhoami(BzrError):
 
 class InvalidPattern(BzrError):
 
-    _fmt = ('Invalid pattern(s) found. %(message)s')
+    _fmt = ('Invalid pattern(s) found. %(msg)s')
 
-    def __init__(self, message):
-        self.message = message
+    def __init__(self, msg):
+        self.msg = msg
 
