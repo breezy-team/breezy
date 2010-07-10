@@ -3,7 +3,6 @@
 # 
 #
 
-* rename new_files
 * test that backup.~2~ increments  (add test for gen_backup_name)
 * factor out some common test code
 * update documentation

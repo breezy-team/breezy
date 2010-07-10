@@ -1969,7 +1969,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         inv_delta = []
 
-        new_files=set()
+        all_files = set() # specified and nested files 
         unknown_nested_files=set()
         if to_file is None:
             to_file = sys.stdout
@@ -1984,7 +1984,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                     # Is it versioned or ignored?
                     if self.path2id(relpath):
                         # Add nested content for deletion.
-                        new_files.add(relpath)
+                        all_files.add(relpath)
                     else:
                         # Files which are not versioned
                         # should be treated as unknown.
@@ -1995,10 +1995,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             abspath = self.abspath(filename)
             filename = self.relpath(abspath)
             if len(filename) > 0:
-                new_files.add(filename)
+                all_files.add(filename)
                 recurse_directory_to_add_files(filename)
 
-        files = list(new_files)
+        files = list(all_files)
 
         if len(files) == 0:
             return # nothing to do
