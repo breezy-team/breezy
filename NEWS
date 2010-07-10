@@ -145,6 +145,9 @@ Improvements
   formats is needed or when the format string for the object is
   encountered. (Robert Collins, Jelmer Vernooij)
 
+* ``bzr remove`` now just backs up changed files, in stead of exiting
+  forcing you to choose to either keep or delete them. (Marius Kruger, #400554)
+
 * The encoding that bzr uses to output things other than file content can
   now be overridden via the output_encoding configuration option.
   (Martin Pool, #340394)

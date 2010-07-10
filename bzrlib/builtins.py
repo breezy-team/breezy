@@ -1505,10 +1505,11 @@ class cmd_info(Command):
 class cmd_remove(Command):
     __doc__ = """Remove files or directories.
 
-    This makes bzr stop tracking changes to the specified files. bzr will delete
-    them if they can easily be recovered using revert. If no options or
-    parameters are given bzr will scan for files that are being tracked by bzr
-    but missing in your tree and stop tracking them for you.
+    This makes Bazaar stop tracking changes to the specified files. Bazaar will
+    delete them if they can easily be recovered using revert otherwise they
+    will be backed up (adding an extention of the form .~#~). If no options or
+    parameters are given Bazaar will scan for files that are being tracked by
+    Bazaar but missing in your tree and stop tracking them for you.
     """
     takes_args = ['file*']
     takes_options = ['verbose',
@@ -1516,8 +1517,7 @@ class cmd_remove(Command):
         RegistryOption.from_kwargs('file-deletion-strategy',
             'The file deletion mode to be used.',
             title='Deletion Strategy', value_switches=True, enum_switch=False,
-            safe='Only delete files if they can be'
-                 ' safely recovered (default).',
+            safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
             force='Delete all the specified files, even if they can not be '
                 'recovered and even if they are non-empty directories.')]
