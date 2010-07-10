@@ -24,6 +24,7 @@ class TestRemove(TestCaseWithWorkingTree):
 
     files = ['a', 'b/', 'b/c', 'd/']
     rfiles = ['b/c', 'b', 'a', 'd']
+    backup_files = ['a.~1~', 'b.~1~/', 'b.~1~/c.~1~', 'd.~1~/']
 
     def get_tree(self, files):
         tree = self.make_branch_and_tree('.')
@@ -78,7 +79,7 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertInWorkingTree(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertNotInWorkingTree(TestRemove.files)
-        self.failUnlessExists(['a.~1~', 'b.~1~/', 'b.~1~/c.~1~', 'd.~1~/'])
+        self.failUnlessExists(TestRemove.backup_files)
         tree._validate()
 
     def test_remove_changed_file(self):
@@ -150,7 +151,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree = self.get_tree(TestRemove.files)
         tree.remove(TestRemove.files, keep_files=False)
         self.assertRemovedAndDeleted(TestRemove.files)
-        self.failUnlessExists(['a.~1~', 'b.~1~/', 'b.~1~/c.~1~', 'd.~1~/'])
+        self.failUnlessExists(TestRemove.backup_files)
         tree._validate()
 
     def test_remove_nonexisting_files(self):

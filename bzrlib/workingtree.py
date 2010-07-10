@@ -2021,6 +2021,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                     # in one of the dirs to be deleted.
                     files_to_backup.append(path[1])
 
+        def backup(file_to_backup):
+            backup_name = self.bzrdir.generate_backup_name(file_to_backup)
+            osutils.rename(abs_path, self.abspath(backup_name))
+            return "removed %s (but kept a copy: %s)" % (file_to_backup, backup_name)
+
         # Build inv_delta and delete files where applicable,
         # do this before any modifications to inventory.
         for f in files:
@@ -2051,16 +2056,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                             osutils.rmtree(abs_path)
                             message = "deleted %s" % (f,)
                         else:
-                            backup_name = self.bzrdir.generate_backup_name(f)
-                            osutils.rename(abs_path, self.abspath(backup_name))
-                            message = "removed %s (but kept a copy: %s)" % (
-                                f, backup_name)
+                            message = backup(f)
                     else:
                         if f in files_to_backup:
-                            backup_name = self.bzrdir.generate_backup_name(f)
-                            osutils.rename(abs_path, self.abspath(backup_name))
-                            message = "removed %s (but kept a copy: %s)" % (
-                                f, backup_name)
+                            message = backup(f)
                         else:
                             osutils.delete_any(abs_path)
                             message = "deleted %s" % (f,)
