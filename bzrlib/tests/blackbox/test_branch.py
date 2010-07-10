@@ -27,7 +27,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
     KnownFailure,
     HardlinkFeature,
@@ -38,7 +38,7 @@ from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
 
 
-class TestBranch(ExternalBase):
+class TestBranch(TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
@@ -217,8 +217,38 @@ class TestBranch(ExternalBase):
         b = branch.Branch.open('b')
         self.assertEndsWith(b.get_bound_location(), '/a/')
 
+    def test_branch_with_post_branch_init_hook(self):
+        calls = []
+        branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        self.example_branch('a')
+        self.assertLength(1, calls)
+        self.run_bzr('branch a b')
+        self.assertLength(2, calls)
 
-class TestBranchStacked(ExternalBase):
+    def test_checkout_with_post_branch_init_hook(self):
+        calls = []
+        branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        self.example_branch('a')
+        self.assertLength(1, calls)
+        self.run_bzr('checkout a b')
+        self.assertLength(2, calls)
+
+    def test_lightweight_checkout_with_post_branch_init_hook(self):
+        calls = []
+        branch.Branch.hooks.install_named_hook('post_branch_init',
+            calls.append, None)
+        self.assertLength(0, calls)
+        self.example_branch('a')
+        self.assertLength(1, calls)
+        self.run_bzr('checkout --lightweight a b')
+        self.assertLength(2, calls)
+
+
+class TestBranchStacked(TestCaseWithTransport):
     """Tests for branch --stacked"""
 
     def assertRevisionInRepository(self, repo_path, revid):
@@ -346,7 +376,7 @@ class TestBranchStacked(ExternalBase):
             err)
 
 
-class TestSmartServerBranching(ExternalBase):
+class TestSmartServerBranching(TestCaseWithTransport):
 
     def test_branch_from_trivial_branch_to_same_server_branch_acceptance(self):
         self.setup_smart_server_with_call_log()

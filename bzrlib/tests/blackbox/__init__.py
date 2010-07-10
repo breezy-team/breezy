@@ -23,7 +23,11 @@ rather starts again from the run_bzr function.
 """
 
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
+from bzrlib import tests
 
 
 def load_tests(basic_tests, module, loader):
@@ -52,6 +56,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_commit',
                      'bzrlib.tests.blackbox.test_conflicts',
                      'bzrlib.tests.blackbox.test_debug',
+                     'bzrlib.tests.blackbox.test_deleted',
                      'bzrlib.tests.blackbox.test_diff',
                      'bzrlib.tests.blackbox.test_dump_btree',
                      'bzrlib.tests.blackbox.test_dpush',
@@ -71,6 +76,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_locale',
                      'bzrlib.tests.blackbox.test_log',
                      'bzrlib.tests.blackbox.test_logformats',
+                     'bzrlib.tests.blackbox.test_lookup_revision',
                      'bzrlib.tests.blackbox.test_ls',
                      'bzrlib.tests.blackbox.test_lsprof',
                      'bzrlib.tests.blackbox.test_merge',
@@ -123,8 +129,10 @@ def load_tests(basic_tests, module, loader):
     return suite
 
 
-class ExternalBase(TestCaseWithTransport):
+class ExternalBase(tests.TestCaseWithTransport):
+    """Don't use this class anymore, use TestCaseWithTransport or similar"""
 
+    @deprecated_method(deprecated_in((2, 2, 0)))
     def check_output(self, output, *args):
         """Verify that the expected output matches what bzr says.
 

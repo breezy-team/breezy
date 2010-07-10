@@ -62,7 +62,6 @@ from bzrlib.symbol_versioning import (
     )
 from bzrlib.tests import (
     features,
-    stub_sftp,
     test_lsprof,
     test_server,
     test_sftp_transport,
@@ -610,19 +609,19 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
                 l.attempt_lock()
         test = TestDanglingLock('test_function')
         result = test.run()
+        total_failures = result.errors + result.failures
         if self._lock_check_thorough:
-            self.assertEqual(1, len(result.errors))
+            self.assertLength(1, total_failures)
         else:
             # When _lock_check_thorough is disabled, then we don't trigger a
             # failure
-            self.assertEqual(0, len(result.errors))
+            self.assertLength(0, total_failures)
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
     def test_get_readonly_url_none(self):
-        from bzrlib.transport import get_transport
         from bzrlib.transport.readonly import ReadonlyTransportDecorator
         self.vfs_transport_factory = memory.MemoryServer
         self.transport_readonly_server = None
@@ -630,15 +629,14 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         # for the server
         url = self.get_readonly_url()
         url2 = self.get_readonly_url('foo/bar')
-        t = get_transport(url)
-        t2 = get_transport(url2)
+        t = transport.get_transport(url)
+        t2 = transport.get_transport(url2)
         self.failUnless(isinstance(t, ReadonlyTransportDecorator))
         self.failUnless(isinstance(t2, ReadonlyTransportDecorator))
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
         from bzrlib.tests.http_server import HttpServer
-        from bzrlib.transport import get_transport
         from bzrlib.transport.http import HttpTransportBase
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
@@ -646,8 +644,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         url = self.get_readonly_url()
         url2 = self.get_readonly_url('foo/bar')
         # the transport returned may be any HttpTransportBase subclass
-        t = get_transport(url)
-        t2 = get_transport(url2)
+        t = transport.get_transport(url)
+        t2 = transport.get_transport(url2)
         self.failUnless(isinstance(t, HttpTransportBase))
         self.failUnless(isinstance(t2, HttpTransportBase))
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
@@ -691,8 +689,7 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
 class TestChrootedTest(tests.ChrootedTestCase):
 
     def test_root_is_root(self):
-        from bzrlib.transport import get_transport
-        t = get_transport(self.get_readonly_url())
+        t = transport.get_transport(self.get_readonly_url())
         url = t.base
         self.assertEqual(url, t.clone('..').base)
 
@@ -1947,6 +1944,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_transport_sftp(self):
         self.requireFeature(features.paramiko)
+        from bzrlib.tests import stub_sftp
         self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
@@ -2773,6 +2771,10 @@ class TestTestSuite(tests.TestCase):
         # Test that a plausible list of modules to doctest is returned
         # by _test_suite_modules_to_doctest.
         test_list = tests._test_suite_modules_to_doctest()
+        if __doc__ is None:
+            # When docstrings are stripped, there are no modules to doctest
+            self.assertEqual([], test_list)
+            return
         self.assertSubset([
             'bzrlib.timestamp',
             ],
@@ -2795,6 +2797,8 @@ class TestTestSuite(tests.TestCase):
         self.overrideAttr(tests, '_test_suite_testmod_names', testmod_names)
         def doctests():
             calls.append("modules_to_doctest")
+            if __doc__ is None:
+                return []
             return ['bzrlib.timestamp']
         self.overrideAttr(tests, '_test_suite_modules_to_doctest', doctests)
         expected_test_list = [
@@ -2803,11 +2807,14 @@ class TestTestSuite(tests.TestCase):
             ('bzrlib.tests.per_transport.TransportTests'
              '.test_abspath(LocalTransport,LocalURLServer)'),
             'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
-            # modules_to_doctest
-            'bzrlib.timestamp.format_highres_date',
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
+        if __doc__ is not None:
+            expected_test_list.extend([
+                # modules_to_doctest
+                'bzrlib.timestamp.format_highres_date',
+                ])
         suite = tests.test_suite()
         self.assertEqual(set(["testmod_names", "modules_to_doctest"]),
             set(calls))

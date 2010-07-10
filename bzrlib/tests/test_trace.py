@@ -29,7 +29,7 @@ from bzrlib import (
     errors,
     trace,
     )
-from bzrlib.tests import TestCaseInTempDir, TestCase
+from bzrlib.tests import features, TestCaseInTempDir, TestCase
 from bzrlib.trace import (
     mutter, mutter_callsite, report_exception,
     set_verbosity_level, get_verbosity_level, is_quiet, is_verbose, be_quiet,
@@ -103,6 +103,19 @@ class TestTrace(TestCase):
         # 'No such file' for open()
         self.assertContainsRe(msg,
             r'^bzr: ERROR: \[Errno .*\] No such file.*nosuchfile')
+
+    def test_format_pywintypes_error(self):
+        self.requireFeature(features.pywintypes)
+        import pywintypes, win32file
+        try:
+            win32file.RemoveDirectory('nosuchfile22222')
+        except pywintypes.error:
+            pass
+        msg = _format_exception()
+        # GZ 2010-05-03: Formatting for pywintypes.error is basic, a 3-tuple
+        #                with errno, function name, and locale error message
+        self.assertContainsRe(msg,
+            r"^bzr: ERROR: \(2, 'RemoveDirectory[AW]?', .*\)")
 
     def test_format_unicode_error(self):
         try:
@@ -320,3 +333,21 @@ class TestBzrLog(TestCaseInTempDir):
         _rollover_trace_maybe(temp_log_name)
         # should have been rolled over
         self.assertFalse(os.access(temp_log_name, os.R_OK))
+
+
+class TestTraceConfiguration(TestCaseInTempDir):
+
+    def test_default_config(self):
+        config = trace.DefaultConfig()
+        self.overrideAttr(trace, "_bzr_log_filename", None)
+        trace._bzr_log_filename = None
+        expected_filename = trace._get_bzr_log_filename()
+        self.assertEqual(None, trace._bzr_log_filename)
+        config.__enter__()
+        try:
+            # Should have entered and setup a default filename.
+            self.assertEqual(expected_filename, trace._bzr_log_filename)
+        finally:
+            config.__exit__(None, None, None)
+            # Should have exited and cleaned up.
+            self.assertEqual(None, trace._bzr_log_filename)

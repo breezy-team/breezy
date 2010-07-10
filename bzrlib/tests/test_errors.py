@@ -655,6 +655,11 @@ class TestErrors(TestCaseWithTransport):
         str(err)
         self.assertEqual(['open_repository'], fake_bzrdir.calls)
 
+    def test_invalid_pattern(self):
+        error = errors.InvalidPattern('Bad pattern msg.')
+        self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
+            str(error))
+
 
 class PassThroughError(errors.BzrError):
 
@@ -670,7 +675,7 @@ class ErrorWithBadFormat(errors.BzrError):
 
 
 class ErrorWithNoFormat(errors.BzrError):
-    """This class has a docstring but no format string."""
+    __doc__ = """This class has a docstring but no format string."""
 
 
 class TestErrorFormatting(TestCase):
@@ -703,7 +708,7 @@ class TestErrorFormatting(TestCase):
             str(e), 'Unprintable exception ErrorWithBadFormat')
 
     def test_cannot_bind_address(self):
-        # see <https://bugs.edge.launchpad.net/bzr/+bug/286871>
+        # see <https://bugs.launchpad.net/bzr/+bug/286871>
         e = errors.CannotBindAddress('example.com', 22,
             socket.error(13, 'Permission denied'))
         self.assertContainsRe(str(e),
@@ -712,4 +717,10 @@ class TestErrorFormatting(TestCase):
     def test_file_timestamp_unavailable(self):            
         e = errors.FileTimestampUnavailable("/path/foo")
         self.assertEquals("The filestamp for /path/foo is not available.",
+            str(e))
+            
+    def test_transform_rename_failed(self):
+        e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
+        self.assertEquals(
+            u"Failed to rename from to to: readonly file",
             str(e))

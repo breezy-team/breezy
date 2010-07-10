@@ -29,12 +29,6 @@ To get a WorkingTree, call bzrdir.open_workingtree() or
 WorkingTree.open(dir).
 """
 
-# TODO: Give the workingtree sole responsibility for the working inventory;
-# remove the variable and references to it from the branch.  This may require
-# updating the commit code so as to update the inventory within the working
-# copy, and making sure there's only one WorkingTree for any directory on disk.
-# At the moment they may alias the inventory and have old copies of it in
-# memory.  (Now done? -- mbp 20060309)
 
 from cStringIO import StringIO
 import os
@@ -67,13 +61,12 @@ from bzrlib import (
     revisiontree,
     trace,
     transform,
+    transport,
     ui,
     views,
     xml5,
     xml7,
     )
-import bzrlib.branch
-from bzrlib.transport import get_transport
 from bzrlib.workingtree_4 import (
     WorkingTreeFormat4,
     WorkingTreeFormat5,
@@ -83,6 +76,7 @@ from bzrlib.workingtree_4 import (
 
 from bzrlib import symbol_versioning
 from bzrlib.decorators import needs_read_lock, needs_write_lock
+from bzrlib.lock import LogicalLockResult
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.lockdir import LockDir
 import bzrlib.mutabletree
@@ -101,7 +95,6 @@ from bzrlib.osutils import (
 from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
-from bzrlib.progress import ProgressPhase
 from bzrlib.revision import CURRENT_REVISION
 from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (
@@ -174,7 +167,8 @@ class TreeLink(TreeEntry):
         return ''
 
 
-class WorkingTree(bzrlib.mutabletree.MutableTree):
+class WorkingTree(bzrlib.mutabletree.MutableTree,
+    bzrdir.ControlComponent):
     """Working copy tree.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -182,6 +176,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
     It is possible for a `WorkingTree` to have a filename which is
     not listed in the Inventory and vice versa.
+
+    :ivar basedir: The root of the tree on disk. This is a unicode path object
+        (as opposed to a URL).
     """
 
     # override this to set the strategy for storing views
@@ -252,6 +249,14 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         self._detect_case_handling()
         self._rules_searcher = None
         self.views = self._make_views()
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
@@ -366,10 +371,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                 return True, None
             else:
                 return True, tree
-        transport = get_transport(location)
-        iterator = bzrdir.BzrDir.find_bzrdirs(transport, evaluate=evaluate,
+        t = transport.get_transport(location)
+        iterator = bzrdir.BzrDir.find_bzrdirs(t, evaluate=evaluate,
                                               list_current=list_current)
-        return [t for t in iterator if t is not None]
+        return [tr for tr in iterator if tr is not None]
 
     # should be deprecated - this is slow and in any case treating them as a
     # container is (we now know) bad style -- mbp 20070302
@@ -460,7 +465,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         return (file_obj, stat_value)
 
     def get_file_text(self, file_id, path=None, filtered=True):
-        return self.get_file(file_id, path=path, filtered=filtered).read()
+        my_file = self.get_file(file_id, path=path, filtered=filtered)
+        try:
+            return my_file.read()
+        finally:
+            my_file.close()
 
     def get_file_byname(self, filename, filtered=True):
         path = self.abspath(filename)
@@ -520,7 +529,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
 
         # Now we have the parents of this content
         annotator = self.branch.repository.texts.get_annotator()
-        text = self.get_file(file_id).read()
+        text = self.get_file_text(file_id)
         this_key =(file_id, default_revision)
         annotator.add_special_text(this_key, file_parent_keys, text)
         annotations = [(key[-1], line)
@@ -1796,34 +1805,48 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
             raise errors.ObjectNotLocked(self)
 
     def lock_read(self):
-        """See Branch.lock_read, and WorkingTree.unlock."""
+        """Lock the tree for reading.
+
+        This also locks the branch, and can be unlocked via self.unlock().
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
-            return self._control_files.lock_read()
+            self._control_files.lock_read()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
 
     def lock_tree_write(self):
-        """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_read()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
 
     def lock_write(self):
-        """See MutableTree.lock_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self.is_locked():
             self._reset_data()
         self.branch.lock_write()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return LogicalLockResult(self.unlock)
         except:
             self.branch.unlock()
             raise
@@ -1954,8 +1977,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
             # so we can check if they have changed.
-            for parent_info, file_infos in\
-                self.walkdirs(directory):
+            for parent_info, file_infos in self.walkdirs(directory):
                 for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
                     if self.path2id(relpath) or self.is_ignored(relpath):
@@ -1996,8 +2018,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree):
                             # ... but not ignored
                             has_changed_files = True
                             break
-                    elif content_change and (kind[1] is not None):
-                        # Versioned and changed, but not deleted
+                    elif (content_change and (kind[1] is not None) and
+                            osutils.is_inside_any(files, path[1])):
+                        # Versioned and changed, but not deleted, and still
+                        # in one of the dirs to be deleted.
                         has_changed_files = True
                         break
 
@@ -2634,10 +2658,14 @@ class WorkingTree2(WorkingTree):
 
         In Format2 WorkingTrees we have a single lock for the branch and tree
         so lock_tree_write() degrades to lock_write().
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
         """
         self.branch.lock_write()
         try:
-            return self._control_files.lock_write()
+            self._control_files.lock_write()
+            return self
         except:
             self.branch.unlock()
             raise

@@ -259,7 +259,7 @@ def update_workingtree_fileids(wt, target_tree):
 
 
 class cmd_dpush(Command):
-    """Push into a different VCS without any custom bzr metadata.
+    __doc__ = """Push into a different VCS without any custom bzr metadata.
 
     This will afterwards rebase the local branch on the remote
     branch unless the --no-rebase option is used, in which case 
@@ -297,8 +297,10 @@ class cmd_dpush(Command):
             source_branch = Branch.open(directory)
             source_wt = None
         if source_wt is not None:
-            source_wt.warn_if_changed_or_out_of_date(
-                strict, 'dpush_strict', 'Use --no-strict to force the push.')
+            source_wt.check_changed_or_out_of_date(
+                strict, 'dpush_strict',
+                more_error='Use --no-strict to force the push.',
+                more_warning='Uncommitted changes will not be pushed.')
         stored_loc = source_branch.get_push_location()
         if location is None:
             if stored_loc is None:

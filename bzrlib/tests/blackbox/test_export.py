@@ -30,10 +30,10 @@ from bzrlib import (
     export,
     tests,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestExport(ExternalBase):
+class TestExport(TestCaseWithTransport):
 
     def test_tar_export(self):
         tree = self.make_branch_and_tree('tar')
@@ -307,8 +307,15 @@ class TestExport(ExternalBase):
         tree = self.example_branch()
         self.build_tree_contents([('branch/har', 'foo')])
         tree.add('har')
-        tree.commit('setup', timestamp=42)
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('setup', timestamp=315532800)
         self.run_bzr('export --per-file-timestamps t branch')
         har_st = os.stat('t/har')
-        self.assertEquals(42, har_st.st_mtime)
+        self.assertEquals(315532800, har_st.st_mtime)
 
+    def test_export_directory(self):
+        """Test --directory option"""
+        self.example_branch()
+        self.run_bzr(['export', '--directory=branch', 'latest'])
+        self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
+        self.check_file_contents('latest/goodbye', 'baz')

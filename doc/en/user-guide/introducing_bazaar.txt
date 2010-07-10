@@ -79,7 +79,7 @@ Other advantages include:
  * trunk quality and stability can be kept higher, making everyone's
    job less stressful
 
- * in open source communities:
+ * in open communities:
 
    * easier for non-core developers to create and maintain changes
 

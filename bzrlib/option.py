@@ -276,7 +276,7 @@ class ListOption(Option):
         parser.add_option(action='callback',
                           callback=self._optparse_callback,
                           type='string', metavar=self.argname.upper(),
-                          help=self.help, default=[],
+                          help=self.help, dest=self._param_name, default=[],
                           *option_strings)
 
     def _optparse_callback(self, option, opt, value, parser):
@@ -530,6 +530,9 @@ _global_option('message', type=unicode,
                short_name='m',
                help='Message string.')
 _global_option('no-recurse')
+_global_option('null', short_name='0',
+                 help='Use an ASCII NUL (\\0) separator rather than '
+                      'a newline.')
 _global_option('profile',
                help='Show performance profiling information.')
 _global_option('revision',
@@ -570,6 +573,8 @@ _global_option('kind', type=str)
 _global_option('dry-run',
                help="Show what would be done, but don't actually do anything.")
 _global_option('name-from-revision', help='The path name in the old tree.')
+_global_option('directory', short_name='d', type=unicode,
+               help='Branch to operate on, instead of working directory')
 
 diff_writer_registry = _mod_registry.Registry()
 diff_writer_registry.register('plain', lambda x: x, 'Plaintext diff output.')
