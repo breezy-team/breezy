@@ -1401,3 +1401,20 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertIsInstance(params, RepoInitHookParams)
         self.assertTrue(hasattr(params, 'bzrdir'))
         self.assertTrue(hasattr(params, 'repository'))
+
+
+class TestGenerateBackupName(TestCaseWithMemoryTransport):
+
+    def setUp(self):
+        super(TestGenerateBackupName, self).setUp()
+        self._transport = get_transport(self.get_url())
+        bzrdir.BzrDir.create(self.get_url(),
+            possible_transports=[self._transport])
+        self._bzrdir = bzrdir.BzrDir.open_from_transport(self._transport)
+
+    def test_new(self):
+        self.assertEqual("a.~1~", self._bzrdir.generate_backup_name("a"))
+
+    def test_exiting(self):
+        self._transport.put_bytes("a.~1~", "some content")
+        self.assertEqual("a.~2~", self._bzrdir.generate_backup_name("a"))

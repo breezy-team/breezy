@@ -615,7 +615,7 @@ class BzrDir(ControlComponent):
         """
         raise NotImplementedError(self.create_workingtree)
 
-    def gen_backup_name(self, base):
+    def generate_backup_name(self, base):
         """Generate a non-existing backup file name based on base."""
         counter = 1
         name = "%s.~%d~" % (base, counter)
@@ -630,7 +630,7 @@ class BzrDir(ControlComponent):
         :return: Tuple with old path name and new path name
         """
 
-        backup_dir=self.name_gen('backup.bzr')
+        backup_dir=self.generate_backup_name('backup.bzr')
         pb = ui.ui_factory.nested_progress_bar()
         try:
             # FIXME: bug 300001 -- the backup fails if the backup directory

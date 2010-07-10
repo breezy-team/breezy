@@ -3,7 +3,6 @@
 # 
 #
 
-* test that backup.~2~ increments  (add test for gen_backup_name)
-* factor out some common test code
+* factor out some common code and test code
 * update documentation
 * add news

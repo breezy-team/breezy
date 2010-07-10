@@ -2051,13 +2051,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                             osutils.rmtree(abs_path)
                             message = "deleted %s" % (f,)
                         else:
-                            backup_name = self.bzrdir.gen_backup_name(f)
+                            backup_name = self.bzrdir.generate_backup_name(f)
                             osutils.rename(abs_path, self.abspath(backup_name))
                             message = "removed %s (but kept a copy: %s)" % (
                                 f, backup_name)
                     else:
                         if f in files_to_backup:
-                            backup_name = self.bzrdir.gen_backup_name(f)
+                            backup_name = self.bzrdir.generate_backup_name(f)
                             osutils.rename(abs_path, self.abspath(backup_name))
                             message = "removed %s (but kept a copy: %s)" % (
                                 f, backup_name)
