@@ -29,13 +29,14 @@ class cmd_check_chk(commands.Command):
     """
 
     takes_args = []
-    takes_options = ['directory']
+    takes_options = ['directory', 'revision']
 
-    def run(self, directory='.'):
+    def run(self, directory='.', revision=None):
         from bzrlib import (
             bzrdir,
             chk_map,
             groupcompress,
+            trace,
             transport,
             ui,
             )
@@ -47,20 +48,37 @@ class cmd_check_chk(commands.Command):
         vf = factory(t)
         self.add_cleanup(branch.lock_read().unlock)
         repo = branch.repository
-        inv_keys = repo.inventories.keys()
+        if revision is None or len(revision) == 0:
+            inv_keys = repo.inventories.keys()
+            inv_ids = [k[-1] for k in inv_keys]
+        elif len(revision) == 1:
+            inv_ids = [revision[0].as_revision_id(branch)]
+        elif len(revision) == 2:
+            g = repo.get_graph()
+            r1 = revision[0].as_revision_id(branch)
+            r2 = revision[1].as_revision_id(branch)
+            inv_ids = g.find_unique_ancestors(r2, [r1])
         pb = ui.ui_factory.nested_progress_bar()
         self.add_cleanup(pb.finished)
-        inv_ids = [k[-1] for k in inv_keys]
         for idx, inv in enumerate(repo.iter_inventories(inv_ids)):
             pb.update('checking', idx, len(inv_ids))
-            id_to_entry = inv.id_to_entry
             d = dict(inv.id_to_entry.iteritems())
             test_key = chk_map.CHKMap.from_dict(vf, d,
                 maximum_size=inv.id_to_entry._root_node._maximum_size,
-                key_width=1,
+                key_width=inv.id_to_entry._root_node._key_width,
                 search_key_func=inv.id_to_entry._search_key_func)
             if inv.id_to_entry.key() != test_key:
-                trace.warning('Failed for inv: %s' % (inv.revision_id,))
+                trace.warning('Failed for id_to_entry inv: %s'
+                              % (inv.revision_id,))
+            pid = inv.parent_id_basename_to_file_id
+            d = dict(pid.iteritems())
+            test_key = chk_map.CHKMap.from_dict(vf, d,
+                maximum_size=pid._root_node._maximum_size,
+                key_width=pid._root_node._key_width,
+                search_key_func=pid._search_key_func)
+            if pid.key() != test_key:
+                trace.warning('Failed for parent_id_to_basename inv: %s'
+                              % (inv.revision_id,))
 
 commands.register_command(cmd_check_chk)
 
