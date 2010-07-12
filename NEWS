@@ -5,11 +5,56 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.2rc1
+##########
+
+:Codename: ???
+:2.2rc1: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 bzr 2.2b4
 #########
 
 :Codename: Monkey Magic
-:2.2b4: NOT RELEASED YET
+:2.2b4: 2004-07-09
+
+
+This fourth and final beta in the 2.2 series now stabilizes the internal
+APIs. Plugin authors are recommended to ensure their releases are
+compatible, so that 2.2rc1 can be a true release candidate, containing
+stable and compatible plugin versions. 
+
+For users of bzrlib as a library, one of the primary changes is to request
+that they call ``bzrlib.initialize`` and use the returned context manager
+appropriately.
+
+Better interaction with ``bzr-loom`` to make sure branching from a loom
+even over a smart server still yields a local loom. Not to mention lots of
+bugfixes over 2.2b3.
 
 Compatibility Breaks
 ********************
@@ -20,11 +65,6 @@ Compatibility Breaks
   behind on the screen. That required calling another function before
   exiting the program, and it made sense to provide a full context
   manager at the same time. (Robert Collins)
-
-* ``bzrlib.re_compile_checked`` is now deprecated. Caller should handle
-  ``bzrlib.errors.InvalidPattern`` exception thrown by ``re.match`` in
-  case the default error message not suitable for the use case.
-  (Parth Malwankar)
 
 * The ``bzr`` front end now requires a ``bzrlib.ui.ui_factory`` which is a
   context manager in the Python 2.5 and above sense. The bzrlib base class
@@ -183,6 +223,11 @@ API Changes
 * ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
   2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
   ``bzrlib.patiencediff`` instead. (Andrew Bennetts)
+
+* ``bzrlib.re_compile_checked`` is now deprecated. Caller should handle
+  ``bzrlib.errors.InvalidPattern`` exception thrown by ``re.match`` in
+  case the default error message not suitable for the use case.
+  (Parth Malwankar)
 
 * ``bzrlib.tests.blackbox.ExternalBase`` is deprecated.  It provided only
   one method ``check_output``, and we now recommend checking command
