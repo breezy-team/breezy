@@ -145,8 +145,11 @@ Improvements
   formats is needed or when the format string for the object is
   encountered. (Robert Collins, Jelmer Vernooij)
 
-* ``bzr remove`` now just backs up changed files, in stead of exiting
-  forcing you to choose to either keep or delete them. (Marius Kruger, #400554)
+* ``bzr remove`` now just backs up changed files instead of exiting,
+  forcing you to choose to either keep or delete them. Bazaar will now delete
+  the files if they can easily be recovered using revert, otherwise they
+  will be backed up (adding an extention of the form .~#~).
+  (Marius Kruger, #400554)
 
 * The encoding that bzr uses to output things other than file content can
   now be overridden via the output_encoding configuration option.
