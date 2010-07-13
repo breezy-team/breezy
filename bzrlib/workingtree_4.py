@@ -1236,7 +1236,8 @@ class DirStateWorkingTree(WorkingTree3):
         # have to change the legacy inventory too.
         if self._inventory is not None:
             for file_id in file_ids:
-                self._inventory.remove_recursive_id(file_id)
+                if self._inventory.has_id(file_id):
+                    self._inventory.remove_recursive_id(file_id)
 
     @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):

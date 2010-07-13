@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -761,3 +761,23 @@ class TestCorruptDirstate(TestCaseWithTransport):
             ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
             ('dir', [(('dir', 'file', 'file-id'), ['a', 'f'])]),
         ],  self.get_simple_dirblocks(state))
+
+
+class TestInventoryCoherency(TestCaseWithTransport):
+
+    def test_inventory_is_synced_when_unversioning_a_dir(self):
+        """Unversioning the root of a subtree unversions the entire subtree."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b', 'c/'])
+        tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
+        # within a lock unversion should take effect
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        # Force access to the in memory inventory to trigger bug #494221: try
+        # maintaining the in-memory inventory
+        inv = tree.inventory
+        self.assertTrue(inv.has_id('a-id'))
+        self.assertTrue(inv.has_id('b-id'))
+        tree.unversion(['a-id', 'b-id'])
+        self.assertFalse(inv.has_id('a-id'))
+        self.assertFalse(inv.has_id('b-id'))
