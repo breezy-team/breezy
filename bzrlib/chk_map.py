@@ -152,7 +152,7 @@ class CHKMap(object):
         for old, new, value in delta:
             if new is not None:
                 self.map(new, value)
-        if delete_count > _INTERESTING_DELETES_LIMIT:
+        if True or delete_count > _INTERESTING_DELETES_LIMIT:
             trace.mutter("checking remap as %d deletions", delete_count)
             self._check_remap()
         return self._save()
@@ -573,7 +573,7 @@ class CHKMap(object):
         """Check if nodes can be collapsed."""
         self._ensure_root()
         if type(self._root_node) is InternalNode:
-            self._root_node._check_remap(self._store)
+            self._root_node = self._root_node._check_remap(self._store)
 
     def _save(self):
         """Save the map completely.
