@@ -776,4 +776,8 @@ class TestInventoryCoherency(TestCaseWithTransport):
         # Force access to the in memory inventory to trigger bug #494221: try
         # maintaining the in-memory inventory
         inv = tree.inventory
+        self.assertTrue(inv.has_id('a-id'))
+        self.assertTrue(inv.has_id('b-id'))
         tree.unversion(['a-id', 'b-id'])
+        self.assertFalse(inv.has_id('a-id'))
+        self.assertFalse(inv.has_id('b-id'))
