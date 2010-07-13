@@ -102,7 +102,13 @@ Overview of packaging with builddeb
 * First update the oldest supported branch, using ``bzr merge-upstream``.
 
 * Run ``bzr builddeb -S -- -sa`` to build a source package, then put 
-  that into the ppa.
+  that into the ppa.  
+  
+  (``-S`` says to make a source-only upload, which is
+  required for Launchpad's builders.  ``--sa`` says to include the
+  ``.orig.tgz`` even if this doesn't seem to be the first upload for an
+  upstream release: this is often needed when rebuilding something that's
+  previously been uploaded to Debian or Ubuntu or into a different PPA.)
 
 * Now merge across that change into each supported branch with a 
   simple ``bzr merge``.
