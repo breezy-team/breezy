@@ -496,18 +496,15 @@ class TestMap(TestCaseWithStore):
         chkmap = CHKMap(store, None)
         # Should fit 2 keys per LeafNode
         chkmap._root_node.set_maximum_size(40)
-        from bzrlib.trace import mutter
         # Add 4 keys
         keys = [(byte,) for byte in 'abcd']
         for key in keys:
             chkmap.map(key, 'v')
-        for line in chkmap._dump_tree().splitlines(): mutter('%s', line)
         # (Check that we have constructed the scenario we want to test)
         self.assertIsInstance(chkmap._root_node, InternalNode)
         # Delete all but 2 keys via apply_delta
         delta = [(key, None, None) for key in keys[:-2]]
         chkmap.apply_delta(delta)
-        for line in chkmap._dump_tree().splitlines(): mutter('%s', line)
         self.assertCanonicalForm(chkmap)
         self.assertIsInstance(chkmap._root_node, LeafNode)
 

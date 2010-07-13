@@ -27,6 +27,11 @@ Bug Fixes
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
 
+* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
+  which can result in "missing referenced chk root keys" errors when
+  fetching from repositories with affected revisions.
+  (Andrew Bennetts, #522637)
+
 Improvements
 ************
 
