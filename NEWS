@@ -51,6 +51,13 @@ New Features
 Bug Fixes
 *********
 
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
+
 Improvements
 ************
 
@@ -1019,6 +1026,13 @@ New Features
 Bug Fixes
 *********
 
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
+
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
 
@@ -1531,6 +1545,9 @@ Bug Fixes
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
 
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
