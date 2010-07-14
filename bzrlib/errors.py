@@ -3149,11 +3149,13 @@ class NoColocatedBranchSupport(BzrError):
     def __init__(self, bzrdir):
         self.bzrdir = bzrdir
 
+
 class NoWhoami(BzrError):
 
     _fmt = ('Unable to determine your name.\n'
         "Please, set your name with the 'whoami' command.\n"
         'E.g. bzr whoami "Your Name <name@example.com>"')
+
 
 class InvalidPattern(BzrError):
 
@@ -3161,4 +3163,10 @@ class InvalidPattern(BzrError):
 
     def __init__(self, msg):
         self.msg = msg
+
+
+class RecursiveBind(BzrError):
+
+    _fmt = ('Recursive binding detected.\n'
+        'Use `bzr info` to verify and `bzr unbind|bind` to fix.')
 

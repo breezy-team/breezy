@@ -768,8 +768,8 @@ altered in u2
         self.run_bzr(['bind', '.']) # bind to self
         open('foo.txt', 'w').write('hello')
         self.run_bzr(['add'])
-        out, err = self.run_bzr(['commit', '-m', 'addedfoo'])
+        out, err = self.run_bzr(['commit', '-m', 'addedfoo'], 3)
         self.assertEqual(out, '')
-        #self.assertContainsRe(err, 'ERROR')
+        self.assertContainsRe(err, 'Recursive binding detected')
 
 
