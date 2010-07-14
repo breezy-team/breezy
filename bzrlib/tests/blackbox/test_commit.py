@@ -22,6 +22,7 @@ import re
 import sys
 
 from bzrlib import (
+    bzrdir,
     osutils,
     ignores,
     msgeditor,
@@ -757,3 +758,18 @@ altered in u2
         osutils.set_or_unset_env('BZR_EMAIL', None)
         out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
+
+    def test_commit_recursive_checkout(self):
+        """Ensure that a commit to a recursive checkout fails cleanly.
+        """
+        self.run_bzr(['init', 'test_branch'])
+        self.run_bzr(['checkout', 'test_branch', 'test_checkout'])
+        os.chdir('test_checkout')
+        self.run_bzr(['bind', '.']) # bind to self
+        open('foo.txt', 'w').write('hello')
+        self.run_bzr(['add'])
+        out, err = self.run_bzr(['commit', '-m', 'addedfoo'])
+        self.assertEqual(out, '')
+        #self.assertContainsRe(err, 'ERROR')
+
+
