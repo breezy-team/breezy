@@ -445,6 +445,7 @@ class TestMap(TestCaseWithStore):
         root_key = CHKMap.from_dict(chk_bytes, {})
         chkmap = CHKMap(chk_bytes, root_key)
         new_root = chkmap.apply_delta([(None, "a", "b")])
+        self.assertCanonicalForm(chkmap)
         # Check the data was saved and inserted correctly.
         expected_root_key = self.assertHasABMap(chk_bytes)
         self.assertEqual(expected_root_key, new_root)
@@ -465,6 +466,46 @@ class TestMap(TestCaseWithStore):
         # The update should have left us with an in memory root node, with an
         # updated key.
         self.assertEqual(new_root, chkmap._root_node._key)
+
+    def test_apply_delete_to_internal_node(self):
+        # applying a delta should be convert an internal root node to a leaf
+        # node if the delta shrinks the map enough.
+        store = self.get_chk_bytes()
+        keys = [(byte,) for byte in 'abcdefghij']
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(50)
+        # Add 10 keys
+        keys = [(byte,) for byte in 'abcdefghij']
+        for key in keys:
+            chkmap.map(key, 'v')
+        # (Check that we have constructed the scenario we want to test)
+        self.assertIsInstance(chkmap._root_node, InternalNode)
+        # Delete all but 2 keys via apply_delta
+        delta = [(key, None, None) for key in keys[:8]]
+        chkmap.apply_delta(delta)
+        self.assertCanonicalForm(chkmap)
+        self.assertIsInstance(chkmap._root_node, LeafNode)
+
+    def test_apply_delete_to_internal_node_again(self):
+        # applying a delta should be convert an internal root node to a leaf
+        # node if the delta shrinks the map enough.
+        store = self.get_chk_bytes()
+        keys = [(byte,) for byte in 'abcdefghij']
+        chkmap = CHKMap(store, None)
+        # Should fit 2 keys per LeafNode
+        chkmap._root_node.set_maximum_size(40)
+        # Add 4 keys
+        keys = [(byte,) for byte in 'abcd']
+        for key in keys:
+            chkmap.map(key, 'v')
+        # (Check that we have constructed the scenario we want to test)
+        self.assertIsInstance(chkmap._root_node, InternalNode)
+        # Delete all but 2 keys via apply_delta
+        delta = [(key, None, None) for key in keys[:-2]]
+        chkmap.apply_delta(delta)
+        self.assertCanonicalForm(chkmap)
+        self.assertIsInstance(chkmap._root_node, LeafNode)
 
     def test_apply_new_keys_must_be_new(self):
         # applying a delta (None, "a", "b") to a map with 'a' in it generates

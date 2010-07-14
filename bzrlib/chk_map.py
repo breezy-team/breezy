@@ -67,8 +67,6 @@ def clear_cache():
 _INTERESTING_NEW_SIZE = 50
 # If a ChildNode shrinks by more than this amount, we check for a remap
 _INTERESTING_SHRINKAGE_LIMIT = 20
-# If we delete more than this many nodes applying a delta, we check for a remap
-_INTERESTING_DELETES_LIMIT = 5
 
 
 def _search_key_plain(key):
@@ -110,7 +108,7 @@ class CHKMap(object):
             into the map; if old_key is not None, then the old mapping
             of old_key is removed.
         """
-        delete_count = 0
+        has_deletes = False
         # Check preconditions first.
         new_items = set([key for (old, key, value) in delta if key is not None
             and old is None])
@@ -122,12 +120,11 @@ class CHKMap(object):
         for old, new, value in delta:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
-                delete_count += 1
+                has_deletes = True
         for old, new, value in delta:
             if new is not None:
                 self.map(new, value)
-        if delete_count > _INTERESTING_DELETES_LIMIT:
-            trace.mutter("checking remap as %d deletions", delete_count)
+        if has_deletes:
             self._check_remap()
         return self._save()
 
@@ -535,7 +532,7 @@ class CHKMap(object):
         """Check if nodes can be collapsed."""
         self._ensure_root()
         if type(self._root_node) is InternalNode:
-            self._root_node._check_remap(self._store)
+            self._root_node = self._root_node._check_remap(self._store)
 
     def _save(self):
         """Save the map completely.
