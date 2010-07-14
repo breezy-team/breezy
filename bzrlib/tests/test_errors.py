@@ -16,6 +16,8 @@
 
 """Tests for the formatting and construction of errors."""
 
+import inspect
+import re
 import socket
 import sys
 
@@ -30,6 +32,30 @@ from bzrlib.tests import TestCase, TestCaseWithTransport
 
 
 class TestErrors(TestCaseWithTransport):
+
+    def test_no_arg_named_message(self):
+        """Ensure the __init__ and _fmt in errors do not have "message" arg.
+
+        This test fails if __init__ or _fmt in errors has an argument
+        named "message" as this can cause errors in some Python versions.
+        Python 2.5 uses a slot for StandardError.message.
+        See bug #603461
+        """
+        fmt_pattern = re.compile("%\(message\)[sir]")
+        for e, v in errors.__dict__.iteritems():
+            init = None
+            fmt = None
+            if inspect.isclass(v) and issubclass(v, errors.BzrError):
+                init = getattr(v, '__init__', None)
+                fmt = getattr(v, '_fmt', None)
+            if init:
+                args = inspect.getargspec(init)[0]
+                self.assertFalse('message' in args,
+                    ('Argument name "message" not allowed for '
+                    '"errors.%s"' % e))
+            if fmt and fmt_pattern.search(fmt):
+                self.assertFalse(True, ('"message" not allowed in '
+                    '"errors.%s._fmt"' % e))
 
     def test_bad_filename_encoding(self):
         error = errors.BadFilenameEncoding('bad/filen\xe5me', 'UTF-8')
