@@ -660,7 +660,7 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
             str(error))
 
-    def test_invalid_pattern(self):
+    def test_recursive_bind(self):
         error = errors.RecursiveBind('foo_bar_branch')
         msg = ('Branch "foo_bar_branch" appears to be bound to itself. '
             'Please use `bzr unbind` to fix.')
