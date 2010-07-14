@@ -445,7 +445,6 @@ class TestMap(TestCaseWithStore):
         root_key = CHKMap.from_dict(chk_bytes, {})
         chkmap = CHKMap(chk_bytes, root_key)
         new_root = chkmap.apply_delta([(None, "a", "b")])
-        self.assertCanonicalForm(chkmap)
         # Check the data was saved and inserted correctly.
         expected_root_key = self.assertHasABMap(chk_bytes)
         self.assertEqual(expected_root_key, new_root)
@@ -471,38 +470,17 @@ class TestMap(TestCaseWithStore):
         # applying a delta should be convert an internal root node to a leaf
         # node if the delta shrinks the map enough.
         store = self.get_chk_bytes()
-        keys = [(byte,) for byte in 'abcdefghij']
         chkmap = CHKMap(store, None)
-        # Should fit 2 keys per LeafNode
-        chkmap._root_node.set_maximum_size(50)
-        # Add 10 keys
-        keys = [(byte,) for byte in 'abcdefghij']
-        for key in keys:
-            chkmap.map(key, 'v')
+        # Add three items: 2 small enough to fit in one node, and one huge to
+        # force multiple nodes.
+        chkmap._root_node.set_maximum_size(100)
+        chkmap.map(('small',), 'value')
+        chkmap.map(('little',), 'value')
+        chkmap.map(('very-big',), 'x' * 100)
         # (Check that we have constructed the scenario we want to test)
         self.assertIsInstance(chkmap._root_node, InternalNode)
-        # Delete all but 2 keys via apply_delta
-        delta = [(key, None, None) for key in keys[:8]]
-        chkmap.apply_delta(delta)
-        self.assertCanonicalForm(chkmap)
-        self.assertIsInstance(chkmap._root_node, LeafNode)
-
-    def test_apply_delete_to_internal_node_again(self):
-        # applying a delta should be convert an internal root node to a leaf
-        # node if the delta shrinks the map enough.
-        store = self.get_chk_bytes()
-        keys = [(byte,) for byte in 'abcdefghij']
-        chkmap = CHKMap(store, None)
-        # Should fit 2 keys per LeafNode
-        chkmap._root_node.set_maximum_size(40)
-        # Add 4 keys
-        keys = [(byte,) for byte in 'abcd']
-        for key in keys:
-            chkmap.map(key, 'v')
-        # (Check that we have constructed the scenario we want to test)
-        self.assertIsInstance(chkmap._root_node, InternalNode)
-        # Delete all but 2 keys via apply_delta
-        delta = [(key, None, None) for key in keys[:-2]]
+        # Delete the huge item so that the map fits in one node again.
+        delta = [(('very-big',), None, None)]
         chkmap.apply_delta(delta)
         self.assertCanonicalForm(chkmap)
         self.assertIsInstance(chkmap._root_node, LeafNode)
