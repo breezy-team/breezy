@@ -14,6 +14,12 @@ bzr 2.2rc1
 Compatibility Breaks
 ********************
 
+* BzrError subclasses no longer support the name "message" to be used
+  as an argument for __init__ or in _fmt format specification as this
+  breaks in some Python versions. errors.LockError.__init__ argument
+  is now named "msg" instead of earlier "message".
+  (Parth Malwankar, #603461)
+
 New Features
 ************
 

@@ -28,7 +28,7 @@ from bzrlib import (
     symbol_versioning,
     urlutils,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
 
 class TestErrors(TestCaseWithTransport):
@@ -42,6 +42,10 @@ class TestErrors(TestCaseWithTransport):
         See bug #603461
         """
         fmt_pattern = re.compile("%\(message\)[sir]")
+        subclasses_present = getattr(errors.BzrError, '__subclasses__', None)
+        if not subclasses_present:
+            raise TestSkipped('__subclasses__ attribute required for classes. '
+                'Requires Python 2.5 or later.')
         for c in errors.BzrError.__subclasses__():
             init = getattr(c, '__init__', None)
             fmt = getattr(c, '_fmt', None)
