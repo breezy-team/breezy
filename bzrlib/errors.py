@@ -3167,6 +3167,9 @@ class InvalidPattern(BzrError):
 
 class RecursiveBind(BzrError):
 
-    _fmt = ('Recursive binding detected.\n'
-        'Use `bzr info` to verify and `bzr unbind|bind` to fix.')
+    _fmt = ('Branch "%(branch_url)s" appears to be bound to itself. '
+        'Please use `bzr unbind` to fix.')
+
+    def __init__(self, branch_url):
+        self.branch_url = branch_url
 

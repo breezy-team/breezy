@@ -770,6 +770,6 @@ altered in u2
         self.run_bzr(['add'])
         out, err = self.run_bzr(['commit', '-m', 'addedfoo'], 3)
         self.assertEqual(out, '')
-        self.assertContainsRe(err, 'Recursive binding detected')
-
+        self.assertContainsRe(err,
+            'Branch.*test_checkout.*appears to be bound to itself')
 
