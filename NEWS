@@ -42,6 +42,9 @@ Internals
 Testing
 *******
 
+* Unit test added to ensure that "message" is not uses as a format variable
+  name in BzrError subclasses as this conflicts with some Python versions.
+  (Parth Malwankar, #603461)
 
 bzr 2.2b4
 #########
