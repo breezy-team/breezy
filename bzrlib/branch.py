@@ -246,7 +246,7 @@ class Branch(bzrdir.ControlComponent):
         if not local and not config.has_explicit_nickname():
             try:
                 master = self.get_master_branch(possible_transports)
-                if master and self.repository.base == master.repository.base:
+                if master and self.user_url == master.user_url:
                     raise errors.RecursiveBind()
                 if master is not None:
                     # return the master branch value
