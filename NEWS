@@ -27,6 +27,9 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
+* Recursive binding for checkouts is now detected by bzr. A clear error
+  message is shown to the user. (Parth Malwankar, #405192)
+
 Improvements
 ************
 
