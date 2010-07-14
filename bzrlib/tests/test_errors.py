@@ -42,20 +42,17 @@ class TestErrors(TestCaseWithTransport):
         See bug #603461
         """
         fmt_pattern = re.compile("%\(message\)[sir]")
-        for e, v in errors.__dict__.iteritems():
-            init = None
-            fmt = None
-            if inspect.isclass(v) and issubclass(v, errors.BzrError):
-                init = getattr(v, '__init__', None)
-                fmt = getattr(v, '_fmt', None)
+        for c in errors.BzrError.__subclasses__():
+            init = getattr(c, '__init__', None)
+            fmt = getattr(c, '_fmt', None)
             if init:
                 args = inspect.getargspec(init)[0]
                 self.assertFalse('message' in args,
                     ('Argument name "message" not allowed for '
-                    '"errors.%s"' % e))
+                    '"errors.%s.__init__"' % c.__name__))
             if fmt and fmt_pattern.search(fmt):
                 self.assertFalse(True, ('"message" not allowed in '
-                    '"errors.%s._fmt"' % e))
+                    '"errors.%s._fmt"' % c.__name__))
 
     def test_bad_filename_encoding(self):
         error = errors.BadFilenameEncoding('bad/filen\xe5me', 'UTF-8')
