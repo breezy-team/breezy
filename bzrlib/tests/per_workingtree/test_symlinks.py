@@ -21,6 +21,7 @@ See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 
 from bzrlib import (
     tests,
+    workingtree,
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -50,3 +51,13 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertIs(None, tree.path2id('target'))
         self.assertEqual('symlink',
             tree.kind(tree.path2id('link')))
+
+    def test_open_containing_through_symlink(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('link@', 'tree'),
+            ('tree/content', 'hello'),
+            ])
+        wt, relpath = workingtree.WorkingTree.open_containing('link/content')
+        self.assertEquals(relpath, 'content')
+        self.assertEndsWith(wt.basedir, 'tree')
