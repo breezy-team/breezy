@@ -26,6 +26,11 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr ignore PATTERNS`` exits with error if a bad pattern is supplied.
+  ``InvalidPattern`` exception error message now shows faulting
+  regular expression.
+  (Parth Malwankar #300062)
+
 * Configuration files in ``${BZR_HOME}`` are now written in an atomic
   way which should help avoid problems with concurrent writers.
   (Vincent Ladeuil, #525571)
