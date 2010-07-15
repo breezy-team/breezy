@@ -3155,4 +3155,10 @@ class NoWhoami(BzrError):
         "Please, set your name with the 'whoami' command.\n"
         'E.g. bzr whoami "Your Name <name@example.com>"')
 
+class InvalidPattern(BzrError):
+
+    _fmt = ('Invalid pattern(s) found. %(msg)s')
+
+    def __init__(self, msg):
+        self.msg = msg
 

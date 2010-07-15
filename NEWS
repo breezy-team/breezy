@@ -5,11 +5,94 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.3b1
+#########
+
+:Codename: ???
+:2.3b1: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 2.2rc1
+##########
+
+:Codename: ???
+:2.2rc1: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 bzr 2.2b4
 #########
 
 :Codename: Monkey Magic
-:2.2b4: NOT RELEASED YET
+:2.2b4: 2004-07-09
+
+
+This fourth and final beta in the 2.2 series now stabilizes the internal
+APIs. Plugin authors are recommended to ensure their releases are
+compatible, so that 2.2rc1 can be a true release candidate, containing
+stable and compatible plugin versions. 
+
+For users of bzrlib as a library, one of the primary changes is to request
+that they call ``bzrlib.initialize`` and use the returned context manager
+appropriately.
+
+Better interaction with ``bzr-loom`` to make sure branching from a loom
+even over a smart server still yields a local loom. Not to mention lots of
+bugfixes over 2.2b3.
 
 Compatibility Breaks
 ********************
@@ -26,7 +109,7 @@ Compatibility Breaks
   is such a manager, but third party UI factories which do not derive from
   ``bzrlib.ui.UIFactory`` will be incompatible with the command line front
   end.
-  
+
 * URLs like ``foo:bar/baz`` are now always parsed as a URL with scheme "foo"
   and path "bar/baz", even if bzr does not recognize "foo" as a known URL
   scheme.  Previously these URLs would be treated as local paths.
@@ -86,6 +169,10 @@ Bug Fixes
   when a command has no help, document how to set help more clearly, and
   test that all commands available to the test suite have help.
   (Robert Collins, #177500)
+
+* Invalid patterns supplied to ``Globster`` or ``lazy_regex`` now raise
+  ``InvalidPattern`` exception showing clear error message to the user.
+  (Parth Malwankar #300062)
 
 * Progress output is cleaned up when exiting.  (Aaron Bentley)
 
@@ -174,6 +261,11 @@ API Changes
 * ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
   2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
   ``bzrlib.patiencediff`` instead. (Andrew Bennetts)
+
+* ``bzrlib.re_compile_checked`` is now deprecated. Caller should handle
+  ``bzrlib.errors.InvalidPattern`` exception thrown by ``re.match`` in
+  case the default error message not suitable for the use case.
+  (Parth Malwankar)
 
 * ``bzrlib.tests.blackbox.ExternalBase`` is deprecated.  It provided only
   one method ``check_output``, and we now recommend checking command
@@ -934,6 +1026,13 @@ New Features
 Bug Fixes
 *********
 
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
+
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
 
@@ -1446,6 +1545,9 @@ Bug Fixes
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
 
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)

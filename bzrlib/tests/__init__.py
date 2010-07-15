@@ -2744,8 +2744,7 @@ def condition_id_re(pattern):
     :param pattern: A regular expression string.
     :return: A callable that returns True if the re matches.
     """
-    filter_re = osutils.re_compile_checked(pattern, 0,
-        'test filter')
+    filter_re = re.compile(pattern, 0)
     def condition(test):
         test_id = test.id()
         return filter_re.search(test_id)
