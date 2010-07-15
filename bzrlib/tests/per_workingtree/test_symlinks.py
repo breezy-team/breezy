@@ -29,10 +29,21 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 
     _test_needs_features = [tests.SymlinkFeature]
 
-    def test_add_symlink(self):
+    def test_smart_add_symlink(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('tree/link@', 'target'),
+            ])
+        tree.smart_add(['tree/link'])
+        self.assertIsNot(None, tree.path2id('link'))
+        self.assertIs(None, tree.path2id('target'))
+        self.assertEqual('symlink',
+            tree.kind(tree.path2id('link')))
+
+    def test_smart_add_symlink_pointing_outside(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('tree/link@', '../../../../target'),
             ])
         tree.smart_add(['tree/link'])
         self.assertIsNot(None, tree.path2id('link'))
