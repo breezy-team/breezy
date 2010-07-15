@@ -15,10 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib.tests import TestCaseWithTransport
+import os
 
 
-class TestTreeShape(TestCaseWithTransport):
+from bzrlib import tests
+
+
+class TestTreeShape(tests.TestCaseWithTransport):
 
     def test_build_tree(self):
         """Test tree-building test helper"""
@@ -31,3 +34,8 @@ class TestTreeShape(TestCaseWithTransport):
         self.failUnlessExists('.bzr/README')
         self.assertFileEqual('hello', '.bzr/README')
 
+    def test_build_tree_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        self.build_tree_contents([('link@', 'target')])
+        self.assertEqual('target',
+            os.readlink('link'))

@@ -23,6 +23,13 @@ Bug Fixes
   (Parth Malwankar, #262450)
 
 
+Testing
+*******
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
+
+
 bzr 2.0.5
 #########
 
