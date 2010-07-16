@@ -18,6 +18,10 @@ Compatibility Breaks
   longer raised.
   (Martin Pool)
 
+* `tree_files` and `internal_tree_files` are now deprecated in favor of
+  `WorkingTree.open_containing_paths`.
+  (Martin Pool)
+
 New Features
 ************
 

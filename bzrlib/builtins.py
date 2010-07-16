@@ -75,6 +75,7 @@ from bzrlib.option import (
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
+@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
 def tree_files(file_list, default_branch=u'.', canonicalize=True,
     apply_view=True):
     return internal_tree_files(file_list, default_branch, canonicalize,
@@ -148,7 +149,7 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
 
 # XXX: Bad function name; should possibly also be a class method of
 # WorkingTree rather than a function.
-# @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
+@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
 def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
     apply_view=True):
     """Convert command-line paths to a WorkingTree and relative paths.
@@ -279,7 +280,7 @@ class cmd_status(Command):
             raise errors.BzrCommandError('bzr status --revision takes exactly'
                                          ' one or two revision specifiers')
 
-        tree, relfile_list = tree_files(file_list)
+        tree, relfile_list = WorkingTree.open_containing_paths(file_list)
         # Avoid asking for specific files when that is not needed.
         if relfile_list == ['']:
             relfile_list = None
@@ -717,7 +718,7 @@ class cmd_inventory(Command):
             raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
         revision = _get_one_revision('inventory', revision)
-        work_tree, file_list = tree_files(file_list)
+        work_tree, file_list = WorkingTree.open_containing_paths(file_list)
         self.add_cleanup(work_tree.lock_read().unlock)
         if revision is not None:
             tree = revision.as_tree(work_tree.branch)
@@ -788,7 +789,7 @@ class cmd_mv(Command):
             names_list = []
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
-        tree, rel_names = tree_files(names_list, canonicalize=False)
+        tree, rel_names = WorkingTree.open_containing_paths(names_list, canonicalize=False)
         self.add_cleanup(tree.lock_tree_write().unlock)
         self._run(tree, names_list, rel_names, after)
 
@@ -799,7 +800,8 @@ class cmd_mv(Command):
         if after:
             raise errors.BzrCommandError('--after cannot be specified with'
                                          ' --auto.')
-        work_tree, file_list = tree_files(names_list, default_branch='.')
+        work_tree, file_list = WorkingTree.open_containing_paths(
+            names_list, default_branch='.')
         self.add_cleanup(work_tree.lock_tree_write().unlock)
         rename_map.RenameMap.guess_renames(work_tree, dry_run)
 
@@ -1482,7 +1484,7 @@ class cmd_remove(Command):
 
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
-        tree, file_list = tree_files(file_list)
+        tree, file_list = WorkingTree.open_containing_paths(file_list)
 
         if file_list is not None:
             file_list = [f for f in file_list]
@@ -3065,7 +3067,7 @@ class cmd_commit(Command):
 
         properties = {}
 
-        tree, selected_list = tree_files(selected_list)
+        tree, selected_list = WorkingTree.open_containing_paths(selected_list)
         if selected_list == ['']:
             # workaround - commit of root of tree should be exactly the same
             # as just default commit in that tree, and succeed even though
@@ -4047,7 +4049,7 @@ class cmd_remerge(Command):
         from bzrlib.conflicts import restore
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
-        tree, file_list = tree_files(file_list)
+        tree, file_list = WorkingTree.open_containing_paths(file_list)
         self.add_cleanup(tree.lock_write().unlock)
         parents = tree.get_parent_ids()
         if len(parents) != 2:
@@ -4163,7 +4165,7 @@ class cmd_revert(Command):
 
     def run(self, revision=None, no_backup=False, file_list=None,
             forget_merges=None):
-        tree, file_list = tree_files(file_list)
+        tree, file_list = WorkingTree.open_containing_paths(file_list)
         self.add_cleanup(tree.lock_tree_write().unlock)
         if forget_merges:
             tree.set_parent_ids(tree.get_parent_ids()[:1])
@@ -5665,7 +5667,8 @@ class cmd_view(Command):
             name=None,
             switch=None,
             ):
-        tree, file_list = tree_files(file_list, apply_view=False)
+        tree, file_list = WorkingTree.open_containing_paths(file_list,
+            apply_view=False)
         current_view, view_dict = tree.views.get_view_info()
         if name is None:
             name = current_view

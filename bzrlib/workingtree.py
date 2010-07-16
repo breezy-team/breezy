@@ -364,6 +364,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         # recommended replacement for builtins.internal_tree_files
         if file_list is None or len(file_list) == 0:
             tree = WorkingTree.open_containing(default_directory)[0]
+            # XXX: doesn't really belong here, and seems to have the strange
+            # side effect of making it return a bunch of files, not the whole
+            # tree -- mbp 20100716
             if tree.supports_views() and apply_view:
                 view_files = tree.views.lookup_view()
                 if view_files:
