@@ -17,6 +17,8 @@
 """Test symlink support.
 """
 
+import os
+
 from bzrlib import (
     builtins,
     tests,
@@ -52,6 +54,24 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertIs(None, tree.path2id('target'))
         self.assertEqual('symlink',
             tree.kind(tree.path2id('link')))
+
+
+class TestKindChanges(TestCaseWithWorkingTree):
+
+    def test_symlink_to_dir(self):
+        # https://bugs.launchpad.net/bzr/+bug/192859
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('tree/a@', 'target')])
+        tree.smart_add(['tree/a'])
+        tree.commit('add symlink')
+        os.unlink('tree/a')
+        self.build_tree_contents([
+            ('tree/a/',),
+            ('tree/a/f', 'content'),
+            ])
+        # fails
+        tree.commit('change to dir')
 
 
 class TestOpenTree(TestCaseWithWorkingTree):
