@@ -48,6 +48,18 @@ compute its real path and store that as ``.basedir``, but `BzrDir` stores
 its apparent path.  (This may not be the best thing.)
 
 
+Useful functions
+----------------
+
+`bzrlib.osutils.dereference_path` does the commonly useful operation of
+resolving the directory part of a path, but leaving the filename
+untouched.  In other words ::
+
+  ln -s x a
+  ln -s y x/b
+  dereference_path('a/b') => 'x/b'
+
+
 Relative paths beyond symlinks
 ------------------------------
 
