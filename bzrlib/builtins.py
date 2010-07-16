@@ -77,12 +77,8 @@ from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 def tree_files(file_list, default_branch=u'.', canonicalize=True,
     apply_view=True):
-    try:
-        return internal_tree_files(file_list, default_branch, canonicalize,
-            apply_view)
-    except errors.FileInWrongBranch, e:
-        raise errors.BzrCommandError("%s is not in the same branch as %s" %
-                                     (e.path, file_list[0]))
+    return internal_tree_files(file_list, default_branch, canonicalize,
+        apply_view)
 
 
 def tree_files_for_add(file_list):

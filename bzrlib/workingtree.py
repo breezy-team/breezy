@@ -400,15 +400,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         else:
             fixer = self.relpath
         for filename in file_list:
-            try:
-                relpath = fixer(osutils.dereference_path(filename))
-                if view_files and not osutils.is_inside_any(view_files, relpath):
-                    raise errors.FileOutsideView(filename, view_files)
-                new_list.append(relpath)
-            except errors.PathNotChild:
-                raise errors.FileInWrongBranch(self.branch, filename)
+            relpath = fixer(osutils.dereference_path(filename))
+            if view_files and not osutils.is_inside_any(view_files, relpath):
+                raise errors.FileOutsideView(filename, view_files)
+            new_list.append(relpath)
         return new_list
-
 
     @staticmethod
     def open_downlevel(path=None):
