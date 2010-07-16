@@ -42,6 +42,10 @@ Improvements
 Documentation
 *************
 
+* ``bzr help patterns`` now explains case insensitive patterns and
+  points to Python regular expression documentation.
+  (Parth Malwankar, #594386)
+
 API Changes
 ***********
 
