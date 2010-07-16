@@ -676,6 +676,16 @@ class LocationConfig(IniBasedConfig):
 class BranchConfig(Config):
     """A configuration object giving the policy for a branch."""
 
+    def __init__(self, branch):
+        super(BranchConfig, self).__init__()
+        self._location_config = None
+        self._branch_data_config = None
+        self._global_config = None
+        self.branch = branch
+        self.option_sources = (self._get_location_config,
+                               self._get_branch_data_config,
+                               self._get_global_config)
+
     def _get_branch_data_config(self):
         if self._branch_data_config is None:
             self._branch_data_config = TreeConfig(self.branch)
@@ -778,16 +788,6 @@ class BranchConfig(Config):
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
         return self._get_safe_value('_gpg_signing_command')
-
-    def __init__(self, branch):
-        super(BranchConfig, self).__init__()
-        self._location_config = None
-        self._branch_data_config = None
-        self._global_config = None
-        self.branch = branch
-        self.option_sources = (self._get_location_config,
-                               self._get_branch_data_config,
-                               self._get_global_config)
 
     def _post_commit(self):
         """See Config.post_commit."""
