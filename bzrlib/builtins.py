@@ -801,7 +801,7 @@ class cmd_mv(Command):
             raise errors.BzrCommandError('--after cannot be specified with'
                                          ' --auto.')
         work_tree, file_list = WorkingTree.open_containing_paths(
-            names_list, default_branch='.')
+            names_list, default_directory='.')
         self.add_cleanup(work_tree.lock_tree_write().unlock)
         rename_map.RenameMap.guess_renames(work_tree, dry_run)
 
