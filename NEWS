@@ -29,6 +29,10 @@ Documentation
 API Changes
 ***********
 
+* The ``get_filename`` parameter in the ``config.IniBaseConfig``
+  constructor has been deprecated, use the ``file_name`` parameter instead.
+  (Vincent Ladeuil)
+
 Internals
 *********
 

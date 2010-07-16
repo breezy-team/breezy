@@ -370,7 +370,7 @@ class TestConfigPath(tests.TestCase):
 class TestIniConfig(tests.TestCase):
 
     def make_config_parser(self, s):
-        conf = config.IniBasedConfig(None)
+        conf = config.IniBasedConfig()
         parser = conf._get_parser(file=StringIO(s.encode('utf-8')))
         return conf, parser
 
@@ -378,20 +378,30 @@ class TestIniConfig(tests.TestCase):
 class TestIniConfigBuilding(TestIniConfig):
 
     def test_contructs(self):
-        my_config = config.IniBasedConfig("nothing")
+        my_config = config.IniBasedConfig()
 
     def test_from_fp(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.IniBasedConfig(None)
+        my_config = config.IniBasedConfig()
         self.failUnless(
             isinstance(my_config._get_parser(file=config_file),
                         configobj.ConfigObj))
 
     def test_cached(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.IniBasedConfig(None)
+        my_config = config.IniBasedConfig()
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
+
+    def test_get_filename_parameter_is_deprecated_(self):
+        conf = self.callDeprecated([
+            'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
+            ' Use file_name instead.'],
+            config.IniBasedConfig, lambda: 'ini.conf')
+
+    def test_cant_save_without_a_file_name(self):
+        conf = config.IniBasedConfig()
+        self.assertRaises(AssertionError, conf._write_config_file)
 
 
 class TestGetUserOptionAs(TestIniConfig):

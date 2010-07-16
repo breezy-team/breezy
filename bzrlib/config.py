@@ -352,16 +352,30 @@ class Config(object):
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
-    def __init__(self, get_filename):
+    def __init__(self, get_filename=symbol_versioning.DEPRECATED_PARAMETER,
+                 file_name=None):
         super(IniBasedConfig, self).__init__()
-        self._get_filename = get_filename
+        if symbol_versioning.deprecated_passed(get_filename):
+            symbol_versioning.warn(
+                'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
+                ' Use file_name instead.',
+                DeprecationWarning,
+                stacklevel=2)
+            if get_filename is None:
+                # Tests use in-memory config files that doesn't need to be
+                # saved on disk
+                self.file_name = None
+            else:
+                self.file_name = get_filename()
+        else:
+            self.file_name = file_name
         self._parser = None
 
     def _get_parser(self, file=None):
         if self._parser is not None:
             return self._parser
         if file is None:
-            input = self._get_filename()
+            input = self.file_name
         else:
             input = file
         try:
@@ -479,7 +493,9 @@ class IniBasedConfig(Config):
         return self.get_user_option('nickname')
 
     def _write_config_file(self):
-        atomic_file = atomicfile.AtomicFile(self._get_filename())
+        if self.file_name is None:
+            raise AssertionError('We cannot save, self.file_name is None')
+        atomic_file = atomicfile.AtomicFile(self.file_name)
         self._get_parser().write(atomic_file)
         atomic_file.commit()
         atomic_file.close()
@@ -488,11 +504,11 @@ class IniBasedConfig(Config):
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
 
+    def __init__(self):
+        super(GlobalConfig, self).__init__(file_name=config_filename())
+
     def get_editor(self):
         return self._get_user_option('editor')
-
-    def __init__(self):
-        super(GlobalConfig, self).__init__(config_filename)
 
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
@@ -520,7 +536,7 @@ class GlobalConfig(IniBasedConfig):
     def _set_option(self, option, value, section):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on bazaar.conf.
-        conf_dir = os.path.dirname(self._get_filename())
+        conf_dir = os.path.dirname(self.file_name)
         ensure_config_dir_exists(conf_dir)
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
@@ -530,18 +546,18 @@ class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location):
-        name_generator = locations_config_filename
-        if (not os.path.exists(name_generator()) and
-                os.path.exists(branches_config_filename())):
+        loc_fname = locations_config_filename()
+        br_fname = branches_config_filename()
+        file_name = loc_fname
+        if (not os.path.exists(loc_fname) and
+                os.path.exists(br_fname)):
             if sys.platform == 'win32':
-                trace.warning('Please rename %s to %s'
-                              % (branches_config_filename(),
-                                 locations_config_filename()))
+                trace.warning('Please rename %s to %s' % (br_fname, loc_fname))
             else:
                 trace.warning('Please rename ~/.bazaar/branches.conf'
                               ' to ~/.bazaar/locations.conf')
-            name_generator = branches_config_filename
-        super(LocationConfig, self).__init__(name_generator)
+            file_name = br_fname
+        super(LocationConfig, self).__init__(file_name=file_name)
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
         # file, and we would rather not expose the user to file urls.
@@ -651,7 +667,7 @@ class LocationConfig(IniBasedConfig):
                 (store, option))
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on locations.conf.
-        conf_dir = os.path.dirname(self._get_filename())
+        conf_dir = os.path.dirname(self.file_name)
         ensure_config_dir_exists(conf_dir)
         location = self.location
         if location.endswith('/'):
@@ -852,6 +868,7 @@ def config_filename():
     return osutils.pathjoin(config_dir(), 'bazaar.conf')
 
 
+# FIXME: We should deprecate this or just get rid of it -- vila 20100716
 def branches_config_filename():
     """Return per-user configuration ini file filename."""
     return osutils.pathjoin(config_dir(), 'branches.conf')
