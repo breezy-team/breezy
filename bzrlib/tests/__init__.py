@@ -3813,6 +3813,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_transport_log',
         'bzrlib.tests.test_tree',
         'bzrlib.tests.test_treebuilder',
+        'bzrlib.tests.test_treeshape',
         'bzrlib.tests.test_tsort',
         'bzrlib.tests.test_tuned_gzip',
         'bzrlib.tests.test_ui',
