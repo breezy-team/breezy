@@ -53,11 +53,27 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
             tree.kind(tree.path2id('link')))
 
     def test_open_containing_through_symlink(self):
+        self.make_test_tree()
+        self.check_open_containing('link/content', 'tree', 'content')
+        self.check_open_containing('link/sublink', 'tree', 'sublink')
+        # this next one is a bit debatable, but arguably it's better that
+        # open_containing is only concerned with opening the tree 
+        # and then you can deal with symlinks along the way if you want
+        self.check_open_containing('link/sublink/subcontent', 'tree',
+            'sublink/subcontent')
+
+    def check_open_containing(self, to_open, expected_tree_name,
+        expected_relpath):
+        wt, relpath = workingtree.WorkingTree.open_containing(to_open)
+        self.assertEquals(relpath, expected_relpath)
+        self.assertEndsWith(wt.basedir, expected_tree_name)
+
+    def make_test_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('link@', 'tree'),
             ('tree/content', 'hello'),
+            ('tree/sublink@', 'subdir'),
+            ('tree/subdir/',),
+            ('tree/subdir/subcontent', 'subcontent stuff')
             ])
-        wt, relpath = workingtree.WorkingTree.open_containing('link/content')
-        self.assertEquals(relpath, 'content')
-        self.assertEndsWith(wt.basedir, 'tree')
