@@ -349,8 +349,66 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         if path is None:
             path = osutils.getcwd()
         control, relpath = bzrdir.BzrDir.open_containing(path)
-
         return control.open_workingtree(), relpath
+
+    @staticmethod
+    def open_containing_paths(file_list, default_directory='.',
+        canonicalize=True, apply_view=True):
+        """Open the WorkingTree that contains a set of paths.
+
+        Fail if the paths given are not all in a single tree.
+
+        This is used for the many command-line interfaces that take a list of
+        any number of files and that require they all be in the same tree.
+        """
+        # recommended replacement for builtins.internal_tree_files
+        if file_list is None or len(file_list) == 0:
+            tree = WorkingTree.open_containing(default_directory)[0]
+            if tree.supports_views() and apply_view:
+                view_files = tree.views.lookup_view()
+                if view_files:
+                    file_list = view_files
+                    view_str = views.view_display_str(view_files)
+                    note("Ignoring files outside view. View is %s" % view_str)
+            return tree, file_list
+        tree = WorkingTree.open_containing(file_list[0])[0]
+        return tree, tree.safe_relpath_files(file_list, canonicalize,
+            apply_view=apply_view)
+
+    def safe_relpath_files(self, file_list, canonicalize=True, apply_view=True):
+        """Convert file_list into a list of relpaths in tree.
+
+        :param self: A tree to operate on.
+        :param file_list: A list of user provided paths or None.
+        :param apply_view: if True and a view is set, apply it or check that
+            specified files are within it
+        :return: A list of relative paths.
+        :raises errors.PathNotChild: When a provided path is in a different self
+            than self.
+        """
+        if file_list is None:
+            return None
+        if self.supports_views() and apply_view:
+            view_files = self.views.lookup_view()
+        else:
+            view_files = []
+        new_list = []
+        # self.relpath exists as a "thunk" to osutils, but canonical_relpath
+        # doesn't - fix that up here before we enter the loop.
+        if canonicalize:
+            fixer = lambda p: osutils.canonical_relpath(self.basedir, p)
+        else:
+            fixer = self.relpath
+        for filename in file_list:
+            try:
+                relpath = fixer(osutils.dereference_path(filename))
+                if view_files and not osutils.is_inside_any(view_files, relpath):
+                    raise errors.FileOutsideView(filename, view_files)
+                new_list.append(relpath)
+            except errors.PathNotChild:
+                raise errors.FileInWrongBranch(self.branch, filename)
+        return new_list
+
 
     @staticmethod
     def open_downlevel(path=None):
