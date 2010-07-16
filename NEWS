@@ -29,6 +29,10 @@ Documentation
 API Changes
 ***********
 
+* The ``configIniBaseConfig`` constructor now accepts a ``_content``
+  private parameter for tests that want to provide a config file content.
+  (Vincent Ladeuil)
+
 * The ``get_filename`` parameter in the ``config.IniBaseConfig``
   constructor has been deprecated, use the ``file_name`` parameter instead.
   (Vincent Ladeuil)
@@ -38,6 +42,10 @@ Internals
 
 Testing
 *******
+
+* Configuration files should now use the ``_content`` parameter in the
+  constructor rather than the ``file`` parameter of the ``_get_parser``
+  method. The later has been deprecated. (Vincent Ladeuil)
 
 
 bzr 2.2rc1

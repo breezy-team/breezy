@@ -366,9 +366,8 @@ class TestConfigPath(tests.TestCase):
 class TestIniConfig(tests.TestCase):
 
     def make_config_parser(self, s):
-        conf = config.IniBasedConfig()
-        parser = conf._get_parser(file=StringIO(s.encode('utf-8')))
-        return conf, parser
+        conf = config.IniBasedConfig(_content=StringIO(s.encode('utf-8')))
+        return conf, conf._get_parser()
 
 
 class TestIniConfigBuilding(TestIniConfig):
@@ -378,15 +377,13 @@ class TestIniConfigBuilding(TestIniConfig):
 
     def test_from_fp(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.IniBasedConfig()
-        self.failUnless(
-            isinstance(my_config._get_parser(file=config_file),
-                        configobj.ConfigObj))
+        my_config = config.IniBasedConfig(_content=config_file)
+        self.assertIsInstance(my_config._get_parser(), configobj.ConfigObj)
 
     def test_cached(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.IniBasedConfig()
-        parser = my_config._get_parser(file=config_file)
+        my_config = config.IniBasedConfig(_content=config_file)
+        parser = my_config._get_parser()
         self.failUnless(my_config._get_parser() is parser)
 
     def test_get_filename_parameter_is_deprecated_(self):
@@ -394,6 +391,14 @@ class TestIniConfigBuilding(TestIniConfig):
             'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
             ' Use file_name instead.'],
             config.IniBasedConfig, lambda: 'ini.conf')
+
+    def test_get_parser_file_parameter_is_deprecated_(self):
+        config_file = StringIO(sample_config_text.encode('utf-8'))
+        conf = config.IniBasedConfig()
+        conf = self.callDeprecated([
+            'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
+            ' Use file_name instead.'],
+            conf._parser, file=config_file)
 
     def test_cant_save_without_a_file_name(self):
         conf = config.IniBasedConfig()

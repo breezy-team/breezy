@@ -353,7 +353,7 @@ class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
     def __init__(self, get_filename=symbol_versioning.DEPRECATED_PARAMETER,
-                 file_name=None):
+                 file_name=None, _content=None):
         super(IniBasedConfig, self).__init__()
         if symbol_versioning.deprecated_passed(get_filename):
             symbol_versioning.warn(
@@ -369,17 +369,26 @@ class IniBasedConfig(Config):
                 self.file_name = get_filename()
         else:
             self.file_name = file_name
+        self._content = _content
         self._parser = None
 
-    def _get_parser(self, file=None):
+    def _get_parser(self, file=symbol_versioning.DEPRECATED_PARAMETER):
         if self._parser is not None:
             return self._parser
-        if file is None:
-            input = self.file_name
+        if symbol_versioning.deprecated_passed(file):
+            symbol_versioning.warn(
+                'IniBasedConfig._get_parser(file=xxx) was deprecated in 2.3.'
+                ' Use IniBasedConfig(_content=xxx) instead',
+                DeprecationWarning,
+                stacklevel=2)
+        if self._content is not None:
+            co_input = self._content
+        elif self.file_name is None:
+            raise AssertionError('We have no content to create the config')
         else:
-            input = file
+            co_input = self.file_name
         try:
-            self._parser = ConfigObj(input, encoding='utf-8')
+            self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
         return self._parser
@@ -504,8 +513,9 @@ class IniBasedConfig(Config):
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
 
-    def __init__(self):
-        super(GlobalConfig, self).__init__(file_name=config_filename())
+    def __init__(self, _content=None):
+        super(GlobalConfig, self).__init__(file_name=config_filename(),
+                                           _content=_content)
 
     def get_editor(self):
         return self._get_user_option('editor')
@@ -545,9 +555,10 @@ class GlobalConfig(IniBasedConfig):
 class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
 
-    def __init__(self, location):
+    def __init__(self, location, _content=None):
         super(LocationConfig, self).__init__(
-            file_name=locations_config_filename())
+            file_name=locations_config_filename(),
+            _content=_content)
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
         # file, and we would rather not expose the user to file urls.
