@@ -14,6 +14,10 @@ bzr 2.0.6
 Bug Fixes
 *********
 
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
 * ``bzr revert`` now only takes write lock on working tree, instead of on 
   both working tree and branch.
   (Danny van Heumen, #498409)

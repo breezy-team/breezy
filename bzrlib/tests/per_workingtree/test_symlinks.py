@@ -20,6 +20,7 @@ See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 """
 
 from bzrlib import (
+    builtins,
     tests,
     workingtree,
     )
@@ -68,10 +69,28 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertEquals(relpath, expected_relpath)
         self.assertEndsWith(wt.basedir, expected_tree_name)
 
+    def test_tree_files(self):
+        # not strictly a WorkingTree method, but it should be
+        # probably the root cause for
+        # <https://bugs.launchpad.net/bzr/+bug/128562>
+        self.make_test_tree()
+        self.check_tree_files(['tree/outerlink'],
+            'tree', ['outerlink'])
+        self.check_tree_files(['link/outerlink'],
+            'tree', ['outerlink'])
+        self.check_tree_files(['link/sublink/subcontent'],
+            'tree', ['subdir/subcontent'])
+
+    def check_tree_files(self, to_open, expected_tree, expect_paths):
+        tree, relpaths = builtins.tree_files(to_open)
+        self.assertEndsWith(tree.basedir, expected_tree)
+        self.assertEquals(expect_paths, relpaths)
+
     def make_test_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('link@', 'tree'),
+            ('tree/outerlink@', '/not/there'),
             ('tree/content', 'hello'),
             ('tree/sublink@', 'subdir'),
             ('tree/subdir/',),
