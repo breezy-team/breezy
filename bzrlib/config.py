@@ -378,7 +378,7 @@ class IniBasedConfig(Config):
         if symbol_versioning.deprecated_passed(file):
             symbol_versioning.warn(
                 'IniBasedConfig._get_parser(file=xxx) was deprecated in 2.3.'
-                ' Use IniBasedConfig(_content=xxx) instead',
+                ' Use IniBasedConfig(_content=xxx) instead.',
                 DeprecationWarning,
                 stacklevel=2)
         if self._content is not None:

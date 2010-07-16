@@ -394,11 +394,11 @@ class TestIniConfigBuilding(TestIniConfig):
 
     def test_get_parser_file_parameter_is_deprecated_(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        conf = config.IniBasedConfig()
+        conf = config.IniBasedConfig(_content=config_file)
         conf = self.callDeprecated([
-            'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
-            ' Use file_name instead.'],
-            conf._parser, file=config_file)
+            'IniBasedConfig._get_parser(file=xxx) was deprecated in 2.3.'
+            ' Use IniBasedConfig(_content=xxx) instead.'],
+            conf._get_parser, file=config_file)
 
     def test_cant_save_without_a_file_name(self):
         conf = config.IniBasedConfig()
@@ -593,27 +593,23 @@ class TestGlobalConfigItems(tests.TestCase):
 
     def test_user_id(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig(_content=config_file)
         self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
 
     def test_absent_user_id(self):
         config_file = StringIO("")
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig(_content=config_file)
         self.assertEqual(None, my_config._get_user_id())
 
     def test_configured_editor(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig(_content=config_file)
         self.assertEqual("vim", my_config.get_editor())
 
     def test_signatures_always(self):
         config_file = StringIO(sample_always_signatures)
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig(_content=config_file)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_ALWAYS,
@@ -622,8 +618,7 @@ class TestGlobalConfigItems(tests.TestCase):
 
     def test_signatures_if_possible(self):
         config_file = StringIO(sample_maybe_signatures)
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig(_content=config_file)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_WHEN_REQUIRED,
@@ -632,8 +627,7 @@ class TestGlobalConfigItems(tests.TestCase):
 
     def test_signatures_ignore(self):
         config_file = StringIO(sample_ignore_signatures)
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig(_content=config_file)
         self.assertEqual(config.CHECK_ALWAYS,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_NEVER,
@@ -642,8 +636,7 @@ class TestGlobalConfigItems(tests.TestCase):
 
     def _get_sample_config(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig(_content=config_file)
         return my_config
 
     def test_gpg_signing_command(self):
@@ -653,8 +646,7 @@ class TestGlobalConfigItems(tests.TestCase):
 
     def _get_empty_config(self):
         config_file = StringIO("")
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig(_content=config_file)
         return my_config
 
     def test_gpg_signing_command_unset(self):
@@ -989,41 +981,34 @@ class TestLocationConfig(tests.TestCaseInTempDir):
                          self.my_config.post_commit())
 
     def get_branch_config(self, location, global_config=None):
+        my_branch = FakeBranch(location)
         if global_config is None:
             global_file = StringIO(sample_config_text.encode('utf-8'))
         else:
             global_file = StringIO(global_config.encode('utf-8'))
         branches_file = StringIO(sample_branches_text.encode('utf-8'))
-        self.my_config = config.BranchConfig(FakeBranch(location))
-        # Force location config to use specified file
-        self.my_location_config = self.my_config._get_location_config()
-        self.my_location_config._get_parser(branches_file)
-        # Force global config to use specified file
-        self.my_config._get_global_config()._get_parser(global_file)
+
+        config.ensure_config_dir_exists()
+        my_global_config = config.GlobalConfig(_content=global_file)
+        my_global_config._write_config_file()
+        my_location_config = config.LocationConfig(my_branch.base,
+                                                   _content=branches_file)
+        my_location_config._write_config_file()
+
+        my_config = config.BranchConfig(my_branch)
+        self.my_config = my_config
+        self.my_location_config = my_config._get_location_config()
 
     def test_set_user_setting_sets_and_saves(self):
         self.get_branch_config('/a/c')
         record = InstrumentedConfigObj("foo")
         self.my_location_config._parser = record
 
-        real_mkdir = os.mkdir
-        self.created = False
-        def checked_mkdir(path, mode=0777):
-            self.log('making directory: %s', path)
-            real_mkdir(path, mode)
-            self.created = True
-
-        os.mkdir = checked_mkdir
-        try:
-            self.callDeprecated(['The recurse option is deprecated as of '
-                                 '0.14.  The section "/a/c" has been '
-                                 'converted to use policies.'],
-                                self.my_config.set_user_option,
-                                'foo', 'bar', store=config.STORE_LOCATION)
-        finally:
-            os.mkdir = real_mkdir
-
-        self.failUnless(self.created, 'Failed to create ~/.bazaar')
+        self.callDeprecated(['The recurse option is deprecated as of '
+                             '0.14.  The section "/a/c" has been '
+                             'converted to use policies.'],
+                            self.my_config.set_user_option,
+                            'foo', 'bar', store=config.STORE_LOCATION)
         self.assertEqual([('__contains__', '/a/c'),
                           ('__contains__', '/a/c/'),
                           ('__setitem__', '/a/c', {}),
@@ -1073,19 +1058,23 @@ option = recurse
 option = exact
 """
 
-
 class TestBranchConfigItems(tests.TestCaseInTempDir):
 
     def get_branch_config(self, global_config=None, location=None,
                           location_config=None, branch_data_config=None):
-        my_config = config.BranchConfig(FakeBranch(location))
+        my_branch = FakeBranch(location)
         if global_config is not None:
-            global_file = StringIO(global_config.encode('utf-8'))
-            my_config._get_global_config()._get_parser(global_file)
-        self.my_location_config = my_config._get_location_config()
+            my_global_config = config.GlobalConfig(
+                _content=StringIO(global_config.encode('utf-8')))
+            config.ensure_config_dir_exists()
+            my_global_config._write_config_file()
         if location_config is not None:
-            location_file = StringIO(location_config.encode('utf-8'))
-            self.my_location_config._get_parser(location_file)
+            my_location_config = config.LocationConfig(
+                my_branch.base,
+                _content=StringIO(location_config.encode('utf-8')))
+            config.ensure_config_dir_exists()
+            my_location_config._write_config_file()
+        my_config = config.BranchConfig(my_branch)
         if branch_data_config is not None:
             my_config.branch.control_files.files['branch.conf'] = \
                 branch_data_config
@@ -1105,7 +1094,7 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
                          my_config.username())
 
     def test_not_set_in_branch(self):
-        my_config = self.get_branch_config(sample_config_text)
+        my_config = self.get_branch_config(global_config=sample_config_text)
         self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
         my_config.branch.control_files.files['email'] = "John"
@@ -1135,29 +1124,25 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
 
     def test_gpg_signing_command(self):
         my_config = self.get_branch_config(
+            global_config=sample_config_text,
             # branch data cannot set gpg_signing_command
             branch_data_config="gpg_signing_command=pgp")
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config._get_global_config()._get_parser(config_file)
         self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
 
     def test_get_user_option_global(self):
-        branch = FakeBranch()
-        my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        (my_config._get_global_config()._get_parser(config_file))
+        my_config = self.get_branch_config(global_config=sample_config_text)
         self.assertEqual('something',
                          my_config.get_user_option('user_global_option'))
 
     def test_post_commit_default(self):
-        branch = FakeBranch()
-        my_config = self.get_branch_config(sample_config_text, '/a/c',
-                                           sample_branches_text)
+        my_config = self.get_branch_config(global_config=sample_config_text,
+                                      location='/a/c',
+                                      location_config=sample_branches_text)
         self.assertEqual(my_config.branch.base, '/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          my_config.post_commit())
         my_config.set_user_option('post_commit', 'rmtree_root')
-        # post-commit is ignored when bresent in branch data
+        # post-commit is ignored when present in branch data
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          my_config.post_commit())
         my_config.set_user_option('post_commit', 'rmtree_root',
@@ -1165,19 +1150,23 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual('rmtree_root', my_config.post_commit())
 
     def test_config_precedence(self):
+        # FIXME: eager test, luckily no persitent config file makes it fail
+        # -- vila 20100716
         my_config = self.get_branch_config(global_config=precedence_global)
         self.assertEqual(my_config.get_user_option('option'), 'global')
         my_config = self.get_branch_config(global_config=precedence_global,
-                                      branch_data_config=precedence_branch)
+                                           branch_data_config=precedence_branch)
         self.assertEqual(my_config.get_user_option('option'), 'branch')
-        my_config = self.get_branch_config(global_config=precedence_global,
-                                      branch_data_config=precedence_branch,
-                                      location_config=precedence_location)
+        my_config = self.get_branch_config(
+            global_config=precedence_global,
+            branch_data_config=precedence_branch,
+            location_config=precedence_location)
         self.assertEqual(my_config.get_user_option('option'), 'recurse')
-        my_config = self.get_branch_config(global_config=precedence_global,
-                                      branch_data_config=precedence_branch,
-                                      location_config=precedence_location,
-                                      location='http://example.com/specific')
+        my_config = self.get_branch_config(
+            global_config=precedence_global,
+            branch_data_config=precedence_branch,
+            location_config=precedence_location,
+            location='http://example.com/specific')
         self.assertEqual(my_config.get_user_option('option'), 'exact')
 
     def test_get_mail_client(self):
