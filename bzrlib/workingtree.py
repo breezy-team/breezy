@@ -1264,7 +1264,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 stack.pop()
 
     @needs_tree_write_lock
-    def move(self, from_paths, to_dir=None, after=False, **kwargs):
+    def move(self, from_paths, to_dir=None, after=False):
         """Rename files.
 
         to_dir must exist in the inventory.
@@ -1304,14 +1304,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         # check for deprecated use of signature
         if to_dir is None:
-            to_dir = kwargs.get('to_name', None)
-            if to_dir is None:
-                raise TypeError('You must supply a target directory')
-            else:
-                symbol_versioning.warn('The parameter to_name was deprecated'
-                                       ' in version 0.13. Use to_dir instead',
-                                       DeprecationWarning)
-
+            raise TypeError('You must supply a target directory')
         # check destination directory
         if isinstance(from_paths, basestring):
             raise ValueError()
