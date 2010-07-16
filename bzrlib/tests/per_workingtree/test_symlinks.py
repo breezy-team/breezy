@@ -15,8 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test symlink support.
-
-See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 """
 
 from bzrlib import (
@@ -28,6 +26,8 @@ from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestSmartAddTree(TestCaseWithWorkingTree):
+
+    # See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 
     _test_needs_features = [tests.SymlinkFeature]
 
@@ -52,6 +52,11 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertIs(None, tree.path2id('target'))
         self.assertEqual('symlink',
             tree.kind(tree.path2id('link')))
+
+
+class TestOpenTree(TestCaseWithWorkingTree):
+
+    _test_needs_features = [tests.SymlinkFeature]
 
     def test_open_containing_through_symlink(self):
         self.make_test_tree()
