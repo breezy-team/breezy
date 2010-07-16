@@ -546,18 +546,8 @@ class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location):
-        loc_fname = locations_config_filename()
-        br_fname = branches_config_filename()
-        file_name = loc_fname
-        if (not os.path.exists(loc_fname) and
-                os.path.exists(br_fname)):
-            if sys.platform == 'win32':
-                trace.warning('Please rename %s to %s' % (br_fname, loc_fname))
-            else:
-                trace.warning('Please rename ~/.bazaar/branches.conf'
-                              ' to ~/.bazaar/locations.conf')
-            file_name = br_fname
-        super(LocationConfig, self).__init__(file_name=file_name)
+        super(LocationConfig, self).__init__(
+            file_name=locations_config_filename())
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
         # file, and we would rather not expose the user to file urls.
@@ -866,12 +856,6 @@ def config_dir():
 def config_filename():
     """Return per-user configuration ini file filename."""
     return osutils.pathjoin(config_dir(), 'bazaar.conf')
-
-
-# FIXME: We should deprecate this or just get rid of it -- vila 20100716
-def branches_config_filename():
-    """Return per-user configuration ini file filename."""
-    return osutils.pathjoin(config_dir(), 'branches.conf')
 
 
 def locations_config_filename():

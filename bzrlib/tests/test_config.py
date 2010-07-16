@@ -350,10 +350,6 @@ class TestConfigPath(tests.TestCase):
         self.assertEqual(config.config_filename(),
                          self.bzr_home + '/bazaar.conf')
 
-    def test_branches_config_filename(self):
-        self.assertEqual(config.branches_config_filename(),
-                         self.bzr_home + '/branches.conf')
-
     def test_locations_config_filename(self):
         self.assertEqual(config.locations_config_filename(),
                          self.bzr_home + '/locations.conf')
@@ -754,18 +750,6 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertEqual(parser._calls,
                          [('__init__', config.locations_config_filename(),
                            'utf-8')])
-        config.ensure_config_dir_exists()
-        #os.mkdir(config.config_dir())
-        f = file(config.branches_config_filename(), 'wb')
-        f.write('')
-        f.close()
-        oldparserclass = config.ConfigObj
-        config.ConfigObj = InstrumentedConfigObj
-        try:
-            my_config = config.LocationConfig('http://www.example.com')
-            parser = my_config._get_parser()
-        finally:
-            config.ConfigObj = oldparserclass
 
     def test_get_global_config(self):
         my_config = config.BranchConfig(FakeBranch('http://example.com'))
