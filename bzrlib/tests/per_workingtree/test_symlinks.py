@@ -60,6 +60,17 @@ class TestKindChanges(TestCaseWithWorkingTree):
 
     def test_symlink_to_dir(self):
         # https://bugs.launchpad.net/bzr/+bug/192859
+        if self.workingtree_format.upgrade_recommended: 
+            # File "bzrlib/workingtree.py", line 2341, in conflicts
+            #   for conflicted in self._iter_conflicts():
+            # File "bzrlib/workingtree.py", line 1590, in _iter_conflicts
+            #   for info in self.list_files():
+            # File "bzrlib/workingtree.py", line 1203, in list_files
+            #   f_ie = inv.get_child(from_dir_id, f)
+            # File "bzrlib/inventory.py", line 1269, in get_child
+            #   return self[parent_id].children.get(filename)
+            # AttributeError: children
+            raise tests.TestSkipped("known broken on pre-dirstate formats; wontfix")
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('tree/a@', 'target')])
@@ -70,7 +81,7 @@ class TestKindChanges(TestCaseWithWorkingTree):
             ('tree/a/',),
             ('tree/a/f', 'content'),
             ])
-        # fails
+        tree.smart_add(['tree/a/f'])
         tree.commit('change to dir')
 
 
