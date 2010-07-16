@@ -4,16 +4,17 @@ Developer guide to bzrlib transports
 
 This guide describes the `Transport` classes that Bazaar uses for most
 local and remote file access.  (Working tree files are the major
-exception.)
+exception (`bug 606249 <https://bugs.launchpad.net/bzr/+bug/606249>`).
 
 
 Handling symlinks
 #################
 
 A symlink creates an alias where files or directories can be accessed by a
-different name.  Symlinks are annoying.
+different name.  Symlinks are useful but raise a few annoying cases for
+bzr.
 
-It's important to have tests for symlinks but there tests can't run on
+It's important to have tests for symlinks but these tests can't run on
 Windows, so you need eg ::
 
     _test_needs_features = [tests.SymlinkFeature]
@@ -23,9 +24,11 @@ or ::
     self.requireFeature(tests.SymlinkFeature)
 
 Bazaar versions symlinks as objects in their own right, whose content is
-the (Unicode) path they point to.  bzr doesn't care whether a versioned
+the path they point to.  bzr doesn't care whether a versioned
 symlink is absolute or relative; or whether it points inside or outside
-the working tree; or whether its referent exists or not.
+the working tree; or whether its referent exists or not.  In Unix the
+target of a symlink is a byte string; bzr treats this as a Unicode string
+in the filesystem encoding (`osutils._fs_enc`).
 
 So when we say ``bzr add symlink``, this should always add the symlink to
 its containing working tree, and never dereference the symlink.
