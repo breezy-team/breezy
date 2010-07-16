@@ -77,12 +77,8 @@ from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 def tree_files(file_list, default_branch=u'.', canonicalize=True,
     apply_view=True):
-    try:
-        return internal_tree_files(file_list, default_branch, canonicalize,
-            apply_view)
-    except errors.FileInWrongBranch, e:
-        raise errors.BzrCommandError("%s is not in the same branch as %s" %
-                                     (e.path, file_list[0]))
+    return internal_tree_files(file_list, default_branch, canonicalize,
+        apply_view)
 
 
 def tree_files_for_add(file_list):
@@ -210,13 +206,10 @@ def safe_relpath_files(tree, file_list, canonicalize=True, apply_view=True):
     else:
         fixer = tree.relpath
     for filename in file_list:
-        try:
-            relpath = fixer(osutils.dereference_path(filename))
-            if  view_files and not osutils.is_inside_any(view_files, relpath):
-                raise errors.FileOutsideView(filename, view_files)
-            new_list.append(relpath)
-        except errors.PathNotChild:
-            raise errors.FileInWrongBranch(tree.branch, filename)
+        relpath = fixer(osutils.dereference_path(filename))
+        if  view_files and not osutils.is_inside_any(view_files, relpath):
+            raise errors.FileOutsideView(filename, view_files)
+        new_list.append(relpath)
     return new_list
 
 

@@ -14,11 +14,18 @@ bzr 2.3b1
 Compatibility Breaks
 ********************
 
+* `FileInWrongBranch` is deprecated in favour of `PathNotChild` and no
+  longer raised.
+  (Martin Pool)
+
 New Features
 ************
 
 Bug Fixes
 *********
+
+* `PathNotChild` should not give a traceback.
+  (Martin Pool, #98735)
 
 Improvements
 ************
