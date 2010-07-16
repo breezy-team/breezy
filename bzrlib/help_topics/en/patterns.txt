@@ -19,10 +19,20 @@ Patterns may include globbing wildcards such as::
   /**/ - Matches 0 or more directories in a path
   [a-z] - Matches a single character from within a group of characters
 
-Patterns may also be Python regular expressions. Regular expression
+Patterns may also be `Python regular expressions`_. Regular expression
 patterns are identified by a 'RE:' prefix followed by the regular
 expression.  Regular expression patterns may not include named or
 numbered groups.
 
+Case insensitive ignore patterns can be specified with regular expressions
+by using the ``i`` (for ignore case) flag in the pattern.
+
+For example, a case insensitive match for ``foo`` may be specified as::
+
+  RE:(?i)foo
+
 Ignore patterns may be prefixed with '!', which means that a filename
 matched by that pattern will not be ignored.
+
+.. _Python regular expressions: http://docs.python.org/library/re.html
+
