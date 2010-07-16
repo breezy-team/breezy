@@ -466,6 +466,25 @@ class TestMap(TestCaseWithStore):
         # updated key.
         self.assertEqual(new_root, chkmap._root_node._key)
 
+    def test_apply_delete_to_internal_node(self):
+        # applying a delta should be convert an internal root node to a leaf
+        # node if the delta shrinks the map enough.
+        store = self.get_chk_bytes()
+        chkmap = CHKMap(store, None)
+        # Add three items: 2 small enough to fit in one node, and one huge to
+        # force multiple nodes.
+        chkmap._root_node.set_maximum_size(100)
+        chkmap.map(('small',), 'value')
+        chkmap.map(('little',), 'value')
+        chkmap.map(('very-big',), 'x' * 100)
+        # (Check that we have constructed the scenario we want to test)
+        self.assertIsInstance(chkmap._root_node, InternalNode)
+        # Delete the huge item so that the map fits in one node again.
+        delta = [(('very-big',), None, None)]
+        chkmap.apply_delta(delta)
+        self.assertCanonicalForm(chkmap)
+        self.assertIsInstance(chkmap._root_node, LeafNode)
+
     def test_apply_new_keys_must_be_new(self):
         # applying a delta (None, "a", "b") to a map with 'a' in it generates
         # an error.

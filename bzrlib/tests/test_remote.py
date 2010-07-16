@@ -1164,8 +1164,8 @@ class TestBranch_get_stacked_on_url(TestRemote):
             len(branch.repository._real_repository._fallback_repositories))
 
     def test_get_stacked_on_real_branch(self):
-        base_branch = self.make_branch('base', format='1.6')
-        stacked_branch = self.make_branch('stacked', format='1.6')
+        base_branch = self.make_branch('base')
+        stacked_branch = self.make_branch('stacked')
         stacked_branch.set_stacked_on_url('../base')
         reference_format = self.get_repo_format()
         network_name = reference_format.network_name()
@@ -1176,7 +1176,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
             'success', ('branch', branch_network_name))
         client.add_expected_call(
             'BzrDir.find_repositoryV3', ('stacked/',),
-            'success', ('ok', '', 'no', 'no', 'yes', network_name))
+            'success', ('ok', '', 'yes', 'no', 'yes', network_name))
         # called twice, once from constructor and then again by us
         client.add_expected_call(
             'Branch.get_stacked_on_url', ('stacked/',),
@@ -2115,12 +2115,13 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         """
         # Make a repo with a fallback repo, both using a FakeClient.
         format = remote.response_tuple_to_repo_format(
-            ('yes', 'no', 'yes', 'fake-network-name'))
+            ('yes', 'no', 'yes', self.get_repo_format().network_name()))
         repo, client = self.setup_fake_client_and_repository('quack')
         repo._format = format
         fallback_repo, ignored = self.setup_fake_client_and_repository(
             'fallback')
         fallback_repo._client = client
+        fallback_repo._format = format
         repo.add_fallback_repository(fallback_repo)
         # First the client should ask the primary repo
         client.add_expected_call(

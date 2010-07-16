@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1219,7 +1219,7 @@ cdef class ProcessEntryC:
             else:
                 try:
                     source_parent_id = self.old_dirname_to_file_id[old_dirname]
-                except KeyError:
+                except KeyError, _:
                     source_parent_entry = self.state._get_entry(self.source_index,
                                                            path_utf8=old_dirname)
                     source_parent_id = source_parent_entry[0][2]
@@ -1236,7 +1236,7 @@ cdef class ProcessEntryC:
             else:
                 try:
                     target_parent_id = self.new_dirname_to_file_id[new_dirname]
-                except KeyError:
+                except KeyError, _:
                     # TODO: We don't always need to do the lookup, because the
                     #       parent entry will be the same as the source entry.
                     target_parent_entry = self.state._get_entry(self.target_index,
@@ -1478,7 +1478,7 @@ cdef class ProcessEntryC:
             # interface doesn't require it.
             try:
                 self.current_root = self.search_specific_files.pop()
-            except KeyError:
+            except KeyError, _:
                 raise StopIteration()
             self.searched_specific_files.add(self.current_root)
             # process the entries for this containing directory: the rest will be
@@ -1567,7 +1567,7 @@ cdef class ProcessEntryC:
                         #            and e.winerror == ERROR_DIRECTORY
                         try:
                             e_winerror = e.winerror
-                        except AttributeError:
+                        except AttributeError, _:
                             e_winerror = None
                         win_errors = (ERROR_DIRECTORY, ERROR_PATH_NOT_FOUND)
                         if (e.errno in win_errors or e_winerror in win_errors):
@@ -1656,7 +1656,7 @@ cdef class ProcessEntryC:
                     try:
                         self.current_dir_info = self.dir_iterator.next()
                         self.current_dir_list = self.current_dir_info[1]
-                    except StopIteration:
+                    except StopIteration, _:
                         self.current_dir_info = None
                 else: #(dircmp > 0)
                     # We have a dirblock entry for this location, but there
@@ -1803,7 +1803,7 @@ cdef class ProcessEntryC:
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
                             try:
                                 relpath_unicode = self.utf8_decode(current_path_info[0])[0]
-                            except UnicodeDecodeError:
+                            except UnicodeDecodeError, _:
                                 raise errors.BadFilenameEncoding(
                                     current_path_info[0], osutils._fs_enc)
                             if changed is not None:
@@ -1851,7 +1851,7 @@ cdef class ProcessEntryC:
                 try:
                     self.current_dir_info = self.dir_iterator.next()
                     self.current_dir_list = self.current_dir_info[1]
-                except StopIteration:
+                except StopIteration, _:
                     self.current_dir_info = None
 
     cdef object _next_consistent_entries(self):
