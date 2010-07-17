@@ -217,11 +217,11 @@ class Globster(object):
                 if match:
                     return patterns[match.lastindex -1]
         except errors.InvalidPattern, e:
-            # We can't show the default e.message to the user as thats for
+            # We can't show the default e.msg to the user as thats for
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
-            mutter('Invalid pattern found in regex: %s.', e.message)
-            e.message = "File ~/.bazaar/ignore or .bzrignore contains errors."
+            mutter('Invalid pattern found in regex: %s.', e.msg)
+            e.msg = "File ~/.bazaar/ignore or .bzrignore contains errors."
             raise e
         return None
 

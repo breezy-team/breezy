@@ -2184,7 +2184,7 @@ def re_compile_checked(re_string, flags=0, where=""):
             where = ' in ' + where
         # despite the name 'error' is a type
         raise errors.BzrCommandError('Invalid regular expression%s: %s'
-            % (where, e.message))
+            % (where, e.msg))
 
 
 if sys.platform == "win32":

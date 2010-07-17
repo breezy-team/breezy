@@ -5,11 +5,83 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.2rc1
+##########
+
+:Codename: ???
+:2.2rc1: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+* BzrError subclasses no longer support the name "message" to be used
+  as an argument for __init__ or in _fmt format specification as this
+  breaks in some Python versions. errors.LockError.__init__ argument
+  is now named "msg" instead of earlier "message".
+  (Parth Malwankar, #603461)
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
+
+* Progress bars prefer to truncate the text message rather than the
+  counters.  The spinner is shown between the network transfer indicator
+  and the progress message.  (Martin Pool)
+
+* Recursive binding for checkouts is now detected by bzr. A clear error
+  message is shown to the user. (Parth Malwankar, #405192)
+
+Improvements
+************
+
+Documentation
+*************
+
+* ``bzr help patterns`` now explains case insensitive patterns and
+  points to Python regular expression documentation.
+  (Parth Malwankar, #594386)
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+* Unit test added to ensure that "message" is not uses as a format variable
+  name in BzrError subclasses as this conflicts with some Python versions.
+  (Parth Malwankar, #603461)
+
 bzr 2.2b4
 #########
 
 :Codename: Monkey Magic
-:2.2b4: NOT RELEASED YET
+:2.2b4: 2004-07-09
+
+
+This fourth and final beta in the 2.2 series now stabilizes the internal
+APIs. Plugin authors are recommended to ensure their releases are
+compatible, so that 2.2rc1 can be a true release candidate, containing
+stable and compatible plugin versions. 
+
+For users of bzrlib as a library, one of the primary changes is to request
+that they call ``bzrlib.initialize`` and use the returned context manager
+appropriately.
+
+Better interaction with ``bzr-loom`` to make sure branching from a loom
+even over a smart server still yields a local loom. Not to mention lots of
+bugfixes over 2.2b3.
 
 Compatibility Breaks
 ********************
@@ -20,11 +92,6 @@ Compatibility Breaks
   behind on the screen. That required calling another function before
   exiting the program, and it made sense to provide a full context
   manager at the same time. (Robert Collins)
-
-* ``bzrlib.re_compile_checked`` is now deprecated. Caller should handle
-  ``bzrlib.errors.InvalidPattern`` exception thrown by ``re.match`` in
-  case the default error message not suitable for the use case.
-  (Parth Malwankar)
 
 * The ``bzr`` front end now requires a ``bzrlib.ui.ui_factory`` which is a
   context manager in the Python 2.5 and above sense. The bzrlib base class
@@ -95,10 +162,6 @@ Bug Fixes
 * Invalid patterns supplied to ``Globster`` or ``lazy_regex`` now raise
   ``InvalidPattern`` exception showing clear error message to the user.
   (Parth Malwankar #300062)
-
-* Progress bars prefer to truncate the text message rather than the
-  counters.  The spinner is shown between the network transfer indicator
-  and the progress message.  (Martin Pool)
 
 * Progress output is cleaned up when exiting.  (Aaron Bentley)
 
@@ -187,6 +250,11 @@ API Changes
 * ``bzrlib.knit.KnitSequenceMatcher``, which has been deprecated since
   2007, has been deleted.  Use ``PatienceSequenceMatcher`` from
   ``bzrlib.patiencediff`` instead. (Andrew Bennetts)
+
+* ``bzrlib.re_compile_checked`` is now deprecated. Caller should handle
+  ``bzrlib.errors.InvalidPattern`` exception thrown by ``re.match`` in
+  case the default error message not suitable for the use case.
+  (Parth Malwankar)
 
 * ``bzrlib.tests.blackbox.ExternalBase`` is deprecated.  It provided only
   one method ``check_output``, and we now recommend checking command
@@ -947,6 +1015,13 @@ New Features
 Bug Fixes
 *********
 
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
+
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
 
@@ -1459,6 +1534,9 @@ Bug Fixes
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
 
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)

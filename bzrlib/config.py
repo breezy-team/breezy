@@ -74,6 +74,7 @@ from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
+    atomicfile,
     debug,
     errors,
     mail_client,
@@ -478,12 +479,10 @@ class IniBasedConfig(Config):
         return self.get_user_option('nickname')
 
     def _write_config_file(self):
-        f = file(self._get_filename(), "wb")
-        try:
-            osutils.copy_ownership_from_path(f.name)
-            self._get_parser().write(f)
-        finally:
-            f.close()
+        atomic_file = atomicfile.AtomicFile(self._get_filename())
+        self._get_parser().write(atomic_file)
+        atomic_file.commit()
+        atomic_file.close()
 
 
 class GlobalConfig(IniBasedConfig):
