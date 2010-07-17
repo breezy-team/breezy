@@ -53,6 +53,8 @@ Documentation
 API Changes
 ***********
 
+* Delete ``ProgressTask.note``, which was deprecated in 2.1.
+
 Internals
 *********
 
