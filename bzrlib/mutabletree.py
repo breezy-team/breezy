@@ -389,6 +389,10 @@ class MutableTree(tree.Tree):
         dirs_to_add = []
         user_dirs = set()
 
+        # expand any symlinks in the directory part, while leaving the
+        # filename alone
+        file_list = map(osutils.normalizepath, file_list)
+
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
         # than to convert an abspath to tree relative, and it's cheaper to

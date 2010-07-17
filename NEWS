@@ -18,6 +18,11 @@ Bug Fixes
   history no longer crash when deleted files are involved.
   (Vincent Ladeuil, John Arbash Meinel, #375898)
 
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.  
+  (Martin Pool, #192859)
+
 * ``bzr commit SYMLINK`` now works, rather than trying to commit the
   target of the symlink.
   (Martin Pool, John Arbash Meinel, #128562)

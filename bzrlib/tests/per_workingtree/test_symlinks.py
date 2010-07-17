@@ -55,6 +55,25 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertEqual('symlink',
             tree.kind(tree.path2id('link')))
 
+    def test_add_file_under_symlink(self):
+        # similar to 
+        # https://bugs.launchpad.net/bzr/+bug/192859/comments/3
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('tree/link@', 'dir'),
+            ('tree/dir/',),
+            ('tree/dir/file', 'content'),
+            ])
+        self.assertEquals(
+            tree.smart_add(['tree/link/file']),
+            ([u'dir', u'dir/file'], {}))
+        # should add the actual parent directory, not the apparent parent
+        # (which is actually a symlink)
+        self.assertTrue(tree.path2id('dir/file'))
+        self.assertTrue(tree.path2id('dir'))
+        self.assertIs(None, tree.path2id('link'))
+        self.assertIs(None, tree.path2id('link/file'))
+
 
 class TestKindChanges(TestCaseWithWorkingTree):
 
