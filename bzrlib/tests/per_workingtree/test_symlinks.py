@@ -60,24 +60,13 @@ class TestKindChanges(TestCaseWithWorkingTree):
 
     _test_needs_features = [tests.SymlinkFeature]
 
-    def test_symlink_to_dir(self):
+    def test_symlink_changes_to_dir(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
         # we had some past problems with the workingtree remembering for too
         # long what kind of object was at a particular name; we really
         # shouldn't do that.  Operating on the dirstate through passing
         # inventory deltas rather than mutating the inventory largely avoids
         # that.
-        if self.workingtree_format.upgrade_recommended: 
-            # File "bzrlib/workingtree.py", line 2341, in conflicts
-            #   for conflicted in self._iter_conflicts():
-            # File "bzrlib/workingtree.py", line 1590, in _iter_conflicts
-            #   for info in self.list_files():
-            # File "bzrlib/workingtree.py", line 1203, in list_files
-            #   f_ie = inv.get_child(from_dir_id, f)
-            # File "bzrlib/inventory.py", line 1269, in get_child
-            #   return self[parent_id].children.get(filename)
-            # AttributeError: children
-            raise tests.TestSkipped("known broken on pre-dirstate formats; wontfix")
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([
             ('tree/a@', 'target')])
