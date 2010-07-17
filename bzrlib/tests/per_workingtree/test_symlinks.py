@@ -59,7 +59,12 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 class TestKindChanges(TestCaseWithWorkingTree):
 
     def test_symlink_to_dir(self):
-        # https://bugs.launchpad.net/bzr/+bug/192859
+        # <https://bugs.launchpad.net/bzr/+bug/192859>:
+        # we had some past problems with the workingtree remembering for too
+        # long what kind of object was at a particular name; we really
+        # shouldn't do that.  Operating on the dirstate through passing
+        # inventory deltas rather than mutating the inventory largely avoids
+        # that.
         if self.workingtree_format.upgrade_recommended: 
             # File "bzrlib/workingtree.py", line 2341, in conflicts
             #   for conflicted in self._iter_conflicts():
