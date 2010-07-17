@@ -148,6 +148,7 @@ class TestTextUIFactory(tests.TestCase):
         factory = _mod_ui_text.TextUIFactory(
             stdin=tests.StringIOWrapper("yada\ny\n"),
             stdout=out, stderr=out)
+        factory._avail_width = lambda: 79
         pb = factory.nested_progress_bar()
         pb.show_bar = False
         pb.show_spinner = False
@@ -159,9 +160,9 @@ class TestTextUIFactory(tests.TestCase):
                                                factory.get_boolean,
                                                "what do you want"))
         output = out.getvalue()
-        self.assertContainsRe(factory.stdout.getvalue(),
-            "foo *\r\r  *\r*")
-        self.assertContainsRe(factory.stdout.getvalue(),
+        self.assertContainsRe(output,
+            "| foo *\r\r  *\r*")
+        self.assertContainsRe(output,
             r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
         # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())
