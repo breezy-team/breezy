@@ -58,6 +58,8 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
 
 class TestKindChanges(TestCaseWithWorkingTree):
 
+    _test_needs_features = [tests.SymlinkFeature]
+
     def test_symlink_to_dir(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
         # we had some past problems with the workingtree remembering for too
