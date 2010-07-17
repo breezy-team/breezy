@@ -21,6 +21,7 @@ import os
 
 from bzrlib import (
     builtins,
+    osutils,
     tests,
     workingtree,
     )
@@ -79,6 +80,26 @@ class TestKindChanges(TestCaseWithWorkingTree):
             ])
         tree.smart_add(['tree/a/f'])
         tree.commit('change to dir')
+
+    def test_dir_changes_to_symlink(self):
+        # <https://bugs.launchpad.net/bzr/+bug/192859>:
+        # we had some past problems with the workingtree remembering for too
+        # long what kind of object was at a particular name; we really
+        # shouldn't do that.  Operating on the dirstate through passing
+        # inventory deltas rather than mutating the inventory largely avoids
+        # that.
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('tree/a/',),
+            ('tree/a/file', 'content'),
+            ])
+        tree.smart_add(['tree/a'])
+        tree.commit('add dir')
+        osutils.rmtree('tree/a')
+        self.build_tree_contents([
+            ('tree/a@', 'target'),
+            ])
+        tree.commit('change to symlink')
 
 
 class TestOpenTree(TestCaseWithWorkingTree):
