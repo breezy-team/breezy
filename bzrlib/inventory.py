@@ -1281,9 +1281,6 @@ class Inventory(CommonInventory):
     def add(self, entry):
         """Add entry to inventory.
 
-        To add  a file to a branch ready to be committed, use Branch.add,
-        which calls this.
-
         :return: entry
         """
         if entry.file_id in self._byid:
