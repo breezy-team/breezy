@@ -176,16 +176,6 @@ class InventoryEntry(object):
                     candidates[ie.revision] = ie
         return candidates
 
-    @deprecated_method(deprecated_in((1, 6, 0)))
-    def get_tar_item(self, root, dp, now, tree):
-        """Get a tarfile item and a file stream for its content."""
-        item = tarfile.TarInfo(osutils.pathjoin(root, dp).encode('utf8'))
-        # TODO: would be cool to actually set it to the timestamp of the
-        # revision it was last changed
-        item.mtime = now
-        fileobj = self._put_in_tar(item, tree)
-        return item, fileobj
-
     def has_text(self):
         """Return true if the object this entry represents has textual data.
 
@@ -238,17 +228,6 @@ class InventoryEntry(object):
         """
         raise BzrError("don't know how to export {%s} of kind %r" %
                        (self.file_id, self.kind))
-
-    @deprecated_method(deprecated_in((1, 6, 0)))
-    def put_on_disk(self, dest, dp, tree):
-        """Create a representation of self on disk in the prefix dest.
-
-        This is a template method - implement _put_on_disk in subclasses.
-        """
-        fullpath = osutils.pathjoin(dest, dp)
-        self._put_on_disk(fullpath, tree)
-        # mutter("  export {%s} kind %s to %s", self.file_id,
-        #         self.kind, fullpath)
 
     def _put_on_disk(self, fullpath, tree):
         """Put this entry onto disk at fullpath, from tree tree."""
@@ -395,34 +374,6 @@ class InventoryEntry(object):
 
     def _forget_tree_state(self):
         pass
-
-
-class RootEntry(InventoryEntry):
-
-    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable',
-                 'revision', 'symlink_target', 'reference_revision']
-
-    def _check(self, checker, rev_id):
-        """See InventoryEntry._check"""
-
-    def __init__(self, file_id):
-        self.file_id = file_id
-        self.children = {}
-        self.kind = 'directory'
-        self.parent_id = None
-        self.name = u''
-        self.revision = None
-        symbol_versioning.warn('RootEntry is deprecated as of bzr 0.10.'
-                               '  Please use InventoryDirectory instead.',
-                               DeprecationWarning, stacklevel=2)
-
-    def __eq__(self, other):
-        if not isinstance(other, RootEntry):
-            return NotImplemented
-
-        return (self.file_id == other.file_id) \
-               and (self.children == other.children)
 
 
 class InventoryDirectory(InventoryEntry):
