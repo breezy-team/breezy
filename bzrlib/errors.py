@@ -1177,15 +1177,19 @@ class NoSuchRevisionInTree(NoSuchRevision):
 
 class InvalidRevisionSpec(BzrError):
 
-    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
-            " %(branch)s%(extra)s")
-
     def __init__(self, spec, branch, extra=None):
         BzrError.__init__(self, branch=branch, spec=spec)
         if extra:
             self.extra = '\n' + str(extra)
         else:
             self.extra = ''
+
+    def __str__(self):
+        _fmt = ("Requested revision: '%s' does not exist in branch:"
+                " %s%s"
+                % (self.spec, self.branch.user_url, self.extra))
+
+        return str(_fmt)
 
 
 class HistoryMissing(BzrError):

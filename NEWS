@@ -20,6 +20,9 @@ New Features
 Bug Fixes
 *********
 
+* Don't print internal object name when print an invalid revision spec
+  error.  (Neil Martinsen-Burrell, #598701)
+
 Improvements
 ************
 
