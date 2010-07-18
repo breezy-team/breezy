@@ -3536,9 +3536,6 @@ class cmd_selftest(Command):
                                  ' sections of code.'),
                      Option('lsprof-tests',
                             help='Generate lsprof output for each test.'),
-                     Option('cache-dir', type=str,
-                            help='Cache intermediate benchmark output in this '
-                                 'directory.'),
                      Option('first',
                             help='Run all tests, but run specified tests first.',
                             short_name='f',
@@ -3578,7 +3575,7 @@ class cmd_selftest(Command):
 
     def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None,
+            lsprof_timed=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
@@ -3588,8 +3585,6 @@ class cmd_selftest(Command):
         # Make deprecation warnings visible, unless -Werror is set
         symbol_versioning.activate_deprecation_warnings(override=False)
 
-        if cache_dir is not None:
-            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
