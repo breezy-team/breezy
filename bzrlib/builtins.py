@@ -1958,9 +1958,9 @@ class cmd_diff(Command):
                 '--prefix expects two values separated by a colon'
                 ' (eg "old/:new/")')
 
-	if using is not None and diff_options is not None:
-		raise errors.BzrCommandError (
-		'--diff-options and --using are mutually exclusive.')
+        if using is not None and diff_options is not None:
+            raise errors.BzrCommandError(
+            '--diff-options and --using are mutually exclusive.')
 
         if revision and len(revision) > 2:
             raise errors.BzrCommandError('bzr diff --revision takes exactly'

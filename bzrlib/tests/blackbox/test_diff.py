@@ -156,8 +156,8 @@ class TestDiff(DiffBase):
             "Requested revision: '1.1' does not exist in branch:")
 
     def test_diff_diff_options_and_using(self):
-	out, err = self.run_bzr('diff --diff-options -wu --using /usr/bin/diff', retcode=3,
-	    error_regexes=('are mutually exclusive.',))
+        out, err = self.run_bzr('diff --diff-options -wu --using /usr/bin/diff', retcode=3,
+          error_regexes=('are mutually exclusive.',))
 
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
