@@ -20,6 +20,11 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* The old ``bzr selftest --benchmark`` option has been removed.
+  <https://launchpad.net/bzr-usertest> is an actively-maintained
+  macrobenchmark suite.
+  (Martin Pool)
+
 New Features
 ************
 
