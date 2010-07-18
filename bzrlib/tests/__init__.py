@@ -274,7 +274,7 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def _shortened_test_description(self, test):
         what = test.id()
-        what = re.sub(r'^bzrlib\.(tests|benchmarks)\.', '', what)
+        what = re.sub(r'^bzrlib\.tests\.', '', what)
         return what
 
     def startTest(self, test):
