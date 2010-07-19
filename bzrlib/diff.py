@@ -420,9 +420,9 @@ def get_trees_and_branches_to_diff_locked(
 
     # Get the specific files (all files is None, no files is [])
     if make_paths_wt_relative and working_tree is not None:
-        from bzrlib.builtins import safe_relpath_files
-        other_paths = safe_relpath_files(working_tree, other_paths,
-        apply_view=apply_view)
+        other_paths = working_tree.safe_relpath_files(
+            other_paths,
+            apply_view=apply_view)
     specific_files.extend(other_paths)
     if len(specific_files) == 0:
         specific_files = None
