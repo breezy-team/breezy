@@ -28,6 +28,9 @@ New Features
 Bug Fixes
 *********
 
+* Check if both --diff-options and --using are set, and exit with error
+  in this case. (Matthäus G. Chajdas, #234708)
+
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
 
