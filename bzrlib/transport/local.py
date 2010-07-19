@@ -99,9 +99,10 @@ class LocalTransport(transport.Transport):
          - relative_reference is url escaped.
         """
         if relative_reference in ('.', ''):
-            # strip the trailing slash so that stat on a transport pointing to
-            # a symlink reads the link not the referent
-            return self._local_base.rstrip(os.path.sep)
+            # _local_base normally has a trailing slash; strip it so that stat
+            # on a transport pointing to a symlink reads the link not the
+            # referent but be careful of / and c:\
+            return osutils.split(self._local_base)[0]
         return self._local_base + urlutils.unescape(relative_reference)
 
     def abspath(self, relpath):
