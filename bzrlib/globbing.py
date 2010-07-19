@@ -182,6 +182,12 @@ class Globster(object):
     TYPE_FULLPATH = 1
     TYPE_BASENAME = 2
     TYPE_EXTENSION = 3
+    # We want to _add_patterns in a specific order (as per type_list below)
+    # starting with the shortest and going to the longest.
+    # As some Python version don't support ordered dicts the list below is
+    # used to select inputs for _add_pattern in a specific order.
+    type_list = [ TYPE_EXTENSION, TYPE_BASENAME, TYPE_FULLPATH ]
+
 
     translators = {
         TYPE_FULLPATH : _sub_fullpath,
@@ -207,10 +213,9 @@ class Globster(object):
         for pat in patterns:
             pat = normalize_pattern(pat)
             pattern_lists[Globster.identify(pat)].append(pat)
-        for pattern_type, patterns in pattern_lists.iteritems():
-            self._add_patterns(patterns,
-                Globster.translators[pattern_type],
-                Globster.prefixes[pattern_type])
+        for t in Globster.type_list:
+            self._add_patterns(pattern_lists[t], Globster.translators[t],
+                Globster.prefixes[t])
 
     def _add_patterns(self, patterns, translator, prefix=''):
         while patterns:

@@ -313,9 +313,9 @@ class TestGlobster(TestCase):
 
     def test_bad_pattern(self):
         """Ensure that globster handles bad patterns cleanly."""
-        patterns = [u'RE:[', u'foo', u'RE:*.cpp']
+        patterns = [u'RE:[', u'/home/foo', u'RE:*.cpp']
         g = Globster(patterns)
-        e = self.assertRaises(errors.InvalidPattern, g.match, 'foo')
+        e = self.assertRaises(errors.InvalidPattern, g.match, 'filename')
         self.assertContainsRe(e.msg,
             "File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
 
