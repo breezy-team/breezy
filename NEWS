@@ -20,6 +20,8 @@ New Features
 Bug Fixes
 *********
 
+* Allow using both --using and --diff-options. (Matthäus G. Chajdas, #234708)
+
 Improvements
 ************
 
@@ -57,9 +59,6 @@ Bug Fixes
 
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
-
-* Check if both --diff-options and --using are set, and exit with error
-  in this case. (Matthäus G. Chajdas, #234708)
 
 Improvements
 ************

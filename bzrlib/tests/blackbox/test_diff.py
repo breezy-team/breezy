@@ -155,10 +155,6 @@ class TestDiff(DiffBase):
         self.assertContainsRe(err,
             "Requested revision: '1.1' does not exist in branch:")
 
-    def test_diff_diff_options_and_using(self):
-        out, err = self.run_bzr('diff --diff-options -wu --using /usr/bin/diff', retcode=3,
-          error_regexes=('are mutually exclusive.',))
-
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
         # (Malone #3619)
@@ -402,6 +398,18 @@ class TestExternalDiff(DiffBase):
                                    "+++ goodbye\t")
         self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
                                  "+baz\n\n")
+
+    def test_external_diff_options_and_using(self):
+        """Test that the options are passed correctly to an external diff process"""
+        self.make_example_branch()
+        self.build_tree_contents([('hello', 'Foo\n')])
+        # no retcode, so we can capture if /usr/bin/diff was not found and skip
+        out, err = self.run_bzr('diff --diff-options -i --using /usr/bin/diff',
+                                    retcode=None)
+        if 'bzr: ERROR: /usr/bin/diff could not be found on this machine\n' in err:
+            raise tests.TestSkipped("No external 'diff' is available")
+        self.assertEquals("=== modified file 'hello'\n", out)
+        self.assertEquals('', err)
 
 
 class TestDiffOutput(DiffBase):
