@@ -391,6 +391,7 @@ class TestIniConfigBuilding(TestIniConfig):
             'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
             ' Use file_name instead.'],
             config.IniBasedConfig, lambda: 'ini.conf')
+        self.assertEqual('ini.conf', conf.file_name)
 
     def test_get_parser_file_parameter_is_deprecated_(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
