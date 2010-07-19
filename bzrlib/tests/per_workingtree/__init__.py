@@ -101,6 +101,7 @@ def load_tests(standard_tests, module, loader):
         'revision_tree',
         'set_root_id',
         'smart_add',
+        'symlinks',
         'uncommit',
         'unversion',
         'views',
