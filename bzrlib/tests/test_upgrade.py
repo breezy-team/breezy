@@ -43,12 +43,6 @@ from bzrlib.upgrade import upgrade
 
 class TestUpgrade(TestCaseWithTransport):
 
-    def test_build_tree(self):
-        """Test tree-building test helper"""
-        self.build_tree_contents(_upgrade1_template)
-        self.failUnlessExists('foo')
-        self.failUnlessExists('.bzr/README')
-
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to latest format"""
         eq = self.assertEquals

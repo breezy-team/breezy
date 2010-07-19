@@ -506,6 +506,10 @@ Bug Fixes
   history no longer crash when deleted files are involved.
   (Vincent Ladeuil, John Arbash Meinel, #375898)
 
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
 * ``bzr revert`` now only takes write lock on working tree, instead of on 
   both working tree and branch.
   (Danny van Heumen, #498409)
@@ -543,6 +547,13 @@ Bug Fixes
   directory file handle after the chdir fails. Otherwise when passing many
   filenames into a command line ``bzr status`` we would leak descriptors.
   (John Arbash Meinel, #583486)
+
+
+Testing
+*******
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
 
 
 bzr 2.0.5

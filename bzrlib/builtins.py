@@ -175,7 +175,7 @@ def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
                 view_str = views.view_display_str(view_files)
                 note("Ignoring files outside view. View is %s" % view_str)
         return tree, file_list
-    tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
+    tree = WorkingTree.open_containing(file_list[0])[0]
     return tree, safe_relpath_files(tree, file_list, canonicalize,
         apply_view=apply_view)
 
