@@ -354,6 +354,13 @@ class IniBasedConfig(Config):
 
     def __init__(self, get_filename=symbol_versioning.DEPRECATED_PARAMETER,
                  file_name=None, _content=None):
+        """Base class for configuration files using an ini-like syntax.
+
+        :param file_name: The configuration file path.
+
+        :param _content: For tests only, a string representing the file
+            content. This will be utf-8 encoded.
+        """
         super(IniBasedConfig, self).__init__()
         if symbol_versioning.deprecated_passed(get_filename):
             symbol_versioning.warn(
