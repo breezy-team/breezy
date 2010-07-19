@@ -20,6 +20,10 @@ New Features
 Bug Fixes
 *********
 
+* ``Transport.stat`` on a symlink, including a transport pointing directly
+  to a symlink, now returns information about the symlink.
+  (Martin Pool)
+
 Improvements
 ************
 

@@ -1766,3 +1766,15 @@ class TransportTests(TestTransportImplementation):
         # also raise a special error
         self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
                               transport.readv, 'a', [(12,2)])
+
+    def test_stat_symlink(self):
+        # if a transport points directly to a symlink (and supports symlinks
+        # at all) you can tell this.  helps with bug 32669.
+        t = self.get_transport()
+        try:
+            t.symlink('target', 'link')
+        except TransportNotPossible:
+            raise TestSkipped("symlinks not supported")
+        t2 = t.clone('link')
+        st = t2.stat('')
+        self.assertTrue(stat.S_ISLNK(st.st_mode))
