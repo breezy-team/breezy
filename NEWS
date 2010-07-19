@@ -31,6 +31,10 @@ Bug Fixes
 * Check if both --diff-options and --using are set, and exit with error
   in this case. (Matthäus G. Chajdas, #234708)
 
+* ``Transport.stat`` on a symlink, including a transport pointing directly
+  to a symlink, now returns information about the symlink.
+  (Martin Pool)
+
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
 
