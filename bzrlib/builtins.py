@@ -1869,7 +1869,7 @@ class cmd_diff(Command):
     takes_args = ['file*']
     takes_options = [
         Option('diff-options', type=str,
-               help='Pass these options to the external diff program.'),
+               help='Pass these options to the diff program.'),
         Option('prefix', type=str,
                short_name='p',
                help='Set prefixes added to old and new filenames, as '
@@ -1915,6 +1915,10 @@ class cmd_diff(Command):
             raise errors.BzrCommandError(
                 '--prefix expects two values separated by a colon'
                 ' (eg "old/:new/")')
+
+        if using is not None and diff_options is not None:
+            raise errors.BzrCommandError(
+            '--diff-options and --using are mutually exclusive.')
 
         if revision and len(revision) > 2:
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
