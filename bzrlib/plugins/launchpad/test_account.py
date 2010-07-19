@@ -26,9 +26,7 @@ from bzrlib.plugins.launchpad import account
 class LaunchpadAccountTests(TestCaseInTempDir):
 
     def setup_config(self, text):
-        my_config = config.GlobalConfig()
-        config_file = StringIO(text)
-        my_config._get_parser(config_file)
+        my_config = config.GlobalConfig(_content=StringIO(text))
         return my_config
 
     def test_get_lp_login_unconfigured(self):
