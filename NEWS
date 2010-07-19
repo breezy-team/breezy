@@ -33,6 +33,10 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
+* Progress bars prefer to truncate the text message rather than the
+  counters.  The spinner is shown between the network transfer indicator
+  and the progress message.  (Martin Pool)
+
 * Recursive binding for checkouts is now detected by bzr. A clear error
   message is shown to the user. (Parth Malwankar, #405192)
 
@@ -48,6 +52,8 @@ Documentation
 
 API Changes
 ***********
+
+* Delete ``ProgressTask.note``, which was deprecated in 2.1.
 
 Internals
 *********
