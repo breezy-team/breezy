@@ -140,7 +140,7 @@ SUBUNIT_SEEK_SET = 0
 SUBUNIT_SEEK_CUR = 1
 
 
-class ExtendedTestResult(unittest._TextTestResult):
+class ExtendedTestResult(testtools.TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
     Compared to the unittest version this class adds support for
@@ -167,7 +167,7 @@ class ExtendedTestResult(unittest._TextTestResult):
         :param bench_history: Optionally, a writable file object to accumulate
             benchmark results.
         """
-        unittest._TextTestResult.__init__(self, stream, descriptions, verbosity)
+        testtools.TextTestResult.__init__(self, stream)
         if bench_history is not None:
             from bzrlib.version import _get_bzr_source_tree
             src_tree = _get_bzr_source_tree()
@@ -200,11 +200,13 @@ class ExtendedTestResult(unittest._TextTestResult):
         actionTaken = "Ran"
         stopTime = time.time()
         timeTaken = stopTime - self.startTime
-        self.printErrors()
-        self.stream.writeln(self.separator2)
-        self.stream.writeln("%s %d test%s in %.3fs" % (actionTaken,
+        # GZ 2010-07-19: Seems testtools has no printErrors method, and though
+        #                the parent class method is similar have to duplicate
+        self._show_list('ERROR', self.errors)
+        self._show_list('FAIL', self.failures)
+        self.stream.write(self.sep2)
+        self.stream.write("%s %d test%s in %.3fs\n\n" % (actionTaken,
                             run, run != 1 and "s" or "", timeTaken))
-        self.stream.writeln()
         if not self.wasSuccessful():
             self.stream.write("FAILED (")
             failed, errored = map(len, (self.failures, self.errors))
@@ -217,20 +219,20 @@ class ExtendedTestResult(unittest._TextTestResult):
                 if failed or errored: self.stream.write(", ")
                 self.stream.write("known_failure_count=%d" %
                     self.known_failure_count)
-            self.stream.writeln(")")
+            self.stream.write(")\n")
         else:
             if self.known_failure_count:
-                self.stream.writeln("OK (known_failures=%d)" %
+                self.stream.write("OK (known_failures=%d)\n" %
                     self.known_failure_count)
             else:
-                self.stream.writeln("OK")
+                self.stream.write("OK\n")
         if self.skip_count > 0:
             skipped = self.skip_count
-            self.stream.writeln('%d test%s skipped' %
+            self.stream.write('%d test%s skipped\n' %
                                 (skipped, skipped != 1 and "s" or ""))
         if self.unsupported:
             for feature, count in sorted(self.unsupported.items()):
-                self.stream.writeln("Missing feature '%s' skipped %d tests." %
+                self.stream.write("Missing feature '%s' skipped %d tests.\n" %
                     (feature, count))
         if self._strict:
             ok = self.wasStrictlySuccessful()
@@ -550,40 +552,40 @@ class VerboseTestResult(ExtendedTestResult):
         return '%s%s' % (indent, err[1])
 
     def report_error(self, test, err):
-        self.stream.writeln('ERROR %s\n%s'
+        self.stream.write('ERROR %s\n%s\n'
                 % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_failure(self, test, err):
-        self.stream.writeln(' FAIL %s\n%s'
+        self.stream.write(' FAIL %s\n%s\n'
                 % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_known_failure(self, test, err):
-        self.stream.writeln('XFAIL %s\n%s'
+        self.stream.write('XFAIL %s\n%s\n'
                 % (self._testTimeString(test),
                    self._error_summary(err)))
 
     def report_success(self, test):
-        self.stream.writeln('   OK %s' % self._testTimeString(test))
+        self.stream.write('   OK %s\n' % self._testTimeString(test))
         for bench_called, stats in getattr(test, '_benchcalls', []):
-            self.stream.writeln('LSProf output for %s(%s, %s)' % bench_called)
+            self.stream.write('LSProf output for %s(%s, %s)\n' % bench_called)
             stats.pprint(file=self.stream)
         # flush the stream so that we get smooth output. This verbose mode is
         # used to show the output in PQM.
         self.stream.flush()
 
     def report_skip(self, test, reason):
-        self.stream.writeln(' SKIP %s\n%s'
+        self.stream.write(' SKIP %s\n%s\n'
                 % (self._testTimeString(test), reason))
 
     def report_not_applicable(self, test, reason):
-        self.stream.writeln('  N/A %s\n    %s'
+        self.stream.write('  N/A %s\n    %s\n'
                 % (self._testTimeString(test), reason))
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
-        self.stream.writeln("NODEP %s\n    The feature '%s' is not available."
+        self.stream.write("NODEP %s\n    The feature '%s' is not available.\n"
                 %(self._testTimeString(test), feature))
 
 
@@ -618,7 +620,7 @@ class TextTestRunner(object):
             encode = codec.encode
         stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream)
         stream.encoding = new_encoding
-        self.stream = unittest._WritelnDecorator(stream)
+        self.stream = stream
         self.descriptions = descriptions
         self.verbosity = verbosity
         self._bench_history = bench_history
