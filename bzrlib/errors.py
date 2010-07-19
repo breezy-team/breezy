@@ -680,7 +680,7 @@ class PathNotChild(PathError):
 
     _fmt = 'Path "%(path)s" is not a child of path "%(base)s"%(extra)s'
 
-    internal_error = True
+    internal_error = False
 
     def __init__(self, path, base, extra=None):
         BzrError.__init__(self)
@@ -782,6 +782,8 @@ class FileInWrongBranch(BzrError):
 
     _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
 
+    # use PathNotChild instead
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 3, 0)))
     def __init__(self, branch, path):
         BzrError.__init__(self)
         self.branch = branch
