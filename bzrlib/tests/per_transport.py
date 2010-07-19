@@ -1122,7 +1122,8 @@ class TransportTests(TestTransportImplementation):
             self.failUnless(t.has(link_name))
 
             st = t.stat(link_name)
-            self.failUnless(S_ISLNK(st.st_mode))
+            self.failUnless(S_ISLNK(st.st_mode),
+                "expected symlink, got mode %o" % st.st_mode)
         except TransportNotPossible:
             raise TestSkipped("Transport %s does not support symlinks." %
                               self._server.__class__)
