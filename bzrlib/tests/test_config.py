@@ -366,7 +366,7 @@ class TestConfigPath(tests.TestCase):
 class TestIniConfig(tests.TestCase):
 
     def make_config_parser(self, s):
-        conf = config.IniBasedConfig(_content=StringIO(s.encode('utf-8')))
+        conf = config.IniBasedConfig(_content=s)
         return conf, conf._get_parser()
 
 
@@ -376,13 +376,11 @@ class TestIniConfigBuilding(TestIniConfig):
         my_config = config.IniBasedConfig()
 
     def test_from_fp(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.IniBasedConfig(_content=config_file)
+        my_config = config.IniBasedConfig(_content=sample_config_text)
         self.assertIsInstance(my_config._get_parser(), configobj.ConfigObj)
 
     def test_cached(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.IniBasedConfig(_content=config_file)
+        my_config = config.IniBasedConfig(_content=sample_config_text)
         parser = my_config._get_parser()
         self.failUnless(my_config._get_parser() is parser)
 
@@ -394,7 +392,7 @@ class TestIniConfigBuilding(TestIniConfig):
 
     def test_get_parser_file_parameter_is_deprecated_(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        conf = config.IniBasedConfig(_content=config_file)
+        conf = config.IniBasedConfig(_content=sample_config_text)
         conf = self.callDeprecated([
             'IniBasedConfig._get_parser(file=xxx) was deprecated in 2.3.'
             ' Use IniBasedConfig(_content=xxx) instead.'],
@@ -592,24 +590,20 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 class TestGlobalConfigItems(tests.TestCase):
 
     def test_user_id(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.GlobalConfig(_content=config_file)
+        my_config = config.GlobalConfig(_content=sample_config_text)
         self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
 
     def test_absent_user_id(self):
-        config_file = StringIO("")
-        my_config = config.GlobalConfig(_content=config_file)
+        my_config = config.GlobalConfig()
         self.assertEqual(None, my_config._get_user_id())
 
     def test_configured_editor(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.GlobalConfig(_content=config_file)
+        my_config = config.GlobalConfig(_content=sample_config_text)
         self.assertEqual("vim", my_config.get_editor())
 
     def test_signatures_always(self):
-        config_file = StringIO(sample_always_signatures)
-        my_config = config.GlobalConfig(_content=config_file)
+        my_config = config.GlobalConfig(_content=sample_always_signatures)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_ALWAYS,
@@ -617,8 +611,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(True, my_config.signature_needed())
 
     def test_signatures_if_possible(self):
-        config_file = StringIO(sample_maybe_signatures)
-        my_config = config.GlobalConfig(_content=config_file)
+        my_config = config.GlobalConfig(_content=sample_maybe_signatures)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_WHEN_REQUIRED,
@@ -626,8 +619,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def test_signatures_ignore(self):
-        config_file = StringIO(sample_ignore_signatures)
-        my_config = config.GlobalConfig(_content=config_file)
+        my_config = config.GlobalConfig(_content=sample_ignore_signatures)
         self.assertEqual(config.CHECK_ALWAYS,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_NEVER,
@@ -635,8 +627,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def _get_sample_config(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.GlobalConfig(_content=config_file)
+        my_config = config.GlobalConfig(_content=sample_config_text)
         return my_config
 
     def test_gpg_signing_command(self):
@@ -645,8 +636,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def _get_empty_config(self):
-        config_file = StringIO("")
-        my_config = config.GlobalConfig(_content=config_file)
+        my_config = config.GlobalConfig()
         return my_config
 
     def test_gpg_signing_command_unset(self):
@@ -983,16 +973,13 @@ class TestLocationConfig(tests.TestCaseInTempDir):
     def get_branch_config(self, location, global_config=None):
         my_branch = FakeBranch(location)
         if global_config is None:
-            global_file = StringIO(sample_config_text.encode('utf-8'))
-        else:
-            global_file = StringIO(global_config.encode('utf-8'))
-        branches_file = StringIO(sample_branches_text.encode('utf-8'))
+            global_config = sample_config_text
 
         config.ensure_config_dir_exists()
-        my_global_config = config.GlobalConfig(_content=global_file)
+        my_global_config = config.GlobalConfig(_content=global_config)
         my_global_config._write_config_file()
-        my_location_config = config.LocationConfig(my_branch.base,
-                                                   _content=branches_file)
+        my_location_config = config.LocationConfig(
+            my_branch.base, _content=sample_branches_text)
         my_location_config._write_config_file()
 
         my_config = config.BranchConfig(my_branch)
@@ -1064,14 +1051,12 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
                           location_config=None, branch_data_config=None):
         my_branch = FakeBranch(location)
         if global_config is not None:
-            my_global_config = config.GlobalConfig(
-                _content=StringIO(global_config.encode('utf-8')))
+            my_global_config = config.GlobalConfig(_content=global_config)
             config.ensure_config_dir_exists()
             my_global_config._write_config_file()
         if location_config is not None:
-            my_location_config = config.LocationConfig(
-                my_branch.base,
-                _content=StringIO(location_config.encode('utf-8')))
+            my_location_config = config.LocationConfig(my_branch.base,
+                                                       _content=location_config)
             config.ensure_config_dir_exists()
             my_location_config._write_config_file()
         my_config = config.BranchConfig(my_branch)

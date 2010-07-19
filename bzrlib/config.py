@@ -369,6 +369,9 @@ class IniBasedConfig(Config):
                 self.file_name = get_filename()
         else:
             self.file_name = file_name
+        if _content is not None:
+            # wrap the content as a file-like object
+            _content = StringIO(_content.encode('utf-8'))
         self._content = _content
         self._parser = None
 
