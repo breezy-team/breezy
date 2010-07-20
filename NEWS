@@ -41,6 +41,12 @@ Bug Fixes
 Improvements
 ************
 
+* When building new working trees, default to reading from the repository
+  rather than the source tree unless explicitly requested.
+  (``bzr branch``, ``bzr checkout``) 2a format repositories can extract
+  content faster than seeking and reading disk content, especially in
+  cold-cache situations. (John Arbash Meinel, #607298)
+
 Documentation
 *************
 
