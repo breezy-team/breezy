@@ -1137,6 +1137,8 @@ class cmd_branch(Command):
     takes_args = ['from_location', 'to_location?']
     takes_options = ['revision',
         Option('hardlink', help='Hard-link working tree files where possible.'),
+        Option('files-from', type=str,
+               help="Get file contents from this tree."),
         Option('no-tree',
             help="Create a branch without a working-tree."),
         Option('switch',
@@ -1155,23 +1157,24 @@ class cmd_branch(Command):
                     ' allow branch to proceed.'),
         Option('bind',
             help="Bind new branch to from location."),
-        Option('use-accel', help='Try to copy content from the source tree'
-            ' rather than extracting it from the repository.'
-            ' Setting "--hardlink" forces this to True'),
         ]
     aliases = ['get', 'clone']
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
             use_existing_dir=False, switch=False, bind=False,
-            use_accel=False):
+            files_from=None):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
-        use_accel = (hardlink or use_accel)
-        if not use_accel:
+        if not (hardlink or files_from):
+            # accelerator_tree is usually slower because you have to read N
+            # files (no readahead, lots of seeks, etc), but allow the user to
+            # explicitly request it
             accelerator_tree = None
+        if files_from is not None and files_from != from_location:
+            accelerator_tree = WorkingTree.open(files_from)
         revision = _get_one_revision('branch', revision)
         self.add_cleanup(br_from.lock_read().unlock)
         if revision is not None:
@@ -1274,27 +1277,23 @@ class cmd_checkout(Command):
                      Option('hardlink',
                             help='Hard-link working tree files where possible.'
                             ),
-                     Option('use-accel',
-                         help='Try to copy content from the source tree'
-                              ' rather than extracting it from the repository.'
-                              ' Setting "--hardlink" or "--files-from"'
-                              ' forces this to True'),
                      ]
     aliases = ['co']
 
     def run(self, branch_location=None, to_location=None, revision=None,
-            lightweight=False, files_from=None, hardlink=False,
-            use_accel=False):
+            lightweight=False, files_from=None, hardlink=False):
         if branch_location is None:
             branch_location = osutils.getcwd()
             to_location = branch_location
         accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
             branch_location)
-        revision = _get_one_revision('checkout', revision)
-        use_accel = (hardlink or use_accel or files_from)
-        if not use_accel:
+        if not (hardlink or files_from):
+            # accelerator_tree is usually slower because you have to read N
+            # files (no readahead, lots of seeks, etc), but allow the user to
+            # explicitly request it
             accelerator_tree = None
-        if files_from is not None:
+        revision = _get_one_revision('checkout', revision)
+        if files_from is not None and files_from != branch_location:
             accelerator_tree = WorkingTree.open(files_from)
         if revision is not None:
             revision_id = revision.as_revision_id(source)
