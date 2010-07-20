@@ -1,8 +1,10 @@
 bzr (2.2~b4-1) experimental; urgency=low
 
   * New upstream beta.
+  * Bump standards version to 3.9.0.
+  * Drop build dependency on zlib.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 21 Jul 2010 01:01:00 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 21 Jul 2010 01:02:00 +0200
 
 bzr (2.2~b2-1) experimental; urgency=low
 
