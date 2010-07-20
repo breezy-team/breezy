@@ -106,19 +106,19 @@ class cmd_rebase(Command):
 
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
-        state = RebaseState1(wt)
-        if upstream_location is None:
-            if pending_merges:
-                upstream_location = directory
-            else:
-                upstream_location = wt.branch.get_parent()
-                if upstream_location is None:
-                    raise BzrCommandError("No upstream branch specified.")
-                note("Rebasing on %s", upstream_location)
-        upstream = Branch.open_containing(upstream_location)[0]
-        upstream_repository = upstream.repository
-        upstream_revision = upstream.last_revision()
         try:
+            state = RebaseState1(wt)
+            if upstream_location is None:
+                if pending_merges:
+                    upstream_location = directory
+                else:
+                    upstream_location = wt.branch.get_parent()
+                    if upstream_location is None:
+                        raise BzrCommandError("No upstream branch specified.")
+                    note("Rebasing on %s", upstream_location)
+            upstream = Branch.open_containing(upstream_location)[0]
+            upstream_repository = upstream.repository
+            upstream_revision = upstream.last_revision()
             # Abort if there already is a plan file
             if state.has_plan():
                 raise BzrCommandError("A rebase operation was interrupted. "
@@ -234,8 +234,8 @@ class cmd_rebase_abort(Command):
         from bzrlib.workingtree import WorkingTree
         wt = WorkingTree.open_containing(directory)[0]
         wt.lock_write()
-        state = RebaseState1(wt)
         try:
+            state = RebaseState1(wt)
             # Read plan file and set last revision
             try:
                 last_rev_info = state.read_plan()[0]
@@ -372,17 +372,19 @@ class cmd_replay(Command):
 
         wt = WorkingTree.open(directory)
         wt.lock_write()
-        state = RebaseState1(wt)
-        replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
-        pb = ui.ui_factory.nested_progress_bar()
         try:
-            for revid in todo:
-                pb.update("replaying commits", todo.index(revid), len(todo))
-                wt.branch.repository.fetch(from_branch.repository, revid)
-                newrevid = regenerate_default_revid(wt.branch.repository, revid)
-                replayer(revid, newrevid, [wt.last_revision()])
+            state = RebaseState1(wt)
+            replayer = WorkingTreeRevisionRewriter(wt, state, merge_type=merge_type)
+            pb = ui.ui_factory.nested_progress_bar()
+            try:
+                for revid in todo:
+                    pb.update("replaying commits", todo.index(revid), len(todo))
+                    wt.branch.repository.fetch(from_branch.repository, revid)
+                    newrevid = regenerate_default_revid(wt.branch.repository, revid)
+                    replayer(revid, newrevid, [wt.last_revision()])
+            finally:
+                pb.finished()
         finally:
-            pb.finished()
             wt.unlock()
 
 
