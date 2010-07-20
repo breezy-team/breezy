@@ -48,6 +48,16 @@ class TestRebaseSimple(ExternalBase):
         os.chdir('../feature')
         self.check_output('No revisions to rebase.\n', 'rebase ../main')
 
+    def test_custom_merge_type(self):
+        self.make_file('hello', '42')
+        self.run_bzr('commit -m that')
+        os.chdir('../feature')
+        self.make_file('hoi', "my data")
+        self.run_bzr('add')
+        self.run_bzr('commit -m this')
+        self.check_output('', 'rebase --lca ../main')
+        self.check_output('3\n', 'revno')
+
     def test_notneeded_feature_ahead(self):
         os.chdir('../feature')
         self.make_file('barbla', "bloe")
