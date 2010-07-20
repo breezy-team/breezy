@@ -80,6 +80,9 @@ class TestKindChanges(TestCaseWithWorkingTree):
             ])
         tree.smart_add(['tree/a/f'])
         tree.commit('change to dir')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEquals([], list(tree.iter_changes(tree.basis_tree())))
 
     def test_dir_changes_to_symlink(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
