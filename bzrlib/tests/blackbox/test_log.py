@@ -158,6 +158,27 @@ class TestLogRevSpecs(TestLogWithLogCatcher):
         self.make_linear_branch()
         self.assertLogRevnos(['-c1'], ['1'])
 
+    def test_branch_revspec(self):
+        foo = self.make_branch_and_tree('foo')
+        bar = self.make_branch_and_tree('bar')
+        self.build_tree(['foo/foo.txt', 'bar/bar.txt'])
+        foo.add('foo.txt')
+        bar.add('bar.txt')
+        foo.commit(message='foo')
+        bar.commit(message='bar')
+        self.run_bzr('log -r branch:../bar', working_dir='foo')
+        self.assertEqual([bar.branch.get_rev_id(1)],
+                         [r.rev.revision_id
+                          for r in self.get_captured_revisions()])
+
+
+class TestLogExcludeCommonAncestry(TestLogWithLogCatcher):
+
+    def test_exclude_common_ancestry_simple_revnos(self):
+        self.make_linear_branch()
+        self.assertLogRevnos(['-r1..3', '--exclude-common-ancestry'],
+                             ['3', '2'])
+
 
 class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
 
@@ -167,6 +188,18 @@ class TestLogMergedLinearAncestry(TestLogWithLogCatcher):
         # stop calling run_bzr, there is no point) --vila 100118.
         builder = branchbuilder.BranchBuilder(self.get_transport())
         builder.start_series()
+        # 1
+        # | \
+        # 2  1.1.1
+        # | / |
+        # 3  1.1.2
+        # |   |
+        # |  1.1.3
+        # | / |
+        # 4  1.1.4
+        # | /
+        # 5
+
         # mainline
         builder.build_snapshot('1', None, [
             ('add', ('', 'root-id', 'directory', ''))])
@@ -348,16 +381,14 @@ class TestLogErrors(TestLog):
 
     def test_log_bad_message_re(self):
         """Bad --message argument gives a sensible message
-        
+
         See https://bugs.launchpad.net/bzr/+bug/251352
         """
         self.make_minimal_branch()
         out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
-        self.assertEqual("bzr: ERROR: Invalid regular expression"
-            " in log message filter"
-            ": '*'"
-            ": nothing to repeat\n", err)
-        self.assertEqual('', out)
+        self.assertContainsRe(err, "ERROR.*Invalid pattern.*nothing to repeat")
+        self.assertNotContainsRe(err, "Unprintable exception")
+        self.assertEqual(out, '')
 
     def test_log_unsupported_timezone(self):
         self.make_linear_branch()
@@ -365,6 +396,18 @@ class TestLogErrors(TestLog):
                             'options are "utc", "original", "local".'],
                            ['log', '--timezone', 'foo'])
 
+    def test_log_exclude_ancestry_no_range(self):
+        self.make_linear_branch()
+        self.run_bzr_error(['bzr: ERROR: --exclude-common-ancestry'
+                            ' requires -r with two revisions'],
+                           ['log', '--exclude-common-ancestry'])
+
+    def test_log_exclude_ancestry_single_revision(self):
+        self.make_merged_branch()
+        self.run_bzr_error(['bzr: ERROR: --exclude-common-ancestry'
+                            ' requires two different revisions'],
+                           ['log', '--exclude-common-ancestry',
+                            '-r1.1.1..1.1.1'])
 
 class TestLogTags(TestLog):
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ import time
 from StringIO import StringIO
 
 from bzrlib import (
+    config,
     errors,
     remote,
     repository,
@@ -33,8 +34,24 @@ from bzrlib import (
 from bzrlib.symbol_versioning import (
     deprecated_in,
     )
-from bzrlib.tests import test_progress
+from bzrlib.tests import (
+    fixtures,
+    test_progress,
+    )
 from bzrlib.ui import text as _mod_ui_text
+
+
+class TestUIConfiguration(tests.TestCaseWithTransport):
+
+    def test_output_encoding_configuration(self):
+        enc = fixtures.generate_unicode_encodings().next()
+        config.GlobalConfig().set_user_option('output_encoding',
+            enc)
+        ui = tests.TestUIFactory(stdin=None,
+            stdout=tests.StringIOWrapper(),
+            stderr=tests.StringIOWrapper())
+        os = ui.make_output_stream()
+        self.assertEquals(os.encoding, enc)
 
 
 class TestTextUIFactory(tests.TestCase):
@@ -385,7 +402,7 @@ class TestUIFactoryTests(tests.TestCase):
 
     def test_test_ui_factory_progress(self):
         # there's no output; we just want to make sure this doesn't crash -
-        # see https://bugs.edge.launchpad.net/bzr/+bug/408201
+        # see https://bugs.launchpad.net/bzr/+bug/408201
         ui = tests.TestUIFactory()
         pb = ui.nested_progress_bar()
         pb.update('hello')

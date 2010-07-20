@@ -17,30 +17,26 @@
 """Tests for Knit data structure"""
 
 from cStringIO import StringIO
-import difflib
-import gzip
 import sys
 
 from bzrlib import (
     errors,
-    generate_ids,
     knit,
     multiparent,
     osutils,
     pack,
     tests,
+    transport,
+    tuned_gzip,
     )
 from bzrlib.errors import (
-    RevisionAlreadyPresent,
     KnitHeaderError,
-    RevisionNotPresent,
     NoSuchFile,
     )
 from bzrlib.index import *
 from bzrlib.knit import (
     AnnotatedKnitContent,
     KnitContent,
-    KnitSequenceMatcher,
     KnitVersionedFiles,
     PlainKnitContent,
     _VFContentMapGenerator,
@@ -50,18 +46,14 @@ from bzrlib.knit import (
     _KnitKeyAccess,
     make_file_factory,
     )
+from bzrlib.patiencediff import PatienceSequenceMatcher
 from bzrlib.repofmt import pack_repo
 from bzrlib.tests import (
-    Feature,
-    KnownFailure,
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestNotApplicable,
     )
-from bzrlib.transport import get_transport
-from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tuned_gzip import GzipFile
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
@@ -106,8 +98,8 @@ class KnitContentTestsMixin(object):
         line_delta = source_content.line_delta(target_content)
         delta_blocks = list(KnitContent.get_line_delta_blocks(line_delta,
             source_lines, target_lines))
-        matcher = KnitSequenceMatcher(None, source_lines, target_lines)
-        matcher_blocks = list(list(matcher.get_matching_blocks()))
+        matcher = PatienceSequenceMatcher(None, source_lines, target_lines)
+        matcher_blocks = list(matcher.get_matching_blocks())
         self.assertEqual(matcher_blocks, delta_blocks)
 
     def test_get_line_delta_blocks(self):
@@ -700,7 +692,7 @@ class LowLevelKnitDataTests(TestCase):
 
     def create_gz_content(self, text):
         sio = StringIO()
-        gz_file = gzip.GzipFile(mode='wb', fileobj=sio)
+        gz_file = tuned_gzip.GzipFile(mode='wb', fileobj=sio)
         gz_file.write(text)
         gz_file.close()
         return sio.getvalue()
@@ -1579,13 +1571,13 @@ class TestKnitIndex(KnitTests):
         # could leave an empty .kndx file, which bzr would later claim was a
         # corrupted file since the header was not present. In reality, the file
         # just wasn't created, so it should be ignored.
-        t = get_transport('.')
+        t = transport.get_transport('.')
         t.put_bytes('test.kndx', '')
 
         knit = self.make_test_knit()
 
     def test_knit_index_checks_header(self):
-        t = get_transport('.')
+        t = transport.get_transport('.')
         t.put_bytes('test.kndx', '# not really a knit header\n\n')
         k = self.make_test_knit()
         self.assertRaises(KnitHeaderError, k.keys)

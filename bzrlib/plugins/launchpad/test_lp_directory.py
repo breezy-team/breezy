@@ -22,6 +22,7 @@ import xmlrpclib
 from bzrlib import (
     errors,
     tests,
+    transport,
     )
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
@@ -29,7 +30,6 @@ from bzrlib.tests import (
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )
-from bzrlib.transport import get_transport
 from bzrlib.plugins.launchpad import (
     _register_directory,
     lp_registration,
@@ -91,7 +91,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:apt', factory))
         # Make sure that resolve went to the production server.
-        self.assertEquals('https://xmlrpc.edge.launchpad.net/bazaar/',
+        self.assertEquals('https://xmlrpc.launchpad.net/bazaar/',
                           factory._service_url)
 
     def test_staging(self):
@@ -217,8 +217,8 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
         self.addCleanup(_register_directory)
         self.addCleanup(directories.remove, 'lp:')
-        transport = get_transport('lp:///apt')
-        branch = Branch.open_from_transport(transport)
+        t = transport.get_transport('lp:///apt')
+        branch = Branch.open_from_transport(t)
         self.assertEqual(target_branch.base, branch.base)
 
 

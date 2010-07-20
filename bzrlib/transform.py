@@ -25,6 +25,7 @@ from bzrlib import (
     annotate,
     bencode,
     bzrdir,
+    commit,
     delta,
     errors,
     inventory,
@@ -35,7 +36,7 @@ from bzrlib import (
     )
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, NotVersionedError, CantMoveRoot,
+                           ReusingTransform, CantMoveRoot,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
@@ -927,12 +928,27 @@ class TreeTransformBase(object):
         """
         return _PreviewTree(self)
 
-    def commit(self, branch, message, merge_parents=None, strict=False):
+    def commit(self, branch, message, merge_parents=None, strict=False,
+               timestamp=None, timezone=None, committer=None, authors=None,
+               revprops=None, revision_id=None):
         """Commit the result of this TreeTransform to a branch.
 
         :param branch: The branch to commit to.
         :param message: The message to attach to the commit.
-        :param merge_parents: Additional parents specified by pending merges.
+        :param merge_parents: Additional parent revision-ids specified by
+            pending merges.
+        :param strict: If True, abort the commit if there are unversioned
+            files.
+        :param timestamp: if not None, seconds-since-epoch for the time and
+            date.  (May be a float.)
+        :param timezone: Optional timezone for timestamp, as an offset in
+            seconds.
+        :param committer: Optional committer in email-id format.
+            (e.g. "J Random Hacker <jrandom@example.com>")
+        :param authors: Optional list of authors in email-id format.
+        :param revprops: Optional dictionary of revision properties.
+        :param revision_id: Optional revision id.  (Specifying a revision-id
+            may reduce performance for some non-native formats.)
         :return: The revision_id of the revision committed.
         """
         self._check_malformed()
@@ -955,7 +971,13 @@ class TreeTransformBase(object):
         if self._tree.get_revision_id() != last_rev_id:
             raise ValueError('TreeTransform not based on branch basis: %s' %
                              self._tree.get_revision_id())
-        builder = branch.get_commit_builder(parent_ids)
+        revprops = commit.Commit.update_revprops(revprops, branch, authors)
+        builder = branch.get_commit_builder(parent_ids,
+                                            timestamp=timestamp,
+                                            timezone=timezone,
+                                            committer=committer,
+                                            revprops=revprops,
+                                            revision_id=revision_id)
         preview = self.get_preview_tree()
         list(builder.record_iter_changes(preview, last_rev_id,
                                          self.iter_changes()))
@@ -1160,7 +1182,7 @@ class DiskTreeTransform(TreeTransformBase):
             if trans_id not in self._new_contents:
                 continue
             new_path = self._limbo_name(trans_id)
-            os.rename(old_path, new_path)
+            osutils.rename(old_path, new_path)
             for descendant in self._limbo_descendants(trans_id):
                 desc_path = self._limbo_files[descendant]
                 desc_path = new_path + desc_path[len(old_path):]
@@ -1635,7 +1657,7 @@ class TreeTransform(DiskTreeTransform):
                       or trans_id in self._new_parent):
                     try:
                         mover.rename(full_path, self._limbo_name(trans_id))
-                    except OSError, e:
+                    except errors.TransformRenameFailed, e:
                         if e.errno != errno.ENOENT:
                             raise
                     else:
@@ -1666,7 +1688,7 @@ class TreeTransform(DiskTreeTransform):
                 if trans_id in self._needs_rename:
                     try:
                         mover.rename(self._limbo_name(trans_id), full_path)
-                    except OSError, e:
+                    except errors.TransformRenameFailed, e:
                         # We may be renaming a dangling inventory id
                         if e.errno != errno.ENOENT:
                             raise
@@ -1770,7 +1792,7 @@ class _PreviewTree(tree.Tree):
         parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
                        self._iter_parent_trees()]
         vf.add_lines((file_id, tree_revision), parent_keys,
-                     self.get_file(file_id).readlines())
+                     self.get_file_lines(file_id))
         repo = self._get_repository()
         base_vf = repo.texts
         if base_vf not in vf.fallback_versionedfiles:
@@ -1798,9 +1820,12 @@ class _PreviewTree(tree.Tree):
             executable = self.is_executable(file_id, path)
         return kind, executable, None
 
+    def is_locked(self):
+        return False
+
     def lock_read(self):
         # Perhaps in theory, this should lock the TreeTransform?
-        pass
+        return self
 
     def unlock(self):
         pass
@@ -2266,9 +2291,6 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     for num, _unused in enumerate(wt.all_file_ids()):
         if num > 0:  # more than just a root
             raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
-    existing_files = set()
-    for dir, files in wt.walkdirs():
-        existing_files.update(f[0] for f in files)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
@@ -2298,6 +2320,15 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                 precomputed_delta = []
             else:
                 precomputed_delta = None
+            # Check if tree inventory has content. If so, we populate
+            # existing_files with the directory content. If there are no
+            # entries we skip populating existing_files as its not used.
+            # This improves performance and unncessary work on large
+            # directory trees. (#501307)
+            if total > 0:
+                existing_files = set()
+                for dir, files in wt.walkdirs():
+                    existing_files.update(f[0] for f in files)
             for num, (tree_path, entry) in \
                 enumerate(tree.inventory.iter_entries_by_dir()):
                 pb.update("Building tree", num - len(deferred_contents), total)
@@ -2435,8 +2466,12 @@ def _content_match(tree, entry, file_id, kind, target_path):
     if entry.kind == "directory":
         return True
     if entry.kind == "file":
-        if tree.get_file(file_id).read() == file(target_path, 'rb').read():
-            return True
+        f = file(target_path, 'rb')
+        try:
+            if tree.get_file_text(file_id) == f.read():
+                return True
+        finally:
+            f.close()
     elif entry.kind == "symlink":
         if tree.get_symlink_target(file_id) == os.readlink(target_path):
             return True
@@ -2898,13 +2933,15 @@ class _FileMover(object):
         self.pending_deletions = []
 
     def rename(self, from_, to):
-        """Rename a file from one path to another.  Functions like os.rename"""
+        """Rename a file from one path to another."""
         try:
-            os.rename(from_, to)
-        except OSError, e:
+            osutils.rename(from_, to)
+        except (IOError, OSError), e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
                 raise errors.FileExists(to, str(e))
-            raise
+            # normal OSError doesn't include filenames so it's hard to see where
+            # the problem is, see https://bugs.launchpad.net/bzr/+bug/491763
+            raise errors.TransformRenameFailed(from_, to, str(e), e.errno)
         self.past_renames.append((from_, to))
 
     def pre_delete(self, from_, to):
@@ -2920,7 +2957,10 @@ class _FileMover(object):
     def rollback(self):
         """Reverse all renames that have been performed"""
         for from_, to in reversed(self.past_renames):
-            os.rename(to, from_)
+            try:
+                osutils.rename(to, from_)
+            except (OSError, IOError), e:
+                raise errors.TransformRenameFailed(to, from_, str(e), e.errno)                
         # after rollback, don't reuse _FileMover
         past_renames = None
         pending_deletions = None

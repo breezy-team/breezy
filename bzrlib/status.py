@@ -20,14 +20,10 @@ from bzrlib import (
     delta as _mod_delta,
     log,
     osutils,
-    tree,
     tsort,
     revision as _mod_revision,
     )
 import bzrlib.errors as errors
-from bzrlib.osutils import is_inside_any
-from bzrlib.symbol_versioning import (deprecated_function,
-        )
 from bzrlib.trace import mutter, warning
 
 # TODO: when showing single-line logs, truncate to the width of the terminal
@@ -165,6 +161,20 @@ def show_tree_status(wt, show_unchanged=None,
                            reporter, show_long_callback, 
                            short=short, want_unchanged=show_unchanged, 
                            want_unversioned=want_unversioned, show_ids=show_ids)
+
+            # show the ignored files among specific files (i.e. show the files
+            # identified from input that we choose to ignore). 
+            if specific_files is not None:
+                # Ignored files is sorted because specific_files is already sorted
+                ignored_files = [specific for specific in
+                    specific_files if new.is_ignored(specific)]
+                if len(ignored_files) > 0 and not short:
+                    to_file.write("ignored:\n")
+                    prefix = ' '
+                else:
+                    prefix = 'I  '
+                for ignored_file in ignored_files:
+                    to_file.write("%s %s\n" % (prefix, ignored_file))
 
             # show the new conflicts only for now. XXX: get them from the
             # delta.

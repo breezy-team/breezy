@@ -30,7 +30,6 @@ from bzrlib import (
     cleanup,
     errors,
     ui,
-    repository,
     )
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
@@ -97,7 +96,7 @@ class Reconciler(object):
     def _reconcile_repository(self):
         self.repo = self.bzrdir.find_repository()
         ui.ui_factory.note('Reconciling repository %s' %
-            self.repo.bzrdir.root_transport.base)
+            self.repo.user_url)
         self.pb.update("Reconciling repository", 0, 1)
         repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
@@ -495,7 +494,7 @@ class PackReconciler(RepoReconciler):
     #  - lock the names list
     #  - perform a customised pack() that regenerates data as needed
     #  - unlock the names list
-    # https://bugs.edge.launchpad.net/bzr/+bug/154173
+    # https://bugs.launchpad.net/bzr/+bug/154173
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""

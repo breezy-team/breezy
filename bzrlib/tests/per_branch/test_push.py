@@ -231,59 +231,6 @@ class TestPush(per_branch.TestCaseWithBranch):
         trunk.push(remote_branch)
         check.check_dwim(remote_branch.base, False, True, True)
 
-    def test_no_get_parent_map_after_insert_stream(self):
-        # Effort test for bug 331823
-        self.setup_smart_server_with_call_log()
-        # Make a local branch with four revisions.  Four revisions because:
-        # one to push, one there for _walk_to_common_revisions to find, one we
-        # don't want to access, one for luck :)
-        if isinstance(self.branch_format, branch.BranchReferenceFormat):
-            # This test could in principle apply to BranchReferenceFormat, but
-            # make_branch_builder doesn't support it.
-            raise tests.TestSkipped(
-                "BranchBuilder can't make reference branches.")
-        try:
-            builder = self.make_branch_builder('local')
-        except (errors.TransportNotPossible, errors.UninitializableFormat):
-            raise tests.TestNotApplicable('format not directly constructable')
-        builder.start_series()
-        builder.build_snapshot('first', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('second', ['first'], [])
-        builder.build_snapshot('third', ['second'], [])
-        builder.build_snapshot('fourth', ['third'], [])
-        builder.finish_series()
-        local = builder.get_branch()
-        local = branch.Branch.open(self.get_vfs_only_url('local'))
-        # Initial push of three revisions
-        remote_bzrdir = local.bzrdir.sprout(
-            self.get_url('remote'), revision_id='third')
-        remote = remote_bzrdir.open_branch()
-        # Push fourth revision
-        self.reset_smart_call_log()
-        self.disableOptimisticGetParentMap()
-        self.assertFalse(local.is_locked())
-        local.push(remote)
-        hpss_call_names = [item.call.method for item in self.hpss_calls]
-        self.assertTrue('Repository.insert_stream_1.19' in hpss_call_names)
-        insert_stream_idx = hpss_call_names.index(
-            'Repository.insert_stream_1.19')
-        calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
-        # After inserting the stream the client has no reason to query the
-        # remote graph any further.
-        self.assertEqual(
-            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'get', 'Branch.set_last_revision_info', 'Branch.unlock'],
-            calls_after_insert_stream)
-
-    def disableOptimisticGetParentMap(self):
-        # Tweak some class variables to stop remote get_parent_map calls asking
-        # for or receiving more data than the caller asked for.
-        self.overrideAttr(repository.InterRepository,
-                          '_walk_to_common_revisions_batch_size', 1)
-        self.overrideAttr(_mod_smart_repo.SmartServerRepositoryGetParentMap,
-                          'no_extra_results', True)
-
 
 class TestPushHook(per_branch.TestCaseWithBranch):
 

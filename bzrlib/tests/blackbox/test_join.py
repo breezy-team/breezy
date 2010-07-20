@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,13 @@
 
 import os
 
-from bzrlib import bzrdir, repository, tests, workingtree
+from bzrlib import (
+    bzrdir,
+    osutils,
+    repository,
+    tests,
+    workingtree,
+    )
 
 
 class TestJoin(tests.TestCaseWithTransport):
@@ -50,7 +56,7 @@ class TestJoin(tests.TestCaseWithTransport):
     def test_join_error(self):
         base_tree, sub_tree = self.make_trees()
         os.mkdir('tree/subtree2')
-        os.rename('tree/subtree', 'tree/subtree2/subtree')
+        osutils.rename('tree/subtree', 'tree/subtree2/subtree')
         self.run_bzr_error(
             ('Cannot join .*subtree.  Parent directory is not versioned',),
              'join tree/subtree2/subtree')

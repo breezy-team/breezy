@@ -23,7 +23,7 @@
 # ElementTree bits
 
 from bzrlib.serializer import Serializer
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter
 
 try:
     try:
@@ -83,8 +83,11 @@ class XMLSerializer(Serializer):
 
     def read_inventory(self, f, revision_id=None):
         try:
-            return self._unpack_inventory(self._read_element(f),
-                revision_id=None)
+            try:
+                return self._unpack_inventory(self._read_element(f),
+                    revision_id=None)
+            finally:
+                f.close()
         except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 

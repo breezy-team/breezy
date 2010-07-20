@@ -16,6 +16,7 @@
 
 from cStringIO import StringIO
 import errno
+import inspect
 import sys
 
 from bzrlib import (
@@ -32,6 +33,17 @@ from bzrlib.tests import TestSkipped
 
 
 class TestCommands(tests.TestCase):
+
+    def test_all_commands_have_help(self):
+        commands._register_builtin_commands()
+        commands_without_help = set()
+        base_doc = inspect.getdoc(commands.Command)
+        for cmd_name in commands.all_command_names():
+            cmd = commands.get_cmd_object(cmd_name)
+            cmd_help = cmd.help()
+            if not cmd_help or cmd_help == base_doc:
+                commands_without_help.append(cmd_name)
+        self.assertLength(0, commands_without_help)
 
     def test_display_command(self):
         """EPIPE message is selectively suppressed"""
@@ -65,7 +77,7 @@ class TestCommands(tests.TestCase):
     @staticmethod
     def get_command(options):
         class cmd_foo(commands.Command):
-            'Bar'
+            __doc__ = 'Bar'
 
             takes_options = options
 
@@ -120,38 +132,35 @@ class TestGetAlias(tests.TestCase):
 class TestSeeAlso(tests.TestCase):
     """Tests for the see also functional of Command."""
 
-    def test_default_subclass_no_see_also(self):
+    @staticmethod
+    def _get_command_with_see_also(see_also):
         class ACommand(commands.Command):
-            """A sample command."""
-        command = ACommand()
+            __doc__ = """A sample command."""
+            _see_also = see_also
+        return ACommand()
+
+    def test_default_subclass_no_see_also(self):
+        command = self._get_command_with_see_also([])
         self.assertEqual([], command.get_see_also())
 
     def test__see_also(self):
         """When _see_also is defined, it sets the result of get_see_also()."""
-        class ACommand(commands.Command):
-            _see_also = ['bar', 'foo']
-        command = ACommand()
+        command = self._get_command_with_see_also(['bar', 'foo'])
         self.assertEqual(['bar', 'foo'], command.get_see_also())
 
     def test_deduplication(self):
         """Duplicates in _see_also are stripped out."""
-        class ACommand(commands.Command):
-            _see_also = ['foo', 'foo']
-        command = ACommand()
+        command = self._get_command_with_see_also(['foo', 'foo'])
         self.assertEqual(['foo'], command.get_see_also())
 
     def test_sorted(self):
         """_see_also is sorted by get_see_also."""
-        class ACommand(commands.Command):
-            _see_also = ['foo', 'bar']
-        command = ACommand()
+        command = self._get_command_with_see_also(['foo', 'bar'])
         self.assertEqual(['bar', 'foo'], command.get_see_also())
 
     def test_additional_terms(self):
         """Additional terms can be supplied and are deduped and sorted."""
-        class ACommand(commands.Command):
-            _see_also = ['foo', 'bar']
-        command = ACommand()
+        command = self._get_command_with_see_also(['foo', 'bar'])
         self.assertEqual(['bar', 'foo', 'gam'],
             command.get_see_also(['gam', 'bar', 'gam']))
 
@@ -212,7 +221,7 @@ class TestExtendCommandHook(tests.TestCase):
             "extend_command", hook_calls.append, None)
         # create a command, should not fire
         class cmd_test_extend_command_hook(commands.Command):
-            """A sample command."""
+            __doc__ = """A sample command."""
         self.assertEqual([], hook_calls)
         # -- as a builtin
         # register the command class, should not fire
@@ -249,7 +258,7 @@ class TestGetCommandHook(tests.TestCase):
         commands.install_bzr_command_hooks()
         hook_calls = []
         class ACommand(commands.Command):
-            """A sample command."""
+            __doc__ = """A sample command."""
         def get_cmd(cmd_or_None, cmd_name):
             hook_calls.append(('called', cmd_or_None, cmd_name))
             if cmd_name in ('foo', 'info'):
@@ -280,7 +289,7 @@ class TestGetMissingCommandHook(tests.TestCase):
         """Hook get_missing_command for testing."""
         self.hook_calls = []
         class ACommand(commands.Command):
-            """A sample command."""
+            __doc__ = """A sample command."""
         def get_missing_cmd(cmd_name):
             self.hook_calls.append(('called', cmd_name))
             if cmd_name in ('foo', 'info'):

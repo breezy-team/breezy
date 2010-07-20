@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,13 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import urlparse
 import webbrowser
 
 from bzrlib import (
     errors,
+    hooks,
     msgeditor,
 )
-from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.plugins.launchpad import (
     lp_api,
     lp_registration,
@@ -30,19 +31,19 @@ from bzrlib.plugins.launchpad import (
 from lazr.restfulclient import errors as restful_errors
 
 
-class ProposeMergeHooks(Hooks):
+class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
     def __init__(self):
-        Hooks.__init__(self)
+        hooks.Hooks.__init__(self)
         self.create_hook(
-            HookPoint(
+            hooks.HookPoint(
                 'get_prerequisite',
                 "Return the prerequisite branch for proposing as merge.",
                 (2, 1), None),
         )
         self.create_hook(
-            HookPoint(
+            hooks.HookPoint(
                 'merge_proposal_body',
                 "Return an initial body for the merge proposal message.",
                 (2, 1), None),
@@ -54,7 +55,7 @@ class Proposer(object):
     hooks = ProposeMergeHooks()
 
     def __init__(self, tree, source_branch, target_branch, message, reviews,
-                 staging=False):
+                 staging=False, approve=False):
         """Constructor.
 
         :param tree: The working tree for the source branch.
@@ -64,6 +65,10 @@ class Proposer(object):
         :param reviews: A list of tuples of reviewer, review type.
         :param staging: If True, propose the merge against staging instead of
             production.
+        :param approve: If True, mark the new proposal as approved immediately.
+            This is useful when a project permits some things to be approved
+            by the submitter (e.g. merges between release and deployment
+            branches).
         """
         self.tree = tree
         if staging:
@@ -80,6 +85,7 @@ class Proposer(object):
             self.target_branch = lp_api.LaunchpadBranch.from_bzr(
                 self.launchpad, target_branch)
         self.commit_message = message
+        # XXX: this is where bug lp:583638 could be tackled.
         if reviews == []:
             target_reviewer = self.target_branch.lp.reviewer
             if target_reviewer is None:
@@ -89,6 +95,7 @@ class Proposer(object):
             self.reviews = [(self.launchpad.people[reviewer], review_type)
                             for reviewer, review_type in
                             reviews]
+        self.approve = approve
 
     def get_comment(self, prerequisite_branch):
         """Determine the initial comment for the merge proposal."""
@@ -159,6 +166,24 @@ class Proposer(object):
                  'prerequisite_branch': prerequisite_branch})
         return prerequisite_branch
 
+    def call_webservice(self, call, *args, **kwargs):
+        """Make a call to the webservice, wrapping failures.
+        
+        :param call: The call to make.
+        :param *args: *args for the call.
+        :param **kwargs: **kwargs for the call.
+        :return: The result of calling call(*args, *kwargs).
+        """
+        try:
+            return call(*args, **kwargs)
+        except restful_errors.HTTPError, e:
+            error_lines = []
+            for line in e.content.splitlines():
+                if line.startswith('Traceback (most recent call last):'):
+                    break
+                error_lines.append(line)
+            raise Exception(''.join(error_lines))
+
     def create_proposal(self):
         """Perform the submission."""
         prerequisite_branch = self._get_prerequisite_branch()
@@ -174,22 +199,16 @@ class Proposer(object):
             review_types.append(review_type)
             reviewers.append(reviewer.self_link)
         initial_comment = self.get_comment(prerequisite_branch)
-        try:
-            mp = self.source_branch.lp.createMergeProposal(
-                target_branch=self.target_branch.lp,
-                prerequisite_branch=prereq,
-                initial_comment=initial_comment,
-                commit_message=self.commit_message, reviewers=reviewers,
-                review_types=review_types)
-        except restful_errors.HTTPError, e:
-            error_lines = []
-            for line in e.content.splitlines():
-                if line.startswith('Traceback (most recent call last):'):
-                    break
-                error_lines.append(line)
-            raise Exception(''.join(error_lines))
-        else:
-            webbrowser.open(canonical_url(mp))
+        mp = self.call_webservice(
+            self.source_branch.lp.createMergeProposal,
+            target_branch=self.target_branch.lp,
+            prerequisite_branch=prereq,
+            initial_comment=initial_comment,
+            commit_message=self.commit_message, reviewers=reviewers,
+            review_types=review_types)
+        if self.approve:
+            self.call_webservice(mp.setStatus, status='Approved')
+        webbrowser.open(canonical_url(mp))
 
 
 def modified_files(old_tree, new_tree):
@@ -202,5 +221,9 @@ def modified_files(old_tree, new_tree):
 
 def canonical_url(object):
     """Return the canonical URL for a branch."""
-    url = object.self_link.replace('https://api.', 'https://code.')
-    return url.replace('/beta/', '/')
+    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
+        str(object.self_link))
+    path = '/'.join(path.split('/')[2:])
+    netloc = netloc.replace('api.', 'code.')
+    return urlparse.urlunparse((scheme, netloc, path, params, query,
+                                fragment))
