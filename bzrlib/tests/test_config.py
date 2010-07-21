@@ -550,11 +550,11 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         self.assertEqual('branch', branch.nick)
 
-        locations = config.locations_config_filename()
-        config.ensure_config_dir_exists()
         local_url = urlutils.local_path_to_url('branch')
-        open(locations, 'wb').write('[%s]\nnickname = foobar'
-                                    % (local_url,))
+        conf = config.LocationConfig(
+            local_url,
+            _content=('[%s]\nnickname = foobar' % (local_url,)))
+        conf._write_config_file()
         self.assertEqual('foobar', branch.nick)
 
     def test_config_local_path(self):
@@ -562,20 +562,19 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         self.assertEqual('branch', branch.nick)
 
-        locations = config.locations_config_filename()
-        config.ensure_config_dir_exists()
-        open(locations, 'wb').write('[%s/branch]\nnickname = barry'
-                                    % (osutils.getcwd().encode('utf8'),))
+        local_path = osutils.getcwd().encode('utf8')
+        conf = config.LocationConfig(
+            'branch', _content='[%s/branch]\nnickname = barry' % (local_path,))
+        conf._write_config_file()
         self.assertEqual('barry', branch.nick)
 
     def test_config_creates_local(self):
         """Creating a new entry in config uses a local path."""
         branch = self.make_branch('branch', format='knit')
         branch.set_push_location('http://foobar')
-        locations = config.locations_config_filename()
         local_path = osutils.getcwd().encode('utf8')
         # Surprisingly ConfigObj doesn't create a trailing newline
-        self.check_file_contents(locations,
+        self.check_file_contents(config.locations_config_filename(),
                                  '[%s/branch]\n'
                                  'push_location = http://foobar\n'
                                  'push_location:policy = norecurse\n'
@@ -586,10 +585,10 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.assertEqual('!repo', b.get_config().get_nickname())
 
     def test_warn_if_masked(self):
-        _warning = trace.warning
         warnings = []
         def warning(*args):
             warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
 
         def set_option(store, warn_masked=True):
             warnings[:] = []
@@ -601,26 +600,22 @@ class TestBranchConfig(tests.TestCaseWithTransport):
             else:
                 self.assertEqual(1, len(warnings))
                 self.assertEqual(warning, warnings[0])
-        trace.warning = warning
-        try:
-            branch = self.make_branch('.')
-            conf = branch.get_config()
-            set_option(config.STORE_GLOBAL)
-            assertWarning(None)
-            set_option(config.STORE_BRANCH)
-            assertWarning(None)
-            set_option(config.STORE_GLOBAL)
-            assertWarning('Value "4" is masked by "3" from branch.conf')
-            set_option(config.STORE_GLOBAL, warn_masked=False)
-            assertWarning(None)
-            set_option(config.STORE_LOCATION)
-            assertWarning(None)
-            set_option(config.STORE_BRANCH)
-            assertWarning('Value "3" is masked by "0" from locations.conf')
-            set_option(config.STORE_BRANCH, warn_masked=False)
-            assertWarning(None)
-        finally:
-            trace.warning = _warning
+        branch = self.make_branch('.')
+        conf = branch.get_config()
+        set_option(config.STORE_GLOBAL)
+        assertWarning(None)
+        set_option(config.STORE_BRANCH)
+        assertWarning(None)
+        set_option(config.STORE_GLOBAL)
+        assertWarning('Value "4" is masked by "3" from branch.conf')
+        set_option(config.STORE_GLOBAL, warn_masked=False)
+        assertWarning(None)
+        set_option(config.STORE_LOCATION)
+        assertWarning(None)
+        set_option(config.STORE_BRANCH)
+        assertWarning('Value "3" is masked by "0" from locations.conf')
+        set_option(config.STORE_BRANCH, warn_masked=False)
+        assertWarning(None)
 
 
 class TestGlobalConfigItems(tests.TestCase):
