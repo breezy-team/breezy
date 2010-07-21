@@ -480,13 +480,11 @@ class IniBasedConfig(Config):
 
     def _write_config_file(self):
         filename = self._get_filename()
-        file_existed = os.path.isfile(filename)
         atomic_file = atomicfile.AtomicFile(filename)
         self._get_parser().write(atomic_file)
         atomic_file.commit()
         atomic_file.close()
-        if not file_existed:
-            osutils.copy_ownership_from_path(filename)
+        osutils.copy_ownership_from_path(filename)
 
 
 class GlobalConfig(IniBasedConfig):
