@@ -22,6 +22,7 @@ import sys
 
 from bzrlib import (
     commit,
+    config,
     errors,
     msgeditor,
     osutils,
@@ -236,46 +237,25 @@ if len(sys.argv) == 2:
         self.assertRaises((IOError, OSError), msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
-        # Test that _get_editor can return a decent list of items
-        bzr_editor = os.environ.get('BZR_EDITOR')
-        visual = os.environ.get('VISUAL')
-        editor = os.environ.get('EDITOR')
-        try:
-            os.environ['BZR_EDITOR'] = 'bzr_editor'
-            os.environ['VISUAL'] = 'visual'
-            os.environ['EDITOR'] = 'editor'
+        os.environ['BZR_EDITOR'] = 'bzr_editor'
+        os.environ['VISUAL'] = 'visual'
+        os.environ['EDITOR'] = 'editor'
 
-            ensure_config_dir_exists()
-            f = open(config_filename(), 'wb')
-            f.write('editor = config_editor\n')
-            f.close()
+        conf = config.GlobalConfig(_content='editor = config_editor\n')
+        conf._write_config_file()
 
-            editors = list(msgeditor._get_editor())
-            editors = [editor for (editor, cfg_src) in editors]
+        editors = list(msgeditor._get_editor())
+        editors = [editor for (editor, cfg_src) in editors]
 
-            self.assertEqual(['bzr_editor', 'config_editor', 'visual',
-                              'editor'], editors[:4])
+        self.assertEqual(['bzr_editor', 'config_editor', 'visual', 'editor'],
+                         editors[:4])
 
-            if sys.platform == 'win32':
-                self.assertEqual(['wordpad.exe', 'notepad.exe'], editors[4:])
-            else:
-                self.assertEqual(['/usr/bin/editor', 'vi', 'pico', 'nano',
-                                  'joe'], editors[4:])
+        if sys.platform == 'win32':
+            self.assertEqual(['wordpad.exe', 'notepad.exe'], editors[4:])
+        else:
+            self.assertEqual(['/usr/bin/editor', 'vi', 'pico', 'nano', 'joe'],
+                             editors[4:])
 
-        finally:
-            # Restore the environment
-            if bzr_editor is None:
-                del os.environ['BZR_EDITOR']
-            else:
-                os.environ['BZR_EDITOR'] = bzr_editor
-            if visual is None:
-                del os.environ['VISUAL']
-            else:
-                os.environ['VISUAL'] = visual
-            if editor is None:
-                del os.environ['EDITOR']
-            else:
-                os.environ['EDITOR'] = editor
 
     def test__run_editor_EACCES(self):
         """If running a configured editor raises EACESS, the user is warned."""
