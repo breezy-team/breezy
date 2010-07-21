@@ -1032,6 +1032,11 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
+* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
+  which can result in "missing referenced chk root keys" errors when
+  fetching from repositories with affected revisions.
+  (Andrew Bennetts, #522637)
+
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
 
@@ -1537,6 +1542,10 @@ Bug Fixes
   history no longer crash when deleted files are involved.
   (Vincent Ladeuil, John Arbash Meinel, #375898)
 
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
 * ``bzr revert`` now only takes write lock on working tree, instead of on 
   both working tree and branch.
   (Danny van Heumen, #498409)
@@ -1547,6 +1556,11 @@ Bug Fixes
 
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
+
+* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
+  which can result in "missing referenced chk root keys" errors when
+  fetching from repositories with affected revisions.
+  (Andrew Bennetts, #522637)
 
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
@@ -1569,6 +1583,13 @@ Bug Fixes
   directory file handle after the chdir fails. Otherwise when passing many
   filenames into a command line ``bzr status`` we would leak descriptors.
   (John Arbash Meinel, #583486)
+
+
+Testing
+*******
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
 
 
 bzr 2.0.5
