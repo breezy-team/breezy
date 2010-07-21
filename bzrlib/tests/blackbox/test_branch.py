@@ -195,7 +195,7 @@ class TestBranch(TestCaseWithTransport):
         second_stat = os.stat('second/file1')
         target_stat = os.stat('target/file1')
         self.assertNotEqual(source_stat, target_stat)
-        self.assertNotEqual(second_stat, target_stat)
+        self.assertEqual(second_stat, target_stat)
 
     def test_branch_standalone(self):
         shared_repo = self.make_repository('repo', shared=True)
