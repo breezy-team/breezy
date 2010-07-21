@@ -368,12 +368,13 @@ class TestConfigPath(tests.TestCase):
             '/home/bogus/.cache')
 
 
-class TestIniConfig(tests.TestCase):
+class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):
         conf = config.IniBasedConfig(None)
         parser = conf._get_parser(file=StringIO(s.encode('utf-8')))
         return conf, parser
+
 
 class TestIniConfigBuilding(TestIniConfig):
 
