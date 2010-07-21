@@ -86,18 +86,8 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         self.assertIsDirectory('.bzr/branch/lock/held', t)
 
     def test_set_push_location(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
-        # write correct newlines to locations.conf
-        # by default ConfigObj uses native line-endings for new files
-        # but uses already existing line-endings if file is not empty
-        f = open(fn, 'wb')
-        try:
-            f.write('# comment\n')
-        finally:
-            f.close()
+        conf = config.LocationConfig('.', _content='# comment\n')
+        conf._write_config_file()
 
         branch = self.make_branch('.', format='knit')
         branch.set_push_location('foo')
@@ -106,7 +96,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
                              "[%s]\n"
                              "push_location = foo\n"
                              "push_location:policy = norecurse\n" % local_path,
-                             fn)
+                             config.locations_config_filename())
 
     # TODO RBC 20051029 test getting a push location from a branch in a
     # recursive section - that is, it appends the branch name.
