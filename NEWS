@@ -537,6 +537,14 @@ Improvements
 Documentation
 *************
 
+* First tests defined for sphinx, including a new bzrlib.tests.features.sphinx
+  to make the tests conditional.
+  (Vincent Ladeuil)
+
+* Added a builder/writer sphinx extension that can generate texinfo files. The
+  generated files are syntactically correct but the info navigation nodes
+  needs more work. (Vincent Ladeuil, #219334)
+
 API Changes
 ***********
 
