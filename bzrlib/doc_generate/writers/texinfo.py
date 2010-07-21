@@ -83,7 +83,13 @@ class TexinfoTranslator(nodes.NodeVisitor):
         # FIXME: info requires a Top node for each info file, but unless we
         # chose a global layout to divide the overall documentation into a set
         # of info files, there is no criteria to decide for a title.
-        top_cmd = '@node Top\n@top Placeholder\n'
+        top_cmd = '''\
+This file has been converted using a beta rst->texinfo converter. 
+Most of the info links are currently bogus, don't report bugs about them,
+this is currently worked on.
+@node Top
+@top Placeholder
+'''
         self.body = top_cmd + ''.join(node['text'])
 
     # Layout

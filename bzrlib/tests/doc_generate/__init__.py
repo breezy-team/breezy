@@ -92,7 +92,13 @@ class TestSphinx(tests.TestCaseInTempDir):
         """
         if header is None:
             # default boilerplate
-            header = '@node Top\n@top Placeholder\n'
+            header = '''\
+This file has been converted using a beta rst->texinfo converter. 
+Most of the info links are currently bogus, don't report bugs about them,
+this is currently worked on.
+@node Top
+@top Placeholder
+'''
         if end is None:
             # By default we test constructs that are embedded into a paragraph
             # which always end with two \n (even if the input has none)

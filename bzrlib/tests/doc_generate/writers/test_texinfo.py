@@ -201,6 +201,9 @@ Improvements
         app, out, err = self.make_sphinx()
         self.build(app)
         self.assertFileEqual("""\
+This file has been converted using a beta rst->texinfo converter. 
+Most of the info links are currently bogus, don't report bugs about them,
+this is currently worked on.
 @node Top
 @top Placeholder
 @node table-of-contents
@@ -211,6 +214,9 @@ Improvements
 """,
                              'index.texi')
         self.assertFileEqual("""\
+This file has been converted using a beta rst->texinfo converter. 
+Most of the info links are currently bogus, don't report bugs about them,
+this is currently worked on.
 @node Top
 @top Placeholder
 @node bzr-0-0-8
