@@ -417,7 +417,6 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         self.config = self.create_config(self._content)
 
     def create_config(self, content):
-        config.ensure_config_dir_exists()
         c = self.config_class(_content=content)
         c._write_config_file()
         return c
@@ -1012,7 +1011,6 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         if global_config is None:
             global_config = sample_config_text
 
-        config.ensure_config_dir_exists()
         my_global_config = config.GlobalConfig(_content=global_config)
         my_global_config._write_config_file()
         my_location_config = config.LocationConfig(
@@ -1090,12 +1088,10 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         my_branch = FakeBranch(location)
         if global_config is not None:
             my_global_config = config.GlobalConfig(_content=global_config)
-            config.ensure_config_dir_exists()
             my_global_config._write_config_file()
         if location_config is not None:
             my_location_config = config.LocationConfig(my_branch.base,
                                                        _content=location_config)
-            config.ensure_config_dir_exists()
             my_location_config._write_config_file()
         my_config = config.BranchConfig(my_branch)
         if branch_data_config is not None:

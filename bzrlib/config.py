@@ -511,6 +511,8 @@ class IniBasedConfig(Config):
     def _write_config_file(self):
         if self.file_name is None:
             raise AssertionError('We cannot save, self.file_name is None')
+        conf_dir = os.path.dirname(self.file_name)
+        ensure_config_dir_exists(conf_dir)
         atomic_file = atomicfile.AtomicFile(self.file_name)
         self._get_parser().write(atomic_file)
         atomic_file.commit()
@@ -553,8 +555,6 @@ class GlobalConfig(IniBasedConfig):
     def _set_option(self, option, value, section):
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on bazaar.conf.
-        conf_dir = os.path.dirname(self.file_name)
-        ensure_config_dir_exists(conf_dir)
         if self._parser is not None:
             self._parser.reload()
         self._get_parser().setdefault(section, {})[option] = value
@@ -679,8 +679,6 @@ class LocationConfig(IniBasedConfig):
             self._parser.reload()
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on locations.conf.
-        conf_dir = os.path.dirname(self.file_name)
-        ensure_config_dir_exists(conf_dir)
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
