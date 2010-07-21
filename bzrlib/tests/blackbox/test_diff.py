@@ -155,6 +155,10 @@ class TestDiff(DiffBase):
         self.assertContainsRe(err,
             "Requested revision: '1.1' does not exist in branch:")
 
+    def test_diff_diff_options_and_using(self):
+        out, err = self.run_bzr('diff --diff-options -wu --using /usr/bin/diff', retcode=3,
+          error_regexes=('are mutually exclusive.',))
+
     def test_diff_unversioned(self):
         # Get an error when diffing a non-versioned file.
         # (Malone #3619)
@@ -320,7 +324,6 @@ class TestDiff(DiffBase):
         self.build_tree_contents([('hello', 'hello world!\n')])
         output = self.run_bzr('diff --format=boo', retcode=1)
         self.assertTrue("BOO!" in output[0])
-
 
 class TestCheckoutDiff(TestDiff):
 

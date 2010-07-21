@@ -14,11 +14,35 @@ bzr 2.3b1
 Compatibility Breaks
 ********************
 
+* `FileInWrongBranch` is deprecated in favour of `PathNotChild` and no
+  longer raised.
+  (Martin Pool)
+
+* `tree_files` and `internal_tree_files` are now deprecated in favor of
+  `WorkingTree.open_containing_paths`.
+  (Martin Pool)
+
 New Features
 ************
 
 Bug Fixes
 *********
+
+* Check if both --diff-options and --using are set, and exit with error
+  in this case. (Matthäus G. Chajdas, #234708)
+
+* Don't print internal object name when print an invalid revision spec
+  error.  (Neil Martinsen-Burrell, #598701)
+
+* ``HTTP/1.1` test servers now set a ``Content-Length`` header to comply
+  with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
+
+* `PathNotChild` should not give a traceback.
+  (Martin Pool, #98735)
+
+* ``Transport.stat`` on a symlink, including a transport pointing directly
+  to a symlink, now returns information about the symlink.
+  (Martin Pool)
 
 Improvements
 ************
@@ -516,6 +540,14 @@ Improvements
 
 Documentation
 *************
+
+* First tests defined for sphinx, including a new bzrlib.tests.features.sphinx
+  to make the tests conditional.
+  (Vincent Ladeuil)
+
+* Added a builder/writer sphinx extension that can generate texinfo files. The
+  generated files are syntactically correct but the info navigation nodes
+  needs more work. (Vincent Ladeuil, #219334)
 
 API Changes
 ***********
@@ -1542,6 +1574,10 @@ Bug Fixes
   history no longer crash when deleted files are involved.
   (Vincent Ladeuil, John Arbash Meinel, #375898)
 
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
 * ``bzr revert`` now only takes write lock on working tree, instead of on 
   both working tree and branch.
   (Danny van Heumen, #498409)
@@ -1574,6 +1610,13 @@ Bug Fixes
   directory file handle after the chdir fails. Otherwise when passing many
   filenames into a command line ``bzr status`` we would leak descriptors.
   (John Arbash Meinel, #583486)
+
+
+Testing
+*******
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
 
 
 bzr 2.0.5

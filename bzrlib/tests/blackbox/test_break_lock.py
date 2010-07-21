@@ -20,15 +20,15 @@ import os
 
 import bzrlib
 from bzrlib import (
+    branch,
+    bzrdir,
     errors,
     lockdir,
+    tests,
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseWithTransport
 
 
-class TestBreakLock(TestCaseWithTransport):
+class TestBreakLock(tests.TestCaseWithTransport):
 
     # General principal for break-lock: All the elements that might be locked
     # by a bzr operation on PATH, are candidates that break-lock may unlock.
@@ -52,14 +52,14 @@ class TestBreakLock(TestCaseWithTransport):
              'repo/',
              'repo/branch/',
              'checkout/'])
-        bzrlib.bzrdir.BzrDir.create('master-repo').create_repository()
-        self.master_branch = bzrlib.bzrdir.BzrDir.create_branch_convenience(
+        bzrdir.BzrDir.create('master-repo').create_repository()
+        self.master_branch = bzrdir.BzrDir.create_branch_convenience(
             'master-repo/master-branch')
-        bzrlib.bzrdir.BzrDir.create('repo').create_repository()
-        local_branch = bzrlib.bzrdir.BzrDir.create_branch_convenience('repo/branch')
+        bzrdir.BzrDir.create('repo').create_repository()
+        local_branch = bzrdir.BzrDir.create_branch_convenience('repo/branch')
         local_branch.bind(self.master_branch)
-        checkoutdir = bzrlib.bzrdir.BzrDir.create('checkout')
-        bzrlib.branch.BranchReferenceFormat().initialize(
+        checkoutdir = bzrdir.BzrDir.create('checkout')
+        branch.BranchReferenceFormat().initialize(
             checkoutdir, target_branch=local_branch)
         self.wt = checkoutdir.create_workingtree()
 
@@ -82,22 +82,22 @@ class TestBreakLock(TestCaseWithTransport):
         # we need 5 yes's - wt, branch, repo, bound branch, bound repo.
         self.run_bzr('break-lock checkout', stdin="y\ny\ny\ny\n")
         # a new tree instance should be lockable
-        branch = bzrlib.branch.Branch.open('checkout')
-        branch.lock_write()
-        branch.unlock()
+        br = branch.Branch.open('checkout')
+        br.lock_write()
+        br.unlock()
         # and a new instance of the master branch
-        mb = branch.get_master_branch()
+        mb = br.get_master_branch()
         mb.lock_write()
         mb.unlock()
         self.assertRaises(errors.LockBroken, self.wt.unlock)
         self.assertRaises(errors.LockBroken, self.master_branch.unlock)
 
 
-class TestBreakLockOldBranch(TestCaseWithTransport):
+class TestBreakLockOldBranch(tests.TestCaseWithTransport):
 
     def test_break_lock_format_5_bzrdir(self):
         # break lock on a format 5 bzrdir should just return
-        self.make_branch_and_tree('foo', format=bzrlib.bzrdir.BzrDirFormat5())
+        self.make_branch_and_tree('foo', format=bzrdir.BzrDirFormat5())
         out, err = self.run_bzr('break-lock foo')
         self.assertEqual('', out)
         self.assertEqual('', err)
