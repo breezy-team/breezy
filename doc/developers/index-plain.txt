@@ -54,6 +54,12 @@ Process
 * `Tracking Bugs in Bazaar <bug-handling.html>`_ |--| How we use the bug
   tracker.
 
+Architecture overviews
+======================
+
+* `Transports <transports.html>`_ |--| Transport virtual filesystem
+  abstraction.
+
 Plans
 =====
 

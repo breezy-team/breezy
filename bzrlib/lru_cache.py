@@ -17,7 +17,6 @@
 """A simple least-recently-used (LRU) cache."""
 
 from bzrlib import (
-    symbol_versioning,
     trace,
     )
 
@@ -61,14 +60,7 @@ class _LRUNode(object):
 class LRUCache(object):
     """A class which manages a cache of entries, removing unused ones."""
 
-    def __init__(self, max_cache=100, after_cleanup_count=None,
-                 after_cleanup_size=symbol_versioning.DEPRECATED_PARAMETER):
-        if symbol_versioning.deprecated_passed(after_cleanup_size):
-            symbol_versioning.warn('LRUCache.__init__(after_cleanup_size) was'
-                                   ' deprecated in 1.11. Use'
-                                   ' after_cleanup_count instead.',
-                                   DeprecationWarning)
-            after_cleanup_count = after_cleanup_size
+    def __init__(self, max_cache=100, after_cleanup_count=None):
         self._cache = {}
         # The "HEAD" of the lru linked list
         self._most_recently_used = None
