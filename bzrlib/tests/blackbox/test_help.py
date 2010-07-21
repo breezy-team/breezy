@@ -20,8 +20,8 @@
 
 
 import bzrlib
+from bzrlib import config
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
 class TestHelp(TestCaseWithTransport):
@@ -161,12 +161,12 @@ class TestHelp(TestCaseWithTransport):
     def test_help_with_aliases(self):
         original = self.run_bzr('help cat')[0]
 
-        ensure_config_dir_exists()
-        CONFIG=("[ALIASES]\n"
-        "c=cat\n"
-        "cat=cat\n")
-
-        open(config_filename(),'wb').write(CONFIG)
+        content = '''[ALIASES]
+c=cat
+cat=cat
+'''
+        conf = config.GlobalConfig(_content=content)
+        conf._write_config_file()
 
         expected = original + "'bzr cat' is an alias for 'bzr cat'.\n"
         self.assertEqual(expected, self.run_bzr('help cat')[0])
