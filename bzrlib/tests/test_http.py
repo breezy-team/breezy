@@ -44,9 +44,6 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    )
 from bzrlib.tests import (
     features,
     http_server,
@@ -1338,14 +1335,6 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
         self.assertRaises(errors.RedirectRequested, self.old_transport.get, 'a')
         t = self._transport(self.new_server.get_url())
         self.assertEqual('0123456789', t.get('a').read())
-
-    def test_read_redirected_bundle_from_url(self):
-        from bzrlib.bundle import read_bundle_from_url
-        url = self.old_transport.abspath('bundle')
-        bundle = self.applyDeprecated(deprecated_in((1, 12, 0)),
-                read_bundle_from_url, url)
-        # If read_bundle_from_url was successful we get an empty bundle
-        self.assertEqual([], bundle.revisions)
 
 
 class RedirectedRequest(_urllib2_wrappers.Request):
