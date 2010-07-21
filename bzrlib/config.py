@@ -362,20 +362,15 @@ class IniBasedConfig(Config):
             content. This will be utf-8 encoded.
         """
         super(IniBasedConfig, self).__init__()
+        self.file_name = file_name
         if symbol_versioning.deprecated_passed(get_filename):
             symbol_versioning.warn(
                 'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
                 ' Use file_name instead.',
                 DeprecationWarning,
                 stacklevel=2)
-            if get_filename is None:
-                # Tests use in-memory config files that doesn't need to be
-                # saved on disk
-                self.file_name = None
-            else:
+            if get_filename is not None:
                 self.file_name = get_filename()
-        else:
-            self.file_name = file_name
         if _content is not None:
             # wrap the content as a file-like object
             _content = StringIO(_content.encode('utf-8'))
@@ -401,6 +396,8 @@ class IniBasedConfig(Config):
             self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
+        # Make sure self._parser.reload() will use the right file name
+        self._parser.filename = self.file_name
         return self._parser
 
     def _get_matching_sections(self):
@@ -558,6 +555,8 @@ class GlobalConfig(IniBasedConfig):
         # file lock on bazaar.conf.
         conf_dir = os.path.dirname(self.file_name)
         ensure_config_dir_exists(conf_dir)
+        if self._parser is not None:
+            self._parser.reload()
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
 
@@ -676,6 +675,8 @@ class LocationConfig(IniBasedConfig):
                          STORE_LOCATION_APPENDPATH]:
             raise ValueError('bad storage policy %r for %r' %
                 (store, option))
+        if self._parser is not None:
+            self._parser.reload()
         # FIXME: RBC 20051029 This should refresh the parser and also take a
         # file lock on locations.conf.
         conf_dir = os.path.dirname(self.file_name)

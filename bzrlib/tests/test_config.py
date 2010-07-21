@@ -129,6 +129,9 @@ class InstrumentedConfigObj(object):
         self._calls.append(('keys',))
         return []
 
+    def reload(self):
+        self._calls.append(('reload',))
+
     def write(self, arg):
         self._calls.append(('write',))
 
@@ -425,6 +428,16 @@ class TestLockableConfig(tests.TestCaseInTempDir):
     def test_simple_write_access(self):
         self.config.set_user_option('one', 'one')
         self.assertEquals('one', self.config.get_user_option('one'))
+
+    def test_listen_to_the_last_speaker(self):
+        c1 = self.config
+        c2 = self.create_config(self._content)
+        c1.set_user_option('one', 'ONE')
+        c2.set_user_option('two', 'TWO')
+        self.assertEquals('ONE', c1.get_user_option('one'))
+        self.assertEquals('TWO', c2.get_user_option('two'))
+        # The second update respect the first one
+        self.assertEquals('ONE', c2.get_user_option('one'))
 
 
 class TestGetUserOptionAs(TestIniConfig):
@@ -1020,7 +1033,8 @@ class TestLocationConfig(tests.TestCaseInTempDir):
                              'converted to use policies.'],
                             self.my_config.set_user_option,
                             'foo', 'bar', store=config.STORE_LOCATION)
-        self.assertEqual([('__contains__', '/a/c'),
+        self.assertEqual([('reload',),
+                          ('__contains__', '/a/c'),
                           ('__contains__', '/a/c/'),
                           ('__setitem__', '/a/c', {}),
                           ('__getitem__', '/a/c'),
