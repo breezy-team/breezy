@@ -404,6 +404,29 @@ class TestIniConfigBuilding(TestIniConfig):
         self.assertRaises(AssertionError, conf._write_config_file)
 
 
+class TestLockableConfig(tests.TestCaseInTempDir):
+
+    config_class = config.GlobalConfig
+
+    def setUp(self):
+        super(TestLockableConfig, self).setUp()
+        self._content = '[DEFAULT]\none=1\ntwo=2'
+        self.config = self.create_config(self._content)
+
+    def create_config(self, content):
+        config.ensure_config_dir_exists()
+        c = self.config_class(_content=content)
+        c._write_config_file()
+        return c
+
+    def test_simple_read_access(self):
+        self.assertEquals('1', self.config.get_user_option('one'))
+
+    def test_simple_write_access(self):
+        self.config.set_user_option('one', 'one')
+        self.assertEquals('one', self.config.get_user_option('one'))
+
+
 class TestGetUserOptionAs(TestIniConfig):
 
     def test_get_user_option_as_bool(self):
