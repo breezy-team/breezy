@@ -1135,8 +1135,10 @@ class cmd_branch(Command):
 
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision', Option('hardlink',
-        help='Hard-link working tree files where possible.'),
+    takes_options = ['revision',
+        Option('hardlink', help='Hard-link working tree files where possible.'),
+        Option('files-from', type=str,
+               help="Get file contents from this tree."),
         Option('no-tree',
             help="Create a branch without a working-tree."),
         Option('switch',
@@ -1160,11 +1162,19 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
-            use_existing_dir=False, switch=False, bind=False):
+            use_existing_dir=False, switch=False, bind=False,
+            files_from=None):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
+        if not (hardlink or files_from):
+            # accelerator_tree is usually slower because you have to read N
+            # files (no readahead, lots of seeks, etc), but allow the user to
+            # explicitly request it
+            accelerator_tree = None
+        if files_from is not None and files_from != from_location:
+            accelerator_tree = WorkingTree.open(files_from)
         revision = _get_one_revision('branch', revision)
         self.add_cleanup(br_from.lock_read().unlock)
         if revision is not None:
@@ -1277,8 +1287,13 @@ class cmd_checkout(Command):
             to_location = branch_location
         accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
             branch_location)
+        if not (hardlink or files_from):
+            # accelerator_tree is usually slower because you have to read N
+            # files (no readahead, lots of seeks, etc), but allow the user to
+            # explicitly request it
+            accelerator_tree = None
         revision = _get_one_revision('checkout', revision)
-        if files_from is not None:
+        if files_from is not None and files_from != branch_location:
             accelerator_tree = WorkingTree.open(files_from)
         if revision is not None:
             revision_id = revision.as_revision_id(source)
