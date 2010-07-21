@@ -69,7 +69,9 @@ Testing
 
 * Configuration files should now use the ``_content`` parameter in the
   constructor rather than the ``file`` parameter of the ``_get_parser``
-  method. The later has been deprecated. (Vincent Ladeuil)
+  method. The later has been deprecated. They can also specify
+  ``_save=True`` at build time to have the configuration file immediately
+  written to disk. (Vincent Ladeuil)
 
 
 bzr 2.2rc1

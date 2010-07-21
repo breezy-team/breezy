@@ -353,13 +353,16 @@ class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
     def __init__(self, get_filename=symbol_versioning.DEPRECATED_PARAMETER,
-                 file_name=None, _content=None):
+                 file_name=None, _content=None, _save=False):
         """Base class for configuration files using an ini-like syntax.
 
         :param file_name: The configuration file path.
 
         :param _content: For tests only, a string representing the file
             content. This will be utf-8 encoded.
+
+         :param _save: For tests only, whether the file should be saved upon
+            creation.
         """
         super(IniBasedConfig, self).__init__()
         self.file_name = file_name
@@ -376,6 +379,10 @@ class IniBasedConfig(Config):
             _content = StringIO(_content.encode('utf-8'))
         self._content = _content
         self._parser = None
+        # Some tests use in-memory configs, some other always need the config
+        # file to exist on disk.
+        if _save:
+            self._write_config_file()
 
     def _get_parser(self, file=symbol_versioning.DEPRECATED_PARAMETER):
         if self._parser is not None:

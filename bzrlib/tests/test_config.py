@@ -402,9 +402,17 @@ class TestIniConfigBuilding(TestIniConfig):
             ' Use IniBasedConfig(_content=xxx) instead.'],
             conf._get_parser, file=config_file)
 
+class TestIniConfigSaving(tests.TestCaseInTempDir):
+
     def test_cant_save_without_a_file_name(self):
         conf = config.IniBasedConfig()
         self.assertRaises(AssertionError, conf._write_config_file)
+
+    def test_saved_with_content(self):
+        content = 'foo = bar\n'
+        conf = config.IniBasedConfig(file_name='./test.conf',
+                                     _content=content,_save=True)
+        self.assertFileEqual(content, 'test.conf')
 
 
 class TestLockableConfig(tests.TestCaseInTempDir):
