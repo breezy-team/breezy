@@ -17,14 +17,11 @@
 """Tests for bzrlib.debug"""
 
 
-import os
-
-
 from bzrlib import (
+    config,
     debug,
     tests,
     )
-from bzrlib.config import config_filename, ensure_config_dir_exists
 
 
 class TestDebugFlags(tests.TestCaseInTempDir):
@@ -32,33 +29,12 @@ class TestDebugFlags(tests.TestCaseInTempDir):
     def test_set_debug_flags_from_config(self):
         # test both combinations because configobject automatically splits up
         # comma-separated lists
-        if os.path.isfile(config_filename()):
-            # Something is wrong in environment,
-            # we risk overwriting users config
-            self.assert_(config_filename() + "exists, abort")
+        self.try_debug_flags(['hpss', 'error'], 'debug_flags = hpss, error\n')
+        self.try_debug_flags(['hpss'], 'debug_flags = hpss\n')
 
-        self.try_debug_flags(
-            """debug_flags = hpss, error\n""",
-            set(['hpss', 'error']))
-
-        self.try_debug_flags(
-            """debug_flags = hpss\n""",
-            set(['hpss']))
-
-    def try_debug_flags(self, conf_bytes, expected_flags):
-        ensure_config_dir_exists()
-        f = open(config_filename(), 'wb')
-        try:
-            f.write(conf_bytes)
-        finally:
-            f.close()
-        saved_debug = set(debug.debug_flags)
-        debug.debug_flags.clear()
-        try:
-            debug.set_debug_flags_from_config()
-            self.assertEqual(expected_flags,
-                debug.debug_flags)
-        finally:
-            # restore without rebinding the variable
-            debug.debug_flags.clear()
-            debug.debug_flags.update(saved_debug)
+    def try_debug_flags(self, expected_flags, conf_bytes):
+        conf = config.GlobalConfig(_content=conf_bytes)
+        conf._write_config_file()
+        self.overrideAttr(debug, 'debug_flags', set())
+        debug.set_debug_flags_from_config()
+        self.assertEqual(set(expected_flags), debug.debug_flags)
