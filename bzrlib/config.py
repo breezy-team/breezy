@@ -536,14 +536,17 @@ class LockableConfig(IniBasedConfig):
     serialized.
     """
 
+    lock_name = 'lock'
+
     def __init__(self, file_name, _content=None):
         super(LockableConfig, self).__init__(file_name=file_name,
                                              _content=_content)
-        t = transport.get_transport(config_dir())
-        self._lock = lockdir.LockDir(t, 'lock')
+        self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
+        self.transport = transport.get_transport(self.dir)
+        self._lock = lockdir.LockDir(self.transport, 'lock')
 
     def lock_write(self, token=None):
-        ensure_config_dir_exists(config_dir())
+        ensure_config_dir_exists(self.dir)
         return self._lock.lock_write(token)
 
     def unlock(self):
