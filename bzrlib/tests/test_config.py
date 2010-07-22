@@ -560,9 +560,8 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
         local_url = urlutils.local_path_to_url('branch')
         conf = config.LocationConfig(
-            local_url,
+            local_url, _save=True,
             _content=('[%s]\nnickname = foobar' % (local_url,)))
-        conf._write_config_file()
         self.assertEqual('foobar', branch.nick)
 
     def test_config_local_path(self):
@@ -572,8 +571,8 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 
         local_path = osutils.getcwd().encode('utf8')
         conf = config.LocationConfig(
-            'branch', _content='[%s/branch]\nnickname = barry' % (local_path,))
-        conf._write_config_file()
+            'branch',  _save=True,
+            _content='[%s/branch]\nnickname = barry' % (local_path,))
         self.assertEqual('barry', branch.nick)
 
     def test_config_creates_local(self):

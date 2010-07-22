@@ -86,8 +86,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         self.assertIsDirectory('.bzr/branch/lock/held', t)
 
     def test_set_push_location(self):
-        conf = config.LocationConfig('.', _content='# comment\n')
-        conf._write_config_file()
+        conf = config.LocationConfig('.', _content='# comment\n', _save=True)
 
         branch = self.make_branch('.', format='knit')
         branch.set_push_location('foo')

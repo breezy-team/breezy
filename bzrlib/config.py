@@ -529,9 +529,9 @@ class IniBasedConfig(Config):
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
 
-    def __init__(self, _content=None):
+    def __init__(self, _content=None, _save=False):
         super(GlobalConfig, self).__init__(file_name=config_filename(),
-                                           _content=_content)
+                                           _content=_content, _save=_save)
 
     def get_editor(self):
         return self._get_user_option('editor')
@@ -571,10 +571,10 @@ class GlobalConfig(IniBasedConfig):
 class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
 
-    def __init__(self, location, _content=None):
+    def __init__(self, location, _content=None, _save=False):
         super(LocationConfig, self).__init__(
             file_name=locations_config_filename(),
-            _content=_content)
+            _content=_content, _save=_save)
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
         # file, and we would rather not expose the user to file urls.
