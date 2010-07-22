@@ -73,7 +73,7 @@ class TestBreakLock(tests.TestCaseWithTransport):
         # however, we dont test breaking the working tree because we
         # cannot accurately do so right now: the dirstate lock is held
         # by an os lock, and we need to spawn a separate process to lock it
-        # thne kill -9 it.
+        # then kill -9 it.
         # sketch of test:
         # lock most of the dir:
         self.wt.branch.lock_write()

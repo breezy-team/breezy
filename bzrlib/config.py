@@ -403,9 +403,16 @@ class IniBasedConfig(Config):
             self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
-        # Make sure self._parser.reload() will use the right file name
+        # Make sure self.reload() will use the right file name
         self._parser.filename = self.file_name
         return self._parser
+
+    def reload(self):
+        """Reload the config file from disk."""
+        if self.file_name is None:
+            raise AssertionError('We need a file name to reload the config')
+        if self._parser is not None:
+            self._parser.reload()
 
     def _get_matching_sections(self):
         """Return an ordered list of (section_name, extra_path) pairs.
@@ -560,10 +567,8 @@ class GlobalConfig(IniBasedConfig):
         self._write_config_file()
 
     def _set_option(self, option, value, section):
-        # FIXME: RBC 20051029 This should refresh the parser and also take a
-        # file lock on bazaar.conf.
-        if self._parser is not None:
-            self._parser.reload()
+        # FIXME: RBC 20051029 This should take a file lock on bazaar.conf.
+        self.reload()
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
 
@@ -682,10 +687,8 @@ class LocationConfig(IniBasedConfig):
                          STORE_LOCATION_APPENDPATH]:
             raise ValueError('bad storage policy %r for %r' %
                 (store, option))
-        if self._parser is not None:
-            self._parser.reload()
-        # FIXME: RBC 20051029 This should refresh the parser and also take a
-        # file lock on locations.conf.
+        self.reload()
+        # FIXME: RBC 20051029 This should take a file lock on locations.conf.
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
