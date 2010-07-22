@@ -29,6 +29,9 @@ from bzrlib.diff import (
     DiffTree,
     format_registry as diff_format_registry,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
 def subst_dates(string):
@@ -401,13 +404,11 @@ class TestExternalDiff(DiffBase):
 
     def test_external_diff_options_and_using(self):
         """Test that the options are passed correctly to an external diff process"""
+        self.requireFeature(features.diff_feature)
         self.make_example_branch()
         self.build_tree_contents([('hello', 'Foo\n')])
-        # no retcode, so we can capture if /usr/bin/diff was not found and skip
-        out, err = self.run_bzr('diff --diff-options -i --using /usr/bin/diff',
-                                    retcode=None)
-        if 'bzr: ERROR: /usr/bin/diff could not be found on this machine\n' in err:
-            raise tests.TestSkipped("No external 'diff' is available")
+        out, err = self.run_bzr('diff --diff-options -i --using diff',
+                                    retcode=1)
         self.assertEquals("=== modified file 'hello'\n", out)
         self.assertEquals('', err)
 
