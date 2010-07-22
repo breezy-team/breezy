@@ -35,7 +35,7 @@ class TestAliases(TestCaseWithTransport):
             return self.run_bzr(args, **kwargs)[1]
 
 
-        conf = config.GlobalConfig(_save=True,_content='''[ALIASES]
+        conf = config.GlobalConfig(_save=True, _content='''[ALIASES]
 c=cat
 c1=cat -r 1
 c2=cat -r 1 -r2
