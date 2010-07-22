@@ -689,15 +689,15 @@ class LocationConfig(IniBasedConfig):
                 (store, option))
         self.reload()
         # FIXME: RBC 20051029 This should take a file lock on locations.conf.
+        parser = self._get_parser()
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
-        if (not location in self._get_parser() and
-            not location + '/' in self._get_parser()):
-            self._get_parser()[location]={}
-        elif location + '/' in self._get_parser():
+        if not location in parser and not location + '/' in parser:
+            parser[location] = {}
+        elif location + '/' in parser:
             location = location + '/'
-        self._get_parser()[location][option]=value
+        parser[location][option]=value
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
         self._write_config_file()
