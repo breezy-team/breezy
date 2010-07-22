@@ -458,6 +458,20 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         # The second update respect the first one
         self.assertEquals('ONE', c2.get_user_option('one'))
 
+    def test_last_speaker_wins(self):
+        # If the same config is not shared, the same variable modified twice
+        # can only see a single result.
+        c1 = self.config
+        c2 = self.create_config(self._content)
+        c1.set_user_option('one', 'c1')
+        c2.set_user_option('one', 'c2')
+        self.assertEquals('c2', c2._get_user_option('one'))
+        # The first modification is still available until another refresh
+        # occur
+        self.assertEquals('c1', c1._get_user_option('one'))
+        c1.set_user_option('two', 'done')
+        self.assertEquals('c2', c1._get_user_option('one'))
+
 
 class TestGetUserOptionAs(TestIniConfig):
 
