@@ -19,6 +19,7 @@
 from cStringIO import StringIO
 import os
 import sys
+import threading
 
 #import bzrlib specific imports here
 from bzrlib import (
@@ -471,6 +472,42 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         self.assertEquals('c1', c1._get_user_option('one'))
         c1.set_user_option('two', 'done')
         self.assertEquals('c2', c1._get_user_option('one'))
+
+    def test_writes_are_serialized(self):
+        c1 = self.create_config(self._content)
+        c2 = self.create_config(self._content)
+
+        # We spawn a thread that will pause *during* the write
+        before_writing = threading.Event()
+        after_writing = threading.Event()
+        writing_done = threading.Event()
+        c1_orig = c1._write_config_file
+        def c1_write_config_file():
+            before_writing.set()
+            c1_orig()
+            # The lock is held we wait for the main thread to decide when to
+            # continue
+            after_writing.wait()
+        c1._write_config_file = c1_write_config_file
+        def c1_set_option():
+            c1.set_user_option('one', 'c1')
+            writing_done.set()
+        t1 = threading.Thread(target=c1_set_option)
+        # Collect the thread after the test
+        self.addCleanup(t1.join)
+        # Be ready to unblock the thread if the test goes wrong
+        self.addCleanup(after_writing.set)
+        t1.start()
+        before_writing.wait()
+        self.assertTrue(c1._lock.is_held)
+        self.assertRaises(errors.LockContention,
+                          c2.set_user_option, 'one', 'c2')
+        self.assertEquals('c1', c1.get_user_option('one'))
+        # Let the lock be released
+        after_writing.set()
+        writing_done.wait()
+        c2.set_user_option('one', 'c2')
+        self.assertEquals('c2', c2.get_user_option('one'))
 
 
 class TestGetUserOptionAs(TestIniConfig):
