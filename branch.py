@@ -620,7 +620,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         return result
 
 
-class InterToGitBranch(branch.InterBranch):
+class InterToGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls from Git into bzr."""
 
     def __init__(self, source, target):
