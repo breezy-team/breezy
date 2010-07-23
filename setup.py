@@ -696,9 +696,9 @@ elif 'py2exe' in sys.argv:
                    }
 
     class py2exe_no_oo_exe(py2exe.build_exe.py2exe):
-        def build_executable(*args, **kwargs):
+        def build_executable(self, *args, **kwargs):
             self.optimize = 1
-            super(py2exe_no_oo_exe, self).build_executable(*args, **kwargs)
+            py2exe.build_exe.py2exe.build_executable(self, *args, **kwargs)
             self.optimize = 2
 
     if __name__ == '__main__':
