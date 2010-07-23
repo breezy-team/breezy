@@ -3309,6 +3309,15 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.push)
 
+    @needs_write_lock
+    def copy_content_into(self, revision_id=None):
+        """Copy the content of source into target
+
+        revision_id: if not None, the revision history in the new branch will
+                     be truncated to end with revision_id.
+        """
+        raise NotImplementedError(self.copy_content_into)
+
 
 class GenericInterBranch(InterBranch):
     """InterBranch implementation that uses public Branch functions."""
