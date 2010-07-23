@@ -694,13 +694,21 @@ elif 'py2exe' in sys.argv:
                                "optimize": 2,
                               },
                    }
+
+    class py2exe_no_oo_exe(py2exe.build_exe.py2exe):
+        def build_executable(*args, **kwargs):
+            self.optimize = 1
+            super(py2exe_no_oo_exe, self).build_executable(*args, **kwargs)
+            self.optimize = 2
+
     if __name__ == '__main__':
         setup(options=options_list,
               console=console_targets,
               windows=gui_targets,
               zipfile='lib/library.zip',
               data_files=data_files,
-              cmdclass={'install_data': install_data_with_bytecompile},
+              cmdclass={'install_data': install_data_with_bytecompile,
+                        'py2exe': py2exe_no_oo_exe},
               )
 
 else:
