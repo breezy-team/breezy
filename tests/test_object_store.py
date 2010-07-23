@@ -35,6 +35,7 @@ from bzrlib.tests import (
     )
 
 from bzrlib.plugins.git.object_store import (
+    BazaarObjectStore,
     LRUTreeCache,
     _check_expected_sha,
     _find_missing_bzr_revids,
@@ -121,3 +122,53 @@ class LRUTreeCacheTests(TestCaseWithTransport):
         bb.finish_series()
         tree = self.cache.revision_tree("BASE-id")
         self.assertEquals("BASE-id", tree.get_revision_id())
+
+
+class BazaarObjectStoreTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(BazaarObjectStoreTests, self).setUp()
+        self.branch = self.make_branch(".")
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
+        self.store = BazaarObjectStore(self.branch.repository)
+
+    def test_get_blob(self):
+        b = Blob()
+        b.data = 'a\nb\nc\nd\ne\n'
+        self.assertRaises(KeyError, self.store.__getitem__, b.id)
+        bb = BranchBuilder(branch=self.branch)
+        bb.start_series()
+        bb.build_snapshot('BASE-id', None,
+            [('add', ('', None, 'directory', None)),
+             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ])
+        bb.finish_series()
+        self.assertEquals(b, self.store[b.id])
+
+    def test_get_raw(self):
+        b = Blob()
+        b.data = 'a\nb\nc\nd\ne\n'
+        self.assertRaises(KeyError, self.store.get_raw, b.id)
+        bb = BranchBuilder(branch=self.branch)
+        bb.start_series()
+        bb.build_snapshot('BASE-id', None,
+            [('add', ('', None, 'directory', None)),
+             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ])
+        bb.finish_series()
+        self.assertEquals(b.as_raw_string(), self.store.get_raw(b.id)[1])
+
+    def test_contains(self):
+        b = Blob()
+        b.data = 'a\nb\nc\nd\ne\n'
+        self.assertFalse(b.id in self.store)
+        bb = BranchBuilder(branch=self.branch)
+        bb.start_series()
+        bb.build_snapshot('BASE-id', None,
+            [('add', ('', None, 'directory', None)),
+             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ])
+        bb.finish_series()
+        self.assertTrue(b.id in self.store)
+

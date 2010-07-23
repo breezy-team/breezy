@@ -502,7 +502,7 @@ class BazaarObjectStore(BaseObjectStore):
             if type == "commit":
                 return self.repository.has_revision(type_data[0])
             elif type == "blob":
-                return self.repository.texts.has_version(type_data)
+                return self.repository.texts.has_key(type_data)
             elif type == "tree":
                 return self.repository.has_revision(type_data[1])
             else:
