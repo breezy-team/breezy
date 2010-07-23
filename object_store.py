@@ -71,9 +71,9 @@ class LRUTreeCache(object):
         self._cache = lru_cache.LRUSizeCache(max_size=MAX_TREE_CACHE_SIZE,
             after_cleanup_size=None, compute_size=approx_tree_size)
 
-    def revision_tree(self, revid):            
+    def revision_tree(self, revid):
         try:
-            return self._cache[revid] 
+            return self._cache[revid]
         except KeyError:
             tree = self.repository.revision_tree(revid)
             self.add(tree)

@@ -20,14 +20,22 @@ from dulwich.objects import (
     Blob,
     )
 
+from bzrlib.branchbuilder import (
+    BranchBuilder,
+    )
+from bzrlib.errors import (
+    NoSuchRevision,
+    )
 from bzrlib.graph import (
     DictParentsProvider,
     )
 from bzrlib.tests import (
     TestCase,
+    TestCaseWithTransport,
     )
 
 from bzrlib.plugins.git.object_store import (
+    LRUTreeCache,
     _check_expected_sha,
     _find_missing_bzr_revids,
     )
@@ -80,3 +88,36 @@ class FindMissingBzrRevidsTests(TestCase):
         self.assertEquals(set(["a", "b"]),
                 self._find_missing({"a": ["b"], "b": ["c"], "c": ["d"]},
                     ["a"], ["c"]))
+
+
+class LRUTreeCacheTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(LRUTreeCacheTests, self).setUp()
+        self.branch = self.make_branch(".")
+        self.branch.lock_write()
+        self.addCleanup(self.branch.unlock)
+        self.cache = LRUTreeCache(self.branch.repository)
+
+    def test_get_not_present(self):
+        self.assertRaises(NoSuchRevision, self.cache.revision_tree, 
+                "unknown")
+
+    def test_revision_trees(self):
+        self.assertRaises(NoSuchRevision, self.cache.revision_trees, 
+                ["unknown", "la"])
+
+    def test_iter_revision_trees(self):
+        self.assertRaises(NoSuchRevision, self.cache.iter_revision_trees, 
+                ["unknown", "la"])
+
+    def test_get(self):
+        bb = BranchBuilder(branch=self.branch)
+        bb.start_series()
+        bb.build_snapshot('BASE-id', None,
+            [('add', ('', None, 'directory', None)),
+             ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
+             ])
+        bb.finish_series()
+        tree = self.cache.revision_tree("BASE-id")
+        self.assertEquals("BASE-id", tree.get_revision_id())
