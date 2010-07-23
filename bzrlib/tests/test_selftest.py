@@ -2340,8 +2340,6 @@ class TestStartBzrSubProcess(tests.TestCase):
     def test_get_bzr_path_with_cwd_bzrlib(self):
         self.get_source_path = lambda: ""
         self.overrideAttr(os.path, "isfile", lambda path: True)
-        self.expectFailure("Incorrect handling of script in cwd",
-            self.assertNotEqual, self.get_bzr_path(), "/bzr")
         self.assertEqual(self.get_bzr_path(), "bzr")
 
 
