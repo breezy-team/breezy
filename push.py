@@ -142,13 +142,26 @@ class InterToLocalGitRepository(InterToGitRepository):
         self.target_store = self.target._git.object_store
         self.target_refs = self.target._git.refs
 
-    def missing_revisions(self, stop_revisions, check_revid):
+    def _revision_needs_fetching(self, revid):
+        if revid == NULL_REVISION:
+            return False
+        try:
+            sha_id = self.source_store._lookup_revision_sha1(revid)
+        except KeyError:
+            raise errors.NoSuchRevision(self.source, revid)
+        try:
+            return (sha_id not in self.target_store)
+        except errors.NoSuchRevision:
+            # Ghost, can't push
+            return False
+
+    def missing_revisions(self, stop_revisions):
         """Find the revisions that are missing from the target repository.
 
         :param stop_revisions: Revisions to check for
-        :param check_revid: Convenience function to check if a revid is 
-            present.
         :return: sequence of missing revisions, in topological order
+        :raise: NoSuchRevision if the stop_revisions are not present in
+            the source
         """
         missing = []
         graph = self.source.get_graph()
@@ -156,7 +169,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         try:
             for revid, _ in graph.iter_ancestry(stop_revisions):
                 pb.update("determining revisions to fetch", len(missing))
-                if not check_revid(revid):
+                if self._revision_needs_fetching(revid):
                     missing.append(revid)
         finally:
             pb.finished()
@@ -182,18 +195,6 @@ class InterToLocalGitRepository(InterToGitRepository):
             new_refs[name] = revid
         return revidmap, old_refs, new_refs
 
-    def _find_missing_revs(self, stop_revisions):
-        def check_revid(revid):
-            if revid == NULL_REVISION:
-                return True
-            sha_id = self.source_store._lookup_revision_sha1(revid)
-            try:
-                return (sha_id in self.target_store)
-            except errors.NoSuchRevision:
-                # Ghost, can't push
-                return True
-        return list(self.missing_revisions(stop_revisions, check_revid))
-
     def _get_missing_objects_iterator(self, pb):
         return MissingObjectsIterator(self.source_store, self.source, pb)
 
@@ -203,10 +204,10 @@ class InterToLocalGitRepository(InterToGitRepository):
         revidmap = {}
         self.source.lock_read()
         try:
-            todo = self._find_missing_revs(stop_revisions)
+            todo = list(self.missing_revisions(stop_revisions))
             pb = ui.ui_factory.nested_progress_bar()
             try:
-                object_generator = self._get_missing_objects_iterator()
+                object_generator = self._get_missing_objects_iterator(pb)
                 for old_bzr_revid, git_commit in object_generator.import_revisions(
                     todo, roundtrip=False):
                     new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
@@ -229,7 +230,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             stop_revisions = self.source.all_revision_ids()
         self.source.lock_read()
         try:
-            todo = self._find_missing_revs(stop_revisions)
+            todo = list(self.missing_revisions(stop_revisions))
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 object_generator = self._get_missing_objects_iterator(pb)

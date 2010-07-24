@@ -17,6 +17,9 @@
 
 """Tests for pushing revisions from Bazaar into Git."""
 
+from bzrlib import (
+    errors,
+    )
 from bzrlib.bzrdir import (
     format_registry,
     )
@@ -24,7 +27,6 @@ from bzrlib.repository import (
     InterRepository,
     )
 from bzrlib.tests import (
-    TestCase,
     TestCaseWithTransport,
     )
 
@@ -33,15 +35,32 @@ from bzrlib.plugins.git.push import (
     )
 
 
-class DpushTests(TestCaseWithTransport):
+class InterToGitRepositoryTests(TestCaseWithTransport):
 
     def setUp(self):
-        super(DpushTests, self).setUp()
+        super(InterToGitRepositoryTests, self).setUp()
         self.git_repo = self.make_repository("git",
                 format=format_registry.make_bzrdir("git"))
         self.bzr_repo = self.make_repository("bzr")
+        self.bzr_repo.lock_read()
+        self.addCleanup(self.bzr_repo.unlock)
         self.interrepo = InterRepository.get(self.bzr_repo, self.git_repo)
 
     def test_instance(self):
         self.assertIsInstance(self.interrepo, InterToGitRepository)
 
+    def test_pointless_fetch_refs(self):
+        old_refs, new_refs = self.interrepo.fetch_refs(lambda x: x)
+        self.assertEquals(old_refs, new_refs)
+
+    def test_pointless_dfetch_refs(self):
+        revidmap, old_refs, new_refs = self.interrepo.dfetch_refs(lambda x: x)
+        self.assertEquals(old_refs, new_refs)
+        self.assertEquals(revidmap, {})
+
+    def test_pointless_missing_revisions(self):
+        self.assertEquals([], list(self.interrepo.missing_revisions([])))
+
+    def test_missing_revisions_unknown_stop_rev(self):
+        self.assertRaises(errors.NoSuchRevision,
+                self.interrepo.missing_revisions, ["unknown"])
