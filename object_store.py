@@ -175,7 +175,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
                     pie.symlink_target == ie.symlink_target):
                     return pie
         raise KeyError
-    
+
     # Find all the changed blobs
     for (file_id, path, changed_content, versioned, parent, name, kind,
          executable) in tree.iter_changes(base_tree):

@@ -101,15 +101,15 @@ class LRUTreeCacheTests(TestCaseWithTransport):
         self.cache = LRUTreeCache(self.branch.repository)
 
     def test_get_not_present(self):
-        self.assertRaises(NoSuchRevision, self.cache.revision_tree, 
+        self.assertRaises(NoSuchRevision, self.cache.revision_tree,
                 "unknown")
 
     def test_revision_trees(self):
-        self.assertRaises(NoSuchRevision, self.cache.revision_trees, 
+        self.assertRaises(NoSuchRevision, self.cache.revision_trees,
                 ["unknown", "la"])
 
     def test_iter_revision_trees(self):
-        self.assertRaises(NoSuchRevision, self.cache.iter_revision_trees, 
+        self.assertRaises(NoSuchRevision, self.cache.iter_revision_trees,
                 ["unknown", "la"])
 
     def test_get(self):
