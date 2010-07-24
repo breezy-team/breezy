@@ -244,6 +244,7 @@ def test_suite():
         'test_fetch',
         'test_mapping',
         'test_object_store',
+        'test_push',
         'test_remote',
         'test_repository',
         'test_refs',
