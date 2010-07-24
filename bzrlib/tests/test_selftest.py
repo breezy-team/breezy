@@ -2337,6 +2337,11 @@ class TestStartBzrSubProcess(tests.TestCase):
             os.chdir = orig_chdir
         self.assertEqual(['foo', 'current'], chdirs)
 
+    def test_get_bzr_path_with_cwd_bzrlib(self):
+        self.get_source_path = lambda: ""
+        self.overrideAttr(os.path, "isfile", lambda path: True)
+        self.assertEqual(self.get_bzr_path(), "bzr")
+
 
 class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
     """Tests that really need to do things with an external bzr."""

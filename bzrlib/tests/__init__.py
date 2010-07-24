@@ -2009,7 +2009,7 @@ class TestCase(testtools.TestCase):
 
     def get_bzr_path(self):
         """Return the path of the 'bzr' executable for this test suite."""
-        bzr_path = self.get_source_path()+'/bzr'
+        bzr_path = os.path.join(self.get_source_path(), "bzr")
         if not os.path.isfile(bzr_path):
             # We are probably installed. Assume sys.argv is the right file
             bzr_path = sys.argv[0]
