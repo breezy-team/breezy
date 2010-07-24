@@ -290,8 +290,11 @@ class InterToRemoteGitRepository(InterToGitRepository):
             ret = {}
             self.old_refs = old_refs
             self.new_refs = update_refs(self.old_refs)
-            for name, revid in self.new_refs.iteritems():
-                ret[name] = self.source_store._lookup_revision_sha1(revid)
+            for name, (gitid, revid) in self.new_refs.iteritems():
+                if gitid is None:
+                    ret[name] = self.source_store._lookup_revision_sha1(revid)
+                else:
+                    ret[name] = gitid
             return ret
         self.source.lock_read()
         try:
