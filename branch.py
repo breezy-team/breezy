@@ -35,6 +35,9 @@ from bzrlib import (
 from bzrlib.decorators import (
     needs_read_lock,
     )
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
 from bzrlib.trace import (
     is_quiet,
     mutter,
@@ -643,11 +646,12 @@ class InterToGitBranch(branch.GenericInterBranch):
     def _get_new_refs(self, stop_revision=None):
         if stop_revision is None:
             stop_revision = self.source.last_revision()
+        assert type(stop_revision) is str
         main_ref = self.target.ref or "refs/heads/master"
-        refs = { main_ref: stop_revision }
+        refs = { main_ref: (None, stop_revision) }
         for name, revid in self.source.tags.get_tag_dict().iteritems():
             if self.source.repository.has_revision(revid):
-                refs[tag_name_to_ref(name)] = revid
+                refs[tag_name_to_ref(name)] = (None, revid)
         return refs, main_ref
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
@@ -687,7 +691,6 @@ class InterToGitBranch(branch.GenericInterBranch):
         return result
 
     def lossy_push(self, stop_revision=None):
-        from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -699,10 +702,8 @@ class InterToGitBranch(branch.GenericInterBranch):
             return refs
         result.revidmap, old_refs, new_refs = self.interrepo.dfetch_refs(
             update_refs)
-        result.old_revid = self.target.lookup_foreign_revision_id(
-            old_refs.get(self.target.ref, ZERO_SHA))
-        result.new_revid = self.target.lookup_foreign_revision_id(
-            new_refs[main_ref])
+        result.old_revid = old_refs.get(self.target.ref, (None, NULL_REVISION))[1]
+        result.new_revid = new_refs[main_ref][1]
         return result
 
 

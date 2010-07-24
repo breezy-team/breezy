@@ -511,8 +511,12 @@ class BazaarObjectStore(BaseObjectStore):
             return False
 
     def lookup_git_shas(self, shas, update_map=True):
+        from dulwich.protocol import ZERO_SHA
         ret = {}
         for sha in shas:
+            if sha == ZERO_SHA:
+                ret[sha] = NULL_REVISION
+                continue
             try:
                 ret[sha] = self._cache.idmap.lookup_git_sha(sha)
             except KeyError:

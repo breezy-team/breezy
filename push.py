@@ -168,6 +168,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for revid, _ in graph.iter_ancestry(stop_revisions):
+                assert type(revid) is str
                 pb.update("determining revisions to fetch", len(missing))
                 if self._revision_needs_fetching(revid):
                     missing.append(revid)
@@ -175,24 +176,51 @@ class InterToLocalGitRepository(InterToGitRepository):
             pb.finished()
         return graph.iter_topo_order(missing)
 
+    def _get_target_bzr_refs(self):
+        """Return a dictionary with references.
+
+        :return: Dictionary with reference names as keys and tuples
+            with Git SHA, Bazaar revid as values.
+        """
+        bzr_refs = {}
+        refs = self.target._git.get_refs()
+        for k, v in refs.iteritems():
+            try:
+                (kind, (revid, treesha)) = self.source_store.lookup_git_sha(v)
+            except KeyError:
+                revid = None
+            bzr_refs[k] = (v, revid)
+        return bzr_refs
+
     def fetch_refs(self, update_refs):
-        old_refs = self.target._git.get_refs()
-        new_refs = update_refs(old_refs)
-        fetch_spec = PendingAncestryResult(new_refs.values(), self.source)
-        self.fetch(fetch_spec=fetch_spec)
+        self.source.lock_read()
+        try:
+            old_refs = self._get_target_bzr_refs()
+            new_refs = update_refs(old_refs)
+            # FIXME: Keep track of already looked up revid<->sha mappings
+            fetch_spec = PendingAncestryResult(
+                [revid for sha, revid in new_refs.values()], self.source)
+            self.fetch(fetch_spec=fetch_spec)
+        finally:
+            self.source.unlock()
         return old_refs, new_refs
 
     def dfetch_refs(self, update_refs):
-        old_refs = self.target._git.get_refs()
-        new_refs = update_refs(old_refs)
-        revidmap, gitidmap = self.dfetch(new_refs.values())
-        for name, revid in new_refs.iteritems():
-            try:
-                gitid = gitidmap[revid]
-            except KeyError:
-                gitid = self.source_store._lookup_revision_sha1(revid)
-            self.target._git.refs[name] = gitid
-            new_refs[name] = revid
+        self.source.lock_read()
+        try:
+            old_refs = self._get_target_bzr_refs()
+            new_refs = update_refs(old_refs)
+            revidmap, gitidmap = self.dfetch(new_refs.values())
+            for name, (gitid, revid) in new_refs.iteritems():
+                if gitid is None:
+                    try:
+                        gitid = gitidmap[revid]
+                    except KeyError:
+                        gitid = self.source_store._lookup_revision_sha1(revid)
+                self.target._git.refs[name] = gitid
+                new_refs[name] = (gitid, self.source_store.lookup_git_sha(gitid)[1][0])
+        finally:
+            self.source.unlock()
         return revidmap, old_refs, new_refs
 
     def _get_missing_objects_iterator(self, pb):
@@ -204,7 +232,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         revidmap = {}
         self.source.lock_read()
         try:
-            todo = list(self.missing_revisions(stop_revisions))
+            todo = list(self.missing_revisions([revid for sha, revid in stop_revisions]))
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 object_generator = self._get_missing_objects_iterator(pb)
