@@ -135,6 +135,7 @@ class InterToGitRepository(InterRepository):
 
 
 class InterToLocalGitRepository(InterToGitRepository):
+    """InterBranch implementation between a Bazaar and a Git repository."""
 
     def __init__(self, source, target):
         super(InterToLocalGitRepository, self).__init__(source, target)
@@ -142,6 +143,13 @@ class InterToLocalGitRepository(InterToGitRepository):
         self.target_refs = self.target._git.refs
 
     def missing_revisions(self, stop_revisions, check_revid):
+        """Find the revisions that are missing from the target repository.
+
+        :param stop_revisions: Revisions to check for
+        :param check_revid: Convenience function to check if a revid is 
+            present.
+        :return: sequence of missing revisions, in topological order
+        """
         missing = []
         graph = self.source.get_graph()
         pb = ui.ui_factory.nested_progress_bar()
