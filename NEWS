@@ -4,14 +4,17 @@
 
   * Drop support for Bazaar < 2.0. (Jelmer Vernooij)
 
- BUGS
+ BUG FIXES
 
   * Cope with kind changes when generating git objects from Bazaar 
     revisions that contain kind changes where a directory is changed 
-	into a file and its (file/symlink) children are removed 
-	(rather than moved). (#597758, Jelmer Vernooij)
+    into a file and its (file/symlink) children are removed 
+    (rather than moved). (#597758, Jelmer Vernooij)
 
   * Fix reading pack files over http. (#588724, Jelmer Vernooij)
+
+  * Fix 'bzr status' after 'bzr add' in native git working trees.
+    (#603800, Chadrik)
 
  FEATURES
 

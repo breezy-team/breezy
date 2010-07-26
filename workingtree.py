@@ -54,7 +54,9 @@ from bzrlib.plugins.git.tree import (
     changes_from_git_changes,
     tree_delta_from_git_changes,
     )
-
+from bzrlib.plugins.git.mapping import (
+    GitFileIdMap,
+    )
 
 IGNORE_FILENAME = ".gitignore"
 
@@ -253,6 +255,7 @@ class InterIndexGitTree(tree.InterTree):
                 target_fileid_map = self.import_fileid_map(Blob.from_string(self.target.file_text(file_id)))
         else:
             target_fileid_map = {}
+        target_fileid_map = GitFileIdMap(target_fileid_map, self.target.mapping)
         ret = tree_delta_from_git_changes(changes, self.target.mapping, 
             (source_fileid_map, target_fileid_map),
             specific_file=specific_files, require_versioned=require_versioned)
