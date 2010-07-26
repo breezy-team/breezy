@@ -26,8 +26,8 @@ def map_file_ids(repository, old_parents, new_parents):
     assert len(old_parents) == len(new_parents)
     ret = {}
     for (oldp, newp) in zip(old_parents, new_parents):
-        oldinv = repository.get_revision_inventory(oldp)
-        newinv = repository.get_revision_inventory(newp)
+        oldinv = repository.get_inventory(oldp)
+        newinv = repository.get_inventory(newp)
         for path, ie in oldinv.iter_entries():
             if newinv.has_filename(path):
                 ret[ie.file_id] = newinv.path2id(path)

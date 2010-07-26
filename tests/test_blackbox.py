@@ -46,7 +46,8 @@ class TestRebaseSimple(ExternalBase):
 
     def test_notneeded(self):
         os.chdir('../feature')
-        self.check_output('No revisions to rebase.\n', 'rebase ../main')
+        self.assertEquals('No revisions to rebase.\n',
+            self.run_bzr('rebase ../main')[0])
 
     def test_custom_merge_type(self):
         self.make_file('hello', '42')
@@ -55,22 +56,24 @@ class TestRebaseSimple(ExternalBase):
         self.make_file('hoi', "my data")
         self.run_bzr('add')
         self.run_bzr('commit -m this')
-        self.check_output('', 'rebase --lca ../main')
-        self.check_output('3\n', 'revno')
+        self.assertEquals('', self.run_bzr('rebase --lca ../main')[0])
+        self.assertEquals('3\n', self.run_bzr('revno')[0])
 
     def test_notneeded_feature_ahead(self):
         os.chdir('../feature')
         self.make_file('barbla', "bloe")
         self.run_bzr('add')
         self.run_bzr('commit -m bloe')
-        self.check_output('No revisions to rebase.\n', 'rebase ../main')
+        self.assertEquals('No revisions to rebase.\n',
+            self.run_bzr('rebase ../main')[0])
 
     def test_notneeded_main_ahead(self):
         self.make_file('barbla', "bloe")
         self.run_bzr('add')
         self.run_bzr('commit -m bloe')
         os.chdir('../feature')
-        self.check_output("Base branch is descendant of current branch. Pulling instead.\n", 'rebase ../main')
+        self.assertEquals("Base branch is descendant of current branch. Pulling instead.\n",
+            self.run_bzr('rebase ../main')[0])
         self.assertEquals(Branch.open("../feature").revision_history(),
                           Branch.open("../main").revision_history())
 
@@ -101,8 +104,8 @@ class TestRebaseSimple(ExternalBase):
         self.make_file('hoi', "my data")
         self.run_bzr('add')
         self.run_bzr('commit -m this')
-        self.check_output('', 'rebase ../main')
-        self.check_output('3\n', 'revno')
+        self.assertEquals('', self.run_bzr('rebase ../main')[0])
+        self.assertEquals('3\n', self.run_bzr('revno')[0])
 
     def test_range(self):
         # commit mainline rev 2
@@ -122,9 +125,9 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('add')
         self.run_bzr('commit -m these')
         # pick up just rev 2 and 3 and discard 4 from feature
-        self.check_output('', 'rebase -r2..3 ../main')
+        self.assertEquals('', self.run_bzr('rebase -r2..3 ../main')[0])
         # our rev 2 is now rev3 and 3 is now rev4:
-        self.check_output('4\n', 'revno')
+        self.assertEquals('4\n', self.run_bzr('revno')[0])
         # content added from our old revisions 4 should be gone.
         self.failIfExists('hoooi')
 
@@ -146,9 +149,9 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('add')
         self.run_bzr('commit -m these')
         # rebase only rev 4 onto main
-        self.check_output('', 'rebase -r4.. ../main')
+        self.assertEquals('', self.run_bzr('rebase -r4.. ../main')[0])
         # should only get rev 3 (our old 2 and 3 are gone)
-        self.check_output('3\n', 'revno')
+        self.assertEquals('3\n', self.run_bzr('revno')[0])
         self.failIfExists('hoi')
         self.failIfExists('hooi')
         branch = Branch.open(".")
@@ -176,8 +179,8 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('commit -m this')
         old_log = self.run_bzr('log')[0]
         self.run_bzr_error(['Text conflict in hello\n1 conflicts encountered.\nbzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.\n'], ['rebase', '../main'])
-        self.check_output('', 'rebase-abort')
-        self.check_output(old_log, 'log')
+        self.assertEquals('', self.run_bzr('rebase-abort')[0])
+        self.assertEquals(old_log, self.run_bzr('log')[0])
 
     def test_conflicting_continue(self):
         self.make_file('hello', '42')
@@ -187,8 +190,8 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('commit -m this')
         self.run_bzr_error(['Text conflict in hello\n1 conflicts encountered.\nbzr: ERROR: A conflict occurred replaying a commit. Resolve the conflict and run \'bzr rebase-continue\' or run \'bzr rebase-abort\'.\n'], ['rebase', '../main'])
         self.run_bzr('resolved hello')
-        self.check_output('', 'rebase-continue')
-        self.check_output('3\n', 'revno')
+        self.assertEquals('', self.run_bzr('rebase-continue')[0])
+        self.assertEquals('3\n', self.run_bzr('revno')[0])
 
     def test_continue_nothing(self):
         self.run_bzr_error(['bzr: ERROR: No rebase to continue'],
@@ -213,8 +216,10 @@ class TestRebaseSimple(ExternalBase):
         self.make_file('hoi', "my data")
         self.run_bzr('add')
         self.run_bzr('commit -m this')
-        self.check_output('', 'rebase --onto -2 ../main')
-        self.check_output('3\n', 'revno')
+        self.assertEquals('',
+            self.run_bzr('rebase --onto -2 ../main')[0])
+        self.assertEquals('3\n',
+            self.run_bzr('revno')[0])
 
     def test_unrelated(self):
         os.chdir('..')
@@ -237,7 +242,8 @@ class TestRebaseSimple(ExternalBase):
         out, err = self.run_bzr('rebase -v ../main')
         self.assertContainsRe(err, '1 revisions will be rebased:')
         self.assertEqual('', out)
-        self.check_output('3\n', 'revno')
+        self.assertEqual('3\n',
+                self.run_bzr('revno')[0])
 
     def test_useless_merge(self):
         self.make_file('bar', '42')
@@ -277,7 +283,7 @@ class TestRebaseSimple(ExternalBase):
         merge_parents = repo.get_graph().get_parent_map([merge_id])[merge_id]
         self.assertEqual(self.strip_last_revid_part(revid2),
                          self.strip_last_revid_part(merge_parents[1]))
-    
+
     def test_rebase_merge(self):
         trunk = self.make_branch_and_tree('trunk')
         trunk.commit('base')
@@ -309,8 +315,9 @@ class TestRebaseSimple(ExternalBase):
         self.run_bzr('add')
         self.run_bzr('commit -m blah')
         os.chdir('..')
-        self.check_output('', 'rebase -d feature main')
- 
+        self.assertEquals('',
+            self.run_bzr('rebase -d feature main')[0])
+
 
 class ReplayTests(ExternalBase):
 
