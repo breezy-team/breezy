@@ -25,6 +25,11 @@ Compatibility Breaks
 New Features
 ************
 
+* The ``lp:`` prefix will now use your known username (from
+  ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
+  ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now
+  push to ``lp:~user/project/branch``.  (John Arbash Meinel)
+
 Bug Fixes
 *********
 
