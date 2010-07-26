@@ -695,6 +695,9 @@ elif 'py2exe' in sys.argv:
                               },
                    }
 
+    # We want the libaray.zip to have optimize = 2, but the exe to have
+    # optimize = 1, so that .py files that get compilied at run time
+    # (e.g. user installed plugins) dont have their doc strings removed.
     class py2exe_no_oo_exe(py2exe.build_exe.py2exe):
         def build_executable(self, *args, **kwargs):
             self.optimize = 1
