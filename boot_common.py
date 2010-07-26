@@ -1,77 +1,13 @@
 # Common py2exe boot script - executed for all target types.
 
-# When we are a windows_exe we have no console, and writing to
-# sys.stderr or sys.stdout will sooner or later raise an exception,
-# and tracebacks will be lost anyway (see explanation below).
-#
-# We assume that output to sys.stdout can go to the bitsink, but we
-# *want* to see tracebacks.  So we redirect sys.stdout into an object
-# with a write method doing nothing, and sys.stderr into a logfile
-# having the same name as the executable, with '.log' appended.
-#
-# We only open the logfile if something is written to sys.stderr.
-#
-# If the logfile cannot be opened for *any* reason, we have no choice
-# but silently ignore the error.
-#
-# It remains to be seen if the 'a' flag for opening the logfile is a
-# good choice, or 'w' would be better.
-#
-# More elaborate explanation on why this is needed:
-#
-# The sys.stdout and sys.stderr that GUI programs get (from Windows) are
-# more than useless.  This is not a py2exe problem, pythonw.exe behaves
-# in the same way.
-#
-# To demonstrate, run this program with pythonw.exe:
-#
-# import sys
-# sys.stderr = open("out.log", "w")
-# for i in range(10000):
-#     print i
-#
-# and open the 'out.log' file.  It contains this:
-#
-# Traceback (most recent call last):
-#   File "out.py", line 6, in ?
-#     print i
-# IOError: [Errno 9] Bad file descriptor
-#
-# In other words, after printing a certain number of bytes to the
-# system-supplied sys.stdout (or sys.stderr) an exception will be raised.
-#
+# In the standard py2exe boot script, it setup stderr so that anything written
+# to it will be written to exe.log, and a message dialog is shown.
+# For Bazaar, we log most things to .bzr.log, and there are many things that
+# write to stderr, that are not errors, and so we don't want the py2exe dialog
+# message, So also blackhole stderr.
 
 import sys
 if sys.frozen == "windows_exe":
-    class Stderr(object):
-        softspace = 0
-        _file = None
-        _error = None
-        def write(self, text, alert=sys._MessageBox, fname=sys.executable + '.log'):
-            if self._file is None and self._error is None:
-                try:
-                    self._file = open(fname, 'a')
-                except Exception, details:
-                    self._error = details
-                    import atexit
-                    atexit.register(alert, 0,
-                                    "The logfile '%s' could not be opened:\n %s" % \
-                                    (fname, details),
-                                    "Errors occurred")
-                else:
-                    import atexit
-                    atexit.register(alert, 0,
-                                    "See the logfile '%s' for details" % fname,
-                                    "Errors occurred")
-            if self._file is not None:
-                self._file.write(text)
-                self._file.flush()
-        def flush(self):
-            if self._file is not None:
-                self._file.flush()
-    sys.stderr = Stderr()
-    del sys._MessageBox
-    del Stderr
 
     class Blackhole(object):
         softspace = 0
@@ -80,6 +16,7 @@ if sys.frozen == "windows_exe":
         def flush(self):
             pass
     sys.stdout = Blackhole()
+    sys.stderr = Blackhole()
     del Blackhole
 del sys
 
