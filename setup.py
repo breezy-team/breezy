@@ -695,6 +695,7 @@ elif 'py2exe' in sys.argv:
                                "dll_excludes": dll_excludes,
                                "dist_dir": "win32_bzr.exe",
                                "optimize": 2,
+                               "custom_boot_script": "boot_common.py",
                               },
                    }
     if __name__ == '__main__':
