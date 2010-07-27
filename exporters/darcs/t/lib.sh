@@ -191,6 +191,7 @@ create_git()
 	mkdir -p $1
 	cd $1
 	git init $2
+	git commit --allow-empty -m 'root commit'
 	echo A > file
 	git add file
 	git commit -a -m A
@@ -224,6 +225,23 @@ third line" | git commit -a -F -
 	git commit -a -m "add empty file"
 	rm file3
 	git commit -a -m "remove file"
+	# now add back 'file' with its old conents, so the mark gets
+	# reused
+	echo f > file
+	git add file
+	git commit -a -m "file: other -> f"
+	# this is a boring file for Darcs
+	touch foo.pyc
+	git add foo.pyc
+	git commit -a -m "boring file"
+	# replace an uppercase file to a lowercase one
+	echo SPAM > SPAM
+	git add SPAM
+	git commit -a -m SPAM
+	rm SPAM
+	echo spam > spam
+	git add spam
+	git commit -a -m "SPAM -> spam"
 	cd ..
 }
 

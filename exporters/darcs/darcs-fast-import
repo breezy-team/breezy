@@ -4,7 +4,7 @@
 
     darcs-fast-export - darcs backend for fast data exporters
 
-    Copyright (c) 2008 Miklos Vajna <vmiklos@frugalware.org>
+    Copyright (c) 2008, 2009, 2010 Miklos Vajna <vmiklos@frugalware.org>
     Copyright (c) 2008 Matthias Andree <matthias.andree@gmx.de>
 
     This program is free software; you can redistribute it and/or modify
@@ -104,6 +104,13 @@ class Handler:
 		items = s.split(' ')
 		return " ".join(items[:-1]) + " " + tz + " " + items[-1]
 
+	def invoke_darcs(self, cmdline):
+		if os.system("darcs %s" % cmdline) != 0:
+			self.bug("darcs failed")
+
+	def invoke_add(self, path):
+		self.invoke_darcs("add --boring --case-ok %s" % path)
+
 	def handle_mark(self):
 		if self.line.startswith("mark :"):
 			self.mark_num = int(self.line[6:-1])
@@ -161,6 +168,7 @@ class Handler:
 					self.files.append(path)
 		self.prevfiles = self.files[:]
 		adds = []
+		symlinks = []
 
 		self.read_next_line()
 		self.handle_mark()
@@ -178,35 +186,47 @@ class Handler:
 			self.read_next_line()
 		while self.line.startswith("merge "):
 			self.read_next_line()
+		change = False
 		while len(self.line) > 0:
 			if self.line.startswith("deleteall"):
 				path = self.line[2:-1]
 				for path in self.files:
 					os.unlink(path)
 				self.files = []
+				change = True
 			elif self.line.startswith("D "):
 				path = self.line[2:-1]
 				if os.path.exists(path):
 					os.unlink(path)
 				if path in self.files:
 					self.files.remove(path)
+				change = True
 			elif self.line.startswith("R "):
-				os.system("darcs mv %s" % self.line[2:])
+				self.invoke_darcs("mv %s" % self.line[2:])
+				change = True
 			elif self.line.startswith("C "):
 				src, dest = self.line[:-1].split(' ')[1:]
 				shutil.copy(src.strip('"'), dest.strip('"'))
-				os.system("darcs add %s" % dest)
+				self.invoke_add(dest)
+				change = True
 			elif self.line.startswith("M "):
 				items = self.line.split(' ')
 				path = items[3][:-1]
 				dir = os.path.split(path)[0]
 				if len(dir) and not os.path.exists(dir):
 					os.makedirs(dir)
+				if items[1] == "120000":
+					if not self.options.symhack:
+						print "Adding symbolic links (symlinks) is not supported by Darcs."
+						sys.exit(2)
+					idx = int(items[2][1:]) # TODO: handle inline symlinks
+					symlinks.append((self.marks[idx], path))
+					self.read_next_line()
+					continue
 				sock = open(path, "w")
 				if items[2] != "inline":
 					idx = int(items[2][1:])
 					sock.write(self.marks[idx])
-					del self.marks[idx]
 				else:
 					self.read_next_line()
 					self.handle_data()
@@ -216,6 +236,7 @@ class Handler:
 					adds.append(path)
 				if path not in self.files:
 					self.files.append(path)
+				change = True
 			else:
 				self.unread_line = True
 				break
@@ -223,8 +244,11 @@ class Handler:
 			if not len(self.line):
 				break
 
+		if not change:
+			# darcs does not support empty commits
+			return
 		for i in adds:
-			os.system("darcs add %s" % i)
+			self.invoke_add(i)
 		sock = subprocess.Popen(["darcs", "record", "--ignore-times", "-a", "--pipe"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 		buf = [self.date, self.ident, self.short, self.long]
 		sock.stdin.write("\n".join(buf))
@@ -232,6 +256,16 @@ class Handler:
 		self.log("Recording :%s:\n%s" % (self.mark_num, sock.stdout.read()))
 		sock.stdout.close()
 
+		for src, path in symlinks:
+			# symlink does not do what we want if path is
+			# already there
+			if os.path.exists(path):
+				# rmtree() does not work on symlinks
+				if os.path.islink(path):
+					os.remove(path)
+				else:
+					shutil.rmtree(path)
+			os.symlink(src, path)
 		if self.options.export_marks:
 			# yeah, an xml parser would be better, but
 			# should we mess with encodings just because of
@@ -243,19 +277,24 @@ class Handler:
 			self.export_marks.append(":%s %s" % (self.mark_num, hash))
 
 	def handle_progress(self, s):
-		print "progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s.strip())
+		print "import progress [%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s.strip())
 		sys.stdout.flush()
 
 	def handle_opts(self):
 		# Option Parser
 		usage="%prog [options]"
 		opp = optparse.OptionParser(usage=usage)
+		opp.set_defaults(symhack=False)
 		opp.add_option("--import-marks", metavar="IFILE",
 			help="read state for incremental imports from IFILE")
 		opp.add_option("--export-marks", metavar="OFILE",
 			help="write state for incremental imports to OFILE")
 		opp.add_option("--logfile", metavar="L",
 			help="log file which contains the output of external programs invoked during the conversion")
+		opp.add_option("--symhack", action="store_true", dest="symhack",
+			help="Do not error out when a symlink would be created, just create it in the workdir")
+		opp.add_option("--progress", metavar="P",
+			help="insert progress statements after every n commit [default: 100]")
 		(self.options, args) = opp.parse_args()
 
 		if self.options.logfile:
@@ -263,6 +302,11 @@ class Handler:
 		else:
 			logfile = "_darcs/import.log"
 		self.logsock = open(os.path.abspath(logfile), "a")
+
+		if self.options.progress:
+			self.prognum = int(self.options.progress)
+		else:
+			self.prognum = 0
 	
 	def log(self, s):
 		self.logsock.write("[%s] %s" % (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), s))
@@ -290,6 +334,7 @@ class Handler:
 		self.handle_opts()
 		self.handle_import_marks()
 
+		commitcount = 0
 		while not self.eof:
 			self.read_next_line()
 			if not len(self.line[:-1]):
@@ -298,6 +343,9 @@ class Handler:
 				self.handle_blob()
 			elif self.line.startswith("commit"):
 				self.handle_commit()
+				commitcount += 1
+				if self.prognum != 0 and commitcount % self.prognum == 0:
+					self.handle_progress("%d patches" % commitcount)
 			elif self.line.startswith("tag"):
 				self.handle_tag()
 			elif self.line.startswith("reset"):

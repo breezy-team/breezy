@@ -32,20 +32,20 @@ add()
 	shift
 	if ! [ -n "$name" -a -n "$location" ]; then
 		echo "Usage: git darcs add name location [darcs-fast-export options]"
-		exit
+		return 1
 	fi
 	if git remote show |grep -q $name; then
 		echo "There is already a remote with that name"
-		exit
+		return 1
 	fi
 	if [ -n "$(git config git-darcs.$name.location)" ]; then
 		echo "There is already a darcs repo with that name"
-		exit
+		return 1
 	fi
 	repo=$location/_darcs
 	if [ ! -d $repo ] && ! wget --quiet --spider $repo; then
 		echo "Remote is not a darcs repository"
-		exit
+		return 1
 	fi
 	git config git-darcs.$name.location $location
 	echo "Darcs repo $name added. You can fetch it with 'git darcs fetch $name'"
@@ -60,7 +60,7 @@ get_location()
 	l=$(git config git-darcs.$remote.location)
 	if [ -z "$l" ]; then
 		echo "Cannot find darcs remote with name '$remote'." >&2
-		exit
+		return 1
 	fi
 	echo $l
 }
@@ -71,12 +71,12 @@ fetch()
 	shift
 	if ! [ -n "$remote" -a -z "$*" ]; then
 		echo "Usage: git darcs fetch reponame"
-		exit
+		return 1
 	fi
-	location=$(get_location $remote)
+	location=$(get_location $remote) || return $?
 	git_map=$git_dir/darcs-git/$remote-git-map
 	darcs_map=$git_dir/darcs-git/$remote-darcs-map
-	common_opts="--working $git_dir/darcs-git/repo --logfile $git_dir/darcs-git/fetch.log --git-branch=darcs/$remote"
+	common_opts="--working $git_dir/darcs-git/repo --logfile $git_dir/darcs-git/fetch.log --git-branch=refs/remotes/darcs/$remote"
         dfe_opts=$(git config git-darcs.$remote.darcs-fast-export-options)
 	pre_fetch="$(git config git-darcs.$remote.pre-fetch)"
 	if [ -n "$pre_fetch" ]; then
@@ -90,20 +90,20 @@ fetch()
 			git fast-import --export-marks=$git_map
 	elif [ -f $git_map -a -f $darcs_map ]; then
 		echo "Updating remote $remote"
-		old_rev=$(git rev-parse darcs/$remote)
+		old_rev=$(git rev-parse refs/remotes/darcs/$remote)
 		darcs-fast-export --import-marks=$darcs_map --export-marks=$darcs_map $common_opts $dfe_opts $location | \
 			git fast-import --quiet --import-marks=$git_map --export-marks=$git_map
-		new_rev=$(git rev-parse darcs/$remote)
+		new_rev=$(git rev-parse refs/remotes/darcs/$remote)
 		if [ "$old_rev" != "$new_rev" ]; then
 			echo "Fetched the following updates:"
 			git shortlog $old_rev..$new_rev
 		else
 			echo "Nothing fetched."
-			exit
+			return 0
 		fi
 	else
 		echo "One of the mapfiles is missing! Something went wrong!"
-		exit
+		return 1
 	fi
 	post_fetch="$(git config git-darcs.$remote.post-fetch)"
 	if [ -n "$post_fetch" ]; then
@@ -117,15 +117,15 @@ pull()
 	shift
 	if ! [ -n "$remote" -a -z "$*" ]; then
 		echo "Usage: git darcs pull reponame"
-		exit
+		return 1
 	fi
-	fetch $remote
+	fetch $remote || return $?
 	# see if we need to merge or rebase
 	branch=$(git symbolic-ref HEAD|sed 's|.*/||')
 	if [ "$(git config branch.$branch.rebase)" = "true" ]; then
-		git rebase darcs/$remote
+		git rebase refs/remotes/darcs/$remote
 	else
-		git merge darcs/$remote
+		git merge refs/remotes/darcs/$remote
 	fi
 }
 
@@ -135,34 +135,34 @@ push()
 	shift
 	if ! [ -n "$remote" -a -z "$*" ]; then
 		echo "Usage: git darcs push reponame"
-		exit
+		return 1
 	fi
-	location=$(get_location $remote)
-	if [ -n "$(git rev-list --left-right HEAD...darcs/$remote | sed -n '/^>/ p')" ]; then
+	location=$(get_location $remote) || return $?
+	if [ -n "$(git rev-list --left-right HEAD...refs/remotes/darcs/$remote | sed -n '/^>/ p')" ]; then
 		echo "HEAD is not a strict child of $remote, cannot push. Merge first"
-		exit
+		return 1
 	fi
-	if [ -z "$(git rev-list --left-right HEAD...darcs/$remote | sed -n '/^</ p')" ]; then
+	if [ -z "$(git rev-list --left-right HEAD...refs/remotes/darcs/$remote | sed -n '/^</ p')" ]; then
 		echo "Nothing to push. Commit something first"
-		exit
+		return 1
 	fi
 	git_map=$git_dir/darcs-git/$remote-git-map
 	darcs_map=$git_dir/darcs-git/$remote-darcs-map
 	if [ ! -f $git_map -o ! -f $darcs_map ]; then
 		echo "We do not have refmapping yet. Then how can I push?"
-		exit
+		return 1
 	fi
 	pre_push="$(git config git-darcs.$remote.pre-push)"
 	if [ -n "$pre_push" ]; then
 		$pre_push
 	fi
 	echo "Pushing the following updates:"
-	git shortlog darcs/$remote..
+	git shortlog refs/remotes/darcs/$remote..
 	git fast-export --import-marks=$git_map --export-marks=$git_map HEAD | \
 		(cd $location; darcs-fast-import --import-marks=$darcs_map --export-marks=$darcs_map \
 		--logfile $git_dir/darcs-git/push.log)
 	if [ $? == 0 ]; then
-		git update-ref darcs/$remote HEAD
+		git update-ref refs/remotes/darcs/$remote HEAD
 		post_push="$(git config git-darcs.$remote.post-push)"
 		if [ -n "$post_push" ]; then
 			$post_push
@@ -176,18 +176,18 @@ list()
 	if [ -z "$*" ]
 	then
 		git config -l | sed -n -e '/git-darcs\..*/ {s/git-darcs\.//; s/\.location=.*//p}'
-		exit
+		return 0
 	elif [ "$#" -eq 1 ]
 	then
 		case $1 in
 			-v|--verbose)
 				git config -l | sed -n -e '/git-darcs\..*/ {s/git-darcs\.//; s/\.location=/\t/p}'
-				exit
+				return 0
 				;;
 		esac
 	fi
 	echo "Usage: git darcs list [-v|--verbose]"
-	exit 1
+	return 1
 }
 
 # Find the darcs commit(s) supporting a git SHA1 prefix
@@ -198,9 +198,9 @@ find_darcs()
 	if [ -z "$sha1" -o -n "$*" ]
 	then
 		echo "Usage: git darcs find-darcs <sha1-prefix>"
-		exit 1
+		return 1
 	fi
-	for remote in $git_dir/darcs/*
+	for remote in $(git for-each-ref --format='%(refname)' refs/remotes/darcs)
 	do
 		remote=`basename $remote`
 		git_map=$git_dir/darcs-git/$remote-git-map
@@ -208,7 +208,7 @@ find_darcs()
 		if [ ! -f $git_map -o ! -f $darcs_map ]
 		then
 			echo "Missing mappings for remote $remote"
-			exit 1
+			return 1
 		fi
 		for row in `sed -n -e "/:.* $sha1.*/ s/[^ ]*/&/p" $git_map`
 		do
@@ -225,9 +225,9 @@ find_git()
 	if [ -z "$patch" -o -n "$*" ]
 	then
 		echo "Usage: git darcs find-git <patch-prefix>"
-		exit 1
+		return 1
 	fi
-	for remote in $git_dir/darcs/*
+	for remote in $(git for-each-ref --format='%(refname)' refs/remotes/darcs)
 	do
 		remote=`basename $remote`
 		git_map=$git_dir/darcs-git/$remote-git-map
@@ -235,7 +235,7 @@ find_git()
 		if [ ! -f $git_map -o ! -f $darcs_map ]
 		then
 			echo "Missing mappings for remote $remote"
-			exit 1
+			return 1
 		fi
 		for row in `sed -n -e "/:.* $patch.*/ s/[^ ]*/&/p" $darcs_map`
 		do
@@ -247,7 +247,7 @@ find_git()
 git rev-parse 2> /dev/null
 if [ $? != 0 ]; then
 	echo "Must be inside a git repository to work"
-	exit
+	exit 1
 fi
 
 git_dir=$(git rev-parse --git-dir)
@@ -270,7 +270,7 @@ case $command in
 	*)
 		echo "Usage: git darcs [COMMAND] [OPTIONS]"
 		echo "Commands: add, push, fetch, pull, list, find-darcs, find-git"
-		exit
+		exit 1
 		;;
 esac
 
