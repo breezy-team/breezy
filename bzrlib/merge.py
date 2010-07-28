@@ -1814,9 +1814,9 @@ class MergeIntoMerger(Merger):
         self.show_base = False
         self.reprocess = False
         self.interesting_ids = None
-        self.merge_type = _Wrapper(MergeIntoMergeType,
-                                  target_subdir=self._target_subdir,
-                                  source_subpath=self._source_subpath)
+        self.merge_type = _MergeTypeParameterizer(MergeIntoMergeType,
+              target_subdir=self._target_subdir,
+              source_subpath=self._source_subpath)
         if self._source_subpath != '':
             # If this isn't a partial merge make sure the revisions will be
             # present.
@@ -1829,7 +1829,7 @@ class MergeIntoMerger(Merger):
         Merger.set_pending(self)
 
 
-class _Wrapper(object):
+class _MergeTypeParameterizer(object):
     """Wrap a merge-type class to provide extra parameters.
     
     This is hack used by MergeIntoMerger to pass some extra parameters to its
