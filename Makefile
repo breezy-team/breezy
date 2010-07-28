@@ -22,16 +22,8 @@ endif
 clean::
 	$(SETUP) clean
 
-TMP_PLUGINS_DIR = $(shell pwd)/.plugins
-
-$(TMP_PLUGINS_DIR):
-	mkdir -p $@
-
-$(TMP_PLUGINS_DIR)/rewrite: $(TMP_PLUGINS_DIR)
-	ln -sf .. $@
-
-check:: $(TMP_PLUGINS_DIR)/rewrite/
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR):$(BZR_PLUGIN_PATH) $(DEBUGGER) $(PYTHON) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.rewrite $(TESTS)
+check::
+	BZR_PLUGINS_AT=rewrite@$(shell pwd) $(DEBUGGER) $(PYTHON) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) --starting-with=bzrlib.plugins.rewrite $(TESTS)
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
@@ -43,7 +35,7 @@ check-one::
 	$(MAKE) check TEST_OPTIONS=--one
 
 show-plugins::
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR):$(BZR_PLUGIN_PATH) $(BZR) plugins
+	BZR_PLUGINS_AT=rewrite@$(shell pwd) $(BZR) plugins -v
 
 lint::
 	$(PYLINT) -f parseable *.py */*.py
