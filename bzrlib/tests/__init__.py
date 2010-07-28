@@ -274,7 +274,7 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def _shortened_test_description(self, test):
         what = test.id()
-        what = re.sub(r'^bzrlib\.(tests|benchmarks)\.', '', what)
+        what = re.sub(r'^bzrlib\.tests\.', '', what)
         return what
 
     def startTest(self, test):
@@ -3813,6 +3813,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_transport_log',
         'bzrlib.tests.test_tree',
         'bzrlib.tests.test_treebuilder',
+        'bzrlib.tests.test_treeshape',
         'bzrlib.tests.test_tsort',
         'bzrlib.tests.test_tuned_gzip',
         'bzrlib.tests.test_ui',

@@ -246,9 +246,13 @@ class Branch(bzrdir.ControlComponent):
         if not local and not config.has_explicit_nickname():
             try:
                 master = self.get_master_branch(possible_transports)
+                if master and self.user_url == master.user_url:
+                    raise errors.RecursiveBind(self.user_url)
                 if master is not None:
                     # return the master branch value
                     return master.nick
+            except errors.RecursiveBind, e:
+                raise e
             except errors.BzrError, e:
                 # Silently fall back to local implicit nick if the master is
                 # unavailable
