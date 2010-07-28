@@ -22,6 +22,7 @@ import re
 import sys
 
 from bzrlib import (
+    bzrdir,
     osutils,
     ignores,
     msgeditor,
@@ -33,10 +34,10 @@ from bzrlib.tests import (
     probe_bad_non_ascii,
     TestSkipped,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCommit(ExternalBase):
+class TestCommit(TestCaseWithTransport):
 
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""
@@ -129,7 +130,7 @@ class TestCommit(ExternalBase):
         # by ui.text.show_warning
         default_get_terminal_enc = osutils.get_terminal_encoding
         try:
-            osutils.get_terminal_encoding = lambda: 'ascii'
+            osutils.get_terminal_encoding = lambda trace=None: 'ascii'
             file_name = u'foo\u1234'
             open(file_name, 'w').write('hello world')
             self.run_bzr(['add'])
@@ -757,3 +758,18 @@ altered in u2
         osutils.set_or_unset_env('BZR_EMAIL', None)
         out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
+
+    def test_commit_recursive_checkout(self):
+        """Ensure that a commit to a recursive checkout fails cleanly.
+        """
+        self.run_bzr(['init', 'test_branch'])
+        self.run_bzr(['checkout', 'test_branch', 'test_checkout'])
+        os.chdir('test_checkout')
+        self.run_bzr(['bind', '.']) # bind to self
+        open('foo.txt', 'w').write('hello')
+        self.run_bzr(['add'])
+        out, err = self.run_bzr(['commit', '-m', 'addedfoo'], 3)
+        self.assertEqual(out, '')
+        self.assertContainsRe(err,
+            'Branch.*test_checkout.*appears to be bound to itself')
+

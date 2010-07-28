@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -46,7 +46,6 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     multiply_tests,
     )
-from bzrlib.transport import get_transport
 
 
 def make_scenarios(test_list):
@@ -76,11 +75,9 @@ def default_test_list():
     # test the default InterBranch between format 6 and the current
     # default format.
     for optimiser_class in InterBranch._optimisers:
-        format_from_test, format_to_test = \
-            optimiser_class._get_branch_formats_to_test()
-        if format_to_test is not None:
-            result.append((optimiser_class,
-                           format_from_test, format_to_test))
+        for format_from_test, format_to_test in \
+            optimiser_class._get_branch_formats_to_test():
+            result.append((optimiser_class, format_from_test, format_to_test))
     # if there are specific combinations we want to use, we can add them
     # here.
     return result

@@ -20,12 +20,12 @@
 from bzrlib import (
     bzrdir,
     )
-from bzrlib.tests.blackbox import (
-    ExternalBase,
+from bzrlib.tests import (
+    TestCaseWithTransport,
     )
 
 
-class TestRemoveBranch(ExternalBase):
+class TestRemoveBranch(TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)

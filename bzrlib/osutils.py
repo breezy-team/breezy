@@ -18,7 +18,6 @@ import errno
 import os
 import re
 import stat
-from stat import S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE
 import sys
 import time
 import codecs
@@ -27,23 +26,18 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from datetime import datetime
 import getpass
-from ntpath import (abspath as _nt_abspath,
-                    join as _nt_join,
-                    normpath as _nt_normpath,
-                    realpath as _nt_realpath,
-                    splitdrive as _nt_splitdrive,
-                    )
+import ntpath
 import posixpath
+# We need to import both shutil and rmtree as we export the later on posix
+# and need the former on windows
 import shutil
-from shutil import (
-    rmtree,
-    )
+from shutil import rmtree
 import socket
 import subprocess
+# We need to import both tempfile and mkdtemp as we export the later on posix
+# and need the former on windows
 import tempfile
-from tempfile import (
-    mkdtemp,
-    )
+from tempfile import mkdtemp
 import unicodedata
 
 from bzrlib import (
@@ -304,13 +298,13 @@ def _win32_fixdrive(path):
     running python.exe under cmd.exe return capital C:\\
     running win32 python inside a cygwin shell returns lowercase c:\\
     """
-    drive, path = _nt_splitdrive(path)
+    drive, path = ntpath.splitdrive(path)
     return drive.upper() + path
 
 
 def _win32_abspath(path):
-    # Real _nt_abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
+    # Real ntpath.abspath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
 
 
 def _win98_abspath(path):
@@ -327,30 +321,30 @@ def _win98_abspath(path):
     #   /path       => C:/path
     path = unicode(path)
     # check for absolute path
-    drive = _nt_splitdrive(path)[0]
+    drive = ntpath.splitdrive(path)[0]
     if drive == '' and path[:2] not in('//','\\\\'):
         cwd = os.getcwdu()
         # we cannot simply os.path.join cwd and path
         # because os.path.join('C:','/path') produce '/path'
         # and this is incorrect
         if path[:1] in ('/','\\'):
-            cwd = _nt_splitdrive(cwd)[0]
+            cwd = ntpath.splitdrive(cwd)[0]
             path = path[1:]
         path = cwd + '\\' + path
-    return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
-    # Real _nt_realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))
+    # Real ntpath.realpath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(ntpath.realpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
-    return _nt_join(*args).replace('\\', '/')
+    return ntpath.join(*args).replace('\\', '/')
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(_nt_normpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_getcwd():
@@ -395,7 +389,7 @@ dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
 splitext = os.path.splitext
-# These were already imported into local scope
+# These were already lazily imported into local scope
 # mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
 
@@ -441,7 +435,7 @@ elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
 
-def get_terminal_encoding():
+def get_terminal_encoding(trace=False):
     """Find the best encoding for printing to the screen.
 
     This attempts to check both sys.stdout and sys.stdin to see
@@ -453,6 +447,8 @@ def get_terminal_encoding():
 
     On my standard US Windows XP, the preferred encoding is
     cp1252, but the console is cp437
+
+    :param trace: If True trace the selected encoding via mutter().
     """
     from bzrlib.trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
@@ -460,17 +456,22 @@ def get_terminal_encoding():
         input_encoding = getattr(sys.stdin, 'encoding', None)
         if not input_encoding:
             output_encoding = get_user_encoding()
-            mutter('encoding stdout as osutils.get_user_encoding() %r',
+            if trace:
+                mutter('encoding stdout as osutils.get_user_encoding() %r',
                    output_encoding)
         else:
             output_encoding = input_encoding
-            mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
+            if trace:
+                mutter('encoding stdout as sys.stdin encoding %r',
+                    output_encoding)
     else:
-        mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+        if trace:
+            mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
     if output_encoding == 'cp0':
         # invalid encoding (cp0 means 'no codepage' on Windows)
         output_encoding = get_user_encoding()
-        mutter('cp0 is invalid encoding.'
+        if trace:
+            mutter('cp0 is invalid encoding.'
                ' encoding stdout as osutils.get_user_encoding() %r',
                output_encoding)
     # check encoding
@@ -502,7 +503,7 @@ def normalizepath(f):
 def isdir(f):
     """True if f is an accessible directory."""
     try:
-        return S_ISDIR(os.lstat(f)[ST_MODE])
+        return stat.S_ISDIR(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
@@ -510,14 +511,14 @@ def isdir(f):
 def isfile(f):
     """True if f is a regular file."""
     try:
-        return S_ISREG(os.lstat(f)[ST_MODE])
+        return stat.S_ISREG(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
 def islink(f):
     """True if f is a symlink."""
     try:
-        return S_ISLNK(os.lstat(f)[ST_MODE])
+        return stat.S_ISLNK(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
@@ -863,7 +864,7 @@ def format_delta(delta):
 
 def filesize(f):
     """Return size of given open file."""
-    return os.fstat(f.fileno())[ST_SIZE]
+    return os.fstat(f.fileno())[stat.ST_SIZE]
 
 
 # Define rand_bytes based on platform.
@@ -931,7 +932,7 @@ def joinpath(p):
 
 def parent_directories(filename):
     """Return the list of parent directories, deepest first.
-    
+
     For example, parent_directories("a/b/c") -> ["a/b", "a"].
     """
     parents = []
@@ -961,7 +962,7 @@ def failed_to_load_extension(exception):
     # NB: This docstring is just an example, not a doctest, because doctest
     # currently can't cope with the use of lazy imports in this namespace --
     # mbp 20090729
-    
+
     # This currently doesn't report the failure at the time it occurs, because
     # they tend to happen very early in startup when we can't check config
     # files etc, and also we want to report all failures but not spam the user
@@ -1037,8 +1038,8 @@ def link_or_copy(src, dest):
 
 
 def delete_any(path):
-    """Delete a file, symlink or directory.  
-    
+    """Delete a file, symlink or directory.
+
     Will delete even if readonly.
     """
     try:
@@ -1232,6 +1233,22 @@ def canonical_relpaths(base, paths):
     """
     # but for now, we haven't optimized...
     return [canonical_relpath(base, p) for p in paths]
+
+
+def decode_filename(filename):
+    """Decode the filename using the filesystem encoding
+
+    If it is unicode, it is returned.
+    Otherwise it is decoded from the the filesystem's encoding. If decoding
+    fails, a errors.BadFilenameEncoding exception is raised.
+    """
+    if type(filename) is unicode:
+        return filename
+    try:
+        return filename.decode(_fs_enc)
+    except UnicodeDecodeError:
+        raise errors.BadFilenameEncoding(filename, _fs_enc)
+
 
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
@@ -1644,7 +1661,7 @@ def walkdirs(top, prefix=""):
         dirblock = []
         append = dirblock.append
         try:
-            names = sorted(_listdir(top))
+            names = sorted(map(decode_filename, _listdir(top)))
         except OSError, e:
             if not _is_error_enotdir(e):
                 raise
@@ -1952,6 +1969,10 @@ def get_user_encoding(use_cache=True):
     return user_encoding
 
 
+def get_diff_header_encoding():
+    return get_terminal_encoding()
+
+
 def get_host_name():
     """Return the current unicode host name.
 
@@ -2020,14 +2041,14 @@ def recv_all(socket, count):
 
 def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
- 
+
     Breaks large blocks in smaller chunks to avoid buffering limitations on
     some platforms, and catches EINTR which may be thrown if the send is
     interrupted by a signal.
 
     This is preferred to socket.sendall(), because it avoids portability bugs
     and provides activity reporting.
- 
+
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
     """
@@ -2121,7 +2142,7 @@ def file_kind(f, _lstat=os.lstat):
 
 def until_no_eintr(f, *a, **kw):
     """Run f(*a, **kw), retrying if an EINTR error occurs.
-    
+
     WARNING: you must be certain that it is safe to retry the call repeatedly
     if EINTR does occur.  This is typically only true for low-level operations
     like os.read.  If in any doubt, don't use this.
@@ -2142,6 +2163,7 @@ def until_no_eintr(f, *a, **kw):
             raise
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
 
@@ -2157,12 +2179,12 @@ def re_compile_checked(re_string, flags=0, where=""):
         re_obj = re.compile(re_string, flags)
         re_obj.search("")
         return re_obj
-    except re.error, e:
+    except errors.InvalidPattern, e:
         if where:
             where = ' in ' + where
         # despite the name 'error' is a type
-        raise errors.BzrCommandError('Invalid regular expression%s: %r: %s'
-            % (where, re_string, e))
+        raise errors.BzrCommandError('Invalid regular expression%s: %s'
+            % (where, e.msg))
 
 
 if sys.platform == "win32":
@@ -2258,7 +2280,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
 if sys.platform == 'win32':
     def open_file(filename, mode='r', bufsize=-1):
         """This function is used to override the ``open`` builtin.
-        
+
         But it uses O_NOINHERIT flag so the file handle is not inherited by
         child processes.  Deleting or renaming a closed file opened with this
         function is not blocking child processes.

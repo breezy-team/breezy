@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,10 +20,10 @@
 import os
 
 from bzrlib import shelf
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestRemoveTree(ExternalBase):
+class TestRemoveTree(TestCaseWithTransport):
 
     def setUp(self):
         super(TestRemoveTree, self).setUp()

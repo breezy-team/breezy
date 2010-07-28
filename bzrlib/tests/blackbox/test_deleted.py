@@ -21,10 +21,10 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestDeleted(ExternalBase):
+class TestDeleted(TestCaseWithTransport):
 
     def test_deleted_directory(self):
         """Test --directory option"""

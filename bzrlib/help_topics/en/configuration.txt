@@ -179,6 +179,15 @@ BZRPATH
 The path where Bazaar should look for shell plugin external commands.
 
 
+http_proxy, https_proxy
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Specifies the network proxy for outgoing connections, for example::
+
+  http_proxy=http://proxy.example.com:3128/ 
+  https_proxy=http://proxy.example.com:3128/
+
+
 Configuration files
 -------------------
 
@@ -494,6 +503,17 @@ Valid values:
 * ``format_deprecation``:
     whether the format deprecation warning is shown on repositories that are
     using deprecated formats.
+
+
+Unicode options
+---------------
+
+output_encoding
+~~~~~~~~~~~~~~~
+
+A Python unicode encoding name for text output from bzr, such as log
+information.  Values include: utf8, cp850, ascii, iso-8859-1.  The default
+is the terminal encoding prefered by the operating system.
 
 
 Branch type specific options

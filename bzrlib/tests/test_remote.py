@@ -38,6 +38,7 @@ from bzrlib import (
     remote,
     repository,
     tests,
+    transport,
     treebuilder,
     urlutils,
     versionedfile,
@@ -63,7 +64,6 @@ from bzrlib.tests import (
     multiply_tests,
     test_server,
     )
-from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
     RemoteTransport,
@@ -359,8 +359,8 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given client_base and transport_base.
         """
         client_medium = medium.SmartClientMedium(client_base)
-        transport = get_transport(transport_base)
-        result = client_medium.remote_path_from_transport(transport)
+        t = transport.get_transport(transport_base)
+        result = client_medium.remote_path_from_transport(t)
         self.assertEqual(expected, result)
 
     def test_remote_path_from_transport(self):
@@ -377,7 +377,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given transport_base and relpath of that transport.  (Note that
         HttpTransportBase is a subclass of SmartClientMedium)
         """
-        base_transport = get_transport(transport_base)
+        base_transport = transport.get_transport(transport_base)
         client_medium = base_transport.get_smart_medium()
         cloned_transport = base_transport.clone(relpath)
         result = client_medium.remote_path_from_transport(cloned_transport)

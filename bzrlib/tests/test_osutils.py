@@ -27,7 +27,9 @@ import time
 
 from bzrlib import (
     errors,
+    lazy_regex,
     osutils,
+    symbol_versioning,
     tests,
     trace,
     win32utils,
@@ -861,7 +863,7 @@ class TestWin32Funcs(tests.TestCase):
         self.assertEqual('//HOST/path', osutils._win98_abspath('//HOST/path'))
         # relative path
         cwd = osutils.getcwd().rstrip('/')
-        drive = osutils._nt_splitdrive(cwd)[0]
+        drive = osutils.ntpath.splitdrive(cwd)[0]
         self.assertEqual(cwd+'/path', osutils._win98_abspath('path'))
         self.assertEqual(drive+'/path', osutils._win98_abspath('/path'))
         # unicode path
@@ -1082,6 +1084,40 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEquals(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\./test-unreadable")
+
+
+    def test_walkdirs_encoding_error(self):
+        # <https://bugs.launchpad.net/bzr/+bug/488519>
+        # walkdirs didn't raise a useful message when the filenames
+        # are not using the filesystem's encoding
+
+        # require a bytestring based filesystem
+        self.requireFeature(tests.ByteStringNamedFilesystem)
+
+        tree = [
+            '.bzr',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '1file'
+            ]
+
+        self.build_tree(tree)
+
+        # rename the 1file to a latin-1 filename
+        os.rename("./1file", "\xe8file")
+
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'UTF-8'
+
+        # this should raise on error
+        def attempt():
+            for dirdetail, dirblock in osutils.walkdirs('.'):
+                pass
+
+        self.assertRaises(errors.BadFilenameEncoding, attempt)
 
     def test__walkdirs_utf8(self):
         tree = [
@@ -1671,19 +1707,27 @@ class TestResourceLoading(tests.TestCaseInTempDir):
 
 class TestReCompile(tests.TestCase):
 
+    def _deprecated_re_compile_checked(self, *args, **kwargs):
+        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
+            osutils.re_compile_checked, *args, **kwargs)
+
     def test_re_compile_checked(self):
-        r = osutils.re_compile_checked(r'A*', re.IGNORECASE)
+        r = self._deprecated_re_compile_checked(r'A*', re.IGNORECASE)
         self.assertTrue(r.match('aaaa'))
         self.assertTrue(r.match('aAaA'))
 
     def test_re_compile_checked_error(self):
         # like https://bugs.launchpad.net/bzr/+bug/251352
+
+        # Due to possible test isolation error, re.compile is not lazy at
+        # this point. We re-install lazy compile.
+        lazy_regex.install_lazy_compile()
         err = self.assertRaises(
             errors.BzrCommandError,
-            osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
+            self._deprecated_re_compile_checked, '*', re.IGNORECASE, 'test case')
         self.assertEqual(
-            "Invalid regular expression in test case: '*': "
-            "nothing to repeat",
+            'Invalid regular expression in test case: '
+            '"*" nothing to repeat',
             str(err))
 
 
@@ -1921,7 +1965,7 @@ class TestTerminalWidth(tests.TestCase):
     def restore_osutils_globals(self):
         osutils._terminal_size_state = self._orig_terminal_size_state
         osutils._first_terminal_size = self._orig_first_terminal_size
-        
+
     def replace_stdout(self, new):
         self.overrideAttr(sys, 'stdout', new)
 

@@ -246,9 +246,13 @@ class Branch(bzrdir.ControlComponent):
         if not local and not config.has_explicit_nickname():
             try:
                 master = self.get_master_branch(possible_transports)
+                if master and self.user_url == master.user_url:
+                    raise errors.RecursiveBind(self.user_url)
                 if master is not None:
                     # return the master branch value
                     return master.nick
+            except errors.RecursiveBind, e:
+                raise e
             except errors.BzrError, e:
                 # Silently fall back to local implicit nick if the master is
                 # unavailable
@@ -801,28 +805,56 @@ class Branch(bzrdir.ControlComponent):
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError("can't cope with fallback repositories "
                     "of %r" % (self.repository,))
-            # unlock it, including unlocking the fallback
+            # Open the new repository object.
+            # Repositories don't offer an interface to remove fallback
+            # repositories today; take the conceptually simpler option and just
+            # reopen it.  We reopen it starting from the URL so that we
+            # get a separate connection for RemoteRepositories and can
+            # stream from one of them to the other.  This does mean doing
+            # separate SSH connection setup, but unstacking is not a
+            # common operation so it's tolerable.
+            new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
+            new_repository = new_bzrdir.find_repository()
+            if new_repository._fallback_repositories:
+                raise AssertionError("didn't expect %r to have "
+                    "fallback_repositories"
+                    % (self.repository,))
+            # Replace self.repository with the new repository.
+            # Do our best to transfer the lock state (i.e. lock-tokens and
+            # lock count) of self.repository to the new repository.
+            lock_token = old_repository.lock_write().repository_token
+            self.repository = new_repository
+            if isinstance(self, remote.RemoteBranch):
+                # Remote branches can have a second reference to the old
+                # repository that need to be replaced.
+                if self._real_branch is not None:
+                    self._real_branch.repository = new_repository
+            self.repository.lock_write(token=lock_token)
+            if lock_token is not None:
+                old_repository.leave_lock_in_place()
             old_repository.unlock()
+            if lock_token is not None:
+                # XXX: self.repository.leave_lock_in_place() before this
+                # function will not be preserved.  Fortunately that doesn't
+                # affect the current default format (2a), and would be a
+                # corner-case anyway.
+                #  - Andrew Bennetts, 2010/06/30
+                self.repository.dont_leave_lock_in_place()
+            old_lock_count = 0
+            while True:
+                try:
+                    old_repository.unlock()
+                except errors.LockNotHeld:
+                    break
+                old_lock_count += 1
+            if old_lock_count == 0:
+                raise AssertionError(
+                    'old_repository should have been locked at least once.')
+            for i in range(old_lock_count-1):
+                self.repository.lock_write()
+            # Fetch from the old repository into the new.
             old_repository.lock_read()
             try:
-                # Repositories don't offer an interface to remove fallback
-                # repositories today; take the conceptually simpler option and just
-                # reopen it.  We reopen it starting from the URL so that we
-                # get a separate connection for RemoteRepositories and can
-                # stream from one of them to the other.  This does mean doing
-                # separate SSH connection setup, but unstacking is not a
-                # common operation so it's tolerable.
-                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
-                new_repository = new_bzrdir.find_repository()
-                self.repository = new_repository
-                if self.repository._fallback_repositories:
-                    raise AssertionError("didn't expect %r to have "
-                        "fallback_repositories"
-                        % (self.repository,))
-                # this is not paired with an unlock because it's just restoring
-                # the previous state; the lock's released when set_stacked_on_url
-                # returns
-                self.repository.lock_write()
                 # XXX: If you unstack a branch while it has a working tree
                 # with a pending merge, the pending-merged revisions will no
                 # longer be present.  You can (probably) revert and remerge.
@@ -1023,7 +1055,6 @@ class Branch(bzrdir.ControlComponent):
             self._extend_partial_history(distance_from_last)
         return self._partial_revision_history_cache[distance_from_last]
 
-    @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              possible_transports=None, *args, **kwargs):
         """Mirror source into this branch.
@@ -1519,7 +1550,10 @@ class BranchFormat(object):
         try:
             transport = a_bzrdir.get_branch_transport(None, name=name)
             format_string = transport.get_bytes("format")
-            return klass._formats[format_string]
+            format = klass._formats[format_string]
+            if isinstance(format, MetaDirBranchFormatFactory):
+                return format()
+            return format
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
         except KeyError:
@@ -1529,6 +1563,20 @@ class BranchFormat(object):
     def get_default_format(klass):
         """Return the current default format."""
         return klass._default_format
+
+    @classmethod
+    def get_formats(klass):
+        """Get all the known formats.
+
+        Warning: This triggers a load of all lazy registered formats: do not
+        use except when that is desireed.
+        """
+        result = []
+        for fmt in klass._formats.values():
+            if isinstance(fmt, MetaDirBranchFormatFactory):
+                fmt = fmt()
+            result.append(fmt)
+        return result
 
     def get_reference(self, a_bzrdir, name=None):
         """Get the target reference of the branch in a_bzrdir.
@@ -1672,11 +1720,19 @@ class BranchFormat(object):
 
     @classmethod
     def register_format(klass, format):
-        """Register a metadir format."""
+        """Register a metadir format.
+        
+        See MetaDirBranchFormatFactory for the ability to register a format
+        without loading the code the format needs until it is actually used.
+        """
         klass._formats[format.get_format_string()] = format
         # Metadir formats have a network name of their format string, and get
-        # registered as class factories.
-        network_format_registry.register(format.get_format_string(), format.__class__)
+        # registered as factories.
+        if isinstance(format, MetaDirBranchFormatFactory):
+            network_format_registry.register(format.get_format_string(), format)
+        else:
+            network_format_registry.register(format.get_format_string(),
+                format.__class__)
 
     @classmethod
     def set_default_format(klass, format):
@@ -1700,6 +1756,34 @@ class BranchFormat(object):
     def supports_tags(self):
         """True if this format supports tags stored in the branch"""
         return False  # by default
+
+
+class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
+    """A factory for a BranchFormat object, permitting simple lazy registration.
+    
+    While none of the built in BranchFormats are lazy registered yet,
+    bzrlib.tests.test_branch.TestMetaDirBranchFormatFactory demonstrates how to
+    use it, and the bzr-loom plugin uses it as well (see
+    bzrlib.plugins.loom.formats).
+    """
+
+    def __init__(self, format_string, module_name, member_name):
+        """Create a MetaDirBranchFormatFactory.
+
+        :param format_string: The format string the format has.
+        :param module_name: Module to load the format class from.
+        :param member_name: Attribute name within the module for the format class.
+        """
+        registry._LazyObjectGetter.__init__(self, module_name, member_name)
+        self._format_string = format_string
+        
+    def get_format_string(self):
+        """See BranchFormat.get_format_string."""
+        return self._format_string
+
+    def __call__(self):
+        """Used for network_format_registry support."""
+        return self.get_obj()()
 
 
 class BranchHooks(Hooks):
@@ -3185,11 +3269,17 @@ class InterBranch(InterObject):
     _optimisers = []
     """The available optimised InterBranch types."""
 
-    @staticmethod
-    def _get_branch_formats_to_test():
-        """Return a tuple with the Branch formats to use when testing."""
-        raise NotImplementedError(InterBranch._get_branch_formats_to_test)
+    @classmethod
+    def _get_branch_formats_to_test(klass):
+        """Return an iterable of format tuples for testing.
+        
+        :return: An iterable of (from_format, to_format) to use when testing
+            this InterBranch class. Each InterBranch class should define this
+            method itself.
+        """
+        raise NotImplementedError(klass._get_branch_formats_to_test)
 
+    @needs_write_lock
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, local=False):
         """Mirror source into target branch.
@@ -3200,6 +3290,7 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.pull)
 
+    @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
                          graph=None):
         """Pull in new perfect-fit revisions.
@@ -3213,6 +3304,7 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.update_revisions)
 
+    @needs_write_lock
     def push(self, overwrite=False, stop_revision=None,
              _override_hook_source_branch=None):
         """Mirror the source branch into the target branch.
@@ -3230,9 +3322,9 @@ class GenericInterBranch(InterBranch):
         # GenericBranch uses the public API, so always compatible
         return True
 
-    @staticmethod
-    def _get_branch_formats_to_test():
-        return BranchFormat._default_format, BranchFormat._default_format
+    @classmethod
+    def _get_branch_formats_to_test(klass):
+        return [(BranchFormat._default_format, BranchFormat._default_format)]
 
     @classmethod
     def unwrap_format(klass, format):
@@ -3300,6 +3392,7 @@ class GenericInterBranch(InterBranch):
                              (this_last_revision, this_revno)])
         self.target.set_last_revision_info(stop_revno, stop_revision)
 
+    @needs_write_lock
     def pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, run_hooks=True,
              _override_hook_target=None, local=False):

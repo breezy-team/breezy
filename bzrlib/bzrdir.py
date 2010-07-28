@@ -375,14 +375,14 @@ class BzrDir(ControlComponent):
             recurse = True
             try:
                 bzrdir = BzrDir.open_from_transport(current_transport)
-            except errors.NotBranchError:
+            except (errors.NotBranchError, errors.PermissionDenied):
                 pass
             else:
                 recurse, value = evaluate(bzrdir)
                 yield value
             try:
                 subdirs = list_current(current_transport)
-            except errors.NoSuchFile:
+            except (errors.NoSuchFile, errors.PermissionDenied):
                 continue
             if recurse:
                 for subdir in sorted(subdirs, reverse=True):
@@ -394,7 +394,7 @@ class BzrDir(ControlComponent):
         """
         try:
             return [self.open_branch()]
-        except errors.NotBranchError:
+        except (errors.NotBranchError, errors.NoRepositoryPresent):
             return []
 
     @staticmethod
@@ -1244,7 +1244,8 @@ class BzrDir(ControlComponent):
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
-        if is_new_repo and revision_id is not None and not stacked:
+        is_stacked = stacked or (len(result_repo._fallback_repositories) != 0)
+        if is_new_repo and revision_id is not None and not is_stacked:
             fetch_spec = graph.PendingAncestryResult(
                 [revision_id], source_repository)
         else:
@@ -1958,7 +1959,6 @@ class BzrDirFormat(object):
             format_string = transport.get_bytes(".bzr/branch-format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
-
         try:
             return klass._formats[format_string]
         except KeyError:

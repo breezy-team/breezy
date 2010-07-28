@@ -21,6 +21,7 @@ from bzrlib import (
     errors,
     lockdir,
     osutils,
+    transport,
     )
 from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
@@ -37,7 +38,6 @@ from bzrlib.transactions import (PassThroughTransaction,
                                  ReadOnlyTransaction,
                                  WriteTransaction,
                                  )
-from bzrlib.transport import get_transport
 
 
 # these tests are applied in each parameterized suite for LockableFiles
@@ -279,9 +279,9 @@ class TestLockableFiles_TransportLock(TestCaseInTempDir,
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        transport = get_transport('.')
-        transport.mkdir('.bzr')
-        self.sub_transport = transport.clone('.bzr')
+        t = transport.get_transport('.')
+        t.mkdir('.bzr')
+        self.sub_transport = t.clone('.bzr')
         self.lockable = self.get_lockable()
         self.lockable.create_lock()
 
@@ -304,7 +304,7 @@ class TestLockableFiles_LockDir(TestCaseInTempDir,
 
     def setUp(self):
         TestCaseInTempDir.setUp(self)
-        self.transport = get_transport('.')
+        self.transport = transport.get_transport('.')
         self.lockable = self.get_lockable()
         # the lock creation here sets mode - test_permissions on branch
         # tests that implicitly, but it might be a good idea to factor
@@ -347,7 +347,7 @@ class TestLockableFiles_RemoteLockDir(TestCaseWithSmartMedium,
         # in test_remote and test_smart as usual.
         b = self.make_branch('foo')
         self.addCleanup(b.bzrdir.transport.disconnect)
-        self.transport = get_transport('.')
+        self.transport = transport.get_transport('.')
         self.lockable = self.get_lockable()
 
     def get_lockable(self):

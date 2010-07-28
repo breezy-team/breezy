@@ -70,6 +70,7 @@ from bzrlib import (
     diff,
     errors,
     foreign,
+    osutils,
     repository as _mod_repository,
     revision as _mod_revision,
     revisionspec,
@@ -85,7 +86,6 @@ from bzrlib.osutils import (
     format_date,
     format_date_with_offset_in_original_timezone,
     get_terminal_encoding,
-    re_compile_checked,
     terminal_width,
     )
 from bzrlib.symbol_versioning import (
@@ -432,8 +432,9 @@ class _DefaultLogGenerator(LogGenerator):
         else:
             specific_files = None
         s = StringIO()
+        path_encoding = osutils.get_diff_header_encoding()
         diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
-            new_label='')
+            new_label='', path_encoding=path_encoding)
         return s.getvalue()
 
     def _create_log_revision_iterator(self):
@@ -809,8 +810,7 @@ def _make_search_filter(branch, generate_delta, search, log_rev_iterator):
     """
     if search is None:
         return log_rev_iterator
-    searchRE = re_compile_checked(search, re.IGNORECASE,
-            'log message filter')
+    searchRE = re.compile(search, re.IGNORECASE)
     return _filter_message_re(searchRE, log_rev_iterator)
 
 
