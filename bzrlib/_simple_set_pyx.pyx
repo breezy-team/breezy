@@ -115,6 +115,9 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
             raise MemoryError()
         memset(self._table, 0, n_bytes)
 
+    def __sizeof__(self):
+        return sizeof(SimpleSet) + (self._mask + 1) * (sizeof(PyObject**))
+
     def __dealloc__(self):
         if self._table != NULL:
             PyMem_Free(self._table)
