@@ -853,7 +853,8 @@ void free_delta_index(struct delta_index *index)
     free(index);
 }
 
-unsigned long sizeof_delta_index(struct delta_index *index)
+unsigned long
+sizeof_delta_index(struct delta_index *index)
 {
     if (index)
         return index->memsize;
@@ -956,14 +957,14 @@ create_delta(const struct delta_index *index,
                  * match more bytes with this location that we have already
                  * matched.
                  */
-                if (ref_size > top - src)
+                if (ref_size > (unsigned int)(top - src))
                     ref_size = top - src;
                 if (ref_size <= msize)
                     break;
                 /* See how many bytes actually match at this location. */
                 while (ref_size-- && *src++ == *ref)
                     ref++;
-                if (msize < ref - entry->ptr) {
+                if (msize < (unsigned int)(ref - entry->ptr)) {
                     /* this is our best match so far */
                     msize = ref - entry->ptr;
                     msource = entry->src;
