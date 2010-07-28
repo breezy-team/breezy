@@ -23,16 +23,8 @@ clean::
 	$(SETUP) clean
 	rm -f *.so
 
-TMP_PLUGINS_DIR = $(shell pwd)/.plugins
-
-$(TMP_PLUGINS_DIR):
-	mkdir -p $@
-
-$(TMP_PLUGINS_DIR)/git: $(TMP_PLUGINS_DIR)
-	ln -sf .. $@
-
-check:: build-inplace $(TMP_PLUGINS_DIR)/git
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) $(TESTS)
+check:: build-inplace 
+	BZR_PLUGINS_AT=git@$(shell pwd) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) $(TESTS)
 
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
@@ -44,7 +36,7 @@ check-random::
 	$(MAKE) check TEST_OPTIONS="--random=now --verbose --one"
 
 show-plugins::
-	BZR_PLUGIN_PATH=$(TMP_PLUGINS_DIR) BZR_PLUGINS_AT=git@$(shell pwd) $(BZR) plugins -v
+	BZR_PLUGINS_AT=git@$(shell pwd) $(BZR) plugins -v
 
 lint::
 	$(PYLINT) -f parseable *.py */*.py
