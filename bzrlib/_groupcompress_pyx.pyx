@@ -53,6 +53,7 @@ cdef extern from "delta.h":
              unsigned long *delta_size, unsigned long max_delta_size) nogil
     unsigned long get_delta_hdr_size(unsigned char **datap,
                                      unsigned char *top) nogil
+    unsigned long sizeof_delta_index(delta_index *index)
     Py_ssize_t DELTA_SIZE_MIN
 
 
@@ -104,6 +105,13 @@ cdef class DeltaIndex:
 
         if source is not None:
             self.add_source(source, 0)
+
+    def __sizeof__(self):
+        # We want to track the _source_infos allocations, but the referenced
+        # void* are actually tracked in _sources itself.
+        return (sizeof(DeltaIndex)
+            + (sizeof(source_info) * self._max_num_sources)
+            + sizeof_delta_index(self._index))
 
     def __repr__(self):
         return '%s(%d, %d)' % (self.__class__.__name__,
