@@ -1497,7 +1497,7 @@ class DistributionBranch(object):
             try:
                 if upstream_branch is not None:
                     upstream_branch.lock_read()
-                    if upstream_revision is not None:
+                    if upstream_revision is None:
                         upstream_revision = upstream_branch.last_revision()
                     graph = self.branch.repository.get_graph(
                             other_repository=upstream_branch.repository)
