@@ -19,6 +19,8 @@ bzr-builddeb (2.5) UNRELEASED; urgency=low
   * Add import-upstream command which imports an upstream - useful for
     migrating existing packaging branches into pristine-tar using mode.
   * Stop stripping .bzrignore from tarball imports. LP: #496907
+  * Make the upstream branch authoritative for file ids when importing a
+    tarball, stopping errors when files are renamed. LP: #588060
 
   [ James Westby ]
   * Add a --package-merge option to builddeb to build with the -v and -sa

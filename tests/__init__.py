@@ -328,6 +328,10 @@ class SourcePackageBuilder(object):
     def basedir(self):
         return self.name + "-" + str(self._cl.version.upstream_version)
 
+    def write_debian_files(self, basedir):
+        self._make_files(self.debian_files, basedir)
+        self._make_files({"debian/changelog": str(self._cl)}, basedir)
+
     def _make_base(self):
         basedir = self.basedir()
         os.mkdir(basedir)
@@ -365,8 +369,7 @@ class SourcePackageBuilder(object):
             else:
                 cmd = ["dpkg-source", "--format=3.0 (native)", "-b",
                         basedir]
-        self._make_files(self.debian_files, basedir)
-        self._make_files({"debian/changelog": str(self._cl)}, basedir)
+        self.write_debian_files(basedir)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT)
         ret = proc.wait()
