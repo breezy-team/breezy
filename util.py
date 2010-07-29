@@ -577,6 +577,10 @@ def find_previous_upload(tree, merge):
         cl, larstiq = find_changelog(tree, merge, max_blocks=None)
     except UnparseableChangelog:
         raise UnableToFindPreviousUpload()
+    return _find_previous_upload(cl)
+
+
+def _find_previous_upload(cl):
     blocks = cl._blocks
     current_target = blocks[0].distributions.split(" ")[0]
     all_debian = [r + t for r in DEBIAN_RELEASES for t in DEBIAN_POCKETS]
