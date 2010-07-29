@@ -862,9 +862,9 @@ class Merge3Merger(object):
         finally:
             child_pb.finished()
         self.fix_root()
-        self._finish_transform()
+        self._finish_computing_transform()
 
-    def _finish_transform(self):
+    def _finish_computing_transform(self):
         """Finalize the transform and report the changes.
 
         This is the second half of _compute_transform.
@@ -1883,7 +1883,7 @@ class MergeIntoMergeType(Merge3Merger):
                     parent_trans_id, self.other_tree)
         finally:
             child_pb.finished()
-        self._finish_transform()
+        self._finish_computing_transform()
 
     def _entries_to_incorporate(self):
         """Yields pairs of (inventory_entry, new_parent)."""
