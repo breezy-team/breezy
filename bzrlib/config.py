@@ -479,10 +479,12 @@ class IniBasedConfig(Config):
         return self.get_user_option('nickname')
 
     def _write_config_file(self):
-        atomic_file = atomicfile.AtomicFile(self._get_filename())
+        filename = self._get_filename()
+        atomic_file = atomicfile.AtomicFile(filename)
         self._get_parser().write(atomic_file)
         atomic_file.commit()
         atomic_file.close()
+        osutils.copy_ownership_from_path(filename)
 
 
 class GlobalConfig(IniBasedConfig):
