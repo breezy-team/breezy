@@ -108,8 +108,18 @@ def run_dh_make(tree, package_name, version, use_v3=False):
             tree.add("debian/source/format")
     command = ["dh_make", "--addmissing", "--packagename",
                 "%s_%s" % (package_name, version)]
+    if getattr(sys.stdin, 'fileno', None) is None:
+        # running in a test or something
+        stdin = subprocess.PIPE
+        input = "s\n\n"
+    else:
+        stdin = sys.stdin
+        input = None
     proc = subprocess.Popen(command, cwd=tree.basedir,
-            preexec_fn=util.subprocess_setup, stdin=sys.stdin)
+            preexec_fn=util.subprocess_setup, stdin=stdin)
+    if input is not None:
+        proc.stdin.write(input)
+        proc.stdin.close()
     retcode = proc.wait()
     if retcode != 0:
         raise bzr_errors.BzrCommandError("dh_make failed.")
