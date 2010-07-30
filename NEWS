@@ -16,6 +16,8 @@
   * Fix 'bzr status' after 'bzr add' in native git working trees.
     (#603800, Chadrik)
 
+  * Provide VersionedFiles.get_annotator(). (#508288, Jelmer Vernooij)
+
  FEATURES
 
   * Support specifying alternative paths for git-upload-pack and 

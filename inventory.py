@@ -298,9 +298,13 @@ class GitIndexInventory(inventory.Inventory):
 
     def path2id(self, path):
         if path in self.index:
-            return self.fileid_map.lookup_file_id(path)
-        self._read_contents()
-        return super(GitIndexInventory, self).path2id(path)
+            file_id = self.fileid_map.lookup_file_id(path)
+        else:
+            self._read_contents()
+            file_id = super(GitIndexInventory, self).path2id(path)
+        if type(file_id) is not str:
+            raise AssertionError
+        return file_id
 
     def __getitem__(self, file_id):
         self._read_contents()

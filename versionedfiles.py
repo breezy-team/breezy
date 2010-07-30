@@ -23,6 +23,10 @@ from dulwich.objects import (
     Tree,
     )
 
+from bzrlib import (
+    annotate,
+    )
+
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     ChunkedContentFactory,
@@ -38,6 +42,9 @@ class GitRevisions(VersionedFiles):
 
     def check(self, progressbar=None):
         return True
+
+    def get_annotator(self):
+        return annotate.Annotator(self)
 
     def iterkeys(self):
         for sha in self.object_store:
@@ -83,6 +90,9 @@ class GitTexts(VersionedFiles):
 
     def check(self, progressbar=None):
         return True
+
+    def get_annotator(self):
+        return annotate.Annotator(self)
 
     def add_mpdiffs(self, records):
         raise NotImplementedError(self.add_mpdiffs)
