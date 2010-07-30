@@ -60,6 +60,11 @@ class TestRevidConversionV1(tests.TestCase):
             self.assertTrue(mapping.is_control_file(".bzrfileids"))
         self.assertFalse(mapping.is_control_file(".bzrfoo"))
 
+    def test_generate_file_id(self):
+        mapping = BzrGitMappingv1()
+        self.assertIsInstance(mapping.generate_file_id("la"), str)
+        self.assertIsInstance(mapping.generate_file_id(u"é"), str)
+
 
 class FileidTests(tests.TestCase):
 

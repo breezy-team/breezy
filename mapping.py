@@ -127,6 +127,8 @@ class BzrGitMapping(foreign.VcsMapping):
         # We must just hope they are valid UTF-8..
         if path == "":
             return ROOT_ID
+        if type(path) is unicode:
+            path = path.encode("utf-8")
         return escape_file_id(path)
 
     def is_control_file(self, path):
@@ -573,9 +575,11 @@ class GitFileIdMap(object):
 
     def lookup_file_id(self, path):
         try:
-            return self.file_ids[path]
+            file_id = self.file_ids[path]
         except KeyError:
-            return self.mapping.generate_file_id(path)
+            file_id = self.mapping.generate_file_id(path)
+        assert type(file_id) is str
+        return file_id
 
     def lookup_path(self, file_id):
         if self.paths is None:
