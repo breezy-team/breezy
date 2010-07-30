@@ -1,0 +1,71 @@
+Description: Upstream changes introduced in version 2.1.2-1
+ This patch has been created by dpkg-source during the package build.
+ Here's the last changelog entry, hopefully it gives details on why
+ those changes were made:
+ .
+ bzr (2.1.2-1) unstable; urgency=low
+ .
+   * New upstream release.
+ .
+ The person named in the Author field signed this changelog entry.
+Author: Jelmer Vernooij <jelmer@debian.org>
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- bzr-2.1.2.orig/bzrlib/xml_serializer.py
++++ bzr-2.1.2/bzrlib/xml_serializer.py
+@@ -40,10 +40,10 @@ except ImportError:
+     mutter('WARNING: using slower ElementTree; consider installing cElementTree'
+            " and make sure it's on your PYTHONPATH")
+     # this copy is shipped with bzr
+-    from util.elementtree.ElementTree import (ElementTree, SubElement,
++    from elementtree.ElementTree import (ElementTree, SubElement,
+                                               Element, XMLTreeBuilder,
+                                               fromstring, tostring)
+-    import util.elementtree as elementtree
++    import elementtree
+     from xml.parsers.expat import ExpatError as ParseError
+ 
+ from bzrlib import errors
+--- bzr-2.1.2.orig/bzrlib/remote.py
++++ bzr-2.1.2/bzrlib/remote.py
+@@ -1241,10 +1241,11 @@ class RemoteRepository(_RpcHelper, lock.
+         return self._real_repository.add_inventory(revid, inv, parents)
+ 
+     def add_inventory_by_delta(self, basis_revision_id, delta, new_revision_id,
+-                               parents):
++            parents, basis_inv=None, propagate_caches=False):
+         self._ensure_real()
+         return self._real_repository.add_inventory_by_delta(basis_revision_id,
+-            delta, new_revision_id, parents)
++            delta, new_revision_id, parents, basis_inv=basis_inv,
++            propagate_caches=propagate_caches)
+ 
+     def add_revision(self, rev_id, rev, inv=None, config=None):
+         self._ensure_real()
+--- bzr-2.1.2.orig/bzrlib/rules.py
++++ bzr-2.1.2/bzrlib/rules.py
+@@ -75,7 +75,7 @@ class _IniBasedRulesSearcher(_RulesSearc
+         :param inifile: the name of the file or a sequence of lines.
+         """
+         options = {'encoding': 'utf-8'}
+-        self._cfg = configobj.ConfigObj(inifile, options=options)
++        self._cfg = configobj.ConfigObj(inifile, **options)
+         sections = self._cfg.keys()
+         patterns = []
+         self.pattern_to_section = {}
+--- bzr-2.1.2.orig/bzrlib/util/configobj/__init__.py
++++ bzr-2.1.2/bzrlib/util/configobj/__init__.py
+@@ -0,0 +1 @@
++import configobj
