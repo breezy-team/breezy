@@ -1,6 +1,6 @@
 #    test_do.py -- Blackbox tests for bd-do.
 #    Copyright (C) 2007 James Westby <jw+debian@jameswestby.net>
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -21,9 +21,16 @@
 import os
 import tarfile
 
-from debian_bundle.changelog import (Changelog,
-                                     Version,
-                                     )
+try:
+    from debian.changelog import (Changelog,
+                                  Version,
+                                  )
+except ImportError:
+    # Prior to 0.1.15 the debian module was called debian_bundle
+    from debian_bundle.changelog import (Changelog,
+                                         Version,
+                                        )
+
 
 from bzrlib.tests.blackbox import ExternalBase
 
