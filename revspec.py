@@ -22,6 +22,9 @@ from bzrlib.errors import (
     InvalidRevisionId,
     InvalidRevisionSpec,
     )
+from bzrlib.revision import (
+    NULL_REVISION,
+)
 from bzrlib.revisionspec import (
     RevisionInfo,
     RevisionSpec,
@@ -81,9 +84,6 @@ class RevisionSpec_git(RevisionSpec):
         return history
 
     def __nonzero__(self):
-        from bzrlib.revision import (
-            NULL_REVISION,
-            )
         # The default implementation uses branch.repository.has_revision()
         if self.rev_id is None:
             return False
@@ -102,6 +102,8 @@ class RevisionSpec_git(RevisionSpec):
         try:
             graph = branch.repository.get_graph()
             for revid, _ in graph.iter_ancestry([branch.last_revision()]):
+                if revid == NULL_REVISION:
+                    continue
                 try:
                     foreign_revid, mapping = parse_revid(revid)
                 except InvalidRevisionId:
