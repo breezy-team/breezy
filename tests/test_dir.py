@@ -54,9 +54,7 @@ class TestGitDir(tests.TestCaseInTempDir):
         self.assertRaises(errors.NoWorkingTree, gd.open_workingtree)
 
 
-class TestGitDirFormat(tests.TestCaseInTempDir):
-
-    _test_needs_features = [tests.GitCommandFeature]
+class TestGitDirFormat(tests.TestCase):
 
     def setUp(self):
         super(TestGitDirFormat, self).setUp()
@@ -65,4 +63,11 @@ class TestGitDirFormat(tests.TestCaseInTempDir):
     def test_get_format_description(self):
         self.assertEquals("Local Git Repository",
                           self.format.get_format_description())
+
+    def test_eq(self):
+        format2 = dir.LocalGitBzrDirFormat()
+        self.assertEquals(self.format, format2)
+        self.assertEquals(self.format, self.format)
+        bzr_format = bzrdir.format_registry.make_bzrdir("default")
+        self.assertNotEquals(self.format, bzr_format)
 

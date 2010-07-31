@@ -114,6 +114,9 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
 
     colocated_branches = True
 
+    def __eq__(self, other):
+        return type(self) == type(other)
+
     def is_supported(self):
         return True
 
