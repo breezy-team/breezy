@@ -75,6 +75,9 @@ class GitDir(bzrdir.BzrDir):
     def is_supported(self):
         return True
 
+    def can_convert_format(self):
+        return False
+
     def cloning_metadir(self, stacked=False):
         return bzrdir.format_registry.make_bzrdir("default")
 
