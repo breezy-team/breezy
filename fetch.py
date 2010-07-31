@@ -638,7 +638,6 @@ class InterGitGitRepository(InterGitRepository):
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
         return self.fetch_objects(determine_wants, mapping)[0]
 
-
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
