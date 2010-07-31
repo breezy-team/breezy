@@ -156,6 +156,9 @@ class LocalGitDir(GitDir):
     def destroy_branch(self, name=None):
         del self._git.refs[self._branch_name_to_ref(name)]
 
+    def destroy_repository(self):
+        raise bzr_errors.UnsupportedOperation(self.destroy_repository, self)
+
     def list_branches(self):
         ret = []
         for name in self._git.get_refs():
