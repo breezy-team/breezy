@@ -200,6 +200,10 @@ class GitInventoryDirectory(GitInventoryEntry):
 
 class GitInventory(inventory.Inventory):
 
+    def __repr__(self):
+        return "<%s for %r in %r>" % (self.__class__.__name__,
+                self.root.hexsha, self.store)
+
     def __init__(self, tree_id, mapping, fileid_map, store, revision_id):
         super(GitInventory, self).__init__(revision_id=revision_id)
         self.store = store
@@ -208,9 +212,12 @@ class GitInventory(inventory.Inventory):
         self.root = GitInventoryDirectory(self, None, tree_id, u"", u"", False)
 
     def _get_ie(self, path):
-        if path == "":
+        if path == "" or path == []:
             return self.root
-        parts = path.split("/")
+        if isinstance(path, basestring):
+            parts = path.split("/")
+        else:
+            parts = path
         ie = self.root
         for name in parts:
             ie = ie.children[name]
@@ -257,6 +264,9 @@ class GitInventory(inventory.Inventory):
 class GitIndexInventory(inventory.Inventory):
     """Inventory that retrieves its contents from an index file."""
 
+    def __repr__(self):
+        return "<%s for %r>" % (self.__class__.__name__, self.index)
+
     def __init__(self, basis_inventory, fileid_map, index, store):
         super(GitIndexInventory, self).__init__(revision_id=None, root_id=basis_inventory.root.file_id)
         self.basis_inv = basis_inventory
@@ -297,6 +307,8 @@ class GitIndexInventory(inventory.Inventory):
         return super(GitIndexInventory, self).id2path(file_id)
 
     def path2id(self, path):
+        if type(path) in (list, tuple):
+            path = "/".join(path)
         if path in self.index:
             file_id = self.fileid_map.lookup_file_id(path)
         else:
