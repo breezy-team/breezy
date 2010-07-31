@@ -268,7 +268,11 @@ class GitIndexInventory(inventory.Inventory):
         return "<%s for %r>" % (self.__class__.__name__, self.index)
 
     def __init__(self, basis_inventory, fileid_map, index, store):
-        super(GitIndexInventory, self).__init__(revision_id=None, root_id=basis_inventory.root.file_id)
+        if basis_inventory is None:
+            root_id = None
+        else:
+            root_id = basis_inventory.root.file_id
+        super(GitIndexInventory, self).__init__(revision_id=None, root_id=root_id)
         self.basis_inv = basis_inventory
         self.fileid_map = fileid_map
         self.index = index
@@ -334,9 +338,12 @@ class GitIndexInventory(inventory.Inventory):
                 assert isinstance(path, str)
                 assert isinstance(value, tuple) and len(value) == 10
                 (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
-                try:
-                    old_ie = self.basis_inv._get_ie(path)
-                except KeyError:
+                if self.basis_inv is not None:
+                    try:
+                        old_ie = self.basis_inv._get_ie(path)
+                    except KeyError:
+                        old_ie = None
+                else:
                     old_ie = None
                 if old_ie is None:
                     file_id = self.fileid_map.lookup_file_id(path)
@@ -372,7 +379,7 @@ class GitIndexInventory(inventory.Inventory):
                 parent_fid = self.add_parents(dirname)
             ie = self.add_path(dirname, 'directory',
                     self.fileid_map.lookup_file_id(dirname), parent_fid)
-            if ie.file_id in self.basis_inv:
+            if self.basis_inv is not None and ie.file_id in self.basis_inv:
                 ie.revision = self.basis_inv[ie.file_id].revision
             file_id = ie.file_id
         if type(file_id) != str:

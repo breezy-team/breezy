@@ -34,7 +34,6 @@ import stat
 from bzrlib import (
     errors,
     ignores,
-    inventory,
     lockable_files,
     lockdir,
     osutils,
@@ -151,7 +150,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         # TODO: Maybe this should only write on dirty ?
         if self._control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
-        self._rewrite_index()           
+        self._rewrite_index()
         self.index.write()
         self._inventory_is_modified = False
 
@@ -184,12 +183,12 @@ class GitWorkingTree(workingtree.WorkingTree):
         basis_inv = self.repository.get_inventory(self.branch.lookup_foreign_revision_id(head))
         store = self.repository._git.object_store
         if head == ZERO_SHA:
-            fileid_map = {}
-            result = inventory.Inventory(root_id=None)
+            fileid_map = GitFileIdMap({}, self.mapping)
+            basis_inv = None
         else:
             fileid_map = self.mapping.get_fileid_map(store.__getitem__,
                 store[head].tree)
-            result = GitIndexInventory(basis_inv, fileid_map, self.index, store)
+        result = GitIndexInventory(basis_inv, fileid_map, self.index, store)
         self._set_inventory(result, dirty=False)
 
     @needs_read_lock
