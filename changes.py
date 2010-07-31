@@ -41,15 +41,15 @@ class DebianChanges(deb822.Changes):
     >>> c = DebianChanges('bzr-builddeb', '0.1-1', file_dir, 'i386')
     >>> fs = c.files()
     >>> f = fs[0]
-    >>> f['name']
+    >>> str(f['name'])
     'bzr-builddeb_0.1-1.dsc'
-    >>> f['priority']
+    >>> str(f['priority'])
     'optional'
-    >>> f['section']
+    >>> str(f['section'])
     'devel'
-    >>> f['size']
+    >>> str(f['size'])
     '290'
-    >>> f['md5sum']
+    >>> str(f['md5sum'])
     'b4c9b646c741f531dd8349db83c77cae'
     """
     if arch is None:
