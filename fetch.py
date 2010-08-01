@@ -155,13 +155,14 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
                 tuple(parent_keys), ie.text_sha1, chunks)])
     invdelta = []
     if base_hexsha is not None:
-        old_path = path # Renames are not supported yet
+        old_path = path.decode("utf-8") # Renames are not supported yet
         if stat.S_ISDIR(base_mode):
             invdelta.extend(remove_disappeared_children(base_inv, old_path,
                 lookup_object(base_hexsha), [], lookup_object))
     else:
         old_path = None
-    invdelta.append((old_path, path, file_id, ie))
+    new_path = path.decode("utf-8")
+    invdelta.append((old_path, new_path, file_id, ie))
     if base_hexsha != hexsha:
         store_updater.add_object(blob, ie, path)
     return invdelta
@@ -197,12 +198,13 @@ def remove_disappeared_children(base_inv, path, base_tree, existing_children,
 
     :param base_inv: Base inventory against which to generate the 
         inventory delta.
-    :param path: Path to process
+    :param path: Path to process (unicode)
     :param base_tree: Git Tree base object
     :param existing_children: Children that still exist
     :param lookup_object: Lookup a git object by its SHA1
     :return: Inventory delta, as list
     """
+    assert type(path) is unicode
     ret = []
     for name, mode, hexsha in base_tree.iteritems():
         if name in existing_children:
@@ -224,11 +226,14 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     """Import a git tree object into a bzr repository.
 
     :param texts: VersionedFiles object to add to
-    :param path: Path in the tree
+    :param path: Path in the tree (str)
+    :param name: Name of the tree (str)
     :param tree: A git tree object
     :param base_inv: Base inventory against which to return inventory delta
     :return: Inventory delta for this subtree
     """
+    assert type(path) is str
+    assert type(name) is str
     if base_hexsha == hexsha and base_mode == mode:
         # If nothing has changed since the base revision, we're done
         return [], {}
@@ -242,10 +247,11 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
         old_path = None # Newly appeared here
     else:
         base_tree = lookup_object(base_hexsha)
-        old_path = path # Renames aren't supported yet
+        old_path = path.decode("utf-8") # Renames aren't supported yet
+    new_path = path.decode("utf-8")
     if base_tree is None or type(base_tree) is not Tree:
         ie.revision = revision_id
-        invdelta.append((old_path, path, ie.file_id, ie))
+        invdelta.append((old_path, new_path, ie.file_id, ie))
         texts.insert_record_stream([
             ChunkedContentFactory((ie.file_id, ie.revision), (), None, [])])
     # Remember for next time
@@ -289,7 +295,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
             child_modes[child_path] = child_mode
     # Remove any children that have disappeared
     if base_tree is not None and type(base_tree) is Tree:
-        invdelta.extend(remove_disappeared_children(base_inv, old_path, 
+        invdelta.extend(remove_disappeared_children(base_inv, old_path,
             base_tree, existing_children, lookup_object))
     store_updater.add_object(tree, ie, path)
     return invdelta, child_modes
@@ -353,7 +359,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     store_updater.add_object(o, None, None)
     lookup_file_id = mapping.get_fileid_map(lookup_object, o.tree).lookup_file_id
     inv_delta, unusual_modes = import_git_tree(repo.texts,
-            mapping, "", u"", (base_tree, o.tree), base_inv, 
+            mapping, "", "", (base_tree, o.tree), base_inv, 
             None, rev.revision_id, [p.inventory for p in parent_trees],
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
             lookup_file_id,

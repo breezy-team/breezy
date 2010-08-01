@@ -20,6 +20,8 @@
 
   * Provide VersionedFiles.get_annotator(). (#508288, Jelmer Vernooij)
 
+  * Handle non-ascii characters in filenames. (#612291, Jelmer Vernooij)
+
  FEATURES
 
   * Support specifying alternative paths for git-upload-pack and 

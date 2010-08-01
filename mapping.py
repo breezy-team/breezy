@@ -574,6 +574,7 @@ class GitFileIdMap(object):
         self.mapping = mapping
 
     def lookup_file_id(self, path):
+        assert type(path) is str
         try:
             file_id = self.file_ids[path]
         except KeyError:
@@ -587,6 +588,9 @@ class GitFileIdMap(object):
             for k, v in self.file_ids.iteritems():
                 self.paths[v] = k
         try:
-            return self.paths[file_id]
+            path = self.paths[file_id]
         except KeyError:
             return self.mapping.parse_file_id(file_id)
+        else:
+            assert type(path) is str
+            return path
