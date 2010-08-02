@@ -192,6 +192,10 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
     """BzrDirFormat for the dummy foreign VCS."""
 
     @classmethod
+    def get_format_string(cls):
+        return "A Dummy VCS Dir"
+
+    @classmethod
     def get_format_description(cls):
         return "A Dummy VCS Dir"
 
