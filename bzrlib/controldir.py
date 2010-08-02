@@ -702,9 +702,22 @@ class ControlDirFormat(object):
 
 
 class Prober(object):
+    """Abstract class that can be used to detect a particular kind of 
+    control directory.
+
+    At the moment this just contains a single method to probe a particular 
+    transport, but it may be extended in the future to e.g. avoid 
+    multiple levels of probing for Subversion repositories.
+    """
 
     def probe_transport(self, transport):
-        """Return the controldir style format present in a directory."""
+        """Return the controldir style format present in a directory.
+
+        :raise UnknownFormatError: If a control dir was found but is
+            in an unknown format.
+        :raise NotBranchError: If no control directory was found.
+        :return: A ControlDirFormat instance.
+        """
         raise NotImplementedError(self.probe_transport)
 
 

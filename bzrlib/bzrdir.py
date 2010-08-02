@@ -1499,6 +1499,7 @@ class BzrDirMeta1(BzrDir):
 
 
 class BzrProber(Prober):
+    """Prober for formats that use a .bzr/ control directory."""
 
     _formats = {}
     """The known .bzr formats."""
@@ -1528,6 +1529,7 @@ ControlDirFormat.register_prober(BzrProber)
 
 
 class RemoteBzrProber(Prober):
+    """Prober for remote servers that provide a Bazaar smart server."""
 
     @classmethod
     def probe_transport(klass, transport):
