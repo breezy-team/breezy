@@ -664,7 +664,7 @@ class Prober(object):
 
     def probe_transport(self, transport):
         """Return the controldir style format present in a directory."""
-        raise NotImplementedError(klass.probe_transport)
+        raise NotImplementedError(self.probe_transport)
 
 
 probers = []

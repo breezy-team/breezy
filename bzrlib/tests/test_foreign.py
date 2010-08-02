@@ -192,10 +192,6 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
     """BzrDirFormat for the dummy foreign VCS."""
 
     @classmethod
-    def get_format_string(cls):
-        return "A Dummy VCS Dir"
-
-    @classmethod
     def get_format_description(cls):
         return "A Dummy VCS Dir"
 
@@ -205,13 +201,6 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
 
     def get_branch_format(self):
         return DummyForeignVcsBranchFormat()
-
-    @classmethod
-    def probe_transport(klass, transport):
-        """Return the .bzrdir style format present in a directory."""
-        if not transport.has('.dummy'):
-            raise errors.NotBranchError(path=transport.base)
-        return klass()
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
@@ -270,11 +259,23 @@ def register_dummy_foreign_for_test(testcase):
     controldir.ControlDirFormat.register_format(DummyForeignVcsDirFormat)
     testcase.addCleanup(controldir.ControlDirFormat.unregister_format,
                         DummyForeignVcsDirFormat)
+    controldir.probers.append(DummyForeignProber)
+    testcase.addCleanup(controldir.probers.remove, DummyForeignProber)
     # We need to register the optimiser to make the dummy appears really
     # different from a regular bzr repository.
     branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
     testcase.addCleanup(branch.InterBranch.unregister_optimiser,
                         InterToDummyVcsBranch)
+
+
+class DummyForeignProber(controldir.Prober):
+
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return the .bzrdir style format present in a directory."""
+        if not transport.has('.dummy'):
+            raise errors.NotBranchError(path=transport.base)
+        return DummyForeignVcsDirFormat()
 
 
 class ForeignVcsRegistryTests(tests.TestCase):
