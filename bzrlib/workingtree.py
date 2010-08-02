@@ -49,6 +49,7 @@ from bzrlib import (
     branch,
     bzrdir,
     conflicts as _mod_conflicts,
+    controldir,
     errors,
     generate_ids,
     globbing,
@@ -168,7 +169,7 @@ class TreeLink(TreeEntry):
 
 
 class WorkingTree(bzrlib.mutabletree.MutableTree,
-    bzrdir.ControlComponent):
+    controldir.ControlComponent):
     """Working copy tree.
 
     The inventory is held in the `Branch` working-inventory, and the

@@ -83,24 +83,24 @@ class TestDefaultFormat(TestCase):
 class TestFormatRegistry(TestCase):
 
     def make_format_registry(self):
-        my_format_registry = bzrdir.BzrDirFormatRegistry()
+        my_format_registry = controldir.ControlDirFormatRegistry()
         my_format_registry.register('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
         my_format_registry.register_lazy('lazy', 'bzrlib.bzrdir',
             'BzrDirFormat6', 'Format registered lazily', deprecated=True)
-        my_format_registry.register_metadir('knit',
+        bzrdir.register_metadir(my_format_registry, 'knit',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
         my_format_registry.set_default('knit')
-        my_format_registry.register_metadir(
+        bzrdir.register_metadir(my_format_registry,
             'branch6',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='bzrlib.branch.BzrBranchFormat6',
             experimental=True)
-        my_format_registry.register_metadir(
+        bzrdir.register_metadir(my_format_registry,
             'hidden format',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
@@ -175,7 +175,7 @@ class TestFormatRegistry(TestCase):
             bzrdir.format_registry.set_default_repository(old_default)
 
     def test_aliases(self):
-        a_registry = bzrdir.BzrDirFormatRegistry()
+        a_registry = controldir.ControlDirFormatRegistry()
         a_registry.register('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
