@@ -23,9 +23,12 @@ see bzrlib.bzrdir.BzrDir.
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import textwrap
+
 from bzrlib import (
     errors,
     graph,
+    registry,
     revision as _mod_revision,
     urlutils,
     )
@@ -462,6 +465,24 @@ class ControlDir(object):
                 push_result.branch_push_result.target_branch
         return push_result
 
+    @classmethod
+    def create(cls, base, format=None, possible_transports=None):
+        """Create a new BzrDir at the url 'base'.
+
+        :param format: If supplied, the format of branch to create.  If not
+            supplied, the default is used.
+        :param possible_transports: If supplied, a list of transports that
+            can be reused to share a remote connection.
+        """
+        if cls is not BzrDir:
+            raise AssertionError("BzrDir.create always creates the default"
+                " format, not one of %r" % cls)
+        t = get_transport(base, possible_transports)
+        t.ensure_base()
+        if format is None:
+            format = ControlDirFormat.get_default_format()
+        return format.initialize_on_transport(t)
+
 
 class ControlDirFormat(object):
     """An encapsulation of the initialization and open routines for a format.
@@ -491,10 +512,16 @@ class ControlDirFormat(object):
     This is a list of ControlDirFormat objects.
     """
 
-    _server_formats = []
-    """The registered control server formats, e.g. RemoteBzrDirs.
+    _server_probers = []
+    """The registered server format probers, e.g. RemoteBzrProber.
 
-    This is a list of ControlDirFormat objects.
+    This is a list of Prober-derived classes.
+    """
+
+    _probers = []
+    """The registered format probers, e.g. BzrProber.
+
+    This is a list of Prober-derived classes.
     """
 
     colocated_branches = False
@@ -536,23 +563,33 @@ class ControlDirFormat(object):
     def register_format(klass, format):
         """Register a format that does not use '.bzr' for its control dir.
 
-        TODO: This should be pulled up into a 'ControlDirFormat' base class
-        which BzrDirFormat can inherit from, and renamed to register_format
-        there. It has been done without that for now for simplicity of
-        implementation.
         """
         klass._formats.append(format)
 
     @classmethod
-    def register_server_format(klass, format):
-        """Register a control format for client-server environments.
+    def register_prober(klass, prober):
+        """Register a prober that can look for a control dir.
 
-        These formats will be tried before ones registered with
-        register_format.  This gives implementations that decide to the
+        """
+        klass._probers.append(prober)
+
+    @classmethod
+    def unregister_prober(klass, prober):
+        """Unregister a prober.
+
+        """
+        klass._probers.remove(prober)
+
+    @classmethod
+    def register_server_prober(klass, prober):
+        """Register a control format prober for client-server environments.
+
+        These probers will be used before ones registered with
+        register_prober.  This gives implementations that decide to the
         chance to grab it before anything looks at the contents of the format
         file.
         """
-        klass._server_formats.append(format)
+        klass._server_probers.append(prober)
 
     def __str__(self):
         # Trim the newline
@@ -572,9 +609,9 @@ class ControlDirFormat(object):
     def find_format(klass, transport, _server_formats=True):
         """Return the format present at transport."""
         if _server_formats:
-            _probers = server_probers = probers
+            _probers = klass._server_probers + klass._probers
         else:
-            _probers = probers
+            _probers = klass._probers
         for prober_kls in _probers:
             prober = prober_kls()
             try:
@@ -667,5 +704,143 @@ class Prober(object):
         raise NotImplementedError(self.probe_transport)
 
 
-probers = []
-server_probers = []
+class BzrDirFormatInfo(object):
+
+    def __init__(self, native, deprecated, hidden, experimental):
+        self.deprecated = deprecated
+        self.native = native
+        self.hidden = hidden
+        self.experimental = experimental
+
+
+class ControlDirFormatRegistry(registry.Registry):
+    """Registry of user-selectable BzrDir subformats.
+
+    Differs from ControlDirFormat._formats in that it provides sub-formats,
+    e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
+    """
+
+    def __init__(self):
+        """Create a BzrDirFormatRegistry."""
+        self._aliases = set()
+        self._registration_order = list()
+        super(ControlDirFormatRegistry, self).__init__()
+
+    def aliases(self):
+        """Return a set of the format names which are aliases."""
+        return frozenset(self._aliases)
+
+    def register(self, key, factory, help, native=True, deprecated=False,
+                 hidden=False, experimental=False, alias=False):
+        """Register a BzrDirFormat factory.
+
+        The factory must be a callable that takes one parameter: the key.
+        It must produce an instance of the BzrDirFormat when called.
+
+        This function mainly exists to prevent the info object from being
+        supplied directly.
+        """
+        registry.Registry.register(self, key, factory, help,
+            BzrDirFormatInfo(native, deprecated, hidden, experimental))
+        if alias:
+            self._aliases.add(key)
+        self._registration_order.append(key)
+
+    def register_lazy(self, key, module_name, member_name, help, native=True,
+        deprecated=False, hidden=False, experimental=False, alias=False):
+        registry.Registry.register_lazy(self, key, module_name, member_name,
+            help, BzrDirFormatInfo(native, deprecated, hidden, experimental))
+        if alias:
+            self._aliases.add(key)
+        self._registration_order.append(key)
+
+    def set_default(self, key):
+        """Set the 'default' key to be a clone of the supplied key.
+
+        This method must be called once and only once.
+        """
+        registry.Registry.register(self, 'default', self.get(key),
+            self.get_help(key), info=self.get_info(key))
+        self._aliases.add('default')
+
+    def set_default_repository(self, key):
+        """Set the FormatRegistry default and Repository default.
+
+        This is a transitional method while Repository.set_default_format
+        is deprecated.
+        """
+        if 'default' in self:
+            self.remove('default')
+        self.set_default(key)
+        format = self.get('default')()
+
+    def make_bzrdir(self, key):
+        return self.get(key)()
+
+    def help_topic(self, topic):
+        output = ""
+        default_realkey = None
+        default_help = self.get_help('default')
+        help_pairs = []
+        for key in self._registration_order:
+            if key == 'default':
+                continue
+            help = self.get_help(key)
+            if help == default_help:
+                default_realkey = key
+            else:
+                help_pairs.append((key, help))
+
+        def wrapped(key, help, info):
+            if info.native:
+                help = '(native) ' + help
+            return ':%s:\n%s\n\n' % (key,
+                textwrap.fill(help, initial_indent='    ',
+                    subsequent_indent='    ',
+                    break_long_words=False))
+        if default_realkey is not None:
+            output += wrapped(default_realkey, '(default) %s' % default_help,
+                              self.get_info('default'))
+        deprecated_pairs = []
+        experimental_pairs = []
+        for key, help in help_pairs:
+            info = self.get_info(key)
+            if info.hidden:
+                continue
+            elif info.deprecated:
+                deprecated_pairs.append((key, help))
+            elif info.experimental:
+                experimental_pairs.append((key, help))
+            else:
+                output += wrapped(key, help, info)
+        output += "\nSee :doc:`formats-help` for more about storage formats."
+        other_output = ""
+        if len(experimental_pairs) > 0:
+            other_output += "Experimental formats are shown below.\n\n"
+            for key, help in experimental_pairs:
+                info = self.get_info(key)
+                other_output += wrapped(key, help, info)
+        else:
+            other_output += \
+                "No experimental formats are available.\n\n"
+        if len(deprecated_pairs) > 0:
+            other_output += "\nDeprecated formats are shown below.\n\n"
+            for key, help in deprecated_pairs:
+                info = self.get_info(key)
+                other_output += wrapped(key, help, info)
+        else:
+            other_output += \
+                "\nNo deprecated formats are available.\n\n"
+        other_output += \
+                "\nSee :doc:`formats-help` for more about storage formats."
+
+        if topic == 'other-formats':
+            return other_output
+        else:
+            return output
+
+
+# Please register new formats after old formats so that formats
+# appear in chronological order and format descriptions can build
+# on previous ones.
+format_registry = ControlDirFormatRegistry()

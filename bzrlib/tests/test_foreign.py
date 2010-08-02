@@ -259,8 +259,9 @@ def register_dummy_foreign_for_test(testcase):
     controldir.ControlDirFormat.register_format(DummyForeignVcsDirFormat)
     testcase.addCleanup(controldir.ControlDirFormat.unregister_format,
                         DummyForeignVcsDirFormat)
-    controldir.probers.append(DummyForeignProber)
-    testcase.addCleanup(controldir.probers.remove, DummyForeignProber)
+    controldir.ControlDirFormat.register_prober(DummyForeignProber)
+    testcase.addCleanup(controldir.ControlDirFormat.unregister_prober,
+        DummyForeignProber)
     # We need to register the optimiser to make the dummy appears really
     # different from a regular bzr repository.
     branch.InterBranch.register_optimiser(InterToDummyVcsBranch)

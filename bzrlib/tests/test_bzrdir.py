@@ -26,6 +26,7 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     help_topics,
     repository,
@@ -1058,7 +1059,9 @@ class NotBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
     def _known_formats(self):
         return set([NotBzrDirFormat()])
 
-    @classmethod
+
+class NotBzrDirProber(controldir.Prober):
+
     def probe_transport(self, transport):
         """Our format is present if the transport ends in '.not/'."""
         if transport.has('.not'):
@@ -1078,16 +1081,16 @@ class TestNotBzrDir(TestCaseWithTransport):
         dir = format.initialize(self.get_url())
         self.assertIsInstance(dir, NotBzrDir)
         # now probe for it.
-        bzrlib.controldir.ControlDirformat.register_format(format)
+        controldir.ControlDirFormat.register_prober(NotBzrDirProber)
         try:
             found = bzrlib.bzrdir.BzrDirFormat.find_format(
                 get_transport(self.get_url()))
             self.assertIsInstance(found, NotBzrDirFormat)
         finally:
-            bzrlib.controldir.ControlDirformat.unregister_format(format)
+            controldir.ControlDirFormat.unregister_prober(NotBzrDirProber)
 
     def test_included_in_known_formats(self):
-        bzrlib.controldir.ControlDirformat.register_format(NotBzrDirFormat)
+        bzrlib.controldir.ControlDirFormat.register_format(NotBzrDirFormat)
         try:
             formats = bzrlib.bzrdir.BzrDirFormat.known_formats()
             for format in formats:
@@ -1095,7 +1098,7 @@ class TestNotBzrDir(TestCaseWithTransport):
                     return
             self.fail("No NotBzrDirFormat in %s" % formats)
         finally:
-            bzrlib.controldir.ControlDirformat.unregister_format(NotBzrDirFormat)
+            bzrlib.controldir.ControlDirFormat.unregister_format(NotBzrDirFormat)
 
 
 class NonLocalTests(TestCaseWithTransport):

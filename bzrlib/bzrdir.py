@@ -34,7 +34,6 @@ import warnings
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from stat import S_ISDIR
-import textwrap
 
 import bzrlib
 from bzrlib import (
@@ -79,8 +78,7 @@ from bzrlib.controldir import (
     ControlDir,
     ControlDirFormat,
     Prober,
-    probers,
-    server_probers,
+    format_registry,
     )
 
 from bzrlib.trace import (
@@ -332,24 +330,6 @@ class BzrDir(ControlComponent,ControlDir):
     def _make_tail(self, url):
         t = get_transport(url)
         t.ensure_base()
-
-    @classmethod
-    def create(cls, base, format=None, possible_transports=None):
-        """Create a new BzrDir at the url 'base'.
-
-        :param format: If supplied, the format of branch to create.  If not
-            supplied, the default is used.
-        :param possible_transports: If supplied, a list of transports that
-            can be reused to share a remote connection.
-        """
-        if cls is not BzrDir:
-            raise AssertionError("BzrDir.create always creates the default"
-                " format, not one of %r" % cls)
-        t = get_transport(base, possible_transports)
-        t.ensure_base()
-        if format is None:
-            format = BzrDirFormat.get_default_format()
-        return format.initialize_on_transport(t)
 
     @staticmethod
     def find_bzrdirs(transport, evaluate=None, list_current=None):
@@ -1528,20 +1508,22 @@ class BzrProber(Prober):
         klass._formats[format.get_format_string()] = format
 
     @classmethod
-    def unregister_format(klass, format):
+    def unregister_bzrdir_format(klass, format):
         del klass._formats[format.get_format_string()]
 
-    @classmethod
-    def probe_transport(klass, transport):
+    def probe_transport(self, transport):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            return klass._formats[format_string]
+            return self._formats[format_string]
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
+
+
+ControlDirFormat.register_prober(BzrProber)
 
 
 class RemoteBzrProber(Prober):
@@ -1569,8 +1551,6 @@ class RemoteBzrProber(Prober):
                 if server_version != '2':
                     raise errors.NotBranchError(path=transport.base)
             return klass()
-
-
 
 
 class BzrDirFormat(ControlDirFormat):
@@ -1792,8 +1772,9 @@ class BzrDirFormat(ControlDirFormat):
 
     @classmethod
     def unregister_format(klass, format):
-        BzrProber.unregister_format(format)
+        BzrProber.unregister_bzrdir_format(format)
         ControlDirFormat.unregister_format(format)
+        network_format_registry.unregister(format.get_format_string())
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -2990,190 +2971,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         BzrDirMetaFormat1._set_repository_format) #.im_func)
 
 
-ControlDirFormat.register_server_format(RemoteBzrDirFormat)
-
-
-class BzrDirFormatInfo(object):
-
-    def __init__(self, native, deprecated, hidden, experimental):
-        self.deprecated = deprecated
-        self.native = native
-        self.hidden = hidden
-        self.experimental = experimental
-
-
-class BzrDirFormatRegistry(registry.Registry):
-    """Registry of user-selectable BzrDir subformats.
-
-    Differs from ControlDirFormat._formats in that it provides sub-formats,
-    e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
-    """
-
-    def __init__(self):
-        """Create a BzrDirFormatRegistry."""
-        self._aliases = set()
-        self._registration_order = list()
-        super(BzrDirFormatRegistry, self).__init__()
-
-    def aliases(self):
-        """Return a set of the format names which are aliases."""
-        return frozenset(self._aliases)
-
-    def register_metadir(self, key,
-             repository_format, help, native=True, deprecated=False,
-             branch_format=None,
-             tree_format=None,
-             hidden=False,
-             experimental=False,
-             alias=False):
-        """Register a metadir subformat.
-
-        These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
-        by the Repository/Branch/WorkingTreeformats.
-
-        :param repository_format: The fully-qualified repository format class
-            name as a string.
-        :param branch_format: Fully-qualified branch format class name as
-            a string.
-        :param tree_format: Fully-qualified tree format class name as
-            a string.
-        """
-        # This should be expanded to support setting WorkingTree and Branch
-        # formats, once BzrDirMetaFormat1 supports that.
-        def _load(full_name):
-            mod_name, factory_name = full_name.rsplit('.', 1)
-            try:
-                mod = __import__(mod_name, globals(), locals(),
-                        [factory_name])
-            except ImportError, e:
-                raise ImportError('failed to load %s: %s' % (full_name, e))
-            try:
-                factory = getattr(mod, factory_name)
-            except AttributeError:
-                raise AttributeError('no factory %s in module %r'
-                    % (full_name, mod))
-            return factory()
-
-        def helper():
-            bd = BzrDirMetaFormat1()
-            if branch_format is not None:
-                bd.set_branch_format(_load(branch_format))
-            if tree_format is not None:
-                bd.workingtree_format = _load(tree_format)
-            if repository_format is not None:
-                bd.repository_format = _load(repository_format)
-            return bd
-        self.register(key, helper, help, native, deprecated, hidden,
-            experimental, alias)
-
-    def register(self, key, factory, help, native=True, deprecated=False,
-                 hidden=False, experimental=False, alias=False):
-        """Register a BzrDirFormat factory.
-
-        The factory must be a callable that takes one parameter: the key.
-        It must produce an instance of the BzrDirFormat when called.
-
-        This function mainly exists to prevent the info object from being
-        supplied directly.
-        """
-        registry.Registry.register(self, key, factory, help,
-            BzrDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
-        self._registration_order.append(key)
-
-    def register_lazy(self, key, module_name, member_name, help, native=True,
-        deprecated=False, hidden=False, experimental=False, alias=False):
-        registry.Registry.register_lazy(self, key, module_name, member_name,
-            help, BzrDirFormatInfo(native, deprecated, hidden, experimental))
-        if alias:
-            self._aliases.add(key)
-        self._registration_order.append(key)
-
-    def set_default(self, key):
-        """Set the 'default' key to be a clone of the supplied key.
-
-        This method must be called once and only once.
-        """
-        registry.Registry.register(self, 'default', self.get(key),
-            self.get_help(key), info=self.get_info(key))
-        self._aliases.add('default')
-
-    def set_default_repository(self, key):
-        """Set the FormatRegistry default and Repository default.
-
-        This is a transitional method while Repository.set_default_format
-        is deprecated.
-        """
-        if 'default' in self:
-            self.remove('default')
-        self.set_default(key)
-        format = self.get('default')()
-
-    def make_bzrdir(self, key):
-        return self.get(key)()
-
-    def help_topic(self, topic):
-        output = ""
-        default_realkey = None
-        default_help = self.get_help('default')
-        help_pairs = []
-        for key in self._registration_order:
-            if key == 'default':
-                continue
-            help = self.get_help(key)
-            if help == default_help:
-                default_realkey = key
-            else:
-                help_pairs.append((key, help))
-
-        def wrapped(key, help, info):
-            if info.native:
-                help = '(native) ' + help
-            return ':%s:\n%s\n\n' % (key,
-                textwrap.fill(help, initial_indent='    ',
-                    subsequent_indent='    ',
-                    break_long_words=False))
-        if default_realkey is not None:
-            output += wrapped(default_realkey, '(default) %s' % default_help,
-                              self.get_info('default'))
-        deprecated_pairs = []
-        experimental_pairs = []
-        for key, help in help_pairs:
-            info = self.get_info(key)
-            if info.hidden:
-                continue
-            elif info.deprecated:
-                deprecated_pairs.append((key, help))
-            elif info.experimental:
-                experimental_pairs.append((key, help))
-            else:
-                output += wrapped(key, help, info)
-        output += "\nSee :doc:`formats-help` for more about storage formats."
-        other_output = ""
-        if len(experimental_pairs) > 0:
-            other_output += "Experimental formats are shown below.\n\n"
-            for key, help in experimental_pairs:
-                info = self.get_info(key)
-                other_output += wrapped(key, help, info)
-        else:
-            other_output += \
-                "No experimental formats are available.\n\n"
-        if len(deprecated_pairs) > 0:
-            other_output += "\nDeprecated formats are shown below.\n\n"
-            for key, help in deprecated_pairs:
-                info = self.get_info(key)
-                other_output += wrapped(key, help, info)
-        else:
-            other_output += \
-                "\nNo deprecated formats are available.\n\n"
-        other_output += \
-                "\nSee :doc:`formats-help` for more about storage formats."
-
-        if topic == 'other-formats':
-            return other_output
-        else:
-            return output
+ControlDirFormat.register_server_prober(RemoteBzrProber)
 
 
 class RepositoryAcquisitionPolicy(object):
@@ -3333,10 +3131,53 @@ class UseExistingRepository(RepositoryAcquisitionPolicy):
         return self._repository, False
 
 
-# Please register new formats after old formats so that formats
-# appear in chronological order and format descriptions can build
-# on previous ones.
-format_registry = BzrDirFormatRegistry()
+def register_metadir(key,
+         repository_format, help, native=True, deprecated=False,
+         branch_format=None,
+         tree_format=None,
+         hidden=False,
+         experimental=False,
+         alias=False):
+    """Register a metadir subformat.
+
+    These all use a BzrDirMetaFormat1 bzrdir, but can be parameterized
+    by the Repository/Branch/WorkingTreeformats.
+
+    :param repository_format: The fully-qualified repository format class
+        name as a string.
+    :param branch_format: Fully-qualified branch format class name as
+        a string.
+    :param tree_format: Fully-qualified tree format class name as
+        a string.
+    """
+    # This should be expanded to support setting WorkingTree and Branch
+    # formats, once BzrDirMetaFormat1 supports that.
+    def _load(full_name):
+        mod_name, factory_name = full_name.rsplit('.', 1)
+        try:
+            mod = __import__(mod_name, globals(), locals(),
+                    [factory_name])
+        except ImportError, e:
+            raise ImportError('failed to load %s: %s' % (full_name, e))
+        try:
+            factory = getattr(mod, factory_name)
+        except AttributeError:
+            raise AttributeError('no factory %s in module %r'
+                % (full_name, mod))
+        return factory()
+
+    def helper():
+        bd = BzrDirMetaFormat1()
+        if branch_format is not None:
+            bd.set_branch_format(_load(branch_format))
+        if tree_format is not None:
+            bd.workingtree_format = _load(tree_format)
+        if repository_format is not None:
+            bd.repository_format = _load(repository_format)
+        return bd
+    format_registry.register(key, helper, help, native, deprecated, hidden,
+        experimental, alias)
+
 # The pre-0.8 formats have their repository format network name registered in
 # repository.py. MetaDir formats have their repository format network name
 # inferred from their disk format string.
@@ -3345,21 +3186,21 @@ format_registry.register('weave', BzrDirFormat6,
     ' support checkouts or shared repositories.',
     hidden=True,
     deprecated=True)
-format_registry.register_metadir('metaweave',
+register_metadir('metaweave',
     'bzrlib.repofmt.weaverepo.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
     tree_format='bzrlib.workingtree.WorkingTreeFormat3',
     hidden=True,
     deprecated=True)
-format_registry.register_metadir('knit',
+register_metadir('knit',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
     tree_format='bzrlib.workingtree.WorkingTreeFormat3',
     hidden=True,
     deprecated=True)
-format_registry.register_metadir('dirstate',
+register_metadir('dirstate',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     help='New in 0.15: Fast local operations. Compatible with bzr 0.8 and '
         'above when accessed over the network.',
@@ -3369,7 +3210,7 @@ format_registry.register_metadir('dirstate',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
-format_registry.register_metadir('dirstate-tags',
+register_metadir('dirstate-tags',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     help='New in 0.15: Fast local operations and improved scaling for '
         'network operations. Additionally adds support for tags.'
@@ -3378,7 +3219,7 @@ format_registry.register_metadir('dirstate-tags',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
-format_registry.register_metadir('rich-root',
+register_metadir('rich-root',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit4',
     help='New in 1.0.  Better handling of tree roots.  Incompatible with'
         ' bzr < 1.0.',
@@ -3386,7 +3227,7 @@ format_registry.register_metadir('rich-root',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
-format_registry.register_metadir('dirstate-with-subtree',
+register_metadir('dirstate-with-subtree',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
     help='New in 0.15: Fast local operations and improved scaling for '
         'network operations. Additionally adds support for versioning nested '
@@ -3396,7 +3237,7 @@ format_registry.register_metadir('dirstate-with-subtree',
     experimental=True,
     hidden=True,
     )
-format_registry.register_metadir('pack-0.92',
+register_metadir('pack-0.92',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-tags format repositories. Interoperates with '
@@ -3405,7 +3246,7 @@ format_registry.register_metadir('pack-0.92',
     branch_format='bzrlib.branch.BzrBranchFormat6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
-format_registry.register_metadir('pack-0.92-subtree',
+register_metadir('pack-0.92-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-with-subtree format repositories. Interoperates with '
@@ -3416,7 +3257,7 @@ format_registry.register_metadir('pack-0.92-subtree',
     hidden=True,
     experimental=True,
     )
-format_registry.register_metadir('rich-root-pack',
+register_metadir('rich-root-pack',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
     help='New in 1.0: A variant of pack-0.92 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
@@ -3424,7 +3265,7 @@ format_registry.register_metadir('rich-root-pack',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('1.6',
+register_metadir('1.6',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
     help='A format that allows a branch to indicate that there is another '
          '(stacked) repository that should be used to access data that is '
@@ -3433,7 +3274,7 @@ format_registry.register_metadir('1.6',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('1.6.1-rich-root',
+register_metadir('1.6.1-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
     help='A variant of 1.6 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
@@ -3441,7 +3282,7 @@ format_registry.register_metadir('1.6.1-rich-root',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('1.9',
+register_metadir('1.9',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
     help='A repository format using B+tree indexes. These indexes '
          'are smaller in size, have smarter caching and provide faster '
@@ -3450,7 +3291,7 @@ format_registry.register_metadir('1.9',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('1.9-rich-root',
+register_metadir('1.9-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.9 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
@@ -3458,13 +3299,13 @@ format_registry.register_metadir('1.9-rich-root',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     hidden=True,
     )
-format_registry.register_metadir('1.14',
+register_metadir('1.14',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     )
-format_registry.register_metadir('1.14-rich-root',
+register_metadir('1.14-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.14 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
@@ -3472,7 +3313,7 @@ format_registry.register_metadir('1.14-rich-root',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     )
 # The following un-numbered 'development' formats should always just be aliases.
-format_registry.register_metadir('development-rich-root',
+register_metadir('development-rich-root',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
     help='Current development format. Supports rich roots. Can convert data '
         'to and from rich-root-pack (and anything compatible with '
@@ -3486,7 +3327,7 @@ format_registry.register_metadir('development-rich-root',
     alias=True,
     hidden=True,
     )
-format_registry.register_metadir('development-subtree',
+register_metadir('development-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
     help='Current development format, subtree variant. Can convert data to and '
         'from pack-0.92-subtree (and anything compatible with '
@@ -3504,7 +3345,7 @@ format_registry.register_metadir('development-subtree',
     )
 
 # And the development formats above will have aliased one of the following:
-format_registry.register_metadir('development6-rich-root',
+register_metadir('development6-rich-root',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
     help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
         'Please read '
@@ -3516,7 +3357,7 @@ format_registry.register_metadir('development6-rich-root',
     experimental=True,
     )
 
-format_registry.register_metadir('development7-rich-root',
+register_metadir('development7-rich-root',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK2',
     help='pack-1.9 with 255-way hashed CHK inv, bencode revision, group compress, '
         'rich roots. Please read '
@@ -3528,7 +3369,7 @@ format_registry.register_metadir('development7-rich-root',
     experimental=True,
     )
 
-format_registry.register_metadir('2a',
+register_metadir('2a',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
     help='First format for bzr 2.0 series.\n'
         'Uses group-compress storage.\n'
@@ -3542,7 +3383,7 @@ format_registry.register_metadir('2a',
 
 # The following format should be an alias for the rich root equivalent 
 # of the default format
-format_registry.register_metadir('default-rich-root',
+register_metadir('default-rich-root',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',
@@ -3552,6 +3393,3 @@ format_registry.register_metadir('default-rich-root',
 
 # The current format that is made on 'bzr init'.
 format_registry.set_default('2a')
-
-probers.append(BzrProber)
-server_probers.append(RemoteBzrProber)
