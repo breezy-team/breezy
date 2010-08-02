@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2010 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -118,6 +118,13 @@ cdef extern from "string.h":
     # ??? memrchr is a GNU extension :(
     # void *memrchr(void *s, int c, size_t len)
 
+# cimport all of the definitions we will need to access
+from _static_tuple_c cimport StaticTuple,\
+    import_static_tuple_c, StaticTuple_New, \
+    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
+    StaticTuple_GET_SIZE
+
+import_static_tuple_c()
 
 cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
@@ -650,7 +657,7 @@ cdef class Reader:
         # Build up the key that will be used.
         # By using <object>(void *) Pyrex will automatically handle the
         # Py_INCREF that we need.
-        path_name_file_id_key = (<object>p_current_dirname[0],
+        path_name_file_id_key = StaticTuple(<object>p_current_dirname[0],
                                  self.get_next_str(),
                                  self.get_next_str(),
                                 )
@@ -677,7 +684,7 @@ cdef class Reader:
             executable_cstr = self.get_next(&cur_size)
             is_executable = (executable_cstr[0] == c'y')
             info = self.get_next_str()
-            PyList_Append(trees, (
+            PyList_Append(trees, StaticTuple(
                 minikind,     # minikind
                 fingerprint,  # fingerprint
                 entry_size,   # size

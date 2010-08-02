@@ -220,6 +220,7 @@ from bzrlib import (
     inventory,
     lock,
     osutils,
+    static_tuple,
     trace,
     )
 
@@ -2166,8 +2167,9 @@ class DirState(object):
         # cause quadratic failure.
         # TODO: This should use StaticTuple
         file_id = entry_key[2]
+        entry_key = static_tuple.StaticTuple.from_sequence(entry_key)
         if file_id not in id_index:
-            id_index[file_id] = (entry_key,)
+            id_index[file_id] = static_tuple.StaticTuple(entry_key,)
         else:
             entry_keys = id_index[file_id]
             if entry_key not in entry_keys:
@@ -2180,9 +2182,9 @@ class DirState(object):
         already present.
         """
         file_id = entry_key[2]
-        entry_keys = id_index[file_id]
-        idx = entry_keys.index(entry_key)
-        id_index[file_id] = entry_keys[:idx] + entry_keys[idx+1:]
+        entry_keys = list(id_index[file_id])
+        entry_keys.remove(entry_key)
+        id_index[file_id] = static_tuple.StaticTuple.from_sequence(entry_keys)
 
     def _get_output_lines(self, lines):
         """Format lines for final output.

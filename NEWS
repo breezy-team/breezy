@@ -47,8 +47,9 @@ Bug Fixes
 Improvements
 ************
 
-* ``DirState`` internals use a little bit less memory.
-  (John Arbash Meinel)
+* ``DirState`` internals use a little bit less memory. For bzr.dev it
+  drops the memory from 1MB down to about 800kB. And replaces a few
+  thousand tuples and sets with StaticTuple.  (John Arbash Meinel)
 
 * When building new working trees, default to reading from the repository
   rather than the source tree unless explicitly requested. (via
