@@ -119,10 +119,7 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t len)
 
 # cimport all of the definitions we will need to access
-from _static_tuple_c cimport StaticTuple,\
-    import_static_tuple_c, StaticTuple_New, \
-    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
-    StaticTuple_GET_SIZE
+from _static_tuple_c cimport import_static_tuple_c, StaticTuple
 
 import_static_tuple_c()
 
@@ -657,6 +654,9 @@ cdef class Reader:
         # Build up the key that will be used.
         # By using <object>(void *) Pyrex will automatically handle the
         # Py_INCREF that we need.
+        # TODO: We could avoid a tuple allocation and delete by using
+        #       StaticTuple_New and StaticTuple_SET_ITEM, however, it is a bit
+        #       clumsy, and we should be sure of the benefit first.
         path_name_file_id_key = StaticTuple(<object>p_current_dirname[0],
                                  self.get_next_str(),
                                  self.get_next_str(),
