@@ -59,6 +59,10 @@ Improvements
 * Add ``bzrlib.merge.MergeIntoMerger``, which can merge part or all of a
   tree, and works with unrelated branches.  (Andrew Bennetts)
 
+* Add py2exe windows target ``bzrw.exe``. This allow for starting a Bazaar
+  GUI with out have a console open in the background.
+  (Gary van der Merwe, #433781)
+
 Documentation
 *************
 
