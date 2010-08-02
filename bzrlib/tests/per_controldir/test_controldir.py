@@ -26,6 +26,7 @@ import bzrlib.branch
 from bzrlib import (
     bzrdir,
     check,
+    controldir,
     errors,
     gpg,
     lockdir,
@@ -1210,7 +1211,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         made_control = self.bzrdir_format.initialize(t.base)
         self.failUnless(isinstance(made_control, bzrdir.BzrDir))
         self.assertEqual(self.bzrdir_format,
-                         bzrdir.BzrDirFormat.find_format(readonly_t))
+                         controldir.ControlDirFormat.find_format(readonly_t))
         direct_opened_dir = self.bzrdir_format.open(readonly_t)
         opened_dir = bzrdir.BzrDir.open(t.base)
         self.assertEqual(made_control._format,

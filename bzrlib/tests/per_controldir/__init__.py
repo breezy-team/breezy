@@ -24,7 +24,7 @@ Specific tests for individual formats are in the tests/test_bzrdir.py file
 rather than in tests/per_branch/*.py.
 """
 
-from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.controldir import ControlDirFormat
 from bzrlib.tests import (
     default_transport,
     multiply_tests,
@@ -80,7 +80,7 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_controldir.test_push',
         ]
     submod_tests = loader.loadTestsFromModuleNames(test_per_controldir)
-    formats = BzrDirFormat.known_formats()
+    formats = ControlDirFormat.known_formats()
     scenarios = make_scenarios(
         default_transport,
         None,

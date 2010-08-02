@@ -77,6 +77,7 @@ from bzrlib.weave import Weave
 
 from bzrlib.controldir import (
     ControlDir,
+    ControlDirFormat,
     )
 
 from bzrlib.trace import (
@@ -798,7 +799,7 @@ class BzrDir(ControlComponent,ControlDir):
         # the redirections.
         base = transport.base
         def find_format(transport):
-            return transport, BzrDirFormat.find_format(
+            return transport, ControlDirFormat.find_format(
                 transport, _server_formats=_server_formats)
 
         def redirected(transport, e, redirection_notice):
@@ -1514,13 +1515,8 @@ class BzrDirMeta1(BzrDir):
         return config.TransportConfig(self.transport, 'control.conf')
 
 
-class BzrDirFormat(object):
-    """An encapsulation of the initialization and open routines for a format.
-
-    Formats provide three things:
-     * An initialization routine,
-     * a format string,
-     * an open routine.
+class BzrDirFormat(ControlDirFormat):
+    """ControlDirFormat base class for .bzr/ directories.
 
     Formats are placed in a dict by their format string for reference
     during bzrdir opening. These should be subclasses of BzrDirFormat
@@ -1529,51 +1525,20 @@ class BzrDirFormat(object):
     Once a format is deprecated, just deprecate the initialize and open
     methods on the format class. Do not deprecate the object, as the
     object will be created every system load.
-
-    :cvar colocated_branches: Whether this formats supports colocated branches.
     """
-
-    _default_format = None
-    """The default format used for new .bzr dirs."""
 
     _formats = {}
     """The known formats."""
 
-    _control_formats = []
-    """The registered control formats - .bzr, ....
-
-    This is a list of BzrDirFormat objects.
-    """
-
-    _control_server_formats = []
-    """The registered control server formats, e.g. RemoteBzrDirs.
-
-    This is a list of BzrDirFormat objects.
-    """
-
     _lock_file_name = 'branch-lock'
 
-    colocated_branches = False
-    """Whether co-located branches are supported for this control dir format.
-    """
+    @classmethod
+    def _known_formats(klass):
+        """Return the known format instances for this control format."""
+        return set(klass._formats.values())
 
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
-
-    @classmethod
-    def find_format(klass, transport, _server_formats=True):
-        """Return the format present at transport."""
-        if _server_formats:
-            formats = klass._control_server_formats + klass._control_formats
-        else:
-            formats = klass._control_formats
-        for format in formats:
-            try:
-                return format.probe_transport(transport)
-            except errors.NotBranchError:
-                # this format does not find a control dir here.
-                pass
-        raise errors.NotBranchError(path=transport.base)
 
     @classmethod
     def probe_transport(klass, transport):
@@ -1595,24 +1560,6 @@ class BzrDirFormat(object):
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
-
-    def get_format_description(self):
-        """Return the short description for this format."""
-        raise NotImplementedError(self.get_format_description)
-
-    def get_converter(self, format=None):
-        """Return the converter to use to convert bzrdirs needing converts.
-
-        This returns a bzrlib.bzrdir.Converter object.
-
-        This should return the best upgrader to step this format towards the
-        current default format. In the case of plugins we can/should provide
-        some means for them to extend the range of returnable converters.
-
-        :param format: Optional format to override the default format of the
-                       library.
-        """
-        raise NotImplementedError(self.get_converter)
 
     def initialize(self, url, possible_transports=None):
         """Create a bzr control dir at this url and return an opened copy.
@@ -1780,15 +1727,6 @@ class BzrDirFormat(object):
             control_files.unlock()
         return self.open(transport, _found=True)
 
-    def is_supported(self):
-        """Is this format supported?
-
-        Supported formats must be initializable and openable.
-        Unsupported formats may not support initialization or committing or
-        some other features depending on the reason for not being supported.
-        """
-        return True
-
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
 
@@ -1799,36 +1737,13 @@ class BzrDirFormat(object):
         """
         raise NotImplementedError(self.network_name)
 
-    def same_model(self, target_format):
-        return (self.repository_format.rich_root_data ==
-            target_format.rich_root_data)
-
-    @classmethod
-    def known_formats(klass):
-        """Return all the known formats.
-
-        Concrete formats should override _known_formats.
-        """
-        # There is double indirection here to make sure that control
-        # formats used by more than one dir format will only be probed
-        # once. This can otherwise be quite expensive for remote connections.
-        result = set()
-        for format in klass._control_formats:
-            result.update(format._known_formats())
-        return result
-
-    @classmethod
-    def _known_formats(klass):
-        """Return the known format instances for this control format."""
-        return set(klass._formats.values())
-
     def open(self, transport, _found=False):
         """Return an instance of this format for the dir transport points at.
 
         _found is a private parameter, do not use it.
         """
         if not _found:
-            found_format = BzrDirFormat.find_format(transport)
+            found_format = ControlDirFormat.find_format(transport)
             if not isinstance(found_format, self.__class__):
                 raise AssertionError("%s was asked to open %s, but it seems to need "
                         "format %s"
@@ -1853,35 +1768,9 @@ class BzrDirFormat(object):
         network_format_registry.register(format.get_format_string(), format.__class__)
 
     @classmethod
-    def register_control_format(klass, format):
-        """Register a format that does not use '.bzr' for its control dir.
-
-        TODO: This should be pulled up into a 'ControlDirFormat' base class
-        which BzrDirFormat can inherit from, and renamed to register_format
-        there. It has been done without that for now for simplicity of
-        implementation.
-        """
-        klass._control_formats.append(format)
-
-    @classmethod
-    def register_control_server_format(klass, format):
-        """Register a control format for client-server environments.
-
-        These formats will be tried before ones registered with
-        register_control_format.  This gives implementations that decide to the
-        chance to grab it before anything looks at the contents of the format
-        file.
-        """
-        klass._control_server_formats.append(format)
-
-    @classmethod
     def _set_default_format(klass, format):
         """Set default format (for testing behavior of defaults only)"""
         klass._default_format = format
-
-    def __str__(self):
-        # Trim the newline
-        return self.get_format_description().rstrip()
 
     def _supply_sub_formats_to(self, other_format):
         """Give other_format the same values for sub formats as this has.
@@ -1898,10 +1787,6 @@ class BzrDirFormat(object):
     @classmethod
     def unregister_format(klass, format):
         del klass._formats[format.get_format_string()]
-
-    @classmethod
-    def unregister_control_format(klass, format):
-        klass._control_formats.remove(format)
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -2320,7 +2205,7 @@ BzrDirFormat.network_name() for more detail.
 
 
 # Register bzr control format
-BzrDirFormat.register_control_format(BzrDirFormat)
+ControlDirFormat.register_format(BzrDirFormat)
 
 # Register bzr formats
 BzrDirFormat.register_format(BzrDirFormat4())
@@ -3125,7 +3010,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         BzrDirMetaFormat1._set_repository_format) #.im_func)
 
 
-BzrDirFormat.register_control_server_format(RemoteBzrDirFormat)
+ControlDirFormat.register_server_format(RemoteBzrDirFormat)
 
 
 class BzrDirFormatInfo(object):

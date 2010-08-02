@@ -463,3 +463,132 @@ class ControlDir(object):
         return push_result
 
 
+class ControlDirFormat(object):
+    """An encapsulation of the initialization and open routines for a format.
+
+    Formats provide three things:
+     * An initialization routine,
+     * a format string,
+     * an open routine.
+
+    Formats are placed in a dict by their format string for reference
+    during bzrdir opening. These should be subclasses of BzrDirFormat
+    for consistency.
+
+    Once a format is deprecated, just deprecate the initialize and open
+    methods on the format class. Do not deprecate the object, as the
+    object will be created every system load.
+
+    :cvar colocated_branches: Whether this formats supports colocated branches.
+    """
+
+    _default_format = None
+    """The default format used for new .bzr dirs."""
+
+    _formats = []
+    """The registered control formats - .bzr, ....
+
+    This is a list of ControlDirFormat objects.
+    """
+
+    _server_formats = []
+    """The registered control server formats, e.g. RemoteBzrDirs.
+
+    This is a list of ControlDirFormat objects.
+    """
+
+    colocated_branches = False
+    """Whether co-located branches are supported for this control dir format.
+    """
+
+    def get_format_description(self):
+        """Return the short description for this format."""
+        raise NotImplementedError(self.get_format_description)
+
+    def get_converter(self, format=None):
+        """Return the converter to use to convert bzrdirs needing converts.
+
+        This returns a bzrlib.bzrdir.Converter object.
+
+        This should return the best upgrader to step this format towards the
+        current default format. In the case of plugins we can/should provide
+        some means for them to extend the range of returnable converters.
+
+        :param format: Optional format to override the default format of the
+                       library.
+        """
+        raise NotImplementedError(self.get_converter)
+
+    def is_supported(self):
+        """Is this format supported?
+
+        Supported formats must be initializable and openable.
+        Unsupported formats may not support initialization or committing or
+        some other features depending on the reason for not being supported.
+        """
+        return True
+
+    def same_model(self, target_format):
+        return (self.repository_format.rich_root_data ==
+            target_format.rich_root_data)
+
+    @classmethod
+    def register_format(klass, format):
+        """Register a format that does not use '.bzr' for its control dir.
+
+        TODO: This should be pulled up into a 'ControlDirFormat' base class
+        which BzrDirFormat can inherit from, and renamed to register_format
+        there. It has been done without that for now for simplicity of
+        implementation.
+        """
+        klass._formats.append(format)
+
+    @classmethod
+    def register_server_format(klass, format):
+        """Register a control format for client-server environments.
+
+        These formats will be tried before ones registered with
+        register_control_format.  This gives implementations that decide to the
+        chance to grab it before anything looks at the contents of the format
+        file.
+        """
+        klass._server_formats.append(format)
+
+    def __str__(self):
+        # Trim the newline
+        return self.get_format_description().rstrip()
+
+    @classmethod
+    def unregister_format(klass, format):
+        klass._formats.remove(format)
+
+    @classmethod
+    def known_formats(klass):
+        """Return all the known formats.
+
+        Concrete formats should override _known_formats.
+        """
+        # There is double indirection here to make sure that control
+        # formats used by more than one dir format will only be probed
+        # once. This can otherwise be quite expensive for remote connections.
+        result = set()
+        for format in klass._formats:
+            result.update(format._known_formats())
+        return result
+
+    @classmethod
+    def find_format(klass, transport, _server_formats=True):
+        """Return the format present at transport."""
+        if _server_formats:
+            formats = klass._server_formats + klass._formats
+        else:
+            formats = klass._formats
+        for format in formats:
+            try:
+                return format.probe_transport(transport)
+            except errors.NotBranchError:
+                # this format does not find a control dir here.
+                pass
+        raise errors.NotBranchError(path=transport.base)
+
+

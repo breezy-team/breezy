@@ -23,7 +23,7 @@ have the test_unsupported tests run; the others have the test_supported tests
 run.
 """
 
-from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.controldir import ControlDirFormat
 from bzrlib.tests import (
     default_transport,
     multiply_tests,
@@ -37,7 +37,7 @@ from bzrlib.tests.per_controldir import (
 def load_tests(standard_tests, module, loader):
     colo_supported_formats = []
     colo_unsupported_formats = []
-    for format in BzrDirFormat.known_formats():
+    for format in ControlDirFormat.known_formats():
         if format.colocated_branches:
             colo_supported_formats.append(format)
         else:
