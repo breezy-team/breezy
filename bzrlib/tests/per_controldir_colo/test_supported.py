@@ -25,7 +25,7 @@ from bzrlib.transport import (
     get_transport,
     )
 
-from bzrlib.tests.per_bzrdir_colo import (
+from bzrlib.tests.per_controldir_colo import (
     TestCaseWithBzrDir,
     )
 

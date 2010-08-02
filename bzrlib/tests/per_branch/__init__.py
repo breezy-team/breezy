@@ -33,7 +33,7 @@ from bzrlib.branch import (BranchFormat,
                            )
 from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
 from bzrlib.tests import test_server
-from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithBzrDir
 from bzrlib.transport import memory
 
 

@@ -17,9 +17,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""BzrDir implementation tests for bzr.
+"""ControlDir implementation tests for bzr.
 
-These test the conformance of all the bzrdir variations to the expected API.
+These test the conformance of all the controldir variations to the expected API.
 Specific tests for individual formats are in the tests/test_bzrdir.py file
 rather than in tests/per_branch/*.py.
 """
@@ -75,11 +75,11 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
 
 
 def load_tests(standard_tests, module, loader):
-    test_per_bzrdir = [
-        'bzrlib.tests.per_bzrdir.test_bzrdir',
-        'bzrlib.tests.per_bzrdir.test_push',
+    test_per_controldir = [
+        'bzrlib.tests.per_controldir.test_controldir',
+        'bzrlib.tests.per_controldir.test_push',
         ]
-    submod_tests = loader.loadTestsFromModuleNames(test_per_bzrdir)
+    submod_tests = loader.loadTestsFromModuleNames(test_per_controldir)
     formats = BzrDirFormat.known_formats()
     scenarios = make_scenarios(
         default_transport,

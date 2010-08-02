@@ -19,7 +19,7 @@
 from bzrlib import (
     errors,
     )
-from bzrlib.tests.per_bzrdir import (
+from bzrlib.tests.per_controldir import (
     TestCaseWithBzrDir,
     )
 

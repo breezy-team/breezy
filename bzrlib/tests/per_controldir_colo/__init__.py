@@ -28,7 +28,7 @@ from bzrlib.tests import (
     default_transport,
     multiply_tests,
     )
-from bzrlib.tests.per_bzrdir import (
+from bzrlib.tests.per_controldir import (
     TestCaseWithBzrDir,
     make_scenarios,
     )
@@ -48,9 +48,9 @@ def load_tests(standard_tests, module, loader):
         colo_unsupported_formats)
     result = loader.suiteClass()
     supported_tests = loader.loadTestsFromModuleNames([
-        'bzrlib.tests.per_bzrdir_colo.test_supported'])
+        'bzrlib.tests.per_controldir_colo.test_supported'])
     unsupported_tests = loader.loadTestsFromModuleNames([
-        'bzrlib.tests.per_bzrdir_colo.test_unsupported'])
+        'bzrlib.tests.per_controldir_colo.test_unsupported'])
     multiply_tests(supported_tests, supported_scenarios, result)
     multiply_tests(unsupported_tests, unsupported_scenarios, result)
     return result

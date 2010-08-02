@@ -53,7 +53,7 @@ from bzrlib.tests import (
                           TestNotApplicable,
                           TestSkipped,
                           )
-from bzrlib.tests.per_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
 from bzrlib.ui import (

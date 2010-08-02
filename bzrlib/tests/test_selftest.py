@@ -208,7 +208,7 @@ class TestBzrDirScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.per_bzrdir import make_scenarios
+        from bzrlib.tests.per_controldir import make_scenarios
         vfs_factory = "v"
         server1 = "a"
         server2 = "b"

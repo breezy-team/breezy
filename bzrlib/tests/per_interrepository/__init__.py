@@ -39,7 +39,7 @@ from bzrlib.tests import (
                           default_transport,
                           multiply_tests,
                           )
-from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithBzrDir
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
