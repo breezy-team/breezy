@@ -1085,6 +1085,9 @@ class VersionedFiles(object):
                 parent_lines, left_parent_blocks))
         return diffs
 
+    def get_annotator(self):
+        return annotate.Annotator(self)
+
     missing_keys = index._missing_keys_from_parent_map
 
     def _extract_blocks(self, version_id, source, target):
@@ -1158,9 +1161,6 @@ class ThunkedVersionedFiles(VersionedFiles):
         for origin, line in origins:
             result.append((prefix + (origin,), line))
         return result
-
-    def get_annotator(self):
-        return annotate.Annotator(self)
 
     def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
