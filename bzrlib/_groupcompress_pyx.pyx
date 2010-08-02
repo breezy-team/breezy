@@ -22,6 +22,8 @@ cdef extern from "python-compat.h":
 
 
 cdef extern from "Python.h":
+    ctypedef struct PyObject:
+        pass
     ctypedef int Py_ssize_t # Required for older pyrex versions
     int PyString_CheckExact(object)
     char * PyString_AS_STRING(object)
@@ -92,8 +94,8 @@ cdef class DeltaIndex:
     cdef readonly object _sources
     cdef source_info *_source_infos
     cdef delta_index *_index
-    cdef readonly unsigned int _max_num_sources
     cdef public unsigned long _source_offset
+    cdef readonly unsigned int _max_num_sources
 
     def __init__(self, source=None):
         self._sources = []
@@ -109,9 +111,18 @@ cdef class DeltaIndex:
     def __sizeof__(self):
         # We want to track the _source_infos allocations, but the referenced
         # void* are actually tracked in _sources itself.
-        return (sizeof(DeltaIndex)
-            + (sizeof(source_info) * self._max_num_sources)
-            + sizeof_delta_index(self._index))
+        # XXX: Cython is capable of doing sizeof(class) and returning the size
+        #      of the underlying struct. Pyrex (<= 0.9.9) refuses, so we need
+        #      to do it manually. *sigh* Note that we might get it wrong
+        #      because of alignment issues.
+        cdef Py_ssize_t size
+        # PyObject start, vtable *, 3 object pointers, 2 C ints
+        size = ((sizeof(PyObject) + sizeof(void*) + 3*sizeof(PyObject*)
+                 + sizeof(unsigned long)
+                 + sizeof(unsigned int))
+                + (sizeof(source_info) * self._max_num_sources)
+                + sizeof_delta_index(self._index))
+        return size
 
     def __repr__(self):
         return '%s(%d, %d)' % (self.__class__.__name__,
