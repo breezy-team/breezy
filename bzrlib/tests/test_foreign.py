@@ -21,6 +21,7 @@
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     foreign,
     lockable_files,
@@ -266,8 +267,8 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
 
 def register_dummy_foreign_for_test(testcase):
-    bzrdir.BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
-    testcase.addCleanup(bzrdir.BzrDirFormat.unregister_control_format,
+    controldir.ControlDirFormat.register_format(DummyForeignVcsDirFormat)
+    testcase.addCleanup(controldir.ControlDirFormat.unregister_format,
                         DummyForeignVcsDirFormat)
     # We need to register the optimiser to make the dummy appears really
     # different from a regular bzr repository.

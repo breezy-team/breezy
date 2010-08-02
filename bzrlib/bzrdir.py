@@ -78,6 +78,9 @@ from bzrlib.weave import Weave
 from bzrlib.controldir import (
     ControlDir,
     ControlDirFormat,
+    Prober,
+    probers,
+    server_probers,
     )
 
 from bzrlib.trace import (
@@ -1515,30 +1518,18 @@ class BzrDirMeta1(BzrDir):
         return config.TransportConfig(self.transport, 'control.conf')
 
 
-class BzrDirFormat(ControlDirFormat):
-    """ControlDirFormat base class for .bzr/ directories.
-
-    Formats are placed in a dict by their format string for reference
-    during bzrdir opening. These should be subclasses of BzrDirFormat
-    for consistency.
-
-    Once a format is deprecated, just deprecate the initialize and open
-    methods on the format class. Do not deprecate the object, as the
-    object will be created every system load.
-    """
+class BzrProber(Prober):
 
     _formats = {}
-    """The known formats."""
-
-    _lock_file_name = 'branch-lock'
+    """The known .bzr formats."""
 
     @classmethod
-    def _known_formats(klass):
-        """Return the known format instances for this control format."""
-        return set(klass._formats.values())
+    def register_bzrdir_format(klass, format):
+        klass._formats[format.get_format_string()] = format
 
-    # _lock_class must be set in subclasses to the lock type, typ.
-    # TransportLock or LockDir
+    @classmethod
+    def unregister_format(klass, format):
+        del klass._formats[format.get_format_string()]
 
     @classmethod
     def probe_transport(klass, transport):
@@ -1552,27 +1543,56 @@ class BzrDirFormat(ControlDirFormat):
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
 
+
+class RemoteBzrProber(Prober):
+
     @classmethod
-    def get_default_format(klass):
-        """Return the current default format."""
-        return klass._default_format
+    def probe_transport(klass, transport):
+        """Return a RemoteBzrDirFormat object if it looks possible."""
+        try:
+            medium = transport.get_smart_medium()
+        except (NotImplementedError, AttributeError,
+                errors.TransportNotPossible, errors.NoSmartMedium,
+                errors.SmartProtocolError):
+            # no smart server, so not a branch for this format type.
+            raise errors.NotBranchError(path=transport.base)
+        else:
+            # Decline to open it if the server doesn't support our required
+            # version (3) so that the VFS-based transport will do it.
+            if medium.should_probe():
+                try:
+                    server_version = medium.protocol_version()
+                except errors.SmartProtocolError:
+                    # Apparently there's no usable smart server there, even though
+                    # the medium supports the smart protocol.
+                    raise errors.NotBranchError(path=transport.base)
+                if server_version != '2':
+                    raise errors.NotBranchError(path=transport.base)
+            return klass()
+
+
+
+
+class BzrDirFormat(ControlDirFormat):
+    """ControlDirFormat base class for .bzr/ directories.
+
+    Formats are placed in a dict by their format string for reference
+    during bzrdir opening. These should be subclasses of BzrDirFormat
+    for consistency.
+
+    Once a format is deprecated, just deprecate the initialize and open
+    methods on the format class. Do not deprecate the object, as the
+    object will be created every system load.
+    """
+
+    _lock_file_name = 'branch-lock'
+
+    # _lock_class must be set in subclasses to the lock type, typ.
+    # TransportLock or LockDir
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
-
-    def initialize(self, url, possible_transports=None):
-        """Create a bzr control dir at this url and return an opened copy.
-
-        While not deprecated, this method is very specific and its use will
-        lead to many round trips to setup a working environment. See
-        initialize_on_transport_ex for a [nearly] all-in-one method.
-
-        Subclasses should typically override initialize_on_transport
-        instead of this method.
-        """
-        return self.initialize_on_transport(get_transport(url,
-                                                          possible_transports))
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
@@ -1727,16 +1747,6 @@ class BzrDirFormat(ControlDirFormat):
             control_files.unlock()
         return self.open(transport, _found=True)
 
-    def network_name(self):
-        """A simple byte string uniquely identifying this format for RPC calls.
-
-        Bzr control formats use thir disk format string to identify the format
-        over the wire. Its possible that other control formats have more
-        complex detection requirements, so we permit them to use any unique and
-        immutable string they desire.
-        """
-        raise NotImplementedError(self.network_name)
-
     def open(self, transport, _found=False):
         """Return an instance of this format for the dir transport points at.
 
@@ -1763,14 +1773,10 @@ class BzrDirFormat(ControlDirFormat):
 
     @classmethod
     def register_format(klass, format):
-        klass._formats[format.get_format_string()] = format
+        BzrProber.register_bzrdir_format(format)
         # bzr native formats have a network name of their format string.
         network_format_registry.register(format.get_format_string(), format.__class__)
-
-    @classmethod
-    def _set_default_format(klass, format):
-        """Set default format (for testing behavior of defaults only)"""
-        klass._default_format = format
+        ControlDirFormat.register_format(format)
 
     def _supply_sub_formats_to(self, other_format):
         """Give other_format the same values for sub formats as this has.
@@ -1786,7 +1792,8 @@ class BzrDirFormat(ControlDirFormat):
 
     @classmethod
     def unregister_format(klass, format):
-        del klass._formats[format.get_format_string()]
+        BzrProber.unregister_format(format)
+        ControlDirFormat.unregister_format(format)
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -2203,9 +2210,6 @@ referring to formats with smart server operations. See
 BzrDirFormat.network_name() for more detail.
 """
 
-
-# Register bzr control format
-ControlDirFormat.register_format(BzrDirFormat)
 
 # Register bzr formats
 BzrDirFormat.register_format(BzrDirFormat4())
@@ -2782,30 +2786,6 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
         else:
             raise AssertionError("No network name set.")
 
-    @classmethod
-    def probe_transport(klass, transport):
-        """Return a RemoteBzrDirFormat object if it looks possible."""
-        try:
-            medium = transport.get_smart_medium()
-        except (NotImplementedError, AttributeError,
-                errors.TransportNotPossible, errors.NoSmartMedium,
-                errors.SmartProtocolError):
-            # no smart server, so not a branch for this format type.
-            raise errors.NotBranchError(path=transport.base)
-        else:
-            # Decline to open it if the server doesn't support our required
-            # version (3) so that the VFS-based transport will do it.
-            if medium.should_probe():
-                try:
-                    server_version = medium.protocol_version()
-                except errors.SmartProtocolError:
-                    # Apparently there's no usable smart server there, even though
-                    # the medium supports the smart protocol.
-                    raise errors.NotBranchError(path=transport.base)
-                if server_version != '2':
-                    raise errors.NotBranchError(path=transport.base)
-            return klass()
-
     def initialize_on_transport(self, transport):
         try:
             # hand off the request to the smart server
@@ -3025,7 +3005,7 @@ class BzrDirFormatInfo(object):
 class BzrDirFormatRegistry(registry.Registry):
     """Registry of user-selectable BzrDir subformats.
 
-    Differs from BzrDirFormat._control_formats in that it provides sub-formats,
+    Differs from ControlDirFormat._formats in that it provides sub-formats,
     e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
     """
 
@@ -3572,3 +3552,6 @@ format_registry.register_metadir('default-rich-root',
 
 # The current format that is made on 'bzr init'.
 format_registry.set_default('2a')
+
+probers.append(BzrProber)
+server_probers.append(RemoteBzrProber)

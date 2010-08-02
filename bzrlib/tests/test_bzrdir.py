@@ -1078,16 +1078,16 @@ class TestNotBzrDir(TestCaseWithTransport):
         dir = format.initialize(self.get_url())
         self.assertIsInstance(dir, NotBzrDir)
         # now probe for it.
-        bzrlib.bzrdir.BzrDirFormat.register_control_format(format)
+        bzrlib.controldir.ControlDirformat.register_format(format)
         try:
             found = bzrlib.bzrdir.BzrDirFormat.find_format(
                 get_transport(self.get_url()))
             self.assertIsInstance(found, NotBzrDirFormat)
         finally:
-            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(format)
+            bzrlib.controldir.ControlDirformat.unregister_format(format)
 
     def test_included_in_known_formats(self):
-        bzrlib.bzrdir.BzrDirFormat.register_control_format(NotBzrDirFormat)
+        bzrlib.controldir.ControlDirformat.register_format(NotBzrDirFormat)
         try:
             formats = bzrlib.bzrdir.BzrDirFormat.known_formats()
             for format in formats:
@@ -1095,7 +1095,7 @@ class TestNotBzrDir(TestCaseWithTransport):
                     return
             self.fail("No NotBzrDirFormat in %s" % formats)
         finally:
-            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(NotBzrDirFormat)
+            bzrlib.controldir.ControlDirformat.unregister_format(NotBzrDirFormat)
 
 
 class NonLocalTests(TestCaseWithTransport):

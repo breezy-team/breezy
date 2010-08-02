@@ -483,7 +483,7 @@ class ControlDirFormat(object):
     """
 
     _default_format = None
-    """The default format used for new .bzr dirs."""
+    """The default format used for new control directories."""
 
     _formats = []
     """The registered control formats - .bzr, ....
@@ -548,7 +548,7 @@ class ControlDirFormat(object):
         """Register a control format for client-server environments.
 
         These formats will be tried before ones registered with
-        register_control_format.  This gives implementations that decide to the
+        register_format.  This gives implementations that decide to the
         chance to grab it before anything looks at the contents of the format
         file.
         """
@@ -565,30 +565,107 @@ class ControlDirFormat(object):
     @classmethod
     def known_formats(klass):
         """Return all the known formats.
-
-        Concrete formats should override _known_formats.
         """
-        # There is double indirection here to make sure that control
-        # formats used by more than one dir format will only be probed
-        # once. This can otherwise be quite expensive for remote connections.
-        result = set()
-        for format in klass._formats:
-            result.update(format._known_formats())
-        return result
+        return set(klass._formats)
 
     @classmethod
     def find_format(klass, transport, _server_formats=True):
         """Return the format present at transport."""
         if _server_formats:
-            formats = klass._server_formats + klass._formats
+            _probers = server_probers = probers
         else:
-            formats = klass._formats
-        for format in formats:
+            _probers = probers
+        for prober_kls in _probers:
+            prober = prober_kls()
             try:
-                return format.probe_transport(transport)
+                return prober.probe_transport(transport)
             except errors.NotBranchError:
                 # this format does not find a control dir here.
                 pass
         raise errors.NotBranchError(path=transport.base)
 
+    def initialize(self, url, possible_transports=None):
+        """Create a control dir at this url and return an opened copy.
 
+        While not deprecated, this method is very specific and its use will
+        lead to many round trips to setup a working environment. See
+        initialize_on_transport_ex for a [nearly] all-in-one method.
+
+        Subclasses should typically override initialize_on_transport
+        instead of this method.
+        """
+        return self.initialize_on_transport(get_transport(url,
+                                                          possible_transports))
+    def initialize_on_transport(self, transport):
+        """Initialize a new bzrdir in the base directory of a Transport."""
+        raise NotImplementedError(self.initialize_on_transport)
+
+    def initialize_on_transport_ex(self, transport, use_existing_dir=False,
+        create_prefix=False, force_new_repo=False, stacked_on=None,
+        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
+        shared_repo=False, vfs_only=False):
+        """Create this format on transport.
+
+        The directory to initialize will be created.
+
+        :param force_new_repo: Do not use a shared repository for the target,
+                               even if one is available.
+        :param create_prefix: Create any missing directories leading up to
+            to_transport.
+        :param use_existing_dir: Use an existing directory if one exists.
+        :param stacked_on: A url to stack any created branch on, None to follow
+            any target stacking policy.
+        :param stack_on_pwd: If stack_on is relative, the location it is
+            relative to.
+        :param repo_format_name: If non-None, a repository will be
+            made-or-found. Should none be found, or if force_new_repo is True
+            the repo_format_name is used to select the format of repository to
+            create.
+        :param make_working_trees: Control the setting of make_working_trees
+            for a new shared repository when one is made. None to use whatever
+            default the format has.
+        :param shared_repo: Control whether made repositories are shared or
+            not.
+        :param vfs_only: If True do not attempt to use a smart server
+        :return: repo, bzrdir, require_stacking, repository_policy. repo is
+            None if none was created or found, bzrdir is always valid.
+            require_stacking is the result of examining the stacked_on
+            parameter and any stacking policy found for the target.
+        """
+        raise NotImplementedError(self.initialize_on_transport_ex)
+
+    def network_name(self):
+        """A simple byte string uniquely identifying this format for RPC calls.
+
+        Bzr control formats use this disk format string to identify the format
+        over the wire. Its possible that other control formats have more
+        complex detection requirements, so we permit them to use any unique and
+        immutable string they desire.
+        """
+        raise NotImplementedError(self.network_name)
+
+    def open(self, transport, _found=False):
+        """Return an instance of this format for the dir transport points at.
+        """
+        raise NotImplementedError(self.open)
+
+    @classmethod
+    def _set_default_format(klass, format):
+        """Set default format (for testing behavior of defaults only)"""
+        klass._default_format = format
+
+    @classmethod
+    def get_default_format(klass):
+        """Return the current default format."""
+        return klass._default_format
+
+
+class Prober(object):
+
+    def probe_transport(self, transport):
+        """Return the controldir style format present in a directory."""
+        raise NotImplementedError(klass.probe_transport)
+
+
+probers = []
+server_probers = []
