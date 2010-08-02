@@ -380,40 +380,12 @@ class TestSimpleSet(tests.TestCase):
         obj.discard(k2)
         self.assertRaises(RuntimeError, iterator.next)
 
-    def get_platform_size(self):
-        """Try to determine if we are on 32-bit or 64-bit architecture."""
-        sizeof = getattr(sys, 'getsizeof', None)
-        if sizeof is not None:
-            int_size = sizeof(1)
-            # A python Int is 3 longs
-            # 1: PyType *
-            # 2: refcnt
-            # 3: long val
-            return int_size / 3
-        return None
-
     def test__sizeof__(self):
         # SimpleSet needs a custom sizeof implementation, because it allocates
         # memory that Python cannot directly see (_table).
-        # The size of a SimpleSet object is (in 32/64-bit objects)
-        # 1: PyType *
-        # 2: refcnt
-        # 3: vtable *
-        # 4: _used
-        # 5: _fill
-        # 6: _mask
-        # 7: _table*
-        # (_mask+1) pointers
-        # Default size is 1024 pointers
+        # Too much variability in platform sizes for us to give a fixed size
+        # here. However without a custom implementation, __sizeof__ would give
+        # us only the size of the object, and not its table. We know the table
+        # is at least 4bytes*1024entries in size.
         obj = self.module.SimpleSet()
-        n_words = 7 + 1024
-        s = obj.__sizeof__()
-        plat_size = self.get_platform_size()
-        if plat_size is None:
-            # We should either be 64-bit or 32-bit, but I don't know which
-            if s != n_words * 8 and s != n_words * 4:
-                self.fail("SimpleSet.__sizeof__() returned %s which is not"
-                          " a 32-bit or 64-bit multiple of %s words"
-                          % (s, n_words))
-        else:
-            self.assertEqual(n_words * plat_size, s)
+        self.assertTrue(obj.__sizeof__() > 4096)
