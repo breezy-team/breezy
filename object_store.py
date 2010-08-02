@@ -515,7 +515,7 @@ class BazaarObjectStore(BaseObjectStore):
         ret = {}
         for sha in shas:
             if sha == ZERO_SHA:
-                ret[sha] = NULL_REVISION
+                ret[sha] = ("commit", (NULL_REVISION, None))
                 continue
             try:
                 ret[sha] = self._cache.idmap.lookup_git_sha(sha)
