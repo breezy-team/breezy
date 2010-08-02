@@ -119,7 +119,8 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t len)
 
 # cimport all of the definitions we will need to access
-from _static_tuple_c cimport import_static_tuple_c, StaticTuple
+from _static_tuple_c cimport import_static_tuple_c, StaticTuple, \
+    StaticTuple_New, StaticTuple_SET_ITEM
 
 import_static_tuple_c()
 
@@ -614,7 +615,8 @@ cdef class Reader:
         :param new_block: This is to let the caller know that it needs to
             create a new directory block to store the next entry.
         """
-        cdef object path_name_file_id_key
+        cdef StaticTuple path_name_file_id_key
+        cdef StaticTuple tmp
         cdef char *entry_size_cstr
         cdef unsigned long int entry_size
         cdef char* executable_cstr
@@ -657,10 +659,20 @@ cdef class Reader:
         # TODO: We could avoid a tuple allocation and delete by using
         #       StaticTuple_New and StaticTuple_SET_ITEM, however, it is a bit
         #       clumsy, and we should be sure of the benefit first.
-        path_name_file_id_key = StaticTuple(<object>p_current_dirname[0],
-                                 self.get_next_str(),
-                                 self.get_next_str(),
-                                )
+        #       Currently, WT.lock_read() && wt._read_dirblocks() seems to go
+        #       from 3.05ms to 3.44ms for bzr.dev.
+        cur_dirname = <object>p_current_dirname[0]
+        tmp = StaticTuple_New(3)
+        Py_INCREF(cur_dirname); StaticTuple_SET_ITEM(tmp, 0, cur_dirname)
+        s1 = self.get_next_str()
+        s2 = self.get_next_str()
+        Py_INCREF(s1); StaticTuple_SET_ITEM(tmp, 1, s1)
+        Py_INCREF(s2); StaticTuple_SET_ITEM(tmp, 2, s2)
+        path_name_file_id_key = tmp
+        # path_name_file_id_key = StaticTuple(<object>p_current_dirname[0],
+        #                          self.get_next_str(),
+        #                          self.get_next_str(),
+        #                         )
 
         # Parse all of the per-tree information. current has the information in
         # the same location as parent trees. The only difference is that 'info'
@@ -684,6 +696,13 @@ cdef class Reader:
             executable_cstr = self.get_next(&cur_size)
             is_executable = (executable_cstr[0] == c'y')
             info = self.get_next_str()
+            # tmp = StaticTuple_New(5)
+            # Py_INCREF(minikind); StaticTuple_SET_ITEM(tmp, 0, minikind)
+            # Py_INCREF(fingerprint); StaticTuple_SET_ITEM(tmp, 1, fingerprint)
+            # Py_INCREF(entry_size); StaticTuple_SET_ITEM(tmp, 2, entry_size)
+            # Py_INCREF(is_executable); StaticTuple_SET_ITEM(tmp, 3, is_executable)
+            # Py_INCREF(info); StaticTuple_SET_ITEM(tmp, 4, info)
+            # PyList_Append(trees, tmp)
             PyList_Append(trees, StaticTuple(
                 minikind,     # minikind
                 fingerprint,  # fingerprint
