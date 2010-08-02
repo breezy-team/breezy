@@ -1511,14 +1511,15 @@ class BzrProber(Prober):
     def unregister_bzrdir_format(klass, format):
         del klass._formats[format.get_format_string()]
 
-    def probe_transport(self, transport):
+    @classmethod
+    def probe_transport(klass, transport):
         """Return the .bzrdir style format present in a directory."""
         try:
             format_string = transport.get_bytes(".bzr/branch-format")
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            return self._formats[format_string]
+            return klass._formats[format_string]
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
 
@@ -1550,7 +1551,7 @@ class RemoteBzrProber(Prober):
                     raise errors.NotBranchError(path=transport.base)
                 if server_version != '2':
                     raise errors.NotBranchError(path=transport.base)
-            return klass()
+            return RemoteBzrDirFormat()
 
 
 class BzrDirFormat(ControlDirFormat):
@@ -2198,7 +2199,7 @@ BzrDirFormat.register_format(BzrDirFormat5())
 BzrDirFormat.register_format(BzrDirFormat6())
 __default_format = BzrDirMetaFormat1()
 BzrDirFormat.register_format(__default_format)
-BzrDirFormat._default_format = __default_format
+ControlDirFormat._default_format = __default_format
 
 
 class Converter(object):

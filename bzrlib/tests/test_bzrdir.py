@@ -70,13 +70,13 @@ class TestDefaultFormat(TestCase):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirFormat6
         self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
-        bzrdir.BzrDirFormat._set_default_format(SampleBzrDirFormat())
+        controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:///')
             self.failUnless(isinstance(result, SampleBzrDir))
         finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
+            controldir.ControlDirFormat._set_default_format(old_format)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
 
@@ -1090,7 +1090,8 @@ class TestNotBzrDir(TestCaseWithTransport):
             controldir.ControlDirFormat.unregister_prober(NotBzrDirProber)
 
     def test_included_in_known_formats(self):
-        bzrlib.controldir.ControlDirFormat.register_format(NotBzrDirFormat)
+        not_format = NotBzrDirFormat()
+        bzrlib.controldir.ControlDirFormat.register_format(not_format)
         try:
             formats = bzrlib.bzrdir.BzrDirFormat.known_formats()
             for format in formats:
@@ -1098,7 +1099,7 @@ class TestNotBzrDir(TestCaseWithTransport):
                     return
             self.fail("No NotBzrDirFormat in %s" % formats)
         finally:
-            bzrlib.controldir.ControlDirFormat.unregister_format(NotBzrDirFormat)
+            bzrlib.controldir.ControlDirFormat.unregister_format(not_format)
 
 
 class NonLocalTests(TestCaseWithTransport):

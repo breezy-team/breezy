@@ -474,9 +474,13 @@ class ControlDir(object):
         :param possible_transports: If supplied, a list of transports that
             can be reused to share a remote connection.
         """
-        if cls is not BzrDir:
-            raise AssertionError("BzrDir.create always creates the default"
-                " format, not one of %r" % cls)
+        if cls is not ControlDir:
+            from bzrlib.bzrdir import BzrDir
+            if cls is BzrDir:
+                pass # FIXME: Deprecationwarning
+            else:
+                raise AssertionError("ControlDir.create always creates the"
+                    "default format, not one of %r" % cls)
         t = get_transport(base, possible_transports)
         t.ensure_base()
         if format is None:
