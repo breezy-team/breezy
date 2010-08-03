@@ -318,7 +318,7 @@ class GitIndexInventory(inventory.Inventory):
         else:
             self._read_contents()
             file_id = super(GitIndexInventory, self).path2id(path)
-        if type(file_id) is not str:
+        if file_id is not None and type(file_id) is not str:
             raise AssertionError
         return file_id
 
