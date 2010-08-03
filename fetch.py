@@ -357,12 +357,12 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
     store_updater.add_object(o, None, None)
-    lookup_file_id = mapping.get_fileid_map(lookup_object, o.tree).lookup_file_id
+    fileid_map = mapping.get_fileid_map(lookup_object, o.tree)
     inv_delta, unusual_modes = import_git_tree(repo.texts,
-            mapping, "", "", (base_tree, o.tree), base_inv, 
+            mapping, "", "", (base_tree, o.tree), base_inv,
             None, rev.revision_id, [p.inventory for p in parent_trees],
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
-            lookup_file_id,
+            fileid_map.lookup_file_id,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
     store_updater.finish()
     if unusual_modes != {}:
@@ -375,8 +375,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
         basis_id = NULL_REVISION
         base_inv = None
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
-              inv_delta, rev.revision_id, rev.parent_ids,
-              base_inv)
+              inv_delta, rev.revision_id, rev.parent_ids, base_inv)
     ret_tree = RevisionTree(repo, inv, rev.revision_id)
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
