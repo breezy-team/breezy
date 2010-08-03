@@ -327,6 +327,8 @@ def _parse_leaf_lines(bytes, key_length, ref_list_length):
 #       the big win there is to cache across pages, and not just one page
 #       Though if we did cache in a page, we could certainly use a short int.
 #       And this goes from 40 bytes to 30 bytes.
+#       One slightly ugly option would be to cache block offsets in a global.
+#       However, that leads to thread-safety issues, etc.
 ctypedef struct gc_chk_sha1_record:
     unsigned long long block_offset
     unsigned int block_length
@@ -336,37 +338,48 @@ ctypedef struct gc_chk_sha1_record:
 
 
 cdef int _unhexbuf[256]
-cdef char *_hexbuf = '01234567890abcdef'
+cdef char *_hexbuf = '0123456789abcdef'
 
 cdef _populate_unhexbuf():
-    cdef unsigned char a
-    for a from 0 <= a < 255:
-        _unhexbuf[a] = -1
-    for a in '0123456789':
-        _unhexbuf[a] = a - c'0'
-    for a in 'abcdef':
-        _unhexbuf[a] = a - c'a' + 10
-    for a in 'ABCDEF':
-        _unhexbuf[a] = a - c'A' + 10
+    cdef int i
+    for i from 0 <= i < 256:
+        _unhexbuf[i] = -1
+    for i from 0 <= i < 10: # 0123456789 => map to the raw number
+        _unhexbuf[(i + c'0')] = i
+    for i from 10 <= i < 16: # abcdef => 10, 11, 12, 13, 14, 15, 16
+        _unhexbuf[(i - 10 + c'a')] = i
+    for i from 10 <= i < 16: # ABCDEF => 10, 11, 12, 13, 14, 15, 16
+        _unhexbuf[(i - 10 + c'A')] = i
+_populate_unhexbuf()
 
 
 cdef int _unhexlify_sha1(char *as_hex, char *as_bin):
     """Take the hex sha1 in as_hex and make it binary in as_bin"""
     cdef int top
     cdef int bot
-    cdef int i
+    cdef int i, j
     cdef char *cur
     
-    cur = as_hex
+    j = 0
     for i from 0 <= i < 20:
-        top = _unhexbuf[<unsigned char>(cur)]
-        cur += 1
-        bot = _unhexbuf[<unsigned char>(cur)]
-        cur += 1
+        top = _unhexbuf[<unsigned char>(as_hex[j])]
+        j += 1
+        bot = _unhexbuf[<unsigned char>(as_hex[j])]
+        j += 1
         if top == -1 or bot == -1:
             return 0
-        as_bin[i] = (top << 4) + bot;
+        as_bin[i] = <unsigned char>((top << 4) + bot);
     return 1
+
+
+def _test_unhexlify(as_hex):
+    """For the test infrastructure, just thunks to _unhexlify_sha1"""
+    if len(as_hex) != 40 or not PyString_CheckExact(as_hex):
+        raise ValueError('not a 40-byte hex digest')
+    as_bin = PyString_FromStringAndSize(NULL, 20)
+    if _unhexlify_sha1(PyString_AS_STRING(as_hex), PyString_AS_STRING(as_bin)):
+        return as_bin
+    return None
 
 
 cdef void _hexlify_sha1(char *as_bin, char *as_hex):
@@ -380,6 +393,15 @@ cdef void _hexlify_sha1(char *as_bin, char *as_hex):
         j += 1
         as_hex[j] = _hexbuf[(c)&0xf]
         j += 1
+
+
+def _test_hexlify(as_bin):
+    """For test infrastructure, thunk to _hexlify_sha1"""
+    if len(as_bin) != 20 or not PyString_CheckExact(as_bin):
+        raise ValueError('not a 20-byte binary digest')
+    as_hex = PyString_FromStringAndSize(NULL, 40)
+    _hexlify_sha1(PyString_AS_STRING(as_bin), PyString_AS_STRING(as_hex))
+    return as_hex
 
 
 cdef class GCCHKSHA1LeafNode:
