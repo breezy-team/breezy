@@ -37,6 +37,9 @@ Compatibility Breaks
   `bzrlib.controldir.ControlDirFormat.register_prober` or
   `bzrlib.controldir.ControlDirFormat.register_server_prober`.
   `BzrDirFormat.probe_transport` has been moved onto `Prober`.
+
+  `BzrDirFormat.register_format` has been renamed to 
+  `BzrProber.register_bzrdir_format`.
   (Jelmer Vernooij)
 
 New Features
