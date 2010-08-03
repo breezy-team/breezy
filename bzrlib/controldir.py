@@ -30,6 +30,7 @@ from bzrlib import (
     graph,
     registry,
     revision as _mod_revision,
+    symbol_versioning,
     urlutils,
     )
 from bzrlib.push import (
@@ -511,7 +512,10 @@ class ControlDir(ControlComponent):
         if cls is not ControlDir:
             from bzrlib.bzrdir import BzrDir
             if cls is BzrDir:
-                pass # FIXME: Deprecationwarning
+                symbol_versioning.warn(
+                    symbol_versioning.deprecated_in((2, 3, 0))
+                    % "ControlDir.create() should be called rather than "
+                    "BzrDir.create()")
             else:
                 raise AssertionError("ControlDir.create always creates the"
                     "default format, not one of %r" % cls)
