@@ -455,7 +455,7 @@ cdef StaticTuple _sha1_to_key(char *sha1):
     key = StaticTuple_New(1)
     Py_INCREF(hexxed)
     StaticTuple_SET_ITEM(key, 0, hexxed)
-    # key = StaticTuple_Intern(key)
+    key = StaticTuple_Intern(key)
     return key
 
 
