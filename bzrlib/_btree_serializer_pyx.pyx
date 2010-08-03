@@ -455,6 +455,15 @@ cdef StaticTuple _sha1_to_key(char *sha1):
     key = StaticTuple_New(1)
     Py_INCREF(hexxed)
     StaticTuple_SET_ITEM(key, 0, hexxed)
+    # This is a bit expensive. To parse 120 keys takes 48us, to return them all
+    # can be done in 66.6us (so 18.6us to build them all).
+    # Adding simple hash() here brings it to 76.6us (so computing the hash
+    # value of 120keys is 10us), Intern is 86.9us (another 10us to look and add
+    # them to the intern structure.)
+    # However, since we only intern keys that are in active use, it is probably
+    # a win. Since they would have been read from elsewhere anyway.
+    # We *could* hang the PyObject form off of the gc_chk_sha1_record for ones
+    # that we have deserialized. Something to think about, at least.
     key = StaticTuple_Intern(key)
     return key
 
