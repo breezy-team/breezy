@@ -354,12 +354,17 @@ _populate_unhexbuf()
 
 
 cdef int _unhexlify_sha1(char *as_hex, char *as_bin):
-    """Take the hex sha1 in as_hex and make it binary in as_bin"""
+    """Take the hex sha1 in as_hex and make it binary in as_bin
+    
+    Same as binascii.unhexlify, but working on C strings, not Python objects.
+    """
     cdef int top
     cdef int bot
     cdef int i, j
     cdef char *cur
     
+    # binascii does this using isupper() and tolower() and ?: syntax. I'm
+    # guessing a simple lookup array should be faster.
     j = 0
     for i from 0 <= i < 20:
         top = _unhexbuf[<unsigned char>(as_hex[j])]
@@ -404,6 +409,63 @@ def _test_hexlify(as_bin):
     return as_hex
 
 
+cdef int _key_to_sha1(key, char *sha1):
+    """Map a key into its sha1 content.
+
+    :param key: A tuple of style ('sha1:abcd...',)
+    :param sha1: A char buffer of 20 bytes
+    :return: 1 if this could be converted, 0 otherwise
+    """
+    cdef char *c_val
+    if not PyTuple_CheckExact(key) and not StaticTuple_CheckExact(key):
+        return 0
+    if len(key) != 1:
+        return 0
+    val = key[0]
+    if not PyString_CheckExact(val) or PyString_GET_SIZE(val) != 45:
+        return 0
+    c_val = PyString_AS_STRING(val)
+    if strncmp(c_val, 'sha1:', 5) != 0:
+        return 0
+    if not _unhexlify_sha1(c_val + 5, sha1):
+        return 0
+    return 1
+
+
+def _test_key_to_sha1(key):
+    """Map a key to a simple sha1 string.
+
+    This is a testing thunk to the C function.
+    """
+    as_bin_sha = PyString_FromStringAndSize(NULL, 20)
+    if _key_to_sha1(key, PyString_AS_STRING(as_bin_sha)):
+        return as_bin_sha
+    return None
+
+
+cdef StaticTuple _sha1_to_key(char *sha1):
+    """Compute a ('sha1:abcd',) key for a given sha1."""
+    cdef StaticTuple key
+    cdef object hexxed
+    cdef char *c_buf
+    hexxed = PyString_FromStringAndSize(NULL, 45)
+    c_buf = PyString_AS_STRING(hexxed)
+    memcpy(c_buf, 'sha1:', 5)
+    _hexlify_sha1(sha1, c_buf+5)
+    key = StaticTuple_New(1)
+    Py_INCREF(hexxed)
+    StaticTuple_SET_ITEM(key, 0, hexxed)
+    # key = StaticTuple_Intern(key)
+    return key
+
+
+def _test_sha1_to_key(sha1_bin):
+    """Test thunk to check the sha1 mapping."""
+    if not PyString_CheckExact(sha1_bin) or PyString_GET_SIZE(sha1_bin) != 20:
+        raise ValueError('sha1_bin must be a str of exactly 20 bytes')
+    return _sha1_to_key(PyString_AS_STRING(sha1_bin))
+
+
 cdef class GCCHKSHA1LeafNode:
     """Track all the entries for a given leaf node."""
 
@@ -432,51 +494,14 @@ cdef class GCCHKSHA1LeafNode:
     property min_key:
         def __get__(self):
             if self.num_entries > 0:
-                return self._sha1_to_key(self.entries[0].sha1)
+                return _sha1_to_key(self.entries[0].sha1)
             return None
 
     property max_key:
         def __get__(self):
             if self.num_entries > 0:
-                return self._sha1_to_key(self.entries[self.num_entries-1].sha1)
+                return _sha1_to_key(self.entries[self.num_entries-1].sha1)
             return None
-
-    cdef int _key_to_sha1(self, key, char *sha1):
-        """Map a key into its sha1 content.
-
-        :param key: A tuple of style ('sha1:abcd...',)
-        :param sha1: A char buffer of 20 bytes
-        :return: 1 if this could be converted, 0 otherwise
-        """
-        cdef char *c_val
-        if not PyTuple_CheckExact(key) and not StaticTuple_CheckExact(key):
-            return 0
-        if len(key) != 1:
-            return 0
-        val = key[0]
-        if not PyString_CheckExact(val) or PyString_GET_SIZE(val) != 45:
-            return 0
-        c_val = PyString_AS_STRING(val)
-        if not strncmp(c_val, 'sha1:', 5):
-            return 0
-        if not _unhexlify_sha1(c_val + 5, sha1):
-            return 0
-        return 1
-
-    cdef StaticTuple _sha1_to_key(self, char *sha1):
-        """Compute a ('sha1:abcd',) key for a given sha1."""
-        cdef StaticTuple key
-        cdef object hexxed
-        cdef char *c_buf
-        hexxed = PyString_FromStringAndSize(NULL, 45)
-        c_buf = PyString_AS_STRING(hexxed)
-        memcpy(c_buf, 'sha1:', 5)
-        _hexlify_sha1(sha1, c_buf+5)
-        key = StaticTuple_New(1)
-        Py_INCREF(hexxed)
-        StaticTuple_SET_ITEM(key, 0, hexxed)
-        key = StaticTuple_Intern(key)
-        return key
 
     cdef StaticTuple _record_to_value_and_refs(self,
                                                gc_chk_sha1_record *record):
@@ -486,8 +511,9 @@ cdef class GCCHKSHA1LeafNode:
         value_and_refs = StaticTuple_New(2)
         # This is really inefficient to go from a logical state back to a
         # string, but it makes things work a bit better internally for now.
-        value = PyString_FromFormat('%llu %lu %lu %lu',
-                                    record.block_offset, record.block_length,
+        value = PyString_FromFormat('%lu %lu %lu %lu',
+                                    <unsigned long>record.block_offset,
+                                    record.block_length,
                                     record.record_start, record.record_end)
         Py_INCREF(value)
         StaticTuple_SET_ITEM(value_and_refs, 0, value)
@@ -504,7 +530,7 @@ cdef class GCCHKSHA1LeafNode:
         cdef StaticTuple key
         cdef StaticTuple value_and_refs
         cdef object value
-        key = self._sha1_to_key(record.sha1)
+        key = _sha1_to_key(record.sha1)
         item = StaticTuple_New(2)
         Py_INCREF(key)
         StaticTuple_SET_ITEM(item, 0, key)
@@ -526,7 +552,7 @@ cdef class GCCHKSHA1LeafNode:
     def __contains__(self, key):
         cdef char sha1[20]
         cdef gc_chk_sha1_record *record
-        if not self._key_to_sha1(key, sha1):
+        if not _key_to_sha1(key, sha1):
             # If it isn't a sha1 key, then it won't be in this leaf node
             return False
         return self._lookup_record(sha1) != NULL
@@ -534,7 +560,7 @@ cdef class GCCHKSHA1LeafNode:
     def __getitem__(self, key):
         cdef char sha1[20]
         cdef gc_chk_sha1_record *record = NULL
-        if self._key_to_sha1(key, sha1):
+        if _key_to_sha1(key, sha1):
             record = self._lookup_record(sha1)
         if record == NULL:
             raise KeyError('key %r is not present' % (key,))
@@ -547,7 +573,7 @@ cdef class GCCHKSHA1LeafNode:
         cdef int i
         cdef list result = []
         for i from 0 <= i < self.num_entries:
-            result.append(self._sha1_to_key(self.entries[i].sha1))
+            result.append(_sha1_to_key(self.entries[i].sha1))
         return result
 
     def all_items(self):
@@ -627,6 +653,12 @@ cdef class GCCHKSHA1LeafNode:
             if c_cur == c_next or c_next[0] != c'\n':
                 raise ValueError('Failed to parse record end')
             c_cur = c_next + 1
+            cur_record += 1
+            entry += 1
+        if (entry != self.num_entries
+            or c_cur != c_end
+            or cur_record != self.entries + self.num_entries):
+            raise ValueError('Something went wrong while parsing.')
         # Pass 3: build the offset map
         # The idea with the offset map is that we should be able to quickly
         # jump to the key that matches a gives sha1. We know that the keys are
