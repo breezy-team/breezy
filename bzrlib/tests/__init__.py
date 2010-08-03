@@ -3665,6 +3665,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_workingtree',
         'bzrlib.tests.test__annotator',
         'bzrlib.tests.test__bencode',
+        'bzrlib.tests.test__btree_serializer',
         'bzrlib.tests.test__chk_map',
         'bzrlib.tests.test__dirstate_helpers',
         'bzrlib.tests.test__groupcompress',

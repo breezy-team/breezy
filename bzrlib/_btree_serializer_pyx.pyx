@@ -387,9 +387,13 @@ cdef class GCCHKSHA1LeafNode:
 
     cdef public int num_entries
     cdef gc_chk_sha1_record *entries
-    # TODO: Consider what a mini-index might look like. Something that could
-    #       let us quickly jump to a subset range, rather than doing pure
-    #       bisect all the time.
+    # This is for the mini-index. We look at all the keys and use whatever byte
+    # is first unique across all stored keys (this is often the first byte)
+    # we then store the entries offset for the first record that matches that
+    # byte. This does assume that we'll never have more than 32k entries, but
+    # that doesn't seem to be a terrible assumption (we should have ~100)
+    cdef public short interesting_byte
+    cdef short offsets[257]
 
     def __sizeof__(self):
         return (sizeof(GCCHKSHA1LeafNode)
@@ -425,7 +429,6 @@ cdef class GCCHKSHA1LeafNode:
         cdef char *c_val
         if not PyTuple_CheckExact(key) and not StaticTuple_CheckExact(key):
             return 0
-            #? raise TypeError('Keys must be a tuple or StaticTuple')
         if len(key) != 1:
             return 0
         val = key[0]
@@ -607,8 +610,6 @@ cdef class GCCHKSHA1LeafNode:
         # jump to the key that matches a gives sha1. We know that the keys are
         # in sorted order, and we know that a lot of the prefix is going to be
         # the same across them.
-
-
 
 
 def _parse_into_chk(bytes, key_length, ref_list_length):
