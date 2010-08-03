@@ -1,5 +1,9 @@
 0.5.3	UNRELEASED
 
+ BUG FIXES
+
+  * Add in an empty git repository now works. (Jelmer Vernooij, #603823)
+
 0.5.2	2010-07-30
 
  COMPATIBILITY
