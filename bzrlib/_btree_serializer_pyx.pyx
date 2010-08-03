@@ -322,6 +322,11 @@ def _parse_leaf_lines(bytes, key_length, ref_list_length):
     return parser.parse()
 
 
+# TODO: We can go from 8 byte offset + 4 byte length to a simple lookup,
+#       because the block_offset + length is likely to be repeated. However,
+#       the big win there is to cache across pages, and not just one page
+#       Though if we did cache in a page, we could certainly use a short int.
+#       And this goes from 40 bytes to 30 bytes.
 ctypedef struct gc_chk_sha1_record:
     unsigned long long block_offset
     unsigned int block_length
@@ -400,11 +405,15 @@ cdef class GCCHKSHA1LeafNode:
 
     property min_key:
         def __get__(self):
-            pass
+            if self.num_entries > 0:
+                return self._sha1_to_key(self.entries[0].sha1)
+            return None
 
     property max_key:
         def __get__(self):
-            pass
+            if self.num_entries > 0:
+                return self._sha1_to_key(self.entries[self.num_entries-1].sha1)
+            return None
 
     cdef int _key_to_sha1(self, key, char *sha1):
         """Map a key into its sha1 content.
@@ -441,6 +450,7 @@ cdef class GCCHKSHA1LeafNode:
         key = StaticTuple_New(1)
         Py_INCREF(hexxed)
         StaticTuple_SET_ITEM(key, 0, hexxed)
+        key = StaticTuple_Intern(key)
         return key
 
     cdef StaticTuple _record_to_value_and_refs(self,
@@ -510,16 +520,17 @@ cdef class GCCHKSHA1LeafNode:
 
     def all_keys(self):
         cdef int i
-        cdef list result
+        cdef list result = []
         for i from 0 <= i < self.num_entries:
             result.append(self._sha1_to_key(self.entries[i].sha1))
         return result
 
     def all_items(self):
         cdef int i
-        cdef list result
+        cdef list result = []
         for i from 0 <= i < self.num_entries:
-            result.append(self._record_to_item(self.entries + i))
+            item = self._record_to_item(&self.entries[i])
+            result.append(item)
         return result
 
     cdef _parse_bytes(self, bytes):
@@ -529,13 +540,9 @@ cdef class GCCHKSHA1LeafNode:
         cdef char *c_cur
         cdef char *c_end
         cdef char *c_next
-        cdef char *c_sha1_prefix
-        cdef void *buf
         cdef Py_ssize_t n_bytes
         cdef int num_entries
         cdef int entry
-        cdef int interesting_char
-        cdef int i
         cdef gc_chk_sha1_record *cur_record
 
         if not PyString_CheckExact(bytes):
@@ -559,14 +566,12 @@ cdef class GCCHKSHA1LeafNode:
         # Now allocate the memory for these items, and go to town
         # We allocate both the offsets and the entries in the same malloc. we
         # should probably pay a bit closer attention to alignment
-        buf = PyMem_Malloc(num_entries *
+        self.entries = <gc_chk_sha1_record*>PyMem_Malloc(num_entries *
             (sizeof(unsigned short) + sizeof(gc_chk_sha1_record)))
-        self.entries = <gc_chk_sha1_record*>buf
         self.num_entries = num_entries
         c_cur = c_content
         cur_record = self.entries
         entry = 0
-        interesting_char = -1
         while c_cur != NULL and c_cur < c_end and entry < num_entries:
             if strncmp(c_cur, 'sha1:', 5):
                 raise ValueError('At byte %d, line did not start with sha1: %r'
@@ -577,14 +582,6 @@ cdef class GCCHKSHA1LeafNode:
                 raise ValueError('Line did not contain 40 hex bytes')
             if not _unhexlify_sha1(c_cur, cur_record.sha1):
                 raise ValueError('We failed to unhexlify')
-            if interesting_char == -1:
-                interesting_char = 20
-                c_sha1_prefix = cur_record.sha1
-            elif interesting_char > 0:
-                for i from 0 <= i < interesting_char:
-                    if cur_record.sha1[i] != c_sha1_prefix[i]:
-                        interesting_char = i
-                        break
             c_cur = c_next + 1
             if c_cur[0] != c'\0':
                 raise ValueError('only 1 null, not 2 as expected')
