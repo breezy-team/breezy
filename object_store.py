@@ -73,16 +73,26 @@ class LRUTreeCache(object):
 
     def revision_tree(self, revid):
         try:
-            return self._cache[revid]
+            tree = self._cache[revid]
         except KeyError:
             tree = self.repository.revision_tree(revid)
             self.add(tree)
-            return tree
+        assert tree.get_revision_id() == tree.inventory.revision_id
+        return tree
 
     def iter_revision_trees(self, revids):
-        trees = dict([(k, self._cache.get(k)) for k in revids]) 
-        for tree in self.repository.revision_trees(
-                [r for r, v in trees.iteritems() if v is None]):
+        trees = {}
+        todo = []
+        for revid in revids:
+            try:
+                tree = self._cache[revid]
+            except KeyError:
+                todo.append(revid)
+            else:
+                assert tree.get_revision_id() == revid
+                assert tree.inventory.revision_id == revid
+                trees[revid] = tree
+        for tree in self.repository.revision_trees(todo):
             trees[tree.get_revision_id()] = tree
             self.add(tree)
         return (trees[r] for r in revids)
@@ -225,7 +235,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
     for path in unusual_modes:
         parent_path = posixpath.dirname(path)
         new_trees[parent_path] = tree.path2id(parent_path)
-    
+
     trees = {}
     while new_trees:
         items = new_trees.items()
