@@ -18,6 +18,8 @@
 
 from cStringIO import StringIO
 
+from dulwich.repo import Repo as GitRepo
+
 from bzrlib.plugins.git import tests
 
 
@@ -244,7 +246,7 @@ class TestGitBranchBuilder(tests.TestCase):
 class TestGitBranchBuilderReal(tests.TestCaseInTempDir):
 
     def test_create_real_branch(self):
-        tests.run_git('init')
+        GitRepo.init(".")
 
         builder = tests.GitBranchBuilder()
         builder.set_file(u'foo', 'contents\nfoo\n', False)

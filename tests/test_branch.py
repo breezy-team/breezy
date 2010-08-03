@@ -19,6 +19,10 @@
 
 
 import dulwich
+from dulwich.objects import (
+    Commit,
+    Tag,
+    )
 from dulwich.repo import (
     Repo as GitRepo,
     )
@@ -52,8 +56,6 @@ from bzrlib.plugins.git.mapping import (
 
 class TestGitBranch(tests.TestCaseInTempDir):
 
-    _test_needs_features = [tests.GitCommandFeature]
-
     def test_open_existing(self):
         GitRepo.init('.')
         d = BzrDir.open('.')
@@ -75,42 +77,48 @@ class TestGitBranch(tests.TestCaseInTempDir):
                          thebranch.last_revision_info())
 
     def simple_commit_a(self):
-        GitRepo.init('.')
+        r = GitRepo.init('.')
         self.build_tree(['a'])
-        tests.run_git('add', 'a')
-        tests.run_git('commit', '-m', 'a')
+        r.stage(["a"])
+        return r.do_commit("a", committer="Somebody <foo@example.com>")
 
     def test_last_revision_is_valid(self):
-        self.simple_commit_a()
-        head = tests.run_git('rev-parse', 'HEAD').strip()
+        head = self.simple_commit_a()
         thebranch = Branch.open('.')
         self.assertEqual(default_mapping.revision_id_foreign_to_bzr(head),
                          thebranch.last_revision())
 
     def test_revision_history(self):
-        self.simple_commit_a()
-        reva = tests.run_git('rev-parse', 'HEAD').strip()
+        reva = self.simple_commit_a()
         self.build_tree(['b'])
-        tests.run_git('add', 'b')
-        tests.run_git('commit', '-m', 'b')
-        revb = tests.run_git('rev-parse', 'HEAD').strip()
+        r = GitRepo(".")
+        r.stage("b")
+        revb = r.do_commit("b", committer="Somebody <foo@example.com>")
 
         thebranch = Branch.open('.')
         self.assertEqual([default_mapping.revision_id_foreign_to_bzr(r) for r in (reva, revb)],
                          thebranch.revision_history())
 
     def test_tag_annotated(self):
-        self.simple_commit_a()
-        reva = tests.run_git('rev-parse', 'HEAD').strip()
-        tests.run_git('tag', '-a', '-m', 'add tag', 'foo')
+        reva = self.simple_commit_a()
+        o = Tag()
+        o.name = "foo"
+        o.tagger = "Jelmer <foo@example.com>"
+        o.message = "add tag"
+        o.object = (Commit, reva)
+        o.tag_timezone = 0
+        o.tag_time = 42
+        r = GitRepo(".")
+        r.object_store.add_object(o)
+        r['refs/tags/foo'] = o.id
         thebranch = Branch.open('.')
         self.assertEquals({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
                           thebranch.tags.get_tag_dict())
 
     def test_tag(self):
-        self.simple_commit_a()
-        reva = tests.run_git('rev-parse', 'HEAD').strip()
-        tests.run_git('tag', '-m', 'add tag', 'foo')
+        reva = self.simple_commit_a()
+        r = GitRepo(".")
+        r.refs["refs/tags/foo"] = reva
         thebranch = Branch.open('.')
         self.assertEquals({"foo": default_mapping.revision_id_foreign_to_bzr(reva)},
                           thebranch.tags.get_tag_dict())
@@ -191,9 +199,8 @@ class BranchTests(tests.TestCaseInTempDir):
 
     def test_sprouted_tags(self):
         path, gitsha = self.make_onerev_branch()
-        os.chdir(path)
-        tests.run_git("tag", "lala")
-        os.chdir(self.test_dir)
+        r = GitRepo(path)
+        r.refs["refs/tags/lala"] = r.head()
         oldrepo = Repository.open(path)
         revid = oldrepo.get_mapping().revision_id_foreign_to_bzr(gitsha)
         newbranch = self.clone_git_branch(path, "f")

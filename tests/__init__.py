@@ -35,20 +35,6 @@ TestCaseInTempDir = tests.TestCaseInTempDir
 TestCaseWithTransport = tests.TestCaseWithTransport
 TestCaseWithMemoryTransport = tests.TestCaseWithMemoryTransport
 
-class _GitCommandFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            p = subprocess.Popen(['git', '--version'], stdout=subprocess.PIPE)
-        except IOError:
-            return False
-        out, err = p.communicate()
-        trace.mutter('Using: %s', out.rstrip('\n'))
-        return True
-
-    def feature_name(self):
-        return 'git'
-
 class _DulwichFeature(tests.Feature):
 
     def _probe(self):
@@ -62,20 +48,7 @@ class _DulwichFeature(tests.Feature):
         return 'dulwich'
 
 
-GitCommandFeature = _GitCommandFeature()
 DulwichFeature = _DulwichFeature()
-
-
-def run_git(*args):
-    cmd = ['git'] + list(args)
-    p = subprocess.Popen(cmd,
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
-    out, err = p.communicate()
-    if p.returncode != 0:
-        raise AssertionError('Bad return code: %d for %s:\n%s'
-                             % (p.returncode, ' '.join(cmd), err))
-    return out
 
 
 class GitBranchBuilder(object):

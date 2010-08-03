@@ -50,8 +50,6 @@ from bzrlib.plugins.git.push import (
 class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
     """Feature tests for GitRepository."""
 
-    _test_needs_features = [tests.GitCommandFeature]
-
     def _do_commit(self):
         builder = tests.GitBranchBuilder()
         builder.set_file('a', 'text for a\n', False)
@@ -166,8 +164,6 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
 
 
 class TestGitRepository(tests.TestCaseWithTransport):
-
-    _test_needs_features = [tests.GitCommandFeature]
 
     def _do_commit(self):
         builder = tests.GitBranchBuilder()

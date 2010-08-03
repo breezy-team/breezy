@@ -27,17 +27,6 @@ class BzrGitError(bzr_errors.BzrError):
     """The base-level exception for bzr-git errors."""
 
 
-class GitCommandError(BzrGitError):
-    """Raised when spawning 'git' does not return normally."""
-
-    _fmt = 'Command failed (%(returncode)s): command %(command)s\n%(stderr)s'
-
-    def __init__(self, command, returncode, stderr):
-        self.command = command
-        self.returncode = returncode
-        self.stderr = stderr
-
-
 class NoSuchRef(BzrGitError):
     """Raised when a ref can not be found."""
 

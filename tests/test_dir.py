@@ -16,6 +16,8 @@
 
 """Test the GitDir class"""
 
+from dulwich.repo import Repo as GitRepo
+
 from bzrlib import (
     bzrdir,
     errors,
@@ -31,16 +33,14 @@ from bzrlib.plugins.git import (
 
 class TestGitDir(tests.TestCaseInTempDir):
 
-    _test_needs_features = [tests.GitCommandFeature]
-
     def test_open_existing(self):
-        tests.run_git('init')
+        GitRepo.init(".")
 
         gd = bzrdir.BzrDir.open('.')
         self.assertIsInstance(gd, dir.LocalGitDir)
 
     def test_open_workingtree(self):
-        tests.run_git('init')
+        GitRepo.init(".")
 
         gd = bzrdir.BzrDir.open('.')
         raise TestSkipped
@@ -48,7 +48,7 @@ class TestGitDir(tests.TestCaseInTempDir):
         self.assertIsInstance(wt, workingtree.GitWorkingTree)
 
     def test_open_workingtree_bare(self):
-        tests.run_git('--bare', 'init')
+        GitRepo.init_bare(".")
 
         gd = bzrdir.BzrDir.open('.')
         self.assertRaises(errors.NoWorkingTree, gd.open_workingtree)
