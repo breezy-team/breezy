@@ -65,6 +65,7 @@
     #if !defined(S_ISLNK)
         #define S_ISLNK(mode) (0)
     #endif
+    #define strtoull _strtoui64
 #else /* Not win32 */
     /* For htonl */
     #include "arpa/inet.h"

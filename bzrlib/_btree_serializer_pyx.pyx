@@ -33,6 +33,7 @@ cdef extern from "Python.h":
     char *PyString_AsString(object p) except NULL
     object PyString_FromStringAndSize(char *, Py_ssize_t)
     PyObject *PyString_FromStringAndSize_ptr "PyString_FromStringAndSize" (char *, Py_ssize_t)
+    object PyString_FromFormat(char *, ...)
     int PyString_CheckExact(object s)
     int PyString_CheckExact_ptr "PyString_CheckExact" (PyObject *)
     Py_ssize_t PyString_Size(object p)
@@ -49,13 +50,19 @@ cdef extern from "Python.h":
     PyObject *PyTuple_GET_ITEM_ptr_object "PyTuple_GET_ITEM" (object tpl, int index)
     void Py_INCREF(object)
     void Py_DECREF_ptr "Py_DECREF" (PyObject *)
+    void *PyMem_Malloc(size_t nbytes)
+    void PyMem_Free(void *)
+    void memset(void *, int, size_t)
 
 cdef extern from "string.h":
     void *memcpy(void *dest, void *src, size_t n)
     void *memchr(void *s, int c, size_t n)
+    int memcmp(void *s1, void *s2, size_t n)
     # GNU extension
     # void *memrchr(void *s, int c, size_t n)
     int strncmp(char *s1, char *s2, size_t n)
+    unsigned long strtoul(char *s1, char **out, int base)
+    unsigned long long strtoull(char *s1, char **out, int base)
 
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
@@ -313,6 +320,305 @@ cdef class BTreeLeafParser:
 def _parse_leaf_lines(bytes, key_length, ref_list_length):
     parser = BTreeLeafParser(bytes, key_length, ref_list_length)
     return parser.parse()
+
+
+ctypedef struct gc_chk_sha1_record:
+    unsigned long long block_offset
+    unsigned int block_length
+    unsigned int record_start
+    unsigned int record_end
+    char sha1[20]
+
+
+cdef int _unhexbuf[256]
+cdef char *_hexbuf = '01234567890abcdef'
+
+cdef _populate_unhexbuf():
+    cdef unsigned char a
+    for a from 0 <= a < 255:
+        _unhexbuf[a] = -1
+    for a in '0123456789':
+        _unhexbuf[a] = a - c'0'
+    for a in 'abcdef':
+        _unhexbuf[a] = a - c'a' + 10
+    for a in 'ABCDEF':
+        _unhexbuf[a] = a - c'A' + 10
+
+
+cdef int _unhexlify_sha1(char *as_hex, char *as_bin):
+    """Take the hex sha1 in as_hex and make it binary in as_bin"""
+    cdef int top
+    cdef int bot
+    cdef int i
+    cdef char *cur
+    
+    cur = as_hex
+    for i from 0 <= i < 20:
+        top = _unhexbuf[<unsigned char>(cur)]
+        cur += 1
+        bot = _unhexbuf[<unsigned char>(cur)]
+        cur += 1
+        if top == -1 or bot == -1:
+            return 0
+        as_bin[i] = (top << 4) + bot;
+    return 1
+
+
+cdef void _hexlify_sha1(char *as_bin, char *as_hex):
+    cdef int i, j
+    cdef char c
+
+    j = 0
+    for i from 0 <= i < 20:
+        c = as_bin[i]
+        as_hex[j] = _hexbuf[(c>>4)&0xf]
+        j += 1
+        as_hex[j] = _hexbuf[(c)&0xf]
+        j += 1
+
+
+cdef class GCCHKSHA1LeafNode:
+    """Track all the entries for a given leaf node."""
+
+    cdef public int num_entries
+    cdef gc_chk_sha1_record *entries
+    # TODO: Consider what a mini-index might look like. Something that could
+    #       let us quickly jump to a subset range, rather than doing pure
+    #       bisect all the time.
+
+    def __sizeof__(self):
+        return (sizeof(GCCHKSHA1LeafNode)
+            + sizeof(gc_chk_sha1_record)*self.num_entries)
+
+    def __dealloc__(self):
+        if self.entries != NULL:
+            PyMem_Free(self.entries)
+            self.entries = NULL
+
+    def __init__(self, bytes):
+        self._parse_bytes(bytes)
+
+    property min_key:
+        def __get__(self):
+            pass
+
+    property max_key:
+        def __get__(self):
+            pass
+
+    cdef int _key_to_sha1(self, key, char *sha1):
+        """Map a key into its sha1 content.
+
+        :param key: A tuple of style ('sha1:abcd...',)
+        :param sha1: A char buffer of 20 bytes
+        :return: 1 if this could be converted, 0 otherwise
+        """
+        cdef char *c_val
+        if not PyTuple_CheckExact(key) and not StaticTuple_CheckExact(key):
+            return 0
+            #? raise TypeError('Keys must be a tuple or StaticTuple')
+        if len(key) != 1:
+            return 0
+        val = key[0]
+        if not PyString_CheckExact(val) or PyString_GET_SIZE(val) != 45:
+            return 0
+        c_val = PyString_AS_STRING(val)
+        if not strncmp(c_val, 'sha1:', 5):
+            return 0
+        if not _unhexlify_sha1(c_val + 5, sha1):
+            return 0
+        return 1
+
+    cdef StaticTuple _sha1_to_key(self, char *sha1):
+        """Compute a ('sha1:abcd',) key for a given sha1."""
+        cdef StaticTuple key
+        cdef object hexxed
+        cdef char *c_buf
+        hexxed = PyString_FromStringAndSize(NULL, 45)
+        c_buf = PyString_AS_STRING(hexxed)
+        memcpy(c_buf, 'sha1:', 5)
+        _hexlify_sha1(sha1, c_buf+5)
+        key = StaticTuple_New(1)
+        Py_INCREF(hexxed)
+        StaticTuple_SET_ITEM(key, 0, hexxed)
+        return key
+
+    cdef StaticTuple _record_to_value_and_refs(self,
+                                               gc_chk_sha1_record *record):
+        """Extract the refs and value part of this record."""
+        cdef StaticTuple value_and_refs
+        cdef StaticTuple empty
+        value_and_refs = StaticTuple_New(2)
+        # This is really inefficient to go from a logical state back to a
+        # string, but it makes things work a bit better internally for now.
+        value = PyString_FromFormat('%llu %lu %lu %lu',
+                                    record.block_offset, record.block_length,
+                                    record.record_start, record.record_end)
+        Py_INCREF(value)
+        StaticTuple_SET_ITEM(value_and_refs, 0, value)
+        # Always empty refs
+        empty = StaticTuple_New(0)
+        Py_INCREF(empty)
+        StaticTuple_SET_ITEM(value_and_refs, 1, empty)
+        return value_and_refs
+
+    cdef StaticTuple _record_to_item(self, gc_chk_sha1_record *record):
+        """Turn a given record back into a fully fledged item.
+        """
+        cdef StaticTuple item
+        cdef StaticTuple key
+        cdef StaticTuple value_and_refs
+        cdef object value
+        key = self._sha1_to_key(record.sha1)
+        item = StaticTuple_New(2)
+        Py_INCREF(key)
+        StaticTuple_SET_ITEM(item, 0, key)
+        value_and_refs = self._record_to_value_and_refs(record)
+        Py_INCREF(value_and_refs)
+        StaticTuple_SET_ITEM(item, 1, value_and_refs)
+        return item
+
+    cdef gc_chk_sha1_record* _lookup_record(self, char *sha1):
+        """Find a gc_chk_sha1_record that matches the sha1 supplied."""
+        # For right now we iterate, in the future we should bisect, or create
+        # a local index, or use the sha1 as a hash into a local table, etc.
+        cdef int i
+        for i from 0 <= i < self.num_entries:
+            if memcmp(self.entries[i].sha1, sha1, 20) == 0:
+                return &self.entries[i]
+        return NULL
+
+    def __contains__(self, key):
+        cdef char sha1[20]
+        cdef gc_chk_sha1_record *record
+        if not self._key_to_sha1(key, sha1):
+            # If it isn't a sha1 key, then it won't be in this leaf node
+            return False
+        return self._lookup_record(sha1) != NULL
+
+    def __getitem__(self, key):
+        cdef char sha1[20]
+        cdef gc_chk_sha1_record *record = NULL
+        if self._key_to_sha1(key, sha1):
+            record = self._lookup_record(sha1)
+        if record == NULL:
+            raise KeyError('key %r is not present' % (key,))
+        return self._record_to_value_and_refs(record)
+
+    def __len__(self):
+        return self.num_entries
+
+    def all_keys(self):
+        cdef int i
+        cdef list result
+        for i from 0 <= i < self.num_entries:
+            result.append(self._sha1_to_key(self.entries[i].sha1))
+        return result
+
+    def all_items(self):
+        cdef int i
+        cdef list result
+        for i from 0 <= i < self.num_entries:
+            result.append(self._record_to_item(self.entries + i))
+        return result
+
+    cdef _parse_bytes(self, bytes):
+        """Parse the string 'bytes' into content."""
+        cdef char *c_bytes
+        cdef char *c_content
+        cdef char *c_cur
+        cdef char *c_end
+        cdef char *c_next
+        cdef char *c_sha1_prefix
+        cdef void *buf
+        cdef Py_ssize_t n_bytes
+        cdef int num_entries
+        cdef int entry
+        cdef int interesting_char
+        cdef int i
+        cdef gc_chk_sha1_record *cur_record
+
+        if not PyString_CheckExact(bytes):
+            raise TypeError('We only support parsing plain 8-bit strings.')
+        # Pass 1, count how many entries there will be
+        n_bytes = PyString_GET_SIZE(bytes)
+        c_bytes = PyString_AS_STRING(bytes)
+        c_end = c_bytes + n_bytes
+        if strncmp(c_bytes, 'type=leaf\n', 10):
+            raise ValueError("bytes did not start with 'type=leaf\\n': %r"
+                             % (bytes[:10],))
+        c_content = c_bytes + 10
+        c_cur = c_content
+        num_entries = 0
+        while c_cur != NULL and c_cur < c_end:
+            c_cur = <char *>memchr(c_cur, c'\n', c_end - c_cur);
+            if c_cur == NULL:
+                break
+            c_cur += 1
+            num_entries += 1
+        # Now allocate the memory for these items, and go to town
+        # We allocate both the offsets and the entries in the same malloc. we
+        # should probably pay a bit closer attention to alignment
+        buf = PyMem_Malloc(num_entries *
+            (sizeof(unsigned short) + sizeof(gc_chk_sha1_record)))
+        self.entries = <gc_chk_sha1_record*>buf
+        self.num_entries = num_entries
+        c_cur = c_content
+        cur_record = self.entries
+        entry = 0
+        interesting_char = -1
+        while c_cur != NULL and c_cur < c_end and entry < num_entries:
+            if strncmp(c_cur, 'sha1:', 5):
+                raise ValueError('At byte %d, line did not start with sha1: %r'
+                    % (c_cur - c_bytes, safe_string_from_size(c_cur, 10)))
+            c_cur += 5
+            c_next = <char *>memchr(c_cur, c'\0', c_end - c_cur)
+            if c_next == NULL or (c_next - c_cur != 40):
+                raise ValueError('Line did not contain 40 hex bytes')
+            if not _unhexlify_sha1(c_cur, cur_record.sha1):
+                raise ValueError('We failed to unhexlify')
+            if interesting_char == -1:
+                interesting_char = 20
+                c_sha1_prefix = cur_record.sha1
+            elif interesting_char > 0:
+                for i from 0 <= i < interesting_char:
+                    if cur_record.sha1[i] != c_sha1_prefix[i]:
+                        interesting_char = i
+                        break
+            c_cur = c_next + 1
+            if c_cur[0] != c'\0':
+                raise ValueError('only 1 null, not 2 as expected')
+            c_cur += 1
+            cur_record.block_offset = strtoull(c_cur, &c_next, 10)
+            if c_cur == c_next or c_next[0] != c' ':
+                raise ValueError('Failed to parse block offset')
+            c_cur = c_next + 1
+            cur_record.block_length = strtoul(c_cur, &c_next, 10)
+            if c_cur == c_next or c_next[0] != c' ':
+                raise ValueError('Failed to parse block length')
+            c_cur = c_next + 1
+            cur_record.record_start = strtoul(c_cur, &c_next, 10)
+            if c_cur == c_next or c_next[0] != c' ':
+                raise ValueError('Failed to parse block length')
+            c_cur = c_next + 1
+            cur_record.record_end = strtoul(c_cur, &c_next, 10)
+            if c_cur == c_next or c_next[0] != c'\n':
+                raise ValueError('Failed to parse record end')
+            c_cur = c_next + 1
+        # Pass 3: build the offset map
+        # The idea with the offset map is that we should be able to quickly
+        # jump to the key that matches a gives sha1. We know that the keys are
+        # in sorted order, and we know that a lot of the prefix is going to be
+        # the same across them.
+
+
+
+
+def _parse_into_chk(bytes, key_length, ref_list_length):
+    """Parse into a format optimized for chk records."""
+    assert key_length == 1
+    assert ref_list_length == 0
+    return GCCHKSHA1LeafNode(bytes)
 
 
 def _flatten_node(node, reference_lists):
