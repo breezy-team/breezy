@@ -22,6 +22,23 @@ Compatibility Breaks
   `WorkingTree.open_containing_paths`.
   (Martin Pool)
 
+* `ControlDirFormat` and  `ControlDir` have been split out of `BzrDirFormat`
+  and `BzrDir`, respectively. `ControlDirFormat`
+  and `BzrDirFormat` should be used as the base class for new non-.bzr
+  implementations.
+
+  `BzrDirFormat.register_control_format` has been renamed to
+  `ControlDirFormat.register_format`.
+
+  `BzrDirFormat.register_server_control_format` has been removed.
+
+  Probing for control directories is now done by separate objects derived
+  from `bzrlib.controldir.Prober` and registered using
+  `bzrlib.controldir.ControlDirFormat.register_prober` or
+  `bzrlib.controldir.ControlDirFormat.register_server_prober`.
+  `BzrDirFormat.probe_transport` has been moved onto `Prober`.
+  (Jelmer Vernooij)
+
 New Features
 ************
 
