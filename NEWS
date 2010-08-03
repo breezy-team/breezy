@@ -4,6 +4,10 @@
 
   * Add in an empty git repository now works. (Jelmer Vernooij, #603823)
 
+ FEATURES
+
+  * Remove all remaining dependencies on C git. (Jelmer Vernooij)
+
 0.5.2	2010-07-30
 
  COMPATIBILITY

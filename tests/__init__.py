@@ -16,17 +16,15 @@
 
 """The basic test suite for bzr-git."""
 
-import subprocess
+from cStringIO import StringIO
+
 import time
 
 from bzrlib import (
     errors as bzr_errors,
-    osutils,
     tests,
-    trace,
     )
 from bzrlib.plugins.git import (
-    errors,
     import_dulwich,
     )
 
@@ -55,51 +53,23 @@ class GitBranchBuilder(object):
 
     def __init__(self, stream=None):
         self.commit_info = []
-        self.stream = stream
-        self._process = None
+        self.orig_stream = stream
+        if stream is None:
+            self.stream = StringIO()
+        else:
+            self.stream = stream
         self._counter = 0
         self._branch = 'refs/heads/master'
-        if stream is None:
-            # Write the marks file into the git sandbox.
-            self._marks_file_name = osutils.abspath('marks')
-            self._process = subprocess.Popen(
-                ['git', 'fast-import', '--quiet',
-                 # GIT doesn't support '--export-marks foo'
-                 # it only supports '--export-marks=foo'
-                 # And gives a 'unknown option' otherwise.
-                 '--export-marks=' + self._marks_file_name,
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                stdin=subprocess.PIPE,
-                )
-            self.stream = self._process.stdin
-        else:
-            self._process = None
 
     def set_branch(self, branch):
         """Set the branch we are committing."""
         self._branch = branch
 
     def _write(self, text):
-        try:
-            self.stream.write(text)
-        except IOError, e:
-            if self._process is None:
-                raise
-            raise errors.GitCommandError(self._process.returncode,
-                                         'git fast-import',
-                                         self._process.stderr.read())
+        self.stream.write(text)
 
     def _writelines(self, lines):
-        try:
-            self.stream.writelines(lines)
-        except IOError, e:
-            if self._process is None:
-                raise
-            raise errors.GitCommandError(self._process.returncode,
-                                         'git fast-import',
-                                         self._process.stderr.read())
+        self.stream.writelines(lines)
 
     def _create_blob(self, content):
         self._counter += 1
@@ -202,21 +172,13 @@ class GitBranchBuilder(object):
 
     def finish(self):
         """We are finished building, close the stream, get the id mapping"""
-        self.stream.close()
-        if self._process is None:
-            return {}
-        if self._process.wait() != 0:
-            raise errors.GitCommandError(self._process.returncode,
-                                         'git fast-import',
-                                         self._process.stderr.read())
-        marks_file = open(self._marks_file_name)
-        mapping = {}
-        for line in marks_file:
-            mark, shasum = line.split()
-            assert mark.startswith(':')
-            mapping[int(mark[1:])] = shasum
-        marks_file.close()
-        return mapping
+        self.stream.seek(0)
+        if self.orig_stream is None:
+            from dulwich.repo import Repo
+            r = Repo(".")
+            from dulwich.fastexport import FastImporter
+            importer = FastImporter(r)
+            return importer.import_stream(self.stream)
 
 
 def test_suite():
