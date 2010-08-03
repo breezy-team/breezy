@@ -500,31 +500,6 @@ class ControlDir(ControlComponent):
                 push_result.branch_push_result.target_branch
         return push_result
 
-    @classmethod
-    def create(cls, base, format=None, possible_transports=None):
-        """Create a new BzrDir at the url 'base'.
-
-        :param format: If supplied, the format of branch to create.  If not
-            supplied, the default is used.
-        :param possible_transports: If supplied, a list of transports that
-            can be reused to share a remote connection.
-        """
-        if cls is not ControlDir:
-            from bzrlib.bzrdir import BzrDir
-            if cls is BzrDir:
-                symbol_versioning.warn(
-                    symbol_versioning.deprecated_in((2, 3, 0))
-                    % "ControlDir.create() should be called rather than "
-                    "BzrDir.create()")
-            else:
-                raise AssertionError("ControlDir.create always creates the"
-                    "default format, not one of %r" % cls)
-        t = get_transport(base, possible_transports)
-        t.ensure_base()
-        if format is None:
-            format = ControlDirFormat.get_default_format()
-        return format.initialize_on_transport(t)
-
 
 class ControlDirFormat(object):
     """An encapsulation of the initialization and open routines for a format.

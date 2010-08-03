@@ -948,6 +948,25 @@ class BzrDir(ControlDir):
             format.require_stacking()
         return format
 
+    @classmethod
+    def create(cls, base, format=None, possible_transports=None):
+        """Create a new BzrDir at the url 'base'.
+
+        :param format: If supplied, the format of branch to create.  If not
+            supplied, the default is used.
+        :param possible_transports: If supplied, a list of transports that
+            can be reused to share a remote connection.
+        """
+        if cls is not BzrDir:
+            raise AssertionError("BzrDir.create always creates the"
+                "default format, not one of %r" % cls)
+        t = get_transport(base, possible_transports)
+        t.ensure_base()
+        if format is None:
+            format = ControlDirFormat.get_default_format()
+        return format.initialize_on_transport(t)
+
+
 
 class BzrDirHooks(hooks.Hooks):
     """Hooks for BzrDir operations."""
