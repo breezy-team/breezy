@@ -20,12 +20,14 @@ import subprocess
 import time
 
 from bzrlib import (
+    errors as bzr_errors,
     osutils,
     tests,
     trace,
     )
 from bzrlib.plugins.git import (
     errors,
+    import_dulwich,
     )
 
 TestCase = tests.TestCase
@@ -47,7 +49,21 @@ class _GitCommandFeature(tests.Feature):
     def feature_name(self):
         return 'git'
 
+class _DulwichFeature(tests.Feature):
+
+    def _probe(self):
+        try:
+            import_dulwich()
+        except bzr_errors.DependencyNotPresent:
+            return False
+        return True
+
+    def feature_name(self):
+        return 'dulwich'
+
+
 GitCommandFeature = _GitCommandFeature()
+DulwichFeature = _DulwichFeature()
 
 
 def run_git(*args):

@@ -73,12 +73,8 @@ if getattr(sys, "frozen", None):
     sys.path.append(os.path.normpath(
         os.path.join(os.path.dirname(__file__), '_lib')))
 
-_versions_checked = False
-def lazy_check_versions():
-    global _versions_checked
-    if _versions_checked:
-        return
-    _versions_checked = True
+
+def import_dulwich():
     try:
         from dulwich import __version__ as dulwich_version
     except ImportError:
@@ -89,6 +85,15 @@ def lazy_check_versions():
             raise bzr_errors.DependencyNotPresent("dulwich",
                 "bzr-git: Dulwich is too old; at least %d.%d.%d is required" %
                     dulwich_minimum_version)
+
+
+_versions_checked = False
+def lazy_check_versions():
+    global _versions_checked
+    if _versions_checked:
+        return
+    import_dulwich()
+    _versions_checked = True
 
 bzrdir.format_registry.register_lazy('git',
     "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
