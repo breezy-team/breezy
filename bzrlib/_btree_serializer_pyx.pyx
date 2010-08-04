@@ -64,7 +64,7 @@ cdef extern from "string.h":
     # void *memrchr(void *s, int c, size_t n)
     int strncmp(char *s1, char *s2, size_t n)
     unsigned long strtoul(char *s1, char **out, int base)
-    unsigned long long strtoull(char *s1, char **out, int base)
+    long long strtoll(char *s1, char **out, int base)
 
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
@@ -503,9 +503,6 @@ cdef class GCCHKSHA1LeafNode:
     # We then strip those bits, and use the next 8 bits as 'interesting bits'.
     # offsets is then the bisect() information for a key with those bits (where
     # would you insert a key starting with these bits)
-    cdef public long bisect_steps
-    cdef public unsigned int common_mask
-    cdef public unsigned int common_bits
     # The first N bits of all entries in this node have the same content
     cdef public unsigned char common_shift
     cdef unsigned char offsets[257]
@@ -605,7 +602,6 @@ cdef class GCCHKSHA1LeafNode:
         while lo < hi:
             mid = (lo + hi) / 2
             the_cmp = memcmp(self.entries[mid].sha1, sha1, 20)
-            self.bisect_steps += 1
             if the_cmp == 0:
                 # print mid, offset, self._offsets[offset], self._offsets[offset+1]
                 return &self.entries[mid]
@@ -656,7 +652,6 @@ cdef class GCCHKSHA1LeafNode:
         cdef char *c_content
         cdef char *c_cur
         cdef char *c_end
-        cdef char *c_next
         cdef Py_ssize_t n_bytes
         cdef int num_entries
         cdef int entry
@@ -690,35 +685,7 @@ cdef class GCCHKSHA1LeafNode:
         cur_record = self.entries
         entry = 0
         while c_cur != NULL and c_cur < c_end and entry < num_entries:
-            if strncmp(c_cur, 'sha1:', 5):
-                raise ValueError('At byte %d, line did not start with sha1: %r'
-                    % (c_cur - c_bytes, safe_string_from_size(c_cur, 10)))
-            c_cur += 5
-            c_next = <char *>memchr(c_cur, c'\0', c_end - c_cur)
-            if c_next == NULL or (c_next - c_cur != 40):
-                raise ValueError('Line did not contain 40 hex bytes')
-            if not _unhexlify_sha1(c_cur, cur_record.sha1):
-                raise ValueError('We failed to unhexlify')
-            c_cur = c_next + 1
-            if c_cur[0] != c'\0':
-                raise ValueError('only 1 null, not 2 as expected')
-            c_cur += 1
-            cur_record.block_offset = strtoull(c_cur, &c_next, 10)
-            if c_cur == c_next or c_next[0] != c' ':
-                raise ValueError('Failed to parse block offset')
-            c_cur = c_next + 1
-            cur_record.block_length = strtoul(c_cur, &c_next, 10)
-            if c_cur == c_next or c_next[0] != c' ':
-                raise ValueError('Failed to parse block length')
-            c_cur = c_next + 1
-            cur_record.record_start = strtoul(c_cur, &c_next, 10)
-            if c_cur == c_next or c_next[0] != c' ':
-                raise ValueError('Failed to parse block length')
-            c_cur = c_next + 1
-            cur_record.record_end = strtoul(c_cur, &c_next, 10)
-            if c_cur == c_next or c_next[0] != c'\n':
-                raise ValueError('Failed to parse record end')
-            c_cur = c_next + 1
+            c_cur = self._parse_one_entry(c_cur, c_end, cur_record)
             cur_record += 1
             entry += 1
         if (entry != self.num_entries
@@ -728,13 +695,50 @@ cdef class GCCHKSHA1LeafNode:
         # Pass 3: build the offset map
         self._compute_common()
 
+    cdef char *_parse_one_entry(self, char *c_cur, char *c_end,
+                                gc_chk_sha1_record *cur_record) except NULL:
+        """Read a single sha record from the bytes.
+        :param c_cur: The pointer to the start of bytes
+        :param cur_record: 
+        """
+        cdef char *c_next
+        if strncmp(c_cur, 'sha1:', 5):
+            raise ValueError('line did not start with sha1: %r'
+                % (safe_string_from_size(c_cur, 10),))
+        c_cur += 5
+        c_next = <char *>memchr(c_cur, c'\0', c_end - c_cur)
+        if c_next == NULL or (c_next - c_cur != 40):
+            raise ValueError('Line did not contain 40 hex bytes')
+        if not _unhexlify_sha1(c_cur, cur_record.sha1):
+            raise ValueError('We failed to unhexlify')
+        c_cur = c_next + 1
+        if c_cur[0] != c'\0':
+            raise ValueError('only 1 null, not 2 as expected')
+        c_cur += 1
+        cur_record.block_offset = strtoll(c_cur, &c_next, 10)
+        if c_cur == c_next or c_next[0] != c' ':
+            raise ValueError('Failed to parse block offset')
+        c_cur = c_next + 1
+        cur_record.block_length = strtoul(c_cur, &c_next, 10)
+        if c_cur == c_next or c_next[0] != c' ':
+            raise ValueError('Failed to parse block length')
+        c_cur = c_next + 1
+        cur_record.record_start = strtoul(c_cur, &c_next, 10)
+        if c_cur == c_next or c_next[0] != c' ':
+            raise ValueError('Failed to parse block length')
+        c_cur = c_next + 1
+        cur_record.record_end = strtoul(c_cur, &c_next, 10)
+        if c_cur == c_next or c_next[0] != c'\n':
+            raise ValueError('Failed to parse record end')
+        c_cur = c_next + 1
+        return c_cur
+
     cdef int _offset_for_sha1(self, char *sha1) except -1:
         """Find the first interesting 8-bits of this sha1."""
         cdef int this_offset
         cdef unsigned int as_uint
         as_uint = _sha1_to_uint(sha1)
         this_offset = (as_uint >> self.common_shift) & 0xFF
-        # assert 0 < this_offset < 256
         return this_offset
 
     def test_offset_for_sha1(self, sha1):
@@ -757,7 +761,6 @@ cdef class GCCHKSHA1LeafNode:
         if self.num_entries < 2:
             # Everything is in common if you have 0 or 1 leaves
             # So we'll always just shift to the first byte
-            self.common_mask = 0x0
             self.common_shift = 24
         else:
             common_mask = 0xFFFFFFFF
@@ -766,13 +769,10 @@ cdef class GCCHKSHA1LeafNode:
                 this = _sha1_to_uint(self.entries[i].sha1)
                 common_mask = (~(first ^ this)) & common_mask
             common_shift = 24
-            self.common_mask = 0 # common_mask
             while common_mask & 0x80000000 and common_shift > 0:
                 common_mask = common_mask << 1
                 common_shift -= 1
-                self.common_mask = (self.common_mask >> 1) | 0x80000000
             self.common_shift = common_shift
-            self.common_bits = first & self.common_mask
         offset = 0
         max_offset = self.num_entries
         # We cap this loop at 254 entries. All the other offsets just get

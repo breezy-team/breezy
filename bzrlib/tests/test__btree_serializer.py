@@ -219,15 +219,13 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         for idx, key in enumerate(all_keys):
             self.assertEqual(str(idx), leaf[key][0].split()[0])
 
-    def test_common_mask(self):
+    def test_common_shift(self):
         # The keys were deliberately chosen so that the first 5 bits all
         # overlapped, it also happens that a later bit overlaps
         # Note that by 'overlap' we mean that given bit is either on in all
         # keys, or off in all keys
         leaf = self.module._parse_into_chk(_multi_key_content, 1, 0)
-        self.assertEqual(hex(0xF8000000), hex(leaf.common_mask))
         self.assertEqual(19, leaf.common_shift)
-        self.assertEqual(0xc8000000, leaf.common_bits)
         # The interesting byte for each key is
         # (defined as the 8-bits that come after the common prefix)
         lst = [1, 13, 28, 180, 190, 193, 210, 239]
@@ -242,9 +240,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
     def test_multi_key_same_offset(self):
         # there is no common prefix, though there are some common bits
         leaf = self.module._parse_into_chk(_multi_key_same_offset, 1, 0)
-        self.assertEqual(0x00000000, leaf.common_mask)
         self.assertEqual(24, leaf.common_shift)
-        self.assertEqual(0x00000000, leaf.common_bits)
         offsets = leaf._test_offsets
         # The interesting byte is just the first 8-bits of the key
         lst = [8, 200, 205, 205, 205, 205, 206, 206]
@@ -259,9 +255,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         # The first 32 bits of all hashes are the same. This is going to be
         # pretty much impossible, but I don't want to fail because of this
         leaf = self.module._parse_into_chk(_common_32_bits, 1, 0)
-        self.assertEqual(0xFFFFFF00, leaf.common_mask)
         self.assertEqual(0, leaf.common_shift)
-        self.assertEqual(0x12345600, leaf.common_bits)
         lst = [0x78] * 8
         offsets = leaf._test_offsets
         self.assertEqual([bisect.bisect_left(lst, x) for x in range(0, 257)],
@@ -282,9 +276,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
             lines.append('%s\0\0%d %d %d %d\n' % (key_str, i, i, i, i))
         bytes = ''.join(lines)
         leaf = self.module._parse_into_chk(bytes, 1, 0)
-        self.assertEqual(0xFE000000, leaf.common_mask)
         self.assertEqual(24-7, leaf.common_shift)
-        self.assertEqual(0x00000000, leaf.common_bits)
         offsets = leaf._test_offsets
         # This is the interesting bits for each entry
         lst = [x // 2 for x in range(500)]
