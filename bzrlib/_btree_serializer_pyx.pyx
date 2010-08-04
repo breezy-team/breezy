@@ -496,39 +496,41 @@ cdef unsigned int _sha1_to_uint(char *sha1):
 cdef class GCCHKSHA1LeafNode:
     """Track all the entries for a given leaf node."""
 
-    cdef public int num_entries
-    cdef gc_chk_sha1_record *entries
-    # This is for the mini-index. 
-    # We look at all the keys and determine how many start bits are identical.
-    # We then strip those bits, and use the next 8 bits as 'interesting bits'.
-    # offsets is then the bisect() information for a key with those bits (where
-    # would you insert a key starting with these bits)
-    # The first N bits of all entries in this node have the same content
+    cdef public int num_records
+    cdef gc_chk_sha1_record *records
+    # This is the number of bits to shift to get to the interesting byte. A
+    # value of 24 means that the very first byte changes across all keys.
+    # Anything else means that there is a common prefix of bits that we can
+    # ignore. 0 means that at least the first 3 bytes are identical, though
+    # that is going to be very rare
     cdef public unsigned char common_shift
+    # This maps an interesting byte to the first record that matches.
+    # Equivalent to bisect.bisect_left(self.records, sha1), though only taking
+    # into account that one byte.
     cdef unsigned char offsets[257]
 
     def __sizeof__(self):
         return (sizeof(GCCHKSHA1LeafNode)
-            + sizeof(gc_chk_sha1_record)*self.num_entries)
+            + sizeof(gc_chk_sha1_record)*self.num_records)
 
     def __dealloc__(self):
-        if self.entries != NULL:
-            PyMem_Free(self.entries)
-            self.entries = NULL
+        if self.records != NULL:
+            PyMem_Free(self.records)
+            self.records = NULL
 
     def __init__(self, bytes):
         self._parse_bytes(bytes)
 
     property min_key:
         def __get__(self):
-            if self.num_entries > 0:
-                return _sha1_to_key(self.entries[0].sha1)
+            if self.num_records > 0:
+                return _sha1_to_key(self.records[0].sha1)
             return None
 
     property max_key:
         def __get__(self):
-            if self.num_entries > 0:
-                return _sha1_to_key(self.entries[self.num_entries-1].sha1)
+            if self.num_records > 0:
+                return _sha1_to_key(self.records[self.num_records-1].sha1)
             return None
 
     cdef StaticTuple _record_to_value_and_refs(self,
@@ -595,16 +597,16 @@ cdef class GCCHKSHA1LeafNode:
         hi = self.offsets[offset+1]
         if hi == 255:
             # if hi == 255 that means we potentially ran off the end of the
-            # list, so push it up to num_entries
+            # list, so push it up to num_records
             # note that if 'lo' == 255, that is ok, because we can start
             # searching from that part of the list.
-            hi = self.num_entries
+            hi = self.num_records
         while lo < hi:
             mid = (lo + hi) / 2
-            the_cmp = memcmp(self.entries[mid].sha1, sha1, 20)
+            the_cmp = memcmp(self.records[mid].sha1, sha1, 20)
             if the_cmp == 0:
                 # print mid, offset, self._offsets[offset], self._offsets[offset+1]
-                return &self.entries[mid]
+                return &self.records[mid]
             elif the_cmp < 0:
                 lo = mid + 1
             else:
@@ -629,20 +631,20 @@ cdef class GCCHKSHA1LeafNode:
         return self._record_to_value_and_refs(record)
 
     def __len__(self):
-        return self.num_entries
+        return self.num_records
 
     def all_keys(self):
         cdef int i
         cdef list result = []
-        for i from 0 <= i < self.num_entries:
-            result.append(_sha1_to_key(self.entries[i].sha1))
+        for i from 0 <= i < self.num_records:
+            result.append(_sha1_to_key(self.records[i].sha1))
         return result
 
     def all_items(self):
         cdef int i
         cdef list result = []
-        for i from 0 <= i < self.num_entries:
-            item = self._record_to_item(&self.entries[i])
+        for i from 0 <= i < self.num_records:
+            item = self._record_to_item(&self.records[i])
             result.append(item)
         return result
 
@@ -653,13 +655,13 @@ cdef class GCCHKSHA1LeafNode:
         cdef char *c_cur
         cdef char *c_end
         cdef Py_ssize_t n_bytes
-        cdef int num_entries
+        cdef int num_records
         cdef int entry
         cdef gc_chk_sha1_record *cur_record
 
         if not PyString_CheckExact(bytes):
             raise TypeError('We only support parsing plain 8-bit strings.')
-        # Pass 1, count how many entries there will be
+        # Pass 1, count how many records there will be
         n_bytes = PyString_GET_SIZE(bytes)
         c_bytes = PyString_AS_STRING(bytes)
         c_end = c_bytes + n_bytes
@@ -668,29 +670,29 @@ cdef class GCCHKSHA1LeafNode:
                              % (bytes[:10],))
         c_content = c_bytes + 10
         c_cur = c_content
-        num_entries = 0
+        num_records = 0
         while c_cur != NULL and c_cur < c_end:
             c_cur = <char *>memchr(c_cur, c'\n', c_end - c_cur);
             if c_cur == NULL:
                 break
             c_cur += 1
-            num_entries += 1
+            num_records += 1
         # Now allocate the memory for these items, and go to town
-        # We allocate both the offsets and the entries in the same malloc. we
+        # We allocate both the offsets and the records in the same malloc. we
         # should probably pay a bit closer attention to alignment
-        self.entries = <gc_chk_sha1_record*>PyMem_Malloc(num_entries *
+        self.records = <gc_chk_sha1_record*>PyMem_Malloc(num_records *
             (sizeof(unsigned short) + sizeof(gc_chk_sha1_record)))
-        self.num_entries = num_entries
+        self.num_records = num_records
         c_cur = c_content
-        cur_record = self.entries
+        cur_record = self.records
         entry = 0
-        while c_cur != NULL and c_cur < c_end and entry < num_entries:
+        while c_cur != NULL and c_cur < c_end and entry < num_records:
             c_cur = self._parse_one_entry(c_cur, c_end, cur_record)
             cur_record += 1
             entry += 1
-        if (entry != self.num_entries
+        if (entry != self.num_records
             or c_cur != c_end
-            or cur_record != self.entries + self.num_entries):
+            or cur_record != self.records + self.num_records):
             raise ValueError('Something went wrong while parsing.')
         # Pass 3: build the offset map
         self._compute_common()
@@ -756,17 +758,17 @@ cdef class GCCHKSHA1LeafNode:
         # jump to the key that matches a gives sha1. We know that the keys are
         # in sorted order, and we know that a lot of the prefix is going to be
         # the same across them.
-        # By XORing the entries together, we can determine what bits are set in
+        # By XORing the records together, we can determine what bits are set in
         # all of them
-        if self.num_entries < 2:
+        if self.num_records < 2:
             # Everything is in common if you have 0 or 1 leaves
             # So we'll always just shift to the first byte
             self.common_shift = 24
         else:
             common_mask = 0xFFFFFFFF
-            first = _sha1_to_uint(self.entries[0].sha1)
-            for i from 0 < i < self.num_entries:
-                this = _sha1_to_uint(self.entries[i].sha1)
+            first = _sha1_to_uint(self.records[0].sha1)
+            for i from 0 < i < self.num_records:
+                this = _sha1_to_uint(self.records[i].sha1)
                 common_mask = (~(first ^ this)) & common_mask
             common_shift = 24
             while common_mask & 0x80000000 and common_shift > 0:
@@ -774,15 +776,15 @@ cdef class GCCHKSHA1LeafNode:
                 common_shift -= 1
             self.common_shift = common_shift
         offset = 0
-        max_offset = self.num_entries
-        # We cap this loop at 254 entries. All the other offsets just get
+        max_offset = self.num_records
+        # We cap this loop at 254 records. All the other offsets just get
         # filled with 0xff as the singleton saying 'too many'.
-        # It means that if we have >255 entries we have to bisect the second
+        # It means that if we have >255 records we have to bisect the second
         # half of the list, but this is going to be very rare in practice.
         if max_offset > 255:
             max_offset = 255
         for i from 0 <= i < max_offset:
-            this_offset = self._offset_for_sha1(self.entries[i].sha1)
+            this_offset = self._offset_for_sha1(self.records[i].sha1)
             while offset <= this_offset:
                 self.offsets[offset] = i
                 offset += 1
