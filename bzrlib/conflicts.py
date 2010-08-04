@@ -28,10 +28,12 @@ from bzrlib import (
     cleanup,
     commands,
     errors,
+    mergetools,
     osutils,
     rio,
     trace,
     transform,
+    ui,
     workingtree,
     )
 """)
@@ -116,9 +118,15 @@ class cmd_resolve(commands.Command):
             'directory',
             option.Option('all', help='Resolve all conflicts in this tree.'),
             ResolveActionOption(),
+            option.Option('using', help='Resolve conflicts using an '
+                          'external merge tool.', type=str),
+            'verbose',
             ]
     _see_also = ['conflicts']
-    def run(self, file_list=None, all=False, action=None, directory=u'.'):
+    def run(self, file_list=None, all=False, action=None, directory=u'.',
+            using=None, verbose=False):
+        if using is not None:
+            action = 'tool'
         if all:
             if file_list:
                 raise errors.BzrCommandError("If --all is specified,"
@@ -156,6 +164,39 @@ class cmd_resolve(commands.Command):
                 # refactoring to transfer tree.auto_resolve() to
                 # conflict.auto(tree) --vila 091242
                 pass
+        elif action == 'tool':
+            merge_tool = mergetools.find_merge_tool(using)
+            if merge_tool is None:
+                raise errors.BzrCommandError(
+                    'Unrecognized merge tool: %s' % using)
+            if merge_tool is not None and not merge_tool.is_available():
+                raise errors.BzrCommandError(
+                    'Merge tool is not available: %s' % merge_tool.get_name())
+            if all:
+                file_list = []
+                for conflict in tree.conflicts():
+                    file_list.append(conflict.path)
+            if file_list is None:
+                raise errors.BzrCommandError(
+                    'Either FILE(s) or --all must be provided')
+            resolved = 0
+            for file in file_list:
+                # to avoid unnecessary './' prefix on file names
+                if directory != u'.':
+                    file = os.path.join(directory, file)
+                if verbose:
+                    ui.ui_factory.show_message('Invoking %s on %s...' %
+                                     (merge_tool.get_name(), file))
+                retcode = merge_tool.invoke(file)
+                if retcode == 0:
+                    resolve(tree, [file])
+                    resolved += 1
+            ui.ui_factory.show_message('%d conflict(s) resolved.' % resolved)
+            unresolved = tree.conflicts()
+            if len(unresolved) > 0:
+                ui.ui_factory.show_message('Remaining conflicts:')
+                for conflict in unresolved:
+                    ui.ui_factory.show_message(str(conflict))
         else:
             resolve(tree, file_list, action=action)
 

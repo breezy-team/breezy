@@ -3796,8 +3796,8 @@ class cmd_merge(Command):
                ' merge.'),
         Option('interactive', help='Select changes interactively.',
             short_name='i'),
-        Option('tool', help='Invokes the specified or the user\'s default'
-               ' external merge tool for files with conflicts.', type=str),
+        Option('using', help='Invokes an external merge tool for merged files '
+               'with conflicts.', type=str),
     ]
 
     def run(self, location=None, revision=None, force=False,
@@ -3806,7 +3806,7 @@ class cmd_merge(Command):
             directory=None,
             preview=False,
             interactive=False,
-            tool=None
+            using=None
             ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
@@ -3891,8 +3891,8 @@ class cmd_merge(Command):
                                     verified)
         if retval != 0:
             merge_tool = None
-            if tool is not None:
-                merge_tool = mergetools.find_merge_tool(tool)
+            if using is not None:
+                merge_tool = mergetools.find_merge_tool(using)
             if merge_tool is not None:
                 for conflict in tree.conflicts():
                     merge_tool.invoke(conflict.path)
@@ -6034,6 +6034,5 @@ def _register_lazy_builtins():
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
-        ('cmd_mergetool', [], 'bzrlib.mergetools'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)
