@@ -567,6 +567,15 @@ cdef class GCCHKSHA1LeafNode:
         hi = self.num_entries
 
         # Bisect until we find the right spot
+        # Note the time to create Python objects dominates over comparison
+        # times. With a simple iterate and compare (no bisect) we spend 45us
+        # for 120 __contains__, but 201us for 120 __getitem__.
+        # The _LeafNode.__getitem__ takes 54.6us, but (k in o._keys) is 20.7us
+        # removing the getattr() w/ (k in _keys) 13.7ms. So we do still have
+        # some room for improvement
+        # TODO: Consider improving this, but for now it seems good enough. (We
+        #       could create a small index so we would have less to bisect,
+        #       etc.)
         while lo < hi:
             mid = (lo + hi) / 2
             the_cmp = memcmp(sha1, self.entries[mid].sha1, 20)
