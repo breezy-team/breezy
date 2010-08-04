@@ -97,6 +97,11 @@ class cmd_mergetool(commands.Command):
             merge_tool.invoke(file)
 
 
+def subprocess_invoker(executable, args, cleanup):
+    retcode = subprocess.call([executable] + args, shell=True)
+    cleanup(retcode)
+
+
 class MergeTool(object):
     @staticmethod
     def from_executable_and_args(executable, args):
@@ -146,14 +151,20 @@ class MergeTool(object):
         executable = self.get_executable()
         return os.path.exists(executable) or _find_executable(executable)
         
-    def invoke(self, filename):
+    def invoke(self, filename, invoker=None):
+        if invoker is None:
+            invoker = subprocess_invoker
+        # TODO: find a cleaner way to expand into args
         commandline, tmp_file = self._expand_commandline(filename)
-        retcode = subprocess.call(commandline, shell=True)
-        if tmp_file is not None:
-            if retcode == 0: # on success, replace file with temp file
-                shutil.move(tmp_file, filename)
-            else: # otherwise, delete temp file
-                os.remove(tmp_file)
+        args = cmdline.split(commandline)
+        def cleanup(retcode):
+            print "cleanup"
+            if tmp_file is not None:
+                if retcode == 0: # on success, replace file with temp file
+                    shutil.move(tmp_file, filename)
+                else: # otherwise, delete temp file
+                    os.remove(tmp_file)
+        invoker(args[0], args[1:], cleanup)
                 
     def _expand_commandline(self, filename):
         commandline = self._commandline
