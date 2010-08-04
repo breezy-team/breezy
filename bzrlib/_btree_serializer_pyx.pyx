@@ -483,17 +483,31 @@ def _test_sha1_to_key(sha1_bin):
     return _sha1_to_key(PyString_AS_STRING(sha1_bin))
 
 
+cdef unsigned int _sha1_to_uint(char *sha1):
+    cdef unsigned int val
+    # Must be in MSB, because that is how the content is sorted
+    val = (((<unsigned int>(sha1[0]) & 0xff) << 24)
+           | ((<unsigned int>(sha1[1]) & 0xff) << 16)
+           | ((<unsigned int>(sha1[2]) & 0xff) << 8)
+           | ((<unsigned int>(sha1[3]) & 0xff) << 0))
+    return val
+
+
 cdef class GCCHKSHA1LeafNode:
     """Track all the entries for a given leaf node."""
 
     cdef public int num_entries
     cdef gc_chk_sha1_record *entries
-    # This is for the mini-index. We look at all the keys and use whatever byte
-    # is first unique across all stored keys (this is often the first byte)
-    # we then store the entries offset for the first record that matches that
-    # byte. This does assume that we'll never have more than 32k entries, but
-    # that doesn't seem to be a terrible assumption (we should have ~100)
-    cdef public short interesting_byte
+    # This is for the mini-index. 
+    # We look at all the keys and determine how many start bits are identical.
+    # We then strip those bits, and use the next 8 bits as 'interesting bits'.
+    # offsets is then the bisect() information for a key with those bits (where
+    # would you insert a key starting with these bits)
+    cdef public long bisect_steps
+    cdef public unsigned int common_mask
+    cdef public unsigned int common_bits
+    # The first N bits of all entries in this node have the same content
+    cdef public short common_shift
     cdef short offsets[257]
 
     def __sizeof__(self):
@@ -568,6 +582,7 @@ cdef class GCCHKSHA1LeafNode:
     cdef gc_chk_sha1_record* _lookup_record(self, char *sha1):
         """Find a gc_chk_sha1_record that matches the sha1 supplied."""
         cdef int lo, hi, mid, the_cmp
+        cdef int offset
 
         lo = 0
         hi = self.num_entries
@@ -585,15 +600,22 @@ cdef class GCCHKSHA1LeafNode:
         # TODO: Consider improving this, but for now it seems good enough. (We
         #       could create a small index so we would have less to bisect,
         #       etc.)
+        # bisecting does reduce the total number of memcmp calls from 7260 for
+        # 120 keys to 720.
+        offset = self._offset_for_sha1(sha1)
+        lo = self.offsets[offset]
+        hi = self.offsets[offset+1]
         while lo < hi:
             mid = (lo + hi) / 2
-            the_cmp = memcmp(sha1, self.entries[mid].sha1, 20)
+            the_cmp = memcmp(self.entries[mid].sha1, sha1, 20)
+            self.bisect_steps += 1
             if the_cmp == 0:
+                # print mid, offset, self._offsets[offset], self._offsets[offset+1]
                 return &self.entries[mid]
             elif the_cmp < 0:
-                hi = mid
-            else:
                 lo = mid + 1
+            else:
+                hi = mid
         return NULL
 
     def __contains__(self, key):
@@ -707,10 +729,63 @@ cdef class GCCHKSHA1LeafNode:
             or cur_record != self.entries + self.num_entries):
             raise ValueError('Something went wrong while parsing.')
         # Pass 3: build the offset map
+        self._compute_common()
+
+    cdef int _offset_for_sha1(self, char *sha1) except -1:
+        """Find the first interesting 8-bits of this sha1."""
+        cdef int this_offset
+        this_offset = ((_sha1_to_uint(sha1) & ~self.common_mask)
+                       >> (24 - self.common_shift))
+        # assert 0 < this_offset < 256
+        return this_offset
+
+    cdef _compute_common(self):
+        cdef unsigned int first
+        cdef unsigned int this
+        cdef unsigned int common_mask
+        cdef short common_shift
+        cdef int i
+        cdef int offset, this_offset
         # The idea with the offset map is that we should be able to quickly
         # jump to the key that matches a gives sha1. We know that the keys are
         # in sorted order, and we know that a lot of the prefix is going to be
         # the same across them.
+        # By XORing the entries together, we can determine what bits are set in
+        # all of them
+        if self.num_entries < 2:
+            self.common_mask = 0x0
+            self.common_shift = 0
+        else:
+            common_mask = 0xFFFFFFFF
+            first = _sha1_to_uint(self.entries[0].sha1)
+            for i from 0 < i < self.num_entries:
+                this = _sha1_to_uint(self.entries[i].sha1)
+                common_mask = (~(first ^ this)) & common_mask
+            common_shift = 0
+            self.common_mask = common_mask
+            while common_mask & 0x80000000:
+                common_mask = common_mask << 1
+                common_shift += 1
+            self.common_shift = common_shift
+            self.common_bits = first & self.common_mask
+        offset = 0
+        for i from 0 <= i < self.num_entries:
+            this_offset = self._offset_for_sha1(self.entries[i].sha1)
+            while offset <= this_offset:
+                self.offsets[offset] = i
+                offset += 1
+        while offset < 257:
+            self.offsets[offset] = self.num_entries
+            offset += 1
+
+    property _test_offsets:
+        def __get__(self):
+            cdef list result
+            cdef int i
+            result = []
+            for i from 0 <= i < 257:
+                result.append(self.offsets[i])
+            return result
 
 
 def _parse_into_chk(bytes, key_length, ref_list_length):

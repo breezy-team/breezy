@@ -18,6 +18,7 @@
 """Direct tests of the btree serializer extension"""
 
 import binascii
+import bisect
 
 from bzrlib import tests
 
@@ -138,14 +139,14 @@ sha1:abcdefabcd123456789012345678901234567890\x00\x004294967296 4294967295 42949
 """
 
 _multi_key_content = """type=leaf
-sha1:70c881d4a26984ddce795f6f71817c9cf4480e79\x00\x000 0 0 0
-sha1:7e240de74fb1ed08fa08d38063f6a6a91462a815\x00\x001 1 1 1
-sha1:86f7e437faa5a7fce15d1ddcb9eaeaea377667b8\x00\x002 2 2 2
-sha1:da39a3ee5e6b4b0d3255bfef95601890afd80709\x00\x003 3 3 3
-sha1:df51e37c269aa94d38f93e537bf6e2020b21406c\x00\x004 4 4 4
-sha1:e0c9035898dd52fc65c41454cec9c4d2611bfb37\x00\x005 5 5 5
-sha1:e93b4e3c464ffd51732fbd6ded717e9efda28aad\x00\x006 6 6 6
-sha1:f7a9e24777ec23212c54d7a350bc5bea5477fdbb\x00\x007 7 7 7
+sha1:c80c881d4a26984ddce795f6f71817c9cf4480e7\x00\x000 0 0 0
+sha1:c86f7e437faa5a7fce15d1ddcb9eaeaea377667b\x00\x001 1 1 1
+sha1:c8e240de74fb1ed08fa08d38063f6a6a91462a81\x00\x002 2 2 2
+sha1:cda39a3ee5e6b4b0d3255bfef95601890afd8070\x00\x003 3 3 3
+sha1:cdf51e37c269aa94d38f93e537bf6e2020b21406\x00\x004 4 4 4
+sha1:ce0c9035898dd52fc65c41454cec9c4d2611bfb3\x00\x005 5 5 5
+sha1:ce93b4e3c464ffd51732fbd6ded717e9efda28aa\x00\x006 6 6 6
+sha1:cf7a9e24777ec23212c54d7a350bc5bea5477fdb\x00\x007 7 7 7
 """
 
 class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
@@ -194,3 +195,22 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         self.assertEqual(8, len(leaf.all_keys()))
         for idx, key in enumerate(all_keys):
             self.assertEqual(str(idx), leaf[key][0].split()[0])
+
+    def test_common_mask(self):
+        # The keys were deliberately chosen so that the first 5 bits all
+        # overlapped, it also happens that a later bit overlaps
+        # Note that by 'overlap' we mean that given bit is either on in all
+        # keys, or off in all keys
+        leaf = self.module._parse_into_chk(_multi_key_content, 1, 0)
+        self.assertEqual(hex(0xF8000100), hex(leaf.common_mask))
+        self.assertEqual(5, leaf.common_shift)
+        self.assertEqual(0xc8000000, leaf.common_bits)
+        # The interesting byte for each key is
+        # (defined as the 8-bits that come after the common prefix)
+        # [1, 13, 28, 180, 190, 193, 210, 239]
+        lst = [1, 13, 28, 180, 190, 193, 210, 239]
+        offsets = leaf._test_offsets
+        self.assertEqual([bisect.bisect_left(lst, x) for x in range(0, 257)],
+                         offsets)
+        for idx, val in enumerate(lst):
+            self.assertEqual(idx, offsets[val])
