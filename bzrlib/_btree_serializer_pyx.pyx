@@ -70,7 +70,8 @@ cdef extern from "string.h":
 # local names to access them.
 from _static_tuple_c cimport StaticTuple, \
     import_static_tuple_c, StaticTuple_New, \
-    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact
+    StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
+    StaticTuple_GET_SIZE, StaticTuple_GET_ITEM
 
 
 # TODO: Find some way to import this from _dirstate_helpers
@@ -419,14 +420,19 @@ cdef int _key_to_sha1(key, char *sha1):
     :return: 1 if this could be converted, 0 otherwise
     """
     cdef char *c_val
-    if not PyTuple_CheckExact(key) and not StaticTuple_CheckExact(key):
+    cdef PyObject *p_val
+
+    if StaticTuple_CheckExact(key) and StaticTuple_GET_SIZE(key) == 1:
+        p_val = <PyObject *>StaticTuple_GET_ITEM(key, 0)
+    elif (PyTuple_CheckExact(key) and PyTuple_GET_SIZE(key) == 1):
+        p_val = PyTuple_GET_ITEM_ptr_object(key, 0)
+    else:
+        # Not a tuple or a StaticTuple
         return 0
-    if len(key) != 1:
+    if (PyString_CheckExact_ptr(p_val) and PyString_GET_SIZE_ptr(p_val) == 45):
+        c_val = PyString_AS_STRING_ptr(p_val)
+    else:
         return 0
-    val = key[0]
-    if not PyString_CheckExact(val) or PyString_GET_SIZE(val) != 45:
-        return 0
-    c_val = PyString_AS_STRING(val)
     if strncmp(c_val, 'sha1:', 5) != 0:
         return 0
     if not _unhexlify_sha1(c_val + 5, sha1):
@@ -573,6 +579,9 @@ cdef class GCCHKSHA1LeafNode:
         # The _LeafNode.__getitem__ takes 54.6us, but (k in o._keys) is 20.7us
         # removing the getattr() w/ (k in _keys) 13.7ms. So we do still have
         # some room for improvement
+        # _key_to_sha1 takes 24us, which puts a lower bound on _lookup_record
+        # unless we skip doing the whole record (iterating is 8us,
+        # iterating+no-op C function call is 12.5us)
         # TODO: Consider improving this, but for now it seems good enough. (We
         #       could create a small index so we would have less to bisect,
         #       etc.)
