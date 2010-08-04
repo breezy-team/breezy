@@ -602,10 +602,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
         """In memory index's have no known corruption at the moment."""
 
 
-class _LeafNode(object):
+class _LeafNode(dict):
     """A leaf node for a serialised B+Tree index."""
 
-    __slots__ = ('_keys', 'min_key', 'max_key')
+    __slots__ = ('min_key', 'max_key')
 
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
@@ -617,26 +617,17 @@ class _LeafNode(object):
             self.max_key = key_list[-1][0]
         else:
             self.min_key = self.max_key = None
-        self._keys = dict(key_list)
-
-    def __len__(self):
-        return len(self._keys)
-
-    def __contains__(self, key):
-        return key in self._keys
-
-    def __getitem__(self, key):
-        return self._keys[key]
+        super(_LeafNode, self).__init__(key_list)
 
     def all_items(self):
         """Return a sorted list of (key, (value, refs)) items"""
-        items = self._keys.items()
+        items = self.items()
         items.sort()
         return items
 
     def all_keys(self):
         """Return a sorted list of all keys."""
-        keys = self._keys.keys()
+        keys = self.keys()
         keys.sort()
         return keys
 
