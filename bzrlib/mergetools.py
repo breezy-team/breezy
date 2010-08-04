@@ -28,6 +28,7 @@ from bzrlib import (
     config,
     errors,
     option,
+    trace,
     ui,
     workingtree,
 )
@@ -187,20 +188,26 @@ def get_default_merge_tools():
     return [MergeTool(commandline) for commandline in _DEFAULT_MERGE_TOOLS]
 
 
-def get_merge_tools(conf=config.GlobalConfig()):
+def get_merge_tools(conf=None):
     """Returns list of MergeTool objects."""
+    if conf is None:
+        conf = config.GlobalConfig()
     commandlines = conf.get_user_option_as_list('mergetools')
     if commandlines is None:
         commandlines = _DEFAULT_MERGE_TOOLS
     return [MergeTool(commandline) for commandline in commandlines]
 
 
-def set_merge_tools(merge_tools, conf=config.GlobalConfig()):
+def set_merge_tools(merge_tools, conf=None):
+    if conf is None:
+        conf = config.GlobalConfig()
     conf.set_user_option("mergetools", tuple(merge_tool.get_commandline()
                                              for merge_tool in merge_tools))
 
 
-def find_merge_tool(name, conf=config.GlobalConfig()):
+def find_merge_tool(name, conf=None):
+    if conf is None:
+        conf = config.GlobalConfig()
     merge_tools = get_merge_tools(conf)
     for merge_tool in merge_tools:
         if merge_tool.get_name() == name:
@@ -208,7 +215,9 @@ def find_merge_tool(name, conf=config.GlobalConfig()):
     return None
 
 
-def find_first_available_merge_tool(conf=config.GlobalConfig()):
+def find_first_available_merge_tool(conf=None):
+    if conf is None:
+        conf = config.GlobalConfig()
     merge_tools = get_merge_tools(conf)
     for merge_tool in merge_tools:
         if merge_tool.is_available():
@@ -216,18 +225,26 @@ def find_first_available_merge_tool(conf=config.GlobalConfig()):
     return None
 
 
-def get_user_selected_merge_tool(conf=config.GlobalConfig()):
+def get_user_selected_merge_tool(conf=None):
+    if conf is None:
+        conf = config.GlobalConfig()
     name = conf.get_user_option('selected_mergetool')
     if name is None:
+        trace.mutter('no user selected merge tool defined')
         return None
-    return find_merge_tool(name, conf)
+    merge_tool = find_merge_tool(name, conf)
+    trace.mutter('found user selected merge tool: %r', merge_tool)
+    return merge_tool
 
 
-def set_user_selected_merge_tool(name, conf=config.GlobalConfig()):
+def set_user_selected_merge_tool(name, conf=None):
+    if conf is None:
+        conf = config.GlobalConfig()
     if isinstance(name, MergeTool):
         name = name.get_name()
     if find_merge_tool(name, conf) is None:
         raise errors.BzrError('invalid merge tool name: %r' % name)
+    trace.mutter('setting user selected merge tool: %s', name)
     conf.set_user_option('selected_mergetool', name)
 
 
