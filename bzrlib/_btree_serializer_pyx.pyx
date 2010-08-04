@@ -507,8 +507,8 @@ cdef class GCCHKSHA1LeafNode:
     cdef public unsigned int common_mask
     cdef public unsigned int common_bits
     # The first N bits of all entries in this node have the same content
-    cdef public short common_shift
-    cdef short offsets[257]
+    cdef public unsigned char common_shift
+    cdef unsigned char offsets[257]
 
     def __sizeof__(self):
         return (sizeof(GCCHKSHA1LeafNode)
@@ -584,27 +584,24 @@ cdef class GCCHKSHA1LeafNode:
         cdef int lo, hi, mid, the_cmp
         cdef int offset
 
-        lo = 0
-        hi = self.num_entries
-
-        # Bisect until we find the right spot
-        # Note the time to create Python objects dominates over comparison
-        # times. With a simple iterate and compare (no bisect) we spend 45us
-        # for 120 __contains__, but 201us for 120 __getitem__.
-        # The _LeafNode.__getitem__ takes 54.6us, but (k in o._keys) is 20.7us
-        # removing the getattr() w/ (k in _keys) 13.7ms. So we do still have
-        # some room for improvement
-        # _key_to_sha1 takes 24us, which puts a lower bound on _lookup_record
-        # unless we skip doing the whole record (iterating is 8us,
-        # iterating+no-op C function call is 12.5us)
-        # TODO: Consider improving this, but for now it seems good enough. (We
-        #       could create a small index so we would have less to bisect,
-        #       etc.)
-        # bisecting does reduce the total number of memcmp calls from 7260 for
-        # 120 keys to 720.
+        # TODO: We can speed up misses by comparing this sha1 to the common
+        #       bits, and seeing if the common prefix matches, if not, we don't
+        #       need to search for anything because it cannot match
+        # Use the offset array to find the closest fit for this entry
+        # follow that up with bisecting, since multiple keys can be in one
+        # spot
+        # Bisecting dropped us from 7000 comparisons to 582 (4.8/key), using
+        # the offset array dropped us from 23us to 20us and 156 comparisions
+        # (1.3/key)
         offset = self._offset_for_sha1(sha1)
         lo = self.offsets[offset]
         hi = self.offsets[offset+1]
+        if hi == 255:
+            # if hi == 255 that means we potentially ran off the end of the
+            # list, so push it up to num_entries
+            # note that if 'lo' == 255, that is ok, because we can start
+            # searching from that part of the list.
+            hi = self.num_entries
         while lo < hi:
             mid = (lo + hi) / 2
             the_cmp = memcmp(self.entries[mid].sha1, sha1, 20)
@@ -734,18 +731,23 @@ cdef class GCCHKSHA1LeafNode:
     cdef int _offset_for_sha1(self, char *sha1) except -1:
         """Find the first interesting 8-bits of this sha1."""
         cdef int this_offset
-        this_offset = ((_sha1_to_uint(sha1) & ~self.common_mask)
-                       >> (24 - self.common_shift))
+        cdef unsigned int as_uint
+        as_uint = _sha1_to_uint(sha1)
+        this_offset = (as_uint >> self.common_shift) & 0xFF
         # assert 0 < this_offset < 256
         return this_offset
+
+    def test_offset_for_sha1(self, sha1):
+        return self._offset_for_sha1(PyString_AS_STRING(sha1))
 
     cdef _compute_common(self):
         cdef unsigned int first
         cdef unsigned int this
         cdef unsigned int common_mask
-        cdef short common_shift
+        cdef unsigned char common_shift
         cdef int i
         cdef int offset, this_offset
+        cdef int max_offset
         # The idea with the offset map is that we should be able to quickly
         # jump to the key that matches a gives sha1. We know that the keys are
         # in sorted order, and we know that a lot of the prefix is going to be
@@ -753,29 +755,39 @@ cdef class GCCHKSHA1LeafNode:
         # By XORing the entries together, we can determine what bits are set in
         # all of them
         if self.num_entries < 2:
+            # Everything is in common if you have 0 or 1 leaves
+            # So we'll always just shift to the first byte
             self.common_mask = 0x0
-            self.common_shift = 0
+            self.common_shift = 24
         else:
             common_mask = 0xFFFFFFFF
             first = _sha1_to_uint(self.entries[0].sha1)
             for i from 0 < i < self.num_entries:
                 this = _sha1_to_uint(self.entries[i].sha1)
                 common_mask = (~(first ^ this)) & common_mask
-            common_shift = 0
-            self.common_mask = common_mask
-            while common_mask & 0x80000000:
+            common_shift = 24
+            self.common_mask = 0 # common_mask
+            while common_mask & 0x80000000 and common_shift > 0:
                 common_mask = common_mask << 1
-                common_shift += 1
+                common_shift -= 1
+                self.common_mask = (self.common_mask >> 1) | 0x80000000
             self.common_shift = common_shift
             self.common_bits = first & self.common_mask
         offset = 0
-        for i from 0 <= i < self.num_entries:
+        max_offset = self.num_entries
+        # We cap this loop at 254 entries. All the other offsets just get
+        # filled with 0xff as the singleton saying 'too many'.
+        # It means that if we have >255 entries we have to bisect the second
+        # half of the list, but this is going to be very rare in practice.
+        if max_offset > 255:
+            max_offset = 255
+        for i from 0 <= i < max_offset:
             this_offset = self._offset_for_sha1(self.entries[i].sha1)
             while offset <= this_offset:
                 self.offsets[offset] = i
                 offset += 1
         while offset < 257:
-            self.offsets[offset] = self.num_entries
+            self.offsets[offset] = max_offset
             offset += 1
 
     property _test_offsets:

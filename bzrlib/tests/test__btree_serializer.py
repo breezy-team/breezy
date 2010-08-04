@@ -149,6 +149,29 @@ sha1:ce93b4e3c464ffd51732fbd6ded717e9efda28aa\x00\x006 6 6 6
 sha1:cf7a9e24777ec23212c54d7a350bc5bea5477fdb\x00\x007 7 7 7
 """
 
+_multi_key_same_offset = """type=leaf
+sha1:080c881d4a26984ddce795f6f71817c9cf4480e7\x00\x000 0 0 0
+sha1:c86f7e437faa5a7fce15d1ddcb9eaeaea377667b\x00\x001 1 1 1
+sha1:cd0c9035898dd52fc65c41454cec9c4d2611bfb3\x00\x002 2 2 2
+sha1:cda39a3ee5e6b4b0d3255bfef95601890afd8070\x00\x003 3 3 3
+sha1:cde240de74fb1ed08fa08d38063f6a6a91462a81\x00\x004 4 4 4
+sha1:cdf51e37c269aa94d38f93e537bf6e2020b21406\x00\x005 5 5 5
+sha1:ce7a9e24777ec23212c54d7a350bc5bea5477fdb\x00\x006 6 6 6
+sha1:ce93b4e3c464ffd51732fbd6ded717e9efda28aa\x00\x007 7 7 7
+"""
+
+_common_32_bits = """type=leaf
+sha1:123456784a26984ddce795f6f71817c9cf4480e7\x00\x000 0 0 0
+sha1:1234567874fb1ed08fa08d38063f6a6a91462a81\x00\x001 1 1 1
+sha1:12345678777ec23212c54d7a350bc5bea5477fdb\x00\x002 2 2 2
+sha1:123456787faa5a7fce15d1ddcb9eaeaea377667b\x00\x003 3 3 3
+sha1:12345678898dd52fc65c41454cec9c4d2611bfb3\x00\x004 4 4 4
+sha1:12345678c269aa94d38f93e537bf6e2020b21406\x00\x005 5 5 5
+sha1:12345678c464ffd51732fbd6ded717e9efda28aa\x00\x006 6 6 6
+sha1:12345678e5e6b4b0d3255bfef95601890afd8070\x00\x007 7 7 7
+"""
+
+
 class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
 
     def assertInvalid(self, bytes):
@@ -202,15 +225,77 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         # Note that by 'overlap' we mean that given bit is either on in all
         # keys, or off in all keys
         leaf = self.module._parse_into_chk(_multi_key_content, 1, 0)
-        self.assertEqual(hex(0xF8000100), hex(leaf.common_mask))
-        self.assertEqual(5, leaf.common_shift)
+        self.assertEqual(hex(0xF8000000), hex(leaf.common_mask))
+        self.assertEqual(19, leaf.common_shift)
         self.assertEqual(0xc8000000, leaf.common_bits)
         # The interesting byte for each key is
         # (defined as the 8-bits that come after the common prefix)
-        # [1, 13, 28, 180, 190, 193, 210, 239]
         lst = [1, 13, 28, 180, 190, 193, 210, 239]
         offsets = leaf._test_offsets
         self.assertEqual([bisect.bisect_left(lst, x) for x in range(0, 257)],
                          offsets)
         for idx, val in enumerate(lst):
             self.assertEqual(idx, offsets[val])
+        for idx, key in enumerate(leaf.all_keys()):
+            self.assertEqual(str(idx), leaf[key][0].split()[0])
+
+    def test_multi_key_same_offset(self):
+        # there is no common prefix, though there are some common bits
+        leaf = self.module._parse_into_chk(_multi_key_same_offset, 1, 0)
+        self.assertEqual(0x00000000, leaf.common_mask)
+        self.assertEqual(24, leaf.common_shift)
+        self.assertEqual(0x00000000, leaf.common_bits)
+        offsets = leaf._test_offsets
+        # The interesting byte is just the first 8-bits of the key
+        lst = [8, 200, 205, 205, 205, 205, 206, 206]
+        self.assertEqual([bisect.bisect_left(lst, x) for x in range(0, 257)],
+                         offsets)
+        for val in lst:
+            self.assertEqual(lst.index(val), offsets[val])
+        for idx, key in enumerate(leaf.all_keys()):
+            self.assertEqual(str(idx), leaf[key][0].split()[0])
+
+    def test_all_common_prefix(self):
+        # The first 32 bits of all hashes are the same. This is going to be
+        # pretty much impossible, but I don't want to fail because of this
+        leaf = self.module._parse_into_chk(_common_32_bits, 1, 0)
+        self.assertEqual(0xFFFFFF00, leaf.common_mask)
+        self.assertEqual(0, leaf.common_shift)
+        self.assertEqual(0x12345600, leaf.common_bits)
+        lst = [0x78] * 8
+        offsets = leaf._test_offsets
+        self.assertEqual([bisect.bisect_left(lst, x) for x in range(0, 257)],
+                         offsets)
+        for val in lst:
+            self.assertEqual(lst.index(val), offsets[val])
+        for idx, key in enumerate(leaf.all_keys()):
+            self.assertEqual(str(idx), leaf[key][0].split()[0])
+
+    def test_many_entries(self):
+        # Again, this is almost impossible, but we should still work
+        # It would be hard to fit more that 120 entries in a 4k page, much less
+        # more than 256 of them. but hey, weird stuff happens sometimes
+        lines = ['type=leaf\n']
+        for i in range(500):
+            key_str = 'sha1:%04x%s' % (i, _hex_form[:36])
+            key = (key_str,)
+            lines.append('%s\0\0%d %d %d %d\n' % (key_str, i, i, i, i))
+        bytes = ''.join(lines)
+        leaf = self.module._parse_into_chk(bytes, 1, 0)
+        self.assertEqual(0xFE000000, leaf.common_mask)
+        self.assertEqual(24-7, leaf.common_shift)
+        self.assertEqual(0x00000000, leaf.common_bits)
+        offsets = leaf._test_offsets
+        # This is the interesting bits for each entry
+        lst = [x // 2 for x in range(500)]
+        expected_offsets = [x * 2 for x in range(128)] + [255]*129
+        self.assertEqual(expected_offsets, offsets)
+        # We truncate because offsets is an unsigned char. So the bisection
+        # will just say 'greater than the last one' for all the rest
+        lst = lst[:255]
+        self.assertEqual([bisect.bisect_left(lst, x) for x in range(0, 257)],
+                         offsets)
+        for val in lst:
+            self.assertEqual(lst.index(val), offsets[val])
+        for idx, key in enumerate(leaf.all_keys()):
+            self.assertEqual(str(idx), leaf[key][0].split()[0])
