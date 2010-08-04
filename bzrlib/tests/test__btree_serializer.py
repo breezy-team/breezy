@@ -131,6 +131,12 @@ _one_key_content = """type=leaf
 sha1:123456789012345678901234567890abcdefabcd\x00\x001 2 3 4
 """
 
+_large_offsets = """type=leaf
+sha1:123456789012345678901234567890abcdefabcd\x00\x0012345678901 1234567890 0 1
+sha1:abcd123456789012345678901234567890abcdef\x00\x002147483648 2147483647 0 1
+sha1:abcdefabcd123456789012345678901234567890\x00\x004294967296 4294967295 4294967294 1
+"""
+
 _multi_key_content = """type=leaf
 sha1:123456789012345678901234567890abcdefabcd\x00\x001 2 3 4
 sha1:abcd123456789012345678901234567890abcdef\x00\x005678 2345 3456 4567
@@ -163,15 +169,22 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
     def test_one_key_leaf(self):
         leaf = self.module._parse_into_chk(_one_key_content, 1, 0)
         self.assertEqual(1, len(leaf))
-        sha_key = ('sha1:123456789012345678901234567890abcdefabcd',)
+        sha_key = ('sha1:' + _hex_form,)
         self.assertEqual([sha_key], leaf.all_keys())
         self.assertEqual([(sha_key, ('1 2 3 4', ()))], leaf.all_items())
         self.assertTrue(sha_key in leaf)
 
+    def test_large_offsets(self):
+        leaf = self.module._parse_into_chk(_large_offsets, 1, 0)
+        self.assertEqual(['12345678901 1234567890 0 1',
+                          '2147483648 2147483647 0 1',
+                          '4294967296 4294967295 4294967294 1',
+                         ], [x[1][0] for x in leaf.all_items()])
+
     def test_many_key_leaf(self):
         leaf = self.module._parse_into_chk(_multi_key_content, 1, 0)
         self.assertEqual(2, len(leaf))
-        sha_key1 = ('sha1:123456789012345678901234567890abcdefabcd',)
+        sha_key1 = ('sha1:' + _hex_form,)
         sha_key2 = ('sha1:abcd123456789012345678901234567890abcdef',)
         self.assertEqual([sha_key1, sha_key2], leaf.all_keys())
         self.assertEqual([(sha_key1, ('1 2 3 4', ())),

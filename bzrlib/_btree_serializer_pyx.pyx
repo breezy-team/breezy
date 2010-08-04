@@ -30,6 +30,8 @@ cdef extern from "Python.h":
         pass
     int PyList_Append(object lst, object item) except -1
 
+    int HAVE_LONG_LONG
+
     char *PyString_AsString(object p) except NULL
     object PyString_FromStringAndSize(char *, Py_ssize_t)
     PyObject *PyString_FromStringAndSize_ptr "PyString_FromStringAndSize" (char *, Py_ssize_t)
@@ -330,7 +332,7 @@ def _parse_leaf_lines(bytes, key_length, ref_list_length):
 #       One slightly ugly option would be to cache block offsets in a global.
 #       However, that leads to thread-safety issues, etc.
 ctypedef struct gc_chk_sha1_record:
-    unsigned long long block_offset
+    long long block_offset
     unsigned int block_length
     unsigned int record_start
     unsigned int record_end
@@ -520,10 +522,19 @@ cdef class GCCHKSHA1LeafNode:
         value_and_refs = StaticTuple_New(2)
         # This is really inefficient to go from a logical state back to a
         # string, but it makes things work a bit better internally for now.
-        value = PyString_FromFormat('%lu %lu %lu %lu',
-                                    <unsigned long>record.block_offset,
+        if record.block_offset >= 0xFFFFFFFFull:
+            # %llu is what we really want, but unfortunately it was only added
+            # in python 2.7... :(
+            block_offset_str = str(record.block_offset)
+            value = PyString_FromFormat('%s %lu %lu %lu',
+                                    PyString_AS_STRING(block_offset_str),
                                     record.block_length,
                                     record.record_start, record.record_end)
+        else:
+            value = PyString_FromFormat('%lu %lu %lu %lu',
+                                        <unsigned long>record.block_offset,
+                                        record.block_length,
+                                        record.record_start, record.record_end)
         Py_INCREF(value)
         StaticTuple_SET_ITEM(value_and_refs, 0, value)
         # Always empty refs
