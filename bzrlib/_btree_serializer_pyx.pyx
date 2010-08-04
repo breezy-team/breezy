@@ -561,12 +561,21 @@ cdef class GCCHKSHA1LeafNode:
 
     cdef gc_chk_sha1_record* _lookup_record(self, char *sha1):
         """Find a gc_chk_sha1_record that matches the sha1 supplied."""
-        # For right now we iterate, in the future we should bisect, or create
-        # a local index, or use the sha1 as a hash into a local table, etc.
-        cdef int i
-        for i from 0 <= i < self.num_entries:
-            if memcmp(self.entries[i].sha1, sha1, 20) == 0:
-                return &self.entries[i]
+        cdef int lo, hi, mid, the_cmp
+
+        lo = 0
+        hi = self.num_entries
+
+        # Bisect until we find the right spot
+        while lo < hi:
+            mid = (lo + hi) / 2
+            the_cmp = memcmp(sha1, self.entries[mid].sha1, 20)
+            if the_cmp == 0:
+                return &self.entries[mid]
+            elif the_cmp < 0:
+                hi = mid
+            else:
+                lo = mid + 1
         return NULL
 
     def __contains__(self, key):
