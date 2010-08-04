@@ -158,7 +158,6 @@ class MergeTool(object):
         commandline, tmp_file = self._expand_commandline(filename)
         args = cmdline.split(commandline)
         def cleanup(retcode):
-            print "cleanup"
             if tmp_file is not None:
                 if retcode == 0: # on success, replace file with temp file
                     shutil.move(tmp_file, filename)
