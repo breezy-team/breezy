@@ -157,14 +157,19 @@ class MergeTool(object):
     def _expand_commandline(self, filename):
         commandline = self._commandline
         tmp_file = None
-        commandline = commandline.replace('%b', _optional_quote_arg(filename + '.BASE'))
-        commandline = commandline.replace('%t', _optional_quote_arg(filename + '.THIS'))
-        commandline = commandline.replace('%o', _optional_quote_arg(filename + '.OTHER'))
+        commandline = commandline.replace('%b', _optional_quote_arg(filename +
+                                                                    '.BASE'))
+        commandline = commandline.replace('%t', _optional_quote_arg(filename +
+                                                                    '.THIS'))
+        commandline = commandline.replace('%o', _optional_quote_arg(filename +
+                                                                    '.OTHER'))
         commandline = commandline.replace('%r', _optional_quote_arg(filename))
         if '%T' in commandline:
-            tmp_file = tempfile.mktemp("_bzr_mergetools_%s.THIS" % os.path.basename(filename))
+            tmp_file = tempfile.mktemp("_bzr_mergetools_%s.THIS" %
+                                       os.path.basename(filename))
             shutil.copy(filename + ".THIS", tmp_file)
-            commandline = commandline.replace('%T', _optional_quote_arg(tmp_file))
+            commandline = commandline.replace('%T',
+                                              _optional_quote_arg(tmp_file))
         return commandline, tmp_file
 
 
