@@ -49,6 +49,7 @@ from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,
+    btree_index,
     errors,
     lockable_files,
     lockdir,
@@ -56,10 +57,6 @@ from bzrlib import (
     )
 
 from bzrlib.decorators import needs_write_lock, only_raises
-from bzrlib.btree_index import (
-    BTreeGraphIndex,
-    BTreeBuilder,
-    )
 from bzrlib.index import (
     GraphIndex,
     InMemoryGraphIndex,
@@ -1681,6 +1678,7 @@ class RepositoryPackCollection(object):
             sig_index = self._make_index(name, '.six')
             if self.chk_index is not None:
                 chk_index = self._make_index(name, '.cix', unlimited_cache=True)
+                chk_index._leaf_factory = btree_index._gcchk_factory
             else:
                 chk_index = None
             result = ExistingPack(self._pack_transport, name, rev_index,
@@ -2829,8 +2827,8 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
     supports_external_lookups = True
     # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
+    index_builder_class = btree_index.BTreeBuilder
+    index_class = btree_index.BTreeGraphIndex
 
     @property
     def _serializer(self):
@@ -2865,8 +2863,8 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     supports_tree_reference = False # no subtrees
     supports_external_lookups = True
     # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
+    index_builder_class = btree_index.BTreeBuilder
+    index_class = btree_index.BTreeGraphIndex
 
     @property
     def _serializer(self):
@@ -2907,8 +2905,8 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     supports_tree_reference = True
     supports_external_lookups = True
     # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
+    index_builder_class = btree_index.BTreeBuilder
+    index_class = btree_index.BTreeGraphIndex
 
     @property
     def _serializer(self):

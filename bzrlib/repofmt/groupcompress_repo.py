@@ -77,6 +77,7 @@ class GCPack(NewPack):
         # from brisbane-core
         if pack_collection.chk_index is not None:
             chk_index = index_builder_class(reference_lists=0)
+            chk_index._leaf_factory = btree_index._gcchk_factory
         else:
             chk_index = None
         Pack.__init__(self,

@@ -684,7 +684,7 @@ class BTreeGraphIndex(object):
         self._recommended_pages = self._compute_recommended_pages()
         self._root_node = None
         self._base_offset = offset
-        self._leaf_klass = _LeafNode
+        self._leaf_factory = _LeafNode
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
         if unlimited_cache:
@@ -1558,8 +1558,8 @@ class BTreeGraphIndex(object):
                     continue
             bytes = zlib.decompress(data)
             if bytes.startswith(_LEAF_FLAG):
-                node = self._leaf_klass(bytes, self._key_length,
-                                        self.node_ref_lists)
+                node = self._leaf_factory(bytes, self._key_length,
+                                          self.node_ref_lists)
             elif bytes.startswith(_INTERNAL_FLAG):
                 node = _InternalNode(bytes)
             else:
@@ -1584,8 +1584,11 @@ class BTreeGraphIndex(object):
             pass
 
 
+_gcchk_factory = _LeafNode
+
 try:
     from bzrlib import _btree_serializer_pyx as _btree_serializer
+    _gcchk_factory = _btree_serializer._parse_into_chk
 except ImportError, e:
     osutils.failed_to_load_extension(e)
     from bzrlib import _btree_serializer_py as _btree_serializer
