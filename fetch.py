@@ -106,12 +106,14 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
     else:
         cls = InventoryFile
     ie = cls(file_id, name.decode("utf-8"), parent_id)
-    ie.executable = mode_is_executable(mode)
+    if ie.kind == "file":
+        ie.executable = mode_is_executable(mode)
     if base_hexsha == hexsha and mode_kind(base_mode) == mode_kind(mode):
         base_ie = base_inv[base_inv.path2id(path)]
         ie.text_size = base_ie.text_size
         ie.text_sha1 = base_ie.text_sha1
-        ie.symlink_target = base_ie.symlink_target
+        if ie.kind == "symlink":
+            ie.symlink_target = base_ie.symlink_target
         if ie.executable == base_ie.executable:
             ie.revision = base_ie.revision
         else:
@@ -121,8 +123,6 @@ def import_git_blob(texts, mapping, path, name, (base_hexsha, hexsha),
         if ie.kind == "symlink":
             ie.revision = None
             ie.symlink_target = blob.data
-            ie.text_size = None
-            ie.text_sha1 = None
         else:
             ie.text_size = sum(imap(len, blob.chunked))
             ie.text_sha1 = osutils.sha_strings(blob.chunked)
