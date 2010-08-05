@@ -1809,6 +1809,58 @@ class GroupCompressVersionedFiles(VersionedFiles):
         return result
 
 
+class _GCBuildDetails(object):
+    """A blob of data about the build details.
+
+    This stores the minimal data, which then allows compatibility with the old
+    api, without taking as much memory.
+    """
+
+    __slots__ = ('_index', '_group_start', '_group_end', '_basis_end',
+                 '_delta_end', '_parents')
+
+    method = 'group'
+    compression_parent = None
+
+    def __init__(self, parents, position_info):
+        self._parents = parents
+        self._index = position_info[0]
+        self._group_start = position_info[1]
+        # Is this _end or length? Doesn't really matter to us
+        self._group_end = position_info[2]
+        self._basis_end = position_info[3]
+        self._delta_end = position_info[4]
+
+    def __repr__(self):
+        return '%s(%s, %s)' % (self.__class__.__name__,
+            self.index_memo, self._parents)
+
+    @property
+    def index_memo(self):
+        return (self._index, self._group_start, self._group_end,
+                self._basis_end, self._delta_end)
+
+    @property
+    def record_details(self):
+        return static_tuple.StaticTuple(self.method, None)
+
+    def __getitem__(self, offset):
+        """Compatibility thunk to act like a tuple."""
+        if offset == 0:
+            return self.index_memo
+        elif offset == 1:
+            return self.compression_parent # Always None
+        elif offset == 2:
+            return self._parents
+        elif offset == 3:
+            return self.record_details
+        else:
+            raise IndexError('offset out of range')
+            
+    def __len__(self):
+        return 4
+
+
 class _GCGraphIndex(object):
     """Mapper from GroupCompressVersionedFiles needs into GraphIndex storage."""
 
@@ -2009,9 +2061,8 @@ class _GCGraphIndex(object):
                 parents = None
             else:
                 parents = entry[3][0]
-            method = 'group'
-            result[key] = (self._node_to_position(entry),
-                                  None, parents, (method, None))
+            details = _GCBuildDetails(parents, self._node_to_position(entry))
+            result[key] = details
         return result
 
     def keys(self):
@@ -2033,7 +2084,7 @@ class _GCGraphIndex(object):
         # each, or about 7MB. Note that it might be even more when you consider
         # how PyInt is allocated in separate slabs. And you can't return a slab
         # to the OS if even 1 int on it is in use. Note though that Python uses
-        # a LIFO when re-using PyInt slots, which probably causes more
+        # a LIFO when re-using PyInt slots, which might cause more
         # fragmentation.
         start = int(bits[0])
         start = self._int_cache.setdefault(start, start)
