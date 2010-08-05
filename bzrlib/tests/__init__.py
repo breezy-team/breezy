@@ -34,6 +34,7 @@ from cStringIO import StringIO
 import difflib
 import doctest
 import errno
+import itertools
 import logging
 import math
 import os
@@ -3196,15 +3197,16 @@ class TestFirstDecorator(TestDecorator):
 
 def partition_tests(suite, count):
     """Partition suite into count lists of tests."""
-    result = []
-    tests = list(iter_suite_tests(suite))
-    tests_per_process = int(math.ceil(float(len(tests)) / count))
-    for block in range(count):
-        low_test = block * tests_per_process
-        high_test = low_test + tests_per_process
-        process_tests = tests[low_test:high_test]
-        result.append(process_tests)
-    return result
+    # This just assigns tests in a round-robin fashion.  On one hand this
+    # splits up blocks of related tests that might run faster if they shared
+    # resources, but on the other it avoids assigning blocks of slow tests to
+    # just one partition.  So the slowest partition shouldn't be much slower
+    # than the fastest.
+    partitions = [list() for i in range(count)]
+    tests = iter_suite_tests(suite)
+    for partition, test in itertools.izip(itertools.cycle(partitions), tests):
+        partition.append(test)
+    return partitions
 
 
 def workaround_zealous_crypto_random():
