@@ -30,8 +30,6 @@ cdef extern from "Python.h":
         pass
     int PyList_Append(object lst, object item) except -1
 
-    int HAVE_LONG_LONG
-
     char *PyString_AsString(object p) except NULL
     object PyString_FromStringAndSize(char *, Py_ssize_t)
     PyObject *PyString_FromStringAndSize_ptr "PyString_FromStringAndSize" (char *, Py_ssize_t)
@@ -473,8 +471,6 @@ cdef StaticTuple _sha1_to_key(char *sha1):
     # We *could* hang the PyObject form off of the gc_chk_sha1_record for ones
     # that we have deserialized. Something to think about, at least.
     key = StaticTuple_Intern(key)
-    global num_sha_to_key
-    num_sha_to_key += 1
     return key
 
 
@@ -566,8 +562,6 @@ cdef class GCCHKSHA1LeafNode:
         empty = StaticTuple_New(0)
         Py_INCREF(empty)
         StaticTuple_SET_ITEM(value_and_refs, 1, empty)
-        global num_value_refs
-        num_value_refs += 1
         return value_and_refs
 
     cdef StaticTuple _record_to_item(self, gc_chk_sha1_record *record):
@@ -588,9 +582,8 @@ cdef class GCCHKSHA1LeafNode:
 
     cdef gc_chk_sha1_record* _lookup_record(self, char *sha1) except? NULL:
         """Find a gc_chk_sha1_record that matches the sha1 supplied."""
-        cdef int lo, hi, mid, the_cmp, local_n_cmp
+        cdef int lo, hi, mid, the_cmp
         cdef int offset
-        cdef double t_start
 
         # TODO: We can speed up misses by comparing this sha1 to the common
         #       bits, and seeing if the common prefix matches, if not, we don't
@@ -601,9 +594,6 @@ cdef class GCCHKSHA1LeafNode:
         # Bisecting dropped us from 7000 comparisons to 582 (4.8/key), using
         # the offset array dropped us from 23us to 20us and 156 comparisions
         # (1.3/key)
-        global num_lookup, num_cmp, num_miss, num_hits, num_hits_cmp, num_miss_cmp, t_hits, t_misses
-        num_lookup += 1
-        t_start = _timer()
         offset = self._offset_for_sha1(sha1)
         lo = self.offsets[offset]
         hi = self.offsets[offset+1]
@@ -616,29 +606,18 @@ cdef class GCCHKSHA1LeafNode:
         local_n_cmp = 0
         while lo < hi:
             mid = (lo + hi) / 2
-            num_cmp += 1
-            local_n_cmp += 1
             the_cmp = memcmp(self.records[mid].sha1, sha1, 20)
             if the_cmp == 0:
-                # print mid, offset, self._offsets[offset], self._offsets[offset+1]
-                num_hits += 1
-                t_hits += (_timer() - t_start)
-                num_hits_cmp += local_n_cmp
                 return &self.records[mid]
             elif the_cmp < 0:
                 lo = mid + 1
             else:
                 hi = mid
-        num_miss += 1
-        num_miss_cmp += local_n_cmp
-        t_misses += (_timer() - t_start)
         return NULL
 
     def __contains__(self, key):
         cdef char sha1[20]
         cdef gc_chk_sha1_record *record
-        global num_contains
-        num_contains += 1
         if _key_to_sha1(key, sha1):
             # If it isn't a sha1 key, then it won't be in this leaf node
             record = self._lookup_record(sha1)
@@ -651,16 +630,12 @@ cdef class GCCHKSHA1LeafNode:
     def __getitem__(self, key):
         cdef char sha1[20]
         cdef gc_chk_sha1_record *record = NULL
-        global num_get_item, num_get_item_hits, num_get_item_cached
-        num_get_item += 1
         if self.last_record != NULL and key is self.last_key:
-            num_get_item_cached += 1
             record = self.last_record
         elif _key_to_sha1(key, sha1):
             record = self._lookup_record(sha1)
         if record == NULL:
             raise KeyError('key %r is not present' % (key,))
-        num_get_item_hits += 1
         return self._record_to_value_and_refs(record)
 
     def __len__(self):
@@ -840,54 +815,6 @@ def _parse_into_chk(bytes, key_length, ref_list_length):
     assert key_length == 1
     assert ref_list_length == 0
     return GCCHKSHA1LeafNode(bytes)
-
-cdef unsigned long num_lookup
-num_lookup = 0
-cdef double t_hits
-t_hits = 0.0
-cdef double t_misses
-t_misses = 0.0
-cdef object _timer
-from time import clock
-_timer = clock
-cdef unsigned long num_cmp
-num_cmp = 0
-cdef unsigned long num_hits
-num_hits = 0
-cdef unsigned long num_hits_cmp
-num_hits_cmp = 0
-cdef unsigned long num_miss
-num_miss = 0
-cdef unsigned long num_miss_cmp
-num_miss_cmp = 0
-cdef unsigned long num_get_item
-num_get_item = 0
-cdef unsigned long num_get_item_hits
-num_get_item_hits = 0
-cdef unsigned long num_get_item_cached
-num_get_item_cached = 0
-cdef unsigned long num_contains
-num_contains = 0
-cdef unsigned long num_sha_to_key
-num_sha_to_key = 0
-cdef unsigned long num_value_refs
-num_value_refs = 0
-
-import sys
-stderr = sys.stderr
-def print_summary():
-    stderr.write('lookups: %d, cmp: %d, hits: %d, miss: %d\n' % (
-        num_lookup, num_cmp, num_hits, num_miss))
-    stderr.write('hit_cmp: %d %.3fs, miss_cmp: %d %.3fs\n'
-                 % (num_hits_cmp, t_hits, num_miss_cmp, t_misses))
-    stderr.write('getitem: %d (%d hits, %d cached), contains: %d\n'
-                 % (num_get_item, num_get_item_hits, num_get_item_cached,
-                    num_contains))
-    stderr.write('value_refs: %d, sha_to_key: %d\n'
-                 % (num_value_refs, num_sha_to_key))
-
-import atexit
-atexit.register(print_summary)
 
 
 def _flatten_node(node, reference_lists):
