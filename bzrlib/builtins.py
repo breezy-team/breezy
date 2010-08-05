@@ -20,7 +20,6 @@ import os
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 import cStringIO
 import sys
 import time
@@ -3150,9 +3149,9 @@ class cmd_commit(Command):
         def get_message(commit_obj):
             """Callback to get commit message"""
             if file:
-                f = codecs.open(file, 'rt', osutils.get_user_encoding())
+                f = open(file)
                 try:
-                    my_message = f.read()
+                    my_message = f.read().decode(osutils.get_user_encoding())
                 finally:
                     f.close()
             elif message is not None:
