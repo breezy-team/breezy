@@ -157,13 +157,20 @@ class LocalGitDir(GitDir):
             self._lockfiles)
 
     def destroy_branch(self, name=None):
-        del self._git.refs[self._branch_name_to_ref(name)]
+        refname = self._branch_name_to_ref(name)
+        if not refname in self._git.refs:
+            raise bzr_errors.NotBranchError(self.root_transport.base,
+                    bzrdir=self)
+        del self._git.refs[refname]
 
     def destroy_repository(self):
         raise bzr_errors.UnsupportedOperation(self.destroy_repository, self)
 
     def destroy_workingtree(self):
         raise bzr_errors.UnsupportedOperation(self.destroy_workingtree, self)
+
+    def needs_format_conversion(self, format=None):
+        return not isinstance(self._format, format.__class__)
 
     def list_branches(self):
         ret = []
