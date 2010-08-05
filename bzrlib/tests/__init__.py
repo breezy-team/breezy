@@ -280,7 +280,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         return what
 
     def startTest(self, test):
-        unittest.TestResult.startTest(self, test)
+        super(ExtendedTestResult, self).startTest(test)
         if self.count == 0:
             self.startTests()
         self.report_test_start(test)
@@ -324,7 +324,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         fails with an unexpected error.
         """
         self._post_mortem()
-        unittest.TestResult.addError(self, test, err)
+        super(ExtendedTestResult, self).addError(test, err)
         self.error_count += 1
         self.report_error(test, err)
         if self.stop_early:
@@ -338,7 +338,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         fails because e.g. an assert() method failed.
         """
         self._post_mortem()
-        unittest.TestResult.addFailure(self, test, err)
+        super(ExtendedTestResult, self).addFailure(test, err)
         self.failure_count += 1
         self.report_failure(test, err)
         if self.stop_early:
@@ -358,7 +358,7 @@ class ExtendedTestResult(testtools.TextTestResult):
                     test.id()))
         self.report_success(test)
         self._cleanupLogFile(test)
-        unittest.TestResult.addSuccess(self, test)
+        super(ExtendedTestResult, self).addSuccess(test)
         test._log_contents = ''
 
     def addExpectedFailure(self, test, err):
