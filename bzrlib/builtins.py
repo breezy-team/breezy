@@ -241,6 +241,19 @@ def _open_directory_or_containing_tree_or_branch(filename, directory):
     return bzrdir.BzrDir.open_containing_tree_or_branch(filename)
 
 
+def _resolve_using_merge_tool(tool_name, conflicts):
+    merge_tool = mergetools.find_merge_tool(tool_name)
+    if merge_tool is None:
+        available = '\n  '.join([mt.get_name() for mt in
+                                 mergetools.get_merge_tools()
+                                 if mt.is_available()])
+        raise errors.BzrCommandError('Unrecognized merge tool: %s\n\n'
+                                     'Available merge tools:\n'
+                                     '  %s' % (tool_name, available))
+    for conflict in conflicts:
+        merge_tool.invoke(conflict.path)
+
+
 # TODO: Make sure no commands unconditionally use the working directory as a
 # branch.  If a filename argument is used, the first of them should be used to
 # specify the branch.  (Perhaps this can be factored out into some kind of
@@ -3796,7 +3809,7 @@ class cmd_merge(Command):
                ' merge.'),
         Option('interactive', help='Select changes interactively.',
             short_name='i'),
-        Option('using', help='Invokes an external merge tool for merged files '
+        Option('resolve-using', help='Invokes an external merge tool for merged files '
                'with conflicts.', type=str),
     ]
 
@@ -3806,7 +3819,7 @@ class cmd_merge(Command):
             directory=None,
             preview=False,
             interactive=False,
-            using=None
+            resolve_using=None
             ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
@@ -3889,21 +3902,8 @@ class cmd_merge(Command):
         else:
             retval = self._do_merge(merger, change_reporter, allow_pending,
                                     verified)
-        if retval != 0:
-            merge_tool = None
-            if using is not None:
-                merge_tool = mergetools.find_merge_tool(using)
-                if merge_tool is None:
-                    raise errors.BzrCommandError(
-                        'Unrecognized merge tool: %s\n\n'
-                        'Available merge tools:\n'
-                        '  %s' % (using,
-                                '\n  '.join([mt.get_name() for mt in
-                                           mergetools.get_merge_tools()
-                                           if mt.is_available()])))
-            if merge_tool is not None:
-                for conflict in tree.conflicts():
-                    merge_tool.invoke(conflict.path)
+        if retval != 0 and resolve_using is not None:
+                _resolve_using_merge_tool(resolve_using, tree.conflicts())
         return retval
 
     def _get_preview(self, merger):
@@ -4105,10 +4105,12 @@ class cmd_remerge(Command):
             'reprocess',
             Option('show-base',
                    help="Show base revision text in conflicts."),
+            Option('resolve-using', help='Invokes an external merge tool for '
+                   'merged files with conflicts.', type=str),
             ]
 
     def run(self, file_list=None, merge_type=None, show_base=False,
-            reprocess=False):
+            reprocess=False, resolve_using=None):
         from bzrlib.conflicts import restore
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
@@ -4166,6 +4168,8 @@ class cmd_remerge(Command):
         finally:
             tree.set_parent_ids(parents)
         if conflicts > 0:
+            if resolve_using is not None:
+                _resolve_using_merge_tool(resolve_using, tree.conflicts())
             return 1
         else:
             return 0
