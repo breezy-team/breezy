@@ -339,7 +339,8 @@ ctypedef struct gc_chk_sha1_record:
 
 
 cdef int _unhexbuf[256]
-cdef char *_hexbuf = '0123456789abcdef'
+cdef char *_hexbuf
+_hexbuf = '0123456789abcdef'
 
 cdef _populate_unhexbuf():
     cdef int i
@@ -494,10 +495,10 @@ cdef unsigned int _sha1_to_uint(char *sha1):
 cdef class GCCHKSHA1LeafNode:
     """Track all the entries for a given leaf node."""
 
-    cdef public int num_records
     cdef gc_chk_sha1_record *records
     cdef public object last_key
     cdef gc_chk_sha1_record *last_record
+    cdef public int num_records
     # This is the number of bits to shift to get to the interesting byte. A
     # value of 24 means that the very first byte changes across all keys.
     # Anything else means that there is a common prefix of bits that we can
@@ -510,7 +511,19 @@ cdef class GCCHKSHA1LeafNode:
     cdef unsigned char offsets[257]
 
     def __sizeof__(self):
-        return (sizeof(GCCHKSHA1LeafNode)
+        # :( Why doesn't Pyrex let me do a simple sizeof(GCCHKSHA1LeafNode)
+        # like Cython? Explicitly enumerating everything here seems to leave my
+        # size off by 2 (286 bytes vs 288 bytes actual). I'm guessing it is an
+        # alignment/padding issue. Oh well- at least we scale properly with
+        # num_records and are very close to correct, which is what I care
+        # about.
+        # If we ever decide to require cython:
+        # return (sizeof(GCCHKSHA1LeafNode)
+        #     + sizeof(gc_chk_sha1_record)*self.num_records)
+        return (sizeof(PyObject) + sizeof(void*) + sizeof(int)
+            + sizeof(gc_chk_sha1_record*) + sizeof(PyObject *)
+            + sizeof(gc_chk_sha1_record*) + sizeof(char)
+            + sizeof(unsigned char)*257
             + sizeof(gc_chk_sha1_record)*self.num_records)
 
     def __dealloc__(self):
@@ -543,7 +556,7 @@ cdef class GCCHKSHA1LeafNode:
         value_and_refs = StaticTuple_New(2)
         # This is really inefficient to go from a logical state back to a
         # string, but it makes things work a bit better internally for now.
-        if record.block_offset >= 0xFFFFFFFFull:
+        if record.block_offset >= 0xFFFFFFFF:
             # %llu is what we really want, but unfortunately it was only added
             # in python 2.7... :(
             block_offset_str = str(record.block_offset)
@@ -629,7 +642,8 @@ cdef class GCCHKSHA1LeafNode:
 
     def __getitem__(self, key):
         cdef char sha1[20]
-        cdef gc_chk_sha1_record *record = NULL
+        cdef gc_chk_sha1_record *record
+        record = NULL
         if self.last_record != NULL and key is self.last_key:
             record = self.last_record
         elif _key_to_sha1(key, sha1):
@@ -643,17 +657,17 @@ cdef class GCCHKSHA1LeafNode:
 
     def all_keys(self):
         cdef int i
-        cdef list result = []
+        result = []
         for i from 0 <= i < self.num_records:
-            result.append(_sha1_to_key(self.records[i].sha1))
+            PyList_Append(result, _sha1_to_key(self.records[i].sha1))
         return result
 
     def all_items(self):
         cdef int i
-        cdef list result = []
+        result = []
         for i from 0 <= i < self.num_records:
             item = self._record_to_item(&self.records[i])
-            result.append(item)
+            PyList_Append(result, item)
         return result
 
     cdef _parse_bytes(self, bytes):
@@ -802,11 +816,10 @@ cdef class GCCHKSHA1LeafNode:
 
     property _test_offsets:
         def __get__(self):
-            cdef list result
             cdef int i
             result = []
             for i from 0 <= i < 257:
-                result.append(self.offsets[i])
+                PyList_Append(result, self.offsets[i])
             return result
 
 
