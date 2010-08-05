@@ -3893,6 +3893,14 @@ class cmd_merge(Command):
             merge_tool = None
             if using is not None:
                 merge_tool = mergetools.find_merge_tool(using)
+                if merge_tool is None:
+                    raise errors.BzrCommandError(
+                        'Unrecognized merge tool: %s\n\n'
+                        'Available merge tools:\n'
+                        '  %s' % (using,
+                                '\n  '.join([mt.get_name() for mt in
+                                           mergetools.get_merge_tools()
+                                           if mt.is_available()])))
             if merge_tool is not None:
                 for conflict in tree.conflicts():
                     merge_tool.invoke(conflict.path)

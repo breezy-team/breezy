@@ -168,7 +168,12 @@ class cmd_resolve(commands.Command):
             merge_tool = mergetools.find_merge_tool(using)
             if merge_tool is None:
                 raise errors.BzrCommandError(
-                    'Unrecognized merge tool: %s' % using)
+                    'Unrecognized merge tool: %s\n\n'
+                    'Available merge tools:\n'
+                    '  %s' % (using,
+                            '\n  '.join([mt.get_name() for mt in
+                                       mergetools.get_merge_tools()
+                                       if mt.is_available()])))
             if merge_tool is not None and not merge_tool.is_available():
                 raise errors.BzrCommandError(
                     'Merge tool is not available: %s' % merge_tool.get_name())
