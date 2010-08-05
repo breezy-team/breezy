@@ -419,6 +419,10 @@ class GitBranchPushResult(branch.BranchPushResult):
 class InterFromGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls from Git into bzr."""
 
+    @staticmethod
+    def _get_branch_formats_to_test():
+        return []
+
     @classmethod
     def _get_interrepo(self, source, target):
         return repository.InterRepository.get(source.repository,
@@ -546,6 +550,10 @@ class InterGitBranch(branch.GenericInterBranch):
 class InterGitLocalRemoteBranch(InterGitBranch):
     """InterBranch that copies from a local to a remote git branch."""
 
+    @staticmethod
+    def _get_branch_formats_to_test():
+        return []
+
     @classmethod
     def is_compatible(self, source, target):
         from bzrlib.plugins.git.remote import RemoteGitBranch
@@ -574,6 +582,10 @@ class InterGitLocalRemoteBranch(InterGitBranch):
 
 class InterGitRemoteLocalBranch(InterGitBranch):
     """InterBranch that copies from a remote to a local git branch."""
+
+    @staticmethod
+    def _get_branch_formats_to_test():
+        return []
 
     @classmethod
     def is_compatible(self, source, target):
