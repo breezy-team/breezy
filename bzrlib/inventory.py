@@ -35,13 +35,11 @@ import os
 import re
 import tarfile
 
-import bzrlib
 from bzrlib import (
     chk_map,
     errors,
     generate_ids,
     osutils,
-    symbol_versioning,
     )
 """)
 
@@ -49,7 +47,6 @@ from bzrlib.errors import (
     BzrCheckError,
     BzrError,
     )
-from bzrlib.symbol_versioning import deprecated_in, deprecated_method
 from bzrlib.trace import mutter
 from bzrlib.static_tuple import StaticTuple
 
@@ -131,7 +128,23 @@ class InventoryEntry(object):
     RENAMED = 'renamed'
     MODIFIED_AND_RENAMED = 'modified and renamed'
 
-    __slots__ = []
+    __slots__ = ['file_id', 'revision', 'parent_id', 'name']
+
+    # Attributes that all InventoryEntry instances are expected to have, but
+    # that don't vary for all kinds of entry.  (e.g. symlink_target is only
+    # relevant to InventoryLink, so there's no reason to make every
+    # InventoryFile instance allocate space to hold a value for it.)
+    # Attributes that only vary for files: executable, text_sha1, text_size,
+    # text_id
+    executable = False
+    text_sha1 = None
+    text_size = None
+    text_id = None
+    # Attributes that only vary for symlinks: symlink_target
+    symlink_target = None
+    # Attributes that only vary for tree-references: reference_revision
+    reference_revision = None
+
 
     def detect_changes(self, old_entry):
         """Return a (text_modified, meta_modified) from this to old_entry.
@@ -187,7 +200,7 @@ class InventoryEntry(object):
         """
         return False
 
-    def __init__(self, file_id, name, parent_id, text_id=None):
+    def __init__(self, file_id, name, parent_id):
         """Create an InventoryEntry
 
         The filename must be a single component, relative to the
@@ -204,16 +217,10 @@ class InventoryEntry(object):
         """
         if '/' in name or '\\' in name:
             raise errors.InvalidEntryName(name=name)
-        self.executable = False
-        self.revision = None
-        self.text_sha1 = None
-        self.text_size = None
         self.file_id = file_id
+        self.revision = None
         self.name = name
-        self.text_id = text_id
         self.parent_id = parent_id
-        self.symlink_target = None
-        self.reference_revision = None
 
     def kind_character(self):
         """Return a short kind indicator useful for appending to names."""
@@ -379,16 +386,12 @@ class InventoryEntry(object):
 class InventoryDirectory(InventoryEntry):
     """A directory in an inventory."""
 
-    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable',
-                 'revision', 'symlink_target', 'reference_revision']
+    __slots__ = ['children']
+
+    kind = 'directory'
 
     def _check(self, checker, rev_id):
         """See InventoryEntry._check"""
-        if (self.text_sha1 is not None or self.text_size is not None or
-            self.text_id is not None):
-            checker._report_items.append('directory {%s} has text in revision {%s}'
-                                % (self.file_id, rev_id))
         # In non rich root repositories we do not expect a file graph for the
         # root.
         if self.name == '' and not checker.rich_roots:
@@ -410,7 +413,6 @@ class InventoryDirectory(InventoryEntry):
     def __init__(self, file_id, name, parent_id):
         super(InventoryDirectory, self).__init__(file_id, name, parent_id)
         self.children = {}
-        self.kind = 'directory'
 
     def kind_character(self):
         """See InventoryEntry.kind_character."""
@@ -433,9 +435,16 @@ class InventoryDirectory(InventoryEntry):
 class InventoryFile(InventoryEntry):
     """A file in an inventory."""
 
-    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable',
-                 'revision', 'symlink_target', 'reference_revision']
+    __slots__ = ['text_sha1', 'text_size', 'text_id', 'executable']
+
+    kind = 'file'
+
+    def __init__(self, file_id, name, parent_id):
+        super(InventoryFile, self).__init__(file_id, name, parent_id)
+        self.text_sha1 = None
+        self.text_size = None
+        self.text_id = None
+        self.executable = False
 
     def _check(self, checker, tree_revision_id):
         """See InventoryEntry._check"""
@@ -483,10 +492,6 @@ class InventoryFile(InventoryEntry):
     def has_text(self):
         """See InventoryEntry.has_text."""
         return True
-
-    def __init__(self, file_id, name, parent_id):
-        super(InventoryFile, self).__init__(file_id, name, parent_id)
-        self.kind = 'file'
 
     def kind_character(self):
         """See InventoryEntry.kind_character."""
@@ -546,16 +551,16 @@ class InventoryFile(InventoryEntry):
 class InventoryLink(InventoryEntry):
     """A file in an inventory."""
 
-    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', 'children', 'executable',
-                 'revision', 'symlink_target', 'reference_revision']
+    __slots__ = ['symlink_target']
+
+    kind = 'symlink'
+
+    def __init__(self, file_id, name, parent_id):
+        super(InventoryLink, self).__init__(file_id, name, parent_id)
+        self.symlink_target = None
 
     def _check(self, checker, tree_revision_id):
         """See InventoryEntry._check"""
-        if self.text_sha1 is not None or self.text_size is not None or self.text_id is not None:
-            checker._report_items.append(
-               'symlink {%s} has text in revision {%s}'
-                    % (self.file_id, tree_revision_id))
         if self.symlink_target is None:
             checker._report_items.append(
                 'symlink {%s} has no target in revision {%s}'
@@ -599,10 +604,6 @@ class InventoryLink(InventoryEntry):
         differ = DiffSymlink(old_tree, new_tree, output_to)
         return differ.diff_symlink(old_target, new_target)
 
-    def __init__(self, file_id, name, parent_id):
-        super(InventoryLink, self).__init__(file_id, name, parent_id)
-        self.kind = 'symlink'
-
     def kind_character(self):
         """See InventoryEntry.kind_character."""
         return ''
@@ -639,6 +640,8 @@ class InventoryLink(InventoryEntry):
 
 
 class TreeReference(InventoryEntry):
+
+    __slots__ = ['reference_revision']
 
     kind = 'tree-reference'
 
@@ -2192,17 +2195,13 @@ class CHKInventory(CommonInventory):
 class CHKInventoryDirectory(InventoryDirectory):
     """A directory in an inventory."""
 
-    __slots__ = ['text_sha1', 'text_size', 'file_id', 'name', 'kind',
-                 'text_id', 'parent_id', '_children', 'executable',
-                 'revision', 'symlink_target', 'reference_revision',
-                 '_chk_inventory']
+    __slots__ = ['_children', '_chk_inventory']
 
     def __init__(self, file_id, name, parent_id, chk_inventory):
         # Don't call InventoryDirectory.__init__ - it isn't right for this
         # class.
         InventoryEntry.__init__(self, file_id, name, parent_id)
         self._children = None
-        self.kind = 'directory'
         self._chk_inventory = chk_inventory
 
     @property

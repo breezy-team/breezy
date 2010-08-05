@@ -68,6 +68,10 @@ Bug Fixes
 Improvements
 ************
 
+* Inventory entries now consume less memory (on 32-bit Ubuntu file entries
+  have dropped from 68 bytes to 40, and directory entries from 120 bytes
+  to 48).  (Andrew Bennetts)
+
 * When building new working trees, default to reading from the repository
   rather than the source tree unless explicitly requested. (via
   ``--files-from`` and ``--hardlink`` for ``bzr branch`` and
@@ -80,6 +84,15 @@ Documentation
 
 API Changes
 ***********
+
+* InventoryEntry instances now raise AttributeError if you try to assign
+  to attributes that are irrelevant to that kind of entry.  e.g. setting
+  ``symlink_target`` on an InventoryFile will fail.  It is still okay to
+  read those attributes on any kind of InventoryEntry.  The complete list
+  of affected attributes is: ``executable``, ``text_id``, ``text_sha1``,
+  ``text_size`` (only valid for kind == file); ``symlink_target`` (only
+  valid for kind == link); and ``reference_revision`` (only valid for kind
+  == tree-reference).  (Andrew Bennetts)
 
 Internals
 *********

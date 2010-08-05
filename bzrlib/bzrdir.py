@@ -2939,7 +2939,6 @@ class ConvertBzrDir4To5(Converter):
         previous_entries = dict((head, parent_candiate_entries[head]) for head
             in heads)
         self.snapshot_ie(previous_entries, ie, w, rev_id)
-        del ie.text_id
 
     def get_parent_map(self, revision_ids):
         """See graph.StackedParentsProvider.get_parent_map"""
