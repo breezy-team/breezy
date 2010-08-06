@@ -2843,8 +2843,11 @@ class UncommittedChanges(BzrError):
         else:
             more = ' ' + more
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(
-            tree.user_url, 'ascii')
+        user_url = getattr(tree, "user_url", None)
+        if user_url is None:
+            display_url = str(tree)
+        else:
+            display_url = urlutils.unescape_for_display(user_url, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
 
 
