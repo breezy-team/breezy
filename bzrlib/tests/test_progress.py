@@ -70,6 +70,21 @@ class TestTextProgressView(TestCase):
         task.total_cnt = total
         return task
 
+    def test_clear(self):
+        # <https://bugs.launchpad.net/bzr/+bug/611127> clear must actually
+        # send spaces to clear the line
+        out, view = self.make_view()
+        task = self.make_task(None, view, 'reticulating splines', 5, 20)
+        view.show_progress(task)
+        self.assertEqual(
+'\r/ reticulating splines 5/20                                                    \r'
+            , out.getvalue())
+        view.clear()
+        self.assertEqual(
+'\r/ reticulating splines 5/20                                                    \r'
+            + '\r' + 79 * ' ' + '\r',
+            out.getvalue())
+
     def test_render_progress_no_bar(self):
         """The default view now has a spinner but no bar."""
         out, view = self.make_view()

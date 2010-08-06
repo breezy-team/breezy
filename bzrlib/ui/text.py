@@ -304,11 +304,15 @@ class TextProgressView(object):
         # we need one extra space for terminals that wrap on last char
         w = osutils.terminal_width() 
         if w is None:
-            return w
+            return None
         else:
             return w - 1
 
     def _show_line(self, s):
+        # sys.stderr.write("progress %r\n" % s)
+        width = self._avail_width()
+        if width is not None:
+            s = '%-*.*s' % (width, width, s)
         self._term_file.write('\r' + s + '\r')
 
     def clear(self):

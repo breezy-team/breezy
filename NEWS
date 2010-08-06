@@ -5,11 +5,11 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-bzr 2.2rc1
-##########
+bzr 2.2.0
+#########
 
 :Codename: ???
-:2.2rc1: NOT RELEASED YET
+:2.2.0: NOT RELEASED YET
 
 Compatibility Breaks
 ********************
@@ -48,7 +48,8 @@ Bug Fixes
 
 * Progress bars prefer to truncate the text message rather than the
   counters.  The spinner is shown between the network transfer indicator
-  and the progress message.  (Martin Pool)
+  and the progress message.  Progress bars are correctly cleared off when 
+  they finish.  (Martin Pool, #611127)
 
 * Recursive binding for checkouts is now detected by bzr. A clear error
   message is shown to the user. (Parth Malwankar, #405192)
