@@ -2,7 +2,7 @@ Source: bzr
 Section: vcs
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
-Uploaders: Jeff Bailey <jbailey@raspberryginger.com>, Wouter van Heyst <larstiq@larstiq.dyndns.org>, Reinhard Tartler <siretart@tauware.de>, Jelmer Vernooij <jelmer@debian.org>, John Francesco Ferlito <johnf@inodes.org>
+Uploaders: Jeff Bailey <jbailey@raspberryginger.com>, Wouter van Heyst <larstiq@larstiq.dyndns.org>, Jelmer Vernooij <jelmer@debian.org>, John Francesco Ferlito <johnf@inodes.org>
 Build-Depends: debhelper (>> 5.0.0), cdbs, python, python-all-dev, python-central, python-docutils, graphviz, zlib1g-dev, python-pyrex
 Standards-Version: 3.8.4
 XS-Python-Version: >= 2.4
