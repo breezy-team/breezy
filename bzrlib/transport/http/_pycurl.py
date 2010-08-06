@@ -31,16 +31,12 @@
 # from _curl_perform.  Not done because we may deprecate pycurl in the
 # future -- vila 20070212
 
-import os
 from cStringIO import StringIO
 import httplib
-import sys
 
 from bzrlib import (
     debug,
     errors,
-    trace,
-    __version__ as bzrlib_version,
     )
 import bzrlib
 from bzrlib.trace import mutter

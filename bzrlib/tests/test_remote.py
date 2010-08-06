@@ -38,6 +38,7 @@ from bzrlib import (
     remote,
     repository,
     tests,
+    transport,
     treebuilder,
     urlutils,
     versionedfile,
@@ -54,15 +55,15 @@ from bzrlib.remote import (
     )
 from bzrlib.repofmt import groupcompress_repo, pack_repo
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import server, medium
+from bzrlib.smart import medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
     multiply_tests,
+    test_server,
     )
-from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
     RemoteTransport,
@@ -75,9 +76,9 @@ def load_tests(standard_tests, module, loader):
         standard_tests, condition_isinstance(BasicRemoteObjectTests))
     smart_server_version_scenarios = [
         ('HPSS-v2',
-            {'transport_server': server.SmartTCPServer_for_testing_v2_only}),
+         {'transport_server': test_server.SmartTCPServer_for_testing_v2_only}),
         ('HPSS-v3',
-            {'transport_server': server.SmartTCPServer_for_testing})]
+         {'transport_server': test_server.SmartTCPServer_for_testing})]
     return multiply_tests(to_adapt, smart_server_version_scenarios, result)
 
 
@@ -358,8 +359,8 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given client_base and transport_base.
         """
         client_medium = medium.SmartClientMedium(client_base)
-        transport = get_transport(transport_base)
-        result = client_medium.remote_path_from_transport(transport)
+        t = transport.get_transport(transport_base)
+        result = client_medium.remote_path_from_transport(t)
         self.assertEqual(expected, result)
 
     def test_remote_path_from_transport(self):
@@ -376,7 +377,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given transport_base and relpath of that transport.  (Note that
         HttpTransportBase is a subclass of SmartClientMedium)
         """
-        base_transport = get_transport(transport_base)
+        base_transport = transport.get_transport(transport_base)
         client_medium = base_transport.get_smart_medium()
         cloned_transport = base_transport.clone(relpath)
         result = client_medium.remote_path_from_transport(cloned_transport)
@@ -608,7 +609,7 @@ class TestBzrDirOpenBranch(TestRemote):
         # _get_tree_branch is a form of open_branch, but it should only ask for
         # branch opening, not any other network requests.
         calls = []
-        def open_branch():
+        def open_branch(name=None):
             calls.append("Called")
             return "a-branch"
         transport = MemoryTransport()
@@ -1617,7 +1618,7 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
     def test_get_multi_line_branch_conf(self):
         # Make sure that multiple-line branch.conf files are supported
         #
-        # https://bugs.edge.launchpad.net/bzr/+bug/354075
+        # https://bugs.launchpad.net/bzr/+bug/354075
         client = FakeClient()
         client.add_expected_call(
             'Branch.get_stacked_on_url', ('memory:///',),
@@ -1651,6 +1652,32 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         branch.unlock()
         self.assertFinished(client)
 
+    def test_set_option_with_dict(self):
+        client = FakeClient()
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('memory:///',),
+            'error', ('NotStacked',),)
+        client.add_expected_call(
+            'Branch.lock_write', ('memory:///', '', ''),
+            'success', ('ok', 'branch token', 'repo token'))
+        encoded_dict_value = 'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde'
+        client.add_expected_call(
+            'Branch.set_config_option_dict', ('memory:///', 'branch token',
+            'repo token', encoded_dict_value, 'foo', ''),
+            'success', ())
+        client.add_expected_call(
+            'Branch.unlock', ('memory:///', 'branch token', 'repo token'),
+            'success', ('ok',))
+        transport = MemoryTransport()
+        branch = self.make_remote_branch(transport, client)
+        branch.lock_write()
+        config = branch._get_config()
+        config.set_option(
+            {'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'},
+            'foo')
+        branch.unlock()
+        self.assertFinished(client)
+
     def test_backwards_compat_set_option(self):
         self.setup_smart_server_with_call_log()
         branch = self.make_branch('.')
@@ -1662,6 +1689,20 @@ class TestBranchGetSetConfig(RemoteBranchTestCase):
         branch._get_config().set_option('value', 'name')
         self.assertLength(10, self.hpss_calls)
         self.assertEqual('value', branch._get_config().get_option('name'))
+
+    def test_backwards_compat_set_option_with_dict(self):
+        self.setup_smart_server_with_call_log()
+        branch = self.make_branch('.')
+        verb = 'Branch.set_config_option_dict'
+        self.disable_verb(verb)
+        branch.lock_write()
+        self.addCleanup(branch.unlock)
+        self.reset_smart_call_log()
+        config = branch._get_config()
+        value_dict = {'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'}
+        config.set_option(value_dict, 'name')
+        self.assertLength(10, self.hpss_calls)
+        self.assertEqual(value_dict, branch._get_config().get_option('name'))
 
 
 class TestBranchLockWrite(RemoteBranchTestCase):
@@ -2033,11 +2074,8 @@ class TestRepositoryGetParentMap(TestRemoteRepository):
         self.assertLength(1, self.hpss_calls)
 
     def disableExtraResults(self):
-        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
-        SmartServerRepositoryGetParentMap.no_extra_results = True
-        def reset_values():
-            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
-        self.addCleanup(reset_values)
+        self.overrideAttr(SmartServerRepositoryGetParentMap,
+                          'no_extra_results', True)
 
     def test_null_cached_missing_and_stop_key(self):
         self.setup_smart_server_with_call_log()
@@ -2102,7 +2140,7 @@ class TestGetParentMapAllowsNew(tests.TestCaseWithTransport):
 
     def test_allows_new_revisions(self):
         """get_parent_map's results can be updated by commit."""
-        smart_server = server.SmartTCPServer_for_testing()
+        smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server)
         self.make_branch('branch')
         branch = Branch.open(smart_server.get_url() + '/branch')
@@ -2259,6 +2297,7 @@ class TestRepositoryGetRevIdForRevno(TestRemoteRepository):
         self.setup_smart_server_with_call_log()
         tree = self.make_branch_and_memory_tree('.')
         tree.lock_write()
+        tree.add('')
         rev1 = tree.commit('First')
         rev2 = tree.commit('Second')
         tree.unlock()
@@ -2303,11 +2342,11 @@ class TestRepositoryLockWrite(TestRemoteRepository):
         transport_path = 'quack'
         repo, client = self.setup_fake_client_and_repository(transport_path)
         client.add_success_response('ok', 'a token')
-        result = repo.lock_write()
+        token = repo.lock_write().repository_token
         self.assertEqual(
             [('call', 'Repository.lock_write', ('quack/', ''))],
             client._calls)
-        self.assertEqual('a token', result)
+        self.assertEqual('a token', token)
 
     def test_lock_write_already_locked(self):
         transport_path = 'quack'
@@ -2651,7 +2690,7 @@ class TestRemoteRepositoryCopyContent(tests.TestCaseWithTransport):
     """RemoteRepository.copy_content_into optimizations"""
 
     def test_copy_content_remote_to_local(self):
-        self.transport_server = server.SmartTCPServer_for_testing
+        self.transport_server = test_server.SmartTCPServer_for_testing
         src_repo = self.make_repository('repo1')
         src_repo = repository.Repository.open(self.get_url('repo1'))
         # At the moment the tarball-based copy_content_into can't write back
@@ -2970,7 +3009,7 @@ class TestStacking(tests.TestCaseWithTransport):
         stacked_branch = self.make_branch('stacked', format='1.9')
         stacked_branch.set_stacked_on_url('../base')
         # start a server looking at this
-        smart_server = server.SmartTCPServer_for_testing()
+        smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(smart_server)
         remote_bzrdir = BzrDir.open(smart_server.get_url() + '/stacked')
         # can get its branch and repository
@@ -3132,7 +3171,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         super(TestRemoteBranchEffort, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
-        self.smart_server = server.SmartTCPServer_for_testing()
+        self.smart_server = test_server.SmartTCPServer_for_testing()
         self.start_server(self.smart_server, self.get_server())
         # Log all HPSS calls into self.hpss_calls.
         _SmartClient.hooks.install_named_hook(

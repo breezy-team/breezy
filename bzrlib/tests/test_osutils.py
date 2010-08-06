@@ -27,12 +27,15 @@ import time
 
 from bzrlib import (
     errors,
+    lazy_regex,
     osutils,
+    symbol_versioning,
     tests,
     trace,
     win32utils,
     )
 from bzrlib.tests import (
+    features,
     file_utils,
     test__walkdirs_win32,
     )
@@ -309,7 +312,9 @@ class TestKind(tests.TestCaseInTempDir):
         self.assertEqual("/", osutils.kind_marker(osutils._directory_kind))
         self.assertEqual("@", osutils.kind_marker("symlink"))
         self.assertEqual("+", osutils.kind_marker("tree-reference"))
-        self.assertRaises(errors.BzrError, osutils.kind_marker, "unknown")
+        self.assertEqual("", osutils.kind_marker("fifo"))
+        self.assertEqual("", osutils.kind_marker("socket"))
+        self.assertEqual("", osutils.kind_marker("unknown"))
 
 
 class TestUmask(tests.TestCaseInTempDir):
@@ -858,7 +863,7 @@ class TestWin32Funcs(tests.TestCase):
         self.assertEqual('//HOST/path', osutils._win98_abspath('//HOST/path'))
         # relative path
         cwd = osutils.getcwd().rstrip('/')
-        drive = osutils._nt_splitdrive(cwd)[0]
+        drive = osutils.ntpath.splitdrive(cwd)[0]
         self.assertEqual(cwd+'/path', osutils._win98_abspath('path'))
         self.assertEqual(drive+'/path', osutils._win98_abspath('/path'))
         # unicode path
@@ -1061,7 +1066,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertExpectedBlocks(expected_dirblocks[1:], result)
 
     def test_walkdirs_os_error(self):
-        # <https://bugs.edge.launchpad.net/bzr/+bug/338653>
+        # <https://bugs.launchpad.net/bzr/+bug/338653>
         # Pyrex readdir didn't raise useful messages if it had an error
         # reading the directory
         if sys.platform == 'win32':
@@ -1079,6 +1084,40 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEquals(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\./test-unreadable")
+
+
+    def test_walkdirs_encoding_error(self):
+        # <https://bugs.launchpad.net/bzr/+bug/488519>
+        # walkdirs didn't raise a useful message when the filenames
+        # are not using the filesystem's encoding
+
+        # require a bytestring based filesystem
+        self.requireFeature(tests.ByteStringNamedFilesystem)
+
+        tree = [
+            '.bzr',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '1file'
+            ]
+
+        self.build_tree(tree)
+
+        # rename the 1file to a latin-1 filename
+        os.rename("./1file", "\xe8file")
+
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'UTF-8'
+
+        # this should raise on error
+        def attempt():
+            for dirdetail, dirblock in osutils.walkdirs('.'):
+                pass
+
+        self.assertRaises(errors.BadFilenameEncoding, attempt)
 
     def test__walkdirs_utf8(self):
         tree = [
@@ -1135,14 +1174,9 @@ class TestWalkDirs(tests.TestCaseInTempDir):
             dirblock[:] = new_dirblock
 
     def _save_platform_info(self):
-        cur_winver = win32utils.winver
-        cur_fs_enc = osutils._fs_enc
-        cur_dir_reader = osutils._selected_dir_reader
-        def restore():
-            win32utils.winver = cur_winver
-            osutils._fs_enc = cur_fs_enc
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
+        self.overrideAttr(win32utils, 'winver')
+        self.overrideAttr(osutils, '_fs_enc')
+        self.overrideAttr(osutils, '_selected_dir_reader')
 
     def assertDirReaderIs(self, expected):
         """Assert the right implementation for _walkdirs_utf8 is chosen."""
@@ -1581,7 +1615,6 @@ class TestSetUnsetEnv(tests.TestCase):
         def cleanup():
             if 'BZR_TEST_ENV_VAR' in os.environ:
                 del os.environ['BZR_TEST_ENV_VAR']
-
         self.addCleanup(cleanup)
 
     def test_set(self):
@@ -1674,19 +1707,27 @@ class TestResourceLoading(tests.TestCaseInTempDir):
 
 class TestReCompile(tests.TestCase):
 
+    def _deprecated_re_compile_checked(self, *args, **kwargs):
+        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
+            osutils.re_compile_checked, *args, **kwargs)
+
     def test_re_compile_checked(self):
-        r = osutils.re_compile_checked(r'A*', re.IGNORECASE)
+        r = self._deprecated_re_compile_checked(r'A*', re.IGNORECASE)
         self.assertTrue(r.match('aaaa'))
         self.assertTrue(r.match('aAaA'))
 
     def test_re_compile_checked_error(self):
         # like https://bugs.launchpad.net/bzr/+bug/251352
+
+        # Due to possible test isolation error, re.compile is not lazy at
+        # this point. We re-install lazy compile.
+        lazy_regex.install_lazy_compile()
         err = self.assertRaises(
             errors.BzrCommandError,
-            osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
+            self._deprecated_re_compile_checked, '*', re.IGNORECASE, 'test case')
         self.assertEqual(
-            "Invalid regular expression in test case: '*': "
-            "nothing to repeat",
+            'Invalid regular expression in test case: '
+            '"*" nothing to repeat',
             str(err))
 
 
@@ -1698,15 +1739,8 @@ class TestDirReader(tests.TestCaseInTempDir):
 
     def setUp(self):
         tests.TestCaseInTempDir.setUp(self)
-
-        # Save platform specific info and reset it
-        cur_dir_reader = osutils._selected_dir_reader
-
-        def restore():
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
-
-        osutils._selected_dir_reader = self._dir_reader_class()
+        self.overrideAttr(osutils,
+                          '_selected_dir_reader', self._dir_reader_class())
 
     def _get_ascii_tree(self):
         tree = [
@@ -1859,10 +1893,7 @@ class TestConcurrency(tests.TestCase):
 
     def setUp(self):
         super(TestConcurrency, self).setUp()
-        orig = osutils._cached_local_concurrency
-        def restore():
-            osutils._cached_local_concurrency = orig
-        self.addCleanup(restore)
+        self.overrideAttr(osutils, '_cached_local_concurrency')
 
     def test_local_concurrency(self):
         concurrency = osutils.local_concurrency()
@@ -1895,12 +1926,7 @@ class TestFailedToLoadExtension(tests.TestCase):
 
     def setUp(self):
         super(TestFailedToLoadExtension, self).setUp()
-        self.saved_failures = osutils._extension_load_failures[:]
-        del osutils._extension_load_failures[:]
-        self.addCleanup(self.restore_failures)
-
-    def restore_failures(self):
-        osutils._extension_load_failures = self.saved_failures
+        self.overrideAttr(osutils, '_extension_load_failures', [])
 
     def test_failure_to_load(self):
         self._try_loading()
@@ -1939,20 +1965,12 @@ class TestTerminalWidth(tests.TestCase):
     def restore_osutils_globals(self):
         osutils._terminal_size_state = self._orig_terminal_size_state
         osutils._first_terminal_size = self._orig_first_terminal_size
-        
+
     def replace_stdout(self, new):
-        orig_stdout = sys.stdout
-        def restore():
-            sys.stdout = orig_stdout
-        self.addCleanup(restore)
-        sys.stdout = new
+        self.overrideAttr(sys, 'stdout', new)
 
     def replace__terminal_size(self, new):
-        orig__terminal_size = osutils._terminal_size
-        def restore():
-            osutils._terminal_size = orig__terminal_size
-        self.addCleanup(restore)
-        osutils._terminal_size = new
+        self.overrideAttr(osutils, '_terminal_size', new)
 
     def set_fake_tty(self):
 
@@ -2008,11 +2026,55 @@ class TestTerminalWidth(tests.TestCase):
             # We won't remove TIOCGWINSZ, because it doesn't exist anyway :)
             pass
         else:
-            def restore():
-                termios.TIOCGWINSZ = orig
-            self.addCleanup(restore)
+            self.overrideAttr(termios, 'TIOCGWINSZ')
             del termios.TIOCGWINSZ
         del os.environ['BZR_COLUMNS']
         del os.environ['COLUMNS']
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
+
+class TestCreationOps(tests.TestCaseInTempDir):
+    _test_needs_features = [features.chown_feature]
+
+    def setUp(self):
+        tests.TestCaseInTempDir.setUp(self)
+        self.overrideAttr(os, 'chown', self._dummy_chown)
+
+        # params set by call to _dummy_chown
+        self.path = self.uid = self.gid = None
+
+    def _dummy_chown(self, path, uid, gid):
+        self.path, self.uid, self.gid = path, uid, gid
+
+    def test_copy_ownership_from_path(self):
+        """copy_ownership_from_path test with specified src."""
+        ownsrc = '/'
+        f = open('test_file', 'wt')
+        osutils.copy_ownership_from_path('test_file', ownsrc)
+
+        s = os.stat(ownsrc)
+        self.assertEquals(self.path, 'test_file')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+
+    def test_copy_ownership_nonesrc(self):
+        """copy_ownership_from_path test with src=None."""
+        f = open('test_file', 'wt')
+        # should use parent dir for permissions
+        osutils.copy_ownership_from_path('test_file')
+
+        s = os.stat('..')
+        self.assertEquals(self.path, 'test_file')
+        self.assertEquals(self.uid, s.st_uid)
+        self.assertEquals(self.gid, s.st_gid)
+
+class TestGetuserUnicode(tests.TestCase):
+
+    def test_ascii_user(self):
+        osutils.set_or_unset_env('LOGNAME', 'jrandom')
+        self.assertEqual(u'jrandom', osutils.getuser_unicode())
+
+    def test_unicode_user(self):
+        ue = osutils.get_user_encoding()
+        osutils.set_or_unset_env('LOGNAME', u'jrandom\xb6'.encode(ue))
+        self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())

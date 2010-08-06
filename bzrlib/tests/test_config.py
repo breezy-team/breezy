@@ -35,6 +35,7 @@ from bzrlib import (
     trace,
     transport,
     )
+from bzrlib.tests import features
 from bzrlib.util.configobj import configobj
 
 
@@ -367,7 +368,7 @@ class TestConfigPath(tests.TestCase):
             '/home/bogus/.cache')
 
 
-class TestIniConfig(tests.TestCase):
+class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):
         conf = config.IniBasedConfig(None)
@@ -393,6 +394,22 @@ class TestIniConfigBuilding(TestIniConfig):
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
 
+    def _dummy_chown(self, path, uid, gid):
+        self.path, self.uid, self.gid = path, uid, gid
+
+    def test_ini_config_ownership(self):
+        """Ensure that chown is happening during _write_config_file.
+        """
+        self.requireFeature(features.chown_feature)
+        self.overrideAttr(os, 'chown', self._dummy_chown)
+        self.path = self.uid = self.gid = None
+        def get_filename():
+            return 'foo.conf'
+        conf = config.IniBasedConfig(get_filename)
+        conf._write_config_file()
+        self.assertEquals(self.path, 'foo.conf')
+        self.assertTrue(isinstance(self.uid, int))
+        self.assertTrue(isinstance(self.gid, int))
 
 class TestGetUserOptionAs(TestIniConfig):
 
@@ -406,9 +423,16 @@ a_list = hmm, who knows ? # This is interpreted as a list !
         get_bool = conf.get_user_option_as_bool
         self.assertEqual(True, get_bool('a_true_bool'))
         self.assertEqual(False, get_bool('a_false_bool'))
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        msg = 'Value "%s" is not a boolean for "%s"'
         self.assertIs(None, get_bool('an_invalid_bool'))
+        self.assertEquals(msg % ('maybe', 'an_invalid_bool'), warnings[0])
+        warnings = []
         self.assertIs(None, get_bool('not_defined_in_this_config'))
-
+        self.assertEquals([], warnings)
 
     def test_get_user_option_as_list(self):
         conf, parser = self.make_config_parser("""
@@ -1670,11 +1694,8 @@ user=jim
             'password ignored in section \[ssh with password\]')
 
     def test_uses_fallback_stores(self):
-        self._old_cs_registry = config.credential_store_registry
-        def restore():
-            config.credential_store_registry = self._old_cs_registry
-        self.addCleanup(restore)
-        config.credential_store_registry = config.CredentialStoreRegistry()
+        self.overrideAttr(config, 'credential_store_registry',
+                          config.CredentialStoreRegistry())
         store = StubCredentialStore()
         store.add_credentials("http", "example.com", "joe", "secret")
         config.credential_store_registry.register("stub", store, fallback=True)

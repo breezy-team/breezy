@@ -947,11 +947,8 @@ class LockError(InternalBzrError):
     # original exception is available as e.original_error
     #
     # New code should prefer to raise specific subclasses
-    def __init__(self, message):
-        # Python 2.5 uses a slot for StandardError.message,
-        # so use a different variable name.  We now work around this in
-        # BzrError.__str__, but this member name is kept for compatability.
-        self.msg = message
+    def __init__(self, msg):
+        self.msg = msg
 
 
 class LockActive(LockError):
@@ -1041,8 +1038,6 @@ class UnlockableTransport(LockError):
 class LockContention(LockError):
 
     _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
-    # TODO: show full url for lock, combining the transport and relative
-    # bits?
 
     internal_error = False
 
@@ -1179,7 +1174,7 @@ class NoSuchRevisionInTree(NoSuchRevision):
 
 class InvalidRevisionSpec(BzrError):
 
-    _fmt = ("Requested revision: %(spec)r does not exist in branch:"
+    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
             " %(branch)s%(extra)s")
 
     def __init__(self, spec, branch, extra=None):
@@ -1297,12 +1292,13 @@ class UnlistableBranch(BzrError):
 class BoundBranchOutOfDate(BzrError):
 
     _fmt = ("Bound branch %(branch)s is out of date with master branch"
-            " %(master)s.")
+            " %(master)s.%(extra_help)s")
 
     def __init__(self, branch, master):
         BzrError.__init__(self)
         self.branch = branch
         self.master = master
+        self.extra_help = ''
 
 
 class CommitToDoubleBoundBranch(BzrError):
@@ -1379,12 +1375,12 @@ class WeaveFormatError(WeaveError):
 
 class WeaveParentMismatch(WeaveError):
 
-    _fmt = "Parents are mismatched between two revisions. %(message)s"
+    _fmt = "Parents are mismatched between two revisions. %(msg)s"
 
 
 class WeaveInvalidChecksum(WeaveError):
 
-    _fmt = "Text did not match it's checksum: %(message)s"
+    _fmt = "Text did not match it's checksum: %(msg)s"
 
 
 class WeaveTextDiffers(WeaveError):
@@ -1438,7 +1434,7 @@ class RevisionAlreadyPresent(VersionedFileError):
 
 class VersionedFileInvalidChecksum(VersionedFileError):
 
-    _fmt = "Text did not match its checksum: %(message)s"
+    _fmt = "Text did not match its checksum: %(msg)s"
 
 
 class KnitError(InternalBzrError):
@@ -1924,6 +1920,17 @@ class CantMoveRoot(BzrError):
     _fmt = "Moving the root directory is not supported at this time"
 
 
+class TransformRenameFailed(BzrError):
+
+    _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
+
+    def __init__(self, from_path, to_path, why, errno):
+        self.from_path = from_path
+        self.to_path = to_path
+        self.why = why
+        self.errno = errno
+
+
 class BzrMoveFailedError(BzrError):
 
     _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
@@ -2175,7 +2182,7 @@ class CorruptRepository(BzrError):
 
     def __init__(self, repo):
         BzrError.__init__(self)
-        self.repo_path = repo.bzrdir.root_transport.base
+        self.repo_path = repo.user_url
 
 
 class InconsistentDelta(BzrError):
@@ -2753,7 +2760,7 @@ class BzrDirError(BzrError):
 
     def __init__(self, bzrdir):
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(bzrdir.root_transport.base,
+        display_url = urlutils.unescape_for_display(bzrdir.user_url,
                                                     'ascii')
         BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
 
@@ -2834,8 +2841,14 @@ class UncommittedChanges(BzrError):
             more = ' ' + more
         import bzrlib.urlutils as urlutils
         display_url = urlutils.unescape_for_display(
-            tree.bzrdir.root_transport.base, 'ascii')
+            tree.user_url, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
+
+
+class ShelvedChanges(UncommittedChanges):
+
+    _fmt = ('Working tree "%(display_url)s" has shelved changes'
+            ' (See bzr shelve --list).%(more)s')
 
 
 class MissingTemplateVariable(BzrError):
@@ -3124,3 +3137,36 @@ class FileTimestampUnavailable(BzrError):
 
     def __init__(self, path):
         self.path = path
+
+
+class NoColocatedBranchSupport(BzrError):
+
+    _fmt = ("%(bzrdir)r does not support co-located branches.")
+
+    def __init__(self, bzrdir):
+        self.bzrdir = bzrdir
+
+
+class NoWhoami(BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+        "Please, set your name with the 'whoami' command.\n"
+        'E.g. bzr whoami "Your Name <name@example.com>"')
+
+
+class InvalidPattern(BzrError):
+
+    _fmt = ('Invalid pattern(s) found. %(msg)s')
+
+    def __init__(self, msg):
+        self.msg = msg
+
+
+class RecursiveBind(BzrError):
+
+    _fmt = ('Branch "%(branch_url)s" appears to be bound to itself. '
+        'Please use `bzr unbind` to fix.')
+
+    def __init__(self, branch_url):
+        self.branch_url = branch_url
+

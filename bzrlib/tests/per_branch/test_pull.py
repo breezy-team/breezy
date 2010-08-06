@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,15 +18,17 @@
 
 import os
 
-from bzrlib.branch import Branch, BzrBranchFormat5
-from bzrlib.bzrdir import BzrDir
-from bzrlib import errors
-from bzrlib.memorytree import MemoryTree
-from bzrlib.revision import NULL_REVISION
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib import (
+    branch,
+    bzrdir,
+    errors,
+    memorytree,
+    revision,
+    )
+from bzrlib.tests import per_branch
 
 
-class TestPull(TestCaseWithBranch):
+class TestPull(per_branch.TestCaseWithBranch):
 
     def test_pull_convergence_simple(self):
         # when revisions are pulled, the left-most accessible parents must
@@ -96,17 +98,6 @@ class TestPull(TestCaseWithBranch):
                           master_tree.branch.pull, other.branch, local = True)
         self.assertEqual([rev1], master_tree.branch.revision_history())
 
-    def test_pull_raises_specific_error_on_master_connection_error(self):
-        master_tree = self.make_branch_and_tree('master')
-        checkout = master_tree.branch.create_checkout('checkout')
-        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
-        # move the branch out of the way on disk to cause a connection
-        # error.
-        os.rename('master', 'master_gone')
-        # try to pull, which should raise a BoundBranchConnectionFailure.
-        self.assertRaises(errors.BoundBranchConnectionFailure,
-                checkout.branch.pull, other.branch)
-
     def test_pull_returns_result(self):
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1')
@@ -145,11 +136,11 @@ class TestPull(TestCaseWithBranch):
                          tree_a.branch.revision_history())
 
 
-class TestPullHook(TestCaseWithBranch):
+class TestPullHook(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        TestCaseWithBranch.setUp(self)
+        super(TestPullHook, self).setUp()
 
     def capture_post_pull_hook(self, result):
         """Capture post pull hook calls to self.hook_calls.
@@ -173,14 +164,14 @@ class TestPullHook(TestCaseWithBranch):
     def test_post_pull_empty_history(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        Branch.hooks.install_named_hook('post_pull',
-            self.capture_post_pull_hook, None)
+        branch.Branch.hooks.install_named_hook(
+            'post_pull', self.capture_post_pull_hook, None)
         target.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
         self.assertEqual([
-            ('post_pull', source, None, target.base, 0, NULL_REVISION,
-             0, NULL_REVISION, True, None, True)
+            ('post_pull', source, None, target.base, 0, revision.NULL_REVISION,
+             0, revision.NULL_REVISION, True, None, True)
             ],
             self.hook_calls)
 
@@ -199,17 +190,18 @@ class TestPullHook(TestCaseWithBranch):
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
-            local = BzrDir.create_branch_convenience('local2')
+            local = bzrdir.BzrDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
-        Branch.hooks.install_named_hook('post_pull',
-            self.capture_post_pull_hook, None)
+        branch.Branch.hooks.install_named_hook(
+            'post_pull', self.capture_post_pull_hook, None)
         local.pull(source)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
         self.assertEqual([
-            ('post_pull', source, local.base, target.base, 0, NULL_REVISION,
-             0, NULL_REVISION, True, True, True)
+            ('post_pull', source, local.base, target.base, 0,
+             revision.NULL_REVISION, 0, revision.NULL_REVISION,
+             True, True, True)
             ],
             self.hook_calls)
 
@@ -220,10 +212,10 @@ class TestPullHook(TestCaseWithBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.bzrdir.clone(self.get_url('source'))
-        source = MemoryTree.create_on_branch(sourcedir.open_branch())
+        source = memorytree.MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
-        Branch.hooks.install_named_hook('post_pull',
-            self.capture_post_pull_hook, None)
+        branch.Branch.hooks.install_named_hook(
+            'post_pull', self.capture_post_pull_hook, None)
         target.branch.pull(source.branch)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.

@@ -29,7 +29,6 @@ from bzrlib import (
     knit,
     osutils,
     pack,
-    remote,
     revision as _mod_revision,
     trace,
     ui,
@@ -263,7 +262,6 @@ class GCCHKPacker(Packer):
         remaining_keys = set(keys)
         counter = [0]
         if self._gather_text_refs:
-            bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
             self._text_refs = set()
         def _get_referenced_stream(root_keys, parse_leaf_nodes=False):
             cur_keys = root_keys
@@ -290,8 +288,7 @@ class GCCHKPacker(Packer):
                     # Store is None, because we know we have a LeafNode, and we
                     # just want its entries
                     for file_id, bytes in node.iteritems(None):
-                        name_utf8, file_id, revision_id = bytes_to_info(bytes)
-                        self._text_refs.add((file_id, revision_id))
+                        self._text_refs.add(chk_map._bytes_to_text_key(bytes))
                 def next_stream():
                     stream = source_vf.get_record_stream(cur_keys,
                                                          'as-requested', True)
@@ -648,10 +645,10 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         chk_diff = chk_map.iter_interesting_nodes(
             chk_bytes_no_fallbacks, root_key_info.interesting_root_keys,
             root_key_info.uninteresting_root_keys)
-        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
         text_keys = set()
         try:
-            for record in _filter_text_keys(chk_diff, text_keys, bytes_to_info):
+            for record in _filter_text_keys(chk_diff, text_keys,
+                                            chk_map._bytes_to_text_key):
                 pass
         except errors.NoSuchRevision, e:
             # XXX: It would be nice if we could give a more precise error here.
@@ -865,6 +862,8 @@ class CHKInventoryRepository(KnitPackRepository):
         if basis_inv is None:
             if basis_revision_id == _mod_revision.NULL_REVISION:
                 new_inv = self._create_inv_from_null(delta, new_revision_id)
+                if new_inv.root_id is None:
+                    raise errors.RootMissing()
                 inv_lines = new_inv.to_lines()
                 return self._inventory_add_lines(new_revision_id, parents,
                     inv_lines, check_content=False), new_inv
@@ -882,7 +881,7 @@ class CHKInventoryRepository(KnitPackRepository):
             if basis_tree is not None:
                 basis_tree.unlock()
 
-    def deserialise_inventory(self, revision_id, bytes):
+    def _deserialise_inventory(self, revision_id, bytes):
         return inventory.CHKInventory.deserialise(self.chk_bytes, bytes,
             (revision_id,))
 
@@ -904,7 +903,7 @@ class CHKInventoryRepository(KnitPackRepository):
     def _iter_inventory_xmls(self, revision_ids, ordering):
         # Without a native 'xml' inventory, this method doesn't make sense.
         # However older working trees, and older bundles want it - so we supply
-        # it allowing get_inventory_xml to work. Bundles currently use the
+        # it allowing _get_inventory_xml to work. Bundles currently use the
         # serializer directly; this also isn't ideal, but there isn't an xml
         # iteration interface offered at all for repositories. We could make
         # _iter_inventory_xmls be part of the contract, even if kept private.
@@ -1088,13 +1087,12 @@ class GroupCHKStreamSource(KnitPackStreamSource):
                 uninteresting_root_keys.add(inv.id_to_entry.key())
                 uninteresting_pid_root_keys.add(
                     inv.parent_id_basename_to_file_id.key())
-        bytes_to_info = inventory.CHKInventory._bytes_to_utf8name_key
         chk_bytes = self.from_repository.chk_bytes
         def _filter_id_to_entry():
             interesting_nodes = chk_map.iter_interesting_nodes(chk_bytes,
                         self._chk_id_roots, uninteresting_root_keys)
             for record in _filter_text_keys(interesting_nodes, self._text_keys,
-                    bytes_to_info):
+                    chk_map._bytes_to_text_key):
                 if record is not None:
                     yield record
             # Consumed
@@ -1110,13 +1108,29 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         yield 'chk_bytes', _get_parent_id_basename_to_file_id_pages()
 
     def get_stream(self, search):
+        def wrap_and_count(pb, rc, stream):
+            """Yield records from stream while showing progress."""
+            count = 0
+            for record in stream:
+                if count == rc.STEP:
+                    rc.increment(count)
+                    pb.update('Estimate', rc.current, rc.max)
+                    count = 0
+                count += 1
+                yield record
+
         revision_ids = search.get_keys()
+        pb = ui.ui_factory.nested_progress_bar()
+        rc = self._record_counter
+        self._record_counter.setup(len(revision_ids))
         for stream_info in self._fetch_revision_texts(revision_ids):
-            yield stream_info
+            yield (stream_info[0],
+                wrap_and_count(pb, rc, stream_info[1]))
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
         self.from_repository.revisions.clear_cache()
         self.from_repository.signatures.clear_cache()
-        yield self._get_inventory_stream(self._revision_keys)
+        s = self._get_inventory_stream(self._revision_keys)
+        yield (s[0], wrap_and_count(pb, rc, s[1]))
         self.from_repository.inventories.clear_cache()
         # TODO: The keys to exclude might be part of the search recipe
         # For now, exclude all parents that are at the edge of ancestry, for
@@ -1125,10 +1139,13 @@ class GroupCHKStreamSource(KnitPackStreamSource):
         parent_keys = from_repo._find_parent_keys_of_revisions(
                         self._revision_keys)
         for stream_info in self._get_filtered_chk_streams(parent_keys):
-            yield stream_info
+            yield (stream_info[0], wrap_and_count(pb, rc, stream_info[1]))
         self.from_repository.chk_bytes.clear_cache()
-        yield self._get_text_stream()
+        s = self._get_text_stream()
+        yield (s[0], wrap_and_count(pb, rc, s[1]))
         self.from_repository.texts.clear_cache()
+        pb.update('Done', rc.max, rc.max)
+        pb.finished()
 
     def get_stream_for_missing_keys(self, missing_keys):
         # missing keys can only occur when we are byte copying and not
@@ -1188,19 +1205,13 @@ def _build_interesting_key_sets(repo, inventory_ids, parent_only_inv_ids):
     return result
 
 
-def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_info):
+def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_text_key):
     """Iterate the result of iter_interesting_nodes, yielding the records
     and adding to text_keys.
     """
+    text_keys_update = text_keys.update
     for record, items in interesting_nodes_iterable:
-        for name, bytes in items:
-            # Note: we don't care about name_utf8, because groupcompress repos
-            # are always rich-root, so there are no synthesised root records to
-            # ignore.
-            _, file_id, revision_id = bytes_to_info(bytes)
-            file_id = intern(file_id)
-            revision_id = intern(revision_id)
-            text_keys.add(StaticTuple(file_id, revision_id).intern())
+        text_keys_update([bytes_to_text_key(b) for n,b in items])
         yield record
 
 

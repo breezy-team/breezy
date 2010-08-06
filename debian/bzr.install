@@ -1,4 +1,4 @@
-contrib/bash/bzr.simple			etc/bash_completion.d/
+contrib/bash/bzr	etc/bash_completion.d/
 contrib/bash/bzr	etc/bash_completion.d/
 debian/tmp/usr/bin
 debian/tmp/usr/lib

@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Testing framework extensions"""
 
 # TODO: Perhaps there should be an API to find out if bzr running under the
 # test suite -- some plugins might want to avoid making intrusive changes if
@@ -28,7 +29,7 @@
 
 import atexit
 import codecs
-from copy import copy
+import copy
 from cStringIO import StringIO
 import difflib
 import doctest
@@ -36,12 +37,12 @@ import errno
 import logging
 import math
 import os
-from pprint import pformat
+import pprint
 import random
 import re
 import shlex
 import stat
-from subprocess import Popen, PIPE, STDOUT
+import subprocess
 import sys
 import tempfile
 import threading
@@ -73,6 +74,7 @@ from bzrlib import (
     ui,
     urlutils,
     registry,
+    transport as _mod_transport,
     workingtree,
     )
 import bzrlib.branch
@@ -101,19 +103,21 @@ from bzrlib.symbol_versioning import (
     deprecated_passed,
     )
 import bzrlib.trace
-from bzrlib.transport import get_transport, pathfilter
-import bzrlib.transport
-from bzrlib.transport.local import LocalURLServer
-from bzrlib.transport.memory import MemoryServer
-from bzrlib.transport.readonly import ReadonlyServer
+from bzrlib.transport import (
+    memory,
+    pathfilter,
+    )
 from bzrlib.trace import mutter, note
-from bzrlib.tests import TestUtil
+from bzrlib.tests import (
+    test_server,
+    TestUtil,
+    treeshape,
+    )
 from bzrlib.tests.http_server import HttpServer
 from bzrlib.tests.TestUtil import (
                           TestSuite,
                           TestLoader,
                           )
-from bzrlib.tests.treeshape import build_tree_contents
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
@@ -124,7 +128,12 @@ from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 # shown frame is the test code, not our assertXYZ.
 __unittest = 1
 
-default_transport = LocalURLServer
+default_transport = test_server.LocalURLServer
+
+
+_unitialized_attr = object()
+"""A sentinel needed to act as a default value in a method signature."""
+
 
 # Subunit result codes, defined here to prevent a hard dependency on subunit.
 SUBUNIT_SEEK_SET = 0
@@ -265,7 +274,7 @@ class ExtendedTestResult(unittest._TextTestResult):
 
     def _shortened_test_description(self, test):
         what = test.id()
-        what = re.sub(r'^bzrlib\.(tests|benchmarks)\.', '', what)
+        what = re.sub(r'^bzrlib\.tests\.', '', what)
         return what
 
     def startTest(self, test):
@@ -480,13 +489,13 @@ class TextTestResult(ExtendedTestResult):
         return self._shortened_test_description(test)
 
     def report_error(self, test, err):
-        ui.ui_factory.note('ERROR: %s\n    %s\n' % (
+        self.stream.write('ERROR: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
 
     def report_failure(self, test, err):
-        ui.ui_factory.note('FAIL: %s\n    %s\n' % (
+        self.stream.write('FAIL: %s\n    %s\n' % (
             self._test_description(test),
             err[1],
             ))
@@ -697,10 +706,6 @@ class UnavailableFeature(Exception):
     """
 
 
-class CommandFailed(Exception):
-    pass
-
-
 class StringIOWrapper(object):
     """A wrapper around cStringIO which just adds an encoding attribute.
 
@@ -743,7 +748,7 @@ class TestUIFactory(TextUIFactory):
     # XXX: Should probably unify more with CannedInputUIFactory or a
     # particular configuration of TextUIFactory, or otherwise have a clearer
     # idea of how they're supposed to be different.
-    # See https://bugs.edge.launchpad.net/bzr/+bug/408213
+    # See https://bugs.launchpad.net/bzr/+bug/408213
 
     def __init__(self, stdout=None, stderr=None, stdin=None):
         if stdin is not None:
@@ -850,12 +855,12 @@ class TestCase(testtools.TestCase):
         Tests that want to use debug flags can just set them in the
         debug_flags set during setup/teardown.
         """
-        self._preserved_debug_flags = set(debug.debug_flags)
+        # Start with a copy of the current debug flags we can safely modify.
+        self.overrideAttr(debug, 'debug_flags', set(debug.debug_flags))
         if 'allow_debug' not in selftest_debug_flags:
             debug.debug_flags.clear()
         if 'disable_lock_checks' not in selftest_debug_flags:
             debug.debug_flags.add('strict_locks')
-        self.addCleanup(self._restore_debug_flags)
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
@@ -882,11 +887,7 @@ class TestCase(testtools.TestCase):
     def _silenceUI(self):
         """Turn off UI for duration of test"""
         # by default the UI is off; tests can turn it on if they want it.
-        saved = ui.ui_factory
-        def _restore():
-            ui.ui_factory = saved
-        ui.ui_factory = ui.SilentUIFactory()
-        self.addCleanup(_restore)
+        self.overrideAttr(ui, 'ui_factory', ui.SilentUIFactory())
 
     def _check_locks(self):
         """Check that all lock take/release actions have been paired."""
@@ -941,7 +942,7 @@ class TestCase(testtools.TestCase):
 
     def permit_dir(self, name):
         """Permit a directory to be used by this test. See permit_url."""
-        name_transport = get_transport(name)
+        name_transport = _mod_transport.get_transport(name)
         self.permit_url(name)
         self.permit_url(name_transport.base)
 
@@ -1026,7 +1027,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(transport_server.stop_server)
         # Obtain a real transport because if the server supplies a password, it
         # will be hidden from the base on the client side.
-        t = get_transport(transport_server.get_url())
+        t = _mod_transport.get_transport(transport_server.get_url())
         # Some transport servers effectively chroot the backing transport;
         # others like SFTPServer don't - users of the transport can walk up the
         # transport to read the entire backing transport. This wouldn't matter
@@ -1043,7 +1044,8 @@ class TestCase(testtools.TestCase):
         if t.base.endswith('/work/'):
             # we have safety net/test root/work
             t = t.clone('../..')
-        elif isinstance(transport_server, server.SmartTCPServer_for_testing):
+        elif isinstance(transport_server,
+                        test_server.SmartTCPServer_for_testing):
             # The smart server adds a path similar to work, which is traversed
             # up from by the client. But the server is chrooted - the actual
             # backing transport is not escaped from, and VFS requests to the
@@ -1092,7 +1094,7 @@ class TestCase(testtools.TestCase):
             message += '\n'
         raise AssertionError("%snot equal:\na = %s\nb = %s\n"
             % (message,
-               pformat(a), pformat(b)))
+               pprint.pformat(a), pprint.pformat(b)))
 
     assertEquals = assertEqual
 
@@ -1204,6 +1206,10 @@ class TestCase(testtools.TestCase):
             raise AssertionError('pattern "%s" found in "%s"'
                     % (needle_re, haystack))
 
+    def assertContainsString(self, haystack, needle):
+        if haystack.find(needle) == -1:
+            self.fail("string %r not found in '''%s'''" % (needle, haystack))
+
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
         missing = set(sublist) - set(superlist)
@@ -1305,6 +1311,14 @@ class TestCase(testtools.TestCase):
         finally:
             f.close()
         self.assertEqualDiff(content, s)
+
+    def assertDocstring(self, expected_docstring, obj):
+        """Fail if obj does not have expected_docstring"""
+        if __doc__ is None:
+            # With -OO the docstring should be None instead
+            self.assertIs(obj.__doc__, None)
+        else:
+            self.assertEqual(expected_docstring, obj.__doc__)
 
     def failUnlessExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
@@ -1479,6 +1493,25 @@ class TestCase(testtools.TestCase):
         """
         self._cleanups.append((callable, args, kwargs))
 
+    def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
+        """Overrides an object attribute restoring it after the test.
+
+        :param obj: The object that will be mutated.
+
+        :param attr_name: The attribute name we want to preserve/override in
+            the object.
+
+        :param new: The optional value we want to set the attribute to.
+
+        :returns: The actual attr value.
+        """
+        value = getattr(obj, attr_name)
+        # The actual value is captured by the call below
+        self.addCleanup(setattr, obj, attr_name, value)
+        if new is not _unitialized_attr:
+            setattr(obj, attr_name, new)
+        return value
+
     def _cleanEnvironment(self):
         new_env = {
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
@@ -1490,10 +1523,12 @@ class TestCase(testtools.TestCase):
             'EDITOR': None,
             'BZR_EMAIL': None,
             'BZREMAIL': None, # may still be present in the environment
-            'EMAIL': None,
+            'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
             'BZR_PROGRESS_BAR': None,
             'BZR_LOG': None,
             'BZR_PLUGIN_PATH': None,
+            'BZR_DISABLE_PLUGINS': None,
+            'BZR_PLUGINS_AT': None,
             'BZR_CONCURRENCY': None,
             # Make sure that any text ui tests are consistent regardless of
             # the environment the test case is run in; you may want tests that
@@ -1520,22 +1555,23 @@ class TestCase(testtools.TestCase):
             'ftp_proxy': None,
             'FTP_PROXY': None,
             'BZR_REMOTE_PATH': None,
+            # Generally speaking, we don't want apport reporting on crashes in
+            # the test envirnoment unless we're specifically testing apport,
+            # so that it doesn't leak into the real system environment.  We
+            # use an env var so it propagates to subprocesses.
+            'APPORT_DISABLE': '1',
         }
-        self.__old_env = {}
+        self._old_env = {}
         self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
             self._captureVar(name, value)
 
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
-        self.__old_env[name] = osutils.set_or_unset_env(name, newvalue)
-
-    def _restore_debug_flags(self):
-        debug.debug_flags.clear()
-        debug.debug_flags.update(self._preserved_debug_flags)
+        self._old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
     def _restoreEnvironment(self):
-        for name, value in self.__old_env.iteritems():
+        for name, value in self._old_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
@@ -1645,7 +1681,33 @@ class TestCase(testtools.TestCase):
                 unicodestr = log_contents.decode('utf8', 'replace')
                 log_contents = unicodestr.encode('utf8')
             if not keep_log_file:
-                self._log_file.close()
+                close_attempts = 0
+                max_close_attempts = 100
+                first_close_error = None
+                while close_attempts < max_close_attempts:
+                    close_attempts += 1
+                    try:
+                        self._log_file.close()
+                    except IOError, ioe:
+                        if ioe.errno is None:
+                            # No errno implies 'close() called during
+                            # concurrent operation on the same file object', so
+                            # retry.  Probably a thread is trying to write to
+                            # the log file.
+                            if first_close_error is None:
+                                first_close_error = ioe
+                            continue
+                        raise
+                    else:
+                        break
+                if close_attempts > 1:
+                    sys.stderr.write(
+                        'Unable to close log file on first attempt, '
+                        'will retry: %s\n' % (first_close_error,))
+                    if close_attempts == max_close_attempts:
+                        sys.stderr.write(
+                            'Unable to close log file after %d attempts.\n'
+                            % (max_close_attempts,))
                 self._log_file = None
                 # Permit multiple calls to get_log until we clean it up in
                 # finishLogFile
@@ -1923,7 +1985,9 @@ class TestCase(testtools.TestCase):
             if not allow_plugins:
                 command.append('--no-plugins')
             command.extend(process_args)
-            process = self._popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+            process = self._popen(command, stdin=subprocess.PIPE,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE)
         finally:
             restore_environment()
             if cwd is not None:
@@ -1937,7 +2001,7 @@ class TestCase(testtools.TestCase):
         Allows tests to override this method to intercept the calls made to
         Popen for introspection.
         """
-        return Popen(*args, **kwargs)
+        return subprocess.Popen(*args, **kwargs)
 
     def get_source_path(self):
         """Return the path of the directory containing bzrlib."""
@@ -2037,11 +2101,7 @@ class TestCase(testtools.TestCase):
 
         Tests that expect to provoke LockContention errors should call this.
         """
-        orig_timeout = bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS
-        def resetTimeout():
-            bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = orig_timeout
-        self.addCleanup(resetTimeout)
-        bzrlib.lockdir._DEFAULT_TIMEOUT_SECONDS = 0
+        self.overrideAttr(bzrlib.lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
         """Return a StringIOWrapper instance, that will encode Unicode
@@ -2061,9 +2121,7 @@ class TestCase(testtools.TestCase):
         request_handlers = request.request_handlers
         orig_method = request_handlers.get(verb)
         request_handlers.remove(verb)
-        def restoreVerb():
-            request_handlers.register(verb, orig_method)
-        self.addCleanup(restoreVerb)
+        self.addCleanup(request_handlers.register, verb, orig_method)
 
 
 class CapturedCall(object):
@@ -2129,7 +2187,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = get_transport(self.get_url(relpath))
+        t = _mod_transport.get_transport(self.get_url(relpath))
         self.assertFalse(t.is_readonly())
         return t
 
@@ -2141,7 +2199,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
         :param relpath: a path relative to the base url.
         """
-        t = get_transport(self.get_readonly_url(relpath))
+        t = _mod_transport.get_transport(self.get_readonly_url(relpath))
         self.assertTrue(t.is_readonly())
         return t
 
@@ -2160,7 +2218,7 @@ class TestCaseWithMemoryTransport(TestCase):
         if self.__readonly_server is None:
             if self.transport_readonly_server is None:
                 # readonly decorator requested
-                self.__readonly_server = ReadonlyServer()
+                self.__readonly_server = test_server.ReadonlyServer()
             else:
                 # explicit readonly transport.
                 self.__readonly_server = self.create_transport_readonly_server()
@@ -2189,7 +2247,7 @@ class TestCaseWithMemoryTransport(TestCase):
         is no means to override it.
         """
         if self.__vfs_server is None:
-            self.__vfs_server = MemoryServer()
+            self.__vfs_server = memory.MemoryServer()
             self.start_server(self.__vfs_server)
         return self.__vfs_server
 
@@ -2277,7 +2335,7 @@ class TestCaseWithMemoryTransport(TestCase):
         propagating. This method ensures than a test did not leaked.
         """
         root = TestCaseWithMemoryTransport.TEST_ROOT
-        self.permit_url(get_transport(root).base)
+        self.permit_url(_mod_transport.get_transport(root).base)
         wt = workingtree.WorkingTree.open(root)
         last_rev = wt.last_revision()
         if last_rev != 'null:':
@@ -2328,7 +2386,7 @@ class TestCaseWithMemoryTransport(TestCase):
             # might be a relative or absolute path
             maybe_a_url = self.get_url(relpath)
             segments = maybe_a_url.rsplit('/', 1)
-            t = get_transport(maybe_a_url)
+            t = _mod_transport.get_transport(maybe_a_url)
             if len(segments) > 1 and segments[-1] not in ('', '.'):
                 t.ensure_base()
             if format is None:
@@ -2351,10 +2409,13 @@ class TestCaseWithMemoryTransport(TestCase):
         made_control = self.make_bzrdir(relpath, format=format)
         return made_control.create_repository(shared=shared)
 
-    def make_smart_server(self, path):
-        smart_server = server.SmartTCPServer_for_testing()
-        self.start_server(smart_server, self.get_server())
-        remote_transport = get_transport(smart_server.get_url()).clone(path)
+    def make_smart_server(self, path, backing_server=None):
+        if backing_server is None:
+            backing_server = self.get_server()
+        smart_server = test_server.SmartTCPServer_for_testing()
+        self.start_server(smart_server, backing_server)
+        remote_transport = _mod_transport.get_transport(smart_server.get_url()
+                                                   ).clone(path)
         return remote_transport
 
     def make_branch_and_memory_tree(self, relpath, format=None):
@@ -2376,10 +2437,7 @@ class TestCaseWithMemoryTransport(TestCase):
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
         self._make_test_root()
-        _currentdir = os.getcwdu()
-        def _leaveDirectory():
-            os.chdir(_currentdir)
-        self.addCleanup(_leaveDirectory)
+        self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
         self.overrideEnvironmentForTesting()
         self.__readonly_server = None
@@ -2388,7 +2446,7 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def setup_smart_server_with_call_log(self):
         """Sets up a smart server as the transport server with a call log."""
-        self.transport_server = server.SmartTCPServer_for_testing
+        self.transport_server = test_server.SmartTCPServer_for_testing
         self.hpss_calls = []
         import traceback
         # Skip the current stack down to the caller of
@@ -2428,7 +2486,11 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
 
     def check_file_contents(self, filename, expect):
         self.log("check contents of file %s" % filename)
-        contents = file(filename, 'r').read()
+        f = file(filename)
+        try:
+            contents = f.read()
+        finally:
+            f.close()
         if contents != expect:
             self.log("expected: %r" % expect)
             self.log("actually: %r" % contents)
@@ -2508,7 +2570,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 "a list or a tuple. Got %r instead" % (shape,))
         # It's OK to just create them using forward slashes on windows.
         if transport is None or transport.is_readonly():
-            transport = get_transport(".")
+            transport = _mod_transport.get_transport(".")
         for name in shape:
             self.assertIsInstance(name, basestring)
             if name[-1] == '/':
@@ -2524,8 +2586,7 @@ class TestCaseInTempDir(TestCaseWithMemoryTransport):
                 content = "contents of %s%s" % (name.encode('utf-8'), end)
                 transport.put_bytes_non_atomic(urlutils.escape(name), content)
 
-    def build_tree_contents(self, shape):
-        build_tree_contents(shape)
+    build_tree_contents = staticmethod(treeshape.build_tree_contents)
 
     def assertInWorkingTree(self, path, root_path='.', tree=None):
         """Assert whether path or paths are in the WorkingTree"""
@@ -2607,7 +2668,7 @@ class TestCaseWithTransport(TestCaseInTempDir):
             # We can only make working trees locally at the moment.  If the
             # transport can't support them, then we keep the non-disk-backed
             # branch and create a local checkout.
-            if self.vfs_transport_factory is LocalURLServer:
+            if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url(relpath))
@@ -2673,7 +2734,7 @@ class ChrootedTestCase(TestCaseWithTransport):
 
     def setUp(self):
         super(ChrootedTestCase, self).setUp()
-        if not self.vfs_transport_factory == MemoryServer:
+        if not self.vfs_transport_factory == memory.MemoryServer:
             self.transport_readonly_server = HttpServer
 
 
@@ -2683,8 +2744,7 @@ def condition_id_re(pattern):
     :param pattern: A regular expression string.
     :return: A callable that returns True if the re matches.
     """
-    filter_re = osutils.re_compile_checked(pattern, 0,
-        'test filter')
+    filter_re = re.compile(pattern, 0)
     def condition(test):
         test_id = test.id()
         return filter_re.search(test_id)
@@ -3147,6 +3207,19 @@ def partition_tests(suite, count):
     return result
 
 
+def workaround_zealous_crypto_random():
+    """Crypto.Random want to help us being secure, but we don't care here.
+
+    This workaround some test failure related to the sftp server. Once paramiko
+    stop using the controversial API in Crypto.Random, we may get rid of it.
+    """
+    try:
+        from Crypto.Random import atfork
+        atfork()
+    except ImportError:
+        pass
+
+
 def fork_for_tests(suite):
     """Take suite and start up one runner per CPU by forking()
 
@@ -3167,7 +3240,7 @@ def fork_for_tests(suite):
             try:
                 ProtocolTestCase.run(self, result)
             finally:
-                os.waitpid(self.pid, os.WNOHANG)
+                os.waitpid(self.pid, 0)
 
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
@@ -3176,6 +3249,7 @@ def fork_for_tests(suite):
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
         if pid == 0:
+            workaround_zealous_crypto_random()
             try:
                 os.close(c2pread)
                 # Leave stderr and stdout open so we can see test noise
@@ -3242,10 +3316,12 @@ def reinvoke_for_tests(suite):
                 '--subunit']
             if '--no-plugins' in sys.argv:
                 argv.append('--no-plugins')
-            # stderr=STDOUT would be ideal, but until we prevent noise on
-            # stderr it can interrupt the subunit protocol.
-            process = Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE,
-                bufsize=1)
+            # stderr=subprocess.STDOUT would be ideal, but until we prevent
+            # noise on stderr it can interrupt the subunit protocol.
+            process = subprocess.Popen(argv, stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE,
+                                      bufsize=1)
             test = TestInSubprocess(process, test_list_file_name)
             result.append(test)
         except:
@@ -3300,6 +3376,9 @@ class ProfileResult(ForwardingResult):
 
     def startTest(self, test):
         self.profiler = bzrlib.lsprof.BzrProfiler()
+        # Prevent deadlocks in tests that use lsprof: those tests will
+        # unavoidably fail.
+        bzrlib.lsprof.BzrProfiler.profiler_block = 0
         self.profiler.start()
         ForwardingResult.startTest(self, test)
 
@@ -3550,7 +3629,7 @@ test_prefix_alias_registry = TestPrefixAliasRegistry()
 # appear prefixed ('bzrlib.' is "replaced" by 'bzrlib.').
 test_prefix_alias_registry.register('bzrlib', 'bzrlib')
 
-# Obvious higest levels prefixes, feel free to add your own via a plugin
+# Obvious highest levels prefixes, feel free to add your own via a plugin
 test_prefix_alias_registry.register('bd', 'bzrlib.doc')
 test_prefix_alias_registry.register('bu', 'bzrlib.utils')
 test_prefix_alias_registry.register('bt', 'bzrlib.tests')
@@ -3566,6 +3645,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.commands',
         'bzrlib.tests.per_branch',
         'bzrlib.tests.per_bzrdir',
+        'bzrlib.tests.per_bzrdir_colo',
         'bzrlib.tests.per_foreign_vcs',
         'bzrlib.tests.per_interrepository',
         'bzrlib.tests.per_intertree',
@@ -3611,6 +3691,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_chunk_writer',
         'bzrlib.tests.test_clean_tree',
         'bzrlib.tests.test_cleanup',
+        'bzrlib.tests.test_cmdline',
         'bzrlib.tests.test_commands',
         'bzrlib.tests.test_commit',
         'bzrlib.tests.test_commit_merge',
@@ -3631,6 +3712,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_export',
         'bzrlib.tests.test_extract',
         'bzrlib.tests.test_fetch',
+        'bzrlib.tests.test_fixtures',
         'bzrlib.tests.test_fifo_cache',
         'bzrlib.tests.test_filters',
         'bzrlib.tests.test_ftp_transport',
@@ -3650,12 +3732,14 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_identitymap',
         'bzrlib.tests.test_ignores',
         'bzrlib.tests.test_index',
+        'bzrlib.tests.test_import_tariff',
         'bzrlib.tests.test_info',
         'bzrlib.tests.test_inv',
         'bzrlib.tests.test_inventory_delta',
         'bzrlib.tests.test_knit',
         'bzrlib.tests.test_lazy_import',
         'bzrlib.tests.test_lazy_regex',
+        'bzrlib.tests.test_library_state',
         'bzrlib.tests.test_lock',
         'bzrlib.tests.test_lockable_files',
         'bzrlib.tests.test_lockdir',
@@ -3663,6 +3747,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_lru_cache',
         'bzrlib.tests.test_lsprof',
         'bzrlib.tests.test_mail_client',
+        'bzrlib.tests.test_matchers',
         'bzrlib.tests.test_memorytree',
         'bzrlib.tests.test_merge',
         'bzrlib.tests.test_merge3',
@@ -3728,6 +3813,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_transport_log',
         'bzrlib.tests.test_tree',
         'bzrlib.tests.test_treebuilder',
+        'bzrlib.tests.test_treeshape',
         'bzrlib.tests.test_tsort',
         'bzrlib.tests.test_tuned_gzip',
         'bzrlib.tests.test_ui',
@@ -3748,7 +3834,10 @@ def _test_suite_testmod_names():
 
 
 def _test_suite_modules_to_doctest():
-    """Return the list of modules to doctest."""   
+    """Return the list of modules to doctest."""
+    if __doc__ is None:
+        # GZ 2009-03-31: No docstrings with -OO so there's nothing to doctest
+        return []
     return [
         'bzrlib',
         'bzrlib.branchbuilder',
@@ -3761,6 +3850,7 @@ def _test_suite_modules_to_doctest():
         'bzrlib.option',
         'bzrlib.symbol_versioning',
         'bzrlib.tests',
+        'bzrlib.tests.fixtures',
         'bzrlib.timestamp',
         'bzrlib.version_info_formats.format_custom',
         ]
@@ -3960,7 +4050,7 @@ def clone_test(test, new_id):
     :param new_id: The id to assign to it.
     :return: The new test.
     """
-    new_test = copy(test)
+    new_test = copy.copy(test)
     new_test.id = lambda: new_id
     return new_test
 
@@ -4027,8 +4117,11 @@ def _rmtree_temp_dir(dirname, test_id=None):
         if test_id != None:
             ui.ui_factory.clear_term()
             sys.stderr.write('\nWhile running: %s\n' % (test_id,))
+        # Ugly, but the last thing we want here is fail, so bear with it.
+        printable_e = str(e).decode(osutils.get_user_encoding(), 'replace'
+                                    ).encode('ascii', 'replace')
         sys.stderr.write('Unable to remove testing dir %s\n%s'
-                         % (os.path.basename(dirname), e))
+                         % (os.path.basename(dirname), printable_e))
 
 
 class Feature(object):
@@ -4123,21 +4216,30 @@ class _CompatabilityThunkFeature(Feature):
     should really use a different feature.
     """
 
-    def __init__(self, module, name, this_name, dep_version):
+    def __init__(self, dep_version, module, name,
+                 replacement_name, replacement_module=None):
         super(_CompatabilityThunkFeature, self).__init__()
         self._module = module
+        if replacement_module is None:
+            replacement_module = module
+        self._replacement_module = replacement_module
         self._name = name
-        self._this_name = this_name
+        self._replacement_name = replacement_name
         self._dep_version = dep_version
         self._feature = None
 
     def _ensure(self):
         if self._feature is None:
-            msg = (self._dep_version % self._this_name) + (
-                   ' Use %s.%s instead.' % (self._module, self._name))
-            symbol_versioning.warn(msg, DeprecationWarning)
-            mod = __import__(self._module, {}, {}, [self._name])
-            self._feature = getattr(mod, self._name)
+            depr_msg = self._dep_version % ('%s.%s'
+                                            % (self._module, self._name))
+            use_msg = ' Use %s.%s instead.' % (self._replacement_module,
+                                               self._replacement_name)
+            symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
+            # Import the new feature and use it as a replacement for the
+            # deprecated one.
+            mod = __import__(self._replacement_module, {}, {},
+                             [self._replacement_name])
+            self._feature = getattr(mod, self._replacement_name)
 
     def _probe(self):
         self._ensure()
@@ -4169,15 +4271,16 @@ class ModuleAvailableFeature(Feature):
         if self.available(): # Make sure the probe has been done
             return self._module
         return None
-    
+
     def feature_name(self):
         return self.module_name
 
 
 # This is kept here for compatibility, it is recommended to use
 # 'bzrlib.tests.feature.paramiko' instead
-ParamikoFeature = _CompatabilityThunkFeature('bzrlib.tests.features',
-    'paramiko', 'bzrlib.tests.ParamikoFeature', deprecated_in((2,1,0)))
+ParamikoFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'ParamikoFeature', 'paramiko')
 
 
 def probe_unicode_in_user_encoding():
@@ -4252,6 +4355,17 @@ class _UnicodeFilename(Feature):
             return True
 
 UnicodeFilename = _UnicodeFilename()
+
+
+class _ByteStringNamedFilesystem(Feature):
+    """Is the filesystem based on bytes?"""
+
+    def _probe(self):
+        if os.name == "posix":
+            return True
+        return False
+
+ByteStringNamedFilesystem = _ByteStringNamedFilesystem()
 
 
 class _UTF8Filesystem(Feature):
@@ -4362,8 +4476,9 @@ case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
 
 
 # Kept for compatibility, use bzrlib.tests.features.subunit instead
-SubUnitFeature = _CompatabilityThunkFeature('bzrlib.tests.features', 'subunit',
-    'bzrlib.tests.SubUnitFeature', deprecated_in((2,1,0)))
+SubUnitFeature = _CompatabilityThunkFeature(
+    deprecated_in((2,1,0)),
+    'bzrlib.tests.features', 'SubUnitFeature', 'subunit')
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,12 +19,12 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
-class TestAliases(ExternalBase):
+class TestAliases(TestCaseWithTransport):
 
     def test_aliases(self):
 

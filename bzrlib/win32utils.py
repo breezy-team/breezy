@@ -21,10 +21,10 @@ Only one dependency: ctypes should be installed.
 
 import glob
 import os
-import re
 import struct
 import sys
 
+from bzrlib import cmdline
 
 # Windows version
 if sys.platform == 'win32':
@@ -135,7 +135,8 @@ def debug_memory_win32api(message='', short=True):
                 'WorkingSetSize': mem_struct.WorkingSetSize,
                 'QuotaPeakPagedPoolUsage': mem_struct.QuotaPeakPagedPoolUsage,
                 'QuotaPagedPoolUsage': mem_struct.QuotaPagedPoolUsage,
-                'QuotaPeakNonPagedPoolUsage': mem_struct.QuotaPeakNonPagedPoolUsage,
+                'QuotaPeakNonPagedPoolUsage':
+                    mem_struct.QuotaPeakNonPagedPoolUsage,
                 'QuotaNonPagedPoolUsage': mem_struct.QuotaNonPagedPoolUsage,
                 'PagefileUsage': mem_struct.PagefileUsage,
                 'PeakPagefileUsage': mem_struct.PeakPagefileUsage,
@@ -152,19 +153,21 @@ def debug_memory_win32api(message='', short=True):
                    ' or win32process')
         return
     if short:
-        trace.note('WorkingSize %7dKB'
-                   '\tPeakWorking %7dKB\t%s',
+        # using base-2 units (see HACKING.txt).
+        trace.note('WorkingSize %7dKiB'
+                   '\tPeakWorking %7dKiB\t%s',
                    info['WorkingSetSize'] / 1024,
                    info['PeakWorkingSetSize'] / 1024,
                    message)
         return
     if message:
         trace.note('%s', message)
-    trace.note('WorkingSize       %8d KB', info['WorkingSetSize'] / 1024)
-    trace.note('PeakWorking       %8d KB', info['PeakWorkingSetSize'] / 1024)
-    trace.note('PagefileUsage     %8d KB', info.get('PagefileUsage', 0) / 1024)
-    trace.note('PeakPagefileUsage %8d KB', info.get('PeakPagefileUsage', 0) / 1024)
-    trace.note('PrivateUsage      %8d KB', info.get('PrivateUsage', 0) / 1024)
+    trace.note('WorkingSize       %8d KiB', info['WorkingSetSize'] / 1024)
+    trace.note('PeakWorking       %8d KiB', info['PeakWorkingSetSize'] / 1024)
+    trace.note('PagefileUsage     %8d KiB', info.get('PagefileUsage', 0) / 1024)
+    trace.note('PeakPagefileUsage %8d KiB',
+               info.get('PeakPagefileUsage', 0) / 1024)
+    trace.note('PrivateUsage      %8d KiB', info.get('PrivateUsage', 0) / 1024)
     trace.note('PageFaultCount    %8d', info.get('PageFaultCount', 0))
 
 
@@ -187,7 +190,8 @@ def get_console_size(defaultx=80, defaulty=25):
 
     if res:
         (bufx, bufy, curx, cury, wattr,
-        left, top, right, bottom, maxx, maxy) = struct.unpack("hhhhHhhhhhh", csbi.raw)
+        left, top, right, bottom, maxx, maxy) = struct.unpack(
+            "hhhhHhhhhhh", csbi.raw)
         sizex = right - left + 1
         sizey = bottom - top + 1
         return (sizex, sizey)
@@ -410,7 +414,8 @@ def get_host_name_unicode():
 
 
 def _ensure_with_dir(path):
-    if not os.path.split(path)[0] or path.startswith(u'*') or path.startswith(u'?'):
+    if (not os.path.split(path)[0] or path.startswith(u'*')
+        or path.startswith(u'?')):
         return u'./' + path, True
     else:
         return path, False
@@ -517,95 +522,40 @@ def set_file_attr_hidden(path):
             trace.mutter('Unable to set hidden attribute on %r: %s', path, e)
 
 
+def _command_line_to_argv(command_line, argv, single_quotes_allowed=False):
+    """Convert a Unicode command line into a list of argv arguments.
 
-class UnicodeShlex(object):
-    """This is a very simplified version of shlex.shlex.
+    It performs wildcard expansion to make wildcards act closer to how they
+    work in posix shells, versus how they work by default on Windows. Quoted
+    arguments are left untouched.
 
-    The main change is that it supports non-ascii input streams. The internal
-    structure is quite simplified relative to shlex.shlex, since we aren't
-    trying to handle multiple input streams, etc. In fact, we don't use a
-    file-like api either.
+    :param command_line: The unicode string to split into an arg list.
+    :param single_quotes_allowed: Whether single quotes are accepted as quoting
+                                  characters like double quotes. False by
+                                  default.
+    :return: A list of unicode strings.
     """
-
-    def __init__(self, uni_string):
-        self._input = uni_string
-        self._input_iter = iter(self._input)
-        self._whitespace_match = re.compile(u'\s').match
-        self._word_match = re.compile(u'\S').match
-        self._quote_chars = u'"'
-        # self._quote_match = re.compile(u'[\'"]').match
-        self._escape_match = lambda x: None # Never matches
-        self._escape = '\\'
-        self._token = [] # Current token being parsed
-
-    def _get_token(self):
-        # Were there quote chars as part of this token?
-        quoted = None   # state:
-                        #  None - the string is not quoted
-                        #  empty string ('') - there was quoted substring
-                        #  double quote (") - we're inside quoted chunk
-        number_of_backslashes = 0
-        for nextchar in self._input_iter:
-            if self._whitespace_match(nextchar):
-                if quoted:
-                    self._token.append(nextchar)
-                elif self._token:
-                    break
-            elif nextchar == '\\':
-                number_of_backslashes += 1
-            elif nextchar in self._quote_chars:
-                if number_of_backslashes:
-                    self._token.append('\\'*(number_of_backslashes/2))
-                    if number_of_backslashes % 2:
-                        self._token.append('"')
-                    else:
-                        if quoted:
-                            quoted = ''
-                        else:
-                            quoted = nextchar
-                    number_of_backslashes = 0
-                elif nextchar == quoted:
-                    # end of quoted string
-                    quoted = ''
-                else:
-                    quoted = nextchar
-            else:
-                if number_of_backslashes:
-                    self._token.append('\\'*number_of_backslashes)
-                    number_of_backslashes = 0
-                self._token.append(nextchar)
-        if number_of_backslashes > 0:
-            self._token.append('\\'*number_of_backslashes)
-        result = ''.join(self._token)
-        self._token = []
-        quoted = quoted is not None
-        if not quoted and result == '':
-            result = None
-        return quoted, result
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        quoted, token = self._get_token()
-        if token is None:
-            raise StopIteration
-        return quoted, token
-
-
-def _command_line_to_argv(command_line):
-    """Convert a Unicode command line into a set of argv arguments.
-
-    This does wildcard expansion, etc. It is intended to make wildcards act
-    closer to how they work in posix shells, versus how they work by default on
-    Windows.
-    """
-    s = UnicodeShlex(command_line)
-    # Now that we've split the content, expand globs
+    # First, spit the command line
+    s = cmdline.Splitter(command_line, single_quotes_allowed=single_quotes_allowed)
+    
+    # Bug #587868 Now make sure that the length of s agrees with sys.argv 
+    # we do this by simply counting the number of arguments in each. The counts should 
+    # agree no matter what encoding sys.argv is in (AFAIK) 
+    # len(arguments) < len(sys.argv) should be an impossibility since python gets 
+    # args from the very same PEB as does GetCommandLineW
+    arguments = list(s)
+    
+    # Now shorten the command line we get from GetCommandLineW to match sys.argv
+    if len(arguments) < len(argv):
+        raise AssertionError("Split command line can't be shorter than argv")
+    arguments = arguments[len(arguments) - len(argv):]
+    
+    # Carry on to process globs (metachars) in the command line
+    # expand globs if necessary
     # TODO: Use 'globbing' instead of 'glob.glob', this gives us stuff like
     #       '**/' style globs
     args = []
-    for is_quoted, arg in s:
+    for is_quoted, arg in arguments:
         if is_quoted or not glob.has_magic(arg):
             args.append(arg)
         else:
@@ -615,26 +565,14 @@ def _command_line_to_argv(command_line):
 
 if has_ctypes and winver != 'Windows 98':
     def get_unicode_argv():
-        LPCWSTR = ctypes.c_wchar_p
-        INT = ctypes.c_int
-        POINTER = ctypes.POINTER
-        prototype = ctypes.WINFUNCTYPE(LPCWSTR)
-        GetCommandLine = prototype(("GetCommandLineW",
-                                    ctypes.windll.kernel32))
-        prototype = ctypes.WINFUNCTYPE(POINTER(LPCWSTR), LPCWSTR, POINTER(INT))
-        command_line = GetCommandLine()
+        prototype = ctypes.WINFUNCTYPE(ctypes.c_wchar_p)
+        GetCommandLineW = prototype(("GetCommandLineW",
+                                     ctypes.windll.kernel32))
+        command_line = GetCommandLineW()
+        if command_line is None:
+            raise ctypes.WinError()
         # Skip the first argument, since we only care about parameters
-        argv = _command_line_to_argv(command_line)[1:]
-        if getattr(sys, 'frozen', None) is None:
-            # Invoked via 'python.exe' which takes the form:
-            #   python.exe [PYTHON_OPTIONS] C:\Path\bzr [BZR_OPTIONS]
-            # we need to get only BZR_OPTIONS part,
-            # We already removed 'python.exe' so we remove everything up to and
-            # including the first non-option ('-') argument.
-            for idx in xrange(len(argv)):
-                if argv[idx][:1] != '-':
-                    break
-            argv = argv[idx+1:]
+        argv = _command_line_to_argv(command_line, sys.argv)[1:]
         return argv
 else:
     get_unicode_argv = None

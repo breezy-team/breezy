@@ -31,6 +31,7 @@ import urllib
 import urlparse
 
 from bzrlib import transport
+from bzrlib.tests import test_server
 from bzrlib.transport import local
 
 
@@ -87,6 +88,41 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 or e.args[0] not in (errno.EPIPE, errno.ECONNRESET,
                                      errno.ECONNABORTED, errno.EBADF)):
                 raise
+
+    error_content_type = 'text/plain'
+    error_message_format = '''\
+Error code: %(code)s.
+Message: %(message)s.
+'''
+
+    def send_error(self, code, message=None):
+        """Send and log an error reply.
+
+        We redefine the python-provided version to be able to set a 
+        ``Content-Length`` header as some http/1.1 clients complain otherwise
+        (see bug #568421).
+
+        :param code: The HTTP error code.
+
+        :param message: The explanation of the error code, Defaults to a short
+             entry.
+        """
+
+        if message is None:
+            try:
+                message = self.responses[code][0]
+            except KeyError:
+                message = '???'
+        self.log_error("code %d, message %s", code, message)
+        content = (self.error_message_format %
+                   {'code': code, 'message': message})
+        self.send_response(code, message)
+        self.send_header("Content-Type", self.error_content_type)
+        self.send_header("Content-Length", "%d" % len(content))
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
+            self.wfile.write(content)
 
     _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
     _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
@@ -530,8 +566,9 @@ class HttpServer(transport.Server):
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        if not (backing_transport_server is None or \
-                isinstance(backing_transport_server, local.LocalURLServer)):
+        if not (backing_transport_server is None
+                or isinstance(backing_transport_server,
+                              test_server.LocalURLServer)):
             raise AssertionError(
                 "HTTPServer currently assumes local transport, got %s" % \
                 backing_transport_server)

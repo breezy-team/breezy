@@ -21,7 +21,7 @@ See ``bzr help rules`` for details.
 
 from bzrlib import (
     config,
-    commands,
+    cmdline,
     errors,
     globbing,
     osutils,
@@ -81,8 +81,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
         self.pattern_to_section = {}
         for s in sections:
             if s.startswith(FILE_PREFS_PREFIX):
-                file_patterns = commands.shlex_split_unicode(
-                    s[FILE_PREFS_PREFIX_LEN:])
+                file_patterns = cmdline.split(s[FILE_PREFS_PREFIX_LEN:])
                 patterns.extend(file_patterns)
                 for fp in file_patterns:
                     self.pattern_to_section[fp] = s

@@ -68,17 +68,18 @@ from bzrlib import (
     index as _mod_index,
     lru_cache,
     pack,
+    patiencediff,
     progress,
     static_tuple,
     trace,
     tsort,
     tuned_gzip,
+    ui,
     )
 """)
 from bzrlib import (
     errors,
     osutils,
-    patiencediff,
     )
 from bzrlib.errors import (
     FileExists,
@@ -1755,7 +1756,7 @@ class KnitVersionedFiles(VersionedFiles):
         :return: An iterator over (line, key).
         """
         if pb is None:
-            pb = progress.DummyProgress()
+            pb = ui.ui_factory.nested_progress_bar()
         keys = set(keys)
         total = len(keys)
         done = False
@@ -3414,10 +3415,6 @@ class _DirectPackAccess(object):
         if is_error:
             exc_class, exc_value, exc_traceback = retry_exc.exc_info
             raise exc_class, exc_value, exc_traceback
-
-
-# Deprecated, use PatienceSequenceMatcher instead
-KnitSequenceMatcher = patiencediff.PatienceSequenceMatcher
 
 
 def annotate_knit(knit, revision_id):

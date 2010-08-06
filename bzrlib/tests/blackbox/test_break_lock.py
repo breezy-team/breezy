@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,10 +25,10 @@ from bzrlib import (
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestBreakLock(ExternalBase):
+class TestBreakLock(TestCaseWithTransport):
 
     # General principal for break-lock: All the elements that might be locked
     # by a bzr operation on PATH, are candidates that break-lock may unlock.
@@ -60,7 +60,7 @@ class TestBreakLock(ExternalBase):
         local_branch.bind(self.master_branch)
         checkoutdir = bzrlib.bzrdir.BzrDir.create('checkout')
         bzrlib.branch.BranchReferenceFormat().initialize(
-            checkoutdir, local_branch)
+            checkoutdir, target_branch=local_branch)
         self.wt = checkoutdir.create_workingtree()
 
     def test_break_lock_help(self):
@@ -93,7 +93,7 @@ class TestBreakLock(ExternalBase):
         self.assertRaises(errors.LockBroken, self.master_branch.unlock)
 
 
-class TestBreakLockOldBranch(ExternalBase):
+class TestBreakLockOldBranch(TestCaseWithTransport):
 
     def test_break_lock_format_5_bzrdir(self):
         # break lock on a format 5 bzrdir should just return

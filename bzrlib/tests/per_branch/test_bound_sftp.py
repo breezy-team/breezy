@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>, Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Robey Pointer <robey@lag.net>, Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,39 +19,32 @@
 
 import os
 
-import bzrlib
 from bzrlib import (
+    branch,
     bzrdir,
+    errors,
+    tests,
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import (BzrDir,
-                           BzrDirFormat,
-                           BzrDirFormat6,
-                           BzrDirMetaFormat1,
-                           )
-import bzrlib.errors as errors
-from bzrlib.tests import TestSkipped
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.transport.local import LocalURLServer
-from bzrlib.transport.memory import MemoryServer
+from bzrlib.tests import test_server
+from bzrlib.transport import memory
 
 
-class BoundSFTPBranch(TestCaseWithTransport):
+class BoundSFTPBranch(tests.TestCaseWithTransport):
 
     def setUp(self):
-        TestCaseWithTransport.setUp(self)
-        self.vfs_transport_factory = MemoryServer
-        if self.transport_server is LocalURLServer:
+        tests.TestCaseWithTransport.setUp(self)
+        self.vfs_transport_factory = memory.MemoryServer
+        if self.transport_server is test_server.LocalURLServer:
             self.transport_server = None
 
     def create_branches(self):
         self.build_tree(['base/', 'base/a', 'base/b'])
         format = bzrdir.format_registry.make_bzrdir('knit')
         try:
-            wt_base = BzrDir.create_standalone_workingtree(
+            wt_base = bzrdir.BzrDir.create_standalone_workingtree(
                 self.get_url('base'), format=format)
         except errors.NotLocalUrl:
-            raise TestSkipped('Not a local URL')
+            raise tests.TestSkipped('Not a local URL')
 
         b_base = wt_base.branch
 
@@ -60,7 +53,7 @@ class BoundSFTPBranch(TestCaseWithTransport):
         wt_base.commit('first', rev_id='r@b-1')
 
         wt_child = b_base.bzrdir.sprout('child').open_workingtree()
-        self.sftp_base = Branch.open(self.get_url('base'))
+        self.sftp_base = branch.Branch.open(self.get_url('base'))
         wt_child.branch.bind(self.sftp_base)
         # check the branch histories are ready for using in tests.
         self.assertEqual(['r@b-1'], b_base.revision_history())
@@ -70,9 +63,10 @@ class BoundSFTPBranch(TestCaseWithTransport):
     def test_simple_binding(self):
         self.build_tree(['base/', 'base/a', 'base/b', 'child/'])
         try:
-            wt_base = BzrDir.create_standalone_workingtree(self.get_url('base'))
+            wt_base = bzrdir.BzrDir.create_standalone_workingtree(
+                self.get_url('base'))
         except errors.NotLocalUrl:
-            raise TestSkipped('Not a local URL')
+            raise tests.TestSkipped('Not a local URL')
 
         wt_base.add('a')
         wt_base.add('b')
@@ -83,11 +77,12 @@ class BoundSFTPBranch(TestCaseWithTransport):
         # may not be bindable-from, and we want to test the side effects etc
         # of bondage.
         format = bzrdir.format_registry.make_bzrdir('knit')
-        b_child = BzrDir.create_branch_convenience('child', format=format)
+        b_child = bzrdir.BzrDir.create_branch_convenience(
+            'child', format=format)
         self.assertEqual(None, b_child.get_bound_location())
         self.assertEqual(None, b_child.get_master_branch())
 
-        sftp_b_base = Branch.open(self.get_url('base'))
+        sftp_b_base = branch.Branch.open(self.get_url('base'))
         b_child.bind(sftp_b_base)
         self.assertEqual(sftp_b_base.base, b_child.get_bound_location())
         # the bind must not have given b_child history:
@@ -125,7 +120,7 @@ class BoundSFTPBranch(TestCaseWithTransport):
         self.assertRaises(errors.BoundBranchOutOfDate,
                 wt_child.commit, 'child', rev_id='r@c-2')
 
-        sftp_b_base = Branch.open(self.get_url('base'))
+        sftp_b_base = branch.Branch.open(self.get_url('base'))
 
         # This is all that cmd_update does
         wt_child.pull(sftp_b_base, overwrite=False)
@@ -149,13 +144,13 @@ class BoundSFTPBranch(TestCaseWithTransport):
                 wt_child2.commit, 'child2', rev_id='r@d-2')
 
     def test_unbinding(self):
-        from bzrlib.transport import get_transport
+        from bzrlib import transport
         b_base, wt_child = self.create_branches()
 
         # TestCaseWithSFTPServer only allows you to connect one time
         # to the SFTP server. So we have to create a connection and
         # keep it around, so that it can be reused
-        __unused_t = get_transport(self.get_url('.'))
+        __unused_t = transport.get_transport(self.get_url('.'))
 
         wt_base = b_base.bzrdir.open_workingtree()
         open('base/a', 'wb').write('new base contents\n')
@@ -170,7 +165,7 @@ class BoundSFTPBranch(TestCaseWithTransport):
         self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
         self.assertEqual(['r@b-1', 'r@b-2'], b_base.revision_history())
 
-        sftp_b_base = Branch.open(self.get_url('base'))
+        sftp_b_base = branch.Branch.open(self.get_url('base'))
         self.assertRaises(errors.DivergedBranches,
                 wt_child.branch.bind, sftp_b_base)
 
@@ -181,8 +176,8 @@ class BoundSFTPBranch(TestCaseWithTransport):
 
         b_base.bzrdir.sprout('newbase')
 
-        sftp_b_base = Branch.open(self.get_url('base'))
-        sftp_b_newbase = Branch.open(self.get_url('newbase'))
+        sftp_b_base = branch.Branch.open(self.get_url('base'))
+        sftp_b_newbase = branch.Branch.open(self.get_url('newbase'))
 
         sftp_b_base.bind(sftp_b_newbase)
 
@@ -208,7 +203,7 @@ class BoundSFTPBranch(TestCaseWithTransport):
         b_base.bzrdir.open_workingtree().commit('base', rev_id='r@b-2')
         self.assertEqual(['r@b-1', 'r@b-2'], b_base.revision_history())
 
-        sftp_b_base = Branch.open(self.get_url('base'))
+        sftp_b_base = branch.Branch.open(self.get_url('base'))
 
         self.assertRaises(errors.DivergedBranches,
                 wt_child.branch.bind, sftp_b_base)
@@ -236,7 +231,7 @@ class BoundSFTPBranch(TestCaseWithTransport):
         self.assertEqual(['r@b-1', 'r@b-2'], b_base.revision_history())
         self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
 
-        sftp_b_base = Branch.open(self.get_url('base'))
+        sftp_b_base = branch.Branch.open(self.get_url('base'))
         wt_child.branch.bind(sftp_b_base)
 
         self.assertEqual(['r@b-1'], wt_child.branch.revision_history())
@@ -265,7 +260,7 @@ class BoundSFTPBranch(TestCaseWithTransport):
         self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
         self.assertEqual(['r@b-1'], b_base.revision_history())
 
-        sftp_b_base = Branch.open(self.get_url('base'))
+        sftp_b_base = branch.Branch.open(self.get_url('base'))
         wt_child.branch.bind(sftp_b_base)
 
         self.assertEqual(['r@b-1'], b_base.revision_history())

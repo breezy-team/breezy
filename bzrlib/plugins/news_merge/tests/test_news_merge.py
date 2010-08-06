@@ -25,5 +25,3 @@ from bzrlib import (
     )
 from bzrlib.merge import Merger
 from bzrlib.plugins import news_merge
-import bzrlib.plugins.news_merge.news_merge
-from bzrlib.tests import test_merge_core

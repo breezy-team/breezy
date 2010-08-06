@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -82,14 +82,13 @@ class Reconfigure(object):
             self.repository = None
             self.local_repository = None
         else:
-            if (self.repository.bzrdir.root_transport.base ==
-                self.bzrdir.root_transport.base):
+            if (self.repository.user_url == self.bzrdir.user_url):
                 self.local_repository = self.repository
             else:
                 self.local_repository = None
         try:
             branch = self.bzrdir.open_branch()
-            if branch.bzrdir.root_transport.base == bzrdir.root_transport.base:
+            if branch.user_url == bzrdir.user_url:
                 self.local_branch = branch
                 self.referenced_branch = None
             else:
@@ -217,8 +216,8 @@ class Reconfigure(object):
             if not want_reference:
                 self._create_repository = True
         else:
-            if want_reference and (self.repository.bzrdir.root_transport.base
-                                   == self.bzrdir.root_transport.base):
+            if want_reference and (
+                self.repository.user_url == self.bzrdir.user_url):
                 if not self.repository.is_shared():
                     self._destroy_repository = True
         if self.referenced_branch is None:
@@ -344,7 +343,7 @@ class Reconfigure(object):
             if self._create_reference:
                 reference_branch.repository.fetch(self.repository)
             elif self.local_branch is not None and not self._destroy_branch:
-                up = self.local_branch.bzrdir.root_transport.clone('..')
+                up = self.local_branch.user_transport.clone('..')
                 up_bzrdir = bzrdir.BzrDir.open_containing_from_transport(up)[0]
                 new_repo = up_bzrdir.find_repository()
                 new_repo.fetch(self.repository)
@@ -368,7 +367,7 @@ class Reconfigure(object):
             local_branch = self.local_branch
         if self._create_reference:
             format = branch.BranchReferenceFormat().initialize(self.bzrdir,
-                reference_branch)
+                target_branch=reference_branch)
         if self._destroy_tree:
             self.bzrdir.destroy_workingtree()
         if self._create_tree:

@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,8 +25,6 @@ when the branch is opened.  Clients should typically do
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 
-
-from warnings import warn
 
 from bzrlib import (
     bencode,
@@ -253,3 +251,4 @@ class BasicTags(_Tags):
 
 def _merge_tags_if_possible(from_branch, to_branch):
     from_branch.tags.merge_to(to_branch.tags)
+
