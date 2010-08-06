@@ -1824,12 +1824,8 @@ class _GCBuildDetails(object):
 
     def __init__(self, parents, position_info):
         self._parents = parents
-        self._index = position_info[0]
-        self._group_start = position_info[1]
-        # Is this _end or length? Doesn't really matter to us
-        self._group_end = position_info[2]
-        self._basis_end = position_info[3]
-        self._delta_end = position_info[4]
+        (self._index, self._group_start, self._group_end, self._basis_end,
+         self._delta_end) = position_info
 
     def __repr__(self):
         return '%s(%s, %s)' % (self.__class__.__name__,
