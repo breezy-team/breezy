@@ -546,8 +546,9 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             if pb is None:
                 create_pb = pb = ui.ui_factory.nested_progress_bar()
             try:
-                objects_iter = self.source.fetch_objects(record_determine_wants,
-                    graph_walker, store.get_raw, progress)
+                objects_iter = self.source.fetch_objects(
+                    record_determine_wants, graph_walker, store.get_raw,
+                    progress)
                 return import_git_objects(self.target, mapping,
                     objects_iter, store, recorded_wants, pb, limit)
             finally:
@@ -641,7 +642,7 @@ class InterGitGitRepository(InterGitRepository):
             determine_wants = r.object_store.determine_wants_all
         else:
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
-        return self.fetch_objects(determine_wants, mapping)[0]
+        self.fetch_objects(determine_wants, mapping)
 
     @staticmethod
     def is_compatible(source, target):
