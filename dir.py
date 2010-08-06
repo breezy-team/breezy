@@ -85,8 +85,8 @@ class GitDir(bzrdir.BzrDir):
         raise NotImplementedError(self._branch_name_to_ref)
 
     if bzrlib_version >= (2, 2):
-        def open_branch(self, name=None, ignore_fallbacks=None,
-            unsupported=False):
+        def open_branch(self, name=None, unsupported=False, 
+            ignore_fallbacks=None):
             return self._open_branch(name=name,
                 ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
     else:
