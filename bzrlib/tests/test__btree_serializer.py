@@ -291,3 +291,15 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
             self.assertEqual(lst.index(val), offsets[val])
         for idx, key in enumerate(leaf.all_keys()):
             self.assertEqual(str(idx), leaf[key][0].split()[0])
+
+    def test__sizeof__(self):
+        # We can't use the exact numbers because of platform variations, etc.
+        # But what we really care about is that it does get bigger with more
+        # content.
+        leaf0 = self.module._parse_into_chk('type=leaf\n', 1, 0)
+        leaf1 = self.module._parse_into_chk(_one_key_content, 1, 0)
+        leafN = self.module._parse_into_chk(_multi_key_content, 1, 0)
+        sizeof_1 = leaf1.__sizeof__() - leaf0.__sizeof__()
+        self.assertTrue(sizeof_1 > 0)
+        sizeof_N = leafN.__sizeof__() - leaf0.__sizeof__()
+        self.assertEqual(sizeof_1 * len(leafN), sizeof_N)

@@ -605,7 +605,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
 class _LeafNode(dict):
     """A leaf node for a serialised B+Tree index."""
 
-    __slots__ = ('min_key', 'max_key')
+    __slots__ = ('min_key', 'max_key', '_keys')
 
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
@@ -618,6 +618,7 @@ class _LeafNode(dict):
         else:
             self.min_key = self.max_key = None
         super(_LeafNode, self).__init__(key_list)
+        self._keys = dict(self)
 
     def all_items(self):
         """Return a sorted list of (key, (value, refs)) items"""
