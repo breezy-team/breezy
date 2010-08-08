@@ -30,10 +30,13 @@ from dulwich.object_store import (
     PACKDIR,
     )
 from dulwich.pack import (
+    MemoryPackIndex,
     PackData,
     Pack,
+    ThinPackData,
     iter_sha1,
     load_pack_index_file,
+    write_pack_data,
     write_pack_index_v2,
     )
 from dulwich.repo import (
@@ -442,6 +445,53 @@ class TransportObjectStore(PackBasedObjectStore):
         final_pack = Pack.from_objects(p, idx)
         self._add_known_pack(final_pack)
         return final_pack
+
+    def add_thin_pack(self):
+        """Add a new thin pack to this object store.
+
+        Thin packs are packs that contain deltas with parents that exist
+        in a different pack.
+        """
+        from cStringIO import StringIO
+        f = StringIO()
+        def commit():
+            if len(f.getvalue()) > 0:
+                return self.move_in_thin_pack(f)
+            else:
+                return None
+        return f, commit
+
+    def move_in_thin_pack(self, f):
+        """Move a specific file containing a pack into the pack directory.
+
+        :note: The file should be on the same file system as the
+            packs directory.
+
+        :param path: Path to the pack file.
+        """
+        f.seek(0)
+        data = ThinPackData.from_file(self.get_raw, f, len(f.getvalue()))
+        idx = MemoryPackIndex(data.sorted_entries(), data.get_stored_checksum())
+        p = Pack.from_objects(data, idx)
+
+        pack_sha = idx.objects_sha1()
+
+        datafile = self.pack_transport.open_write_stream("pack-%s.pack" % pack_sha)
+        try:
+            entries, data_sum = write_pack_data(datafile, ((o, None) for o in p.iterobjects()), len(p))
+        finally:
+            datafile.close()
+        entries.sort()
+        idxfile = self.pack_transport.open_write_stream("pack-%s.idx" % pack_sha)
+        try:
+            write_pack_index_v2(idxfile, data.sorted_entries(), data_sum)
+        finally:
+            idxfile.close()
+        final_pack = Pack("pack-%s" % pack_sha)
+        self._add_known_pack(final_pack)
+        return final_pack
+
+
 
     def add_pack(self):
         """Add a new pack to this object store. 

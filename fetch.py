@@ -638,8 +638,8 @@ class InterGitGitRepository(InterGitRepository):
               isinstance(self.target, LocalGitRepository)):
             f, commit = self.target._git.object_store.add_thin_pack()
             try:
-                refs = self.source._git.fetch_pack(determine_wants,
-                    graphwalker, f.write, progress)
+                refs = self.source.bzrdir.root_transport.fetch_pack(
+                    determine_wants, graphwalker, f.write, progress)
                 commit()
                 return (None, None, refs)
             except:
