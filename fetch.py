@@ -479,6 +479,17 @@ class InterGitNonGitRepository(InterGitRepository):
     """Base InterRepository that copies revisions from a Git into a non-Git
     repository."""
 
+    def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
+        """Fetch objects from a remote server.
+
+        :param determine_wants: determine_wants callback
+        :param mapping: BzrGitMapping to use
+        :param pb: Optional progress bar
+        :param limit: Maximum number of commits to import.
+        :return: Tuple with pack hint and last imported revision id
+        """
+        raise NotImplementedError(self.fetch_objects)
+
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
               mapping=None, fetch_spec=None):
         if mapping is None:
@@ -514,6 +525,19 @@ def report_git_progress(pb, text):
         pb.update(text, 0, 0)
 
 
+class DetermineWantsRecorder(object):
+
+    def __init__(self, actual):
+        self.actual = actual
+        self.wants = []
+        self.remote_refs = {}
+
+    def __call__(self, refs):
+        self.remote_refs = refs
+        self.wants = self.actual(refs)
+        return self.wants
+
+
 class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     """InterRepository that copies revisions from a remote Git into a non-Git
     repository."""
@@ -527,6 +551,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         return set(all_revs) - all_parents
 
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
+        """See `InterGitNonGitRepository`."""
         def progress(text):
             report_git_progress(pb, text)
         store = BazaarObjectStore(self.target, mapping)
@@ -535,22 +560,17 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
             heads = self.get_target_heads()
             graph_walker = store.get_graph_walker(
                     [store._lookup_revision_sha1(head) for head in heads])
-            recorded_wants = []
-
-            def record_determine_wants(heads):
-                wants = determine_wants(heads)
-                recorded_wants.extend(wants)
-                return wants
+            wants_recorder = DetermineWantsRecorder(determine_wants)
 
             create_pb = None
             if pb is None:
                 create_pb = pb = ui.ui_factory.nested_progress_bar()
             try:
                 objects_iter = self.source.fetch_objects(
-                    record_determine_wants, graph_walker, store.get_raw,
+                    wants_recorder, graph_walker, store.get_raw,
                     progress)
                 return import_git_objects(self.target, mapping,
-                    objects_iter, store, recorded_wants, pb, limit)
+                    objects_iter, store, wants_recorder.wants, pb, limit)
             finally:
                 if create_pb:
                     create_pb.finished()
@@ -571,8 +591,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     repository."""
 
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
-        """Fetch objects.
-        """
+        """See `InterGitNonGitRepository`."""
         wants = determine_wants(self.source._git.get_refs())
         create_pb = None
         if pb is None:
