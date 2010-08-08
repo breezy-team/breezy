@@ -486,7 +486,7 @@ class InterGitNonGitRepository(InterGitRepository):
         :param mapping: BzrGitMapping to use
         :param pb: Optional progress bar
         :param limit: Maximum number of commits to import.
-        :return: Tuple with pack hint and last imported revision id
+        :return: Tuple with pack hint, last imported revision id and remote refs
         """
         raise NotImplementedError(self.fetch_objects)
 
@@ -500,18 +500,16 @@ class InterGitNonGitRepository(InterGitRepository):
             interesting_heads = fetch_spec.heads
         else:
             interesting_heads = None
-        self._refs = {}
         def determine_wants(refs):
-            self._refs = refs
             if interesting_heads is None:
                 ret = [sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
             else:
                 ret = [self.source.lookup_bzr_revision_id(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
             return [rev for rev in ret if not self.target.has_revision(self.source.lookup_foreign_revision_id(rev))]
-        (pack_hint, _) = self.fetch_objects(determine_wants, mapping, pb)
+        (pack_hint, _, remote_refs) = self.fetch_objects(determine_wants, mapping, pb)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
-        return self._refs
+        return remote_refs
 
 
 _GIT_PROGRESS_RE = re.compile(r"(.*?): +(\d+)% \((\d+)/(\d+)\)")
@@ -569,8 +567,9 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 objects_iter = self.source.fetch_objects(
                     wants_recorder, graph_walker, store.get_raw,
                     progress)
-                return import_git_objects(self.target, mapping,
+                (pack_hint, last_rev) = import_git_objects(self.target, mapping,
                     objects_iter, store, wants_recorder.wants, pb, limit)
+                return (pack_hint, last_rev, wants_recorder.remote_refs)
             finally:
                 if create_pb:
                     create_pb.finished()
@@ -592,7 +591,8 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
 
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         """See `InterGitNonGitRepository`."""
-        wants = determine_wants(self.source._git.get_refs())
+        remote_refs = self.source._git.get_refs()
+        wants = determine_wants(remote_refs)
         create_pb = None
         if pb is None:
             create_pb = pb = ui.ui_factory.nested_progress_bar()
@@ -600,9 +600,10 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
         try:
             self.target.lock_write()
             try:
-                return import_git_objects(self.target, mapping,
+                (pack_hint, last_rev) = import_git_objects(self.target, mapping,
                     self.source._git.object_store,
                     target_git_object_retriever, wants, pb, limit)
+                return (pack_hint, last_rev, remote_refs)
             finally:
                 self.target.unlock()
         finally:
@@ -627,8 +628,9 @@ class InterGitGitRepository(InterGitRepository):
         graphwalker = self.target._git.get_graph_walker()
         if (isinstance(self.source, LocalGitRepository) and
             isinstance(self.target, LocalGitRepository)):
-            return self.source._git.fetch(self.target._git, determine_wants,
+            refs = self.source._git.fetch(self.target._git, determine_wants,
                 progress)
+            return (None, None, refs)
         elif (isinstance(self.source, LocalGitRepository) and
               isinstance(self.target, RemoteGitRepository)):
             raise NotImplementedError
@@ -639,7 +641,7 @@ class InterGitGitRepository(InterGitRepository):
                 refs = self.source._git.fetch_pack(determine_wants,
                     graphwalker, f.write, progress)
                 commit()
-                return refs
+                return (None, None, refs)
             except:
                 f.close()
                 raise

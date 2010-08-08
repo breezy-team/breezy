@@ -459,7 +459,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             if self.target.repository.has_revision(self._last_revid):
                 return []
             return [head]
-        pack_hint, head = interrepo.fetch_objects(
+        pack_hint, head, refs = interrepo.fetch_objects(
             determine_wants, self.source.mapping, limit=limit)
         if (pack_hint is not None and
             self.target.repository._format.pack_compresses):

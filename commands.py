@@ -80,7 +80,7 @@ class cmd_git_import(Command):
 
         interrepo = InterRepository.get(source_repo, target_repo)
         mapping = source_repo.get_mapping()
-        refs = interrepo.fetch_refs()
+        refs = interrepo.fetch()
         tags = {}
         for k, v in extract_tags(refs).iteritems():
             tags[k] = mapping.revision_id_foreign_to_bzr(v)
@@ -97,7 +97,7 @@ class cmd_git_import(Command):
                     parent_path = urlutils.dirname(head_loc)
                     if not os.path.isdir(parent_path):
                         os.makedirs(parent_path)
-                    head_bzrdir = BzrDir.create(head_loc, format=format)
+                    head_bzrdir = BzrDir.create(head_loc)
                 try:
                     head_branch = head_bzrdir.open_branch()
                 except NotBranchError:
