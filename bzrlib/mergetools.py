@@ -134,7 +134,7 @@ class MergeTool(object):
         return commandline, tmp_file
 
 
-_DEFAULT_MERGE_TOOLS = (
+_KNOWN_MERGE_TOOLS = (
     'bcompare %t %o %b %r',
     'kdiff3 %b %t %o -o %r',
     'xxdiff -m -O -M %r %t %b %o',
@@ -144,8 +144,9 @@ _DEFAULT_MERGE_TOOLS = (
 )
 
 
-def get_default_merge_tools():
-    return [MergeTool(commandline) for commandline in _DEFAULT_MERGE_TOOLS]
+def detect_merge_tools():
+    tools = [MergeTool(commandline) for commandline in _KNOWN_MERGE_TOOLS]
+    return [tool for tool in tools if tool.is_available()]
 
 
 def get_merge_tools(conf=None):
@@ -154,7 +155,7 @@ def get_merge_tools(conf=None):
         conf = config.GlobalConfig()
     commandlines = conf.get_user_option_as_list('mergetools')
     if commandlines is None:
-        commandlines = _DEFAULT_MERGE_TOOLS
+        return []
     return [MergeTool(commandline) for commandline in commandlines]
 
 
