@@ -103,6 +103,9 @@ API Changes
   valid for kind == link); and ``reference_revision`` (only valid for kind
   == tree-reference).  (Andrew Bennetts)
 
+* InventoryEntry objects no longer have ``_put_in_tar`` or
+  ``_put_on_disk`` methods.  (Andrew Bennetts)
+
 Internals
 *********
 
