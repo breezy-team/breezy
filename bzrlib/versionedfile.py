@@ -206,6 +206,134 @@ def filter_absent(record_stream):
             yield record
 
 
+class _MPDiffGenerator(object):
+    """Pull out the functionality for generating mp_diffs."""
+
+    def __init__(self, vf, keys):
+        self.vf = vf
+        # This is the order the keys were requested in
+        self.ordered_keys = tuple(keys)
+        # keys + their parents, what we need to compute the diffs
+        self.needed_keys = ()
+        # Map from key: mp_diff
+        self.diffs = {}
+        # Map from key: parents_needed (may have ghosts)
+        self.parent_map = {}
+        # Parents that aren't present
+        self.ghost_parents = ()
+        # Map from parent_key => number of children for this text
+        self.refcounts = {}
+        # Content chunks that are cached while we still need them
+        self.chunks = {}
+
+    def _find_needed_keys(self):
+        """Find the set of keys we need to request.
+
+        This includes all the original keys passed in, and the non-ghost
+        parents of those keys.
+
+        :return: (needed_keys, refcounts)
+            needed_keys is the set of all texts we need to extract
+            refcounts is a dict of {key: num_children} letting us know when we
+                no longer need to cache a given parent text
+        """
+        # All the keys and their parents
+        needed_keys = set(self.ordered_keys)
+        parent_map = self.vf.get_parent_map(needed_keys)
+        self.parent_map = parent_map
+        # TODO: Should we be using a different construct here? I think this
+        #       uses difference_update internally, and we expect the result to
+        #       be tiny
+        missing_keys = needed_keys.difference(parent_map)
+        if missing_keys:
+            raise errors.RevisionNotPresent(list(missing_keys)[0], self.vf)
+        # Parents that might be missing. They are allowed to be ghosts, but we
+        # should check for them
+        refcounts = {}
+        setdefault = refcounts.setdefault
+        maybe_ghosts = set()
+        for child_key, parent_keys in parent_map.iteritems():
+            if not parent_keys:
+                # Ghost? We should never get here
+                continue
+            maybe_ghosts.update(p for p in parent_keys if p not in needed_keys)
+            needed_keys.update(parent_keys)
+            for p in parent_keys:
+                refcounts[p] = setdefault(p, 0) + 1
+        # Remove any parents that are actually ghosts
+        self.ghost_parents = maybe_ghosts.difference(
+                                self.vf.get_parent_map(maybe_ghosts))
+        needed_keys.difference_update(self.ghost_parents)
+        self.needed_keys = needed_keys
+        self.refcounts = refcounts
+        return needed_keys, refcounts
+
+    def _compute_diff(self, key, parent_lines, lines):
+        """Compute a single mp_diff, and store it in self._diffs"""
+        if len(parent_lines) > 0:
+            # XXX: _extract_blocks is not usefully defined anywhere...
+            #      It was meant to extract the left-parent diff without
+            #      having to recompute it for Knit content (pack-0.92,
+            #      etc). That seems to have regressed somewhere
+            left_parent_blocks = self.vf._extract_blocks(key,
+                parent_lines[0], lines)
+        else:
+            left_parent_blocks = None
+        diff = multiparent.MultiParent.from_lines(lines,
+                    parent_lines, left_parent_blocks)
+        self.diffs[key] = diff
+
+    def _process_one_record(self, record):
+        this_chunks = record.get_bytes_as('chunked')
+        if record.key in self.parent_map:
+            # This record should be ready to diff, since we requested
+            # content in 'topological' order
+            parent_keys = self.parent_map.pop(record.key)
+            parent_lines = []
+            for p in parent_keys:
+                # Alternatively we could check p not in self.needed_keys, but
+                # ghost_parents should be tiny versus huge
+                if p in self.ghost_parents:
+                    continue
+                refcount = self.refcounts[p]
+                if refcount == 1: # Last child reference
+                    self.refcounts.pop(p)
+                    parent_chunks = self.chunks.pop(p)
+                else:
+                    self.refcounts[p] = refcount - 1
+                    parent_chunks = self.chunks[p]
+                # TODO: Should we cache the line form? We did the
+                #       computation to get it, but storing it this way will
+                #       be less memory efficient...
+                parent_lines.append(osutils.chunks_to_lines(parent_chunks))
+            lines = osutils.chunks_to_lines(this_chunks)
+            # TODO: Should we be caching lines instead of chunks?
+            #       Higher-memory, but avoids double extracting.
+            #       If we have good topological sorting, we shouldn't have
+            #       much pending stuff cached...
+            ## this_chunks = lines
+            self._compute_diff(record.key, parent_lines, lines)
+        # Is this content required for any more children?
+        if record.key in self.refcounts:
+            self.chunks[record.key] = this_chunks
+
+    def _extract_diffs(self):
+        needed_keys, refcounts = self._find_needed_keys()
+        for record in self.vf.get_record_stream(needed_keys,
+                                                'topological', True):
+            if record.storage_kind == 'absent':
+                raise errors.RevisionNotPresent(record.key, self.vf)
+            self._process_one_record(record)
+        # At this point, we should have *no* remaining content
+        assert not self.parent_map
+        assert set(self.refcounts) == self.ghost_parents
+        
+    def compute_diffs(self):
+        self._extract_diffs()
+        dpop = self.diffs.pop
+        return [dpop(k) for k in self.ordered_keys]
+
+
 class VersionedFile(object):
     """Versioned text file storage.
 
@@ -1077,6 +1205,10 @@ class VersionedFiles(object):
             # between the creation and the application of the mpdiff.
             parent_lines = [lines[p] for p in parents if p in knit_keys]
             if len(parent_lines) > 0:
+                # XXX: _extract_blocks is not usefully defined anywhere... It
+                #       was meant to extract the left-parent diff without
+                #       having to recompute it for Knit content (pack-0.92,
+                #       etc)
                 left_parent_blocks = self._extract_blocks(key, parent_lines[0],
                     target)
             else:
