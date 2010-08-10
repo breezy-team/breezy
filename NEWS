@@ -4,6 +4,9 @@
 
   * Add in an empty git repository now works. (Jelmer Vernooij, #603823)
 
+  * Support opening of repositories over HTTP where the HTTP server
+    doesn't allow directory access. (Jelmer Vernooij)
+
  FEATURES
 
   * Remove all remaining dependencies on C git. (Jelmer Vernooij)
