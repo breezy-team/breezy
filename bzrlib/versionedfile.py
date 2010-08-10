@@ -251,18 +251,20 @@ class _MPDiffGenerator(object):
         # should check for them
         refcounts = {}
         setdefault = refcounts.setdefault
-        maybe_ghosts = set()
+        just_parents = set()
         for child_key, parent_keys in parent_map.iteritems():
             if not parent_keys:
-                # Ghost? We should never get here
+                # parent_keys may be None if a given VersionedFile claims to
+                # not support graph operations.
                 continue
-            maybe_ghosts.update(p for p in parent_keys if p not in needed_keys)
+            just_parents.update(parent_keys)
             needed_keys.update(parent_keys)
             for p in parent_keys:
                 refcounts[p] = setdefault(p, 0) + 1
-        # Remove any parents that are actually ghosts
-        self.ghost_parents = maybe_ghosts.difference(
-                                self.vf.get_parent_map(maybe_ghosts))
+        just_parents.difference_update(parent_map)
+        # Remove any parents that are actually ghosts from the needed set
+        self.present_parents = set(self.vf.get_parent_map(just_parents))
+        self.ghost_parents = just_parents.difference(self.present_parents)
         needed_keys.difference_update(self.ghost_parents)
         self.needed_keys = needed_keys
         self.refcounts = refcounts
@@ -283,12 +285,12 @@ class _MPDiffGenerator(object):
                     parent_lines, left_parent_blocks)
         self.diffs[key] = diff
 
-    def _process_one_record(self, record):
-        this_chunks = record.get_bytes_as('chunked')
-        if record.key in self.parent_map:
+    def _process_one_record(self, key, this_chunks):
+        parent_keys = None
+        if key in self.parent_map:
             # This record should be ready to diff, since we requested
             # content in 'topological' order
-            parent_keys = self.parent_map.pop(record.key)
+            parent_keys = self.parent_map.pop(key)
             # If a VersionedFile claims 'no-graph' support, then it may return
             # None for any parent request, so we replace it with an empty tuple
             if parent_keys is None:
@@ -315,11 +317,11 @@ class _MPDiffGenerator(object):
             lines = osutils.chunks_to_lines(this_chunks)
             # Since we needed the lines, we'll go ahead and cache them this way
             this_chunks = lines
-            self._compute_diff(record.key, parent_lines, lines)
+            self._compute_diff(key, parent_lines, lines)
             del lines
         # Is this content required for any more children?
-        if record.key in self.refcounts:
-            self.chunks[record.key] = this_chunks
+        if key in self.refcounts:
+            self.chunks[key] = this_chunks
 
     def _extract_diffs(self):
         needed_keys, refcounts = self._find_needed_keys()
@@ -327,7 +329,8 @@ class _MPDiffGenerator(object):
                                                 'topological', True):
             if record.storage_kind == 'absent':
                 raise errors.RevisionNotPresent(record.key, self.vf)
-            self._process_one_record(record)
+            self._process_one_record(record.key,
+                                     record.get_bytes_as('chunked'))
         # At this point, we should have *no* remaining content
         assert not self.parent_map
         assert set(self.refcounts) == self.ghost_parents

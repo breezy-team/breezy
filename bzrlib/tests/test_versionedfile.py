@@ -59,6 +59,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         # It is returned, but we don't really care as we won't extract it
         self.assertEqual({('one',): 1}, refcount)
         self.assertEqual([('one',)], sorted(gen.ghost_parents))
+        self.assertEqual([], sorted(gen.present_parents))
 
     def test_raises_on_ghost_keys(self):
         # If the requested key is a ghost, then we have a problem
@@ -74,6 +75,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         self.assertEqual(sorted([('one',), ('two',), ('three',)]),
                          sorted(needed_keys))
         self.assertEqual({('one',): 2, ('two',): 1}, refcount)
+        self.assertEqual([('one',)], sorted(gen.present_parents))
 
     def test_process_contents(self):
         vf = self.make_three_vf()
@@ -90,7 +92,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         self.assertEqual(('one',), record.key)
         # one is not needed in the output, but it is needed by children. As
         # such, it should end up in the various caches
-        gen._process_one_record(record)
+        gen._process_one_record(record.key, record.get_bytes_as('chunked'))
         # The chunks should be cached, the refcount untouched
         self.assertEqual([('one',)], gen.chunks.keys())
         self.assertEqual({('one',): 2, ('two',): 1}, gen.refcounts)
@@ -99,7 +101,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         # three
         record = stream.next()
         self.assertEqual(('two',), record.key)
-        gen._process_one_record(record)
+        gen._process_one_record(record.key, record.get_bytes_as('chunked'))
         # Both are now cached, and the diff for two has been extracted, and
         # one's refcount has been updated. two has been removed from the
         # parent_map
@@ -113,7 +115,7 @@ class Test_MPDiffGenerator(tests.TestCaseWithMemoryTransport):
         # caches
         record = stream.next()
         self.assertEqual(('three',), record.key)
-        gen._process_one_record(record)
+        gen._process_one_record(record.key, record.get_bytes_as('chunked'))
         # Both are now cached, and the diff for two has been extracted, and
         # one's refcount has been updated
         self.assertEqual([], gen.chunks.keys())
