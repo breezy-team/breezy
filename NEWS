@@ -12,6 +12,9 @@
 
    * Unlock working tree properly on all errors. (Jelmer Vernooij, #447302)
 
+   * Warn about uncommitted changes before downloading history.
+     (Jelmer Vernooij, #605091)
+
 0.6.0	2010-03-27
 
   BUG FIXES

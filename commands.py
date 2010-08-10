@@ -150,6 +150,11 @@ class cmd_rebase(Command):
                 stop_revid = wt_parents[1]
                 assert stop_revid is not None, "stop revid invalid"
 
+            # Check for changes in the working tree.
+            if (not pending_merges and
+                wt.basis_tree().changes_from(wt).has_changed()):
+                raise UncommittedChanges(wt)
+
             # Pull required revisions
             wt.branch.repository.fetch(upstream_repository, upstream_revision)
             if onto is None:
@@ -192,11 +197,6 @@ class cmd_rebase(Command):
                 note('%d revisions will be rebased:' % len(todo))
                 for revid in todo:
                     note("%s" % revid)
-
-            # Check for changes in the working tree.
-            if (not pending_merges and
-                wt.basis_tree().changes_from(wt).has_changed()):
-                raise UncommittedChanges(wt)
 
             if not dry_run:
                 # Write plan file
