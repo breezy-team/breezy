@@ -306,17 +306,17 @@ class _MPDiffGenerator(object):
                 else:
                     self.refcounts[p] = refcount - 1
                     parent_chunks = self.chunks[p]
+                p_lines = osutils.chunks_to_lines(parent_chunks)
                 # TODO: Should we cache the line form? We did the
                 #       computation to get it, but storing it this way will
                 #       be less memory efficient...
-                parent_lines.append(osutils.chunks_to_lines(parent_chunks))
+                parent_lines.append(p_lines)
+                del p_lines
             lines = osutils.chunks_to_lines(this_chunks)
-            # TODO: Should we be caching lines instead of chunks?
-            #       Higher-memory, but avoids double extracting.
-            #       If we have good topological sorting, we shouldn't have
-            #       much pending stuff cached...
-            ## this_chunks = lines
+            # Since we needed the lines, we'll go ahead and cache them this way
+            this_chunks = lines
             self._compute_diff(record.key, parent_lines, lines)
+            del lines
         # Is this content required for any more children?
         if record.key in self.refcounts:
             self.chunks[record.key] = this_chunks
@@ -1183,7 +1183,6 @@ class VersionedFiles(object):
 
     def make_mpdiffs(self, keys):
         """Create multiparent diffs for specified keys."""
-        import pdb; pdb.set_trace()
         generator = _MPDiffGenerator(self, keys)
         return generator.compute_diffs()
 
