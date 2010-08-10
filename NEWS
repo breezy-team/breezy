@@ -5,6 +5,34 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.2.1
+#########
+
+:Codename: ??
+:2.2.1: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+Bug Fixes
+*********
+
+* CommitBuilder now uses the committer instead of _config.username to generate
+  the revision-id.  (Aaron Bentley, #614404)
+
+Improvements
+************
+
+Documentation
+*************
+
+
+API Changes
+***********
+
+Testing
+*******
+
 bzr 2.2
 #######
 
