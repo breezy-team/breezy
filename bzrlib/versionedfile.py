@@ -289,6 +289,10 @@ class _MPDiffGenerator(object):
             # This record should be ready to diff, since we requested
             # content in 'topological' order
             parent_keys = self.parent_map.pop(record.key)
+            # If a VersionedFile claims 'no-graph' support, then it may return
+            # None for any parent request, so we replace it with an empty tuple
+            if parent_keys is None:
+                parent_keys = ()
             parent_lines = []
             for p in parent_keys:
                 # Alternatively we could check p not in self.needed_keys, but
@@ -476,6 +480,10 @@ class VersionedFile(object):
 
     def make_mpdiffs(self, version_ids):
         """Create multiparent diffs for specified versions."""
+        # XXX: Can't use _MPDiffGenerator just yet. This is because version_ids
+        #      is a list of strings, not keys. And while self.get_record_stream
+        #      is supported, it takes *keys*, while self.get_parent_map() takes
+        #      strings... *sigh*
         knit_versions = set()
         knit_versions.update(version_ids)
         parent_map = self.get_parent_map(version_ids)
@@ -1175,47 +1183,9 @@ class VersionedFiles(object):
 
     def make_mpdiffs(self, keys):
         """Create multiparent diffs for specified keys."""
-        keys_order = tuple(keys)
-        keys = frozenset(keys)
-        knit_keys = set(keys)
-        parent_map = self.get_parent_map(keys)
-        for parent_keys in parent_map.itervalues():
-            if parent_keys:
-                knit_keys.update(parent_keys)
-        missing_keys = keys - set(parent_map)
-        if missing_keys:
-            raise errors.RevisionNotPresent(list(missing_keys)[0], self)
-        # We need to filter out ghosts, because we can't diff against them.
-        maybe_ghosts = knit_keys - keys
-        ghosts = maybe_ghosts - set(self.get_parent_map(maybe_ghosts))
-        knit_keys.difference_update(ghosts)
-        lines = {}
-        chunks_to_lines = osutils.chunks_to_lines
-        for record in self.get_record_stream(knit_keys, 'topological', True):
-            lines[record.key] = chunks_to_lines(record.get_bytes_as('chunked'))
-            # line_block_dict = {}
-            # for parent, blocks in record.extract_line_blocks():
-            #   line_blocks[parent] = blocks
-            # line_blocks[record.key] = line_block_dict
-        diffs = []
-        for key in keys_order:
-            target = lines[key]
-            parents = parent_map[key] or []
-            # Note that filtering knit_keys can lead to a parent difference
-            # between the creation and the application of the mpdiff.
-            parent_lines = [lines[p] for p in parents if p in knit_keys]
-            if len(parent_lines) > 0:
-                # XXX: _extract_blocks is not usefully defined anywhere... It
-                #       was meant to extract the left-parent diff without
-                #       having to recompute it for Knit content (pack-0.92,
-                #       etc)
-                left_parent_blocks = self._extract_blocks(key, parent_lines[0],
-                    target)
-            else:
-                left_parent_blocks = None
-            diffs.append(multiparent.MultiParent.from_lines(target,
-                parent_lines, left_parent_blocks))
-        return diffs
+        import pdb; pdb.set_trace()
+        generator = _MPDiffGenerator(self, keys)
+        return generator.compute_diffs()
 
     def get_annotator(self):
         return annotate.Annotator(self)
