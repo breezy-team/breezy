@@ -228,18 +228,6 @@ class InventoryEntry(object):
 
     known_kinds = ('file', 'directory', 'symlink')
 
-    def _put_in_tar(self, item, tree):
-        """populate item for stashing in a tar, and return the content stream.
-
-        If no content is available, return None.
-        """
-        raise BzrError("don't know how to export {%s} of kind %r" %
-                       (self.file_id, self.kind))
-
-    def _put_on_disk(self, fullpath, tree):
-        """Put this entry onto disk at fullpath, from tree tree."""
-        raise BzrError("don't know how to export {%s} of kind %r" % (self.file_id, self.kind))
-
     def sorted_children(self):
         return sorted(self.children.items())
 
@@ -418,19 +406,6 @@ class InventoryDirectory(InventoryEntry):
         """See InventoryEntry.kind_character."""
         return '/'
 
-    def _put_in_tar(self, item, tree):
-        """See InventoryEntry._put_in_tar."""
-        item.type = tarfile.DIRTYPE
-        fileobj = None
-        item.name += '/'
-        item.size = 0
-        item.mode = 0755
-        return fileobj
-
-    def _put_on_disk(self, fullpath, tree):
-        """See InventoryEntry._put_on_disk."""
-        os.mkdir(fullpath)
-
 
 class InventoryFile(InventoryEntry):
     """A file in an inventory."""
@@ -496,23 +471,6 @@ class InventoryFile(InventoryEntry):
     def kind_character(self):
         """See InventoryEntry.kind_character."""
         return ''
-
-    def _put_in_tar(self, item, tree):
-        """See InventoryEntry._put_in_tar."""
-        item.type = tarfile.REGTYPE
-        fileobj = tree.get_file(self.file_id)
-        item.size = self.text_size
-        if tree.is_executable(self.file_id):
-            item.mode = 0755
-        else:
-            item.mode = 0644
-        return fileobj
-
-    def _put_on_disk(self, fullpath, tree):
-        """See InventoryEntry._put_on_disk."""
-        osutils.pumpfile(tree.get_file(self.file_id), file(fullpath, 'wb'))
-        if tree.is_executable(self.file_id):
-            os.chmod(fullpath, 0755)
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
@@ -607,22 +565,6 @@ class InventoryLink(InventoryEntry):
     def kind_character(self):
         """See InventoryEntry.kind_character."""
         return ''
-
-    def _put_in_tar(self, item, tree):
-        """See InventoryEntry._put_in_tar."""
-        item.type = tarfile.SYMTYPE
-        fileobj = None
-        item.size = 0
-        item.mode = 0755
-        item.linkname = self.symlink_target
-        return fileobj
-
-    def _put_on_disk(self, fullpath, tree):
-        """See InventoryEntry._put_on_disk."""
-        try:
-            os.symlink(self.symlink_target, fullpath)
-        except OSError,e:
-            raise BzrError("Failed to create symlink %r -> %r, error: %s" % (fullpath, self.symlink_target, e))
 
     def _read_tree_state(self, path, work_tree):
         """See InventoryEntry._read_tree_state."""
