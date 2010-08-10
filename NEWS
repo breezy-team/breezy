@@ -50,7 +50,8 @@ Bug Fixes
 * Decrease peak memory during ``bzr send``. The old code was caching all
   text content and all inventory strings for all revisions before
   computing the diffs. Now we only cache as long as there is a child that
-  will need them. (John Arbash Meinel, #614576)
+  will need them. Sending 2000 bzr revisions drops from 1.2GB peak to
+  256MB peak. (John Arbash Meinel, #614576)
 
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
