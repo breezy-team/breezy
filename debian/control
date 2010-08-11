@@ -8,7 +8,7 @@ Build-Depends-Indep: bzr (>= 2.1~), python-central (>= 0.5.8), python-docutils, 
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr-builddeb/unstable
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr-builddeb/unstable
 XS-Python-Version: >= 2.4
-Standards-Version: 3.8.4
+Standards-Version: 3.9.1
 
 Package: bzr-builddeb
 Architecture: all

@@ -1,4 +1,4 @@
-bzr-builddeb (2.5) UNRELEASED; urgency=low
+bzr-builddeb (2.5) unstable; urgency=low
 
   [ Colin Watson ]
   * Consider a .dsc without a Format: to be Format: 1.0.
@@ -30,18 +30,19 @@ bzr-builddeb (2.5) UNRELEASED; urgency=low
   [ Jelmer Vernooij ]
   * Determine Bazaar home directory using bzrlib to prevent test
     isolation issues. Closes: #614125
+  * Bump standards version to 3.9.1 (no changes).
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 11 Aug 2010 17:52:23 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 11 Aug 2010 18:23:54 +0200
 
-bzr-builddeb (2.4.2) UNRELEASED; urgency=low
+bzr-builddeb (2.4.2) unstable; urgency=low
 
   [ Jelmer Vernooij ]
-  * Avoid AttributeError in the python-apt complatibility code.
+  * Avoid AttributeError in the python-apt compatibility code.
 
   [ James Westby ]
   * Add 'maverick' as an Ubuntu release.
 
- -- James Westby <james.westby@ubuntu.com>  Tue, 13 Apr 2010 10:27:00 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 13 Apr 2010 21:37:53 +0200
 
 bzr-builddeb (2.4.1) unstable; urgency=low
 
