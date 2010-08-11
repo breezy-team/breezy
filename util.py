@@ -513,12 +513,11 @@ def subprocess_setup():
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 
-def debuild_config(tree, working_tree, no_user_config):
+def debuild_config(tree, working_tree):
     """Obtain the Debuild configuration object.
 
     :param tree: A Tree object, can be a WorkingTree or RevisionTree.
     :param working_tree: Whether the tree is a working tree.
-    :param no_user_config: Whether to skip the user configuration
     """
     config_files = []
     user_config = None
@@ -528,9 +527,8 @@ def debuild_config(tree, working_tree, no_user_config):
                         "local.conf"))
         else:
             warning('Not using configuration from %s as it is versioned.')
-    if not no_user_config:
-        config_files.append((global_conf, True))
-        user_config = global_conf
+    config_files.append((global_conf(), True))
+    user_config = global_conf()
     if tree.path2id(default_conf):
         config_files.append((tree.get_file(tree.path2id(default_conf)), False,
                     "default.conf"))

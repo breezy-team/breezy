@@ -124,9 +124,6 @@ export_upstream_opt = Option('export-upstream',
 export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported.",
     type=str)
-no_user_conf_opt = Option('no-user-config',
-    help="Stop builddeb from reading the user's config file. Used mainly "
-    "for tests.")
 
 
 class cmd_builddeb(Command):
@@ -198,7 +195,7 @@ class cmd_builddeb(Command):
         export_upstream_opt, export_upstream_revision_opt,
         quick_opt, reuse_opt, native_opt,
         source_opt, 'revision',
-        no_user_conf_opt, result_compat_opt, package_merge_opt]
+        result_compat_opt, package_merge_opt]
 
     def _get_tree_and_branch(self, location):
         if location is None:
@@ -333,8 +330,7 @@ class cmd_builddeb(Command):
             export_upstream=None, export_upstream_revision=None,
             orig_dir=None, split=None,
             quick=False, reuse=False, native=False,
-            source=False, revision=None, no_user_config=False, result=None,
-            package_merge=None):
+            source=False, revision=None, result=None, package_merge=None):
         if result is not None:
             warning("--result is deprected, use --result-dir instead")
         branch, build_options, source = self._branch_and_build_options(
@@ -349,7 +345,7 @@ class cmd_builddeb(Command):
 
         tree.lock_read()
         try:
-            config = debuild_config(tree, working_tree, no_user_config)
+            config = debuild_config(tree, working_tree)
             if reuse:
                 note("Reusing existing build dir")
                 dont_purge = True
@@ -524,12 +520,12 @@ class cmd_merge_upstream(Command):
     v3_opt = Option('v3', help='Use dpkg-source format v3.')
 
 
-    takes_options = [package_opt, no_user_conf_opt, version_opt,
+    takes_options = [package_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
             force_opt, v3_opt, 'revision', 'merge-type']
 
     def run(self, location=None, upstream_branch=None, version=None,
-            distribution=None, package=None, no_user_config=None,
+            distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
             last_version=None, force=None, v3=None):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
@@ -544,7 +540,7 @@ class cmd_merge_upstream(Command):
                 raise BzrCommandError("There are uncommitted changes in the "
                         "working tree. You must commit before using this "
                         "command.")
-            config = debuild_config(tree, tree, no_user_config)
+            config = debuild_config(tree, tree)
             if config.merge:
                 raise BzrCommandError("Merge upstream in merge mode is not "
                         "yet supported.")
@@ -754,7 +750,7 @@ class cmd_import_dsc(Command):
                 raise BzrCommandError("You must give the location of at least one "
                                       "source package to install, or use the "
                                       "--file option.")
-            config = debuild_config(tree, tree, False)
+            config = debuild_config(tree, tree)
             if config.merge:
                 raise BzrCommandError("import-dsc in merge mode is not "
                         "yet supported.")
@@ -909,7 +905,7 @@ class cmd_bd_do(Command):
 
     def run(self, command_list=None):
         t = WorkingTree.open_containing('.')[0]
-        config = debuild_config(t, t, False)
+        config = debuild_config(t, t)
 
         if not config.merge:
             raise BzrCommandError("This command only works for merge mode "
@@ -989,9 +985,9 @@ class cmd_mark_uploaded(Command):
     force = Option('force', help="Mark the upload even if it is already "
             "marked.")
 
-    takes_options = [merge_opt, no_user_conf_opt, force]
+    takes_options = [merge_opt, force]
 
-    def run(self, merge=False, no_user_config=False, force=None):
+    def run(self, merge=False, force=None):
         t = WorkingTree.open_containing('.')[0]
         t.lock_write()
         try:
@@ -999,7 +995,7 @@ class cmd_mark_uploaded(Command):
               raise BzrCommandError("There are uncommitted changes in the "
                       "working tree. You must commit before using this "
                       "command")
-            config = debuild_config(t, t, no_user_config)
+            config = debuild_config(t, t)
             if not merge:
                 merge = config.merge
             (changelog, larstiq) = find_changelog(t, merge)
@@ -1052,9 +1048,9 @@ class cmd_merge_package(Command):
         self.add_cleanup(tree.unlock)
         source_branch.lock_read()
         self.add_cleanup(source_branch.unlock)
-        this_config = debuild_config(tree, tree, False)
+        this_config = debuild_config(tree, tree)
         that_config = debuild_config(source_branch.basis_tree(),
-                source_branch.basis_tree(), False)
+                source_branch.basis_tree())
         if not (this_config.native or that_config.native):
             fix_ancestry_as_needed(tree, source_branch)
 

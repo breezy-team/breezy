@@ -52,7 +52,7 @@ def _get_tree(package_name):
 
 def _get_tarball(tree, tarball, package_name, version, use_v3=False):
     from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-    config = util.debuild_config(tree, tree, False)
+    config = util.debuild_config(tree, tree)
     orig_dir = config.orig_dir or default_orig_dir
     orig_dir = os.path.join(tree.basedir, orig_dir)
     if not os.path.exists(orig_dir):

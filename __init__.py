@@ -33,6 +33,7 @@ from bzrlib import (
     msgeditor,
     )
 from bzrlib.commands import plugin_cmds
+from bzrlib.config import config_dir
 from bzrlib.directory_service import directories
 
 from info import (
@@ -70,7 +71,8 @@ for command, aliases in commands.iteritems():
 
 builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')
-global_conf = os.path.expanduser('~/.bazaar/builddeb.conf')
+def global_conf():
+    return os.path.join(config_dir(), 'builddeb.conf')
 local_conf = os.path.join(builddeb_dir, 'local.conf')
 
 default_build_dir = '../build-area'
@@ -138,7 +140,7 @@ def debian_tag_name(branch, revid):
         DistributionBranchSet)
     from bzrlib.plugins.builddeb.util import (debuild_config, find_changelog)
     t = branch.repository.revision_tree(revid)
-    config = debuild_config(t, False, False)
+    config = debuild_config(t, False)
     try:
         (changelog, larstiq) = find_changelog(t, config.merge)
     except MissingChangelogError:
