@@ -76,7 +76,7 @@ def _topo_iter(parents, versions):
 class MultiParent(object):
     """A multi-parent diff"""
 
-    __slots__ = ('hunks')
+    __slots__ = ['hunks']
 
     def __init__(self, hunks=None):
         if hunks is not None:
