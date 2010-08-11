@@ -611,11 +611,19 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
         def chk_canonicalizing_inv_stream(source_vf, keys, message, pb=None):
             return self._get_filtered_canonicalizing_inv_stream(
                 source_vf, keys, message, pb, source_chk_vf, target_chk_vf)
+        # First, copy the existing CHKs on the assumption that most of them
+        # will be correct.  This will save us from having to reinsert (and
+        # recompress) these records later.
+        # (Iterate but don't insert _get_filtered_inv_stream to populate the
+        # variables needed by GCCHKPacker._copy_chk_texts.)
+        list(self._get_filtered_inv_stream(source_vf, inventory_keys, None))
+        GCCHKPacker._copy_chk_texts(self)
+        # now copy and fix the inventories, and any regenerated CHKs.
         self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', chk_canonicalizing_inv_stream, 2)
 
     def _copy_chk_texts(self):
-        # No-op; in this class this has happened during _copy_inventory_texts.
+        # No-op; in this class this happens during _copy_inventory_texts.
         pass
 
     def _get_filtered_canonicalizing_inv_stream(self, source_vf, keys, message,
@@ -624,6 +632,31 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
         are canonical.
         """
         total_keys = len(keys)
+        class NoDupeInsertDecorator(object):
+            def __init__(self, store):
+                self._store = store
+            def add_lines(self, key, parents, lines, parent_texts=None,
+                    left_matching_blocks=None, nostore_sha=None, random_id=False,
+                    check_content=True):
+                # This is very specifically tuned for how chk_map calls
+                # add_lines: key is always (None,), and the only part of the
+                # return value that matters is the first element (the SHA-1
+                # digest).
+                if key != (None,):
+                    raise AssertionError
+                sha1 = osutils.sha_strings(lines)
+                key = ("sha1:" + sha1,)
+                if key in self._store.get_parent_map([key]):
+                    # This key has already been inserted, so don't do it again.
+                    return sha1, None, None
+                return self._store.add_lines(key, parents, lines,
+                        parent_texts=parent_texts,
+                        left_matching_blocks=left_matching_blocks,
+                        nostore_sha=nostore_sha, random_id=random_id,
+                        check_content=check_content)
+            def __getattr__(self, name):
+                return getattr(self._store, name)
+        target_chk_vf = NoDupeInsertDecorator(target_chk_vf)
         def _filtered_inv_stream():
             stream = source_vf.get_record_stream(keys, 'groupcompress', True)
             search_key_name = None
@@ -637,7 +670,8 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                     pb.update('inv', idx, total_keys)
                 chk_inv.id_to_entry._ensure_root()
                 if search_key_name is None:
-                    for search_key_name, func in chk_map.search_key_registry.iteritems():
+                    search_key_reg = chk_map.search_key_registry
+                    for search_key_name, func in search_key_reg.iteritems():
                         if func == chk_inv.id_to_entry._search_key_func:
                             break
                 canonical_inv = inventory.CHKInventory.from_inventory(
@@ -652,14 +686,15 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
                         canonical_inv.id_to_entry.key()[0]))
                     self._data_changed = True
                     record_changed = True
-                chk_inv.parent_id_basename_to_file_id._ensure_root()
-                if chk_inv.parent_id_basename_to_file_id.key() != canonical_inv.parent_id_basename_to_file_id.key():
+                p_id_map = chk_inv.parent_id_basename_to_file_id
+                p_id_map._ensure_root()
+                canon_p_id_map = canonical_inv.parent_id_basename_to_file_id
+                if p_id_map.key() != canon_p_id_map.key():
                     trace.warning(
                         'Non-canonical CHK map for parent_id_to_basename inv: %s'
                         ' (root is %s, should be %s)'
-                        % (chk_inv.revision_id,
-                            chk_inv.parent_id_basename_to_file_id.key()[0],
-                            canonical_inv.parent_id_basename_to_file_id.key()[0]))
+                        % (chk_inv.revision_id, p_id_map.key()[0],
+                           canon_p_id_map.key()[0]))
                     self._data_changed = True
                     record_changed = True
                 yield versionedfile.ChunkedContentFactory(record.key,
