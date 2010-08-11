@@ -1861,7 +1861,7 @@ class BranchHooks(Hooks):
             "all are called with the url returned from the previous hook."
             "The order is however undefined.", (1, 9), None))
         self.create_hook(HookPoint('automatic_tag_name',
-            "Called to determine an automatic tag name for a revision."
+            "Called to determine an automatic tag name for a revision. "
             "automatic_tag_name is called with (branch, revision_id) and "
             "should return a tag name or None if no tag name could be "
             "determined. The first non-None tag name returned will be used.",
