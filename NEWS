@@ -58,7 +58,7 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
-* ``HTTP/1.1` test servers now set a ``Content-Length`` header to comply
+* ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
   with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
 
 * Progress bars prefer to truncate the text message rather than the
