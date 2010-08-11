@@ -20,6 +20,7 @@
 
 import os
 
+from bzrlib.config import config_dir
 from bzrlib.trace import mutter
 
 try:
@@ -32,7 +33,7 @@ except ImportError:
 
 
 def _get_launchpad():
-    creds_path = os.path.expanduser("~/.bazaar/builddeb.lp_creds.txt")
+    creds_path = os.path.join(config_dir(), "builddeb.lp_creds.txt")
     if not os.path.exists(creds_path):
         return None
     creds = Credentials("bzr-builddeb")

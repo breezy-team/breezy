@@ -529,8 +529,8 @@ def debuild_config(tree, working_tree, no_user_config):
         else:
             warning('Not using configuration from %s as it is versioned.')
     if not no_user_config:
-        config_files.append((global_conf, True))
-        user_config = global_conf
+        config_files.append((global_conf(), True))
+        user_config = global_conf()
     if tree.path2id(default_conf):
         config_files.append((tree.get_file(tree.path2id(default_conf)), False,
                     "default.conf"))
