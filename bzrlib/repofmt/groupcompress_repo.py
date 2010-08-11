@@ -38,6 +38,7 @@ from bzrlib.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
     )
+from bzrlib.decorators import needs_write_lock
 from bzrlib.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
@@ -593,6 +594,18 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
         super(GCCHKCanonicalizingPacker, self).__init__(*args, **kwargs)
         self._data_changed = False
     
+    def _exhaust_stream(self, source_vf, keys, message, vf_to_stream, pb_offset):
+        """Create and exhaust a stream, but don't insert it.
+        
+        This is useful to get the side-effects of generating a stream.
+        """
+        self.pb.update('scanning %s' % (message,), pb_offset)
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            list(vf_to_stream(source_vf, keys, message, child_pb))
+        finally:
+            child_pb.finished()
+
     def _copy_inventory_texts(self):
         source_vf, target_vf = self._build_vfs('inventory', True, True)
         source_chk_vf, target_chk_vf = self._get_chk_vfs_for_copy()
@@ -608,19 +621,20 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
             missing_inventories = sorted(missing_inventories)
             raise ValueError('We are missing inventories for revisions: %s'
                 % (missing_inventories,))
-        def chk_canonicalizing_inv_stream(source_vf, keys, message, pb=None):
-            return self._get_filtered_canonicalizing_inv_stream(
-                source_vf, keys, message, pb, source_chk_vf, target_chk_vf)
         # First, copy the existing CHKs on the assumption that most of them
         # will be correct.  This will save us from having to reinsert (and
         # recompress) these records later.
         # (Iterate but don't insert _get_filtered_inv_stream to populate the
         # variables needed by GCCHKPacker._copy_chk_texts.)
-        list(self._get_filtered_inv_stream(source_vf, inventory_keys, None))
+        self._exhaust_stream(source_vf, inventory_keys, 'inventories',
+                self._get_filtered_inv_stream, 2)
         GCCHKPacker._copy_chk_texts(self)
         # now copy and fix the inventories, and any regenerated CHKs.
+        def chk_canonicalizing_inv_stream(source_vf, keys, message, pb=None):
+            return self._get_filtered_canonicalizing_inv_stream(
+                source_vf, keys, message, pb, source_chk_vf, target_chk_vf)
         self._copy_stream(source_vf, target_vf, inventory_keys,
-                          'inventories', chk_canonicalizing_inv_stream, 2)
+                          'inventories', chk_canonicalizing_inv_stream, 4)
 
     def _copy_chk_texts(self):
         # No-op; in this class this happens during _copy_inventory_texts.
@@ -1132,8 +1146,22 @@ class CHKInventoryRepository(KnitPackRepository):
         finally:
             pb.finished()
 
+    @needs_write_lock
+    def reconcile_canonicalize_chks(self):
+        """Reconcile this repository to make sure all CHKs are in canonical
+        form.
+        """
+        from bzrlib.reconcile import PackReconciler
+        reconciler = PackReconciler(self, thorough=True, canonicalize_chks=True)
+        reconciler.reconcile()
+        return reconciler
+
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         packer = GCCHKReconcilePacker(collection, packs, extension)
+        return packer.pack(pb)
+
+    def _canonicalize_chks_pack(self, collection, packs, extension, revs, pb):
+        packer = GCCHKCanonicalizingPacker(collection, packs, extension, revs)
         return packer.pack(pb)
 
     def _get_source(self, to_format):
