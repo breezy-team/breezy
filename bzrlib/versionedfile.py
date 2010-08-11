@@ -331,9 +331,6 @@ class _MPDiffGenerator(object):
                 raise errors.RevisionNotPresent(record.key, self.vf)
             self._process_one_record(record.key,
                                      record.get_bytes_as('chunked'))
-        # At this point, we should have *no* remaining content
-        assert not self.parent_map
-        assert set(self.refcounts) == self.ghost_parents
         
     def compute_diffs(self):
         self._extract_diffs()
