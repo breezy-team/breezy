@@ -32,6 +32,7 @@ from bzrlib import (
     revision as _mod_revision,
     trace,
     ui,
+    versionedfile,
     )
 from bzrlib.btree_index import (
     BTreeGraphIndex,
@@ -425,8 +426,11 @@ class GCCHKPacker(Packer):
         self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
+    def _get_chk_vfs_for_copy(self):
+        return self._build_vfs('chk', False, False)
+
     def _copy_chk_texts(self):
-        source_vf, target_vf = self._build_vfs('chk', False, False)
+        source_vf, target_vf = self._get_chk_vfs_for_copy()
         # TODO: This is technically spurious... if it is a performance issue,
         #       remove it
         total_keys = source_vf.keys()
@@ -572,6 +576,100 @@ class GCCHKReconcilePacker(GCCHKPacker):
                     record.parents = new_parent_keys[record.key]
                 yield record
         target_vf.insert_record_stream(_update_parents_for_texts())
+
+    def _use_pack(self, new_pack):
+        """Override _use_pack to check for reconcile having changed content."""
+        return new_pack.data_inserted() and self._data_changed
+
+
+class GCCHKCanonicalizingPacker(GCCHKPacker):
+    """A packer that ensures inventories have canonical-form CHK maps.
+    
+    Ideally this would be part of reconcile, but it's very slow and rarely
+    needed.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(GCCHKCanonicalizingPacker, self).__init__(*args, **kwargs)
+        self._data_changed = False
+    
+    def _copy_inventory_texts(self):
+        source_vf, target_vf = self._build_vfs('inventory', True, True)
+        source_chk_vf, target_chk_vf = self._get_chk_vfs_for_copy()
+        # XXX: duped code
+        # It is not sufficient to just use self.revision_keys, as stacked
+        # repositories can have more inventories than they have revisions.
+        # One alternative would be to do something with
+        # get_parent_map(self.revision_keys), but that shouldn't be any faster
+        # than this.
+        inventory_keys = source_vf.keys()
+        missing_inventories = set(self.revision_keys).difference(inventory_keys)
+        if missing_inventories:
+            missing_inventories = sorted(missing_inventories)
+            raise ValueError('We are missing inventories for revisions: %s'
+                % (missing_inventories,))
+        def chk_canonicalizing_inv_stream(source_vf, keys, message, pb=None):
+            return self._get_filtered_canonicalizing_inv_stream(
+                source_vf, keys, message, pb, source_chk_vf, target_chk_vf)
+        self._copy_stream(source_vf, target_vf, inventory_keys,
+                          'inventories', chk_canonicalizing_inv_stream, 2)
+
+    def _copy_chk_texts(self):
+        # No-op; in this class this has happened during _copy_inventory_texts.
+        pass
+
+    def _get_filtered_canonicalizing_inv_stream(self, source_vf, keys, message,
+            pb=None, source_chk_vf=None, target_chk_vf=None):
+        """Filter the texts of inventories, regenerating CHKs to make sure they
+        are canonical.
+        """
+        total_keys = len(keys)
+        def _filtered_inv_stream():
+            stream = source_vf.get_record_stream(keys, 'groupcompress', True)
+            search_key_name = None
+            for idx, record in enumerate(stream):
+                record_changed = False
+                # Inventories should always be with revisions; assume success.
+                bytes = record.get_bytes_as('fulltext')
+                chk_inv = inventory.CHKInventory.deserialise(source_chk_vf, bytes,
+                                                             record.key)
+                if pb is not None:
+                    pb.update('inv', idx, total_keys)
+                chk_inv.id_to_entry._ensure_root()
+                if search_key_name is None:
+                    for search_key_name, func in chk_map.search_key_registry.iteritems():
+                        if func == chk_inv.id_to_entry._search_key_func:
+                            break
+                canonical_inv = inventory.CHKInventory.from_inventory(
+                    target_chk_vf, chk_inv,
+                    maximum_size=chk_inv.id_to_entry._root_node._maximum_size,
+                    search_key_name=search_key_name)
+                if chk_inv.id_to_entry.key() != canonical_inv.id_to_entry.key():
+                    trace.warning(
+                        'Non-canonical CHK map for id_to_entry inv: %s'
+                        ' (root is %s, should be %s)' % (chk_inv.revision_id,
+                        chk_inv.id_to_entry.key()[0],
+                        canonical_inv.id_to_entry.key()[0]))
+                    self._data_changed = True
+                    record_changed = True
+                chk_inv.parent_id_basename_to_file_id._ensure_root()
+                if chk_inv.parent_id_basename_to_file_id.key() != canonical_inv.parent_id_basename_to_file_id.key():
+                    trace.warning(
+                        'Non-canonical CHK map for parent_id_to_basename inv: %s'
+                        ' (root is %s, should be %s)'
+                        % (chk_inv.revision_id,
+                            chk_inv.parent_id_basename_to_file_id.key()[0],
+                            canonical_inv.parent_id_basename_to_file_id.key()[0]))
+                    self._data_changed = True
+                    record_changed = True
+                yield versionedfile.ChunkedContentFactory(record.key,
+                        record.parents, record.sha1,
+                        canonical_inv.to_lines())
+                #trace.warning('record type: %r', record.storage_kind)
+                #yield record
+            # We have finished processing all of the inventory records, we
+            # don't need these sets anymore
+        return _filtered_inv_stream()
 
     def _use_pack(self, new_pack):
         """Override _use_pack to check for reconcile having changed content."""
