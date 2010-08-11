@@ -587,7 +587,8 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
     """A packer that ensures inventories have canonical-form CHK maps.
     
     Ideally this would be part of reconcile, but it's very slow and rarely
-    needed.
+    needed.  (It repairs repositories affected by
+    https://bugs.launchpad.net/bzr/+bug/522637).
     """
 
     def __init__(self, *args, **kwargs):
