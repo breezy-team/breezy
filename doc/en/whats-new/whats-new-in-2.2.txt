@@ -195,16 +195,35 @@ qbzr
 `qbzr <https://launchpad.net/qbzr>`_, a cross-platform graphical interface
 to Bazaar, gained many features and fixes in its 0.19 release, including:
 
-* More context menu actions on revisions within ``qlog``.
-  (Craig Hewetson, Gary van der Merwe)
+* qannotate has new look and feel; with new features: find text and goto
+  to line.
+
+* Improved performance of qlog, and treewidget-based dialogs (qcommit,
+  qadd, qrevert etc.)
+
+* qpush, qmerge, etc.: When there are uncommitted changes in the working
+  tree, user has the option to commit, or revert.
+
+* qcommit: user can update bound branch/chgeckout if it is not up to date.
+
+* Fixed bug with Mac OS X support when windows start in background.
+  (Thanks to Luis Arias)
+
+* qlog: Context menu actions for tag, and revert will now show a branch
+  menu if more than one branch is open.
+
+* qlog: more context menu actions for update, cherry-pick, and reverse
+  cherry-pick.
+
+* Language of GUI can be set in DEFAULT section of bazaar.conf as
+``language = code``. Language codes are the same as for LANG environment
+  variable. Environment variable LANGUAGE still preferred over settings
+  in bazaar.conf.
 
 * Language of GUI can be set in DEFAULT section of bazaar.conf 
   as ``language = code``. Language codes are the same as for LANG environment
   variable. Environment variable LANGUAGE still preferred over settings
   in bazaar.conf. (Alexander Belchenko)
-
-* New find/goto navigation options in ``qannotate``.
-  (Gary van der Merwe)
 
 * New Thai and Hungarian translations.
 
