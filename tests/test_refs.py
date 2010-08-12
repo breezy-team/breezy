@@ -68,3 +68,8 @@ class ExtractTagTests(tests.TestCase):
             refs.extract_tags({
                 "HEAD": "ref: foo",
                 "refs/tags/myt\xc3\xa2g": "actualsha"}))
+
+    def test_non_utf8_name(self):
+        self.assertEquals({},
+            refs.extract_tags({
+                'refs/tags/LIBGEE_0_2_\xc20': "actualsha"}))

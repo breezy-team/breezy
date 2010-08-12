@@ -35,8 +35,12 @@ def extract_tags(refs):
     for k,v in refs.iteritems():
         if k.startswith("refs/tags/") and not k.endswith("^{}"):
             v = refs.get(k+"^{}", v)
-            tagname = k[len("refs/tags/"):].decode("utf-8")
-            ret[tagname] = v
+            try:
+                tagname = ref_to_tag_name(k)
+            except UnicodeDecodeError:
+                pass
+            else:
+                ret[tagname] = v
     return ret
 
 
@@ -80,7 +84,7 @@ def ref_to_branch_name(ref):
 
 def ref_to_tag_name(ref):
     if ref.startswith("refs/tags/"):
-        return ref[len('refs/tags/'):]
+        return ref[len('refs/tags/'):].decode("utf-8")
     raise ValueError("unable to map ref %s back to branch name" % ref)
 
 
