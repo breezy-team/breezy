@@ -85,6 +85,8 @@ To start a new release cycle:
    including its version number and the headings from
    ``NEWS-template.txt``.
 
+#. Update the "What's New" documents in ``doc/en/whats-new``.
+
 #. Commit this and send it to PQM.
 
 
@@ -120,13 +122,15 @@ Update the source code
 
        version_info = (2, 1, 2, 'final', 0)
 
-#. Check the release number in ``./NEWS``
+#. Update the ``./NEWS`` section for this release.
 
    Fill out the date and a description of the release under the existing
    header. If there isn't one, follow the above for using the NEWS
    template.
 
    See *2.1.1* or similar for an example of what this looks like.
+
+#. Add a summary of the release into the "What's New" document.
 
 #. To check that all bugs mentioned in ``./NEWS`` are actually marked as
    closed in Launchpad, you can run ``tools/check-newsbugs.py``::
