@@ -100,6 +100,11 @@ class Reconciler(object):
             self.repo.user_url)
         self.pb.update("Reconciling repository", 0, 1)
         if self.canonicalize_chks:
+            try:
+                self.repo.reconcile_canonicalize_chks
+            except AttributeError:
+                raise errors.BzrError(
+                    "%s cannot canonicalize CHKs." % (self.repo,))
             repo_reconciler = self.repo.reconcile_canonicalize_chks()
         else:
             repo_reconciler = self.repo.reconcile(thorough=True)
