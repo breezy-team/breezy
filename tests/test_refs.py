@@ -43,3 +43,21 @@ class BranchNameRefConversionTests(tests.TestCase):
             refs.branch_name_to_ref(None))
 
 
+class ExtractTagTests(tests.TestCase):
+
+    def test_ignore_branch(self):
+        self.assertEquals({},
+            refs.extract_tags({
+                "HEAD": "ref: foo", "refs/branches/blala": "la"}))
+
+    def test_tags(self):
+        self.assertEquals({"mytag": "mysha"},
+            refs.extract_tags({
+                "HEAD": "ref: foo", "refs/tags/mytag": "mysha"}))
+
+    def test_ignores_peels(self):
+        self.assertEquals({"mytag": "actualsha"},
+            refs.extract_tags({
+                "HEAD": "ref: foo",
+                "refs/tags/mytag": "mysha",
+                "refs/tags/mytag^{}": "actualsha"}))
