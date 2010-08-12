@@ -5,7 +5,7 @@
   * Add in an empty git repository now works. (Jelmer Vernooij, #603823)
 
   * Support opening of repositories over HTTP where the HTTP server
-    doesn't allow directory access. (Jelmer Vernooij)
+    doesn't allow directory access. (Jelmer Vernooij, #617078)
 
   * Support non-ascii characters in tag names. (Jelmer Vernooij, #616995)
 
