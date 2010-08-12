@@ -285,7 +285,7 @@ class TransportRepo(BaseRepo):
             if self.transport.has(".git/%s" % OBJECTDIR):
                 self.bare = False
                 self._controltransport = self.transport.clone('.git')
-            elif self.transport.has_any([OBJECTDIR, REFSDIR, "info/refs"]):
+            elif self.transport.has_any(["info/refs", OBJECTDIR, REFSDIR]):
                 self.bare = True
                 self._controltransport = self.transport
             else:
