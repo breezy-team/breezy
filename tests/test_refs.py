@@ -1,4 +1,5 @@
 # Copyright (C) 2010 Jelmer Vernooij
+# vim: encoding=utf-8
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,3 +62,9 @@ class ExtractTagTests(tests.TestCase):
                 "HEAD": "ref: foo",
                 "refs/tags/mytag": "mysha",
                 "refs/tags/mytag^{}": "actualsha"}))
+
+    def test_non_ascii_name(self):
+        self.assertEquals({u'myt\xe2g': "actualsha"},
+            refs.extract_tags({
+                "HEAD": "ref: foo",
+                "refs/tags/myt\xc3\xa2g": "actualsha"}))

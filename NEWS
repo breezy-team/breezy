@@ -7,6 +7,8 @@
   * Support opening of repositories over HTTP where the HTTP server
     doesn't allow directory access. (Jelmer Vernooij)
 
+  * Support non-ascii characters in tag names. (Jelmer Vernooij, #616995)
+
  FEATURES
 
   * Remove all remaining dependencies on C git. (Jelmer Vernooij)

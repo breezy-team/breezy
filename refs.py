@@ -35,7 +35,8 @@ def extract_tags(refs):
     for k,v in refs.iteritems():
         if k.startswith("refs/tags/") and not k.endswith("^{}"):
             v = refs.get(k+"^{}", v)
-            ret[k[len("refs/tags/"):]] = v
+            tagname = k[len("refs/tags/"):].decode("utf-8")
+            ret[tagname] = v
     return ret
 
 
