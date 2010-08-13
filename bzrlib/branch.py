@@ -1958,12 +1958,7 @@ class BranchInitHookParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        if self.branch:
-            return "<%s of %s>" % (self.__class__.__name__, self.branch)
-        else:
-            return "<%s of format:%s bzrdir:%s>" % (
-                self.__class__.__name__, self.branch,
-                self.format, self.bzrdir)
+        return "<%s of %s>" % (self.__class__.__name__, self.branch)
 
 
 class SwitchHookParams(object):

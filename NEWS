@@ -30,6 +30,12 @@ Documentation
 API Changes
 ***********
 
+Internals
+*********
+
+* Remove used and broken code path in ``BranchInitHookParams.__repr__``.
+  (Andrew Bennetts)
+
 Testing
 *******
 
