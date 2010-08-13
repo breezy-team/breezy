@@ -1055,6 +1055,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
             i += 1
+        elif a == '--profile-imports':
+            pass # already handled in startup script Bug #588277
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
         else:

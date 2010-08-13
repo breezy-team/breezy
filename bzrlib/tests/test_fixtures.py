@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,15 +14,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Benchmarks of bzr rocks."""
+"""Tests for test fixtures"""
+
+import codecs
+
+from bzrlib import (
+    tests,
+    )
+from bzrlib.tests import (
+    fixtures,
+    )
 
 
-from bzrlib.benchmarks import Benchmark
-
-
-class RocksBenchmark(Benchmark):
-    """Benchmarks for ``'bzr rocks'``"""
-
-    def test_rocks(self):
-        """Test the startup overhead by running a do-nothing command"""
-        self.time(self.run_bzr_subprocess, 'rocks')

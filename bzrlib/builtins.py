@@ -180,7 +180,7 @@ def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
                 view_str = views.view_display_str(view_files)
                 note("Ignoring files outside view. View is %s" % view_str)
         return tree, file_list
-    tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
+    tree = WorkingTree.open_containing(file_list[0])[0]
     return tree, safe_relpath_files(tree, file_list, canonicalize,
         apply_view=apply_view)
 
@@ -491,7 +491,7 @@ class cmd_remove_tree(Command):
     takes_options = [
         Option('force',
                help='Remove the working tree even if it has '
-                    'uncommitted changes.'),
+                    'uncommitted or shelved changes.'),
         ]
 
     def run(self, location_list, force=False):
@@ -511,6 +511,8 @@ class cmd_remove_tree(Command):
             if not force:
                 if (working.has_changes()):
                     raise errors.UncommittedChanges(working)
+                if working.get_shelf_manager().last_shelf() is not None:
+                    raise errors.ShelvedChanges(working)
 
             if working.user_url != working.branch.user_url:
                 raise errors.BzrCommandError("You cannot remove the working tree"
@@ -1968,11 +1970,15 @@ class cmd_diff(Command):
          old_branch, new_branch,
          specific_files, extra_trees) = get_trees_and_branches_to_diff_locked(
             file_list, revision, old, new, self.add_cleanup, apply_view=True)
+        # GNU diff on Windows uses ANSI encoding for filenames
+        path_encoding = osutils.get_diff_header_encoding()
         return show_diff_trees(old_tree, new_tree, sys.stdout,
                                specific_files=specific_files,
                                external_diff_options=diff_options,
                                old_label=old_label, new_label=new_label,
-                               extra_trees=extra_trees, using=using,
+                               extra_trees=extra_trees,
+                               path_encoding=path_encoding,
+                               using=using,
                                format_cls=format)
 
 
@@ -2706,6 +2712,14 @@ class cmd_ignore(Command):
                 "NAME_PATTERN or --default-rules.")
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
+        bad_patterns = ''
+        for p in name_pattern_list:
+            if not globbing.Globster.is_pattern_valid(p):
+                bad_patterns += ('\n  %s' % p)
+        if bad_patterns:
+            msg = ('Invalid ignore pattern(s) found. %s' % bad_patterns)
+            ui.ui_factory.show_error(msg)
+            raise errors.InvalidPattern('')
         for name_pattern in name_pattern_list:
             if (name_pattern[0] == '/' or
                 (len(name_pattern) > 1 and name_pattern[1] == ':')):
@@ -2715,14 +2729,13 @@ class cmd_ignore(Command):
         ignores.tree_ignores_add_patterns(tree, name_pattern_list)
         ignored = globbing.Globster(name_pattern_list)
         matches = []
-        tree.lock_read()
+        self.add_cleanup(tree.lock_read().unlock)
         for entry in tree.list_files():
             id = entry[3]
             if id is not None:
                 filename = entry[0]
                 if ignored.match(filename):
                     matches.append(filename)
-        tree.unlock()
         if len(matches) > 0:
             self.outf.write("Warning: the following files are version controlled and"
                   " match your ignore pattern:\n%s"
@@ -3309,7 +3322,8 @@ class cmd_whoami(Command):
 
             bzr whoami "Frank Chu <fchu@example.com>"
     """
-    takes_options = [ Option('email',
+    takes_options = [ 'directory',
+                      Option('email',
                              help='Display email address only.'),
                       Option('branch',
                              help='Set identity for the current branch instead of '
@@ -3319,13 +3333,16 @@ class cmd_whoami(Command):
     encoding_type = 'replace'
 
     @display_command
-    def run(self, email=False, branch=False, name=None):
+    def run(self, email=False, branch=False, name=None, directory=None):
         if name is None:
-            # use branch if we're inside one; otherwise global config
-            try:
-                c = Branch.open_containing('.')[0].get_config()
-            except errors.NotBranchError:
-                c = config.GlobalConfig()
+            if directory is None:
+                # use branch if we're inside one; otherwise global config
+                try:
+                    c = Branch.open_containing(u'.')[0].get_config()
+                except errors.NotBranchError:
+                    c = config.GlobalConfig()
+            else:
+                c = Branch.open(directory).get_config()
             if email:
                 self.outf.write(c.user_email() + '\n')
             else:
@@ -3341,7 +3358,10 @@ class cmd_whoami(Command):
 
         # use global config unless --branch given
         if branch:
-            c = Branch.open_containing('.')[0].get_config()
+            if directory is None:
+                c = Branch.open_containing(u'.')[0].get_config()
+            else:
+                c = Branch.open(directory).get_config()
         else:
             c = config.GlobalConfig()
         c.set_user_option('email', name)
@@ -3517,15 +3537,13 @@ class cmd_selftest(Command):
                                  'throughout the test suite.',
                             type=get_transport_type),
                      Option('benchmark',
-                            help='Run the benchmarks rather than selftests.'),
+                            help='Run the benchmarks rather than selftests.',
+                            hidden=True),
                      Option('lsprof-timed',
                             help='Generate lsprof output for benchmarked'
                                  ' sections of code.'),
                      Option('lsprof-tests',
                             help='Generate lsprof output for each test.'),
-                     Option('cache-dir', type=str,
-                            help='Cache intermediate benchmark output in this '
-                                 'directory.'),
                      Option('first',
                             help='Run all tests, but run specified tests first.',
                             short_name='f',
@@ -3565,20 +3583,16 @@ class cmd_selftest(Command):
 
     def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None,
+            lsprof_timed=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
         from bzrlib.tests import selftest
-        import bzrlib.benchmarks as benchmarks
-        from bzrlib.benchmarks import tree_creator
 
         # Make deprecation warnings visible, unless -Werror is set
         symbol_versioning.activate_deprecation_warnings(override=False)
 
-        if cache_dir is not None:
-            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
@@ -3603,15 +3617,10 @@ class cmd_selftest(Command):
             self.additional_selftest_args.setdefault(
                 'suite_decorators', []).append(parallel)
         if benchmark:
-            test_suite_factory = benchmarks.test_suite
-            # Unless user explicitly asks for quiet, be verbose in benchmarks
-            verbose = not is_quiet()
-            # TODO: should possibly lock the history file...
-            benchfile = open(".perf_history", "at", buffering=1)
-            self.add_cleanup(benchfile.close)
-        else:
-            test_suite_factory = None
-            benchfile = None
+            raise errors.BzrCommandError(
+                "--benchmark is no longer supported from bzr 2.2; "
+                "use bzr-usertest instead")
+        test_suite_factory = None
         selftest_kwargs = {"verbose": verbose,
                           "pattern": pattern,
                           "stop_on_failure": one,
@@ -3619,7 +3628,6 @@ class cmd_selftest(Command):
                           "test_suite_factory": test_suite_factory,
                           "lsprof_timed": lsprof_timed,
                           "lsprof_tests": lsprof_tests,
-                          "bench_history": benchfile,
                           "matching_tests_first": first,
                           "list_only": list_only,
                           "random_seed": randomize,
@@ -3883,8 +3891,10 @@ class cmd_merge(Command):
     def _do_preview(self, merger):
         from bzrlib.diff import show_diff_trees
         result_tree = self._get_preview(merger)
+        path_encoding = osutils.get_diff_header_encoding()
         show_diff_trees(merger.this_tree, result_tree, self.outf,
-                        old_label='', new_label='')
+                        old_label='', new_label='',
+                        path_encoding=path_encoding)
 
     def _do_merge(self, merger, change_reporter, allow_pending, verified):
         merger.change_reporter = change_reporter
@@ -4289,6 +4299,7 @@ class cmd_missing(Command):
     _see_also = ['merge', 'pull']
     takes_args = ['other_branch?']
     takes_options = [
+        'directory',
         Option('reverse', 'Reverse the order of revisions.'),
         Option('mine-only',
                'Display changes in the local branch only.'),
@@ -4316,7 +4327,8 @@ class cmd_missing(Command):
             theirs_only=False,
             log_format=None, long=False, short=False, line=False,
             show_ids=False, verbose=False, this=False, other=False,
-            include_merges=False, revision=None, my_revision=None):
+            include_merges=False, revision=None, my_revision=None,
+            directory=u'.'):
         from bzrlib.missing import find_unmerged, iter_log_revisions
         def message(s):
             if not is_quiet():
@@ -4335,7 +4347,7 @@ class cmd_missing(Command):
         elif theirs_only:
             restrict = 'remote'
 
-        local_branch = Branch.open_containing(u".")[0]
+        local_branch = Branch.open_containing(directory)[0]
         self.add_cleanup(local_branch.lock_read().unlock)
 
         parent = local_branch.get_parent()
@@ -4903,17 +4915,17 @@ class cmd_serve(Command):
 
     def run(self, port=None, inet=False, directory=None, allow_writes=False,
             protocol=None):
-        from bzrlib.transport import get_transport, transport_server_registry
+        from bzrlib import transport
         if directory is None:
             directory = os.getcwd()
         if protocol is None:
-            protocol = transport_server_registry.get()
+            protocol = transport.transport_server_registry.get()
         host, port = self.get_host_and_port(port)
         url = urlutils.local_path_to_url(directory)
         if not allow_writes:
             url = 'readonly+' + url
-        transport = get_transport(url)
-        protocol(transport, host, port, inet)
+        t = transport.get_transport(url)
+        protocol(t, host, port, inet)
 
 
 class cmd_join(Command):
@@ -5012,6 +5024,7 @@ class cmd_merge_directive(Command):
     _see_also = ['send']
 
     takes_options = [
+        'directory',
         RegistryOption.from_kwargs('patch-type',
             'The type of patch to include in the directive.',
             title='Patch type',
@@ -5030,14 +5043,15 @@ class cmd_merge_directive(Command):
     encoding_type = 'exact'
 
     def run(self, submit_branch=None, public_branch=None, patch_type='bundle',
-            sign=False, revision=None, mail_to=None, message=None):
+            sign=False, revision=None, mail_to=None, message=None,
+            directory=u'.'):
         from bzrlib.revision import ensure_null, NULL_REVISION
         include_patch, include_bundle = {
             'plain': (False, False),
             'diff': (True, False),
             'bundle': (True, True),
             }[patch_type]
-        branch = Branch.open('.')
+        branch = Branch.open(directory)
         stored_submit_branch = branch.get_submit_branch()
         if submit_branch is None:
             submit_branch = stored_submit_branch
@@ -5531,7 +5545,8 @@ class cmd_switch(Command):
     """
 
     takes_args = ['to_location?']
-    takes_options = [Option('force',
+    takes_options = ['directory',
+                     Option('force',
                         help='Switch even if local commits will be lost.'),
                      'revision',
                      Option('create-branch', short_name='b',
@@ -5540,16 +5555,16 @@ class cmd_switch(Command):
                     ]
 
     def run(self, to_location=None, force=False, create_branch=False,
-            revision=None):
+            revision=None, directory=u'.'):
         from bzrlib import switch
-        tree_location = '.'
+        tree_location = directory
         revision = _get_one_revision('switch', revision)
         control_dir = bzrdir.BzrDir.open_containing(tree_location)[0]
         if to_location is None:
             if revision is None:
                 raise errors.BzrCommandError('You must supply either a'
                                              ' revision or a location')
-            to_location = '.'
+            to_location = tree_location
         try:
             branch = control_dir.open_branch()
             had_explicit_nick = branch.get_config().has_explicit_nickname()
@@ -5830,6 +5845,7 @@ class cmd_shelve(Command):
     takes_args = ['file*']
 
     takes_options = [
+        'directory',
         'revision',
         Option('all', help='Shelve all changes.'),
         'message',
@@ -5844,7 +5860,7 @@ class cmd_shelve(Command):
     _see_also = ['unshelve']
 
     def run(self, revision=None, all=False, file_list=None, message=None,
-            writer=None, list=False, destroy=False):
+            writer=None, list=False, destroy=False, directory=u'.'):
         if list:
             return self.run_for_list()
         from bzrlib.shelf_ui import Shelver
@@ -5852,7 +5868,7 @@ class cmd_shelve(Command):
             writer = bzrlib.option.diff_writer_registry.get()
         try:
             shelver = Shelver.from_args(writer(sys.stdout), revision, all,
-                file_list, message, destroy=destroy)
+                file_list, message, destroy=destroy, directory=directory)
             try:
                 shelver.run()
             finally:
@@ -5886,6 +5902,7 @@ class cmd_unshelve(Command):
 
     takes_args = ['shelf_id?']
     takes_options = [
+        'directory',
         RegistryOption.from_kwargs(
             'action', help="The action to perform.",
             enum_switch=False, value_switches=True,
@@ -5899,9 +5916,9 @@ class cmd_unshelve(Command):
     ]
     _see_also = ['shelve']
 
-    def run(self, shelf_id=None, action='apply'):
+    def run(self, shelf_id=None, action='apply', directory=u'.'):
         from bzrlib.shelf_ui import Unshelver
-        unshelver = Unshelver.from_args(shelf_id, action)
+        unshelver = Unshelver.from_args(shelf_id, action, directory=directory)
         try:
             unshelver.run()
         finally:

@@ -1182,7 +1182,7 @@ class DiskTreeTransform(TreeTransformBase):
             if trans_id not in self._new_contents:
                 continue
             new_path = self._limbo_name(trans_id)
-            osutils.rename(old_path, new_path)
+            os.rename(old_path, new_path)
             for descendant in self._limbo_descendants(trans_id):
                 desc_path = self._limbo_files[descendant]
                 desc_path = new_path + desc_path[len(old_path):]
@@ -2291,9 +2291,6 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
     for num, _unused in enumerate(wt.all_file_ids()):
         if num > 0:  # more than just a root
             raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
-    existing_files = set()
-    for dir, files in wt.walkdirs():
-        existing_files.update(f[0] for f in files)
     file_trans_id = {}
     top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
@@ -2323,6 +2320,15 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                 precomputed_delta = []
             else:
                 precomputed_delta = None
+            # Check if tree inventory has content. If so, we populate
+            # existing_files with the directory content. If there are no
+            # entries we skip populating existing_files as its not used.
+            # This improves performance and unncessary work on large
+            # directory trees. (#501307)
+            if total > 0:
+                existing_files = set()
+                for dir, files in wt.walkdirs():
+                    existing_files.update(f[0] for f in files)
             for num, (tree_path, entry) in \
                 enumerate(tree.inventory.iter_entries_by_dir()):
                 pb.update("Building tree", num - len(deferred_contents), total)
@@ -2929,8 +2935,8 @@ class _FileMover(object):
     def rename(self, from_, to):
         """Rename a file from one path to another."""
         try:
-            osutils.rename(from_, to)
-        except (IOError, OSError), e:
+            os.rename(from_, to)
+        except OSError, e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
                 raise errors.FileExists(to, str(e))
             # normal OSError doesn't include filenames so it's hard to see where
@@ -2952,8 +2958,8 @@ class _FileMover(object):
         """Reverse all renames that have been performed"""
         for from_, to in reversed(self.past_renames):
             try:
-                osutils.rename(to, from_)
-            except (OSError, IOError), e:
+                os.rename(to, from_)
+            except OSError, e:
                 raise errors.TransformRenameFailed(to, from_, str(e), e.errno)                
         # after rollback, don't reuse _FileMover
         past_renames = None

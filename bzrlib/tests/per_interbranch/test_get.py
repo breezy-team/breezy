@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,24 +14,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for bzr info performance."""
+"""Tests for bzrlib.branch.InterBranch.get."""
+
+from bzrlib import (
+    branch,
+    )
+from bzrlib.tests.per_interbranch import (
+    TestCaseWithInterBranch,
+    )
 
 
-from bzrlib.benchmarks import Benchmark
+class TestInterBranchGet(TestCaseWithInterBranch):
 
-
-class InfoBenchmark(Benchmark):
-    """This is a stub. Use this benchmark with a network transport.
-    Currently "bzr info sftp://..." takes > 4 min"""
-
-    def test_no_ignored_unknown_kernel_like_tree(self):
-        """Info in a kernel sized tree with no ignored or unknowns. """
-        self.make_kernel_like_added_tree()
-        self.time(self.run_bzr, 'info')
-
-    def test_no_changes_known_kernel_like_tree(self):
-        """Info in a kernel sized tree with no ignored, unknowns, or added."""
-        self.make_kernel_like_committed_tree()
-        self.time(self.run_bzr, 'info')
-
-
+    def test_gets_right_inter(self):
+        self.tree1 = self.make_from_branch_and_tree('tree1')
+        branch2 = self.make_to_branch('tree2')
+        self.assertIs(branch.InterBranch.get(
+            self.tree1.branch, branch2).__class__,
+            self.interbranch_class)
