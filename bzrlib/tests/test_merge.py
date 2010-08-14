@@ -2840,14 +2840,14 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
 
     def get_merger_factory(self):
         # Allows  the inner methods to access the test attributes
-        test = self
+        calls = self.calls
 
         class FooMerger(_mod_merge.ConfigurableFileMerger):
             name_prefix = "foo"
             default_files = ['bar']
 
             def merge_text(self, params):
-                test.calls.append('merge_text')
+                calls.append('merge_text')
                 return ('not_applicable', None)
 
         def factory(merger):
