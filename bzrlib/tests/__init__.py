@@ -1589,6 +1589,7 @@ class TestCase(testtools.TestCase):
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
             setattr(klass, name, hooks)
+        self._preserved_hooks.clear()
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
