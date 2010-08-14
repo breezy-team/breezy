@@ -188,7 +188,10 @@ def _do_with_cleanups(cleanup_funcs, func, *args, **kwargs):
                 # but don't propagate them.
                 _run_cleanup(cleanup, *c_args, **kwargs)
         if exc_info is not None:
-            raise exc_info[0], exc_info[1], exc_info[2]
+            try:
+                raise exc_info[0], exc_info[1], exc_info[2]
+            finally:
+                del exc_info
         # No error, so we can return the result
         return result
 

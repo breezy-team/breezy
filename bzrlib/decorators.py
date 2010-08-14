@@ -101,7 +101,10 @@ def %(name)s_read_locked(%(params)s):
         try:
             self.unlock()
         finally:
-            raise exc_info[0], exc_info[1], exc_info[2]
+            try:
+                raise exc_info[0], exc_info[1], exc_info[2]
+            finally:
+                del exc_info
     else:
         self.unlock()
         return result
@@ -144,7 +147,10 @@ def _fast_needs_read_lock(unbound):
             try:
                 self.unlock()
             finally:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                try:
+                    raise exc_info[0], exc_info[1], exc_info[2]
+                finally:
+                    del exc_info
         else:
             self.unlock()
             return result
@@ -166,7 +172,10 @@ def %(name)s_write_locked(%(params)s):
         try:
             self.unlock()
         finally:
-            raise exc_info[0], exc_info[1], exc_info[2]
+            try:
+                raise exc_info[0], exc_info[1], exc_info[2]
+            finally:
+                del exc_info
     else:
         self.unlock()
         return result
@@ -197,7 +206,10 @@ def _fast_needs_write_lock(unbound):
             try:
                 self.unlock()
             finally:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                try:
+                    raise exc_info[0], exc_info[1], exc_info[2]
+                finally:
+                    del exc_info
         else:
             self.unlock()
             return result
