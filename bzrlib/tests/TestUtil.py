@@ -19,6 +19,7 @@
 import sys
 import logging
 import unittest
+import weakref
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -81,8 +82,17 @@ class TestSuite(unittest.TestSuite):
             if result.shouldStop:
                 self._tests = reversed(tests)
                 break
-            tests.pop().run(result)
+            case = _run_and_collect_case(tests.pop(), result)()
+            if case is not None and isinstance(case, unittest.TestCase):
+                # Zombie the testcase but leave a working stub id method
+                case.__dict__ = {"id": lambda _id=case.id(): _id}
         return result
+
+
+def _run_and_collect_case(case, res):
+    """Run test case against result and use weakref to drop the refcount"""
+    case.run(res)
+    return weakref.ref(case)
 
 
 class TestLoader(unittest.TestLoader):

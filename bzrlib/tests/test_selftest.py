@@ -2977,3 +2977,17 @@ class TestRunSuite(tests.TestCase):
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
+
+    def test_warn_on_uncollected_case(self):
+        """A reference cycle keeping a test case alive emits in a warning"""
+        class Stub(tests.TestCase):
+            def test_self_referential(self):
+                self.also_self = self.test_self_referential
+        suite = TestUtil.TestSuite([Stub("test_self_referential")])
+        sio = StringIO()
+        import gc
+        gc.disable()
+        tests.run_suite(suite, stream=sio)
+        gc.enable()
+        self.assertContainsRe(sio.getvalue(),
+            "Uncollected test case.*test_self_referential")
