@@ -11,7 +11,7 @@
 
  FEATURES
 
-  * Remove all remaining dependencies on C git. (Jelmer Vernooij)
+  * Remove all remaining dependencies on C git. (Jelmer Vernooij, #348238)
 
 0.5.2	2010-07-30
 
