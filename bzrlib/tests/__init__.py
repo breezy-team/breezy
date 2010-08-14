@@ -1173,13 +1173,13 @@ class TestCase(testtools.TestCase):
         try:
             def capture():
                 orig_log_exception_quietly()
-                captured.append(sys.exc_info())
+                captured.append(sys.exc_info()[1])
             trace.log_exception_quietly = capture
             func(*args, **kwargs)
         finally:
             trace.log_exception_quietly = orig_log_exception_quietly
         self.assertLength(1, captured)
-        err = captured[0][1]
+        err = captured[0]
         self.assertIsInstance(err, exception_class)
         return err
 
