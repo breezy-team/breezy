@@ -1041,7 +1041,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(Test("known_failure_test"))
         def failing_test():
-            self.fail('foo')
+            raise AssertionError('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1055,7 +1055,7 @@ class TestRunner(tests.TestCase):
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
-            '    self.fail\\(\'foo\'\\)\n'
+            '    raise AssertionError\\(\'foo\'\\)\n'
             '.*'
             '^----------------------------------------------------------------------\n'
             '.*'
@@ -1876,17 +1876,17 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_lsprof_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        calls = []
+        results = []
         class Test(object):
             def __call__(test, result):
                 test.run(result)
             def run(test, result):
-                self.assertIsInstance(result, tests.ForwardingResult)
-                calls.append("called")
+                results.append(result)
             def countTestCases(self):
                 return 1
         self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
-        self.assertLength(1, calls)
+        self.assertLength(1, results)
+        self.assertIsInstance(results.pop(), tests.ForwardingResult)
 
     def test_random(self):
         # test randomising by listing a number of tests.
