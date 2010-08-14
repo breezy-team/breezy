@@ -31,7 +31,7 @@ from testtools.matchers import (
     DocTestMatches,
     Equals,
     )
-import testtools.tests.helpers
+import testtools.testresult.doubles
 
 import bzrlib
 from bzrlib import (
@@ -698,7 +698,7 @@ class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        terminal = testtools.tests.helpers.ExtendedTestResult()
+        terminal = testtools.testresult.doubles.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
             def a(self):
@@ -721,7 +721,7 @@ class TestTestResult(tests.TestCase):
                 descriptions=0,
                 verbosity=1,
                 )
-        capture = testtools.tests.helpers.ExtendedTestResult()
+        capture = testtools.testresult.doubles.ExtendedTestResult()
         test_case.run(MultiTestResult(result, capture))
         run_case = capture._events[0][1]
         timed_string = result._testTimeString(run_case)
@@ -1067,7 +1067,7 @@ class TestRunner(tests.TestCase):
         # the final output.
         class Test(tests.TestCase):
             def known_failure_test(self):
-                self.expectFailure('failed', self.assertTrue, False)
+                self.knownFailure("Never works...")
         test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
