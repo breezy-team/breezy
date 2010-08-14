@@ -287,6 +287,16 @@ class ExtendedTestResult(testtools.TextTestResult):
         test.number = self.count
         self._recordTestStartTime()
 
+    def stopTest(self, test):
+        super(ExtendedTestResult, self).stopTest(test)
+        # Manually break cycles, means touching various private things but hey
+        details = getattr(test, "_TestCase__details", None)
+        if details is not None:
+            details.clear()
+        type_equality_funcs = getattr(test, "_type_equality_funcs", None)
+        if type_equality_funcs is not None:
+            type_equality_funcs.clear()
+
     def startTests(self):
         import platform
         if getattr(sys, 'frozen', None) is None:
