@@ -103,7 +103,7 @@ class TestCaseWithSmartMedium(tests.TestCaseWithMemoryTransport):
         # the default or a parameterized class, but rather use the
         # TestCaseWithTransport infrastructure to set up a smart server and
         # transport.
-        self.transport_server = self.make_transport_server
+        self.overrideAttr(self, "transport_server", self.make_transport_server)
 
     def make_transport_server(self):
         return test_server.SmartTCPServer_for_testing('-' + self.id())

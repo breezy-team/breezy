@@ -1626,6 +1626,7 @@ class SmartMessageHandlerError(InternalBzrError):
 
     def __init__(self, exc_info):
         import traceback
+        # GZ 2010-08-10: Cycle with exc_tb/exc_info affects at least one test
         self.exc_type, self.exc_value, self.exc_tb = exc_info
         self.exc_info = exc_info
         traceback_strings = traceback.format_exception(

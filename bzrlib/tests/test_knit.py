@@ -415,6 +415,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         except _TestException, e:
             retry_exc = errors.RetryWithNewPacks(None, reload_occurred=False,
                                                  exc_info=sys.exc_info())
+        # GZ 2010-08-10: Cycle with exc_info affects 3 tests
         return retry_exc
 
     def test_read_from_several_packs(self):

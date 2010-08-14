@@ -1486,6 +1486,7 @@ class TestSmartProtocol(tests.TestCase):
         smart_protocol._has_dispatched = True
         smart_protocol.request = _mod_request.SmartServerRequestHandler(
             None, _mod_request.request_handlers, '/')
+        # GZ 2010-08-10: Cycle with closure affects 4 tests
         class FakeCommand(_mod_request.SmartServerRequest):
             def do_body(self_cmd, body_bytes):
                 self.end_received = True
