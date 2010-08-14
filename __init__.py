@@ -50,6 +50,9 @@ from bzrlib import (
 from bzrlib.foreign import (
     foreign_vcs_registry,
     )
+from bzrlib.help_topics import (
+    topic_registry,
+    )
 from bzrlib.lockable_files import (
     TransportLock,
     )
@@ -292,6 +295,10 @@ bzrdir_network_format_registry.register('git', GitBzrDirFormat)
 
 send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
                                    'send_git', 'Git am-style diff format')
+
+topic_registry.register_lazy('git',
+                             'bzrlib.plugins.git.help',
+                             'help_git', 'Using Bazaar with Git')
 
 try:
     from bzrlib.diff import format_registry as diff_format_registry
