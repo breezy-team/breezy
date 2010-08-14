@@ -70,13 +70,14 @@ class TestLogWithLogCatcher(TestLog):
 
     def setUp(self):
         super(TestLogWithLogCatcher, self).setUp()
-        # Capture log formatter creations
+        # Local variable to log to so avoiding closure over test case instance
+        revisions = []
         class MyLogFormatter(test_log.LogCatcher):
 
-            def __new__(klass, *args, **kwargs):
-                self.log_catcher = test_log.LogCatcher(*args, **kwargs)
-                # Always return our own log formatter
-                return self.log_catcher
+            def __init__(self, *args, **kwargs):
+                test_log.LogCatcher.__init__(self, *args, **kwargs)
+                self.revisions = revisions
+        self.revisions = revisions
 
         def getme(branch):
                 # Always return our own log formatter class hijacking the
@@ -86,7 +87,7 @@ class TestLogWithLogCatcher(TestLog):
         self.overrideAttr(log.log_formatter_registry, 'get_default', getme)
 
     def get_captured_revisions(self):
-        return self.log_catcher.revisions
+        return self.revisions
 
     def assertLogRevnos(self, args, expected_revnos, working_dir='.'):
         self.run_bzr(['log'] + args, working_dir=working_dir)
