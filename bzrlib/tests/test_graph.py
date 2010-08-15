@@ -1442,6 +1442,30 @@ class TestFindDescendants(TestGraphBase):
         descendants = graph.find_descendants('rev2a', 'rev4')
         self.assertEqual(set(['rev2a', 'rev3', 'rev4']), descendants)
 
+class TestFindLefthandMerger(TestGraphBase):
+
+    def check_merger(self, result, ancestry, merged, tip):
+        graph = self.make_graph(ancestry)
+        self.assertEqual(result, graph.find_lefthand_merger(merged, tip))
+
+    def test_find_lefthand_merger_rev2b(self):
+        self.check_merger('rev4', ancestry_1, 'rev2b', 'rev4')
+
+    def test_find_lefthand_merger_rev2a(self):
+        self.check_merger('rev2a', ancestry_1, 'rev2a', 'rev4')
+
+    def test_find_lefthand_merger_rev4(self):
+        self.check_merger(None, ancestry_1, 'rev4', 'rev2a')
+
+    def test_find_lefthand_merger_f(self):
+        self.check_merger('i', complex_shortcut, 'f', 'm')
+
+    def test_find_lefthand_merger_g(self):
+        self.check_merger('i', complex_shortcut, 'g', 'm')
+
+    def test_find_lefthand_merger_h(self):
+        self.check_merger('n', complex_shortcut, 'h', 'n')
+
 
 class TestGetChildMap(TestGraphBase):
 
