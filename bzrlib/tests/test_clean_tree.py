@@ -16,13 +16,17 @@
 
 
 import os
+import shutil
 from StringIO import StringIO
+import types
 
+from bzrlib import tests, ui
 from bzrlib.bzrdir import (
     BzrDir,
     )
 from bzrlib.clean_tree import (
     clean_tree,
+    delete_items,
     iter_deletables,
     )
 from bzrlib.osutils import (
@@ -76,3 +80,35 @@ class TestCleanTree(TestCaseInTempDir):
             self.assertEqual([], dels)
         finally:
             tree.unlock()
+
+    def test_delete_items_warnings(self):
+        """Ensure delete_items issues warnings on OSError. (bug #430785)
+        """
+        def _dummy_unlink(path):
+            if path.endswith('0foo'):
+                # simulate error.
+                raise OSError
+
+        def _dummy_rmtree(path, ignore_errors=False, onerror=None):
+            self.assertTrue(onerror, types.FunctionType)
+            # ensure onerror params and call with 0foo to
+            # indicate failure in removing 0rmtree_error
+            onerror(function=None, path="0rmtree_error", excinfo=None)
+
+        self.overrideAttr(os, 'unlink', _dummy_unlink)
+        self.overrideAttr(shutil, 'rmtree', _dummy_rmtree)
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdout=stdout, stderr=stderr)
+        os.mkdir('branch')
+        BzrDir.create_standalone_workingtree('branch')
+        files = ['0foo', '1bar', '2baz']
+        os.chdir('branch')
+        for f in files:
+            open(f, 'w').close()
+        os.mkdir('subdir')
+        clean_tree('.', unknown=True, no_prompt=True)
+        self.assertContainsRe(stderr.getvalue(),
+            'bzr: warning: unable to remove.*branch/0foo')
+        self.assertContainsRe(stderr.getvalue(),
+            'bzr: warning: unable to remove.*0rmtree_error')

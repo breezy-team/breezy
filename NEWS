@@ -47,6 +47,10 @@ Bug Fixes
 * Check if both --diff-options and --using are set, and exit with error
   in this case. (Matthäus G. Chajdas, #234708)
 
+* ``clean-tree`` issues a warning if it is unable to delete a file
+  instead of exiting with an error on Windows.
+  (Parth Malwankar, #430785)
+
 * Decrease peak memory during ``bzr send``. The old code was caching all
   text content and all inventory strings for all revisions before
   computing the diffs. Now we only cache as long as there is a child that
