@@ -26,7 +26,6 @@ from bzrlib.bzrdir import (
     )
 from bzrlib.clean_tree import (
     clean_tree,
-    delete_items,
     iter_deletables,
     )
 from bzrlib.osutils import (
