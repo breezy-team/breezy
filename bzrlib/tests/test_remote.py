@@ -89,10 +89,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.transport = self.get_transport()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
-
-    def tearDown(self):
-        self.transport.disconnect()
-        tests.TestCaseWithTransport.tearDown(self)
+        self.addCleanup(self.transport.disconnect)
 
     def test_create_remote_bzrdir(self):
         b = remote.RemoteBzrDir(self.transport, remote.RemoteBzrDirFormat())
