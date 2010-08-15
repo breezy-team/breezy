@@ -24,6 +24,7 @@ import datetime
 """)
 
 from bzrlib import (
+    branch as _mod_branch,
     errors,
     osutils,
     registry,
@@ -444,7 +445,14 @@ RevisionSpec_int = RevisionSpec_revno
 
 
 
-class RevisionSpec_revid(RevisionSpec):
+class RevisionIDSpec(RevisionSpec):
+
+    def _match_on(self, branch, revs):
+        revision_id = self.as_revision_id(branch)
+        return RevisionInfo.from_revision_id(branch, revision_id, revs)
+
+
+class RevisionSpec_revid(RevisionIDSpec):
     """Selects a revision using the revision id."""
 
     help_txt = """Selects a revision using the revision id.
@@ -459,14 +467,10 @@ class RevisionSpec_revid(RevisionSpec):
 
     prefix = 'revid:'
 
-    def _match_on(self, branch, revs):
+    def _as_revision_id(self, context_branch):
         # self.spec comes straight from parsing the command line arguments,
         # so we expect it to be a Unicode string. Switch it to the internal
         # representation.
-        revision_id = osutils.safe_revision_id(self.spec, warn=False)
-        return RevisionInfo.from_revision_id(branch, revision_id, revs)
-
-    def _as_revision_id(self, context_branch):
         return osutils.safe_revision_id(self.spec, warn=False)
 
 
@@ -896,6 +900,30 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
             self._get_submit_location(context_branch))
 
 
+class RevisionSpec_mainline(RevisionIDSpec):
+
+    help_txt = """Select mainline revision that merged the specified revision.
+
+    Select the revision that merged the specified revision into mainline.
+    """
+
+    prefix = 'mainline:'
+
+    def _as_revision_id(self, context_branch):
+        revspec = RevisionSpec.from_string(self.spec)
+        if revspec.get_branch() is None:
+            spec_branch = context_branch
+        else:
+            spec_branch = _mod_branch.Branch.open(revspec.get_branch())
+        revision_id = revspec.as_revision_id(spec_branch)
+        graph = context_branch.repository.get_graph()
+        result = graph.find_lefthand_merger(revision_id,
+                                            context_branch.last_revision())
+        if result is None:
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch)
+        return result
+
+
 # The order in which we want to DWIM a revision spec without any prefix.
 # revno is always tried first and isn't listed here, this is used by
 # RevisionSpec_dwim._match_on
@@ -920,6 +948,7 @@ _register_revspec(RevisionSpec_date)
 _register_revspec(RevisionSpec_ancestor)
 _register_revspec(RevisionSpec_branch)
 _register_revspec(RevisionSpec_submit)
+_register_revspec(RevisionSpec_mainline)
 
 # classes in this list should have a "prefix" attribute, against which
 # string specs are matched

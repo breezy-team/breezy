@@ -652,3 +652,20 @@ class TestRevisionSpec_submit(TestRevisionSpec):
     def test_as_revision_id(self):
         self.tree.branch.set_submit_branch('tree2')
         self.assertAsRevisionId('alt_r2', 'branch:tree2')
+
+
+class TestRevisionSpec_mainline(TestRevisionSpec):
+
+    def test_as_revision_id(self):
+        self.assertAsRevisionId('r1', 'mainline:1')
+        self.assertAsRevisionId('r2', 'mainline:1.1.1')
+        self.assertAsRevisionId('r2', 'mainline:revid:alt_r2')
+        spec = RevisionSpec.from_string('mainline:revid:alt_r22')
+        e = self.assertRaises(errors.InvalidRevisionSpec,
+                              spec.as_revision_id, self.tree.branch)
+        self.assertContainsRe(str(e),
+            "Requested revision: 'mainline:revid:alt_r22' does not exist in"
+            " branch: ")
+
+    def test_in_history(self):
+        self.assertInHistoryIs(2, 'r2', 'mainline:revid:alt_r2')
