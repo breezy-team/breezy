@@ -18,6 +18,7 @@
 
 from cStringIO import StringIO
 from doctest import ELLIPSIS
+import gc
 import os
 import signal
 import sys
@@ -2978,16 +2979,62 @@ class TestRunSuite(tests.TestCase):
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
 
-    def test_warn_on_uncollected_case(self):
-        """A reference cycle keeping a test case alive emits in a warning"""
-        class Stub(tests.TestCase):
-            def test_self_referential(self):
-                self.also_self = self.test_self_referential
-        suite = TestUtil.TestSuite([Stub("test_self_referential")])
+
+class TestUncollectedWarnings(tests.TestCase):
+    """Check reference cycles keeping a test case alive emits in a warning"""
+
+    class Test(tests.TestCase):
+        def test_pass(self):
+            pass
+        def test_self_ref(self):
+            self.also_self = self.test_self_ref
+        def test_skip(self):
+            self.skip("Don't need")
+
+    def _get_suite(self):
+        return TestUtil.TestSuite([
+            self.Test("test_pass"),
+            self.Test("test_self_ref"),
+            self.Test("test_skip"),
+            ])
+
+    def _run_selftest_with_suite(self, **kwargs):
         sio = StringIO()
-        import gc
+        self.overrideAttr(tests.TestCase, "_first_thread_leaker_id", None)
         gc.disable()
-        tests.run_suite(suite, stream=sio)
-        gc.enable()
-        self.assertContainsRe(sio.getvalue(),
-            "Uncollected test case.*test_self_referential")
+        try:
+            tests.selftest(test_suite_factory=self._get_suite, stream=sio,
+                **kwargs)
+        finally:
+            gc.enable()
+        output = sio.getvalue()
+        self.assertNotContainsRe(output, "Uncollected test case.*test_pass")
+        self.assertContainsRe(output, "Uncollected test case.*test_self_ref")
+        return output
+
+    def test_testsuite(self):
+        self._run_selftest_with_suite()
+
+    def test_pattern(self):
+        out = self._run_selftest_with_suite(pattern="test_(?:pass|self_ref)$")
+        self.assertNotContainsRe(out, "test_skip")
+
+    def test_exclude_pattern(self):
+        out = self._run_selftest_with_suite(exclude_pattern="test_skip$")
+        self.assertNotContainsRe(out, "test_skip")
+
+    def test_random_seed(self):
+        self._run_selftest_with_suite(random_seed="now")
+
+    def test_matching_tests_first(self):
+        self._run_selftest_with_suite(matching_tests_first=True,
+            pattern="test_self_ref$")
+
+    def test_starting_with_and_exclude(self):
+        out = self._run_selftest_with_suite(starting_with=["bt."],
+            exclude_pattern="test_skip$")
+        self.assertNotContainsRe(out, "test_skip")
+
+    def test_additonal_decorator(self):
+        out = self._run_selftest_with_suite(
+            suite_decorators=[tests.TestDecorator])
