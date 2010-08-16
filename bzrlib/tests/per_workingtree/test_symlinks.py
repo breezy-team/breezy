@@ -15,12 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Test symlink support.
-
-See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 """
+
+import os
 
 from bzrlib import (
     builtins,
+    osutils,
     tests,
     workingtree,
     )
@@ -28,6 +29,8 @@ from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
 class TestSmartAddTree(TestCaseWithWorkingTree):
+
+    # See eg <https://bugs.launchpad.net/bzr/+bug/192859>
 
     _test_needs_features = [tests.SymlinkFeature]
 
@@ -52,6 +55,78 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertIs(None, tree.path2id('target'))
         self.assertEqual('symlink',
             tree.kind(tree.path2id('link')))
+
+    def test_add_file_under_symlink(self):
+        # similar to 
+        # https://bugs.launchpad.net/bzr/+bug/192859/comments/3
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('tree/link@', 'dir'),
+            ('tree/dir/',),
+            ('tree/dir/file', 'content'),
+            ])
+        self.assertEquals(
+            tree.smart_add(['tree/link/file']),
+            ([u'dir', u'dir/file'], {}))
+        # should add the actual parent directory, not the apparent parent
+        # (which is actually a symlink)
+        self.assertTrue(tree.path2id('dir/file'))
+        self.assertTrue(tree.path2id('dir'))
+        self.assertIs(None, tree.path2id('link'))
+        self.assertIs(None, tree.path2id('link/file'))
+
+
+class TestKindChanges(TestCaseWithWorkingTree):
+
+    _test_needs_features = [tests.SymlinkFeature]
+
+    def test_symlink_changes_to_dir(self):
+        # <https://bugs.launchpad.net/bzr/+bug/192859>:
+        # we had some past problems with the workingtree remembering for too
+        # long what kind of object was at a particular name; we really
+        # shouldn't do that.  Operating on the dirstate through passing
+        # inventory deltas rather than mutating the inventory largely avoids
+        # that.
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('tree/a@', 'target')])
+        tree.smart_add(['tree/a'])
+        tree.commit('add symlink')
+        os.unlink('tree/a')
+        self.build_tree_contents([
+            ('tree/a/',),
+            ('tree/a/f', 'content'),
+            ])
+        tree.smart_add(['tree/a/f'])
+        tree.commit('change to dir')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        self.assertEquals([], list(tree.iter_changes(tree.basis_tree())))
+
+    def test_dir_changes_to_symlink(self):
+        # <https://bugs.launchpad.net/bzr/+bug/192859>:
+        # we had some past problems with the workingtree remembering for too
+        # long what kind of object was at a particular name; we really
+        # shouldn't do that.  Operating on the dirstate through passing
+        # inventory deltas rather than mutating the inventory largely avoids
+        # that.
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([
+            ('tree/a/',),
+            ('tree/a/file', 'content'),
+            ])
+        tree.smart_add(['tree/a'])
+        tree.commit('add dir')
+        osutils.rmtree('tree/a')
+        self.build_tree_contents([
+            ('tree/a@', 'target'),
+            ])
+        tree.commit('change to symlink')
+
+
+class TestOpenTree(TestCaseWithWorkingTree):
+
+    _test_needs_features = [tests.SymlinkFeature]
 
     def test_open_containing_through_symlink(self):
         self.make_test_tree()
