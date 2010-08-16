@@ -8,6 +8,9 @@ releases on the 2.2 series (2.2.1, etc), while 2.3 will become our new
 development series. The 2.0 and 2.1 series will also continue to get
 bugfixes. (Currently 2.0 is planned to be supported for another 6 months.)
 
+The main changes in 2.2 are: **better local and network performance**,
+**reduced memory usage**, and several user-interface improvements.
+
 Users are encouraged to upgrade from the other stable series.  This
 document outlines the improvements in Bazaar 2.2 vs Bazaar 2.1. As well as
 summarizing improvements made to the core product, it highlights
