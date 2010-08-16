@@ -26,6 +26,9 @@ Improvements
 Documentation
 *************
 
+* Fix a lot of references in the docs to the old http://bazaar-vcs.org to
+  the new http://bazaar.canonical.com or http://wiki.bazaar.canonical.com
+  (John Arbash Meinel, #617503)
 
 API Changes
 ***********
