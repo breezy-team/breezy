@@ -93,8 +93,7 @@ class TestCleanTree(TestCaseInTempDir):
 
         def _dummy_rmtree(path, ignore_errors=False, onerror=None):
             self.assertTrue(onerror, types.FunctionType)
-            # ensure onerror params and call with 0foo to
-            # indicate failure in removing 0rmtree_error
+            # Indicate failure in removing 0rmtree_error
             onerror(function=None, path="0rmtree_error", excinfo=None)
 
         self.overrideAttr(os, 'unlink', _dummy_unlink)
