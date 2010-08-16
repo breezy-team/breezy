@@ -114,7 +114,7 @@ def delete_items(deletables, dry_run=False):
                     if e.errno != errno.EACCES:
                         raise e
                     ui.ui_factory.show_warning(
-                        'unable to remove %s: %s' % (path, str(e)))
+                        'unable to remove %s: %s' % (path, e.strerror))
             note('  ' + subp)
         else:
             note('  ' + subp)
