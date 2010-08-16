@@ -78,8 +78,8 @@ Network performance
   (John Arbash Meinel, #562429)
 
 
-Command impprovements
-*********************
+Command improvements
+********************
 
 * Added ``bzr remove-branch`` command that can remove a local or remote 
   branch. (Jelmer Vernooij, #276295)
