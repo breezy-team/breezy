@@ -48,7 +48,7 @@ Bug Fixes
   in this case. (Matthäus G. Chajdas, #234708)
 
 * ``clean-tree`` issues a warning if it is unable to delete a file
-  instead of exiting with an error on Windows.
+  due to ``errno.EACCES`` instead of exiting with an error on Windows.
   (Parth Malwankar, #430785)
 
 * Decrease peak memory during ``bzr send``. The old code was caching all

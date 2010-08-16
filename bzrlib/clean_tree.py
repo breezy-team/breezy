@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import errno
 import os
 import shutil
 
@@ -103,14 +104,18 @@ def delete_items(deletables, dry_run=False):
             note("deleting paths:")
             has_deleted = True
         if not dry_run:
-            try:
-                if isdir(path):
-                    shutil.rmtree(path, onerror=onerror)
-                else:
+            if isdir(path):
+                shutil.rmtree(path, onerror=onerror)
+            else:
+                try:
                     os.unlink(path)
-                note('  ' + subp)
-            except OSError, e:
-                ui.ui_factory.show_warning('unable to remove %s' % path)
+                except OSError, e:
+                    # We handle only permission error here
+                    if e.errno != errno.EACCES:
+                        raise e
+                    ui.ui_factory.show_warning(
+                        'unable to remove %s: %s' % (path, str(e)))
+            note('  ' + subp)
         else:
             note('  ' + subp)
     if not has_deleted:

@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import errno
 import os
 import shutil
 from StringIO import StringIO
@@ -85,8 +86,10 @@ class TestCleanTree(TestCaseInTempDir):
         """
         def _dummy_unlink(path):
             if path.endswith('0foo'):
-                # simulate error.
-                raise OSError
+                # simulate 'permission denied' error.
+                e = OSError()
+                e.errno = errno.EACCES
+                raise e
 
         def _dummy_rmtree(path, ignore_errors=False, onerror=None):
             self.assertTrue(onerror, types.FunctionType)
