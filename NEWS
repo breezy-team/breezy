@@ -20,6 +20,9 @@ Bug Fixes
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
 
+* Cope with Microsoft FTP server that returns reply '250 Directory
+  created' when mkdir succeeds.  (Martin Pool, #224373)
+
 Improvements
 ************
 
