@@ -25,6 +25,9 @@ Bug Fixes
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
 
+* Cope with Microsoft FTP server that returns reply '250 Directory
+  created' when mkdir succeeds.  (Martin Pool, #224373)
+
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
@@ -35,6 +38,9 @@ Improvements
 Documentation
 *************
 
+* Fix a lot of references in the docs to the old http://bazaar-vcs.org to
+  the new http://bazaar.canonical.com or http://wiki.bazaar.canonical.com
+  (John Arbash Meinel, #617503)
 
 API Changes
 ***********

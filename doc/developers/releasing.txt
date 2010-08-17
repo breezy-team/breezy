@@ -3,7 +3,7 @@ Releasing Bazaar
 
 This document describes the processes for making and announcing a Bazaar
 release, and managing the release process.  This is just one phase of the
-`overall development cycle <http://doc.bazaar-vcs.org/developers/cycle.html>`_,
+`overall development cycle <http://doc.bazaar.canonical.com/developers/cycle.html>`_,
 but it's the most complex part.
 This document gives a checklist you can follow from start to end in one
 go.
@@ -73,7 +73,7 @@ To start a new release cycle:
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
 
-    Please see <http://doc.bazaar-vcs.org/developers/HACKING.html#an-overview-of-pqm>
+    Please see <http://doc.bazaar.canonical.com/developers/HACKING.html#an-overview-of-pqm>
     for more details on PQM
 
 #. Update the version number in the ``bzr`` script, and the
@@ -267,18 +267,18 @@ available to the world.
 
 #. Go to the release web page at <https://launchpad.net/bzr/x.y/x.y.z>
 
-#. Link from http://bazaar-vcs.org/SourceDownloads to the tarball and
+#. Link from http://wiki.bazaar.canonical.com/SourceDownloads to the tarball and
    signature.
 
-#. Announce on the `Bazaar website <http://bazaar-vcs.org/>`_.
+#. Announce on the `Bazaar website <http://bazaar.canonical.com/>`_.
    This page is edited via the lp:bzr-website branch. (Changes
    pushed to this branch are refreshed by a cron job on escudero.)
 
-#. Announce on the `Bazaar wiki <http://bazaar-vcs.org/Welcome>`_.
+#. Announce on the `Bazaar wiki <http://wiki.bazaar.canonical.com/Welcome>`_.
 
 #. Check that the documentation for this release is available in
-   <http://doc.bazaar-vcs.org>.  It should be automatically build when the
-   branch is created, by a cron script ``update-bzr-docs`` on
+   <http://doc.bazaar.canonical.com>.  It should be automatically build when
+   the branch is created, by a cron script ``update-bzr-docs`` on
    ``escudero``. As of today (2009-08-27) ``igc`` manually updates the
    pretty version of it.
 
@@ -316,8 +316,8 @@ Now that the release is publicly available, tell people about it.
       feedback.
 
       Bazaar is now available for download from
-      http://bazaar-vcs.org/Download as a source tarball; packages
-      for various systems will be available soon.
+      http://wiki.bazaar.canonical.com/Download as a source tarball;
+      packages for various systems will be available soon.
 
       <<NEWS section from this release back to the last major release>>
 
