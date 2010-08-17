@@ -1209,13 +1209,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 # absolute path
                 fap = from_dir_abspath + '/' + f
 
-                f_ie = inv.get_child(from_dir_id, f)
+                dir_ie = inv[from_dir_id]
+                if dir_ie.kind == 'directory':
+                    f_ie = dir_ie.children.get(f)
+                else:
+                    f_ie = None
                 if f_ie:
                     c = 'V'
                 elif self.is_ignored(fp[1:]):
                     c = 'I'
                 else:
-                    # we may not have found this file, because of a unicode issue
+                    # we may not have found this file, because of a unicode
+                    # issue, or because the directory was actually a symlink.
                     f_norm, can_access = osutils.normalized_filename(f)
                     if f == f_norm or not can_access:
                         # No change, so treat this file normally
