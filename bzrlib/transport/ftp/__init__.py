@@ -350,17 +350,18 @@ class FtpTransport(ConnectedTransport):
         try:
             mutter("FTP mkd: %s", abspath)
             f = self._get_FTP()
-            f.mkd(abspath)
+            try:
+                f.mkd(abspath)
+            except ftplib.error_reply, e:
+                # <https://bugs.launchpad.net/bzr/+bug/224373> Microsoft FTP
+                # server returns "250 Directory created." which is kind of
+                # reasonable, 250 meaning "requested file action OK", but not what
+                # Python's ftplib expects.
+                if e[0][:3] == '250':
+                    pass
+                else:
+                    raise
             self._setmode(relpath, mode)
-        except ftplib.error_reply, e:
-            # <https://bugs.launchpad.net/bzr/+bug/224373> Microsoft FTP
-            # server returns "250 Directory created." which is kind of
-            # reasonable, 250 meaning "requested file action OK", but not what
-            # Python's ftplib expects.
-            if e[0][:3] == '250':
-                pass
-            else:
-                raise
         except ftplib.error_perm, e:
             self._translate_ftp_error(e, abspath,
                 unknown_exc=errors.FileExists)
