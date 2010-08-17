@@ -28,7 +28,7 @@ Bazaar itself.
 Where to find plugins
 ---------------------
 
-We keep our list of plugins on the http://bazaar-vcs.org/BzrPlugins page.
+We keep our list of plugins on the http://wiki.bazaar.canonical.com/BzrPlugins page.
 
 How to install a plugin
 -----------------------
