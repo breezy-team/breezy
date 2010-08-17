@@ -191,6 +191,9 @@ class FtpTransport(ConnectedTransport):
             or 'file/directory not found' in s # filezilla server
             # Microsoft FTP-Service RNFR reply if file not found
             or (s.startswith('550 ') and 'unable to rename to' in extra)
+            # if containing directory doesn't exist, suggested by
+            # <https://bugs.edge.launchpad.net/bzr/+bug/224373>
+            or (s.startswith('550 ') and "can't find folder" in s)
             ):
             raise errors.NoSuchFile(path, extra=extra)
         elif ('file exists' in s):
@@ -314,8 +317,9 @@ class FtpTransport(ConnectedTransport):
                     return len(bytes)
                 else:
                     return fp.counted_bytes
-            except (ftplib.error_temp,EOFError), e:
-                warning("Failure during ftp PUT. Deleting temporary file.")
+            except (ftplib.error_temp, EOFError), e:
+                warning("Failure during ftp PUT of %s: %s. Deleting temporary file."
+                    % (tmp_abspath, e, ))
                 try:
                     f.delete(tmp_abspath)
                 except:
@@ -328,8 +332,9 @@ class FtpTransport(ConnectedTransport):
                                        unknown_exc=errors.NoSuchFile)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
-                raise errors.TransportError("FTP temporary error during PUT %s. Aborting."
-                                     % self.abspath(relpath), orig_error=e)
+                raise errors.TransportError(
+                    "FTP temporary error during PUT %s: %s. Aborting."
+                    % (self.abspath(relpath), e), orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._reconnect()
