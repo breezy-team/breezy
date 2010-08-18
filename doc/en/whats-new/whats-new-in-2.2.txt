@@ -201,31 +201,24 @@ to Bazaar, gained many features and fixes in its 0.19 release, including:
 * Improved performance of qlog, and treewidget-based dialogs (qcommit,
   qadd, qrevert etc.)
 
-* qpush, qmerge, etc.: When there are uncommitted changes in the working
+* qpush, qmerge, etc.: when there are uncommitted changes in the working
   tree, user has the option to commit, or revert.
 
-* qcommit: user can update bound branch/chgeckout if it is not up to date.
+* qcommit: user can update bound branch/checkout if it is not up to date.
 
-* Fixed bug with Mac OS X support when windows start in background.
-  (Thanks to Luis Arias)
+* Better support of Mac OS X: dialog windows no more start in background.
 
-* qlog: Context menu actions for tag, and revert will now show a branch
+* qlog: Context menu actions for tag and revert will now show a branch
   menu if more than one branch is open.
 
 * qlog: more context menu actions for update, cherry-pick, and reverse
   cherry-pick.
 
-* Language of GUI can be set in DEFAULT section of bazaar.conf as
-``language = code``. Language codes are the same as for LANG environment
-  variable. Environment variable LANGUAGE still preferred over settings
-  in bazaar.conf.
-
 * Language of GUI can be set in DEFAULT section of bazaar.conf 
-  as ``language = code``. Language codes are the same as for LANG environment
-  variable. Environment variable LANGUAGE still preferred over settings
-  in bazaar.conf. (Alexander Belchenko)
-
-* New Thai and Hungarian translations.
+  as ``language = code``. Language codes are the same 
+  as for ``LANG`` environment variable. 
+  Environment variable ``LANGUAGE`` still preferred over settings 
+  in bazaar.conf.
 
 
 Platform-specific changes
