@@ -31,6 +31,7 @@ from bzrlib import (
     revision,
     symbol_versioning,
     trace,
+    workingtree,
     )
 
 
@@ -900,6 +901,49 @@ class RevisionSpec_submit(RevisionSpec_ancestor):
             self._get_submit_location(context_branch))
 
 
+class RevisionSpec_annotate(RevisionIDSpec):
+
+    prefix = 'annotate:'
+
+    help_txt = """Select the revision that last modified the specified line.
+
+    Select the revision that last modified the specified line.  Line is
+    specified as path:number.  Path is a relative path to the file.  Numbers
+    start at 1, and are relative to the current version, not the last-
+    committed version of the file.
+    """
+
+    def _raise_invalid(self, numstring, context_branch):
+        raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
+            'No such line: %s' % numstring)
+
+    def _as_revision_id(self, context_branch):
+        path, numstring = self.spec.rsplit(':', 1)
+        try:
+            index = int(numstring) - 1
+        except ValueError:
+            self._raise_invalid(numstring, context_branch)
+        tree, file_path = workingtree.WorkingTree.open_containing(path)
+        tree.lock_read()
+        try:
+            file_id = tree.path2id(file_path)
+            if file_id is None:
+                raise errors.InvalidRevisionSpec(self.user_spec,
+                    context_branch, "File '%s' is not versioned." %
+                    file_path)
+            revision_ids = [r for (r, l) in tree.annotate_iter(file_id)]
+        finally:
+            tree.unlock()
+        try:
+            revision_id = revision_ids[index]
+        except IndexError:
+            self._raise_invalid(numstring, context_branch)
+        if revision_id == revision.CURRENT_REVISION:
+            raise errors.InvalidRevisionSpec(self.user_spec, context_branch,
+                'Line %s has not been committed.' % numstring)
+        return revision_id
+
+
 class RevisionSpec_mainline(RevisionIDSpec):
 
     help_txt = """Select mainline revision that merged the specified revision.
@@ -948,6 +992,7 @@ _register_revspec(RevisionSpec_date)
 _register_revspec(RevisionSpec_ancestor)
 _register_revspec(RevisionSpec_branch)
 _register_revspec(RevisionSpec_submit)
+_register_revspec(RevisionSpec_annotate)
 _register_revspec(RevisionSpec_mainline)
 
 # classes in this list should have a "prefix" attribute, against which
