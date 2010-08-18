@@ -18,16 +18,14 @@ As of June 2010, there are three PPAs:
 <https://launchpad.net/~bzr/+archive>
     Final released versions and updates.
 
+<https://launchpad.net/~bzr/+archive/proposed>
+    Proposed uploads to move into ~bzr, awaiting testing.
+
 <https://launchpad.net/~bzr-beta-ppa/+archive>
     Beta releases.
 
 <https://launchpad.net/~bzr-nightly-ppa/+archive>
     Automatic nightly builds from trunk.
-
-We build packages for every supported Ubuntu release
-<https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
-when the release passes end-of-life because all users should
-have upgraded by then.  
 
 We build a distinct package for each distrorelease.  
 If you upload a release-specific version, you should add a suffix to the
@@ -51,6 +49,25 @@ with the ``bzr-builddeb`` plugin.
 upload again or copy the packages into the release ppa.  That reduces the 
 risk of breaking the main archive from which people get bzr updates.
 
+
+Supported releases
+------------------
+
+We build packages for every supported Ubuntu release
+<https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
+when the release passes end-of-life because all users should
+have upgraded by then.  
+
+As of August 2010, the following releases are supported:
+
+* Maverick 
+* Lucid LTS
+* Karmic
+* Jaunty (support ends October 2010)
+* Hardy LTS
+* Dapper LTS (supported but no longer updated for new releases)
+
+
 Preconditions
 -------------
 
@@ -62,7 +79,7 @@ Preconditions
 On reasonably recent versions of Ubuntu you no longer need special dput
 configuration, because you can just say ::
 
-  dput ppa:bzr/2.1-proposed <source.changes
+  dput ppa:bzr/proposed <source.changes
   
 
 However, you may still want to add these lines to ``~/.dput.cf`` prevent 
