@@ -60,8 +60,8 @@ Bug Fixes
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
 
-* Cope with Microsoft FTP server that returns reply '250 Directory
-  created' when mkdir succeeds.  (Martin Pool, #224373)
+* Cope with Microsoft FTP Server and VSFTPd that return reply '250
+  Directory created' when mkdir succeeds.  (Martin Pool, #224373)
 
 * Decrease peak memory during ``bzr send``. The old code was caching all
   text content and all inventory strings for all revisions before
