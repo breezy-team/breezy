@@ -68,6 +68,10 @@ Bug Fixes
 Improvements
 ************
 
+* Inventory entries now consume less memory (on 32-bit Ubuntu file entries
+  have dropped from 68 bytes to 40, and directory entries from 120 bytes
+  to 48).  (Andrew Bennetts)
+
 * When building new working trees, default to reading from the repository
   rather than the source tree unless explicitly requested. (via
   ``--files-from`` and ``--hardlink`` for ``bzr branch`` and
@@ -78,8 +82,29 @@ Improvements
 Documentation
 *************
 
+* First tests defined for sphinx, including a new bzrlib.tests.features.sphinx
+  to make the tests conditional.
+  (Vincent Ladeuil)
+
+* Added a builder/writer sphinx extension that can generate texinfo files. The
+  generated files are syntactically correct but the info navigation nodes
+  needs more work. (Vincent Ladeuil, #219334)
+
+
 API Changes
 ***********
+
+* InventoryEntry instances now raise AttributeError if you try to assign
+  to attributes that are irrelevant to that kind of entry.  e.g. setting
+  ``symlink_target`` on an InventoryFile will fail.  It is still okay to
+  read those attributes on any kind of InventoryEntry.  The complete list
+  of affected attributes is: ``executable``, ``text_id``, ``text_sha1``,
+  ``text_size`` (only valid for kind == file); ``symlink_target`` (only
+  valid for kind == link); and ``reference_revision`` (only valid for kind
+  == tree-reference).  (Andrew Bennetts)
+
+* InventoryEntry objects no longer have ``_put_in_tar`` or
+  ``_put_on_disk`` methods.  (Andrew Bennetts)
 
 Internals
 *********
@@ -87,12 +112,38 @@ Internals
 Testing
 *******
 
+* The way ``bzr selftest --parallel`` generates N partitions of tests to
+  run in parallel has changed.  Instead of splitting the list of tests at
+  N-1 points, it distributes the tests one-by-one into the partitions in a
+  round robin fashion.  This reduces the total time to run the tests in
+  parallel because a series of slow tests in the test suite will be
+  distributed evenly among the parallel test suites, rather than slowing
+  down just one suite.  (Andrew Bennetts)
 
-bzr 2.2rc1
-##########
 
-:Codename: ???
-:2.2rc1: NOT RELEASED YET
+bzr 2.2
+#######
+
+:Codename: La Hulpe
+:2.2: 2010-08-06
+
+This release marks the start of another long-term-stable series. From
+here, we will only make bugfix releases on the 2.2 series (2.2.1, etc),
+while 2.3 will become our new development series. The 2.0 and 2.1 series
+will also continue to get bugfixes. (Currently 2.0 is planned to be
+supported for another 6 months.)
+
+This is primarily a bugfix and polish release over the 2.1 series, with
+a large number of bugs fixed (>120), and some performance improvements.
+
+There are some compatibility changes in this release.  For users of bzrlib
+as a library, we now request that they call ``bzrlib.initialize`` and use
+the returned context manager appropriately. For commandline users we no
+longer guess user identity for ``bzr commit``, users must specify their
+identity using ``bzr whoami`` (you don't need to specify your identity for
+readonly operations).
+
+Users are encouraged to upgrade from the other stable series.
 
 Compatibility Breaks
 ********************
@@ -107,9 +158,6 @@ Compatibility Breaks
   <https://launchpad.net/bzr-usertest> is an actively-maintained
   macrobenchmark suite.
   (Martin Pool)
-
-New Features
-************
 
 Bug Fixes
 *********
@@ -126,11 +174,26 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
+* ``HTTP/1.1` test servers now set a ``Content-Length`` header to comply
+  with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
+
+* Progress bars prefer to truncate the text message rather than the
+  counters.  The spinner is shown between the network transfer indicator
+  and the progress message.  Progress bars are correctly cleared off when 
+  they finish.  (Martin Pool, #611127)
+
+* Recursive binding for checkouts is now detected by bzr. A clear error
+  message is shown to the user. (Parth Malwankar, #405192)
+
 Improvements
 ************
 
 * Add ``bzrlib.merge.MergeIntoMerger``, which can merge part or all of a
   tree, and works with unrelated branches.  (Andrew Bennetts)
+
+* Add py2exe windows target ``bzrw.exe``. This allow for starting a Bazaar
+  GUI with out have a console open in the background.
+  (Gary van der Merwe, #433781)
 
 Documentation
 *************
@@ -143,9 +206,6 @@ API Changes
 ***********
 
 * Delete ``ProgressTask.note``, which was deprecated in 2.1.
-
-Internals
-*********
 
 Testing
 *******
@@ -590,17 +650,6 @@ Improvements
   plugins to an all-in-one installation, ensure they are compiled and
   installed with -O1 or help may not work. (Martin [gz])
 
-Documentation
-*************
-
-* First tests defined for sphinx, including a new bzrlib.tests.features.sphinx
-  to make the tests conditional.
-  (Vincent Ladeuil)
-
-* Added a builder/writer sphinx extension that can generate texinfo files. The
-  generated files are syntactically correct but the info navigation nodes
-  needs more work. (Vincent Ladeuil, #219334)
-
 API Changes
 ***********
 
@@ -656,7 +705,7 @@ Internals
 
 * No longer require zlib headers to build extensions, and remove the need
   for seperate copy of zlib library on windows.
-  (John Arbash Meinel, Martin <gzlist@googlemail.com>, #66923)
+  (John Arbash Meinel, Martin <gzlist@googlemail.com>, #566923)
 
 Testing
 *******
@@ -744,7 +793,7 @@ Bug Fixes
   (Vincent Ladeuil, #474807)
 
 * Properly handle ``param_name`` attribute for ``ListOption``.
-  (Martin von Gagern, 387117)
+  (Martin von Gagern, #387117)
 
 Improvements
 ************
@@ -864,7 +913,7 @@ New Features
 
 * Parsing of command lines, for example in ``diff --using``, no longer
   treats backslash as an escape character on Windows.   (Gordon Tyler,
-  #392248)
+  #392428)
 
 * Plugins can be disabled by defining ``BZR_DISABLE_PLUGINS`` as
   a list of plugin names separated by ':' (';' on windows).
