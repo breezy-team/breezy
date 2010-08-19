@@ -144,7 +144,7 @@ release packages is as simple as::
   ~/dev/bzr/bzr.dev/tools/packaging/update-changelogs.sh
   ~/dev/bzr/bzr.dev/tools/packaging/update-control.sh 1.16 1.17 1.18
   ~/dev/bzr/bzr.dev/tools/packaging/build-packages.sh
-  dput dput ppa:bzr/proposed ${PACKAGE}_$VERSION*.changes
+  dput ppa:bzr/proposed ${PACKAGE}_$VERSION*.changes
 
 Rinse and repeat for all the plugins by changing VERSION and PACKAGE.
 
