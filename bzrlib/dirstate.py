@@ -1566,7 +1566,7 @@ class DirState(object):
             return
         id_index = self._get_id_index()
         for file_id in new_ids:
-            for key in id_index.get(file_id, []):
+            for key in id_index.get(file_id, ()):
                 block_i, entry_i, d_present, f_present = \
                     self._get_block_entry_index(key[0], key[1], tree_index)
                 if not f_present:
@@ -1980,7 +1980,7 @@ class DirState(object):
                                           ' tree_index, file_id and path')
             return entry
         else:
-            possible_keys = self._get_id_index().get(fileid_utf8, None)
+            possible_keys = self._get_id_index().get(fileid_utf8, ())
             if not possible_keys:
                 return None, None
             for key in possible_keys:
@@ -2785,8 +2785,11 @@ class DirState(object):
                     # loop.
                     other_entry = other_block[other_entry_index]
                     other_entry[1][0] = ('r', path_utf8, 0, False, '')
-                    self._maybe_remove_row(other_block, other_entry_index,
-                        id_index)
+                    if self._maybe_remove_row(other_block, other_entry_index,
+                                              id_index):
+                        # If the row holding this was removed, we need to
+                        # recompute where this entry goes
+                        entry_index, _ = self._find_entry_index(key, block)
 
                 # This loop:
                 # adds a tuple to the new details for each column
@@ -2833,7 +2836,7 @@ class DirState(object):
             # converted to relocated.
             if path_utf8 is None:
                 raise AssertionError('no path')
-            for entry_key in id_index.setdefault(key[2], set()):
+            for entry_key in id_index.get(key[2], ()):
                 # TODO:PROFILING: It might be faster to just update
                 # rather than checking if we need to, and then overwrite
                 # the one we are located at.
@@ -2863,6 +2866,7 @@ class DirState(object):
         """Remove index if it is absent or relocated across the row.
         
         id_index is updated accordingly.
+        :return: True if we removed the row, False otherwise
         """
         present_in_row = False
         entry = block[index]
@@ -2873,6 +2877,8 @@ class DirState(object):
         if not present_in_row:
             block.pop(index)
             id_index[entry[0][2]].remove(entry[0])
+            return True
+        return False
 
     def _validate(self):
         """Check that invariants on the dirblock are correct.
