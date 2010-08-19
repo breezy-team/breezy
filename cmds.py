@@ -557,12 +557,11 @@ class cmd_merge_upstream(Command):
                 else:
                     raise BzrCommandError("No location specified to merge")
             changelog = None
+            current_version = last_version
             try:
                 changelog = find_changelog(tree, False, max_blocks=2)[0]
                 if last_version is None:
-                    current_version = changelog.version
-                else:
-                    current_version = Version(last_version)
+                    current_version = changelog.version.upstream_version
                 if package is None:
                     package = changelog.package
                 if distribution is None:
@@ -570,7 +569,7 @@ class cmd_merge_upstream(Command):
                     if distribution is not None:
                         note("Using distribution %s" % distribution)
             except MissingChangelogError:
-                current_version = None
+                pass
             if distribution is None:
                 note("No distribution specified, and no changelog, "
                         "assuming 'debian'")
@@ -613,35 +612,32 @@ class cmd_merge_upstream(Command):
 
             if version is None:
                 if upstream_branch and no_tarball:
-                    version = upstream_branch_version(upstream_branch,
+                    version = str(upstream_branch_version(upstream_branch,
                             upstream_revision, package,
-                            current_version.upstream_version)
+                            current_version))
                     note("Using version string %s for upstream branch." % (version))
                 else:
                     raise BzrCommandError("You must specify the "
                             "version number using --version.")
 
-            version = Version(version)
             orig_dir = config.orig_dir or default_orig_dir
             orig_dir = os.path.join(tree.basedir, orig_dir)
             if not os.path.exists(orig_dir):
                 os.makedirs(orig_dir)
             if upstream_branch and no_tarball:
                 # TODO: a way to use bz2 on export
-                dest_name = tarball_name(package, version.upstream_version)
+                dest_name = tarball_name(package, version)
                 tarball_filename = os.path.join(orig_dir, dest_name)
                 upstream = UpstreamBranchSource(upstream_branch,
-                        {version.upstream_version: upstream_revision})
-                upstream.get_specific_version(package,
-                        version.upstream_version, orig_dir)
+                        {version: upstream_revision})
+                upstream.get_specific_version(package, version, orig_dir)
             else:
                 format = None
                 if v3:
                     if (location.endswith(".tar.bz2")
                             or location.endswith(".tbz2")):
                         format = "bz2"
-                dest_name = tarball_name(package, version.upstream_version,
-                        format=format)
+                dest_name = tarball_name(package, version, format=format)
                 tarball_filename = os.path.join(orig_dir, dest_name)
                 try:
                     repack_tarball(location, dest_name, target_dir=orig_dir,

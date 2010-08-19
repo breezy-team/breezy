@@ -150,48 +150,45 @@ def upstream_tag_to_version(tag_name, package=None):
     return None
 
 
-def package_version(merged_version, distribution_name):
-    """Determine the package version from the merged version.
+def package_version(upstream_version, distribution_name):
+    """Determine the package version for a new upstream.
 
-    :param merged_version: Merged version string
+    :param upstream_version: Upstream version string
     :param distribution_name: Distribution the package is for
     """
-    ret = Version(merged_version)
-    if merged_version.debian_version is not None:
-        prev_packaging_revnum = int("".join(itertools.takewhile(
-                        lambda x: x.isdigit(),
-                        merged_version.debian_version)))
-    else:
-        prev_packaging_revnum = 0
+    assert isinstance(upstream_version, str), \
+        "upstream_version should be a str, not %s" % str(
+                type(upstream_version))
     if distribution_name == "ubuntu":
-        ret.debian_version = "%dubuntu1" % prev_packaging_revnum
+        ret = Version("%s-0ubuntu1" % upstream_version)
     else:
-        ret.debian_version = "%d" % (prev_packaging_revnum+1)
+        ret = Version("%s-1" % upstream_version)
     return ret
 
 
-def changelog_add_new_version(tree, version, distribution_name, changelog,
-        package):
+def changelog_add_new_version(tree, upstream_version, distribution_name,
+        changelog, package):
     """Add an entry to the changelog for a new version.
 
     :param tree: WorkingTree in which the package lives
-    :param version: Version to add
+    :param upstream_version: Upstream version to add
     :param distribution_name: Distribution name (debian, ubuntu, ...)
     :param changelog: Changelog object
     :param package: Package name
     :return: Whether an entry was successfully added
     """
-    from bzrlib.plugins.builddeb.merge_upstream import package_version
-    if "~bzr" in str(version) or "+bzr" in str(version):
+    assert isinstance(upstream_version, str), \
+         "upstream_version should be a str, not %s" % str(
+                 type(upstream_version))
+    if "~bzr" in str(upstream_version) or "+bzr" in str(upstream_version):
         entry_description = "New upstream snapshot."
     else:
         entry_description = "New upstream release."
     proc = subprocess.Popen(["dch", "-v",
-            str(package_version(version, distribution_name)),
+            str(package_version(upstream_version, distribution_name)),
             "-D", "UNRELEASED", "--release-heuristic", "changelog",
             entry_description], cwd=tree.basedir)
     proc.wait()
     # FIXME: Raise insightful exception here rather than just checking
     # return code.
     return proc.returncode == 0
-

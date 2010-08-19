@@ -148,17 +148,17 @@ class TestUpstreamTagToVersion(TestCase):
 class TestPackageVersion(TestCase):
 
   def test_simple_debian(self):
-    self.assertEquals(Version("1.2-1"), 
-        package_version(Version("1.2"), "debian"))
+    self.assertEquals(Version("1.2-1"),
+        package_version("1.2", "debian"))
 
   def test_simple_ubuntu(self):
-    self.assertEquals(Version("1.2-0ubuntu1"), 
-        package_version(Version("1.2"), "ubuntu"))
+    self.assertEquals(Version("1.2-0ubuntu1"),
+        package_version("1.2", "ubuntu"))
 
-  def test_debian_merges_ubuntu(self):
-    self.assertEquals(Version("1.2-1"), 
-        package_version(Version("1.2-0ubuntu1"), "debian"))
+  def test_debian_with_dash(self):
+    self.assertEquals(Version("1.2-0ubuntu1-1"),
+        package_version("1.2-0ubuntu1", "debian"))
 
-  def test_ubuntu_merges_debian(self):
-    self.assertEquals(Version("1.2-1ubuntu1"), 
-        package_version(Version("1.2-1"), "ubuntu"))
+  def test_ubuntu_with_dash(self):
+    self.assertEquals(Version("1.2-1-0ubuntu1"),
+        package_version("1.2-1", "ubuntu"))

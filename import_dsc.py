@@ -1461,13 +1461,14 @@ class DistributionBranch(object):
     _revid_of_upstream_version_from_branch = revid_of_upstream_version_from_branch
 
     def _export_previous_upstream_tree(self, previous_version, tempdir, upstream_branch=None):
-        previous_upstream_revision = get_snapshot_revision(previous_version.upstream_version)
-        if self.has_upstream_version_in_packaging_branch(
-                previous_version.upstream_version):
+        assert isinstance(previous_version, str), \
+            "Should pass upstream version as str, not Version."
+        previous_upstream_revision = get_snapshot_revision(previous_version)
+        if self.has_upstream_version_in_packaging_branch(previous_version):
             upstream_tip = self.revid_of_upstream_version_from_branch(
-                    previous_version.upstream_version)
+                    previous_version)
             self.extract_upstream_tree(upstream_tip, tempdir)
-        elif (upstream_branch is not None and 
+        elif (upstream_branch is not None and
               previous_upstream_revision is not None):
             upstream_tip = RevisionSpec.from_string(previous_upstream_revision).as_revision_id(upstream_branch)
             assert isinstance(upstream_tip, str)
@@ -1476,34 +1477,38 @@ class DistributionBranch(object):
             raise BzrCommandError("Unable to find the tag for the "
                     "previous upstream version, %s, in the branch: "
                     "%s" % (
-                previous_version.upstream_version,
-                self.upstream_tag_name(
-                    previous_version.upstream_version)))
+                previous_version,
+                self.upstream_tag_name(previous_version)))
 
     def merge_upstream(self, tarball_filename, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None,
             force=False):
         assert self.upstream_branch is None, \
                 "Should use self.upstream_branch if set"
+        assert isinstance(version, str), \
+            "Should pass str not %s" % str(type(version))
+        assert isinstance(previous_version, str), \
+            "Should pass str not %s" % str(type(previous_version))
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
         try:
             if previous_version is not None:
                 self._export_previous_upstream_tree(previous_version, tempdir,
-                    upstream_branch) 
+                    upstream_branch)
             else:
                 self._create_empty_upstream_tree(tempdir)
-            if self.has_upstream_version_in_packaging_branch(version.upstream_version):
+            if self.has_upstream_version_in_packaging_branch(version):
                 raise UpstreamAlreadyImported(version)
             if upstream_branch is not None:
                 upstream_branch.lock_read()
             try:
-                if upstream_revision is None:
-                    upstream_revision = upstream_branch.last_revision()
-                graph = self.branch.repository.get_graph(
-                        other_repository=upstream_branch.repository)
-                if not force and graph.is_ancestor(upstream_revision,
-                        self.branch.last_revision()):
-                    raise UpstreamBranchAlreadyMerged
+                if upstream_branch is not None:
+                    if upstream_revision is None:
+                        upstream_revision = upstream_branch.last_revision()
+                    graph = self.branch.repository.get_graph(
+                            other_repository=upstream_branch.repository)
+                    if not force and graph.is_ancestor(upstream_revision,
+                            self.branch.last_revision()):
+                        raise UpstreamBranchAlreadyMerged
                 tarball_filename = os.path.abspath(tarball_filename)
                 md5sum = md5sum_filename(tarball_filename)
                 tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)
@@ -1513,7 +1518,7 @@ class DistributionBranch(object):
                     if self.upstream_branch.last_revision() != NULL_REVISION:
                         parents = [self.upstream_branch.last_revision()]
                     _, new_revid = self.import_upstream(tarball_dir,
-                            version.upstream_version,
+                            version,
                             md5sum, parents, upstream_tarball=tarball_filename,
                             upstream_branch=upstream_branch,
                             upstream_revision=upstream_revision)

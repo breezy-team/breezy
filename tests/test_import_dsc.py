@@ -1499,8 +1499,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
-                Version("0.1"))
+        conflicts = db.merge_upstream(tarball_filename, "0.2", "0.1")
         self.assertEqual(0,  conflicts)
 
     def test_merge_upstream_initial_with_branch(self):
@@ -1537,8 +1536,8 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
-                Version("0.1"), upstream_branch=upstream_tree.branch,
+        conflicts = db.merge_upstream(tarball_filename, "0.2", "0.1",
+                upstream_branch=upstream_tree.branch,
                 upstream_revision=upstream_rev)
         self.assertEqual(0,  conflicts)
 
@@ -1577,8 +1576,8 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream(tarball_filename, Version("0.2"),
-                Version("0.1"), upstream_branch=upstream_tree.branch,
+        conflicts = db.merge_upstream(tarball_filename, "0.2", "0.1",
+                upstream_branch=upstream_tree.branch,
                 upstream_revision=upstream_rev)
         # ./debian conflicts.
         self.assertEqual(3,  conflicts)
@@ -1618,7 +1617,8 @@ class DistributionBranchTests(BuilddebTestCase):
         dbs.add_branch(db)
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        db.merge_upstream(builder.tar_name(), version2, version1,
+        db.merge_upstream(builder.tar_name(), str(version2),
+            version1.upstream_version,
             upstream_branch=upstream_tree.branch,
             upstream_revision=upstream_rev)
         rh1 = tree.branch.revision_history()
@@ -1630,6 +1630,35 @@ class DistributionBranchTests(BuilddebTestCase):
         self.assertEqual(upstream_rev, revtree.get_parent_ids()[1])
         # And the file has the new id in our tree
         self.assertEqual("a-id", tree.path2id("a"))
+
+    def test_merge_upstream_with_dash_in_version_number(self):
+        tree = self.make_branch_and_tree('work')
+        self.build_tree(['work/a'])
+        tree.add(['a'])
+        orig_upstream_rev = tree.commit("one")
+        tree.branch.tags.set_tag("upstream-0.1", orig_upstream_rev)
+        self.build_tree(['work/debian/'])
+        cl = self.make_changelog(version="0.1-1")
+        self.write_changelog(cl, 'work/debian/changelog')
+        tree.add(['debian/', 'debian/changelog'])
+        orig_debian_rev = tree.commit("two")
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tarball_filename = "package-0.2.tar.gz"
+        tf = tarfile.open(tarball_filename, 'w:gz')
+        try:
+            f = open("a", "wb")
+            try:
+                f.write("aaa")
+            finally:
+                f.close()
+            tf.add("a")
+        finally:
+            tf.close()
+        conflicts = db.merge_upstream(tarball_filename, "0.2-1", "0.1")
+        # Check that we tagged wiht the dash version
+        self.assertTrue(tree.branch.tags.has_tag('upstream-0.2-1'))
 
     def test_import_symlink(self):
         version = Version("1.0-1")

@@ -6,6 +6,11 @@ bzr-builddeb (2.6) unstable; urgency=low
     if we can't find the tarball.
   * Don't crash if we are asked to merge-upstream with an unrelated branch.
     LP: #619614.
+  * Don't strip -n from the version we get in merge-upstream, as some
+    upstreams have this in there, and trying to support both means supporting
+    both badly. If you are used to doing "bzr merge-upstream --version
+    <package version>" then it will no longer work for you, use the
+    upstream version instead.
 
  -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
 
