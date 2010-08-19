@@ -44,12 +44,28 @@ New Features
 Bug Fixes
 *********
 
-* Check if both --diff-options and --using are set, and exit with error
-  in this case. (Matthäus G. Chajdas, #234708)
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.  
+  (Martin Pool, #192859)
+
+* ``bzr ignore PATTERNS`` exits with error if a bad pattern is supplied.
+  ``InvalidPattern`` exception error message now shows faulting
+  regular expression.
+  (Parth Malwankar #300062)
 
 * ``clean-tree`` issues a warning if it is unable to delete a file
   due to ``errno.EACCES`` instead of exiting with an error on Windows.
   (Parth Malwankar, #430785)
+
+* Check if both --diff-options and --using are set, and exit with error
+  in this case. (Matthäus G. Chajdas, #234708)
+
+* CommitBuilder now uses the committer instead of _config.username to generate
+  the revision-id.  (Aaron Bentley, #614404)
+
+* Cope with Microsoft FTP server that returns reply '250 Directory
+  created' when mkdir succeeds.  (Martin Pool, #224373)
 
 * Decrease peak memory during ``bzr send``. The old code was caching all
   text content and all inventory strings for all revisions before
@@ -60,7 +76,11 @@ Bug Fixes
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
 
-* ``HTTP/1.1` test servers now set a ``Content-Length`` header to comply
+* Fix ``AttributeError on parent.children`` when adding a file under a 
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
+
+* ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
   with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
 
 * `PathNotChild` should not give a traceback.
@@ -92,14 +112,17 @@ Improvements
 Documentation
 *************
 
-* First tests defined for sphinx, including a new bzrlib.tests.features.sphinx
-  to make the tests conditional.
-  (Vincent Ladeuil)
-
 * Added a builder/writer sphinx extension that can generate texinfo files. The
   generated files are syntactically correct but the info navigation nodes
   needs more work. (Vincent Ladeuil, #219334)
 
+* First tests defined for sphinx, including a new bzrlib.tests.features.sphinx
+  to make the tests conditional.
+  (Vincent Ladeuil)
+
+* Fix a lot of references in the docs to the old http://bazaar-vcs.org to
+  the new http://bazaar.canonical.com or http://wiki.bazaar.canonical.com
+  (John Arbash Meinel, #617503)
 
 API Changes
 ***********
@@ -119,6 +142,9 @@ API Changes
 Internals
 *********
 
+* Remove used and broken code path in ``BranchInitHookParams.__repr__``.
+  (Andrew Bennetts)
+
 Testing
 *******
 
@@ -129,6 +155,44 @@ Testing
   parallel because a series of slow tests in the test suite will be
   distributed evenly among the parallel test suites, rather than slowing
   down just one suite.  (Andrew Bennetts)
+
+
+bzr 2.2.1
+#########
+
+:Codename: ??
+:2.2.1: NOT RELEASED YET
+
+Bug Fixes
+*********
+
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.  
+  (Martin Pool, #192859)
+
+* CommitBuilder now uses the committer instead of _config.username to generate
+  the revision-id.  (Aaron Bentley, #614404)
+
+* Cope with Microsoft FTP server that returns reply '250 Directory
+  created' when mkdir succeeds.  (Martin Pool, #224373)
+
+* Fix ``AttributeError on parent.children`` when adding a file under a 
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
+
+Documentation
+*************
+
+* Fix a lot of references in the docs to the old http://bazaar-vcs.org to
+  the new http://bazaar.canonical.com or http://wiki.bazaar.canonical.com
+  (John Arbash Meinel, #617503)
+
+Internals
+*********
+
+* Remove used and broken code path in ``BranchInitHookParams.__repr__``.
+  (Andrew Bennetts)
 
 
 bzr 2.2
@@ -184,7 +248,7 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
-* ``HTTP/1.1` test servers now set a ``Content-Length`` header to comply
+* ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
   with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
 
 * Progress bars prefer to truncate the text message rather than the
@@ -1173,10 +1237,10 @@ New Features
 Bug Fixes
 *********
 
-* ``bzr ignore PATTERNS`` exits with error if a bad pattern is supplied.
-  ``InvalidPattern`` exception error message now shows faulting
-  regular expression.
-  (Parth Malwankar #300062)
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.  
+  (Martin Pool, #192859)
 
 * Configuration files in ``${BZR_HOME}`` are now written in an atomic
   way which should help avoid problems with concurrent writers.
@@ -1185,8 +1249,9 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
-* ``HTTP/1.1` test servers now set a ``Content-Length`` header to comply
-  with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
+* Fix ``AttributeError on parent.children`` when adding a file under a 
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
 
 * Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
   which can result in "missing referenced chk root keys" errors when
@@ -1718,6 +1783,11 @@ Bug Fixes
   history no longer crash when deleted files are involved.
   (Vincent Ladeuil, John Arbash Meinel, #375898)
 
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.  
+  (Martin Pool, #192859)
+
 * ``bzr commit SYMLINK`` now works, rather than trying to commit the
   target of the symlink.
   (Martin Pool, John Arbash Meinel, #128562)
@@ -1732,6 +1802,10 @@ Bug Fixes
 
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
+
+* Fix ``AttributeError on parent.children`` when adding a file under a 
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
 
 * Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
   which can result in "missing referenced chk root keys" errors when

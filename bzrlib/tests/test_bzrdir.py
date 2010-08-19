@@ -1401,3 +1401,13 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertIsInstance(params, RepoInitHookParams)
         self.assertTrue(hasattr(params, 'bzrdir'))
         self.assertTrue(hasattr(params, 'repository'))
+
+    def test_post_repo_init_hook_repr(self):
+        param_reprs = []
+        bzrdir.BzrDir.hooks.install_named_hook('post_repo_init',
+            lambda params: param_reprs.append(repr(params)), None)
+        self.make_repository('foo')
+        self.assertLength(1, param_reprs)
+        param_repr = param_reprs[0]
+        self.assertStartsWith(param_repr, '<RepoInitHookParams for ')
+
