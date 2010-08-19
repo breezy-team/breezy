@@ -23,10 +23,10 @@ import string
 import unittest
 
 try:
-    from debian_bundle.changelog import Version
+    from debian.changelog import Version
 except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
-    from debian.changelog import Version
+    from debian_bundle.changelog import Version
 
 from bzrlib.tests import TestCaseWithTransport
 
