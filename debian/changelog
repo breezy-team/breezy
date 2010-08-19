@@ -1,3 +1,10 @@
+bzr-builddeb (2.6) unstable; urgency=low
+
+  * Don't fail if asked to use a .bz2 tarball that is already in the desired
+    location. LP: #616786
+
+ -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
+
 bzr-builddeb (2.5) unstable; urgency=low
 
   [ Colin Watson ]

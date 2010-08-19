@@ -123,25 +123,32 @@ class ZipTgzRepacker(TgzRepacker):
             zip.close()
 
 
+def get_filetype(filename):
+    types = [".tar.gz", ".tgz", ".tar.bz2", ".tbz2", ".tar", ".zip"]
+    for filetype in types:
+        if filename.endswith(filetype):
+            return filetype
+
+
 def get_repacker_class(source_filename, force_gz=True):
     """Return the appropriate repacker based on the file extension."""
-    if (source_filename.endswith(".tar.gz")
-            or source_filename.endswith(".tgz")):
+    filetype = get_filetype(source_filename)
+    if (filetype == ".tar.gz" or filetype == ".tgz"):
         return TgzTgzRepacker
-    if (source_filename.endswith(".tar.bz2")
-            or source_filename.endswith(".tbz2")):
+    if (filetype == ".tar.bz2" or filetype == ".tbz2"):
         if force_gz:
             return Tbz2TgzRepacker
         return TgzTgzRepacker
-    if source_filename.endswith(".tar"):
+    if filetype == ".tar":
         return TarTgzRepacker
-    if source_filename.endswith(".zip"):
+    if filetype == ".zip":
         return ZipTgzRepacker
     return None
 
 
-def _error_if_exists(target_transport, new_name, source_name):
-    if not source_name.endswith('.tar.gz'):
+def _error_if_exists(target_transport, new_name, source_name, force_gz=True):
+    source_filetype = get_filetype(source_name)
+    if force_gz and source_filetype != ".tar.gz":
         raise FileExists(new_name)
     source_f = open_file(source_name)
     try:
@@ -226,7 +233,8 @@ def repack_tarball(source_name, new_name, target_dir=None, force_gz=True):
     extra, new_name = os.path.split(new_name)
     target_transport = get_transport(os.path.join(target_dir, extra))
     if target_transport.has(new_name):
-        _error_if_exists(target_transport, new_name, source_name)
+        _error_if_exists(target_transport, new_name, source_name,
+                force_gz=force_gz)
         return
     if os.path.isdir(source_name):
         _repack_directory(target_transport, new_name, source_name)
