@@ -2836,7 +2836,6 @@ class DirState(object):
             # converted to relocated.
             if path_utf8 is None:
                 raise AssertionError('no path')
-            assert key in id_index[key[2]]
             for entry_key in id_index.get(key[2], ()):
                 # TODO:PROFILING: It might be faster to just update
                 # rather than checking if we need to, and then overwrite
@@ -2854,7 +2853,6 @@ class DirState(object):
                         raise AssertionError('not present: %r', entry_key)
                     self._dirblocks[block_index][1][entry_index][1][0] = \
                         ('r', path_utf8, 0, False, '')
-            assert key in id_index[key[2]]
         # add a containing dirblock if needed.
         if new_details[0] == 'd':
             subdir_key = (osutils.pathjoin(*key[0:2]), '', '')
