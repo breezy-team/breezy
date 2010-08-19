@@ -19,7 +19,11 @@ import errno
 import os
 import shutil
 
-from bzrlib import bzrdir, errors, ui
+from bzrlib import (
+    bzrdir,
+    errors,
+    ui,
+    )
 from bzrlib.osutils import isdir
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
@@ -109,13 +113,13 @@ def delete_items(deletables, dry_run=False):
             else:
                 try:
                     os.unlink(path)
+                    note('  ' + subp)
                 except OSError, e:
                     # We handle only permission error here
                     if e.errno != errno.EACCES:
                         raise e
                     ui.ui_factory.show_warning(
-                        'unable to remove %s: %s' % (path, e.strerror))
-            note('  ' + subp)
+                        'unable to remove "%s": %s.' % (path, e.strerror))
         else:
             note('  ' + subp)
     if not has_deleted:

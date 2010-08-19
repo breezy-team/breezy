@@ -85,15 +85,23 @@ class TestCleanTree(TestCaseInTempDir):
         """Ensure delete_items issues warnings on OSError. (bug #430785)
         """
         def _dummy_unlink(path):
+            """unlink() files other than files named '0foo'.
+            """
             if path.endswith('0foo'):
-                # simulate 'permission denied' error.
+                # Simulate 'permission denied' error.
+                # This should show up as a warning for the
+                # user.
                 e = OSError()
                 e.errno = errno.EACCES
                 raise e
 
         def _dummy_rmtree(path, ignore_errors=False, onerror=None):
-            self.assertTrue(onerror, types.FunctionType)
-            # Indicate failure in removing 0rmtree_error
+            """Use 'onerror' instead of actually doing rmtree.
+            """
+            self.assertTrue(isinstance(onerror, types.FunctionType))
+            # Indicate failure in removing '0rmtree_error'
+            # We later check to ensure that this is indicated
+            # to the user as a warning.
             onerror(function=None, path="0rmtree_error", excinfo=None)
 
         self.overrideAttr(os, 'unlink', _dummy_unlink)
@@ -101,15 +109,10 @@ class TestCleanTree(TestCaseInTempDir):
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdout=stdout, stderr=stderr)
-        os.mkdir('branch')
-        BzrDir.create_standalone_workingtree('branch')
-        files = ['0foo', '1bar', '2baz']
-        os.chdir('branch')
-        for f in files:
-            open(f, 'w').close()
-        os.mkdir('subdir')
+        BzrDir.create_standalone_workingtree('.')
+        self.build_tree(['0foo', '1bar', '2baz', 'subdir/'])
         clean_tree('.', unknown=True, no_prompt=True)
         self.assertContainsRe(stderr.getvalue(),
-            'bzr: warning: unable to remove.*branch/0foo')
+            'bzr: warning: unable to remove.*0foo')
         self.assertContainsRe(stderr.getvalue(),
             'bzr: warning: unable to remove.*0rmtree_error')
