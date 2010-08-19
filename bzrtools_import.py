@@ -252,6 +252,12 @@ def _import_archive(tree, archive_file, file_ids_from):
                 if found_file_id != existing_file_id:
                     # Found a specific file id in one of the source trees
                     tt.version_file(found_file_id, trans_id)
+                    if existing_file_id is not None:
+                        # We need to remove the existing file so it can be
+                        # replaced by the file (and file id) from the
+                        # file_ids_from tree.
+                        tt.delete_versioned(trans_id)
+                    trans_id = tt.trans_id_file_id(found_file_id)
                 break
         if not found_file_id and not existing_file_id:
             # No file_id in any of the source trees and no file id in the base
