@@ -1494,16 +1494,16 @@ class DistributionBranch(object):
                 self._create_empty_upstream_tree(tempdir)
             if self.has_upstream_version_in_packaging_branch(version.upstream_version):
                 raise UpstreamAlreadyImported(version)
+            if upstream_branch is not None:
+                upstream_branch.lock_read()
             try:
-                if upstream_branch is not None:
-                    upstream_branch.lock_read()
-                    if upstream_revision is None:
-                        upstream_revision = upstream_branch.last_revision()
-                    graph = self.branch.repository.get_graph(
-                            other_repository=upstream_branch.repository)
-                    if not force and graph.is_ancestor(upstream_revision,
-                            self.branch.last_revision()):
-                        raise UpstreamBranchAlreadyMerged
+                if upstream_revision is None:
+                    upstream_revision = upstream_branch.last_revision()
+                graph = self.branch.repository.get_graph(
+                        other_repository=upstream_branch.repository)
+                if not force and graph.is_ancestor(upstream_revision,
+                        self.branch.last_revision()):
+                    raise UpstreamBranchAlreadyMerged
                 tarball_filename = os.path.abspath(tarball_filename)
                 md5sum = md5sum_filename(tarball_filename)
                 tarball_dir = self._extract_tarball_to_tempdir(tarball_filename)

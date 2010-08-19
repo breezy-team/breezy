@@ -211,101 +211,110 @@ def import_archive(tree, archive_file, file_ids_from=None):
 def _import_archive(tree, archive_file, file_ids_from):
     prefix = common_directory(names_of_files(archive_file))
     tt = TreeTransform(tree)
-    removed = set()
-    for path, entry in tree.inventory.iter_entries():
-        if entry.parent_id is None:
-            continue
-        trans_id = tt.trans_id_tree_path(path)
-        tt.delete_contents(trans_id)
-        removed.add(path)
+    try:
+        removed = set()
+        for path, entry in tree.inventory.iter_entries():
+            if entry.parent_id is None:
+                continue
+            trans_id = tt.trans_id_tree_path(path)
+            tt.delete_contents(trans_id)
+            removed.add(path)
 
-    added = set()
-    implied_parents = set()
-    seen = set()
-    for member in archive_file.getmembers():
-        if member.type == 'g':
-            # type 'g' is a header
-            continue
-        relative_path = member.name
-        relative_path = normpath(relative_path)
-        relative_path = relative_path.lstrip('/')
-        if prefix is not None:
-            relative_path = relative_path[len(prefix)+1:]
-            relative_path = relative_path.rstrip('/')
-        if relative_path == '' or relative_path == '.':
-            continue
-        if should_ignore(relative_path):
-            continue
-        add_implied_parents(implied_parents, relative_path)
-        trans_id = tt.trans_id_tree_path(relative_path)
-        added.add(relative_path.rstrip('/'))
-        # To handle renames, we need to not use the preserved file id, rather
-        # we need to lookup the file id in a from_tree, if there is one. If
-        # there isn't, we should use the one in the current tree, and failing
-        # that we will allocate one. In this importer we want the file_ids_from
-        # tree to authoritative about id2path, which is why we consult it
-        # first.
-        existing_file_id = tt.tree_file_id(trans_id)
-        for other_tree in file_ids_from:
-            found_file_id = other_tree.path2id(relative_path)
-            if found_file_id:
-                if found_file_id != existing_file_id:
-                    # Found a specific file id in one of the source trees
-                    tt.version_file(found_file_id, trans_id)
-                break
-        if not found_file_id and not existing_file_id:
-            # No file_id in any of the source trees and no file id in the base
-            # tree.
-            name = basename(member.name.rstrip('/'))
-            file_id = generate_ids.gen_file_id(name)
-            tt.version_file(file_id, trans_id)
-        path = tree.abspath(relative_path)
-        if member.name in seen:
-            if tt.final_kind(trans_id) == 'file':
-                tt.set_executability(None, trans_id)
-            tt.cancel_creation(trans_id)
-        seen.add(member.name)
-        if member.isreg():
-            tt.create_file(file_iterator(archive_file.extractfile(member)),
-                           trans_id)
-            executable = (member.mode & 0111) != 0
-            tt.set_executability(executable, trans_id)
-        elif member.isdir():
-            do_directory(tt, trans_id, tree, relative_path, path)
-        elif member.issym():
-            tt.create_symlink(member.linkname, trans_id)
-        else:
-            raise UnknownType(relative_path)
-
-    for relative_path in implied_parents.difference(added):
-        if relative_path == "":
-            continue
-        trans_id = tt.trans_id_tree_path(relative_path)
-        path = tree.abspath(relative_path)
-        do_directory(tt, trans_id, tree, relative_path, path)
-        if tt.tree_file_id(trans_id) is None:
-            found = False
+        added = set()
+        implied_parents = set()
+        seen = set()
+        for member in archive_file.getmembers():
+            if member.type == 'g':
+                # type 'g' is a header
+                continue
+            relative_path = member.name
+            relative_path = normpath(relative_path)
+            relative_path = relative_path.lstrip('/')
+            if prefix is not None:
+                relative_path = relative_path[len(prefix)+1:]
+                relative_path = relative_path.rstrip('/')
+            if relative_path == '' or relative_path == '.':
+                continue
+            if should_ignore(relative_path):
+                continue
+            add_implied_parents(implied_parents, relative_path)
+            trans_id = tt.trans_id_tree_path(relative_path)
+            added.add(relative_path.rstrip('/'))
+            # To handle renames, we need to not use the preserved file id, rather
+            # we need to lookup the file id in a from_tree, if there is one. If
+            # there isn't, we should use the one in the current tree, and failing
+            # that we will allocate one. In this importer we want the file_ids_from
+            # tree to authoritative about id2path, which is why we consult it
+            # first.
+            existing_file_id = tt.tree_file_id(trans_id)
             for other_tree in file_ids_from:
-                other_tree.lock_read()
-                try:
-                    if other_tree.has_filename(relative_path):
-                        file_id = other_tree.path2id(relative_path)
-                        if file_id is not None:
-                            tt.version_file(file_id, trans_id)
-                            found = True
-                            break
-                finally:
-                    other_tree.unlock()
-            if not found:
-                tt.version_file(trans_id, trans_id)
-        added.add(relative_path)
+                found_file_id = other_tree.path2id(relative_path)
+                if found_file_id:
+                    if found_file_id != existing_file_id:
+                        # Found a specific file id in one of the source trees
+                        tt.version_file(found_file_id, trans_id)
+                        if existing_file_id is not None:
+                            # We need to remove the existing file so it can be
+                            # replaced by the file (and file id) from the
+                            # file_ids_from tree.
+                            tt.delete_versioned(trans_id)
+                        trans_id = tt.trans_id_file_id(found_file_id)
+                    break
+            if not found_file_id and not existing_file_id:
+                # No file_id in any of the source trees and no file id in the base
+                # tree.
+                name = basename(member.name.rstrip('/'))
+                file_id = generate_ids.gen_file_id(name)
+                tt.version_file(file_id, trans_id)
+            path = tree.abspath(relative_path)
+            if member.name in seen:
+                if tt.final_kind(trans_id) == 'file':
+                    tt.set_executability(None, trans_id)
+                tt.cancel_creation(trans_id)
+            seen.add(member.name)
+            if member.isreg():
+                tt.create_file(file_iterator(archive_file.extractfile(member)),
+                               trans_id)
+                executable = (member.mode & 0111) != 0
+                tt.set_executability(executable, trans_id)
+            elif member.isdir():
+                do_directory(tt, trans_id, tree, relative_path, path)
+            elif member.issym():
+                tt.create_symlink(member.linkname, trans_id)
+            else:
+                raise UnknownType(relative_path)
 
-    for path in removed.difference(added):
-        tt.unversion_file(tt.trans_id_tree_path(path))
+        for relative_path in implied_parents.difference(added):
+            if relative_path == "":
+                continue
+            trans_id = tt.trans_id_tree_path(relative_path)
+            path = tree.abspath(relative_path)
+            do_directory(tt, trans_id, tree, relative_path, path)
+            if tt.tree_file_id(trans_id) is None:
+                found = False
+                for other_tree in file_ids_from:
+                    other_tree.lock_read()
+                    try:
+                        if other_tree.has_filename(relative_path):
+                            file_id = other_tree.path2id(relative_path)
+                            if file_id is not None:
+                                tt.version_file(file_id, trans_id)
+                                found = True
+                                break
+                    finally:
+                        other_tree.unlock()
+                if not found:
+                    tt.version_file(trans_id, trans_id)
+            added.add(relative_path)
 
-    for conflict in cook_conflicts(resolve_conflicts(tt), tt):
-        warning(conflict)
-    tt.apply()
+        for path in removed.difference(added):
+            tt.unversion_file(tt.trans_id_tree_path(path))
+
+        for conflict in cook_conflicts(resolve_conflicts(tt), tt):
+            warning(conflict)
+        tt.apply()
+    finally:
+        tt.finalize()
 
 
 def do_import(source, tree_directory=None):

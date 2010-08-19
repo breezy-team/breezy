@@ -1583,6 +1583,54 @@ class DistributionBranchTests(BuilddebTestCase):
         # ./debian conflicts.
         self.assertEqual(3,  conflicts)
 
+    def test_merge_upstream_with_unrelated_branch(self):
+        """Check that we can merge-upstream with an unrelated branch.
+
+        We should do this by changing all the file ids to be the same
+        as in the upstream branch, which gives a discontinuity, but
+        makes for a better experience in the future.
+        """
+        self.requireFeature(PristineTarFeature)
+        version1 = Version("1.0-1")
+        version2 = Version("1.1-1")
+        builder = SourcePackageBuilder("package", version1)
+        builder.add_default_control()
+        builder.add_upstream_file("a", "Original a")
+        builder.build()
+        tree = self.make_branch_and_tree(".")
+        packaging_upstream_tree = self.make_branch_and_tree(
+            "packaging-upstream")
+        db = DistributionBranch(tree.branch, packaging_upstream_tree.branch,
+            tree=tree, upstream_tree=packaging_upstream_tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        db.import_package(builder.dsc_name())
+        builder.new_version(version2)
+        builder.add_upstream_file("a", "New a")
+        builder.build()
+        upstream_tree = self.make_branch_and_tree("upstream")
+        self.build_tree(['upstream/a'])
+        upstream_tree.add(['a'], ['a-id'])
+        upstream_tree.commit("one")
+        upstream_rev = upstream_tree.branch.last_revision()
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        db.merge_upstream(builder.tar_name(), version2, version1,
+            upstream_branch=upstream_tree.branch,
+            upstream_revision=upstream_rev)
+        rh1 = tree.branch.revision_history()
+        self.assertEqual(2, len(rh1))
+        packaging_upstream_tip = tree.get_parent_ids()[1]
+        # We added the extra parent for the upstream branch
+        revtree = tree.branch.repository.revision_tree(packaging_upstream_tip)
+        self.assertEqual(2, len(revtree.get_parent_ids()))
+        self.assertEqual(upstream_rev, revtree.get_parent_ids()[1])
+        # And the file has the new id in our tree
+        self.assertEqual("a-id", tree.path2id("a"))
+
     def test_import_symlink(self):
         version = Version("1.0-1")
         self.requireFeature(PristineTarFeature)
