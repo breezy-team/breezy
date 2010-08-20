@@ -94,6 +94,12 @@ Bug Fixes
 Improvements
 ************
 
+* ``bzr remove`` now just backs up changed files instead of exiting,
+  forcing you to choose to either keep or delete them. Bazaar will now delete
+  the files if they can easily be recovered using revert, otherwise they
+  will be backed up (adding an extention of the form .~#~).
+  (Marius Kruger, #400554)
+
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
   to 48).  (Andrew Bennetts)
