@@ -1984,7 +1984,7 @@ class BzrRemoveChangedFilesError(BzrError):
         "Use --keep to not delete them, or --force to delete them regardless.")
 
     def __init__(self, tree_delta):
-        symbol_versioning.warn(symbol_versioning.deprecated_in((2, 2, 0)) %
+        symbol_versioning.warn(symbol_versioning.deprecated_in((2, 3, 0)) %
             "BzrRemoveChangedFilesError", DeprecationWarning, stacklevel=2)
         BzrError.__init__(self)
         self.changes_as_text = tree_delta.get_changes_as_text()
