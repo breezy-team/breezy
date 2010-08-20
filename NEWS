@@ -44,6 +44,9 @@ New Features
 Bug Fixes
 *********
 
+* Allow using both --using and --diff-options. 
+  (Matthäus G. Chajdas, #234708)
+
 * ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
   previously-unversioned directory within the tree: the directory is
   marked versioned too.  
@@ -53,9 +56,6 @@ Bug Fixes
   ``InvalidPattern`` exception error message now shows faulting
   regular expression.
   (Parth Malwankar #300062)
-
-* Check if both --diff-options and --using are set, and exit with error
-  in this case. (Matthäus G. Chajdas, #234708)
 
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)

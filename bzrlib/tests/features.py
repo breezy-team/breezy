@@ -114,3 +114,4 @@ class ExecutableFeature(tests.Feature):
 
 bash_feature = ExecutableFeature('bash')
 sed_feature = ExecutableFeature('sed')
+diff_feature = ExecutableFeature('diff')
