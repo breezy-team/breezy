@@ -527,14 +527,158 @@ class cmd_merge_upstream(Command):
             distribution_opt, directory_opt, last_version_opt,
             force_opt, v3_opt, 'revision', 'merge-type']
 
+
+    def _add_changelog_entry(self, tree, package, version, distribution_name,
+            changelog):
+        from bzrlib.plugins.builddeb.merge_upstream import (
+            changelog_add_new_version)
+        if not changelog_add_new_version(tree, version, distribution_name,
+                changelog, package):
+            raise BzrCommandError('Adding a new changelog stanza after the '
+                    'merge had completed failed. Add the new changelog '
+                    'entry yourself, review the merge, and then commit.')
+
+    def _do_merge(self, tree, tarball_filename, version, current_version,
+            upstream_branch, upstream_revision, merge_type, force):
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        conflicts = db.merge_upstream(tarball_filename, version,
+                current_version, upstream_branch=upstream_branch,
+                upstream_revision=upstream_revision,
+                merge_type=merge_type, force=force)
+        return conflicts
+
+    def _export_tarball(self, package, version, orig_dir, upstream_branch,
+            upstream_revision):
+        # TODO: a way to use bz2 on export
+        dest_name = tarball_name(package, version)
+        tarball_filename = os.path.join(orig_dir, dest_name)
+        upstream = UpstreamBranchSource(upstream_branch,
+                {version: upstream_revision})
+        upstream.get_specific_version(package, version, orig_dir)
+        return tarball_filename
+
+    def _fetch_tarball(self, package, version, orig_dir, location, v3):
+        from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
+        format = None
+        if v3:
+            if (location.endswith(".tar.bz2")
+                    or location.endswith(".tbz2")):
+                format = "bz2"
+        dest_name = tarball_name(package, version, format=format)
+        tarball_filename = os.path.join(orig_dir, dest_name)
+        try:
+            repack_tarball(location, dest_name, target_dir=orig_dir,
+                    force_gz=not v3)
+        except FileExists:
+            raise BzrCommandError("The target file %s already exists, and is either "
+                                  "different to the new upstream tarball, or they "
+                                  "are of different formats. Either delete the target "
+                                  "file, or use it as the argument to import."
+                                  % dest_name)
+        return tarball_filename
+
+    def _get_tarball(self, config, tree, package, version, upstream_branch,
+            upstream_revision, no_tarball, v3, location):
+        orig_dir = config.orig_dir or default_orig_dir
+        orig_dir = os.path.join(tree.basedir, orig_dir)
+        if not os.path.exists(orig_dir):
+            os.makedirs(orig_dir)
+        if upstream_branch and no_tarball:
+            tarball_filename = self._export_tarball(package, version,
+                orig_dir, upstream_branch, upstream_revision)
+        else:
+            tarball_filename = self._fetch_tarball(package, version, orig_dir,
+                location, v3)
+        return tarball_filename
+
+    def _get_version(self, version, package, no_tarball, upstream_branch,
+            upstream_revision, current_version):
+        from bzrlib.plugins.builddeb.merge_upstream import (
+            upstream_branch_version)
+        if version is None:
+            if upstream_branch and no_tarball:
+                version = str(upstream_branch_version(upstream_branch,
+                        upstream_revision, package,
+                        current_version))
+                note("Using version string %s for upstream branch." % (version))
+            else:
+                raise BzrCommandError("You must specify the "
+                        "version number using --version.")
+        return version
+
+    def _get_upstream_revision(self, upstream_branch, revision):
+        upstream_revision = None
+        if upstream_branch is not None:
+            if revision is not None:
+                if len(revision) > 1:
+                    raise BzrCommandError("merge-upstream takes only a single --revision")
+                upstream_revspec = revision[0]
+                upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
+            else:
+                upstream_revision = upstream_branch.last_revision()
+        return upstream_revision
+
+    def _get_upstream_branch(self, location, upstream_branch, revision):
+        no_tarball = False
+        if upstream_branch is None:
+            try:
+                upstream_branch = Branch.open(location)
+                no_tarball = True
+            except NotBranchError:
+                upstream_branch = None
+                if revision is not None:
+                    raise BzrCommandError("--revision is not allowed when"
+                            " merging only a tarball")
+        else:
+            upstream_branch = Branch.open(upstream_branch)
+        return no_tarball, upstream_branch
+
+    def _get_changelog_info(self, tree, last_version, package, distribution):
+        from bzrlib.plugins.builddeb.errors import MissingChangelogError
+        changelog = None
+        current_version = last_version
+        try:
+            changelog = find_changelog(tree, False, max_blocks=2)[0]
+            if last_version is None:
+                current_version = changelog.version.upstream_version
+            if package is None:
+                package = changelog.package
+            if distribution is None:
+                distribution = find_last_distribution(changelog)
+                if distribution is not None:
+                    note("Using distribution %s" % distribution)
+        except MissingChangelogError:
+            pass
+        if distribution is None:
+            note("No distribution specified, and no changelog, "
+                    "assuming 'debian'")
+            distribution = "debian"
+        if package is None:
+            raise BzrCommandError("You did not specify --package, and "
+                    "there is no changelog from which to determine the "
+                    "package name, which is needed to know the name to "
+                    "give the .orig.tar.gz. Please specify --package.")
+        distribution = distribution.lower()
+        distribution_name = lookup_distribution(distribution)
+        if distribution_name is None:
+            raise BzrCommandError("Unknown target distribution: %s" \
+                        % distribution)
+        return current_version, package, distribution, distribution_name, changelog
+
+    def _get_upstream_location(self, location, config):
+        if location is None:
+            if config.upstream_branch is not None:
+                location = config.upstream_branch
+            else:
+                raise BzrCommandError("No location specified to merge")
+        return location
+
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
             last_version=None, force=None, v3=None):
-        from bzrlib.plugins.builddeb.errors import MissingChangelogError
-        from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
-        from bzrlib.plugins.builddeb.merge_upstream import (changelog_add_new_version,
-            upstream_branch_version)
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -551,116 +695,24 @@ class cmd_merge_upstream(Command):
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "yet supported.")
 
-            if location is None:
-                if config.upstream_branch is not None:
-                    location = config.upstream_branch
-                else:
-                    raise BzrCommandError("No location specified to merge")
-            changelog = None
-            current_version = last_version
-            try:
-                changelog = find_changelog(tree, False, max_blocks=2)[0]
-                if last_version is None:
-                    current_version = changelog.version.upstream_version
-                if package is None:
-                    package = changelog.package
-                if distribution is None:
-                    distribution = find_last_distribution(changelog)
-                    if distribution is not None:
-                        note("Using distribution %s" % distribution)
-            except MissingChangelogError:
-                pass
-            if distribution is None:
-                note("No distribution specified, and no changelog, "
-                        "assuming 'debian'")
-                distribution = "debian"
-
-            if package is None:
-                raise BzrCommandError("You did not specify --package, and "
-                        "there is no changelog from which to determine the "
-                        "package name, which is needed to know the name to "
-                        "give the .orig.tar.gz. Please specify --package.")
-
-            no_tarball = False
-            if upstream_branch is None:
-                try:
-                    upstream_branch = Branch.open(location)
-                    no_tarball = True
-                except NotBranchError:
-                    upstream_branch = None
-                    if revision is not None:
-                        raise BzrCommandError("--revision is not allowed when"
-                                " merging only a tarball")
-            else:
-                upstream_branch = Branch.open(upstream_branch)
-
-            distribution = distribution.lower()
-            distribution_name = lookup_distribution(distribution)
-            if distribution_name is None:
-                raise BzrCommandError("Unknown target distribution: %s" \
-                            % distribution)
-
-            upstream_revision = None
-            if upstream_branch:
-                if revision is not None:
-                    if len(revision) > 1:
-                        raise BzrCommandError("merge-upstream takes only a single --revision")
-                    upstream_revspec = revision[0]
-                    upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
-                else:
-                    upstream_revision = upstream_branch.last_revision()
-
-            if version is None:
-                if upstream_branch and no_tarball:
-                    version = str(upstream_branch_version(upstream_branch,
-                            upstream_revision, package,
-                            current_version))
-                    note("Using version string %s for upstream branch." % (version))
-                else:
-                    raise BzrCommandError("You must specify the "
-                            "version number using --version.")
-
-            orig_dir = config.orig_dir or default_orig_dir
-            orig_dir = os.path.join(tree.basedir, orig_dir)
-            if not os.path.exists(orig_dir):
-                os.makedirs(orig_dir)
-            if upstream_branch and no_tarball:
-                # TODO: a way to use bz2 on export
-                dest_name = tarball_name(package, version)
-                tarball_filename = os.path.join(orig_dir, dest_name)
-                upstream = UpstreamBranchSource(upstream_branch,
-                        {version: upstream_revision})
-                upstream.get_specific_version(package, version, orig_dir)
-            else:
-                format = None
-                if v3:
-                    if (location.endswith(".tar.bz2")
-                            or location.endswith(".tbz2")):
-                        format = "bz2"
-                dest_name = tarball_name(package, version, format=format)
-                tarball_filename = os.path.join(orig_dir, dest_name)
-                try:
-                    repack_tarball(location, dest_name, target_dir=orig_dir,
-                            force_gz=not v3)
-                except FileExists:
-                    raise BzrCommandError("The target file %s already exists, and is either "
-                                          "different to the new upstream tarball, or they "
-                                          "are of different formats. Either delete the target "
-                                          "file, or use it as the argument to import."
-                                          % dest_name)
-            db = DistributionBranch(tree.branch, None, tree=tree)
-            dbs = DistributionBranchSet()
-            dbs.add_branch(db)
-            conflicts = db.merge_upstream(tarball_filename, version,
-                    current_version, upstream_branch=upstream_branch,
-                    upstream_revision=upstream_revision,
-                    merge_type=merge_type, force=force)
-
-            if not changelog_add_new_version(tree, version, distribution_name,
-                    changelog, package):
-                raise BzrCommandError('Adding a new changelog stanza after the '
-                        'merge had completed failed. Add the new changelog '
-                        'entry yourself, review the merge, and then commit.')
+            location = self._get_upstream_location(location, config)
+            (current_version, package, distribution, distribution_name,
+             changelog) = self._get_changelog_info( tree, last_version,
+                 package, distribution)
+            no_tarball, upstream_branch = self._get_upstream_branch(
+                location, upstream_branch, revision)
+            upstream_revision = self._get_upstream_revision(upstream_branch,
+                revision)
+            version = self._get_version(version, package, no_tarball,
+                upstream_branch, upstream_revision, current_version)
+            tarball_filename = self._get_tarball(config, tree, package,
+                version, upstream_branch, upstream_revision, no_tarball, v3,
+                location)
+            conflicts = self._do_merge(tree, tarball_filename, version,
+                current_version, upstream_branch, upstream_revision,
+                merge_type, force)
+            self._add_changelog_entry(tree, package, version,
+                distribution_name, changelog)
         finally:
             tree.unlock()
         note("The new upstream version has been imported.")
