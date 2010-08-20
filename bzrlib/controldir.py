@@ -151,8 +151,8 @@ class ControlDir(ControlComponent):
         """Create a working tree at this ControlDir.
 
         :param revision_id: create it as of this revision id.
-        :param from_branch: override controldir branch (for lightweight
-            checkouts)
+        :param from_branch: override controldir branch 
+            (for lightweight checkouts)
         :param accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's

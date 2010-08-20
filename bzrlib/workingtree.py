@@ -2025,10 +2025,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         inv_delta = []
 
-        new_files=set()
+        all_files = set() # specified and nested files 
         unknown_nested_files=set()
         if to_file is None:
             to_file = sys.stdout
+
+        files_to_backup = []
 
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
@@ -2036,23 +2038,23 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             for parent_info, file_infos in self.walkdirs(directory):
                 for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
-                    if self.path2id(relpath) or self.is_ignored(relpath):
+                    if self.path2id(relpath):
                         # Add nested content for deletion.
-                        new_files.add(relpath)
+                        all_files.add(relpath)
                     else:
-                        # Files which are not versioned and not ignored
+                        # Files which are not versioned
                         # should be treated as unknown.
-                        unknown_nested_files.add((relpath, None, kind))
+                        files_to_backup.append(relpath)
 
         for filename in files:
             # Get file name into canonical form.
             abspath = self.abspath(filename)
             filename = self.relpath(abspath)
             if len(filename) > 0:
-                new_files.add(filename)
+                all_files.add(filename)
                 recurse_directory_to_add_files(filename)
 
-        files = list(new_files)
+        files = list(all_files)
 
         if len(files) == 0:
             return # nothing to do
@@ -2062,34 +2064,23 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         # Bail out if we are going to delete files we shouldn't
         if not keep_files and not force:
-            has_changed_files = len(unknown_nested_files) > 0
-            if not has_changed_files:
-                for (file_id, path, content_change, versioned, parent_id, name,
-                     kind, executable) in self.iter_changes(self.basis_tree(),
-                         include_unchanged=True, require_versioned=False,
-                         want_unversioned=True, specific_files=files):
-                    if versioned == (False, False):
-                        # The record is unknown ...
-                        if not self.is_ignored(path[1]):
-                            # ... but not ignored
-                            has_changed_files = True
-                            break
-                    elif (content_change and (kind[1] is not None) and
-                            osutils.is_inside_any(files, path[1])):
-                        # Versioned and changed, but not deleted, and still
-                        # in one of the dirs to be deleted.
-                        has_changed_files = True
-                        break
+            for (file_id, path, content_change, versioned, parent_id, name,
+                 kind, executable) in self.iter_changes(self.basis_tree(),
+                     include_unchanged=True, require_versioned=False,
+                     want_unversioned=True, specific_files=files):
+                if versioned[0] == False:
+                    # The record is unknown or newly added
+                    files_to_backup.append(path[1])
+                elif (content_change and (kind[1] is not None) and
+                        osutils.is_inside_any(files, path[1])):
+                    # Versioned and changed, but not deleted, and still
+                    # in one of the dirs to be deleted.
+                    files_to_backup.append(path[1])
 
-            if has_changed_files:
-                # Make delta show ALL applicable changes in error message.
-                tree_delta = self.changes_from(self.basis_tree(),
-                    require_versioned=False, want_unversioned=True,
-                    specific_files=files)
-                for unknown_file in unknown_nested_files:
-                    if unknown_file not in tree_delta.unversioned:
-                        tree_delta.unversioned.extend((unknown_file,))
-                raise errors.BzrRemoveChangedFilesError(tree_delta)
+        def backup(file_to_backup):
+            backup_name = self.bzrdir.generate_backup_name(file_to_backup)
+            osutils.rename(abs_path, self.abspath(backup_name))
+            return "removed %s (but kept a copy: %s)" % (file_to_backup, backup_name)
 
         # Build inv_delta and delete files where applicable,
         # do this before any modifications to inventory.
@@ -2119,12 +2110,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                         len(os.listdir(abs_path)) > 0):
                         if force:
                             osutils.rmtree(abs_path)
+                            message = "deleted %s" % (f,)
                         else:
-                            message = "%s is not an empty directory "\
-                                "and won't be deleted." % (f,)
+                            message = backup(f)
                     else:
-                        osutils.delete_any(abs_path)
-                        message = "deleted %s" % (f,)
+                        if f in files_to_backup:
+                            message = backup(f)
+                        else:
+                            osutils.delete_any(abs_path)
+                            message = "deleted %s" % (f,)
                 elif message is not None:
                     # Only care if we haven't done anything yet.
                     message = "%s does not exist." % (f,)
