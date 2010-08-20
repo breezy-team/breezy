@@ -30,7 +30,7 @@ Compatibility Breaks
 
 * `ControlDirFormat` and  `ControlDir` have been split out of `BzrDirFormat`
   and `BzrDir`, respectively. `ControlDirFormat`
-  and `BzrDirFormat` should be used as the base class for new non-.bzr
+  and `ControlDir` should be used as the base class for new non-.bzr
   implementations.
 
   `BzrDirFormat.register_control_format` has been renamed to

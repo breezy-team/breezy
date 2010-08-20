@@ -50,7 +50,7 @@ from bzrlib.transport import (
 class ControlComponent(object):
     """Abstract base class for control directory components.
 
-    This provides interfaces that are common across bzrdirs,
+    This provides interfaces that are common across controldirs,
     repositories, branches, and workingtree control directories.
 
     They all expose two urls and transports: the *user* URL is the
@@ -84,7 +84,8 @@ class ControlDir(ControlComponent):
     """A control directory."""
 
     def can_convert_format(self):
-        """Return true if this bzrdir is one whose format we can convert from."""
+        """Return true if this controldir is one whose format we can convert
+        from."""
         return True
 
     def list_branches(self):
@@ -97,9 +98,11 @@ class ControlDir(ControlComponent):
             return []
 
     def is_control_filename(self, filename):
-        """True if filename is the name of a path which is reserved for bzrdir's.
+        """True if filename is the name of a path which is reserved for
+        controldirs.
 
-        :param filename: A filename within the root transport of this bzrdir.
+        :param filename: A filename within the root transport of this
+            controldir.
 
         This is true IF and ONLY IF the filename is part of the namespace reserved
         for bzr control dirs. Currently this is the '.bzr' directory in the root
@@ -110,7 +113,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.is_control_filename)
 
     def needs_format_conversion(self, format=None):
-        """Return true if this bzrdir needs convert_format run on it.
+        """Return true if this controldir needs convert_format run on it.
 
         For instance, if the repository format is out of date but the
         branch and working tree are not, this should return True.
@@ -121,22 +124,22 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.needs_format_conversion)
 
     def destroy_repository(self):
-        """Destroy the repository in this BzrDir"""
+        """Destroy the repository in this ControlDir."""
         raise NotImplementedError(self.destroy_repository)
 
     def create_branch(self, name=None):
-        """Create a branch in this BzrDir.
+        """Create a branch in this ControlDir.
 
         :param name: Name of the colocated branch to create, None for
             the default branch.
 
-        The bzrdir's format will control what branch format is created.
-        For more control see BranchFormatXX.create(a_bzrdir).
+        The controldirs format will control what branch format is created.
+        For more control see BranchFormatXX.create(a_controldir).
         """
         raise NotImplementedError(self.create_branch)
 
     def destroy_branch(self, name=None):
-        """Destroy a branch in this BzrDir.
+        """Destroy a branch in this ControlDir.
 
         :param name: Name of the branch to destroy, None for the default 
             branch.
@@ -145,10 +148,11 @@ class ControlDir(ControlComponent):
 
     def create_workingtree(self, revision_id=None, from_branch=None,
         accelerator_tree=None, hardlink=False):
-        """Create a working tree at this BzrDir.
+        """Create a working tree at this ControlDir.
 
         :param revision_id: create it as of this revision id.
-        :param from_branch: override bzrdir branch (for lightweight checkouts)
+        :param from_branch: override controldir branch (for lightweight
+            checkouts)
         :param accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
@@ -157,14 +161,14 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.create_workingtree)
 
     def destroy_workingtree(self):
-        """Destroy the working tree at this BzrDir.
+        """Destroy the working tree at this ControlDir.
 
         Formats that do not support this may raise UnsupportedOperation.
         """
         raise NotImplementedError(self.destroy_workingtree)
 
     def destroy_workingtree_metadata(self):
-        """Destroy the control files for the working tree at this BzrDir.
+        """Destroy the control files for the working tree at this ControlDir.
 
         The contents of working tree files are not affected.
         Formats that do not support this may raise UnsupportedOperation.
@@ -172,13 +176,13 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.destroy_workingtree_metadata)
 
     def get_branch_reference(self, name=None):
-        """Return the referenced URL for the branch in this bzrdir.
+        """Return the referenced URL for the branch in this controldir.
 
         :param name: Optional colocated branch name
         :raises NotBranchError: If there is no Branch.
         :raises NoColocatedBranchSupport: If a branch name was specified
             but colocated branches are not supported.
-        :return: The URL the branch in this bzrdir references if it is a
+        :return: The URL the branch in this controldir references if it is a
             reference branch, or None for regular branches.
         """
         if name is not None:
@@ -186,7 +190,7 @@ class ControlDir(ControlComponent):
         return None
 
     def get_branch_transport(self, branch_format, name=None):
-        """Get the transport for use by branch format in this BzrDir.
+        """Get the transport for use by branch format in this ControlDir.
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the branch format they are given has
@@ -199,7 +203,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.get_branch_transport)
 
     def get_repository_transport(self, repository_format):
-        """Get the transport for use by repository format in this BzrDir.
+        """Get the transport for use by repository format in this ControlDir.
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the repository format they are given has
@@ -212,7 +216,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.get_repository_transport)
 
     def get_workingtree_transport(self, tree_format):
-        """Get the transport for use by workingtree format in this BzrDir.
+        """Get the transport for use by workingtree format in this ControlDir.
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the workingtree format they are given has a
@@ -226,7 +230,7 @@ class ControlDir(ControlComponent):
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
-        """Open the branch object at this BzrDir if one is present.
+        """Open the branch object at this ControlDir if one is present.
 
         If unsupported is True, then no longer supported branch formats can
         still be opened.
@@ -236,7 +240,7 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.open_branch)
 
     def open_repository(self, _unsupported=False):
-        """Open the repository object at this BzrDir if one is present.
+        """Open the repository object at this ControlDir if one is present.
 
         This will not follow the Branch object pointer - it's strictly a direct
         open facility. Most client code should use open_branch().repository to
@@ -258,18 +262,19 @@ class ControlDir(ControlComponent):
 
     def open_workingtree(self, _unsupported=False,
                          recommend_upgrade=True, from_branch=None):
-        """Open the workingtree object at this BzrDir if one is present.
+        """Open the workingtree object at this ControlDir if one is present.
 
         :param recommend_upgrade: Optional keyword parameter, when True (the
             default), emit through the ui module a recommendation that the user
             upgrade the working tree when the workingtree being opened is old
             (but still fully supported).
-        :param from_branch: override bzrdir branch (for lightweight checkouts)
+        :param from_branch: override controldir branch (for lightweight
+            checkouts)
         """
         raise NotImplementedError(self.open_workingtree)
 
     def has_branch(self, name=None):
-        """Tell if this bzrdir contains a branch.
+        """Tell if this controldir contains a branch.
 
         Note: if you're going to open the branch, you should just go ahead
         and try, and not ask permission first.  (This method just opens the
@@ -282,10 +287,10 @@ class ControlDir(ControlComponent):
             return False
 
     def has_workingtree(self):
-        """Tell if this bzrdir contains a working tree.
+        """Tell if this controldir contains a working tree.
 
-        This will still raise an exception if the bzrdir has a workingtree that
-        is remote & inaccessible.
+        This will still raise an exception if the controldir has a workingtree
+        that is remote & inaccessible.
 
         Note: if you're going to open the working tree, you should just go ahead
         and try, and not ask permission first.  (This method just opens the
@@ -306,7 +311,7 @@ class ControlDir(ControlComponent):
 
         :require_stacking: If True, non-stackable formats will be upgraded
             to similar stackable formats.
-        :returns: a BzrDirFormat with all component formats either set
+        :returns: a ControlDirFormat with all component formats either set
             appropriately or set to None if that component should not be
             created.
         """
@@ -320,7 +325,7 @@ class ControlDir(ControlComponent):
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
                source_branch=None, create_tree_if_local=True):
-        """Create a copy of this bzrdir prepared for use as a new line of
+        """Create a copy of this controldir prepared for use as a new line of
         development.
 
         If url's last component does not exist, it will be created.
@@ -385,7 +390,7 @@ class ControlDir(ControlComponent):
                 result_repo.fetch(source_repository, fetch_spec=fetch_spec)
 
         if source_branch is None:
-            # this is for sprouting a bzrdir without a branch; is that
+            # this is for sprouting a controldir without a branch; is that
             # actually useful?
             # Not especially, but it's part of the contract.
             result_branch = result.create_branch()
@@ -442,7 +447,7 @@ class ControlDir(ControlComponent):
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
         remember=False, create_prefix=False):
-        """Push the source branch into this BzrDir."""
+        """Push the source branch into this ControlDir."""
         br_to = None
         # If we can open a branch, use its direct repository, otherwise see
         # if there is a repository without a branch.
@@ -510,7 +515,7 @@ class ControlDirFormat(object):
      * an open routine.
 
     Formats are placed in a dict by their format string for reference
-    during bzrdir opening. These should be subclasses of BzrDirFormat
+    during controldir opening. These should be subclasses of ControlDirFormat
     for consistency.
 
     Once a format is deprecated, just deprecate the initialize and open
@@ -550,9 +555,9 @@ class ControlDirFormat(object):
         raise NotImplementedError(self.get_format_description)
 
     def get_converter(self, format=None):
-        """Return the converter to use to convert bzrdirs needing converts.
+        """Return the converter to use to convert controldirs needing converts.
 
-        This returns a bzrlib.bzrdir.Converter object.
+        This returns a bzrlib.controldir.Converter object.
 
         This should return the best upgrader to step this format towards the
         current default format. In the case of plugins we can/should provide
@@ -651,7 +656,7 @@ class ControlDirFormat(object):
         return self.initialize_on_transport(get_transport(url,
                                                           possible_transports))
     def initialize_on_transport(self, transport):
-        """Initialize a new bzrdir in the base directory of a Transport."""
+        """Initialize a new controldir in the base directory of a Transport."""
         raise NotImplementedError(self.initialize_on_transport)
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
@@ -681,8 +686,8 @@ class ControlDirFormat(object):
         :param shared_repo: Control whether made repositories are shared or
             not.
         :param vfs_only: If True do not attempt to use a smart server
-        :return: repo, bzrdir, require_stacking, repository_policy. repo is
-            None if none was created or found, bzrdir is always valid.
+        :return: repo, controldir, require_stacking, repository_policy. repo is
+            None if none was created or found, controldir is always valid.
             require_stacking is the result of examining the stacked_on
             parameter and any stacking policy found for the target.
         """
@@ -734,7 +739,7 @@ class Prober(object):
         raise NotImplementedError(self.probe_transport)
 
 
-class BzrDirFormatInfo(object):
+class ControlDirFormatInfo(object):
 
     def __init__(self, native, deprecated, hidden, experimental):
         self.deprecated = deprecated
@@ -744,14 +749,14 @@ class BzrDirFormatInfo(object):
 
 
 class ControlDirFormatRegistry(registry.Registry):
-    """Registry of user-selectable BzrDir subformats.
+    """Registry of user-selectable ControlDir subformats.
 
     Differs from ControlDirFormat._formats in that it provides sub-formats,
-    e.g. BzrDirMeta1 with weave repository.  Also, it's more user-oriented.
+    e.g. ControlDirMeta1 with weave repository.  Also, it's more user-oriented.
     """
 
     def __init__(self):
-        """Create a BzrDirFormatRegistry."""
+        """Create a ControlDirFormatRegistry."""
         self._aliases = set()
         self._registration_order = list()
         super(ControlDirFormatRegistry, self).__init__()
@@ -762,16 +767,16 @@ class ControlDirFormatRegistry(registry.Registry):
 
     def register(self, key, factory, help, native=True, deprecated=False,
                  hidden=False, experimental=False, alias=False):
-        """Register a BzrDirFormat factory.
+        """Register a ControlDirFormat factory.
 
         The factory must be a callable that takes one parameter: the key.
-        It must produce an instance of the BzrDirFormat when called.
+        It must produce an instance of the ControlDirFormat when called.
 
         This function mainly exists to prevent the info object from being
         supplied directly.
         """
         registry.Registry.register(self, key, factory, help,
-            BzrDirFormatInfo(native, deprecated, hidden, experimental))
+            ControlDirFormatInfo(native, deprecated, hidden, experimental))
         if alias:
             self._aliases.add(key)
         self._registration_order.append(key)
@@ -779,7 +784,7 @@ class ControlDirFormatRegistry(registry.Registry):
     def register_lazy(self, key, module_name, member_name, help, native=True,
         deprecated=False, hidden=False, experimental=False, alias=False):
         registry.Registry.register_lazy(self, key, module_name, member_name,
-            help, BzrDirFormatInfo(native, deprecated, hidden, experimental))
+            help, ControlDirFormatInfo(native, deprecated, hidden, experimental))
         if alias:
             self._aliases.add(key)
         self._registration_order.append(key)
