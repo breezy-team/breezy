@@ -101,6 +101,8 @@ def delete_items(deletables, dry_run=False):
     def onerror(function, path, excinfo):
         """Show warning for errors seen by rmtree.
         """
+        # Handle only permission error while removing files.
+        # Other errors are re-raised.
         if function is not os.remove or excinfo[1].errno != errno.EACCES:
             raise
         ui.ui_factory.show_warning('unable to remove %s' % path)

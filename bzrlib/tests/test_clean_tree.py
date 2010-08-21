@@ -102,7 +102,8 @@ class TestCleanTree(TestCaseInTempDir):
             self.assertTrue(isinstance(onerror, types.FunctionType))
             # Indicate failure in removing 'path' if path is subdir0
             # We later check to ensure that this is indicated
-            # to the user as a warning.
+            # to the user as a warning. We raise OSError to construct
+            # proper excinfo that needs to be passed to onerror
             try:
                 raise OSError
             except OSError, e:
@@ -119,10 +120,10 @@ class TestCleanTree(TestCaseInTempDir):
 
         self.overrideAttr(os, 'unlink', _dummy_unlink)
         self.overrideAttr(shutil, 'rmtree', _dummy_rmtree)
-
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdout=stdout, stderr=stderr)
+
         BzrDir.create_standalone_workingtree('.')
         self.build_tree(['0foo', '1bar', '2baz', 'subdir0/'])
         clean_tree('.', unknown=True, no_prompt=True)
