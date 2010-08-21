@@ -18,7 +18,6 @@
 """An adapter between a Git control dir and a Bazaar ControlDir."""
 
 from bzrlib import (
-    bzrdir,
     errors as bzr_errors,
     lockable_files,
     urlutils,
@@ -33,11 +32,13 @@ from bzrlib.plugins.git import (
 try:
     from bzrlib.controldir import (
         ControlDir,
+        format_registry,
         )
 except ImportError:
     # bzr < 2.3
     from bzrlib.bzrdir import (
         BzrDir,
+        format_registry,
         )
     ControlDir = BzrDir
 
@@ -89,7 +90,7 @@ class GitDir(ControlDir):
         return False
 
     def cloning_metadir(self, stacked=False):
-        return bzrdir.format_registry.make_bzrdir("default")
+        return format_registry.make_bzrdir("default")
 
     def _branch_name_to_ref(self, name):
         raise NotImplementedError(self._branch_name_to_ref)

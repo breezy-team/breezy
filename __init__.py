@@ -50,6 +50,7 @@ try:
     from bzrlib.controldir import (
         ControlDirFormat,
         ControlDir,
+        Prober,
         format_registry,
         )
 except ImportError:
@@ -61,6 +62,9 @@ except ImportError:
         )
     ControlDir = BzrDir
     ControlDirFormat = BzrDirFormat
+    has_controldir = False
+else:
+    has_controldir = True
 
 from bzrlib.foreign import (
     foreign_vcs_registry,
