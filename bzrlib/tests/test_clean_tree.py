@@ -19,6 +19,7 @@ import errno
 import os
 import shutil
 from StringIO import StringIO
+import sys
 import types
 
 from bzrlib import tests, ui
@@ -82,7 +83,7 @@ class TestCleanTree(TestCaseInTempDir):
             tree.unlock()
 
     def test_delete_items_warnings(self):
-        """Ensure delete_items issues warnings on OSError. (bug #430785)
+        """Ensure delete_items issues warnings on EACCES. (bug #430785)
         """
         def _dummy_unlink(path):
             """unlink() files other than files named '0foo'.
@@ -96,23 +97,43 @@ class TestCleanTree(TestCaseInTempDir):
                 raise e
 
         def _dummy_rmtree(path, ignore_errors=False, onerror=None):
-            """Use 'onerror' instead of actually doing rmtree.
+            """Call user supplied error handler onerror.
             """
             self.assertTrue(isinstance(onerror, types.FunctionType))
-            # Indicate failure in removing '0rmtree_error'
+            # Indicate failure in removing 'path' if path is subdir0
             # We later check to ensure that this is indicated
             # to the user as a warning.
-            onerror(function=None, path="0rmtree_error", excinfo=None)
+            try:
+                raise OSError
+            except OSError, e:
+                e.errno = errno.EACCES
+                excinfo = sys.exc_info()
+                function = os.remove
+                if 'subdir0' not in path:
+                    # onerror should show warning only for os.remove
+                    # error. For any other failures the error should
+                    # be shown to the user.
+                    function = os.listdir
+                onerror(function=function,
+                    path=path, excinfo=excinfo)
 
         self.overrideAttr(os, 'unlink', _dummy_unlink)
         self.overrideAttr(shutil, 'rmtree', _dummy_rmtree)
+
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
         ui.ui_factory = tests.TestUIFactory(stdout=stdout, stderr=stderr)
         BzrDir.create_standalone_workingtree('.')
-        self.build_tree(['0foo', '1bar', '2baz', 'subdir/'])
+        self.build_tree(['0foo', '1bar', '2baz', 'subdir0/'])
         clean_tree('.', unknown=True, no_prompt=True)
         self.assertContainsRe(stderr.getvalue(),
             'bzr: warning: unable to remove.*0foo')
         self.assertContainsRe(stderr.getvalue(),
-            'bzr: warning: unable to remove.*0rmtree_error')
+            'bzr: warning: unable to remove.*subdir0')
+
+        # Ensure that error other than EACCES during os.remove are
+        # not turned into warnings.
+        self.build_tree(['subdir1/'])
+        self.assertRaises(OSError, clean_tree, '.',
+            unknown=True, no_prompt=True)
+
