@@ -19,6 +19,7 @@
 The ControlDir class is the base for the control directory used
 by all bzr and foreign formats. For the ".bzr" implementation,
 see bzrlib.bzrdir.BzrDir.
+
 """
 
 from bzrlib.lazy_import import lazy_import
@@ -81,7 +82,22 @@ class ControlComponent(object):
 
 
 class ControlDir(ControlComponent):
-    """A control directory."""
+    """A control directory.
+
+    While this represents a generic control directory, there are a few
+    features that are present in this interface that are currently only
+    supported by one of its implementations, BzrDir.
+
+    These features (bound branches, stacked branches) are currently only
+    supported by Bazaar, but could be supported by other version control
+    systems as well. Implementations are required to raise the appropriate
+    exceptions when an operation is requested that is not supported.
+
+    This also makes life easier for API users who can rely on the
+    implementation always allowing a particular feature to be requested but
+    raising an exception when it is not supported, rather than requiring the
+    API users to check for magic attributes to see what features are supported.
+    """
 
     def can_convert_format(self):
         """Return true if this controldir is one whose format we can convert
