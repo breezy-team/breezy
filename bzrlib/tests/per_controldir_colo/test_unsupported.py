@@ -29,11 +29,11 @@ from bzrlib.transport import (
     )
 
 from bzrlib.tests.per_controldir_colo import (
-    TestCaseWithBzrDir,
+    TestCaseWithControlDir,
     )
 
 
-class TestNoColocatedSupport(TestCaseWithBzrDir):
+class TestNoColocatedSupport(TestCaseWithControlDir):
 
     def make_bzrdir_with_repo(self):
         # a bzrdir can construct a branch and repository for itself.

@@ -39,7 +39,7 @@ from bzrlib.tests import (
                           default_transport,
                           multiply_tests,
                           )
-from bzrlib.tests.per_controldir.test_controldir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -128,7 +128,7 @@ def default_test_list():
     return result
 
 
-class TestCaseWithInterRepository(TestCaseWithBzrDir):
+class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def setUp(self):
         super(TestCaseWithInterRepository, self).setUp()

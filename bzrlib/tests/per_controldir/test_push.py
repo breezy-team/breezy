@@ -16,15 +16,12 @@
 
 """Tests for bzrdir implementations - push."""
 
-from bzrlib import (
-    errors,
-    )
 from bzrlib.tests.per_controldir import (
-    TestCaseWithBzrDir,
+    TestCaseWithControlDir,
     )
 
 
-class TestPush(TestCaseWithBzrDir):
+class TestPush(TestCaseWithControlDir):
 
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')

@@ -29,7 +29,7 @@ from bzrlib.tests import (
     multiply_tests,
     )
 from bzrlib.tests.per_controldir import (
-    TestCaseWithBzrDir,
+    TestCaseWithControlDir,
     make_scenarios,
     )
 

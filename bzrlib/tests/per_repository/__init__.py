@@ -38,7 +38,7 @@ from bzrlib.tests import (
     multiply_tests,
     test_server,
     )
-from bzrlib.tests.per_controldir.test_controldir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from bzrlib.transport import memory
 
 
@@ -97,7 +97,7 @@ def all_repository_format_scenarios():
     return format_scenarios
 
 
-class TestCaseWithRepository(TestCaseWithBzrDir):
+class TestCaseWithRepository(TestCaseWithControlDir):
 
     def make_repository(self, relpath, shared=False, format=None):
         if format is None:

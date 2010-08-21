@@ -50,7 +50,7 @@ def make_scenario(transport_server, transport_readonly_server,
         }
 
 
-class TestCaseWithWorkingTree(per_controldir.TestCaseWithBzrDir):
+class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath, format=format)

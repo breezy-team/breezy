@@ -54,18 +54,16 @@ from bzrlib.tests import (
                           TestNotApplicable,
                           TestSkipped,
                           )
-from bzrlib.tests.per_controldir import TestCaseWithBzrDir
-from bzrlib.trace import mutter
+from bzrlib.tests.per_controldir import TestCaseWithControlDir
 from bzrlib.transport.local import LocalTransport
 from bzrlib.ui import (
     CannedInputUIFactory,
     )
-from bzrlib.upgrade import upgrade
 from bzrlib.remote import RemoteBzrDir, RemoteRepository
 from bzrlib.repofmt import weaverepo
 
 
-class TestBzrDir(TestCaseWithBzrDir):
+class TestBzrDir(TestCaseWithControlDir):
     # Many of these tests test for disk equality rather than checking
     # for semantic equivalence. This works well for some tests but
     # is not good at handling changes in representation or the addition
@@ -1837,7 +1835,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             bd.retire_bzrdir, limit=0)
 
 
-class TestBreakLock(TestCaseWithBzrDir):
+class TestBreakLock(TestCaseWithControlDir):
 
     def test_break_lock_empty(self):
         # break lock on an empty bzrdir should work silently.
@@ -1945,7 +1943,7 @@ class TestBreakLock(TestCaseWithBzrDir):
         self.assertRaises(errors.LockBroken, tree.unlock)
 
 
-class TestTransportConfig(TestCaseWithBzrDir):
+class TestTransportConfig(TestCaseWithControlDir):
 
     def test_get_config(self):
         my_dir = self.make_bzrdir('.')
@@ -1995,7 +1993,7 @@ class ChrootedBzrDirTests(ChrootedTestCase):
                           made_control.find_repository)
 
 
-class TestBzrDirControlComponent(TestCaseWithBzrDir):
+class TestBzrDirControlComponent(TestCaseWithControlDir):
     """BzrDir implementations adequately implement ControlComponent."""
 
     def test_urls(self):

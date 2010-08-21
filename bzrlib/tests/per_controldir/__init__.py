@@ -56,10 +56,10 @@ def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
     return result
 
 
-class TestCaseWithBzrDir(TestCaseWithTransport):
+class TestCaseWithControlDir(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestCaseWithBzrDir, self).setUp()
+        super(TestCaseWithControlDir, self).setUp()
         self.bzrdir = None
 
     def get_bzrdir(self):
@@ -70,7 +70,7 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
     def make_bzrdir(self, relpath, format=None):
         if format is None:
             format = self.bzrdir_format
-        return super(TestCaseWithBzrDir, self).make_bzrdir(
+        return super(TestCaseWithControlDir, self).make_bzrdir(
             relpath, format=format)
 
 
