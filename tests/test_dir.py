@@ -58,14 +58,14 @@ class TestGitDirFormat(tests.TestCase):
 
     def setUp(self):
         super(TestGitDirFormat, self).setUp()
-        self.format = dir.LocalGitBzrDirFormat()
+        self.format = dir.LocalGitControlDirFormat()
 
     def test_get_format_description(self):
         self.assertEquals("Local Git Repository",
                           self.format.get_format_description())
 
     def test_eq(self):
-        format2 = dir.LocalGitBzrDirFormat()
+        format2 = dir.LocalGitControlDirFormat()
         self.assertEquals(self.format, format2)
         self.assertEquals(self.format, self.format)
         bzr_format = bzrdir.format_registry.make_bzrdir("default")

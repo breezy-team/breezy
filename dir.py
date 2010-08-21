@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"""An adapter between a Git control dir and a Bazaar BzrDir."""
+"""An adapter between a Git control dir and a Bazaar ControlDir."""
 
 from bzrlib import (
     bzrdir,
@@ -28,8 +28,18 @@ from bzrlib import (
 LockWarner = getattr(lockable_files, "_LockWarner", None)
 
 from bzrlib.plugins.git import (
-    LocalGitBzrDirFormat,
+    LocalGitControlDirFormat,
     )
+try:
+    from bzrlib.controldir import (
+        ControlDir,
+        )
+except ImportError:
+    # bzr < 2.3
+    from bzrlib.bzrdir import (
+        BzrDir,
+        )
+    ControlDir = BzrDir
 
 
 class GitLock(object):
@@ -69,7 +79,7 @@ class GitLockableFiles(lockable_files.LockableFiles):
             self._lock_warner = LockWarner(repr(self))
 
 
-class GitDir(bzrdir.BzrDir):
+class GitDir(ControlDir):
     """An adapter to the '.git' dir used by git."""
 
     def is_supported(self):
@@ -131,21 +141,21 @@ class LocalGitDir(GitDir):
     def get_branch_transport(self, branch_format, name=None):
         if branch_format is None:
             return self.transport
-        if isinstance(branch_format, LocalGitBzrDirFormat):
+        if isinstance(branch_format, LocalGitControlDirFormat):
             return self.transport
         raise bzr_errors.IncompatibleFormat(branch_format, self._format)
 
     def get_repository_transport(self, format):
         if format is None:
             return self.transport
-        if isinstance(format, LocalGitBzrDirFormat):
+        if isinstance(format, LocalGitControlDirFormat):
             return self.transport
         raise bzr_errors.IncompatibleFormat(format, self._format)
 
     def get_workingtree_transport(self, format):
         if format is None:
             return self.transport
-        if isinstance(format, LocalGitBzrDirFormat):
+        if isinstance(format, LocalGitControlDirFormat):
             return self.transport
         raise bzr_errors.IncompatibleFormat(format, self._format)
 

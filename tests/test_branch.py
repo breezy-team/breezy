@@ -37,15 +37,22 @@ from bzrlib.branch import (
     Branch,
     InterBranch,
     )
-from bzrlib.bzrdir import (
-    BzrDir,
-    )
+try:
+    from bzrlib.controldir import (
+        ControlDir,
+        )
+except ImportError:
+    # bzr < 2.3
+    from bzrlib.bzrdir import (
+        BzrDir,
+        )
+    ControlDir = BzrDir
 from bzrlib.repository import (
     Repository,
     )
 
 from bzrlib.plugins.git import (
-    LocalGitBzrDirFormat,
+    LocalGitControlDirFormat,
     branch,
     tests,
     )
@@ -58,19 +65,19 @@ class TestGitBranch(tests.TestCaseInTempDir):
 
     def test_open_existing(self):
         GitRepo.init('.')
-        d = BzrDir.open('.')
+        d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertIsInstance(thebranch, branch.GitBranch)
 
     def test_repr(self):
         GitRepo.init('.')
-        d = BzrDir.open('.')
+        d = ControlDir.open('.')
         thebranch = d.create_branch()
         self.assertEquals("<LocalGitBranch('file://%s/', 'HEAD')>" % self.test_dir, repr(thebranch))
 
     def test_last_revision_is_null(self):
         GitRepo.init('.')
-        thedir = BzrDir.open('.')
+        thedir = ControlDir.open('.')
         thebranch = thedir.create_branch()
         self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
         self.assertEqual((0, revision.NULL_REVISION),
@@ -130,7 +137,7 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         dulwich.repo.Repo.create(self.test_dir)
-        d = BzrDir.open(self.test_dir)
+        d = ControlDir.open(self.test_dir)
         self.git_branch = d.create_branch()
 
     def test_get_parent(self):
@@ -186,7 +193,7 @@ class BranchTests(tests.TestCaseInTempDir):
         return "d", (marks[mark1], marks[mark2])
 
     def clone_git_branch(self, from_url, to_url):
-        from_dir = BzrDir.open(from_url)
+        from_dir = ControlDir.open(from_url)
         to_dir = from_dir.sprout(to_url)
         return to_dir.open_branch()
 
@@ -252,7 +259,7 @@ class BranchTests(tests.TestCaseInTempDir):
 class ForeignTestsBranchFactory(object):
 
     def make_empty_branch(self, transport):
-        d = LocalGitBzrDirFormat().initialize_on_transport(transport)
+        d = LocalGitControlDirFormat().initialize_on_transport(transport)
         return d.create_branch()
 
     make_branch = make_empty_branch

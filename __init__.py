@@ -43,10 +43,25 @@ bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
 
 from bzrlib import (
-    bzrdir,
     errors as bzr_errors,
     osutils,
     )
+try:
+    from bzrlib.controldir import (
+        ControlDirFormat,
+        ControlDir,
+        format_registry,
+        )
+except ImportError:
+    # bzr < 2.3
+    from bzrlib.bzrdir import (
+        BzrDirFormat,
+        BzrDir,
+        format_registry,
+        )
+    ControlDir = BzrDir
+    ControlDirFormat = BzrDirFormat
+
 from bzrlib.foreign import (
     foreign_vcs_registry,
     )
@@ -98,8 +113,8 @@ def lazy_check_versions():
     import_dulwich()
     _versions_checked = True
 
-bzrdir.format_registry.register_lazy('git',
-    "bzrlib.plugins.git.dir", "LocalGitBzrDirFormat",
+format_registry.register_lazy('git',
+    "bzrlib.plugins.git.dir", "LocalGitControlDirFormat",
     help='GIT repository.', native=False, experimental=True,
     )
 
@@ -116,7 +131,7 @@ else:
     dwim_revspecs.append(RevisionSpec_git)
 
 
-class GitBzrDirFormat(bzrdir.BzrDirFormat):
+class GitControlDirFormat(ControlDirFormat):
 
     _lock_class = TransportLock
 
@@ -132,12 +147,12 @@ class GitBzrDirFormat(bzrdir.BzrDirFormat):
         return "git"
 
 
-class LocalGitBzrDirFormat(GitBzrDirFormat):
+class LocalGitControlDirFormat(GitControlDirFormat):
     """The .git directory control format."""
 
     @classmethod
     def _known_formats(self):
-        return set([LocalGitBzrDirFormat()])
+        return set([LocalGitControlDirFormat()])
 
     def open(self, transport, _found=None):
         """Open this directory.
@@ -193,12 +208,12 @@ class LocalGitBzrDirFormat(GitBzrDirFormat):
         return True
 
 
-class RemoteGitBzrDirFormat(GitBzrDirFormat):
+class RemoteGitControlDirFormat(GitControlDirFormat):
     """The .git directory control format."""
 
     @classmethod
     def _known_formats(self):
-        return set([RemoteGitBzrDirFormat()])
+        return set([RemoteGitControlDirFormat()])
 
     def open(self, transport, _found=None):
         """Open this directory.
@@ -242,8 +257,8 @@ class RemoteGitBzrDirFormat(GitBzrDirFormat):
         raise bzr_errors.UninitializableFormat(self)
 
 
-bzrdir.BzrDirFormat.register_control_format(LocalGitBzrDirFormat)
-bzrdir.BzrDirFormat.register_control_format(RemoteGitBzrDirFormat)
+ControlDirFormat.register_control_format(LocalGitControlDirFormat)
+ControlDirFormat.register_control_format(RemoteGitControlDirFormat)
 
 register_transport_proto('git://',
         help="Access using the Git smart server protocol.")
@@ -291,7 +306,7 @@ repository_network_format_registry.register_lazy('git',
 from bzrlib.bzrdir import (
     network_format_registry as bzrdir_network_format_registry,
     )
-bzrdir_network_format_registry.register('git', GitBzrDirFormat)
+bzrdir_network_format_registry.register('git', GitControlDirFormat)
 
 send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
                                    'send_git', 'Git am-style diff format')
