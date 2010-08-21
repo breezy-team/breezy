@@ -27,6 +27,11 @@ from bzrlib import (
 
 
 def parse_git_svn_id(text):
+    """Parse a git svn id string.
+
+    :param text: git svn id
+    :return: URL, revision number, uuid
+    """
     (head, uuid) = text.rsplit(" ", 1)
     (full_url, rev) = head.rsplit("@", 1)
     return (full_url.encode("utf-8"), int(rev), uuid.encode("utf-8"))
@@ -107,6 +112,10 @@ def _extract_foreign_revid(rev):
             mapping.vcs.serialize_foreign_revid(foreign_revid))
 
 
+def _extract_debian_md5sum(rev):
+    if 'deb-md5' in rev.properties:
+        yield ("debian-md5sum", rev.properties["deb-md5"])
+
 
 _foreign_revid_extractors = [
     _extract_converted_from_revid,
@@ -114,6 +123,7 @@ _foreign_revid_extractors = [
     _extract_git_svn_id,
     _extract_foreign_revision,
     _extract_foreign_revid,
+    _extract_debian_md5sum,
     ]
 
 
