@@ -44,6 +44,9 @@ New Features
 Bug Fixes
 *********
 
+* Allow using both --using and --diff-options. 
+  (Matthäus G. Chajdas, #234708)
+
 * ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
   previously-unversioned directory within the tree: the directory is
   marked versioned too.  
@@ -58,14 +61,11 @@ Bug Fixes
   due to ``errno.EACCES`` instead of exiting with an error on Windows.
   (Parth Malwankar, #430785)
 
-* Check if both --diff-options and --using are set, and exit with error
-  in this case. (Matthäus G. Chajdas, #234708)
-
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
 
-* Cope with Microsoft FTP server that returns reply '250 Directory
-  created' when mkdir succeeds.  (Martin Pool, #224373)
+* Cope with Microsoft FTP Server and VSFTPd that return reply '250
+  Directory created' when mkdir succeeds.  (Martin Pool, #224373)
 
 * Decrease peak memory during ``bzr send``. The old code was caching all
   text content and all inventory strings for all revisions before
@@ -97,6 +97,12 @@ Bug Fixes
 
 Improvements
 ************
+
+* ``bzr remove`` now just backs up changed files instead of exiting,
+  forcing you to choose to either keep or delete them. Bazaar will now delete
+  the files if they can easily be recovered using revert, otherwise they
+  will be backed up (adding an extention of the form .~#~).
+  (Marius Kruger, #400554)
 
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
