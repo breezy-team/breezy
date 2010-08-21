@@ -251,3 +251,12 @@ class LocalGitDir(GitDir):
         finally:
             f.close()
         return self.open_workingtree()
+
+    def find_repository(self):
+        """Find the repository that should be used.
+
+        This does not require a branch as we use it to find the repo for
+        new branches as well as to hook existing branches up to their
+        repository.
+        """
+        return self.open_repository()
