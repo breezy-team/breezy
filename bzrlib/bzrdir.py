@@ -815,27 +815,6 @@ class BzrDir(ControlDir):
                 raise errors.NotBranchError(path=url)
             a_transport = new_t
 
-    def _get_tree_branch(self, name=None):
-        """Return the branch and tree, if any, for this bzrdir.
-
-        :param name: Name of colocated branch to open.
-
-        Return None for tree if not present or inaccessible.
-        Raise NotBranchError if no branch is present.
-        :return: (tree, branch)
-        """
-        try:
-            tree = self.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            tree = None
-            branch = self.open_branch(name=name)
-        else:
-            if name is not None:
-                branch = self.open_branch(name=name)
-            else:
-                branch = tree.branch
-        return tree, branch
-
     @classmethod
     def open_tree_or_branch(klass, location):
         """Return the branch and working tree at a location.
