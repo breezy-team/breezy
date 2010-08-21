@@ -62,6 +62,7 @@ except ImportError:
         )
     ControlDir = BzrDir
     ControlDirFormat = BzrDirFormat
+    Prober = object
     has_controldir = False
 else:
     has_controldir = True
@@ -151,6 +152,29 @@ class GitControlDirFormat(ControlDirFormat):
         return "git"
 
 
+class LocalGitProber(Prober):
+
+    def probe_transport(self, transport):
+        try:
+            if not transport.has_any(['info/refs', '.git/branches',
+                                      'branches']):
+                raise bzr_errors.NotBranchError(path=transport.base)
+        except bzr_errors.NoSuchFile:
+            raise bzr_errors.NotBranchError(path=transport.base)
+        from bzrlib import urlutils
+        if urlutils.split(transport.base)[1] == ".git":
+            raise bzr_errors.NotBranchError(path=transport.base)
+        lazy_check_versions()
+        import dulwich
+        format = LocalGitControlDirFormat()
+        try:
+            format.open(transport)
+            return format
+        except dulwich.errors.NotGitRepository, e:
+            raise bzr_errors.NotBranchError(path=transport.base)
+        raise bzr_errors.NotBranchError(path=transport.base)
+
+
 class LocalGitControlDirFormat(GitControlDirFormat):
     """The .git directory control format."""
 
@@ -171,24 +195,8 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
     @classmethod
     def probe_transport(klass, transport):
-        try:
-            if not transport.has_any(['info/refs', '.git/branches',
-                                      'branches']):
-                raise bzr_errors.NotBranchError(path=transport.base)
-        except bzr_errors.NoSuchFile:
-            raise bzr_errors.NotBranchError(path=transport.base)
-        from bzrlib import urlutils
-        if urlutils.split(transport.base)[1] == ".git":
-            raise bzr_errors.NotBranchError(path=transport.base)
-        lazy_check_versions()
-        import dulwich
-        format = klass()
-        try:
-            format.open(transport)
-            return format
-        except dulwich.errors.NotGitRepository, e:
-            raise bzr_errors.NotBranchError(path=transport.base)
-        raise bzr_errors.NotBranchError(path=transport.base)
+        prober = LocalGitProber()
+        return prober.probe_transport(transport)
 
     def get_format_description(self):
         return "Local Git Repository"
@@ -210,6 +218,23 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 
     def is_supported(self):
         return True
+
+
+class RemoteGitProber(Prober):
+
+    def probe_transport(self, transport):
+        url = transport.base
+        if url.startswith('readonly+'):
+            url = url[len('readonly+'):]
+        if (not url.startswith("git://") and not url.startswith("git+")):
+            raise bzr_errors.NotBranchError(transport.base)
+        # little ugly, but works
+        format = klass()
+        from bzrlib.plugins.git.remote import GitSmartTransport
+        if not isinstance(transport, GitSmartTransport):
+            raise bzr_errors.NotBranchError(transport.base)
+        return format
+
 
 
 class RemoteGitControlDirFormat(GitControlDirFormat):
@@ -239,17 +264,8 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
     @classmethod
     def probe_transport(klass, transport):
         """Our format is present if the transport ends in '.not/'."""
-        url = transport.base
-        if url.startswith('readonly+'):
-            url = url[len('readonly+'):]
-        if (not url.startswith("git://") and not url.startswith("git+")):
-            raise bzr_errors.NotBranchError(transport.base)
-        # little ugly, but works
-        format = klass()
-        from bzrlib.plugins.git.remote import GitSmartTransport
-        if not isinstance(transport, GitSmartTransport):
-            raise bzr_errors.NotBranchError(transport.base)
-        return format
+        prober = RemoteGitProber()
+        return prober.probe_transport(transport)
 
     def get_format_description(self):
         return "Remote Git Repository"
@@ -261,8 +277,14 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         raise bzr_errors.UninitializableFormat(self)
 
 
-ControlDirFormat.register_control_format(LocalGitControlDirFormat)
-ControlDirFormat.register_control_format(RemoteGitControlDirFormat)
+if has_controldir:
+    ControlDirFormat.register_format(LocalGitControlDirFormat)
+    ControlDirFormat.register_format(RemoteGitControlDirFormat)
+    ControlDirFormat.register_prober(LocalGitProber)
+    ControlDirFormat.register_prober(RemoteGitProber)
+else:
+    ControlDirFormat.register_control_format(LocalGitControlDirFormat)
+    ControlDirFormat.register_control_format(RemoteGitControlDirFormat)
 
 register_transport_proto('git://',
         help="Access using the Git smart server protocol.")

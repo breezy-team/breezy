@@ -37,16 +37,9 @@ from bzrlib.branch import (
     Branch,
     InterBranch,
     )
-try:
-    from bzrlib.controldir import (
-        ControlDir,
-        )
-except ImportError:
-    # bzr < 2.3
-    from bzrlib.bzrdir import (
-        BzrDir,
-        )
-    ControlDir = BzrDir
+from bzrlib.bzrdir import (
+    BzrDir,
+    )
 from bzrlib.repository import (
     Repository,
     )
@@ -65,19 +58,19 @@ class TestGitBranch(tests.TestCaseInTempDir):
 
     def test_open_existing(self):
         GitRepo.init('.')
-        d = ControlDir.open('.')
+        d = BzrDir.open('.')
         thebranch = d.create_branch()
         self.assertIsInstance(thebranch, branch.GitBranch)
 
     def test_repr(self):
         GitRepo.init('.')
-        d = ControlDir.open('.')
+        d = BzrDir.open('.')
         thebranch = d.create_branch()
         self.assertEquals("<LocalGitBranch('file://%s/', 'HEAD')>" % self.test_dir, repr(thebranch))
 
     def test_last_revision_is_null(self):
         GitRepo.init('.')
-        thedir = ControlDir.open('.')
+        thedir = BzrDir.open('.')
         thebranch = thedir.create_branch()
         self.assertEqual(revision.NULL_REVISION, thebranch.last_revision())
         self.assertEqual((0, revision.NULL_REVISION),
@@ -137,7 +130,7 @@ class TestWithGitBranch(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         dulwich.repo.Repo.create(self.test_dir)
-        d = ControlDir.open(self.test_dir)
+        d = BzrDir.open(self.test_dir)
         self.git_branch = d.create_branch()
 
     def test_get_parent(self):
@@ -193,7 +186,7 @@ class BranchTests(tests.TestCaseInTempDir):
         return "d", (marks[mark1], marks[mark2])
 
     def clone_git_branch(self, from_url, to_url):
-        from_dir = ControlDir.open(from_url)
+        from_dir = BzrDir.open(from_url)
         to_dir = from_dir.sprout(to_url)
         return to_dir.open_branch()
 

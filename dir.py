@@ -115,6 +115,14 @@ class LocalGitDir(GitDir):
 
     _gitrepository_class = property(_get_gitrepository_class)
 
+    @property
+    def user_transport(self):
+        return self.root_transport
+
+    @property
+    def control_transport(self):
+        return self.transport
+
     def __init__(self, transport, lockfiles, gitrepo, format):
         self._format = format
         self.root_transport = transport
