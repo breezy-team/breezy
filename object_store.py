@@ -220,7 +220,9 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             new_trees[posixpath.dirname(path[1])] = parent[1]
         elif kind[1] not in (None, "directory"):
             raise AssertionError(kind[1])
-        if path[0] is not None and parent[0] in tree.inventory and tree.inventory[parent[0]].kind == "directory":
+        if (path[0] not in (None, "") and
+            parent[0] in tree.inventory and
+            tree.inventory[parent[0]].kind == "directory"):
             # Removal
             new_trees[posixpath.dirname(path[0])] = parent[0]
     
