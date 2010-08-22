@@ -34,11 +34,15 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     )
 
+from bzrlib.plugins.git.cache import (
+    DictGitShaMap,
+    )
 from bzrlib.plugins.git.object_store import (
     BazaarObjectStore,
     LRUTreeCache,
     _check_expected_sha,
     _find_missing_bzr_revids,
+    _tree_to_objects,
     )
 
 
@@ -172,3 +176,14 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
         bb.finish_series()
         self.assertTrue(b.id in self.store)
 
+
+class TreeToObjectsTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TreeToObjectsTests, self).setUp()
+        self.idmap = DictGitShaMap()
+
+    def test_no_changes(self):
+        tree = self.make_branch_and_tree('.')
+        entries = list(_tree_to_objects(tree, [tree], self.idmap, {}))
+        self.assertEquals([], entries)

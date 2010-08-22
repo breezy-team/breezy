@@ -229,7 +229,7 @@ class RemoteGitProber(Prober):
         if (not url.startswith("git://") and not url.startswith("git+")):
             raise bzr_errors.NotBranchError(transport.base)
         # little ugly, but works
-        format = klass()
+        format = RemoteGitControlDirFormat()
         from bzrlib.plugins.git.remote import GitSmartTransport
         if not isinstance(transport, GitSmartTransport):
             raise bzr_errors.NotBranchError(transport.base)
