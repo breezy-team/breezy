@@ -17,7 +17,6 @@
 """UI tests for the test framework."""
 
 from bzrlib import (
-    benchmarks,
     tests,
     )
 from bzrlib.tests import (
@@ -44,24 +43,6 @@ class SelfTestPatch:
             return params[0]
         finally:
             tests.selftest = original_selftest
-
-
-class TestOptionsWritingToDisk(tests.TestCaseInTempDir, SelfTestPatch):
-
-    def test_benchmark_runs_benchmark_tests(self):
-        """selftest --benchmark should change the suite factory."""
-        params = self.get_params_passed_to_core('selftest --benchmark')
-        self.assertEqual(benchmarks.test_suite,
-            params[1]['test_suite_factory'])
-        self.assertNotEqual(None, params[1]['bench_history'])
-        benchfile = open(".perf_history", "rt")
-        try:
-            lines = benchfile.readlines()
-        finally:
-            benchfile.close()
-        # Because we don't run the actual test code no output is made to the
-        # file.
-        self.assertEqual(0, len(lines))
 
 
 class TestOptions(tests.TestCase, SelfTestPatch):

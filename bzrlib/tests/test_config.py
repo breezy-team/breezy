@@ -19,6 +19,7 @@
 from cStringIO import StringIO
 import os
 import sys
+import threading
 
 #import bzrlib specific imports here
 from bzrlib import (
@@ -35,6 +36,7 @@ from bzrlib import (
     trace,
     transport,
     )
+from bzrlib.tests import features
 from bzrlib.util.configobj import configobj
 
 
@@ -366,7 +368,7 @@ class TestConfigPath(tests.TestCase):
             '/home/bogus/.cache')
 
 
-class TestIniConfig(tests.TestCase):
+class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):
         conf = config.IniBasedConfig(_content=s)
@@ -386,6 +388,21 @@ class TestIniConfigBuilding(TestIniConfig):
         my_config = config.IniBasedConfig(_content=sample_config_text)
         parser = my_config._get_parser()
         self.failUnless(my_config._get_parser() is parser)
+
+    def _dummy_chown(self, path, uid, gid):
+        self.path, self.uid, self.gid = path, uid, gid
+
+    def test_ini_config_ownership(self):
+        """Ensure that chown is happening during _write_config_file.
+        """
+        self.requireFeature(features.chown_feature)
+        self.overrideAttr(os, 'chown', self._dummy_chown)
+        self.path = self.uid = self.gid = None
+        conf = config.IniBasedConfig(file_name='foo.conf')
+        conf._write_config_file()
+        self.assertEquals(self.path, 'foo.conf')
+        self.assertTrue(isinstance(self.uid, int))
+        self.assertTrue(isinstance(self.gid, int))
 
     def test_get_filename_parameter_is_deprecated_(self):
         conf = self.callDeprecated([
@@ -465,6 +482,56 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         self.assertEquals('TWO', c2.get_user_option('two'))
         # The second update respect the first one
         self.assertEquals('ONE', c2.get_user_option('one'))
+
+    def test_last_speaker_wins(self):
+        # If the same config is not shared, the same variable modified twice
+        # can only see a single result.
+        c1 = self.config
+        c2 = self.create_config(self._content)
+        c1.set_user_option('one', 'c1')
+        c2.set_user_option('one', 'c2')
+        self.assertEquals('c2', c2._get_user_option('one'))
+        # The first modification is still available until another refresh
+        # occur
+        self.assertEquals('c1', c1._get_user_option('one'))
+        c1.set_user_option('two', 'done')
+        self.assertEquals('c2', c1._get_user_option('one'))
+
+    def test_writes_are_serialized(self):
+        c1 = self.create_config(self._content)
+        c2 = self.create_config(self._content)
+
+        # We spawn a thread that will pause *during* the write
+        before_writing = threading.Event()
+        after_writing = threading.Event()
+        writing_done = threading.Event()
+        c1_orig = c1._write_config_file
+        def c1_write_config_file():
+            before_writing.set()
+            c1_orig()
+            # The lock is held we wait for the main thread to decide when to
+            # continue
+            after_writing.wait()
+        c1._write_config_file = c1_write_config_file
+        def c1_set_option():
+            c1.set_user_option('one', 'c1')
+            writing_done.set()
+        t1 = threading.Thread(target=c1_set_option)
+        # Collect the thread after the test
+        self.addCleanup(t1.join)
+        # Be ready to unblock the thread if the test goes wrong
+        self.addCleanup(after_writing.set)
+        t1.start()
+        before_writing.wait()
+        self.assertTrue(c1._lock.is_held)
+        self.assertRaises(errors.LockContention,
+                          c2.set_user_option, 'one', 'c2')
+        self.assertEquals('c1', c1.get_user_option('one'))
+        # Let the lock be released
+        after_writing.set()
+        writing_done.wait()
+        c2.set_user_option('one', 'c2')
+        self.assertEquals('c2', c2.get_user_option('one'))
 
 
 class TestGetUserOptionAs(TestIniConfig):

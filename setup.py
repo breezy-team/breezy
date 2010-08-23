@@ -9,6 +9,7 @@ Run it with
 import os
 import os.path
 import sys
+import copy
 
 if sys.version_info < (2, 4):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.4+\n")
@@ -557,6 +558,8 @@ elif 'py2exe' in sys.argv:
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
+    gui_target = copy.copy(target)
+    gui_target.dest_base = "bzrw"
 
     packages = BZRLIB['packages']
     packages.remove('bzrlib')
@@ -647,7 +650,7 @@ elif 'py2exe' in sys.argv:
     console_targets = [target,
                        'tools/win32/bzr_postinstall.py',
                        ]
-    gui_targets = []
+    gui_targets = [gui_target]
     data_files = topics_files + plugins_files
 
     if 'qbzr' in plugins:
@@ -692,15 +695,28 @@ elif 'py2exe' in sys.argv:
                                "dll_excludes": dll_excludes,
                                "dist_dir": "win32_bzr.exe",
                                "optimize": 2,
+                               "custom_boot_script":
+                                        "tools/win32/py2exe_boot_common.py",
                               },
                    }
+
+    # We want the libaray.zip to have optimize = 2, but the exe to have
+    # optimize = 1, so that .py files that get compilied at run time
+    # (e.g. user installed plugins) dont have their doc strings removed.
+    class py2exe_no_oo_exe(py2exe.build_exe.py2exe):
+        def build_executable(self, *args, **kwargs):
+            self.optimize = 1
+            py2exe.build_exe.py2exe.build_executable(self, *args, **kwargs)
+            self.optimize = 2
+
     if __name__ == '__main__':
         setup(options=options_list,
               console=console_targets,
               windows=gui_targets,
               zipfile='lib/library.zip',
               data_files=data_files,
-              cmdclass={'install_data': install_data_with_bytecompile},
+              cmdclass={'install_data': install_data_with_bytecompile,
+                        'py2exe': py2exe_no_oo_exe},
               )
 
 else:

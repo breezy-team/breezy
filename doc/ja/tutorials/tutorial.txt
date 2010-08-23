@@ -239,8 +239,8 @@ Bazaarはコンピュータのユーザー名とホスト名から自動でメ�
 ブランチを格納しているディレクトリ名で指定できます。 bzr は http や ftp\
 経由でブランチにアクセスすることもできます。例::
 
-    % bzr log http://bazaar-vcs.org/bzr/bzr.dev/
-    % bzr log sftp://bazaar-vcs.org/bzr/bzr.dev/
+    % bzr log http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
+    % bzr log sftp://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
 
 プラグインをインストールすれば、 rsync プロトコルを使ってブランチにアクセス\
 することもできます。
@@ -655,7 +655,7 @@ bzr はファイルとディレクトリを、名前の変更を追跡して賢�
 この場合、既存のブランチのコピーを取得する必要があります。
 このコピーは新しいブランチになるので、このコマンドは **branch** という名前になっています::
 
-    % bzr branch http://bazaar-vcs.org/bzr/bzr.dev
+    % bzr branch lp:bzr bzr.dev
     % cd bzr.dev
 
 .. This copies down the complete history of this branch, so we can do all

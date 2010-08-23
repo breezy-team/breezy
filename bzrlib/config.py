@@ -65,6 +65,7 @@ up=pull
 import os
 import sys
 
+from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
@@ -77,11 +78,13 @@ from bzrlib import (
     atomicfile,
     debug,
     errors,
+    lockdir,
     mail_client,
     osutils,
     registry,
     symbol_versioning,
     trace,
+    transport,
     ui,
     urlutils,
     win32utils,
@@ -531,9 +534,34 @@ class IniBasedConfig(Config):
         self._get_parser().write(atomic_file)
         atomic_file.commit()
         atomic_file.close()
+        osutils.copy_ownership_from_path(self.file_name)
 
 
-class GlobalConfig(IniBasedConfig):
+class LockableConfig(IniBasedConfig):
+    """A configuration needing explicit locking for access.
+
+    If several processes try to write the config file, the accesses need to be
+    serialized.
+    """
+
+    lock_name = 'lock'
+
+    def __init__(self, file_name, _content=None):
+        super(LockableConfig, self).__init__(file_name=file_name,
+                                             _content=_content)
+        self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
+        self.transport = transport.get_transport(self.dir)
+        self._lock = lockdir.LockDir(self.transport, 'lock')
+
+    def lock_write(self, token=None):
+        ensure_config_dir_exists(self.dir)
+        return self._lock.lock_write(token)
+
+    def unlock(self):
+        self._lock.unlock()
+
+
+class GlobalConfig(LockableConfig):
     """The configuration that should be used for a specific location."""
 
     def __init__(self, _content=None, _save=False):
@@ -543,6 +571,7 @@ class GlobalConfig(IniBasedConfig):
     def get_editor(self):
         return self._get_user_option('editor')
 
+    @needs_write_lock
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
         self._set_option(option, value, 'DEFAULT')
@@ -567,7 +596,6 @@ class GlobalConfig(IniBasedConfig):
         self._write_config_file()
 
     def _set_option(self, option, value, section):
-        # FIXME: RBC 20051029 This should take a file lock on bazaar.conf.
         self.reload()
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()

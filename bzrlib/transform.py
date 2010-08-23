@@ -1182,7 +1182,7 @@ class DiskTreeTransform(TreeTransformBase):
             if trans_id not in self._new_contents:
                 continue
             new_path = self._limbo_name(trans_id)
-            osutils.rename(old_path, new_path)
+            os.rename(old_path, new_path)
             for descendant in self._limbo_descendants(trans_id):
                 desc_path = self._limbo_files[descendant]
                 desc_path = new_path + desc_path[len(old_path):]
@@ -2919,8 +2919,8 @@ class _FileMover(object):
     def rename(self, from_, to):
         """Rename a file from one path to another."""
         try:
-            osutils.rename(from_, to)
-        except (IOError, OSError), e:
+            os.rename(from_, to)
+        except OSError, e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
                 raise errors.FileExists(to, str(e))
             # normal OSError doesn't include filenames so it's hard to see where
@@ -2942,8 +2942,8 @@ class _FileMover(object):
         """Reverse all renames that have been performed"""
         for from_, to in reversed(self.past_renames):
             try:
-                osutils.rename(to, from_)
-            except (OSError, IOError), e:
+                os.rename(to, from_)
+            except OSError, e:
                 raise errors.TransformRenameFailed(to, from_, str(e), e.errno)                
         # after rollback, don't reuse _FileMover
         past_renames = None

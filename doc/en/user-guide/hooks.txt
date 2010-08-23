@@ -81,7 +81,7 @@ to be a conflict, even if Bazaar thinks it can merge it cleanly.
   
   def merge_xml_files_hook(merger):
       """Hook to merge *.xml files"""
-      return MergeXMLFiles(merger)
+      return AlwaysConflictXMLMerger(merger)
   
   class AlwaysConflictXMLMerger(PerFileMerger):
   
