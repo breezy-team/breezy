@@ -134,7 +134,9 @@ class LocalGitRepository(GitRepository):
                 commit = self._git[hexsha]
             except KeyError:
                 continue
-            parent_map[revision_id] = [self.lookup_foreign_revision_id(p, mapping) for p in commit.parents]
+            parent_map[revision_id] = [
+                self.lookup_foreign_revision_id(p, mapping)
+                for p in commit.parents]
         return parent_map
 
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -186,14 +188,16 @@ class LocalGitRepository(GitRepository):
             if mapping is None:
                 mapping = self.get_mapping()
             try:
-                return self._git.refs[mapping.revid_as_refname(bzr_revid)], mapping
+                return (self._git.refs[mapping.revid_as_refname(bzr_revid)],
+                        mapping)
             except KeyError:
                 # Update refs from Git commit objects
                 # FIXME: Hitting this a lot will be very inefficient...
                 for git_sha, revid, roundtrip_revid in self._iter_revision_ids():
                     if not roundtrip_revid:
                         continue
-                    self._git.refs[mapping.revid_as_refname(roundtrip_revid)] = git_sha
+                    refname = mapping.revid_as_refname(roundtrip_revid)
+                    self._git.refs[refname] = git_sha
                     if roundtrip_revid == bzr_revid:
                         return git_sha, mapping
                 raise errors.NoSuchRevision(self, bzr_revid)
@@ -252,7 +256,7 @@ class LocalGitRepository(GitRepository):
                         ancestors=None):
         return GitVersionedFileChecker(self,
             text_key_references=text_key_references, ancestors=ancestors)
-    
+
 
 class GitVersionedFileChecker(repository._VersionedFileChecker):
 
