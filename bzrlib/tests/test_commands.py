@@ -345,6 +345,7 @@ class TestListCommandHook(tests.TestCase):
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
 
+
 class TestDeprecations(tests.TestCase):
 
     def test_shlex_split_unicode_deprecation(self):

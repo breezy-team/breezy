@@ -73,7 +73,7 @@ friendly, helpful and always keen to welcome newcomers.
 Bazaar Development in a Nutshell
 ================================
 
-.. was from bazaar-vcs.org/BzrGivingBack
+.. was from http://wiki.bazaar.canonical.com/BzrGivingBack
 
 One of the fun things about working on a version control system like Bazaar is
 that the users have a high level of proficiency in contributing back into
@@ -89,7 +89,7 @@ copy of bzr.dev?`_.)
 
  $ bzr init-repo ~/bzr
  $ cd ~/bzr
- $ bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
+ $ bzr branch lp:bzr bzr.dev
 
 Now make your own branch::
 
@@ -224,7 +224,7 @@ As a starting suggestion though:
 * create a local copy of the main development branch (bzr.dev) by using
   this command::
 
-    bzr branch http://bazaar-vcs.org/bzr/bzr.dev/ bzr.dev
+    bzr branch lp:bzr bzr.dev
 
 * keep your copy of bzr.dev pristine (by not developing in it) and keep
   it up to date (by using bzr pull)
@@ -242,7 +242,7 @@ the associated branch can be deleted or archived as you wish.
 Navigating the Code Base
 ========================
 
-.. Was at <http://bazaar-vcs.org/NewDeveloperIntroduction>
+.. Was at <http://wiki.bazaar.canonical.com/NewDeveloperIntroduction>
 
 Some of the key files in this directory are:
 
