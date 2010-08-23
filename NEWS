@@ -104,6 +104,13 @@ Improvements
   will be backed up (adding an extention of the form .~#~).
   (Marius Kruger, #400554)
 
+* Decrease memory consumption when many chk index pages are loaded. (Such
+  as during ``bzr co`` or ``bzr ls -R`` of a large tree.) Often we need to
+  read many chk pages because the individual chk map nodes will be spread
+  randomly. Peak memory for 'bzr ls -R' on a large tree dropped from 396MB
+  down to 247MB, expect even more significant savings on 64-bit platforms.
+  (John Arbash Meinel)
+
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
   to 48).  (Andrew Bennetts)
