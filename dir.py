@@ -126,6 +126,7 @@ class LocalGitDir(GitDir):
     def __init__(self, transport, lockfiles, gitrepo, format):
         self._format = format
         self.root_transport = transport
+        self._mode_check_done = False
         self._git = gitrepo
         if gitrepo.bare:
             self.transport = transport
@@ -260,3 +261,49 @@ class LocalGitDir(GitDir):
         repository.
         """
         return self.open_repository()
+
+    def _find_creation_modes(self):
+        """Determine the appropriate modes for files and directories.
+
+        They're always set to be consistent with the base directory,
+        assuming that this transport allows setting modes.
+        """
+        # TODO: Do we need or want an option (maybe a config setting) to turn
+        # this off or override it for particular locations? -- mbp 20080512
+        if self._mode_check_done:
+            return
+        self._mode_check_done = True
+        try:
+            st = self.transport.stat('.')
+        except TransportNotPossible:
+            self._dir_mode = None
+            self._file_mode = None
+        else:
+            # Check the directory mode, but also make sure the created
+            # directories and files are read-write for this user. This is
+            # mostly a workaround for filesystems which lie about being able to
+            # write to a directory (cygwin & win32)
+            if (st.st_mode & 07777 == 00000):
+                # FTP allows stat but does not return dir/file modes
+                self._dir_mode = None
+                self._file_mode = None
+            else:
+                self._dir_mode = (st.st_mode & 07777) | 00700
+                # Remove the sticky and execute bits for files
+                self._file_mode = self._dir_mode & ~07111
+
+    def _get_file_mode(self):
+        """Return Unix mode for newly created files, or None.
+        """
+        if not self._mode_check_done:
+            self._find_creation_modes()
+        return self._file_mode
+
+    def _get_dir_mode(self):
+        """Return Unix mode for newly created directories, or None.
+        """
+        if not self._mode_check_done:
+            self._find_creation_modes()
+        return self._dir_mode
+
+

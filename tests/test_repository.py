@@ -274,4 +274,4 @@ class RevisionGistImportTests(tests.TestCaseWithTransport):
 class ForeignTestsRepositoryFactory(object):
 
     def make_repository(self, transport):
-        return dir.LocalGitBzrDirFormat().initialize_on_transport(transport).open_repository()
+        return dir.LocalGitControlDirFormat().initialize_on_transport(transport).open_repository()

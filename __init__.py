@@ -120,7 +120,7 @@ def lazy_check_versions():
 
 format_registry.register_lazy('git',
     "bzrlib.plugins.git.dir", "LocalGitControlDirFormat",
-    help='GIT repository.', native=False, experimental=True,
+    help='GIT repository.', native=False, experimental=False,
     )
 
 from bzrlib.revisionspec import revspec_registry
@@ -278,8 +278,8 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
 
 
 if has_controldir:
-    ControlDirFormat.register_format(LocalGitControlDirFormat)
-    ControlDirFormat.register_format(RemoteGitControlDirFormat)
+    ControlDirFormat.register_format(LocalGitControlDirFormat())
+    ControlDirFormat.register_format(RemoteGitControlDirFormat())
     ControlDirFormat.register_prober(LocalGitProber)
     ControlDirFormat.register_prober(RemoteGitProber)
 else:
