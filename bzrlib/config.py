@@ -564,12 +564,18 @@ class LockableConfig(IniBasedConfig):
 
     lock_name = 'lock'
 
-    def __init__(self, file_name, _content=None):
+    def __init__(self, file_name, _content=None, _save=False):
         super(LockableConfig, self).__init__(file_name=file_name,
-                                             _content=_content)
+                                             _content=_content, _save=False)
         self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
         self.transport = transport.get_transport(self.dir)
         self._lock = lockdir.LockDir(self.transport, 'lock')
+        if _save:
+            # We need to handle the saving here (as opposed to IniBasedConfig)
+            # to be able to lock
+            self.lock_write()
+            self._write_config_file()
+            self.unlock()
 
     def lock_write(self, token=None):
         """Takes a write lock in the directory containing the config file.
@@ -755,6 +761,7 @@ class LocationConfig(LockableConfig):
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
+        parser = self._get_parser()
         if not location in parser and not location + '/' in parser:
             parser[location] = {}
         elif location + '/' in parser:
