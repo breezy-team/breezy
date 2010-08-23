@@ -417,8 +417,7 @@ class TestIniConfigBuilding(TestIniConfig):
         self.path, self.uid, self.gid = path, uid, gid
 
     def test_ini_config_ownership(self):
-        """Ensure that chown is happening during _write_config_file.
-        """
+        """Ensure that chown is happening during _write_config_file"""
         self.requireFeature(features.chown_feature)
         self.overrideAttr(os, 'chown', self._dummy_chown)
         self.path = self.uid = self.gid = None
@@ -485,7 +484,9 @@ class TestLockableConfig(tests.TestCaseInTempDir):
 
     def create_config(self, content):
         c = self.config_class(*self.config_args, _content=content)
+        c.lock_write()
         c._write_config_file()
+        c.unlock()
         return c
 
     def test_simple_read_access(self):
@@ -1166,10 +1167,14 @@ class TestLocationConfig(tests.TestCaseInTempDir):
             global_config = sample_config_text
 
         my_global_config = config.GlobalConfig(_content=global_config)
+        my_global_config.lock_write()
         my_global_config._write_config_file()
+        my_global_config.unlock()
         my_location_config = config.LocationConfig(
             my_branch.base, _content=sample_branches_text)
+        my_location_config.lock_write()
         my_location_config._write_config_file()
+        my_location_config.unlock()
 
         my_config = config.BranchConfig(my_branch)
         self.my_config = my_config
@@ -1242,11 +1247,15 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         my_branch = FakeBranch(location)
         if global_config is not None:
             my_global_config = config.GlobalConfig(_content=global_config)
+            my_global_config.lock_write()
             my_global_config._write_config_file()
+            my_global_config.unlock()
         if location_config is not None:
             my_location_config = config.LocationConfig(my_branch.base,
                                                        _content=location_config)
+            my_location_config.lock_write()
             my_location_config._write_config_file()
+            my_location_config.unlock()
         my_config = config.BranchConfig(my_branch)
         if branch_data_config is not None:
             my_config.branch.control_files.files['branch.conf'] = \
