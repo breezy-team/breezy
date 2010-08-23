@@ -3356,3 +3356,8 @@ register_metadir(controldir.format_registry, 'default-rich-root',
 
 # The current format that is made on 'bzr init'.
 controldir.format_registry.set_default('2a')
+
+# XXX 2010-08-20 JRV: There is still a lot of code relying on
+# bzrlib.bzrdir.format_registry existing. When BzrDir.create/BzrDir.open/etc
+# get changed to ControlDir.create/ControlDir.open/etc this should be removed.
+format_registry = controldir.format_registry

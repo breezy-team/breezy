@@ -29,28 +29,19 @@ from bzrlib import (
     controldir,
     errors,
     gpg,
-    lockdir,
     osutils,
-    repository,
     revision as _mod_revision,
-    transactions,
     transport,
     ui,
     urlutils,
     workingtree,
     )
-from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
-from bzrlib.errors import (FileExists,
-                           NoSuchRevision,
-                           NoSuchFile,
-                           UninitializableFormat,
+from bzrlib.errors import (NoSuchRevision,
                            NotBranchError,
                            )
 import bzrlib.revision
 from bzrlib.tests import (
                           ChrootedTestCase,
-                          TestCase,
-                          TestCaseWithTransport,
                           TestNotApplicable,
                           TestSkipped,
                           )
@@ -63,7 +54,7 @@ from bzrlib.remote import RemoteBzrDir, RemoteRepository
 from bzrlib.repofmt import weaverepo
 
 
-class TestBzrDir(TestCaseWithControlDir):
+class TestControlDir(TestCaseWithControlDir):
     # Many of these tests test for disk equality rather than checking
     # for semantic equivalence. This works well for some tests but
     # is not good at handling changes in representation or the addition
@@ -263,14 +254,14 @@ class TestBzrDir(TestCaseWithControlDir):
         bzrdir.open_repository()
 
     def test_open_workingtree_raises_no_working_tree(self):
-        """BzrDir.open_workingtree() should raise NoWorkingTree (rather than
+        """ControlDir.open_workingtree() should raise NoWorkingTree (rather than
         e.g. NotLocalUrl) if there is no working tree.
         """
         dir = self.make_bzrdir('source')
         vfs_dir = bzrdir.BzrDir.open(self.get_vfs_only_url('source'))
         if vfs_dir.has_workingtree():
-            # This BzrDir format doesn't support BzrDirs without working trees,
-            # so this test is irrelevant.
+            # This ControlDir format doesn't support ControlDirs without
+            # working trees, so this test is irrelevant.
             return
         self.assertRaises(errors.NoWorkingTree, dir.open_workingtree)
 
@@ -1207,7 +1198,7 @@ class TestBzrDir(TestCaseWithControlDir):
         t = transport.get_transport(self.get_url())
         readonly_t = transport.get_transport(self.get_readonly_url())
         made_control = self.bzrdir_format.initialize(t.base)
-        self.failUnless(isinstance(made_control, bzrdir.BzrDir))
+        self.failUnless(isinstance(made_control, controldir.ControlDir))
         self.assertEqual(self.bzrdir_format,
                          controldir.ControlDirFormat.find_format(readonly_t))
         direct_opened_dir = self.bzrdir_format.open(readonly_t)
@@ -1216,7 +1207,7 @@ class TestBzrDir(TestCaseWithControlDir):
                          opened_dir._format)
         self.assertEqual(direct_opened_dir._format,
                          opened_dir._format)
-        self.failUnless(isinstance(opened_dir, bzrdir.BzrDir))
+        self.failUnless(isinstance(opened_dir, controldir.ControlDir))
 
     def test_format_initialize_on_transport_ex(self):
         t = self.get_transport('dir')
@@ -1766,7 +1757,7 @@ class TestBzrDir(TestCaseWithControlDir):
             self.assertTrue(isinstance(dir._format.get_converter(
                 format=dir._format), bzrdir.Converter))
         dir.needs_format_conversion(
-            bzrdir.BzrDirFormat.get_default_format())
+            controldir.ControlDirFormat.get_default_format())
 
     def test_backup_copies_existing(self):
         tree = self.make_branch_and_tree('test')
@@ -1965,7 +1956,7 @@ class TestTransportConfig(TestCaseWithControlDir):
         self.assertEqual('http://example.com', config2.get_default_stack_on())
 
 
-class ChrootedBzrDirTests(ChrootedTestCase):
+class ChrootedControlDirTests(ChrootedTestCase):
 
     def test_find_repository_no_repository(self):
         # loopback test to check the current format fails to find a
@@ -1993,8 +1984,8 @@ class ChrootedBzrDirTests(ChrootedTestCase):
                           made_control.find_repository)
 
 
-class TestBzrDirControlComponent(TestCaseWithControlDir):
-    """BzrDir implementations adequately implement ControlComponent."""
+class TestControlDirControlComponent(TestCaseWithControlDir):
+    """ControlDir implementations adequately implement ControlComponent."""
 
     def test_urls(self):
         bd = self.make_bzrdir('bd')
