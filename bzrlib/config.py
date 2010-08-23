@@ -616,6 +616,7 @@ class GlobalConfig(LockableConfig):
     @needs_write_lock
     def unset_alias(self, alias_name):
         """Unset an existing alias."""
+        self.reload()
         aliases = self._get_parser().get('ALIASES')
         if not aliases or alias_name not in aliases:
             raise errors.NoSuchAlias(alias_name)
