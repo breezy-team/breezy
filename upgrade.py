@@ -68,10 +68,16 @@ def upgrade_tags(tags, repository, generate_rebase_map, determine_new_revid,
         for i, (name, revid) in enumerate(tags_dict.iteritems()):
             pb.update("upgrading tags", i, len(tags_dict))
             if not revid in renames:
-                renames.update(upgrade_repository(repository, 
-                      generate_rebase_map, determine_new_revid,
-                      revision_id=revid, allow_changes=allow_changes,
-                      verbose=verbose))
+                try:
+                    repository.lock_read()
+                    revid_exists = repository.has_revision(revid)
+                finally:
+                    repository.unlock()
+                if revid_exists:
+                    renames.update(upgrade_repository(repository, 
+                          generate_rebase_map, determine_new_revid,
+                          revision_id=revid, allow_changes=allow_changes,
+                          verbose=verbose))
             if (revid in renames and 
                 (branch_ancestry is None or not revid in branch_ancestry)):
                 tags.set_tag(name, renames[revid])
