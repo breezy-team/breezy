@@ -88,6 +88,8 @@ def inject_bzr_metadata(message, metadata, encoding):
     if not metadata:
         return message
     rt_data = generate_roundtripping_metadata(metadata, encoding)
+    if not rt_data:
+        return message
     assert type(rt_data) == str
     return message + "\n--BZR--\n" + rt_data
 

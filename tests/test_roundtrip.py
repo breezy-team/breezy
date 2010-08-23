@@ -67,6 +67,11 @@ class FormatTests(TestCase):
         self.assertEquals("property-foo: bar\n",
             generate_roundtripping_metadata(metadata, "utf-8"))
 
+    def test_empty(self):
+        metadata = BzrGitRevisionMetadata()
+        self.assertEquals("",
+            generate_roundtripping_metadata(metadata, "utf-8"))
+
 
 class ExtractMetadataTests(TestCase):
 
@@ -89,6 +94,11 @@ class GenerateMetadataTests(TestCase):
 --BZR--
 revision-id: myrevid
 """, msg)
+
+    def test_no_metadata(self):
+        metadata = BzrGitRevisionMetadata()
+        msg = inject_bzr_metadata("Foo", metadata, "utf-8")
+        self.assertEquals("Foo", msg)
 
 
 class FileIdRoundTripTests(TestCase):
