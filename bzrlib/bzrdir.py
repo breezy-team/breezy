@@ -615,20 +615,22 @@ class BzrDir(ControlComponent):
         """
         raise NotImplementedError(self.create_workingtree)
 
+    def generate_backup_name(self, base):
+        """Generate a non-existing backup file name based on base."""
+        counter = 1
+        name = "%s.~%d~" % (base, counter)
+        while self.root_transport.has(name):
+            counter += 1
+            name = "%s.~%d~" % (base, counter)
+        return name
+
     def backup_bzrdir(self):
         """Backup this bzr control directory.
 
         :return: Tuple with old path name and new path name
         """
-        def name_gen(base='backup.bzr'):
-            counter = 1
-            name = "%s.~%d~" % (base, counter)
-            while self.root_transport.has(name):
-                counter += 1
-                name = "%s.~%d~" % (base, counter)
-            return name
 
-        backup_dir=name_gen()
+        backup_dir=self.generate_backup_name('backup.bzr')
         pb = ui.ui_factory.nested_progress_bar()
         try:
             # FIXME: bug 300001 -- the backup fails if the backup directory
@@ -2939,7 +2941,6 @@ class ConvertBzrDir4To5(Converter):
         previous_entries = dict((head, parent_candiate_entries[head]) for head
             in heads)
         self.snapshot_ie(previous_entries, ie, w, rev_id)
-        del ie.text_id
 
     def get_parent_map(self, revision_ids):
         """See graph.StackedParentsProvider.get_parent_map"""

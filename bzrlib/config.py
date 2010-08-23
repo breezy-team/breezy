@@ -518,6 +518,7 @@ class IniBasedConfig(Config):
         self._get_parser().write(atomic_file)
         atomic_file.commit()
         atomic_file.close()
+        osutils.copy_ownership_from_path(self.file_name)
 
 
 class GlobalConfig(IniBasedConfig):
