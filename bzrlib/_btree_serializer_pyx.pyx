@@ -370,9 +370,9 @@ cdef int _unhexlify_sha1(char *as_hex, char *as_bin):
     j = 0
     for i from 0 <= i < 20:
         top = _unhexbuf[<unsigned char>(as_hex[j])]
-        j += 1
+        j = j + 1
         bot = _unhexbuf[<unsigned char>(as_hex[j])]
-        j += 1
+        j = j + 1
         if top == -1 or bot == -1:
             return 0
         as_bin[i] = <unsigned char>((top << 4) + bot);
@@ -397,9 +397,9 @@ cdef void _hexlify_sha1(char *as_bin, char *as_hex):
     for i from 0 <= i < 20:
         c = as_bin[i]
         as_hex[j] = _hexbuf[(c>>4)&0xf]
-        j += 1
+        j = j + 1
         as_hex[j] = _hexbuf[(c)&0xf]
-        j += 1
+        j = j + 1
 
 
 def _py_hexlify(as_bin):
@@ -670,10 +670,24 @@ cdef class GCCHKSHA1LeafNode:
             PyList_Append(result, item)
         return result
 
+    cdef int _count_records(self, char *c_content, char *c_end):
+        """Count how many records are in this section."""
+        cdef char *c_cur
+        cdef int num_records
+
+        c_cur = c_content
+        num_records = 0
+        while c_cur != NULL and c_cur < c_end:
+            c_cur = <char *>memchr(c_cur, c'\n', c_end - c_cur);
+            if c_cur == NULL:
+                break
+            c_cur = c_cur + 1
+            num_records = num_records + 1
+        return num_records
+
     cdef _parse_bytes(self, bytes):
         """Parse the string 'bytes' into content."""
         cdef char *c_bytes
-        cdef char *c_content
         cdef char *c_cur
         cdef char *c_end
         cdef Py_ssize_t n_bytes
@@ -690,28 +704,18 @@ cdef class GCCHKSHA1LeafNode:
         if strncmp(c_bytes, 'type=leaf\n', 10):
             raise ValueError("bytes did not start with 'type=leaf\\n': %r"
                              % (bytes[:10],))
-        c_content = c_bytes + 10
-        c_cur = c_content
-        num_records = 0
-        while c_cur != NULL and c_cur < c_end:
-            c_cur = <char *>memchr(c_cur, c'\n', c_end - c_cur);
-            if c_cur == NULL:
-                break
-            c_cur += 1
-            num_records += 1
+        c_cur = c_bytes + 10
+        num_records = self._count_records(c_cur, c_end)
         # Now allocate the memory for these items, and go to town
-        # We allocate both the offsets and the records in the same malloc. we
-        # should probably pay a bit closer attention to alignment
         self.records = <gc_chk_sha1_record*>PyMem_Malloc(num_records *
             (sizeof(unsigned short) + sizeof(gc_chk_sha1_record)))
         self.num_records = num_records
-        c_cur = c_content
         cur_record = self.records
         entry = 0
         while c_cur != NULL and c_cur < c_end and entry < num_records:
             c_cur = self._parse_one_entry(c_cur, c_end, cur_record)
-            cur_record += 1
-            entry += 1
+            cur_record = cur_record + 1
+            entry = entry + 1
         if (entry != self.num_records
             or c_cur != c_end
             or cur_record != self.records + self.num_records):
@@ -729,7 +733,7 @@ cdef class GCCHKSHA1LeafNode:
         if strncmp(c_cur, 'sha1:', 5):
             raise ValueError('line did not start with sha1: %r'
                 % (safe_string_from_size(c_cur, 10),))
-        c_cur += 5
+        c_cur = c_cur + 5
         c_next = <char *>memchr(c_cur, c'\0', c_end - c_cur)
         if c_next == NULL or (c_next - c_cur != 40):
             raise ValueError('Line did not contain 40 hex bytes')
@@ -738,7 +742,7 @@ cdef class GCCHKSHA1LeafNode:
         c_cur = c_next + 1
         if c_cur[0] != c'\0':
             raise ValueError('only 1 null, not 2 as expected')
-        c_cur += 1
+        c_cur = c_cur + 1
         cur_record.block_offset = strtoll(c_cur, &c_next, 10)
         if c_cur == c_next or c_next[0] != c' ':
             raise ValueError('Failed to parse block offset')
@@ -795,7 +799,7 @@ cdef class GCCHKSHA1LeafNode:
             common_shift = 24
             while common_mask & 0x80000000 and common_shift > 0:
                 common_mask = common_mask << 1
-                common_shift -= 1
+                common_shift = common_shift - 1
             self.common_shift = common_shift
         offset = 0
         max_offset = self.num_records
@@ -809,10 +813,10 @@ cdef class GCCHKSHA1LeafNode:
             this_offset = self._offset_for_sha1(self.records[i].sha1)
             while offset <= this_offset:
                 self.offsets[offset] = i
-                offset += 1
+                offset = offset + 1
         while offset < 257:
             self.offsets[offset] = max_offset
-            offset += 1
+            offset = offset + 1
 
     def _get_offsets(self):
         cdef int i
