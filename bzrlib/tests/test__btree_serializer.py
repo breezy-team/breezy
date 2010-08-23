@@ -38,23 +38,23 @@ class TestHexAndUnhex(TestBtreeSerializer):
 
     def assertHexlify(self, as_binary):
         self.assertEqual(binascii.hexlify(as_binary),
-                         self.module._test_hexlify(as_binary))
+                         self.module._py_hexlify(as_binary))
 
     def assertUnhexlify(self, as_hex):
         ba_unhex = binascii.unhexlify(as_hex)
-        mod_unhex = self.module._test_unhexlify(as_hex)
+        mod_unhex = self.module._py_unhexlify(as_hex)
         if ba_unhex != mod_unhex:
             if mod_unhex is None:
                 mod_hex = '<None>'
             else:
                 mod_hex = binascii.hexlify(mod_unhex)
-            self.fail('_test_unhexlify returned a different answer'
+            self.fail('_py_unhexlify returned a different answer'
                       ' from binascii:\n    %s\n != %s'
                       % (binascii.hexlify(ba_unhex), mod_hex))
 
     def assertFailUnhexlify(self, as_hex):
         # Invalid hex content
-        self.assertIs(None, self.module._test_unhexlify(as_hex))
+        self.assertIs(None, self.module._py_unhexlify(as_hex))
 
     def test_to_hex(self):
         raw_bytes = ''.join(map(chr, range(256)))
@@ -86,7 +86,7 @@ class Test_KeyToSha1(TestBtreeSerializer):
             expected_bin = None
         else:
             expected_bin = binascii.unhexlify(expected)
-        actual_sha1 = self.module._test_key_to_sha1(key)
+        actual_sha1 = self.module._py_key_to_sha1(key)
         if expected_bin != actual_sha1:
             actual_hex_sha1 = None
             if actual_sha1 is not None:
@@ -121,7 +121,7 @@ class Test_Sha1ToKey(TestBtreeSerializer):
 
     def assertSha1ToKey(self, hex_sha1):
         bin_sha1 = binascii.unhexlify(hex_sha1)
-        key = self.module._test_sha1_to_key(bin_sha1)
+        key = self.module._py_sha1_to_key(bin_sha1)
         self.assertEqual(('sha1:' + hex_sha1,), key)
 
     def test_simple(self):
@@ -229,7 +229,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         # The interesting byte for each key is
         # (defined as the 8-bits that come after the common prefix)
         lst = [1, 13, 28, 180, 190, 193, 210, 239]
-        offsets = leaf._test_offsets
+        offsets = leaf._get_offsets()
         self.assertEqual([bisect.bisect_left(lst, x) for x in range(0, 257)],
                          offsets)
         for idx, val in enumerate(lst):
@@ -241,7 +241,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         # there is no common prefix, though there are some common bits
         leaf = self.module._parse_into_chk(_multi_key_same_offset, 1, 0)
         self.assertEqual(24, leaf.common_shift)
-        offsets = leaf._test_offsets
+        offsets = leaf._get_offsets()
         # The interesting byte is just the first 8-bits of the key
         lst = [8, 200, 205, 205, 205, 205, 206, 206]
         self.assertEqual([bisect.bisect_left(lst, x) for x in range(0, 257)],
@@ -257,7 +257,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         leaf = self.module._parse_into_chk(_common_32_bits, 1, 0)
         self.assertEqual(0, leaf.common_shift)
         lst = [0x78] * 8
-        offsets = leaf._test_offsets
+        offsets = leaf._get_offsets()
         self.assertEqual([bisect.bisect_left(lst, x) for x in range(0, 257)],
                          offsets)
         for val in lst:
@@ -277,7 +277,7 @@ class TestGCCKHSHA1LeafNode(TestBtreeSerializer):
         bytes = ''.join(lines)
         leaf = self.module._parse_into_chk(bytes, 1, 0)
         self.assertEqual(24-7, leaf.common_shift)
-        offsets = leaf._test_offsets
+        offsets = leaf._get_offsets()
         # This is the interesting bits for each entry
         lst = [x // 2 for x in range(500)]
         expected_offsets = [x * 2 for x in range(128)] + [255]*129

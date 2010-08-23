@@ -379,7 +379,7 @@ cdef int _unhexlify_sha1(char *as_hex, char *as_bin):
     return 1
 
 
-def _test_unhexlify(as_hex):
+def _py_unhexlify(as_hex):
     """For the test infrastructure, just thunks to _unhexlify_sha1"""
     if len(as_hex) != 40 or not PyString_CheckExact(as_hex):
         raise ValueError('not a 40-byte hex digest')
@@ -402,7 +402,7 @@ cdef void _hexlify_sha1(char *as_bin, char *as_hex):
         j += 1
 
 
-def _test_hexlify(as_bin):
+def _py_hexlify(as_bin):
     """For test infrastructure, thunk to _hexlify_sha1"""
     if len(as_bin) != 20 or not PyString_CheckExact(as_bin):
         raise ValueError('not a 20-byte binary digest')
@@ -439,7 +439,7 @@ cdef int _key_to_sha1(key, char *sha1):
     return 1
 
 
-def _test_key_to_sha1(key):
+def _py_key_to_sha1(key):
     """Map a key to a simple sha1 string.
 
     This is a testing thunk to the C function.
@@ -475,7 +475,7 @@ cdef StaticTuple _sha1_to_key(char *sha1):
     return key
 
 
-def _test_sha1_to_key(sha1_bin):
+def _py_sha1_to_key(sha1_bin):
     """Test thunk to check the sha1 mapping."""
     if not PyString_CheckExact(sha1_bin) or PyString_GET_SIZE(sha1_bin) != 20:
         raise ValueError('sha1_bin must be a str of exactly 20 bytes')
@@ -765,7 +765,7 @@ cdef class GCCHKSHA1LeafNode:
         this_offset = (as_uint >> self.common_shift) & 0xFF
         return this_offset
 
-    def test_offset_for_sha1(self, sha1):
+    def _get_offset_for_sha1(self, sha1):
         return self._offset_for_sha1(PyString_AS_STRING(sha1))
 
     cdef _compute_common(self):
@@ -814,13 +814,12 @@ cdef class GCCHKSHA1LeafNode:
             self.offsets[offset] = max_offset
             offset += 1
 
-    property _test_offsets:
-        def __get__(self):
-            cdef int i
-            result = []
-            for i from 0 <= i < 257:
-                PyList_Append(result, self.offsets[i])
-            return result
+    def _get_offsets(self):
+        cdef int i
+        result = []
+        for i from 0 <= i < 257:
+            PyList_Append(result, self.offsets[i])
+        return result
 
 
 def _parse_into_chk(bytes, key_length, ref_list_length):
