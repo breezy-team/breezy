@@ -594,7 +594,7 @@ class GlobalConfig(LockableConfig):
         self._write_config_file()
 
 
-class LocationConfig(IniBasedConfig):
+class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location, _content=None):
@@ -701,6 +701,7 @@ class LocationConfig(IniBasedConfig):
             if policy_key in self._get_parser()[section]:
                 del self._get_parser()[section][policy_key]
 
+    @needs_write_lock
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
         if store not in [STORE_LOCATION,
@@ -709,7 +710,6 @@ class LocationConfig(IniBasedConfig):
             raise ValueError('bad storage policy %r for %r' %
                 (store, option))
         self.reload()
-        # FIXME: RBC 20051029 This should take a file lock on locations.conf.
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
