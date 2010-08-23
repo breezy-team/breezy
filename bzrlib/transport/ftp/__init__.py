@@ -191,6 +191,9 @@ class FtpTransport(ConnectedTransport):
             or 'file/directory not found' in s # filezilla server
             # Microsoft FTP-Service RNFR reply if file not found
             or (s.startswith('550 ') and 'unable to rename to' in extra)
+            # if containing directory doesn't exist, suggested by
+            # <https://bugs.edge.launchpad.net/bzr/+bug/224373>
+            or (s.startswith('550 ') and "can't find folder" in s)
             ):
             raise errors.NoSuchFile(path, extra=extra)
         elif ('file exists' in s):
@@ -314,8 +317,9 @@ class FtpTransport(ConnectedTransport):
                     return len(bytes)
                 else:
                     return fp.counted_bytes
-            except (ftplib.error_temp,EOFError), e:
-                warning("Failure during ftp PUT. Deleting temporary file.")
+            except (ftplib.error_temp, EOFError), e:
+                warning("Failure during ftp PUT of %s: %s. Deleting temporary file."
+                    % (tmp_abspath, e, ))
                 try:
                     f.delete(tmp_abspath)
                 except:
@@ -328,8 +332,9 @@ class FtpTransport(ConnectedTransport):
                                        unknown_exc=errors.NoSuchFile)
         except ftplib.error_temp, e:
             if retries > _number_of_retries:
-                raise errors.TransportError("FTP temporary error during PUT %s. Aborting."
-                                     % self.abspath(relpath), orig_error=e)
+                raise errors.TransportError(
+                    "FTP temporary error during PUT %s: %s. Aborting."
+                    % (self.abspath(relpath), e), orig_error=e)
             else:
                 warning("FTP temporary error: %s. Retrying.", str(e))
                 self._reconnect()
@@ -350,7 +355,17 @@ class FtpTransport(ConnectedTransport):
         try:
             mutter("FTP mkd: %s", abspath)
             f = self._get_FTP()
-            f.mkd(abspath)
+            try:
+                f.mkd(abspath)
+            except ftplib.error_reply, e:
+                # <https://bugs.launchpad.net/bzr/+bug/224373> Microsoft FTP
+                # server returns "250 Directory created." which is kind of
+                # reasonable, 250 meaning "requested file action OK", but not what
+                # Python's ftplib expects.
+                if e[0][:3] == '250':
+                    pass
+                else:
+                    raise
             self._setmode(relpath, mode)
         except ftplib.error_perm, e:
             self._translate_ftp_error(e, abspath,

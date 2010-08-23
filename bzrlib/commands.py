@@ -222,6 +222,7 @@ def builtin_command_names():
     Use of all_command_names() is encouraged rather than builtin_command_names
     and/or plugin_command_names.
     """
+    _register_builtin_commands()
     return builtin_command_registry.keys()
 
 

@@ -1738,8 +1738,6 @@ class DirStateRevisionTree(Tree):
                 elif kind == 'directory':
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'symlink':
-                    inv_entry.executable = False
-                    inv_entry.text_size = None
                     inv_entry.symlink_target = utf8_decode(fingerprint)[0]
                 elif kind == 'tree-reference':
                     inv_entry.reference_revision = fingerprint or None

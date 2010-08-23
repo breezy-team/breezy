@@ -1984,6 +1984,8 @@ class BzrRemoveChangedFilesError(BzrError):
         "Use --keep to not delete them, or --force to delete them regardless.")
 
     def __init__(self, tree_delta):
+        symbol_versioning.warn(symbol_versioning.deprecated_in((2, 3, 0)) %
+            "BzrRemoveChangedFilesError", DeprecationWarning, stacklevel=2)
         BzrError.__init__(self)
         self.changes_as_text = tree_delta.get_changes_as_text()
         #self.paths_as_string = '\n'.join(changed_files)
@@ -2843,8 +2845,11 @@ class UncommittedChanges(BzrError):
         else:
             more = ' ' + more
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(
-            tree.user_url, 'ascii')
+        user_url = getattr(tree, "user_url", None)
+        if user_url is None:
+            display_url = str(tree)
+        else:
+            display_url = urlutils.unescape_for_display(user_url, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
 
 
