@@ -70,6 +70,7 @@ from _static_tuple_c cimport StaticTuple, \
     import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
     StaticTuple_GET_SIZE, StaticTuple_GET_ITEM
+import sys
 
 
 # TODO: Find some way to import this from _dirstate_helpers
@@ -492,6 +493,41 @@ cdef unsigned int _sha1_to_uint(char *sha1):
     return val
 
 
+cdef _format_record_py24(gc_chk_sha1_record *record):
+    """Python2.4 PyString_FromFormat doesn't have %u.
+
+    It only has %d and %ld. We would really like to even have %llu, which
+    is only in python2.7. So we go back into casting to regular objects.
+    """
+    return "%s %s %s %s" % (record.block_offset, record.block_length,
+                            record.record_start, record.record_end)
+
+
+cdef _format_record(gc_chk_sha1_record *record):
+    # This is inefficient to go from a logical state back to a
+    # string, but it makes things work a bit better internally for now.
+    if record.block_offset >= 0xFFFFFFFF:
+        # %llu is what we really want, but unfortunately it was only added
+        # in python 2.7... :(
+        block_offset_str = str(record.block_offset)
+        value = PyString_FromFormat('%s %lu %lu %lu',
+                                PyString_AS_STRING(block_offset_str),
+                                record.block_length,
+                                record.record_start, record.record_end)
+    else:
+        value = PyString_FromFormat('%lu %lu %lu %lu',
+                                    <unsigned long>record.block_offset,
+                                    record.block_length,
+                                    record.record_start, record.record_end)
+    return value
+
+ctypedef object (*formatproc)(gc_chk_sha1_record *)
+cdef formatproc _record_formatter
+_record_formatter = _format_record
+if sys.version_info[:2] == (2, 4):
+    _record_formatter = _format_record_py24
+
+
 cdef class GCCHKSHA1LeafNode:
     """Track all the entries for a given leaf node."""
 
@@ -554,21 +590,7 @@ cdef class GCCHKSHA1LeafNode:
         cdef StaticTuple value_and_refs
         cdef StaticTuple empty
         value_and_refs = StaticTuple_New(2)
-        # This is really inefficient to go from a logical state back to a
-        # string, but it makes things work a bit better internally for now.
-        if record.block_offset >= 0xFFFFFFFF:
-            # %llu is what we really want, but unfortunately it was only added
-            # in python 2.7... :(
-            block_offset_str = str(record.block_offset)
-            value = PyString_FromFormat('%s %lu %lu %lu',
-                                    PyString_AS_STRING(block_offset_str),
-                                    record.block_length,
-                                    record.record_start, record.record_end)
-        else:
-            value = PyString_FromFormat('%lu %lu %lu %lu',
-                                        <unsigned long>record.block_offset,
-                                        record.block_length,
-                                        record.record_start, record.record_end)
+        value = _record_formatter(record)
         Py_INCREF(value)
         StaticTuple_SET_ITEM(value_and_refs, 0, value)
         # Always empty refs

@@ -65,8 +65,6 @@
     #if !defined(S_ISLNK)
         #define S_ISLNK(mode) (0)
     #endif
-    #define strtoll _strtoi64
-    #define strtoull _strtoui64
 #else /* Not win32 */
     /* For htonl */
     #include "arpa/inet.h"
@@ -76,6 +74,9 @@
 
 #ifdef _MSC_VER
 #define  snprintf  _snprintf
+/* gcc (mingw32) has strtoll, while the MSVC compiler uses _strtoi64 */
+#define strtoll _strtoi64
+#define strtoull _strtoui64
 #endif
 
 /* Introduced in Python 2.6 */
