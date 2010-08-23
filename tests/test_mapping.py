@@ -97,7 +97,10 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = "Author"
         mapping = BzrGitMappingv1()
-        rev = mapping.import_commit(c, mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(c,
+            mapping.revision_id_foreign_to_bzr)
+        self.assertEquals(None, roundtrip_revid)
+        self.assertEquals(None, testament_sha1)
         self.assertEquals("Some message", rev.message)
         self.assertEquals("Committer", rev.committer)
         self.assertEquals("Author", rev.properties['author'])
@@ -119,7 +122,10 @@ class TestImportCommit(tests.TestCase):
         c.author = u"Authér".encode("iso8859-1")
         c.encoding = "iso8859-1"
         mapping = BzrGitMappingv1()
-        rev = mapping.import_commit(c, mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(c,
+            mapping.revision_id_foreign_to_bzr)
+        self.assertEquals(None, roundtrip_revid)
+        self.assertEquals(None, testament_sha1)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("iso8859-1", rev.properties["git-explicit-encoding"])
         self.assertTrue("git-implicit-encoding" not in rev.properties)
@@ -135,7 +141,10 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("latin1")
         mapping = BzrGitMappingv1()
-        rev = mapping.import_commit(c, mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(c,
+            mapping.revision_id_foreign_to_bzr)
+        self.assertEquals(None, roundtrip_revid)
+        self.assertEquals(None, testament_sha1)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("latin1", rev.properties["git-implicit-encoding"])
         self.assertTrue("git-explicit-encoding" not in rev.properties)
@@ -151,7 +160,10 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("utf-8")
         mapping = BzrGitMappingv1()
-        rev = mapping.import_commit(c, mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(c,
+            mapping.revision_id_foreign_to_bzr)
+        self.assertEquals(None, roundtrip_revid)
+        self.assertEquals(None, testament_sha1)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertTrue("git-explicit-encoding" not in rev.properties)
         self.assertTrue("git-implicit-encoding" not in rev.properties)
@@ -168,10 +180,12 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
     def assertRoundtripRevision(self, orig_rev):
         commit = self.mapping.export_commit(orig_rev, "mysha",
             self._lookup_parent, True)
-        rev = self.mapping.import_commit(commit,
-            self.mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, testament_sha1 = self.mapping.import_commit(
+            commit, self.mapping.revision_id_foreign_to_bzr)
+        self.assertEquals(rev.revision_id,
+            self.mapping.revision_id_foreign_to_bzr(commit.id))
         if self.mapping.roundtripping:
-            self.assertEquals(orig_rev.revision_id, rev.revision_id)
+            self.assertEquals(orig_rev.revision_id, roundtrip_revid)
             self.assertEquals(orig_rev.properties, rev.properties)
             self.assertEquals(orig_rev.committer, rev.committer)
             self.assertEquals(orig_rev.timestamp, rev.timestamp)
@@ -233,8 +247,8 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         raise NotImplementedError(self.assertRoundtripBlob)
 
     def assertRoundtripCommit(self, commit1):
-        rev = self.mapping.import_commit(commit1,
-            self.mapping.revision_id_foreign_to_bzr)
+        rev, roundtrip_revid, testament_sha1 = self.mapping.import_commit(
+            commit1, self.mapping.revision_id_foreign_to_bzr)
         commit2 = self.mapping.export_commit(rev, "12341212121212", None,
             True)
         self.assertEquals(commit1.committer, commit2.committer)

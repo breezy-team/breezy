@@ -307,8 +307,8 @@ class BzrGitMapping(foreign.VcsMapping):
     def import_commit(self, commit, lookup_parent_revid):
         """Convert a git commit to a bzr revision.
 
-        :return: a `bzrlib.revision.Revision` object and a 
-            dictionary of path -> file ids
+        :return: a `bzrlib.revision.Revision` object, foreign revid and a
+            testament sha1
         """
         if commit is None:
             raise AssertionError("Commit object can't be None")
@@ -347,12 +347,15 @@ class BzrGitMapping(foreign.VcsMapping):
         rev.timezone = commit.commit_timezone
         if rev.git_metadata is not None:
             md = rev.git_metadata
-            if md.revision_id:
-                rev.revision_id = md.revision_id
+            roundtrip_revid = md.revision_id
             if md.explicit_parent_ids:
                 rev.parent_ids = md.explicit_parent_ids
             rev.properties.update(md.properties)
-        return rev
+            testament_sha1 = md.testament_sha1
+        else:
+            roundtrip_revid = None
+            testament_sha1 = None
+        return rev, roundtrip_revid, testament_sha1
 
     def get_fileid_map(self, lookup_object, tree_sha):
         """Obtain a fileid map for a particular tree.
@@ -400,9 +403,9 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         return ret
 
     def import_commit(self, commit, lookup_parent_revid):
-        rev, file_ids = super(BzrGitMappingExperimental, self).import_commit(commit, lookup_parent_revid)
+        rev, roundtrip_revid, testament_sha1 = super(BzrGitMappingExperimental, self).import_commit(commit, lookup_parent_revid)
         rev.properties['converted_revision'] = "git %s\n" % commit.id
-        return rev, file_ids
+        return rev, roundtrip_revid, testament_sha1
 
 
 class GitMappingRegistry(VcsMappingRegistry):

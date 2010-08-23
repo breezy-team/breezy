@@ -105,18 +105,21 @@ class LocalGitRepository(GitRepository):
         self.texts = GitTexts(self)
 
     def _iter_revision_ids(self):
+        mapping = self.get_mapping()
         for sha in self._git.object_store:
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            rev = self.get_mapping().import_commit(o,
+            rev, roundtrip_revid, testament_sha1 = mapping.import_commit(o,
                 self.lookup_foreign_revision_id)
-            yield o.id, rev.revision_id
+            yield o.id, rev.revision_id, roundtrip_revid
 
     def all_revision_ids(self):
         ret = set([])
-        for git_sha, revid in self._iter_revision_ids():
+        for git_sha, revid, roundtrip_revid in self._iter_revision_ids():
             ret.add(revid)
+            if roundtrip_revid:
+                ret.add(roundtrip_revid)
         return ret
 
     def get_parent_map(self, revids):
@@ -165,8 +168,13 @@ class LocalGitRepository(GitRepository):
         if foreign_revid == ZERO_SHA:
             return revision.NULL_REVISION
         commit = self._git[foreign_revid]
-        rev = mapping.import_commit(commit, lambda x: None)
-        return rev.revision_id
+        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(commit,
+            lambda x: None)
+        # FIXME: check testament before doing this?
+        if roundtrip_revid:
+            return roundtrip_revid
+        else:
+            return rev.revision_id
 
     def has_signature_for_revision_id(self, revision_id):
         return False
@@ -182,9 +190,11 @@ class LocalGitRepository(GitRepository):
             except KeyError:
                 # Update refs from Git commit objects
                 # FIXME: Hitting this a lot will be very inefficient...
-                for git_sha, revid in self._iter_revision_ids():
-                    self._git.refs[mapping.revid_as_refname(revid)] = git_sha
-                    if revid == bzr_revid:
+                for git_sha, revid, roundtrip_revid in self._iter_revision_ids():
+                    if not roundtrip_revid:
+                        continue
+                    self._git.refs[mapping.revid_as_refname(roundtrip_revid)] = git_sha
+                    if roundtrip_revid == bzr_revid:
                         return git_sha, mapping
                 raise errors.NoSuchRevision(self, bzr_revid)
 
@@ -194,10 +204,12 @@ class LocalGitRepository(GitRepository):
             commit = self._git[git_commit_id]
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
-        # print "fetched revision:", git_commit_id
-        revision = mapping.import_commit(commit,
-            self.lookup_foreign_revision_id)
+        revision, roundtrip_revid, testament_sha1 = mapping.import_commit(
+            commit, self.lookup_foreign_revision_id)
         assert revision is not None
+        # FIXME: check testament_sha1 ?
+        if roundtrip_revid:
+            revision.revision_id = roundtrip_revid
         return revision
 
     def has_revision(self, revision_id):
