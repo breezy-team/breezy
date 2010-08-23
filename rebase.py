@@ -423,6 +423,14 @@ class CommitBuilderRevisionRewriter(object):
                     try:
                         ie = new_pinv[old_ie.file_id].copy()
                     except NoSuchId:
+                        # Empty directories (or directories with only
+                        # empty-directory children) not in the new inventory
+                        # can arise when different import strategies are
+                        # used on a foreign branch that doesn't natively
+                        # represent directories.  We can skip these, and
+                        # fail later if the directory contains any files.
+                        if old_ie.kind == 'directory':
+                            return None
                         raise ReplayParentsInconsistent(old_ie.file_id, old_ie.revision)
                     break
             assert ie is not None
@@ -471,9 +479,10 @@ class CommitBuilderRevisionRewriter(object):
                     pb.update('upgrading file', i, len(mappedtree.inventory))
                     ie = self._process_file(old_ie, oldtree, oldrevid, newrevid,
                         old_parent_invs, new_parent_invs, path)
-                    builder.record_entry_contents(ie,
-                            new_parent_invs, path, mappedtree,
-                            mappedtree.path_content_summary(path))
+                    if ie is not None:
+                        builder.record_entry_contents(ie,
+                                new_parent_invs, path, mappedtree,
+                                mappedtree.path_content_summary(path))
             finally:
                 pb.finished()
             builder.finish_inventory()
