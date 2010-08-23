@@ -22,8 +22,10 @@ import bzrlib
 from bzrlib import (
     branch,
     bzrdir,
+    config,
     errors,
     lockdir,
+    osutils,
     tests,
     )
 
@@ -101,3 +103,24 @@ class TestBreakLockOldBranch(tests.TestCaseWithTransport):
         out, err = self.run_bzr('break-lock foo')
         self.assertEqual('', out)
         self.assertEqual('', err)
+
+class TestConfigBreakLock(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestConfigBreakLock, self).setUp()
+        self.config_file_name = './my.conf'
+        self.build_tree_contents([(self.config_file_name,
+                                   '[DEFAULT]\none=1\n')])
+        self.config = config.LockableConfig(file_name=self.config_file_name)
+        self.config.lock_write()
+
+    def test_create_pending_lock(self):
+        self.addCleanup(self.config.unlock)
+        self.assertTrue(self.config._lock.is_held)
+
+    def test_break_lock(self):
+        self.run_bzr('break-lock --config %s'
+                     % osutils.dirname(self.config_file_name),
+                     stdin="y\n")
+        self.assertRaises(errors.LockBroken, self.config.unlock)
+

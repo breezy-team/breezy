@@ -575,6 +575,9 @@ class LockableConfig(IniBasedConfig):
     def unlock(self):
         self._lock.unlock()
 
+    def break_lock(self):
+        self._lock.break_lock()
+
     def _write_config_file(self):
         if self._lock is None or not self._lock.is_held:
             # NB: if the following exception is raised it probably means a

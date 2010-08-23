@@ -36,6 +36,15 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr break-lock --config [location]`` can now break config files
+  locks. (Vincent Ladeuil, #525571)
+
+* ``bzrlib.config.LockableConfig`` is a base class for config files that
+  needs to be protected against multiple writers. All methods that
+  change a configuration variable value must be decorated with
+  @needs_write_lock (set_option() for example).
+  (Vincent Ladeuil,  #525571)
+
 * The ``lp:`` prefix will now use your known username (from
   ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
   ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now
@@ -63,6 +72,9 @@ Bug Fixes
 
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
+
+* Configuration files in ``${BZR_HOME}`` are now protected against
+  concurrent writers by using a lock. (Vincent Ladeuil, #525571)
 
 * Cope with Microsoft FTP Server and VSFTPd that return reply '250
   Directory created' when mkdir succeeds.  (Martin Pool, #224373)
