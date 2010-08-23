@@ -22,15 +22,18 @@ from cStringIO import StringIO
 
 class BzrGitRevisionMetadata(object):
     """Metadata for a Bazaar revision roundtripped into Git.
-    
+
     :ivar revision_id: Revision id, as string
     :ivar properties: Revision properties, as dictionary
     :ivar explicit_parent_ids: Parent ids (needed if there are ghosts)
+    :ivar testament_sha1: SHA1 of the testament.
     """
 
     revision_id = None
 
     explicit_parent_ids = None
+
+    testament_sha1 = None
 
     def __init__(self):
         self.properties = {}
@@ -49,6 +52,8 @@ def parse_roundtripping_metadata(text):
             ret.revision_id = value.strip()
         elif key == "parent-ids":
             ret.explicit_parent_ids = tuple(value.strip().split(" "))
+        elif key == "testament-sha1":
+            ret.testament_sha1 = value.strip()
         elif key.startswith("property-"):
             ret.properties[key[len("property-"):]] = value[1:].rstrip("\n")
         else:
@@ -69,6 +74,8 @@ def generate_roundtripping_metadata(metadata, encoding):
         lines.append("parent-ids: %s\n" % " ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         lines.append("property-%s: %s\n" % (key.encode(encoding), metadata.properties[key].encode(encoding)))
+    if metadata.testament_sha1:
+        lines.append("testament-sha1: %s\n" % metadata.testament_sha1)
     return "".join(lines)
 
 
@@ -95,15 +102,17 @@ def inject_bzr_metadata(message, metadata, encoding):
 
 
 def serialize_fileid_map(file_ids):
+    """Serialize a file id map."""
     lines = []
     for path in sorted(file_ids.keys()):
         lines.append("%s\0%s\n" % (path, file_ids[path]))
     return lines
 
 
-def deserialize_fileid_map(file):
+def deserialize_fileid_map(filetext):
+    """Deserialize a file id map."""
     ret = {}
-    f = StringIO(file)
+    f = StringIO(filetext)
     lines = f.readlines()
     for l in lines:
         (path, file_id) = l.rstrip("\n").split("\0")
