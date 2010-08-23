@@ -542,6 +542,24 @@ class LockableConfig(IniBasedConfig):
 
     If several processes try to write the config file, the accesses need to be
     serialized.
+
+    Daughter classes should decorate all methods that update a config with the
+    ``@needs_write_lock`` decorator (they call, directly or indirectly, the
+    ``_write_config_file()`` method. These methods (typically ``set_option()``
+    and variants must reload the config file from disk before calling
+    ``_write_config_file()``), this can be achieved by calling the
+    ``self.reload()`` method. Note that the lock scope should cover both the
+    reading and the writing of the config file which is why the decorator can't
+    be applied to ``_write_config_file()`` only.
+
+    This should be enough to implement the following logic:
+    - lock for exclusive write access,
+    - reload the config file from disk,
+    - set the new value
+    - unlock
+
+    This logic guarantees that a writer can update a value without erasing an
+    update made by another writer.
     """
 
     lock_name = 'lock'
@@ -554,11 +572,25 @@ class LockableConfig(IniBasedConfig):
         self._lock = lockdir.LockDir(self.transport, 'lock')
 
     def lock_write(self, token=None):
+        """Takes a write lock in the directory containing the config file.
+
+        If the directory doesn't exist it is created.
+        """
         ensure_config_dir_exists(self.dir)
         return self._lock.lock_write(token)
 
     def unlock(self):
         self._lock.unlock()
+
+    def break_lock(self):
+        self._lock.break_lock()
+
+    def _write_config_file(self):
+        if self._lock is None or not self._lock.is_held:
+            # NB: if the following exception is raised it probably means a
+            # missing @needs_write_lock decorator on one of the callers.
+            raise errors.ObjectNotLocked(self)
+        super(LockableConfig, self)._write_config_file()
 
 
 class GlobalConfig(LockableConfig):
@@ -583,12 +615,15 @@ class GlobalConfig(LockableConfig):
         else:
             return {}
 
+    @needs_write_lock
     def set_alias(self, alias_name, alias_command):
         """Save the alias in the configuration."""
         self._set_option(alias_name, alias_command, 'ALIASES')
 
+    @needs_write_lock
     def unset_alias(self, alias_name):
         """Unset an existing alias."""
+        self.reload()
         aliases = self._get_parser().get('ALIASES')
         if not aliases or alias_name not in aliases:
             raise errors.NoSuchAlias(alias_name)
@@ -601,7 +636,7 @@ class GlobalConfig(LockableConfig):
         self._write_config_file()
 
 
-class LocationConfig(IniBasedConfig):
+class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location, _content=None, _save=False):
@@ -708,6 +743,7 @@ class LocationConfig(IniBasedConfig):
             if policy_key in self._get_parser()[section]:
                 del self._get_parser()[section][policy_key]
 
+    @needs_write_lock
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
         if store not in [STORE_LOCATION,
@@ -716,8 +752,6 @@ class LocationConfig(IniBasedConfig):
             raise ValueError('bad storage policy %r for %r' %
                 (store, option))
         self.reload()
-        # FIXME: RBC 20051029 This should take a file lock on locations.conf.
-        parser = self._get_parser()
         location = self.location
         if location.endswith('/'):
             location = location[:-1]

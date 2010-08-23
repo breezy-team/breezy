@@ -40,6 +40,30 @@ from bzrlib.tests import features
 from bzrlib.util.configobj import configobj
 
 
+def lockable_config_scenarios():
+    return [
+        ('global',
+         {'config_class': config.GlobalConfig,
+          'config_args': [],
+          'config_section': 'DEFAULT'}),
+        ('locations',
+         {'config_class': config.LocationConfig,
+          'config_args': ['.'],
+          'config_section': '.'}),]
+
+
+def load_tests(standard_tests, module, loader):
+    suite = loader.suiteClass()
+
+    lc_tests, remaining_tests = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance((
+                TestLockableConfig,
+                )))
+    tests.multiply_tests(lc_tests, lockable_config_scenarios(), suite)
+    suite.addTest(remaining_tests)
+    return suite
+
+
 sample_long_alias="log -r-15..-1 --line"
 sample_config_text = u"""
 [DEFAULT]
@@ -393,14 +417,13 @@ class TestIniConfigBuilding(TestIniConfig):
         self.path, self.uid, self.gid = path, uid, gid
 
     def test_ini_config_ownership(self):
-        """Ensure that chown is happening during _write_config_file.
-        """
+        """Ensure that chown is happening during _write_config_file"""
         self.requireFeature(features.chown_feature)
         self.overrideAttr(os, 'chown', self._dummy_chown)
         self.path = self.uid = self.gid = None
-        conf = config.IniBasedConfig(file_name='foo.conf')
+        conf = config.IniBasedConfig(file_name='./foo.conf')
         conf._write_config_file()
-        self.assertEquals(self.path, 'foo.conf')
+        self.assertEquals(self.path, './foo.conf')
         self.assertTrue(isinstance(self.uid, int))
         self.assertTrue(isinstance(self.gid, int))
 
@@ -454,16 +477,24 @@ class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
 
 class TestLockableConfig(tests.TestCaseInTempDir):
 
-    config_class = config.GlobalConfig
+    # Set by load_tests
+    config_class = None
+    config_args = None
+    config_section = None
 
     def setUp(self):
         super(TestLockableConfig, self).setUp()
-        self._content = '[DEFAULT]\none=1\ntwo=2'
+        self._content = '[%s]\none=1\ntwo=2\n' % (self.config_section,)
         self.config = self.create_config(self._content)
 
+    def get_existing_config(self):
+        return self.config_class(*self.config_args)
+
     def create_config(self, content):
-        c = self.config_class(_content=content)
+        c = self.config_class(*self.config_args, _content=content)
+        c.lock_write()
         c._write_config_file()
+        c.unlock()
         return c
 
     def test_simple_read_access(self):
@@ -475,7 +506,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
 
     def test_listen_to_the_last_speaker(self):
         c1 = self.config
-        c2 = self.create_config(self._content)
+        c2 = self.get_existing_config()
         c1.set_user_option('one', 'ONE')
         c2.set_user_option('two', 'TWO')
         self.assertEquals('ONE', c1.get_user_option('one'))
@@ -487,7 +518,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         # If the same config is not shared, the same variable modified twice
         # can only see a single result.
         c1 = self.config
-        c2 = self.create_config(self._content)
+        c2 = self.get_existing_config()
         c1.set_user_option('one', 'c1')
         c2.set_user_option('one', 'c2')
         self.assertEquals('c2', c2._get_user_option('one'))
@@ -498,8 +529,8 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         self.assertEquals('c2', c1._get_user_option('one'))
 
     def test_writes_are_serialized(self):
-        c1 = self.create_config(self._content)
-        c2 = self.create_config(self._content)
+        c1 = self.config
+        c2 = self.get_existing_config()
 
         # We spawn a thread that will pause *during* the write
         before_writing = threading.Event()
@@ -532,6 +563,43 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         writing_done.wait()
         c2.set_user_option('one', 'c2')
         self.assertEquals('c2', c2.get_user_option('one'))
+
+    def test_read_while_writing(self):
+       c1 = self.config
+       # We spawn a thread that will pause *during* the write
+       ready_to_write = threading.Event()
+       do_writing = threading.Event()
+       writing_done = threading.Event()
+       c1_orig = c1._write_config_file
+       def c1_write_config_file():
+           ready_to_write.set()
+           # The lock is held we wait for the main thread to decide when to
+           # continue
+           do_writing.wait()
+           c1_orig()
+           writing_done.set()
+       c1._write_config_file = c1_write_config_file
+       def c1_set_option():
+           c1.set_user_option('one', 'c1')
+       t1 = threading.Thread(target=c1_set_option)
+       # Collect the thread after the test
+       self.addCleanup(t1.join)
+       # Be ready to unblock the thread if the test goes wrong
+       self.addCleanup(do_writing.set)
+       t1.start()
+       # Ensure the thread is ready to write
+       ready_to_write.wait()
+       self.assertTrue(c1._lock.is_held)
+       self.assertEquals('c1', c1.get_user_option('one'))
+       # If we read during the write, we get the old value
+       c2 = self.get_existing_config()
+       self.assertEquals('1', c2.get_user_option('one'))
+       # Let the writing occur and ensure it occurred
+       do_writing.set()
+       writing_done.wait()
+       # Now we get the updated value
+       c3 = self.get_existing_config()
+       self.assertEquals('c1', c3.get_user_option('one'))
 
 
 class TestGetUserOptionAs(TestIniConfig):
@@ -1101,10 +1169,14 @@ class TestLocationConfig(tests.TestCaseInTempDir):
             global_config = sample_config_text
 
         my_global_config = config.GlobalConfig(_content=global_config)
+        my_global_config.lock_write()
         my_global_config._write_config_file()
+        my_global_config.unlock()
         my_location_config = config.LocationConfig(
             my_branch.base, _content=sample_branches_text)
+        my_location_config.lock_write()
         my_location_config._write_config_file()
+        my_location_config.unlock()
 
         my_config = config.BranchConfig(my_branch)
         self.my_config = my_config
@@ -1177,11 +1249,15 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         my_branch = FakeBranch(location)
         if global_config is not None:
             my_global_config = config.GlobalConfig(_content=global_config)
+            my_global_config.lock_write()
             my_global_config._write_config_file()
+            my_global_config.unlock()
         if location_config is not None:
             my_location_config = config.LocationConfig(my_branch.base,
                                                        _content=location_config)
+            my_location_config.lock_write()
             my_location_config._write_config_file()
+            my_location_config.unlock()
         my_config = config.BranchConfig(my_branch)
         if branch_data_config is not None:
             my_config.branch.control_files.files['branch.conf'] = \
