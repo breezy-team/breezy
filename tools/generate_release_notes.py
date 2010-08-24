@@ -20,8 +20,6 @@ import os
 import sys
 from optparse import OptionParser
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
 
 def split_into_topics(lines, out_file, out_dir):
     """Split a large NEWS file into topics, one per release.
@@ -32,7 +30,7 @@ def split_into_topics(lines, out_file, out_dir):
     """
     topic_file = None
     for index, line in enumerate(lines):
-        maybe_new_topic = line[:4] in ['bzr ', 'bzr-0',]
+        maybe_new_topic = line[:4] in ('bzr ', 'bzr-',)
         if maybe_new_topic and lines[index + 1].startswith('####'):
             release = line.strip()
             if topic_file is None:
@@ -45,13 +43,22 @@ def split_into_topics(lines, out_file, out_dir):
         elif topic_file:
             topic_file.write(line)
         else:
+            # FIXME: the 'content' directive is used for rst2html (and
+            # conflicts with the 'toctree' we insert), we should get rid of
+            # that once we fully switch to sphinx -- vila 20100505
+            if (line.startswith('.. contents::')
+                or line.startswith('   :depth:')):
+                    continue
             # Still in the header - dump content straight to output
             out_file.write(line)
+    if topic_file is not None:
+        # Close the last topic_file opened
+        topic_file.close()
 
 
 def open_topic_file(out_file, out_dir, release):
     topic_name = release.replace(' ', '-')
-    out_file.write("   %s\n" % (topic_name,))
+    out_file.write("   %s <%s>\n" % (release, topic_name,))
     topic_path = os.path.join(out_dir, "%s.txt" % (topic_name,))
     result = open(topic_path, 'w')
     result.write("%s\n" % (release,))
