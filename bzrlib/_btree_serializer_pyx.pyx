@@ -64,12 +64,16 @@ cdef extern from "string.h":
     unsigned long strtoul(char *s1, char **out, int base)
     long long strtoll(char *s1, char **out, int base)
 
+
 # It seems we need to import the definitions so that the pyrex compiler has
 # local names to access them.
 from _static_tuple_c cimport StaticTuple, \
     import_static_tuple_c, StaticTuple_New, \
     StaticTuple_Intern, StaticTuple_SET_ITEM, StaticTuple_CheckExact, \
     StaticTuple_GET_SIZE, StaticTuple_GET_ITEM
+# This tells the test infrastructure that StaticTuple is a class, so we don't
+# have to worry about exception checking.
+## extern cdef class StaticTuple
 import sys
 
 
@@ -112,7 +116,6 @@ cdef object safe_interned_string_from_size(char *s, Py_ssize_t size):
     Py_DECREF_ptr(py_str)
     return result
 
-from bzrlib import _static_tuple_c
 # This sets up the StaticTuple C_API functionality
 import_static_tuple_c()
 
@@ -356,7 +359,7 @@ cdef _populate_unhexbuf():
 _populate_unhexbuf()
 
 
-cdef int _unhexlify_sha1(char *as_hex, char *as_bin):
+cdef int _unhexlify_sha1(char *as_hex, char *as_bin): # cannot_raise
     """Take the hex sha1 in as_hex and make it binary in as_bin
     
     Same as binascii.unhexlify, but working on C strings, not Python objects.
@@ -390,7 +393,7 @@ def _py_unhexlify(as_hex):
     return None
 
 
-cdef void _hexlify_sha1(char *as_bin, char *as_hex):
+cdef void _hexlify_sha1(char *as_bin, char *as_hex): # cannot_raise
     cdef int i, j
     cdef char c
 
@@ -412,7 +415,7 @@ def _py_hexlify(as_bin):
     return as_hex
 
 
-cdef int _key_to_sha1(key, char *sha1):
+cdef int _key_to_sha1(key, char *sha1): # cannot_raise
     """Map a key into its sha1 content.
 
     :param key: A tuple of style ('sha1:abcd...',)
@@ -483,7 +486,7 @@ def _py_sha1_to_key(sha1_bin):
     return _sha1_to_key(PyString_AS_STRING(sha1_bin))
 
 
-cdef unsigned int _sha1_to_uint(char *sha1):
+cdef unsigned int _sha1_to_uint(char *sha1): # cannot_raise
     cdef unsigned int val
     # Must be in MSB, because that is how the content is sorted
     val = (((<unsigned int>(sha1[0]) & 0xff) << 24)
@@ -692,7 +695,7 @@ cdef class GCCHKSHA1LeafNode:
             PyList_Append(result, item)
         return result
 
-    cdef int _count_records(self, char *c_content, char *c_end):
+    cdef int _count_records(self, char *c_content, char *c_end): # cannot_raise
         """Count how many records are in this section."""
         cdef char *c_cur
         cdef int num_records
