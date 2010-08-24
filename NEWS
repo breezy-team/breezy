@@ -76,6 +76,9 @@ Bug Fixes
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
 
+* Errors occurring during http(s) test server starts should now be
+  handled cleanly. (Vincent Ladeuil, #392402)
+
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
@@ -383,10 +386,6 @@ Bug Fixes
 
 * Ensure that wrong path specifications in ``BZR_PLUGINS_AT`` display
   proper error messages. (Vincent Ladeuil, #591215)
-
-* Errors occurring during http(s) test server starts should now be handled
-  cleanly.
-  (Vincent Ladeuil, #392402)
 
 * Explicitly removing ``--profile-imports`` option from parsed command-line
   arguments on Windows, because bzr script does the same.
