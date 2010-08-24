@@ -44,9 +44,6 @@ from bzrlib import (
     ui,
     urlutils,
     )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    )
 from bzrlib.tests import (
     features,
     http_server,
@@ -1125,10 +1122,7 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     def setUp(self):
         tests.TestCase.setUp(self)
         self._old_env = {}
-
-    def tearDown(self):
-        self._restore_env()
-        tests.TestCase.tearDown(self)
+        self.addCleanup(self._restore_env)
 
     def _install_env(self, env):
         for name, value in env.iteritems():
@@ -1341,14 +1335,6 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
         self.assertRaises(errors.RedirectRequested, self.old_transport.get, 'a')
         t = self._transport(self.new_server.get_url())
         self.assertEqual('0123456789', t.get('a').read())
-
-    def test_read_redirected_bundle_from_url(self):
-        from bzrlib.bundle import read_bundle_from_url
-        url = self.old_transport.abspath('bundle')
-        bundle = self.applyDeprecated(deprecated_in((1, 12, 0)),
-                read_bundle_from_url, url)
-        # If read_bundle_from_url was successful we get an empty bundle
-        self.assertEqual([], bundle.revisions)
 
 
 class RedirectedRequest(_urllib2_wrappers.Request):
@@ -1974,13 +1960,8 @@ class TestActivityMixin(object):
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an
         # alternative would be to define a specific ui factory instead...)
-        self.orig_report_activity = self._transport._report_activity
-        self._transport._report_activity = report_activity
-
-    def tearDown(self):
-        self._transport._report_activity = self.orig_report_activity
-        self.server.stop_server()
-        tests.TestCase.tearDown(self)
+        self.overrideAttr(self._transport, '_report_activity', report_activity)
+        self.addCleanup(self.server.stop_server)
 
     def get_transport(self):
         return self._transport(self.server.get_url())
@@ -2103,51 +2084,22 @@ lalala whatever as long as itsssss
 class TestActivity(tests.TestCase, TestActivityMixin):
 
     def setUp(self):
-        tests.TestCase.setUp(self)
-        self.server = self._activity_server(self._protocol_version)
-        self.server.start_server()
-        self.activities = {}
-        def report_activity(t, bytes, direction):
-            count = self.activities.get(direction, 0)
-            count += bytes
-            self.activities[direction] = count
-
-        # We override at class level because constructors may propagate the
-        # bound method and render instance overriding ineffective (an
-        # alternative would be to define a specific ui factory instead...)
-        self.orig_report_activity = self._transport._report_activity
-        self._transport._report_activity = report_activity
-
-    def tearDown(self):
-        self._transport._report_activity = self.orig_report_activity
-        self.server.stop_server()
-        tests.TestCase.tearDown(self)
+        TestActivityMixin.setUp(self)
 
 
 class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
+    # Unlike TestActivity, we are really testing ReportingFileSocket and
+    # ReportingSocket, so we don't need all the parametrization. Since
+    # ReportingFileSocket and ReportingSocket are wrappers, it's easier to
+    # test them through their use by the transport than directly (that's a
+    # bit less clean but far more simpler and effective).
+    _activity_server = ActivityHTTPServer
+    _protocol_version = 'HTTP/1.1'
+
     def setUp(self):
-        tests.TestCase.setUp(self)
-        # Unlike TestActivity, we are really testing ReportingFileSocket and
-        # ReportingSocket, so we don't need all the parametrization. Since
-        # ReportingFileSocket and ReportingSocket are wrappers, it's easier to
-        # test them through their use by the transport than directly (that's a
-        # bit less clean but far more simpler and effective).
-        self.server = ActivityHTTPServer('HTTP/1.1')
-        self._transport=_urllib.HttpTransport_urllib
-
-        self.server.start_server()
-
-        # We override at class level because constructors may propagate the
-        # bound method and render instance overriding ineffective (an
-        # alternative would be to define a specific ui factory instead...)
-        self.orig_report_activity = self._transport._report_activity
-        self._transport._report_activity = None
-
-    def tearDown(self):
-        self._transport._report_activity = self.orig_report_activity
-        self.server.stop_server()
-        tests.TestCase.tearDown(self)
+        self._transport =_urllib.HttpTransport_urllib
+        TestActivityMixin.setUp(self)
 
     def assertActivitiesMatch(self):
         # Nothing to check here

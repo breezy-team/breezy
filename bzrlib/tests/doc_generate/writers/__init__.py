@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,15 +14,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Benchmarks of bzr rocks."""
 
+"""Sphinx writers tests."""
 
-from bzrlib.benchmarks import Benchmark
+from bzrlib.tests import features
 
+def load_tests(basic_tests, module, loader):
+    suite = loader.suiteClass()
+    # add the tests for this module
+    suite.addTests(basic_tests)
 
-class RocksBenchmark(Benchmark):
-    """Benchmarks for ``'bzr rocks'``"""
+    if features.sphinx.available():
+        testmod_names = [
+            'texinfo',
+            ]
+        # add the tests for the sub modules
+        suite.addTests(loader.loadTestsFromModuleNames(
+                ['bzrlib.tests.doc_generate.writers.test_' + name
+                 for name in testmod_names]))
 
-    def test_rocks(self):
-        """Test the startup overhead by running a do-nothing command"""
-        self.time(self.run_bzr_subprocess, 'rocks')
+    return suite
