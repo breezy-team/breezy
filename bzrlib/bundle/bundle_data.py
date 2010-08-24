@@ -715,12 +715,11 @@ class BundleTree(Tree):
                 ie.symlink_target = self.get_symlink_target(file_id)
             ie.revision = revision_id
 
-            if kind in ('directory', 'symlink'):
-                ie.text_size, ie.text_sha1 = None, None
-            else:
+            if kind == 'file':
                 ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
-            if (ie.text_size is None) and (kind == 'file'):
-                raise BzrError('Got a text_size of None for file_id %r' % file_id)
+                if ie.text_size is None:
+                    raise BzrError(
+                        'Got a text_size of None for file_id %r' % file_id)
             inv.add(ie)
 
         sorted_entries = self.sorted_path_id()

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,16 +14,5 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for bzr tree building (checkout) performance."""
+"""Placeholder to allow sphinx builders imports."""
 
-
-from bzrlib.benchmarks import Benchmark
-
-
-class CheckoutBenchmark(Benchmark):
-    """Benchmarks for ``'bzr checkout'`` performance."""
-
-    def test_build_kernel_like_tree(self):
-        """Checkout of a clean kernel sized tree should be (<10secs)."""
-        self.make_kernel_like_committed_tree(link_bzr=True)
-        self.time(self.run_bzr, ['checkout', '--lightweight', '.', 'acheckout'])
