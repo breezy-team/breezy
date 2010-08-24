@@ -53,8 +53,8 @@ class TestAlias(tests.TestCaseWithTransport):
         tree.add(file_name)
         tree.commit('added')
 
-        config.GlobalConfig(_save=True,
-                            _content=u'[ALIASES]\nust=st %s\n' % (file_name,))
+        config.GlobalConfig.from_bytes(u'[ALIASES]\nust=st %s\n' % (file_name,),
+                                       save=True)
 
         out, err = self.run_bzr('ust')
         self.assertEquals(err, '')

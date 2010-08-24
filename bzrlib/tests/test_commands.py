@@ -95,7 +95,7 @@ class TestCommands(tests.TestCase):
 class TestGetAlias(tests.TestCase):
 
     def _get_config(self, config_text):
-        my_config = config.GlobalConfig(_content=config_text)
+        my_config = config.GlobalConfig.from_bytes(config_text)
         return my_config
 
     def test_simple(self):

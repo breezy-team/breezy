@@ -356,16 +356,10 @@ class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
     def __init__(self, get_filename=symbol_versioning.DEPRECATED_PARAMETER,
-                 file_name=None, _content=None, _save=False):
+                 file_name=None):
         """Base class for configuration files using an ini-like syntax.
 
         :param file_name: The configuration file path.
-
-        :param _content: For tests only, a string representing the file
-            content. This will be utf-8 encoded.
-
-         :param _save: For tests only, whether the file should be saved upon
-            creation.
         """
         super(IniBasedConfig, self).__init__()
         self.file_name = file_name
@@ -377,14 +371,31 @@ class IniBasedConfig(Config):
                 stacklevel=2)
             if get_filename is not None:
                 self.file_name = get_filename()
-        if _content is not None:
-            # wrap the content as a file-like object
-            _content = StringIO(_content.encode('utf-8'))
-        self._content = _content
+        else:
+            self.file_name = file_name
+        self._content = None
         self._parser = None
+
+    @classmethod
+    def from_bytes(cls, unicode_bytes, file_name=None, save=False):
+        """Create a config object from bytes.
+
+        :param unicode_bytes: A string representing the file content. This will
+            be utf-8 encoded.
+
+        :param file_name: The configuration file path.
+
+        :param _save: Whether the file should be saved upon creation.
+        """
+        conf = cls(file_name=file_name)
+        conf._create_from_bytes(unicode_bytes, save)
+        return conf
+
+    def _create_from_bytes(self, unicode_bytes, save):
+        self._content = StringIO(unicode_bytes.encode('utf-8'))
         # Some tests use in-memory configs, some other always need the config
         # file to exist on disk.
-        if _save:
+        if save:
             self._write_config_file()
 
     def _get_parser(self, file=symbol_versioning.DEPRECATED_PARAMETER):
@@ -564,13 +575,15 @@ class LockableConfig(IniBasedConfig):
 
     lock_name = 'lock'
 
-    def __init__(self, file_name, _content=None, _save=False):
-        super(LockableConfig, self).__init__(file_name=file_name,
-                                             _content=_content, _save=False)
+    def __init__(self, file_name):
+        super(LockableConfig, self).__init__(file_name=file_name)
         self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
         self.transport = transport.get_transport(self.dir)
         self._lock = lockdir.LockDir(self.transport, 'lock')
-        if _save:
+
+    def _create_from_bytes(self, unicode_bytes, save):
+        super(LockableConfig, self)._create_from_bytes(unicode_bytes, False)
+        if save:
             # We need to handle the saving here (as opposed to IniBasedConfig)
             # to be able to lock
             self.lock_write()
@@ -602,9 +615,21 @@ class LockableConfig(IniBasedConfig):
 class GlobalConfig(LockableConfig):
     """The configuration that should be used for a specific location."""
 
-    def __init__(self, _content=None, _save=False):
-        super(GlobalConfig, self).__init__(file_name=config_filename(),
-                                           _content=_content, _save=_save)
+    def __init__(self):
+        super(GlobalConfig, self).__init__(file_name=config_filename())
+
+    @classmethod
+    def from_bytes(cls, unicode_bytes, save=False):
+        """Create a config object from bytes.
+
+        :param unicode_bytes: A string representing the file content. This will
+            be utf-8 encoded.
+
+        :param save: Whether the file should be saved upon creation.
+        """
+        conf = cls()
+        conf._create_from_bytes(unicode_bytes, save)
+        return conf
 
     def get_editor(self):
         return self._get_user_option('editor')
@@ -645,16 +670,30 @@ class GlobalConfig(LockableConfig):
 class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
 
-    def __init__(self, location, _content=None, _save=False):
+    def __init__(self, location):
         super(LocationConfig, self).__init__(
-            file_name=locations_config_filename(),
-            _content=_content, _save=_save)
+            file_name=locations_config_filename())
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
         # file, and we would rather not expose the user to file urls.
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
         self.location = location
+
+    @classmethod
+    def from_bytes(cls, unicode_bytes, location, save=False):
+        """Create a config object from bytes.
+
+        :param unicode_bytes: A string representing the file content. This will
+            be utf-8 encoded.
+
+        :param location: The location url to filter the configuration.
+
+        :param save: Whether the file should be saved upon creation.
+        """
+        conf = cls(location)
+        conf._create_from_bytes(unicode_bytes, save)
+        return conf
 
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""

@@ -161,10 +161,10 @@ class TestHelp(TestCaseWithTransport):
     def test_help_with_aliases(self):
         original = self.run_bzr('help cat')[0]
 
-        conf = config.GlobalConfig(_save=True, _content='''[ALIASES]
+        conf = config.GlobalConfig.from_bytes('''[ALIASES]
 c=cat
 cat=cat
-''')
+''', save=True)
 
         expected = original + "'bzr cat' is an alias for 'bzr cat'.\n"
         self.assertEqual(expected, self.run_bzr('help cat')[0])

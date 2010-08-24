@@ -91,7 +91,7 @@ class WideOpenSMTPFactory(StubSMTPFactory):
 class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def get_connection(self, text, smtp_factory=None):
-        my_config = config.GlobalConfig(_content=text)
+        my_config = config.GlobalConfig.from_bytes(text)
         return smtp_connection.SMTPConnection(my_config,
                                               _smtp_factory=smtp_factory)
 

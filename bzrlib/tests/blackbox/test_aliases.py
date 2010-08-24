@@ -35,11 +35,11 @@ class TestAliases(TestCaseWithTransport):
             return self.run_bzr(args, **kwargs)[1]
 
 
-        conf = config.GlobalConfig(_save=True, _content='''[ALIASES]
+        conf = config.GlobalConfig.from_bytes('''[ALIASES]
 c=cat
 c1=cat -r 1
 c2=cat -r 1 -r2
-''')
+''', save=True)
 
         str1 = 'foo\n'
         str2 = 'bar\n'

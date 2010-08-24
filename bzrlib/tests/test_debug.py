@@ -33,7 +33,7 @@ class TestDebugFlags(tests.TestCaseInTempDir):
         self.try_debug_flags(['hpss'], 'debug_flags = hpss\n')
 
     def try_debug_flags(self, expected_flags, conf_bytes):
-        conf = config.GlobalConfig(_content=conf_bytes, _save=True)
+        conf = config.GlobalConfig.from_bytes(conf_bytes, save=True)
         self.overrideAttr(debug, 'debug_flags', set())
         debug.set_debug_flags_from_config()
         self.assertEqual(set(expected_flags), debug.debug_flags)
