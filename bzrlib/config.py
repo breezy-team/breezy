@@ -353,13 +353,10 @@ class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
     def __init__(self, get_filename=symbol_versioning.DEPRECATED_PARAMETER,
-                 file_name=None, _content=None):
+                 file_name=None):
         """Base class for configuration files using an ini-like syntax.
 
         :param file_name: The configuration file path.
-
-        :param _content: For tests only, a string representing the file
-            content. This will be utf-8 encoded.
         """
         super(IniBasedConfig, self).__init__()
         if symbol_versioning.deprecated_passed(get_filename):
@@ -376,11 +373,19 @@ class IniBasedConfig(Config):
                 self.file_name = get_filename()
         else:
             self.file_name = file_name
-        if _content is not None:
-            # wrap the content as a file-like object
-            _content = StringIO(_content.encode('utf-8'))
-        self._content = _content
+        self._content = None
         self._parser = None
+
+    @classmethod
+    def from_bytes(cls, unicode_bytes):
+        """Create a config object from bytes.
+
+        :param unicode_bytes: A string representing the file content. This will
+            be utf-8 encoded.
+        """
+        conf = cls()
+        conf._content = StringIO(unicode_bytes.encode('utf-8'))
+        return conf
 
     def _get_parser(self, file=symbol_versioning.DEPRECATED_PARAMETER):
         if self._parser is not None:
@@ -524,9 +529,8 @@ class IniBasedConfig(Config):
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
 
-    def __init__(self, _content=None):
-        super(GlobalConfig, self).__init__(file_name=config_filename(),
-                                           _content=_content)
+    def __init__(self):
+        super(GlobalConfig, self).__init__(file_name=config_filename())
 
     def get_editor(self):
         return self._get_user_option('editor')
@@ -566,16 +570,28 @@ class GlobalConfig(IniBasedConfig):
 class LocationConfig(IniBasedConfig):
     """A configuration object that gives the policy for a location."""
 
-    def __init__(self, location, _content=None):
+    def __init__(self, location):
         super(LocationConfig, self).__init__(
-            file_name=locations_config_filename(),
-            _content=_content)
+            file_name=locations_config_filename())
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
         # file, and we would rather not expose the user to file urls.
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
         self.location = location
+
+    @classmethod
+    def from_bytes(cls, unicode_bytes, location):
+        """Create a config object from bytes.
+
+        :param unicode_bytes: A string representing the file content. This will
+            be utf-8 encoded.
+
+        :param location: The location url to filter the configuration.
+        """
+        conf = cls(location)
+        conf._content = StringIO(unicode_bytes.encode('utf-8'))
+        return conf
 
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""
