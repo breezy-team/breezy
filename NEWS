@@ -83,6 +83,10 @@ Bug Fixes
 * ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
   with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
 
+* Most of the leaked threads during selftest are now fixed, allowing the
+  full test suite to pass on gentoo.
+  (Vincent Ladeuil, #392127)
+
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
 
@@ -153,6 +157,9 @@ Internals
 
 Testing
 *******
+
+* HTTP test servers will leak less threads (and sockets) and will not hang on
+  AIX anymore. (Vincent Ladeuil, #405745)
 
 * The way ``bzr selftest --parallel`` generates N partitions of tests to
   run in parallel has changed.  Instead of splitting the list of tests at
@@ -665,10 +672,6 @@ Bug Fixes
   estimate of the number of records to be fetched vs actually fetched.
   (Parth Malwankar, #374740, #538868)
 
-* Most of the leaked threads during selftest are now fixed, allowing the
-  full test suite to pass on gentoo.
-  (Vincent Ladeuil, #392127)
-
 * Reduce peak memory by one copy of compressed text.
   (John Arbash Meinel, #566940)
 
@@ -800,9 +803,6 @@ Testing
 
 * ``bzr selftest --parallel=subprocess`` now works correctly on win32.
    (Gordon Tyler, #551332)
-
-* HTTP test servers will leak less threads (and sockets) and will not hang on
-  AIX anymore. (Vincent Ladeuil, #405745)
 
 * Workaround ``Crypto.Random`` check leading to spurious test
   failures on Lucid, FreeBSD and gentoo.  
