@@ -23,13 +23,13 @@ have the test_unsupported tests run; the others have the test_supported tests
 run.
 """
 
-from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.controldir import ControlDirFormat
 from bzrlib.tests import (
     default_transport,
     multiply_tests,
     )
-from bzrlib.tests.per_bzrdir import (
-    TestCaseWithBzrDir,
+from bzrlib.tests.per_controldir import (
+    TestCaseWithControlDir,
     make_scenarios,
     )
 
@@ -37,7 +37,7 @@ from bzrlib.tests.per_bzrdir import (
 def load_tests(standard_tests, module, loader):
     colo_supported_formats = []
     colo_unsupported_formats = []
-    for format in BzrDirFormat.known_formats():
+    for format in ControlDirFormat.known_formats():
         if format.colocated_branches:
             colo_supported_formats.append(format)
         else:
@@ -48,9 +48,9 @@ def load_tests(standard_tests, module, loader):
         colo_unsupported_formats)
     result = loader.suiteClass()
     supported_tests = loader.loadTestsFromModuleNames([
-        'bzrlib.tests.per_bzrdir_colo.test_supported'])
+        'bzrlib.tests.per_controldir_colo.test_supported'])
     unsupported_tests = loader.loadTestsFromModuleNames([
-        'bzrlib.tests.per_bzrdir_colo.test_unsupported'])
+        'bzrlib.tests.per_controldir_colo.test_unsupported'])
     multiply_tests(supported_tests, supported_scenarios, result)
     multiply_tests(unsupported_tests, unsupported_scenarios, result)
     return result

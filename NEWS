@@ -28,6 +28,26 @@ Compatibility Breaks
   `WorkingTree.open_containing_paths`.
   (Martin Pool)
 
+* `ControlDirFormat` and  `ControlDir` have been split out of `BzrDirFormat`
+  and `BzrDir`, respectively. `ControlDirFormat`
+  and `ControlDir` should be used as the base classes for new non-.bzr
+  implementations.
+
+  `BzrDirFormat.register_control_format` has been renamed to
+  `ControlDirFormat.register_format`.
+
+  `BzrDirFormat.register_server_control_format` has been removed.
+
+  Probing for control directories is now done by separate objects derived
+  from `bzrlib.controldir.Prober` and registered using
+  `bzrlib.controldir.ControlDirFormat.register_prober` or
+  `bzrlib.controldir.ControlDirFormat.register_server_prober`.
+  `BzrDirFormat.probe_transport` has been moved onto `Prober`.
+
+  `BzrDirFormat.register_format` has been renamed to 
+  `BzrProber.register_bzrdir_format`.
+  (Jelmer Vernooij)
+
 * The old ``bzr selftest --benchmark`` option has been removed.
   <https://launchpad.net/bzr-usertest> is an actively-maintained
   macrobenchmark suite.
