@@ -401,10 +401,6 @@ Bug Fixes
   ``InvalidPattern`` exception showing clear error message to the user.
   (Parth Malwankar #300062)
 
-* Most of the leaked threads during selftest are now fixed, allowing the
-  full test suite to pass on gentoo.
-  (Vincent Ladeuil, #392127)
-
 * Progress output is cleaned up when exiting.  (Aaron Bentley)
 
 * Raise ValueError instead of a string exception.
@@ -537,13 +533,8 @@ Testing
 * Add ``bzrlib.tests.fixtures`` to hold code for setting up objects
   to test.  (Martin Pool)
 
-* HTTP test servers would not leak threads (and sockets) anymore. They
-  won't hang on AIX anymore either.
-  (Vincent Ladeuil, #405745)
-
 * ``test_import_tariff`` now respects BZR_PLUGINS_AT and BZR_PLUGINS_DISABLE.
   (Vincent Ladeuil, #595587)
-
 
 bzr 2.2b3
 #########
