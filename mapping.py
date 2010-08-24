@@ -227,12 +227,15 @@ class BzrGitMapping(foreign.VcsMapping):
         b.set_raw_chunks(serialize_fileid_map(fileid_map))
         return b
 
-    def export_commit(self, rev, tree_sha, parent_lookup, roundtrip):
+    def export_commit(self, rev, tree_sha, parent_lookup, roundtrip,
+                      testament3_sha1):
         """Turn a Bazaar revision in to a Git commit
 
         :param tree_sha: Tree sha for the commit
         :param parent_lookup: Function for looking up the GIT sha equiv of a
             bzr revision
+        :param roundtrip: Whether to store roundtripping information.
+        :param testament3_sha1: Testament SHA1
         :return dulwich.objects.Commit represent the revision:
         """
         from dulwich.objects import Commit
@@ -240,6 +243,7 @@ class BzrGitMapping(foreign.VcsMapping):
         commit.tree = tree_sha
         if roundtrip:
             metadata = BzrGitRevisionMetadata()
+            metadata.testament3_sha1 = testament3_sha1
         else:
             metadata = None
         parents = []
@@ -351,11 +355,11 @@ class BzrGitMapping(foreign.VcsMapping):
             if md.explicit_parent_ids:
                 rev.parent_ids = md.explicit_parent_ids
             rev.properties.update(md.properties)
-            testament_sha1 = md.testament_sha1
+            testament3_sha1 = md.testament3_sha1
         else:
             roundtrip_revid = None
-            testament_sha1 = None
-        return rev, roundtrip_revid, testament_sha1
+            testament3_sha1 = None
+        return rev, roundtrip_revid, testament3_sha1
 
     def get_fileid_map(self, lookup_object, tree_sha):
         """Obtain a fileid map for a particular tree.
@@ -403,9 +407,9 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         return ret
 
     def import_commit(self, commit, lookup_parent_revid):
-        rev, roundtrip_revid, testament_sha1 = super(BzrGitMappingExperimental, self).import_commit(commit, lookup_parent_revid)
+        rev, roundtrip_revid, testament3_sha1 = super(BzrGitMappingExperimental, self).import_commit(commit, lookup_parent_revid)
         rev.properties['converted_revision'] = "git %s\n" % commit.id
-        return rev, roundtrip_revid, testament_sha1
+        return rev, roundtrip_revid, testament3_sha1
 
 
 class GitMappingRegistry(VcsMappingRegistry):

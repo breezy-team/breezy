@@ -35,6 +35,9 @@ from bzrlib import (
 from bzrlib.revision import (
     NULL_REVISION,
     )
+from bzrlib.testament import(
+    StrictTestament3,
+    )
 
 from bzrlib.plugins.git.mapping import (
     default_mapping,
@@ -338,14 +341,14 @@ class BazaarObjectStore(BaseObjectStore):
         self._update_sha_map()
         return iter(self._cache.idmap.sha1s())
 
-    def _reconstruct_commit(self, rev, tree_sha, roundtrip):
+    def _reconstruct_commit(self, rev, tree_sha, roundtrip, testament3_sha1):
         def parent_lookup(revid):
             try:
                 return self._lookup_revision_sha1(revid)
             except errors.NoSuchRevision:
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup,
-            roundtrip)
+            roundtrip, testament3_sha1)
 
     def _create_fileid_map_blob(self, inv):
         # FIXME: This can probably be a lot more efficient, 
@@ -390,8 +393,13 @@ class BazaarObjectStore(BaseObjectStore):
                 root_tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None
         yield "", root_tree, root_ie
+        if roundtrip:
+            testament3 = StrictTestament3(rev, tree.inventory)
+            testament3_sha1 = testament3.as_sha1()
+        else:
+            testament3_sha1 = None
         commit_obj = self._reconstruct_commit(rev, root_tree.id,
-            roundtrip=roundtrip)
+            roundtrip=roundtrip, testament3_sha1=testament3_sha1)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
                 rev.revision_id)

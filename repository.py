@@ -110,7 +110,7 @@ class LocalGitRepository(GitRepository):
             o = self._git.object_store[sha]
             if not isinstance(o, Commit):
                 continue
-            rev, roundtrip_revid, testament_sha1 = mapping.import_commit(o,
+            rev, roundtrip_revid, testament3_sha1 = mapping.import_commit(o,
                 self.lookup_foreign_revision_id)
             yield o.id, rev.revision_id, roundtrip_revid
 
@@ -170,7 +170,7 @@ class LocalGitRepository(GitRepository):
         if foreign_revid == ZERO_SHA:
             return revision.NULL_REVISION
         commit = self._git[foreign_revid]
-        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(commit,
+        rev, roundtrip_revid, testament3_sha1 = mapping.import_commit(commit,
             lambda x: None)
         # FIXME: check testament before doing this?
         if roundtrip_revid:
@@ -208,10 +208,10 @@ class LocalGitRepository(GitRepository):
             commit = self._git[git_commit_id]
         except KeyError:
             raise errors.NoSuchRevision(self, revision_id)
-        revision, roundtrip_revid, testament_sha1 = mapping.import_commit(
+        revision, roundtrip_revid, testament3_sha1 = mapping.import_commit(
             commit, self.lookup_foreign_revision_id)
         assert revision is not None
-        # FIXME: check testament_sha1 ?
+        # FIXME: check testament3_sha1 ?
         if roundtrip_revid:
             revision.revision_id = roundtrip_revid
         return revision

@@ -56,6 +56,9 @@ from bzrlib.revision import (
 from bzrlib.revisiontree import (
     RevisionTree,
     )
+from bzrlib.testament import (
+    StrictTestament3,
+    )
 from bzrlib.tsort import (
     topo_sort,
     )
@@ -341,7 +344,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
     o = lookup_object(head)
-    rev, roundtrip_revid, testament_sha1 = mapping.import_commit(o,
+    rev, roundtrip_revid, testament3_sha1 = mapping.import_commit(o,
             lambda x: target_git_object_retriever.lookup_git_sha(x)[1][0])
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
@@ -376,9 +379,16 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_inv = None
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
               inv_delta, rev.revision_id, rev.parent_ids, base_inv)
-    # FIXME: Check testament_sha1
+    # FIXME: Check testament3_sha1
     if roundtrip_revid is not None:
+        original_revid = rev.revision_id
         rev.revision_id = roundtrip_revid
+        testament = StrictTestament3(rev, inv)
+        if testament.as_sha1() != testament3_sha1:
+            trace.mutter("Testament SHA1 %r for %r did not match %r.",
+                         testament.as_sha1(), rev.revision_id, 
+                         testament3_sha1)
+            rev.revision_id = original_revid
     ret_tree = RevisionTree(repo, inv, rev.revision_id)
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
@@ -417,7 +427,7 @@ def import_git_objects(repo, mapping, object_iter,
         except KeyError:
             continue
         if isinstance(o, Commit):
-            rev, roundtrip_revid, testament_sha1 = mapping.import_commit(o,
+            rev, roundtrip_revid, testament3_sha1 = mapping.import_commit(o,
                 lambda x: None)
             if (repo.has_revision(rev.revision_id) or
                 (roundtrip_revid and repo.has_revision(roundtrip_revid))):

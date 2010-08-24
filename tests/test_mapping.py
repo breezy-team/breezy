@@ -179,12 +179,13 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
 
     def assertRoundtripRevision(self, orig_rev):
         commit = self.mapping.export_commit(orig_rev, "mysha",
-            self._lookup_parent, True)
+            self._lookup_parent, True, "testamentsha")
         rev, roundtrip_revid, testament_sha1 = self.mapping.import_commit(
             commit, self.mapping.revision_id_foreign_to_bzr)
         self.assertEquals(rev.revision_id,
             self.mapping.revision_id_foreign_to_bzr(commit.id))
         if self.mapping.roundtripping:
+            self.assertEquals("testamentsha", testament_sha1)
             self.assertEquals(orig_rev.revision_id, roundtrip_revid)
             self.assertEquals(orig_rev.properties, rev.properties)
             self.assertEquals(orig_rev.committer, rev.committer)
@@ -192,6 +193,8 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
             self.assertEquals(orig_rev.timezone, rev.timezone)
             self.assertEquals(orig_rev.message, rev.message)
             self.assertEquals(list(orig_rev.parent_ids), list(rev.parent_ids))
+        else:
+            self.assertEquals(None, testament_sha1)
 
     def test_simple_commit(self):
         r = Revision(self.mapping.revision_id_foreign_to_bzr("edf99e6c56495c620f20d5dacff9859ff7119261"))
@@ -250,7 +253,7 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         rev, roundtrip_revid, testament_sha1 = self.mapping.import_commit(
             commit1, self.mapping.revision_id_foreign_to_bzr)
         commit2 = self.mapping.export_commit(rev, "12341212121212", None,
-            True)
+            True, None)
         self.assertEquals(commit1.committer, commit2.committer)
         self.assertEquals(commit1.commit_time, commit2.commit_time)
         self.assertEquals(commit1.commit_timezone, commit2.commit_timezone)
