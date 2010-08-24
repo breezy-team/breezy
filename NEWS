@@ -17,6 +17,9 @@
 
    * Properly lock basis tree in rebase-foreign. (Colin Watson)
 
+   * Cope with tags referencing ghost revisions in rebase-foreign. 
+     (Colin Watson)
+
 0.6.0	2010-03-27
 
   BUG FIXES
