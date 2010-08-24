@@ -83,12 +83,13 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
     rev = upstream_branch.repository.get_revision(revid)
     svn_revno = extract_svn_revno(rev)
 
-    if "+svn" in version_string:
+    # FIXME: Raise error if +svn/~svn is present and svn_revno is not set?
+    if "+svn" in version_string and svn_revno:
         return "%s+svn%d" % (version_string[:version_string.rfind("+svn")], svn_revno)
-    if "~svn" in version_string:
+    if "~svn" in version_string and svn_revno:
         return "%s~svn%d" % (version_string[:version_string.rfind("~svn")], svn_revno)
 
-    if svn_revno is not None:
+    if svn_revno:
         return "%s+svn%d" % (version_string, svn_revno)
     else:
         return "%s+bzr%d" % (version_string, revno)
