@@ -15,6 +15,8 @@
    * Warn about uncommitted changes before downloading history.
      (Jelmer Vernooij, #605091)
 
+   * Properly lock basis tree in rebase-foreign. (Colin Watson)
+
 0.6.0	2010-03-27
 
   BUG FIXES

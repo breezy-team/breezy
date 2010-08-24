@@ -485,7 +485,12 @@ class cmd_rebase_foreign(Command):
                     determine_new_revid, allow_changes=True,
                     verbose=verbose)
             if wt_to is not None:
-                update_workingtree_fileids(wt_to, wt_to.basis_tree())
+                basis_tree = wt_to.basis_tree()
+                basis_tree.lock_read()
+                try:
+                    update_workingtree_fileids(wt_to, basis_tree)
+                finally:
+                    basis_tree.unlock()
         finally:
             branch_to.unlock()
 
