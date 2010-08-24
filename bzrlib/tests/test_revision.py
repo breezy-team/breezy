@@ -211,31 +211,6 @@ class TestRevisionMethods(TestCase):
         r.message = None
         self.assertEqual('', r.get_summary())
 
-    def test_get_apparent_author(self):
-        r = revision.Revision('1')
-        r.committer = 'A'
-        author = self.applyDeprecated(
-                symbol_versioning.deprecated_in((1, 13, 0)),
-                r.get_apparent_author)
-        self.assertEqual('A', author)
-        r.properties['author'] = 'B'
-        author = self.applyDeprecated(
-                symbol_versioning.deprecated_in((1, 13, 0)),
-                r.get_apparent_author)
-        self.assertEqual('B', author)
-        r.properties['authors'] = 'C\nD'
-        author = self.applyDeprecated(
-                symbol_versioning.deprecated_in((1, 13, 0)),
-                r.get_apparent_author)
-        self.assertEqual('C', author)
-
-    def test_get_apparent_author_none(self):
-        r = revision.Revision('1')
-        author = self.applyDeprecated(
-                symbol_versioning.deprecated_in((1, 13, 0)),
-                r.get_apparent_author)
-        self.assertEqual(None, author)
-
     def test_get_apparent_authors(self):
         r = revision.Revision('1')
         r.committer = 'A'

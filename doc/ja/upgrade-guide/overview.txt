@@ -52,7 +52,7 @@ OS Xでの移行手順 (MacPortを使用):
 
 2. 最新のバージョンに更新する。 **sudo port upgrade bzr**
 
-インストールや移行に関する詳しい情報については http://bazaar-vcs.org/Download
+インストールや移行に関する詳しい情報については http://wiki.bazaar.canonical.com/Download
 をごらんください。	
 
 必要なプラグインの移行

@@ -20,7 +20,6 @@ import os
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 import cStringIO
 import sys
 import time
@@ -75,14 +74,11 @@ from bzrlib.option import (
 from bzrlib.trace import mutter, note, warning, is_quiet, get_verbosity_level
 
 
+@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
 def tree_files(file_list, default_branch=u'.', canonicalize=True,
     apply_view=True):
-    try:
-        return internal_tree_files(file_list, default_branch, canonicalize,
-            apply_view)
-    except errors.FileInWrongBranch, e:
-        raise errors.BzrCommandError("%s is not in the same branch as %s" %
-                                     (e.path, file_list[0]))
+    return internal_tree_files(file_list, default_branch, canonicalize,
+        apply_view)
 
 
 def tree_files_for_add(file_list):
@@ -152,9 +148,12 @@ def _get_one_revision_tree(command_name, revisions, branch=None, tree=None):
 
 # XXX: Bad function name; should possibly also be a class method of
 # WorkingTree rather than a function.
+@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3, 0)))
 def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
     apply_view=True):
     """Convert command-line paths to a WorkingTree and relative paths.
+
+    Deprecated: use WorkingTree.open_containing_paths instead.
 
     This is typically used for command-line processors that take one or
     more filenames, and infer the workingtree that contains them.
@@ -171,53 +170,10 @@ def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
 
     :return: workingtree, [relative_paths]
     """
-    if file_list is None or len(file_list) == 0:
-        tree = WorkingTree.open_containing(default_branch)[0]
-        if tree.supports_views() and apply_view:
-            view_files = tree.views.lookup_view()
-            if view_files:
-                file_list = view_files
-                view_str = views.view_display_str(view_files)
-                note("Ignoring files outside view. View is %s" % view_str)
-        return tree, file_list
-    tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
-    return tree, safe_relpath_files(tree, file_list, canonicalize,
-        apply_view=apply_view)
-
-
-def safe_relpath_files(tree, file_list, canonicalize=True, apply_view=True):
-    """Convert file_list into a list of relpaths in tree.
-
-    :param tree: A tree to operate on.
-    :param file_list: A list of user provided paths or None.
-    :param apply_view: if True and a view is set, apply it or check that
-        specified files are within it
-    :return: A list of relative paths.
-    :raises errors.PathNotChild: When a provided path is in a different tree
-        than tree.
-    """
-    if file_list is None:
-        return None
-    if tree.supports_views() and apply_view:
-        view_files = tree.views.lookup_view()
-    else:
-        view_files = []
-    new_list = []
-    # tree.relpath exists as a "thunk" to osutils, but canonical_relpath
-    # doesn't - fix that up here before we enter the loop.
-    if canonicalize:
-        fixer = lambda p: osutils.canonical_relpath(tree.basedir, p)
-    else:
-        fixer = tree.relpath
-    for filename in file_list:
-        try:
-            relpath = fixer(osutils.dereference_path(filename))
-            if  view_files and not osutils.is_inside_any(view_files, relpath):
-                raise errors.FileOutsideView(filename, view_files)
-            new_list.append(relpath)
-        except errors.PathNotChild:
-            raise errors.FileInWrongBranch(tree.branch, filename)
-    return new_list
+    return WorkingTree.open_containing_paths(
+        file_list, default_directory='.',
+        canonicalize=True,
+        apply_view=True)
 
 
 def _get_view_info_for_change_reporter(tree):
@@ -323,7 +279,7 @@ class cmd_status(Command):
             raise errors.BzrCommandError('bzr status --revision takes exactly'
                                          ' one or two revision specifiers')
 
-        tree, relfile_list = tree_files(file_list)
+        tree, relfile_list = WorkingTree.open_containing_paths(file_list)
         # Avoid asking for specific files when that is not needed.
         if relfile_list == ['']:
             relfile_list = None
@@ -761,7 +717,7 @@ class cmd_inventory(Command):
             raise errors.BzrCommandError('invalid kind %r specified' % (kind,))
 
         revision = _get_one_revision('inventory', revision)
-        work_tree, file_list = tree_files(file_list)
+        work_tree, file_list = WorkingTree.open_containing_paths(file_list)
         self.add_cleanup(work_tree.lock_read().unlock)
         if revision is not None:
             tree = revision.as_tree(work_tree.branch)
@@ -832,7 +788,7 @@ class cmd_mv(Command):
             names_list = []
         if len(names_list) < 2:
             raise errors.BzrCommandError("missing file argument")
-        tree, rel_names = tree_files(names_list, canonicalize=False)
+        tree, rel_names = WorkingTree.open_containing_paths(names_list, canonicalize=False)
         self.add_cleanup(tree.lock_tree_write().unlock)
         self._run(tree, names_list, rel_names, after)
 
@@ -843,7 +799,8 @@ class cmd_mv(Command):
         if after:
             raise errors.BzrCommandError('--after cannot be specified with'
                                          ' --auto.')
-        work_tree, file_list = tree_files(names_list, default_branch='.')
+        work_tree, file_list = WorkingTree.open_containing_paths(
+            names_list, default_directory='.')
         self.add_cleanup(work_tree.lock_tree_write().unlock)
         rename_map.RenameMap.guess_renames(work_tree, dry_run)
 
@@ -1177,8 +1134,10 @@ class cmd_branch(Command):
 
     _see_also = ['checkout']
     takes_args = ['from_location', 'to_location?']
-    takes_options = ['revision', Option('hardlink',
-        help='Hard-link working tree files where possible.'),
+    takes_options = ['revision',
+        Option('hardlink', help='Hard-link working tree files where possible.'),
+        Option('files-from', type=str,
+               help="Get file contents from this tree."),
         Option('no-tree',
             help="Create a branch without a working-tree."),
         Option('switch',
@@ -1202,11 +1161,19 @@ class cmd_branch(Command):
 
     def run(self, from_location, to_location=None, revision=None,
             hardlink=False, stacked=False, standalone=False, no_tree=False,
-            use_existing_dir=False, switch=False, bind=False):
+            use_existing_dir=False, switch=False, bind=False,
+            files_from=None):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
+        if not (hardlink or files_from):
+            # accelerator_tree is usually slower because you have to read N
+            # files (no readahead, lots of seeks, etc), but allow the user to
+            # explicitly request it
+            accelerator_tree = None
+        if files_from is not None and files_from != from_location:
+            accelerator_tree = WorkingTree.open(files_from)
         revision = _get_one_revision('branch', revision)
         self.add_cleanup(br_from.lock_read().unlock)
         if revision is not None:
@@ -1319,8 +1286,13 @@ class cmd_checkout(Command):
             to_location = branch_location
         accelerator_tree, source = bzrdir.BzrDir.open_tree_or_branch(
             branch_location)
+        if not (hardlink or files_from):
+            # accelerator_tree is usually slower because you have to read N
+            # files (no readahead, lots of seeks, etc), but allow the user to
+            # explicitly request it
+            accelerator_tree = None
         revision = _get_one_revision('checkout', revision)
-        if files_from is not None:
+        if files_from is not None and files_from != branch_location:
             accelerator_tree = WorkingTree.open(files_from)
         if revision is not None:
             revision_id = revision.as_revision_id(source)
@@ -1505,10 +1477,11 @@ class cmd_info(Command):
 class cmd_remove(Command):
     __doc__ = """Remove files or directories.
 
-    This makes bzr stop tracking changes to the specified files. bzr will delete
-    them if they can easily be recovered using revert. If no options or
-    parameters are given bzr will scan for files that are being tracked by bzr
-    but missing in your tree and stop tracking them for you.
+    This makes Bazaar stop tracking changes to the specified files. Bazaar will
+    delete them if they can easily be recovered using revert otherwise they
+    will be backed up (adding an extention of the form .~#~). If no options or
+    parameters are given Bazaar will scan for files that are being tracked by
+    Bazaar but missing in your tree and stop tracking them for you.
     """
     takes_args = ['file*']
     takes_options = ['verbose',
@@ -1516,8 +1489,7 @@ class cmd_remove(Command):
         RegistryOption.from_kwargs('file-deletion-strategy',
             'The file deletion mode to be used.',
             title='Deletion Strategy', value_switches=True, enum_switch=False,
-            safe='Only delete files if they can be'
-                 ' safely recovered (default).',
+            safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
             force='Delete all the specified files, even if they can not be '
                 'recovered and even if they are non-empty directories.')]
@@ -1526,7 +1498,7 @@ class cmd_remove(Command):
 
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
-        tree, file_list = tree_files(file_list)
+        tree, file_list = WorkingTree.open_containing_paths(file_list)
 
         if file_list is not None:
             file_list = [f for f in file_list]
@@ -1620,11 +1592,17 @@ class cmd_reconcile(Command):
 
     _see_also = ['check']
     takes_args = ['branch?']
+    takes_options = [
+        Option('canonicalize-chks',
+               help='Make sure CHKs are in canonical form (repairs '
+                    'bug 522637).',
+               hidden=True),
+        ]
 
-    def run(self, branch="."):
+    def run(self, branch=".", canonicalize_chks=False):
         from bzrlib.reconcile import reconcile
         dir = bzrdir.BzrDir.open(branch)
-        reconcile(dir)
+        reconcile(dir, canonicalize_chks=canonicalize_chks)
 
 
 class cmd_revision_history(Command):
@@ -1906,6 +1884,10 @@ class cmd_diff(Command):
         Same as 'bzr diff' but prefix paths with old/ and new/::
 
             bzr diff --prefix old/:new/
+            
+        Show the differences using a custom diff program with options::
+        
+            bzr diff --using /usr/bin/diff --diff-options -wu
     """
     _see_also = ['status']
     takes_args = ['file*']
@@ -2712,6 +2694,14 @@ class cmd_ignore(Command):
                 "NAME_PATTERN or --default-rules.")
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
+        bad_patterns = ''
+        for p in name_pattern_list:
+            if not globbing.Globster.is_pattern_valid(p):
+                bad_patterns += ('\n  %s' % p)
+        if bad_patterns:
+            msg = ('Invalid ignore pattern(s) found. %s' % bad_patterns)
+            ui.ui_factory.show_error(msg)
+            raise errors.InvalidPattern('')
         for name_pattern in name_pattern_list:
             if (name_pattern[0] == '/' or
                 (len(name_pattern) > 1 and name_pattern[1] == ':')):
@@ -3109,7 +3099,7 @@ class cmd_commit(Command):
 
         properties = {}
 
-        tree, selected_list = tree_files(selected_list)
+        tree, selected_list = WorkingTree.open_containing_paths(selected_list)
         if selected_list == ['']:
             # workaround - commit of root of tree should be exactly the same
             # as just default commit in that tree, and succeed even though
@@ -3150,9 +3140,9 @@ class cmd_commit(Command):
         def get_message(commit_obj):
             """Callback to get commit message"""
             if file:
-                f = codecs.open(file, 'rt', osutils.get_user_encoding())
+                f = open(file)
                 try:
-                    my_message = f.read()
+                    my_message = f.read().decode(osutils.get_user_encoding())
                 finally:
                     f.close()
             elif message is not None:
@@ -3189,7 +3179,7 @@ class cmd_commit(Command):
                         reporter=None, verbose=verbose, revprops=properties,
                         authors=author, timestamp=commit_stamp,
                         timezone=offset,
-                        exclude=safe_relpath_files(tree, exclude))
+                        exclude=tree.safe_relpath_files(exclude))
         except PointlessCommit:
             raise errors.BzrCommandError("No changes to commit."
                               " Use --unchanged to commit anyhow.")
@@ -3529,15 +3519,13 @@ class cmd_selftest(Command):
                                  'throughout the test suite.',
                             type=get_transport_type),
                      Option('benchmark',
-                            help='Run the benchmarks rather than selftests.'),
+                            help='Run the benchmarks rather than selftests.',
+                            hidden=True),
                      Option('lsprof-timed',
                             help='Generate lsprof output for benchmarked'
                                  ' sections of code.'),
                      Option('lsprof-tests',
                             help='Generate lsprof output for each test.'),
-                     Option('cache-dir', type=str,
-                            help='Cache intermediate benchmark output in this '
-                                 'directory.'),
                      Option('first',
                             help='Run all tests, but run specified tests first.',
                             short_name='f',
@@ -3577,20 +3565,16 @@ class cmd_selftest(Command):
 
     def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None,
+            lsprof_timed=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
         from bzrlib.tests import selftest
-        import bzrlib.benchmarks as benchmarks
-        from bzrlib.benchmarks import tree_creator
 
         # Make deprecation warnings visible, unless -Werror is set
         symbol_versioning.activate_deprecation_warnings(override=False)
 
-        if cache_dir is not None:
-            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
@@ -3615,15 +3599,10 @@ class cmd_selftest(Command):
             self.additional_selftest_args.setdefault(
                 'suite_decorators', []).append(parallel)
         if benchmark:
-            test_suite_factory = benchmarks.test_suite
-            # Unless user explicitly asks for quiet, be verbose in benchmarks
-            verbose = not is_quiet()
-            # TODO: should possibly lock the history file...
-            benchfile = open(".perf_history", "at", buffering=1)
-            self.add_cleanup(benchfile.close)
-        else:
-            test_suite_factory = None
-            benchfile = None
+            raise errors.BzrCommandError(
+                "--benchmark is no longer supported from bzr 2.2; "
+                "use bzr-usertest instead")
+        test_suite_factory = None
         selftest_kwargs = {"verbose": verbose,
                           "pattern": pattern,
                           "stop_on_failure": one,
@@ -3631,7 +3610,6 @@ class cmd_selftest(Command):
                           "test_suite_factory": test_suite_factory,
                           "lsprof_timed": lsprof_timed,
                           "lsprof_tests": lsprof_tests,
-                          "bench_history": benchfile,
                           "matching_tests_first": first,
                           "list_only": list_only,
                           "random_seed": randomize,
@@ -4091,7 +4069,7 @@ class cmd_remerge(Command):
         from bzrlib.conflicts import restore
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
-        tree, file_list = tree_files(file_list)
+        tree, file_list = WorkingTree.open_containing_paths(file_list)
         self.add_cleanup(tree.lock_write().unlock)
         parents = tree.get_parent_ids()
         if len(parents) != 2:
@@ -4207,7 +4185,7 @@ class cmd_revert(Command):
 
     def run(self, revision=None, no_backup=False, file_list=None,
             forget_merges=None):
-        tree, file_list = tree_files(file_list)
+        tree, file_list = WorkingTree.open_containing_paths(file_list)
         self.add_cleanup(tree.lock_tree_write().unlock)
         if forget_merges:
             tree.set_parent_ids(tree.get_parent_ids()[:1])
@@ -5709,7 +5687,8 @@ class cmd_view(Command):
             name=None,
             switch=None,
             ):
-        tree, file_list = tree_files(file_list, apply_view=False)
+        tree, file_list = WorkingTree.open_containing_paths(file_list,
+            apply_view=False)
         current_view, view_dict = tree.views.get_view_info()
         if name is None:
             name = current_view

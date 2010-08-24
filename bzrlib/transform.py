@@ -1182,7 +1182,7 @@ class DiskTreeTransform(TreeTransformBase):
             if trans_id not in self._new_contents:
                 continue
             new_path = self._limbo_name(trans_id)
-            osutils.rename(old_path, new_path)
+            os.rename(old_path, new_path)
             for descendant in self._limbo_descendants(trans_id):
                 desc_path = self._limbo_files[descendant]
                 desc_path = new_path + desc_path[len(old_path):]
@@ -2529,22 +2529,6 @@ def new_by_entry(tt, entry, parent_id, tree):
         raise errors.BadFileKindError(name, kind)
 
 
-@deprecated_function(deprecated_in((1, 9, 0)))
-def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
-    """Create new file contents according to an inventory entry.
-
-    DEPRECATED.  Use create_from_tree instead.
-    """
-    if entry.kind == "file":
-        if lines is None:
-            lines = tree.get_file(entry.file_id).readlines()
-        tt.create_file(lines, trans_id, mode_id=mode_id)
-    elif entry.kind == "symlink":
-        tt.create_symlink(tree.get_symlink_target(entry.file_id), trans_id)
-    elif entry.kind == "directory":
-        tt.create_directory(trans_id)
-
-
 def create_from_tree(tt, trans_id, tree, file_id, bytes=None,
     filter_tree_path=None):
     """Create new file contents according to tree contents.
@@ -2935,8 +2919,8 @@ class _FileMover(object):
     def rename(self, from_, to):
         """Rename a file from one path to another."""
         try:
-            osutils.rename(from_, to)
-        except (IOError, OSError), e:
+            os.rename(from_, to)
+        except OSError, e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
                 raise errors.FileExists(to, str(e))
             # normal OSError doesn't include filenames so it's hard to see where
@@ -2958,8 +2942,8 @@ class _FileMover(object):
         """Reverse all renames that have been performed"""
         for from_, to in reversed(self.past_renames):
             try:
-                osutils.rename(to, from_)
-            except (OSError, IOError), e:
+                os.rename(to, from_)
+            except OSError, e:
                 raise errors.TransformRenameFailed(to, from_, str(e), e.errno)                
         # after rollback, don't reuse _FileMover
         past_renames = None
