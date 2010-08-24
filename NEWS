@@ -145,9 +145,9 @@ Documentation
 API Changes
 ***********
 
-* Configuration files should now use the ``_content`` parameter in the
-  constructor rather than the ``file`` parameter of the ``_get_parser``
-  method. The later has been deprecated. (Vincent Ladeuil)
+* Configuration files should now use the ``from_bytes`` constructor the
+  rather than the ``file`` parameter of the ``_get_parser`` method. The
+  later has been deprecated. (Vincent Ladeuil)
 
 * InventoryEntry instances now raise AttributeError if you try to assign
   to attributes that are irrelevant to that kind of entry.  e.g. setting
