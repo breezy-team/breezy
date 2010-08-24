@@ -1066,3 +1066,25 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         # consumption
         self.add_key_to_manager(('key4',), locations, block, manager)
         self.assertTrue(manager.check_is_well_utilized())
+
+
+class Test_GCBuildDetails(tests.TestCase):
+
+    def test_acts_like_tuple(self):
+        # _GCBuildDetails inlines some of the data that used to be spread out
+        # across a bunch of tuples
+        bd = groupcompress._GCBuildDetails((('parent1',), ('parent2',)),
+            ('INDEX', 10, 20, 0, 5))
+        self.assertEqual(4, len(bd))
+        self.assertEqual(('INDEX', 10, 20, 0, 5), bd[0])
+        self.assertEqual(None, bd[1]) # Compression Parent is always None
+        self.assertEqual((('parent1',), ('parent2',)), bd[2])
+        self.assertEqual(('group', None), bd[3]) # Record details
+
+    def test__repr__(self):
+        bd = groupcompress._GCBuildDetails((('parent1',), ('parent2',)),
+            ('INDEX', 10, 20, 0, 5))
+        self.assertEqual("_GCBuildDetails(('INDEX', 10, 20, 0, 5),"
+                         " (('parent1',), ('parent2',)))",
+                         repr(bd))
+                    

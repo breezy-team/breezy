@@ -151,17 +151,6 @@ class BundleSerializer(object):
         """
         raise NotImplementedError
 
-    def write(self, source, revision_ids, forced_bases, f):
-        """Write the bundle to the supplied file.
-
-        DEPRECATED: see write_bundle
-        :param source: A source for revision information
-        :param revision_ids: The list of revision ids to serialize
-        :param forced_bases: A dict of revision -> base that overrides default
-        :param f: The file to output to
-        """
-        raise NotImplementedError
-
     def _write_bundle(self, repository, revision_id, base_revision_id, out):
         """Helper function for translating write_bundle to write"""
         forced_bases = {revision_id:base_revision_id}

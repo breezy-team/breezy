@@ -100,51 +100,6 @@ class TestTextUIFactory(tests.TestCase):
         finally:
             pb.finished()
 
-    def test_progress_note(self):
-        stderr = tests.StringIOWrapper()
-        stdout = tests.StringIOWrapper()
-        ui_factory = _mod_ui_text.TextUIFactory(stdin=tests.StringIOWrapper(''),
-                                                stderr=stderr,
-                                                stdout=stdout)
-        pb = ui_factory.nested_progress_bar()
-        try:
-            result = self.applyDeprecated(deprecated_in((2, 1, 0)),
-                pb.note,
-                't')
-            self.assertEqual(None, result)
-            self.assertEqual("t\n", stdout.getvalue())
-            # Since there was no update() call, there should be no clear() call
-            self.failIf(re.search(r'^\r {10,}\r$',
-                                  stderr.getvalue()) is not None,
-                        'We cleared the stderr without anything to put there')
-        finally:
-            pb.finished()
-
-    def test_progress_note_clears(self):
-        stderr = test_progress._TTYStringIO()
-        stdout = test_progress._TTYStringIO()
-        # so that we get a TextProgressBar
-        os.environ['TERM'] = 'xterm'
-        ui_factory = _mod_ui_text.TextUIFactory(
-            stdin=tests.StringIOWrapper(''),
-            stdout=stdout, stderr=stderr)
-        self.assertIsInstance(ui_factory._progress_view,
-                              _mod_ui_text.TextProgressView)
-        pb = ui_factory.nested_progress_bar()
-        try:
-            # Create a progress update that isn't throttled
-            pb.update('x', 1, 1)
-            result = self.applyDeprecated(deprecated_in((2, 1, 0)),
-                pb.note, 't')
-            self.assertEqual(None, result)
-            self.assertEqual("t\n", stdout.getvalue())
-            # the exact contents will depend on the terminal width and we don't
-            # care about that right now - but you're probably running it on at
-            # least a 10-character wide terminal :)
-            self.assertContainsRe(stderr.getvalue(), r'\r {10,}\r$')
-        finally:
-            pb.finished()
-
     def test_text_ui_get_boolean(self):
         stdin = tests.StringIOWrapper("y\n" # True
                                       "n\n" # False
@@ -193,6 +148,7 @@ class TestTextUIFactory(tests.TestCase):
         factory = _mod_ui_text.TextUIFactory(
             stdin=tests.StringIOWrapper("yada\ny\n"),
             stdout=out, stderr=out)
+        factory._avail_width = lambda: 79
         pb = factory.nested_progress_bar()
         pb.show_bar = False
         pb.show_spinner = False
@@ -204,9 +160,9 @@ class TestTextUIFactory(tests.TestCase):
                                                factory.get_boolean,
                                                "what do you want"))
         output = out.getvalue()
-        self.assertContainsRe(factory.stdout.getvalue(),
-            "foo *\r\r  *\r*")
-        self.assertContainsRe(factory.stdout.getvalue(),
+        self.assertContainsRe(output,
+            "| foo *\r\r  *\r*")
+        self.assertContainsRe(output,
             r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
         # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())

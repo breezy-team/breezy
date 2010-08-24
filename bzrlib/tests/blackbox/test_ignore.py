@@ -162,3 +162,19 @@ class TestCommands(TestCaseWithTransport):
         tree = self.make_branch_and_tree('a')
         self.run_bzr(['ignore', '--directory=a', 'README'])
         self.check_file_contents('a/.bzrignore', 'README\n')
+
+    def test_ignored_invalid_pattern(self):
+        """Ensure graceful handling for invalid ignore pattern.
+
+        Test case for #300062.
+        Invalid pattern should show clear error message.
+        Invalid pattern should not be added to .bzrignore file.
+        """
+        tree = self.make_branch_and_tree('.')
+        out, err = self.run_bzr(['ignore', 'RE:*.cpp', 'foo', 'RE:['], 3)
+        self.assertEqual(out, '')
+        self.assertContainsRe(err,
+            'Invalid ignore pattern.*RE:\*\.cpp.*RE:\[', re.DOTALL)
+        self.assertNotContainsRe(err, 'foo', re.DOTALL)
+        self.assertFalse(os.path.isfile('.bzrignore'))
+
