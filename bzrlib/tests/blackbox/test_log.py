@@ -381,16 +381,14 @@ class TestLogErrors(TestLog):
 
     def test_log_bad_message_re(self):
         """Bad --message argument gives a sensible message
-        
+
         See https://bugs.launchpad.net/bzr/+bug/251352
         """
         self.make_minimal_branch()
         out, err = self.run_bzr(['log', '-m', '*'], retcode=3)
-        self.assertEqual("bzr: ERROR: Invalid regular expression"
-            " in log message filter"
-            ": '*'"
-            ": nothing to repeat\n", err)
-        self.assertEqual('', out)
+        self.assertContainsRe(err, "ERROR.*Invalid pattern.*nothing to repeat")
+        self.assertNotContainsRe(err, "Unprintable exception")
+        self.assertEqual(out, '')
 
     def test_log_unsupported_timezone(self):
         self.make_linear_branch()
