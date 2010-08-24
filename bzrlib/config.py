@@ -377,15 +377,20 @@ class IniBasedConfig(Config):
         self._parser = None
 
     @classmethod
-    def from_bytes(cls, unicode_bytes):
+    def from_bytes(cls, unicode_bytes, file_name=None):
         """Create a config object from bytes.
 
         :param unicode_bytes: A string representing the file content. This will
             be utf-8 encoded.
+
+        :param file_name: The configuration file path.
         """
-        conf = cls()
-        conf._content = StringIO(unicode_bytes.encode('utf-8'))
+        conf = cls(file_name=file_name)
+        conf._create_from_bytes(unicode_bytes)
         return conf
+
+    def _create_from_bytes(self, unicode_bytes):
+        self._content = StringIO(unicode_bytes.encode('utf-8'))
 
     def _get_parser(self, file=symbol_versioning.DEPRECATED_PARAMETER):
         if self._parser is not None:
@@ -564,9 +569,8 @@ class LockableConfig(IniBasedConfig):
 
     lock_name = 'lock'
 
-    def __init__(self, file_name, _content=None):
-        super(LockableConfig, self).__init__(file_name=file_name,
-                                             _content=_content)
+    def __init__(self, file_name):
+        super(LockableConfig, self).__init__(file_name=file_name)
         self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
         self.transport = transport.get_transport(self.dir)
         self._lock = lockdir.LockDir(self.transport, 'lock')
@@ -598,6 +602,17 @@ class GlobalConfig(LockableConfig):
 
     def __init__(self):
         super(GlobalConfig, self).__init__(file_name=config_filename())
+
+    @classmethod
+    def from_bytes(cls, unicode_bytes):
+        """Create a config object from bytes.
+
+        :param unicode_bytes: A string representing the file content. This will
+            be utf-8 encoded.
+        """
+        conf = cls()
+        conf._create_from_bytes(unicode_bytes)
+        return conf
 
     def get_editor(self):
         return self._get_user_option('editor')
@@ -658,7 +673,7 @@ class LocationConfig(LockableConfig):
         :param location: The location url to filter the configuration.
         """
         conf = cls(location)
-        conf._content = StringIO(unicode_bytes.encode('utf-8'))
+        conf._create_from_bytes(unicode_bytes)
         return conf
 
     def _get_matching_sections(self):

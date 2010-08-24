@@ -450,15 +450,15 @@ class TestIniConfigBuilding(TestIniConfig):
 class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
 
     def test_cannot_reload_without_name(self):
-        conf = config.IniBasedConfig(_content=sample_config_text)
+        conf = config.IniBasedConfig.from_bytes(sample_config_text)
         self.assertRaises(AssertionError, conf.reload)
 
     def test_reload_see_new_value(self):
-        c1 = config.IniBasedConfig(file_name='./test/conf',
-                                   _content='editor=vim\n')
+        c1 = config.IniBasedConfig.from_bytes('editor=vim\n',
+                                              file_name='./test/conf')
         c1._write_config_file()
-        c2 = config.IniBasedConfig(file_name='./test/conf',
-                                   _content='editor=emacs\n')
+        c2 = config.IniBasedConfig.from_bytes('editor=emacs\n',
+                                              file_name='./test/conf')
         c2._write_config_file()
         self.assertEqual('vim', c1.get_user_option('editor'))
         self.assertEqual('emacs', c2.get_user_option('editor'))
@@ -483,7 +483,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         return self.config_class(*self.config_args)
 
     def create_config(self, content):
-        c = self.config_class(*self.config_args, _content=content)
+        c = self.config_class.from_bytes(content, *self.config_args)
         c.lock_write()
         c._write_config_file()
         c.unlock()
