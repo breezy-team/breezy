@@ -152,19 +152,6 @@ class ProgressTask(object):
                 own_fraction = 0.0
             return self._parent_task._overall_completion_fraction(own_fraction)
 
-    @deprecated_method(deprecated_in((2, 1, 0)))
-    def note(self, fmt_string, *args):
-        """Record a note without disrupting the progress bar.
-        
-        Deprecated: use ui_factory.note() instead or bzrlib.trace.  Note that
-        ui_factory.note takes just one string as the argument, not a format
-        string and arguments.
-        """
-        if args:
-            self.ui_factory.note(fmt_string % args)
-        else:
-            self.ui_factory.note(fmt_string)
-
     def clear(self):
         # TODO: deprecate this method; the model object shouldn't be concerned
         # with whether it's shown or not.  Most callers use this because they
@@ -220,12 +207,6 @@ class _BaseProgressBar(object):
         self.clear()
         self._stack.return_pb(self)
 
-    def note(self, fmt_string, *args, **kwargs):
-        """Record a note without disrupting the progress bar."""
-        self.clear()
-        self.to_messages_file.write(fmt_string % args)
-        self.to_messages_file.write('\n')
-
 
 class DummyProgress(object):
     """Progress-bar standin that does nothing.
@@ -247,9 +228,6 @@ class DummyProgress(object):
 
     def clear(self):
         pass
-
-    def note(self, fmt_string, *args, **kwargs):
-        """See _BaseProgressBar.note()."""
 
     def child_progress(self, **kwargs):
         return DummyProgress(**kwargs)

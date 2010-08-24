@@ -242,8 +242,7 @@ class CommitBuilder(object):
 
     def _gen_revision_id(self):
         """Return new revision-id."""
-        return generate_ids.gen_revision_id(self._config.username(),
-                                            self._timestamp)
+        return generate_ids.gen_revision_id(self._committer, self._timestamp)
 
     def _generate_revision_if_needed(self):
         """Create a revision id if None was supplied.
