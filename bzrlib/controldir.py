@@ -918,3 +918,11 @@ class ControlDirFormatRegistry(registry.Registry):
 # appear in chronological order and format descriptions can build
 # on previous ones.
 format_registry = ControlDirFormatRegistry()
+
+network_format_registry = registry.FormatRegistry()
+"""Registry of formats indexed by their network name.
+
+The network name for a ControlDirFormat is an identifier that can be used when
+referring to formats with smart server operations. See
+ControlDirFormat.network_name() for more detail.
+"""

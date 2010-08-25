@@ -1395,7 +1395,7 @@ class TestControlDir(TestCaseWithControlDir):
             network_name = format.network_name()
             self.assertEqual(real_dir._format.network_name(), network_name)
         else:
-            registry = bzrdir.network_format_registry
+            registry = controldir.network_format_registry
             network_name = format.network_name()
             looked_up_format = registry.get(network_name)
             self.assertEqual(format.__class__, looked_up_format.__class__)

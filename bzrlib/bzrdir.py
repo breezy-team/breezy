@@ -1719,7 +1719,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
     def register_format(klass, format):
         BzrProber.register_bzrdir_format(format)
         # bzr native formats have a network name of their format string.
-        network_format_registry.register(format.get_format_string(), format.__class__)
+        controldir.network_format_registry.register(format.get_format_string(), format.__class__)
         controldir.ControlDirFormat.register_format(format)
 
     def _supply_sub_formats_to(self, other_format):
@@ -1738,7 +1738,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
     def unregister_format(klass, format):
         BzrProber.unregister_bzrdir_format(format)
         controldir.ControlDirFormat.unregister_format(format)
-        network_format_registry.remove(format.get_format_string())
+        controldir.network_format_registry.remove(format.get_format_string())
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -2145,15 +2145,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)
-
-
-network_format_registry = registry.FormatRegistry()
-"""Registry of formats indexed by their network name.
-
-The network name for a BzrDirFormat is an identifier that can be used when
-referring to formats with smart server operations. See
-BzrDirFormat.network_name() for more detail.
-"""
 
 
 # Register bzr formats
@@ -2717,7 +2708,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
 
     def get_format_description(self):
         if self._network_name:
-            real_format = network_format_registry.get(self._network_name)
+            real_format = controldir.network_format_registry.get(self._network_name)
             return 'Remote: ' + real_format.get_format_description()
         return 'bzr remote bzrdir'
 
