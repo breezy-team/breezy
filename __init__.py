@@ -329,10 +329,15 @@ from bzrlib.repository import (
 repository_network_format_registry.register_lazy('git',
     'bzrlib.plugins.git.repository', 'GitRepositoryFormat')
 
-from bzrlib.bzrdir import (
-    network_format_registry as bzrdir_network_format_registry,
-    )
-bzrdir_network_format_registry.register('git', GitControlDirFormat)
+try:
+    from bzrlib.controldir import (
+        network_format_registry as controldir_network_format_registry,
+        )
+except ImportError:
+    from bzrlib.bzrdir import (
+        network_format_registry as controldir_network_format_registry,
+        )
+controldir_network_format_registry.register('git', GitControlDirFormat)
 
 send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
                                    'send_git', 'Git am-style diff format')
