@@ -1397,10 +1397,7 @@ class Merge3Merger(object):
             self.tt.version_file(file_id, trans_id)
         # The merge has been performed, so the old contents should not be
         # retained.
-        try:
-            self.tt.delete_contents(trans_id)
-        except errors.NoSuchFile:
-            pass
+        self.tt.delete_contents(trans_id)
         return result
 
     def _default_other_winner_merge(self, merge_hook_params):

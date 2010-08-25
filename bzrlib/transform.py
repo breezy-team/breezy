@@ -315,10 +315,9 @@ class TreeTransformBase(object):
 
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
-        # Ensure that the object exists in the WorkingTree, this will raise an
-        # exception if there is a problem
-        self.tree_kind(trans_id)
-        self._removed_contents.add(trans_id)
+        kind = self.tree_kind(trans_id)
+        if kind is not None:
+            self._removed_contents.add(trans_id)
 
     def cancel_deletion(self, trans_id):
         """Cancel a scheduled deletion"""
@@ -389,8 +388,8 @@ class TreeTransformBase(object):
         changed_kind = set(self._removed_contents)
         changed_kind.intersection_update(self._new_contents)
         changed_kind.difference_update(new_ids)
-        changed_kind = (t for t in changed_kind if self.tree_kind(t) !=
-                        self.final_kind(t))
+        changed_kind = (t for t in changed_kind
+                        if self.tree_kind(t) != self.final_kind(t))
         new_ids.update(changed_kind)
         return sorted(FinalPaths(self).get_paths(new_ids))
 
@@ -406,13 +405,7 @@ class TreeTransformBase(object):
         elif trans_id in self._removed_contents:
             return None
         else:
-            # FIXME?: One step forward, one step backwards, tree_kind raise
-            # NoSuchFile instead of returning None -- vila 20100415
-            try:
-                kind = self.tree_kind(trans_id)
-            except errors.NoSuchFile:
-                kind = None
-            return kind
+            return self.tree_kind(trans_id)
 
     def tree_file_id(self, trans_id):
         """Determine the file id associated with the trans_id in the tree"""
@@ -631,9 +624,7 @@ class TreeTransformBase(object):
         """Check for overwrites (not permitted on Win32)"""
         conflicts = []
         for trans_id in self._new_contents:
-            try:
-                self.tree_kind(trans_id)
-            except NoSuchFile:
+            if self.tree_kind(trans_id) is None:
                 continue
             if trans_id not in self._removed_contents:
                 conflicts.append(('overwrite', trans_id,
@@ -1407,18 +1398,15 @@ class TreeTransform(DiskTreeTransform):
     def tree_kind(self, trans_id):
         """Determine the file kind in the working tree.
 
-        Raises NoSuchFile if the file does not exist
+        :returns: The file kind or None if the file does not exist
         """
         path = self._tree_id_paths.get(trans_id)
         if path is None:
-            raise NoSuchFile(None)
+            return None
         try:
             return file_kind(self._tree.abspath(path))
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
-            else:
-                raise NoSuchFile(path)
+        except errors.NoSuchFile:
+            return None
 
     def _set_mode(self, trans_id, mode_id, typefunc):
         """Set the mode of new file contents.
@@ -1712,9 +1700,12 @@ class TransformPreview(DiskTreeTransform):
     def tree_kind(self, trans_id):
         path = self._tree_id_paths.get(trans_id)
         if path is None:
-            raise NoSuchFile(None)
+            return None
         file_id = self._tree.path2id(path)
-        return self._tree.kind(file_id)
+        try:
+            return self._tree.kind(file_id)
+        except errors.NoSuchFile:
+            return None
 
     def _set_mode(self, trans_id, mode_id, typefunc):
         """Set the mode of new file contents.

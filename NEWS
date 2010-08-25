@@ -160,9 +160,10 @@ Documentation
 API Changes
 ***********
 
-* ``bzrlib.transform.TreeTransformBase.final_kind`` now returns None
-  instead of raising NoSuchFile.
-  (Vincent Ladeuil)
+* ``bzrlib.transform.TreeTransformBase.final_kind``,
+  ``bzrlib.transform.TreeTransform.tree_kind`` and
+  ``bzrlib.transform.TransformPreview.tree_kind``now return None instead
+  of raising NoSuchFile.  (Vincent Ladeuil)
 
 * InventoryEntry instances now raise AttributeError if you try to assign
   to attributes that are irrelevant to that kind of entry.  e.g. setting
