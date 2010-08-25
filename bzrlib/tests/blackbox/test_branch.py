@@ -27,7 +27,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
     KnownFailure,
     HardlinkFeature,
@@ -38,7 +38,7 @@ from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
 
 
-class TestBranch(ExternalBase):
+class TestBranch(TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
@@ -174,6 +174,29 @@ class TestBranch(ExternalBase):
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
 
+    def test_branch_files_from(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        out, err = self.run_bzr('branch source target --files-from source')
+        self.failUnlessExists('target/file1')
+
+    def test_branch_files_from_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        source.bzrdir.sprout('second')
+        out, err = self.run_bzr('branch source target --files-from second'
+                                ' --hardlink')
+        source_stat = os.stat('source/file1')
+        second_stat = os.stat('second/file1')
+        target_stat = os.stat('target/file1')
+        self.assertNotEqual(source_stat, target_stat)
+        self.assertEqual(second_stat, target_stat)
+
     def test_branch_standalone(self):
         shared_repo = self.make_repository('repo', shared=True)
         self.example_branch('source')
@@ -248,7 +271,7 @@ class TestBranch(ExternalBase):
         self.assertLength(2, calls)
 
 
-class TestBranchStacked(ExternalBase):
+class TestBranchStacked(TestCaseWithTransport):
     """Tests for branch --stacked"""
 
     def assertRevisionInRepository(self, repo_path, revid):
@@ -376,7 +399,7 @@ class TestBranchStacked(ExternalBase):
             err)
 
 
-class TestSmartServerBranching(ExternalBase):
+class TestSmartServerBranching(TestCaseWithTransport):
 
     def test_branch_from_trivial_branch_to_same_server_branch_acceptance(self):
         self.setup_smart_server_with_call_log()

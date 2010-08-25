@@ -47,8 +47,8 @@ file, these are
    On Ubuntu, `sudo apt-get install python-flup`
    or use `easy_install flup`
 
-Although directions for installing these on Ubuntu Linux are given, most other
-Linux distributions should package these dependencies, making installation
+Although directions for installing these on Ubuntu are given, most other
+GNU/Linux distributions should package these dependencies, making installation
 easy.  For Windows and Mac OS X, they should all be ``easy_install``-able or at
 worst installable from the Python sources.
 
@@ -101,17 +101,17 @@ could start loggerhead with the command
 This would allow the trunk branch of ProjectX to be browsed at
 ``http://www.example.com/loggerhead/projectx/trunk``.
 
-Loggerhead comes with a script allowing it to run as a service on init.d based
-Linux systems.  Contributions to do a similar thing on Windows servers would
-be welcomed at http://launchpad.net/loggerhead.
+Loggerhead comes with a script allowing it to run as a service on
+``init.d`` based Unix systems.  Contributions to do a similar thing on
+Windows servers would be welcomed at http://launchpad.net/loggerhead.
   
 
 Other web interfaces
 --------------------
 
 There are a number of other web interfaces available for Bazaar branches (see
-the list at http://bazaar-vcs.org/WebInterfaces) and we will just mention a
-couple of them here for their advantages in particular situations.
+the list at http://wiki.bazaar.canonical.com/WebInterfaces) and we will just
+mention a couple of them here for their advantages in particular situations.
 
 trac+bzr (http://launchpad.net/trac-bzr)
   Trac is a popular web app that integrates a browser for branches, an issue

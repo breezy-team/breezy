@@ -25,23 +25,37 @@ from bzrlib import (
     filters,
     generate_ids,
     osutils,
-    progress,
     revision as _mod_revision,
     rules,
     tests,
     urlutils,
     )
 from bzrlib.bzrdir import BzrDir
-from bzrlib.conflicts import (DuplicateEntry, DuplicateID, MissingParent,
-                              UnversionedParent, ParentLoop, DeletingParent,
-                              NonDirectoryParent)
+from bzrlib.conflicts import (
+    DeletingParent,
+    DuplicateEntry,
+    DuplicateID,
+    MissingParent,
+    NonDirectoryParent,
+    ParentLoop,
+    UnversionedParent,
+)
 from bzrlib.diff import show_diff_trees
-from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
-                           ReusingTransform, CantMoveRoot,
-                           PathsNotVersionedError, ExistingLimbo,
-                           ExistingPendingDeletion, ImmortalLimbo,
-                           ImmortalPendingDeletion, LockError)
-from bzrlib.osutils import file_kind, pathjoin
+from bzrlib.errors import (
+    DuplicateKey,
+    ExistingLimbo,
+    ExistingPendingDeletion,
+    ImmortalLimbo,
+    ImmortalPendingDeletion,
+    LockError,
+    MalformedTransform,
+    NoSuchFile,
+    ReusingTransform,
+)
+from bzrlib.osutils import (
+    file_kind,
+    pathjoin,
+)
 from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.tests import (
     HardlinkFeature,
@@ -49,12 +63,20 @@ from bzrlib.tests import (
     TestCase,
     TestCaseInTempDir,
     TestSkipped,
-    )
-from bzrlib.transform import (TreeTransform, ROOT_PARENT, FinalPaths,
-                              resolve_conflicts, cook_conflicts,
-                              build_tree, get_backup_name,
-                              _FileMover, resolve_checkout,
-                              TransformPreview, create_from_tree)
+)
+from bzrlib.transform import (
+    build_tree,
+    create_from_tree,
+    cook_conflicts,
+    _FileMover,
+    FinalPaths,
+    get_backup_name,
+    resolve_conflicts,
+    resolve_checkout,
+    ROOT_PARENT,
+    TransformPreview,
+    TreeTransform,
+)
 
 
 class TestTreeTransform(tests.TestCaseWithTransport):
@@ -829,6 +851,38 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         myfile = rename.trans_id_file_id('myfile-id')
         rename.set_executability(True, myfile)
         rename.apply()
+
+    def test_rename_fails(self):
+        # see https://bugs.launchpad.net/bzr/+bug/491763
+        create, root_id = self.get_transform()
+        first_dir = create.new_directory('first-dir', root_id, 'first-id')
+        myfile = create.new_file('myfile', root_id, 'myfile-text',
+                                 'myfile-id')
+        create.apply()
+        if os.name == "posix" and sys.platform != "cygwin":
+            # posix filesystems fail on renaming if the readonly bit is set
+            osutils.make_readonly(self.wt.abspath('first-dir'))
+        elif os.name == "nt":
+            # windows filesystems fail on renaming open files
+            self.addCleanup(file(self.wt.abspath('myfile')).close)
+        else:
+            self.skip("Don't know how to force a permissions error on rename")
+        # now transform to rename
+        rename_transform, root_id = self.get_transform()
+        file_trans_id = rename_transform.trans_id_file_id('myfile-id')
+        dir_id = rename_transform.trans_id_file_id('first-id')
+        rename_transform.adjust_path('newname', dir_id, file_trans_id)
+        e = self.assertRaises(errors.TransformRenameFailed,
+            rename_transform.apply)
+        # On nix looks like: 
+        # "Failed to rename .../work/.bzr/checkout/limbo/new-1
+        # to .../first-dir/newname: [Errno 13] Permission denied"
+        # On windows looks like:
+        # "Failed to rename .../work/myfile to 
+        # .../work/.bzr/checkout/limbo/new-1: [Errno 13] Permission denied"
+        # The strerror will vary per OS and language so it's not checked here
+        self.assertContainsRe(str(e),
+            "Failed to rename .*(first-dir.newname:|myfile)")
 
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.
@@ -2090,6 +2144,38 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         tt.new_file('file', parent_id, 'contents', 'file-id')
         self.assertRaises(errors.MalformedTransform, tt.commit, branch,
                           'message')
+
+    def test_commit_rich_revision_data(self):
+        branch, tt = self.get_branch_and_transform()
+        rev_id = tt.commit(branch, 'message', timestamp=1, timezone=43201,
+                           committer='me <me@example.com>',
+                           revprops={'foo': 'bar'}, revision_id='revid-1',
+                           authors=['Author1 <author1@example.com>',
+                              'Author2 <author2@example.com>',
+                               ])
+        self.assertEqual('revid-1', rev_id)
+        revision = branch.repository.get_revision(rev_id)
+        self.assertEqual(1, revision.timestamp)
+        self.assertEqual(43201, revision.timezone)
+        self.assertEqual('me <me@example.com>', revision.committer)
+        self.assertEqual(['Author1 <author1@example.com>',
+                          'Author2 <author2@example.com>'],
+                         revision.get_apparent_authors())
+        del revision.properties['authors']
+        self.assertEqual({'foo': 'bar',
+                          'branch-nick': 'tree'},
+                         revision.properties)
+
+    def test_no_explicit_revprops(self):
+        branch, tt = self.get_branch_and_transform()
+        rev_id = tt.commit(branch, 'message', authors=[
+            'Author1 <author1@example.com>',
+            'Author2 <author2@example.com>', ])
+        revision = branch.repository.get_revision(rev_id)
+        self.assertEqual(['Author1 <author1@example.com>',
+                          'Author2 <author2@example.com>'],
+                         revision.get_apparent_authors())
+        self.assertEqual('tree', revision.properties['branch-nick'])
 
 
 class MockTransform(object):

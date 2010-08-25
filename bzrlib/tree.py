@@ -36,7 +36,6 @@ from bzrlib import errors
 from bzrlib.inventory import InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
-import bzrlib.revision
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import note
 
@@ -521,7 +520,7 @@ class Tree(object):
             parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
                 self._iter_parent_trees()]
             vf.add_lines((file_id, last_revision), parent_keys,
-                         self.get_file(file_id).readlines())
+                         self.get_file_lines(file_id))
             repo = self.branch.repository
             base_vf = repo.texts
         else:
@@ -583,6 +582,10 @@ class Tree(object):
             yield child.file_id
 
     def lock_read(self):
+        """Lock this tree for multiple read only operations.
+        
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         pass
 
     def revision_tree(self, revision_id):

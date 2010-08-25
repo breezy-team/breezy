@@ -208,7 +208,7 @@ class TestBzrDirScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.per_bzrdir import make_scenarios
+        from bzrlib.tests.per_controldir import make_scenarios
         vfs_factory = "v"
         server1 = "a"
         server2 = "b"
@@ -609,19 +609,19 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
                 l.attempt_lock()
         test = TestDanglingLock('test_function')
         result = test.run()
+        total_failures = result.errors + result.failures
         if self._lock_check_thorough:
-            self.assertEqual(1, len(result.errors))
+            self.assertLength(1, total_failures)
         else:
             # When _lock_check_thorough is disabled, then we don't trigger a
             # failure
-            self.assertEqual(0, len(result.errors))
+            self.assertLength(0, total_failures)
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
     def test_get_readonly_url_none(self):
-        from bzrlib.transport import get_transport
         from bzrlib.transport.readonly import ReadonlyTransportDecorator
         self.vfs_transport_factory = memory.MemoryServer
         self.transport_readonly_server = None
@@ -629,15 +629,14 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         # for the server
         url = self.get_readonly_url()
         url2 = self.get_readonly_url('foo/bar')
-        t = get_transport(url)
-        t2 = get_transport(url2)
+        t = transport.get_transport(url)
+        t2 = transport.get_transport(url2)
         self.failUnless(isinstance(t, ReadonlyTransportDecorator))
         self.failUnless(isinstance(t2, ReadonlyTransportDecorator))
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
         from bzrlib.tests.http_server import HttpServer
-        from bzrlib.transport import get_transport
         from bzrlib.transport.http import HttpTransportBase
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
@@ -645,8 +644,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         url = self.get_readonly_url()
         url2 = self.get_readonly_url('foo/bar')
         # the transport returned may be any HttpTransportBase subclass
-        t = get_transport(url)
-        t2 = get_transport(url2)
+        t = transport.get_transport(url)
+        t2 = transport.get_transport(url2)
         self.failUnless(isinstance(t, HttpTransportBase))
         self.failUnless(isinstance(t2, HttpTransportBase))
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
@@ -690,8 +689,7 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
 class TestChrootedTest(tests.ChrootedTestCase):
 
     def test_root_is_root(self):
-        from bzrlib.transport import get_transport
-        t = get_transport(self.get_readonly_url())
+        t = transport.get_transport(self.get_readonly_url())
         url = t.base
         self.assertEqual(url, t.clone('..').base)
 
@@ -803,7 +801,7 @@ class TestTestResult(tests.TestCase):
         self.requireFeature(test_lsprof.LSProfFeature)
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
-            unittest._WritelnDecorator(result_stream),
+            result_stream,
             descriptions=0,
             verbosity=2,
             )
@@ -864,7 +862,7 @@ class TestTestResult(tests.TestCase):
         # verbose test output formatting
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
-            unittest._WritelnDecorator(result_stream),
+            result_stream,
             descriptions=0,
             verbosity=2,
             )
@@ -880,6 +878,9 @@ class TestTestResult(tests.TestCase):
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
         self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
+        if sys.version_info > (2, 7):
+            self.expectFailure("_ExpectedFailure on 2.7 loses the message",
+                self.assertNotEqual, lines[1], '    ')
         self.assertEqual(lines[1], '    foo')
         self.assertEqual(2, len(lines))
 
@@ -919,7 +920,7 @@ class TestTestResult(tests.TestCase):
         # verbose test output formatting
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
-            unittest._WritelnDecorator(result_stream),
+            result_stream,
             descriptions=0,
             verbosity=2,
             )
@@ -1421,7 +1422,7 @@ class TestTestCase(tests.TestCase):
         sample_test = TestTestCase("method_that_times_a_bit_twice")
         output_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
-            unittest._WritelnDecorator(output_stream),
+            output_stream,
             descriptions=0,
             verbosity=2)
         sample_test.run(result)
@@ -2338,6 +2339,11 @@ class TestStartBzrSubProcess(tests.TestCase):
         finally:
             os.chdir = orig_chdir
         self.assertEqual(['foo', 'current'], chdirs)
+
+    def test_get_bzr_path_with_cwd_bzrlib(self):
+        self.get_source_path = lambda: ""
+        self.overrideAttr(os.path, "isfile", lambda path: True)
+        self.assertEqual(self.get_bzr_path(), "bzr")
 
 
 class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):

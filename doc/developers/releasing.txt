@@ -1,12 +1,11 @@
 Releasing Bazaar
-================
+################
 
 This document describes the processes for making and announcing a Bazaar
 release, and managing the release process.  This is just one phase of the
-`overall development cycle <http://doc.bazaar-vcs.org/developers/cycle.html>`_,
-but it's the most complex part.
-This document gives a checklist you can follow from start to end in one
-go.
+`overall development cycle <http://doc.bazaar.canonical.com/developers/cycle.html>`_,
+but it's the most complex part.  This document gives a checklist you can
+follow from start to end in one go.
 
 If you're helping the Release Manager (RM) for one reason or another, you
 may notice that he didn't follow that document scrupulously. He may have
@@ -19,45 +18,36 @@ milestones for example (we tend to forget these ones a lot).
 
 
 Preconditions
--------------
+=============
 
 #. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
 
      bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
 
 
-Starting a cycle
-----------------
+At the start of a release cycle
+===============================
 
 To start a new release cycle:
 
-#. Create a new series at <https://launchpad.net/bzr/+addseries>. There is one
-   series for every *x.y* release.
+#. If this is the first release for a given *x.y* then create a new
+   series at <https://launchpad.net/bzr/+addseries>. There is one series
+   for every *x.y* release.
 
-#. Go to the series web page at <https://launchpad.net/bzr/x.y>
+#. If you made a new series, create a new pqm-controlled branch for this
+   release series, by asking a Canonical sysadmin.  This branch means that
+   from the first release beta or candidate onwards, general development
+   continues on the trunk, and only specifically-targeted fixes go into
+   the release branch.
 
-#. Create a new release at
-   <https://launchpad.net/bzr/x.y/+addrelease> and add
-   information about this release. We will not use it yet, but it
+#. If you made a new series, add milestones at
+   <https://edge.launchpad.net/bzr/x.y/+addmilestone> to that series for
+   the beta release, release candidate and the final release, and their
+   expected dates.
+
+#. Create a new milestone <https://edge.launchpad.net/bzr/x.y/+addmilestone>
+   and add information about this release.  We will not use it yet, but it
    will be available for targeting or nominating bugs.
-
-#. We create a new pqm-controlled branch for this release series, by
-   asking a Canonical sysadmin.
-   This branch means that from the first release beta or candidate onwards,
-   general development continues on the trunk, and only
-   specifically-targeted fixes go into the release branch.
-
-#. Add milestones at <https://edge.launchpad.net/bzr/x.y/+addmilestone> to
-   that series for the beta release, release candidate and the final release,
-   and their expected dates.
-
-#. Update the version number in the ``bzr`` script, and the
-   ``bzrlib/__init__.py`` file. Make sure there is always a corresponding
-   milestone when you change that version number.
-
-#. Add a new section at the top of ``NEWS`` about the new release,
-   including its version number and the headings from
-   ``NEWS-template.txt``.
 
 #. Send mail to the list with the key dates, who will be the release
    manager, and the main themes or targeted bugs.  Ask people to nominate
@@ -71,7 +61,7 @@ To start a new release cycle:
      bzr branch trunk prepare-1.14
 
 #. Configure pqm-submit for this branch, with a section like this (where
-   x.y is the version to release).
+   x.y is the version to release). **Or use hydrazine for easy use**
    ``~/.bazaar/locations.conf``::
 
 	[/home/mbp/bzr/prepare-x.y]
@@ -82,8 +72,33 @@ To start a new release cycle:
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
 
-    Please see <http://doc.bazaar-vcs.org/developers/HACKING.html#an-overview-of-pqm>
+    Please see <http://doc.bazaar.canonical.com/developers/HACKING.html#an-overview-of-pqm>
     for more details on PQM
+
+#. Update the version number in the ``bzr`` script, and the
+   ``bzrlib/__init__.py`` file::
+   
+       version_info = (x, y, z, 'dev', 0)
+   
+#. Add a new section at the top of ``NEWS`` about the new release,
+   including its version number and the headings from
+   ``NEWS-template.txt``.
+
+#. Update the "What's New" documents in ``doc/en/whats-new``.
+
+#. Commit this and send it to PQM.
+
+
+Doing a particular release
+==========================
+
+Update the source code
+----------------------
+
+#. Check that there is a milestone for the release you're doing. If there
+   is no milestone it indicates a process problem - make the milestone but
+   also mail the list to raise this issue in our process. Milestones are
+   found at <https://launchpad.net/bzr/+milestone/x.y.z>.
 
 #. In the release branch, update  ``version_info`` in ``./bzrlib/__init__.py``.
    Make sure the corresponding milestone exists.
@@ -92,39 +107,38 @@ To start a new release cycle:
 
    For beta releases use::
 
-       version_info = (2, 1, 0, 'beta', 1)
+       version_info = (2, 1, 0, 'beta', SERIAL)
 
+   For instance 2.1b1::
+
+       version_info = (2, 1, 0, 'beta', 1)
 
    For release candidates use::
 
-       version_info = (2, 0, 1, 'candidate', 1)
+       version_info = (2, 0, 1, 'candidate', SERIAL)
 
+   For stable releases use::
 
-Starting the release phase
---------------------------
+       version_info = (2, 1, 2, 'final', 0)
 
-#. Create a new milestone at <https://launchpad.net/bzr/x.y/+addmilestone>
-   for the beta release or release candidate if you haven't already.
+#. Update the ``./NEWS`` section for this release.
 
-#. Add the date and release number to ``./NEWS``
+   Fill out the date and a description of the release under the existing
+   header. If there isn't one, follow the above for using the NEWS
+   template.
 
-   Depending on whether you're doing a beta or a bugfix release, you'll
-   have to create a NEWS section for your release in the right
-   place. Most of the time, the new section is at the top of the file
-   (look what have been done for the various 2.0x and 2.1.0bx releases).
-   The rule is to keep the sections sorted by date. You'll need to be
-   cautious when merging back to trunk to respect that.
+   See *2.1.1* or similar for an example of what this looks like.
+
+#. Add a summary of the release into the "What's New" document.
 
 #. To check that all bugs mentioned in ``./NEWS`` are actually marked as
    closed in Launchpad, you can run ``tools/check-newsbugs.py``::
 
      ./tools/check-newsbugs.py NEWS
 
-   (But note there can be some false positives, and this script may be
+   (But note there will be many false positives, and this script may be
    flaky <https://bugs.edge.launchpad.net/bzr/+bug/354985>.  Don't let
    this slow you down too much.)
-
-#. Summarize into one or two paragraphs what's new in this release.
 
 #. Commit these changes to the release branch, using a command like::
 
@@ -170,13 +184,18 @@ Starting the release phase
 
      bzr tag bzr-1.14
 
-#. Push those changes to a bzr reposistory that is public and accessible on
+#. Push those changes to a bzr repository that is public and accessible on
    the Internet. PQM will pull from this repository when it attempts to merge
    your changes. Then submit those changes to PQM for merge into the
    appropriate release branch::
 
      bzr push
      bzr pqm-submit -m "(mbp) prepare 1.14"
+
+   Or with hydrazine::
+
+     bzr lp-propose -m "Release 1.14" --approve lp:bzr/1.14
+     feed-pqm bzr
 
 #. When PQM succeeds, pull down the master release branch.
 
@@ -199,15 +218,24 @@ Making the source tarball
    disable the faulty plugins one by one until you get no more
    failures.
 
+   Remember that PQM has just tested everything too, this step is
+   particularly testing that the pyrex extensions, which are updated
+   by your local pyrex version when you run make dist, are in good
+   shape.
+
 
 Publishing the source tarball
 -----------------------------
 
 #. Go to the relevant milestone page in Launchpad.
 
-#. Within that release, upload the source tarball and the GPG
-   signature.  Or, if you prefer, use the
-   ``tools/packaging/lp-upload-release`` script to do this.
+#. Create a release of the milestone, and upload the source tarball and
+   the GPG signature.  Or, if you prefer, use the
+   ``tools/packaging/lp-upload-release`` script to do this. Note that
+   this changes what the download widget on the Launchpad bzr home
+   page shows, so don't stop the release process yet, or platform binary
+   installers won't be made and the download list will stay very small!
+   <https://bugs.edge.launchpad.net/launchpad/+bug/586445>
 
 
 Announcing the source freeze
@@ -219,6 +247,15 @@ Announcing the source freeze
    release.
 
 
+Kick off the next cycle
+-----------------------
+
+#. To let developers work on the next release, do
+   `At the start of a release cycle` now.
+
+#. Pause for a few days.
+
+
 Publishing the release
 ----------------------
 
@@ -227,23 +264,14 @@ for binaries to be built on various platforms.  Once they have been built,
 we have a releasable product.  The next step is to make it generally
 available to the world.
 
-go to the release
+#. Go to the release web page at <https://launchpad.net/bzr/x.y/x.y.z>
 
-#. Within that release, upload the source tarball and zipfile and the GPG
-   signature.  Or, if you prefer, use the
-   ``tools/packaging/lp-upload-release`` script to do this.
-
-#. Link from http://bazaar-vcs.org/SourceDownloads to the tarball and
-   signature.
-
-#. Announce on the `Bazaar website <http://bazaar-vcs.org/>`_.
+#. Announce on the `Bazaar website <http://bazaar.canonical.com/>`_.
    This page is edited via the lp:bzr-website branch. (Changes
    pushed to this branch are refreshed by a cron job on escudero.)
 
-#. Announce on the `Bazaar wiki <http://bazaar-vcs.org/Welcome>`_.
-
 #. Check that the documentation for this release is available in
-   <http://doc.bazaar-vcs.org>.  It should be automatically build when the
+   <http://doc.bazaar.canonical.com>.  It should be automatically build when the
    branch is created, by a cron script ``update-bzr-docs`` on
    ``escudero``. As of today (2009-08-27) ``igc`` manually updates the
    pretty version of it.
@@ -270,7 +298,7 @@ Now that the release is publicly available, tell people about it.
 
    The announce mail will look something like this::
 
-      Subject: bzr x.yy released!
+      Subject: bzr x.y.z released!
 
       <<Summary paragraph from news>>
 
@@ -282,7 +310,7 @@ Now that the release is publicly available, tell people about it.
       feedback.
 
       Bazaar is now available for download from
-      http://bazaar-vcs.org/Download as a source tarball; packages
+      https://launchpad.net/bzr/2.x/2.x/ as a source tarball; packages
       for various systems will be available soon.
 
       <<NEWS section from this release back to the last major release>>
@@ -318,6 +346,9 @@ Now that the release is publicly available, tell people about it.
 Merging the released code back to trunk
 ---------------------------------------
 
+The rule is to keep ``NEWS`` sections sorted by date. You'll need to
+review the merge and make sure that that is respected.
+
 Merge the release branch back into the trunk.  Check that changes in NEWS
 were merged into the right sections.  If it's not already done, advance
 the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
@@ -327,7 +358,7 @@ As soon as you change the version number in trunk, make sure you have
 created the corresponding milestone to ensure the continuity in bug
 targeting or nominating. Depending on the change, you may even have to
 create a new series (if your change the major or minor release number), in
-that case go to `Starting a cycle` and follow the instructions from there.
+that case go to `At the start of a release cycle` and follow the instructions from there.
 
 You should also merge (not pull) the release branch into
 ``lp:~bzr/bzr/current``, so that branch contains the current released code
@@ -341,8 +372,8 @@ or fruit juice - it's on the house! If it was a beta, or
 candidate, you're not finished yet. Another beta or candidate or
 hopefully a final release is still to come.
 
-The process is the same as for the first release. Goto `Starting the
-release phase`_ and follow the instructions again. Some details change
+The process is the same as for the first release. Goto `Doing a
+particular release`_ and follow the instructions again. Some details change
 between beta, candidate and final releases, but they should be
 documented. If the instructions aren't clear enough, please fix them.
 

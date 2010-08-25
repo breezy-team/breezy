@@ -22,6 +22,7 @@ from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
     BzrDirMetaFormat1,
+    BzrProber,
     network_format_registry,
     )
 from bzrlib.smart.request import (
@@ -44,10 +45,9 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
             # clients that don't anticipate errors from this method.
             answer = 'no'
         else:
-            default_format = BzrDirFormat.get_default_format()
-            real_bzrdir = default_format.open(t, _found=True)
+            bzr_prober = BzrProber()
             try:
-                real_bzrdir._format.probe_transport(t)
+                bzr_prober.probe_transport(t)
             except (errors.NotBranchError, errors.UnknownFormatError):
                 answer = 'no'
             else:
@@ -110,7 +110,7 @@ class SmartServerRequestBzrDir(SmartServerRequest):
         """Get the relative path for repository from current_transport."""
         # the relpath of the bzrdir in the found repository gives us the
         # path segments to pop-out.
-        relpath = repository.bzrdir.root_transport.relpath(
+        relpath = repository.user_transport.relpath(
             current_transport.base)
         if len(relpath):
             segments = ['..'] * len(relpath.split('/'))
@@ -429,7 +429,7 @@ class SmartServerRequestBzrDirInitializeEx(SmartServerRequestBzrDir):
             # It is returned locked, but we need to do the lock to get the lock
             # token.
             repo.unlock()
-            repo_lock_token = repo.lock_write() or ''
+            repo_lock_token = repo.lock_write().repository_token or ''
             if repo_lock_token:
                 repo.leave_lock_in_place()
             repo.unlock()

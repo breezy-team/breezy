@@ -28,20 +28,20 @@ Bazaar itself.
 Where to find plugins
 ---------------------
 
-We keep our list of plugins on the http://bazaar-vcs.org/BzrPlugins page.
+We keep our list of plugins on the http://wiki.bazaar.canonical.com/BzrPlugins page.
 
 How to install a plugin
 -----------------------
 
 Installing a plugin is very easy! If not already created, create a
 ``plugins`` directory under your Bazaar configuration directory,
-``~/.bazaar/`` on Linux and
+``~/.bazaar/`` on Unix and
 ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\``
 on Windows. Within this directory (referred to as $BZR_HOME below),
 each plugin is placed in its own subdirectory.
 
 Plugins work particularly well with Bazaar branches. For example, to
-install the bzrtools plugins for your main user account on Linux,
+install the bzrtools plugins for your main user account on GNU/Linux,
 one can perform the following::
 
     bzr branch http://panoramicfeedback.com/opensource/bzr/bzrtools

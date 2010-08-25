@@ -19,12 +19,8 @@ root.
 """
 
 from bzrlib.transport import (
-    get_transport,
     pathfilter,
     register_transport,
-    Server,
-    Transport,
-    unregister_transport,
     )
 
 

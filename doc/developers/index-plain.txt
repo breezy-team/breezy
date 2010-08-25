@@ -15,7 +15,7 @@ Overall developer documentation
   (external link)
   |--| automatically generated API reference information
 
-* `Integrating with Bazaar <http://bazaar-vcs.org/Integrating_with_Bazaar>`_
+* `Integrating with Bazaar <http://wiki.bazaar.canonical.com/Integrating_with_Bazaar>`_
   (wiki) |--| a guide for writing Python programs that work with Bazaar.
 
 * `Revision Properties <revision-properties.html>`_ |--| An application
@@ -23,6 +23,10 @@ Overall developer documentation
   data.
 
 * `Testing <testing.html>`_ |--| Guide to writing tests for Bazaar.
+
+* `Code Review <code-review.html>`_.
+
+* `Bazaar Code Style Guide <code-style.html>`_.
 
 * `Writing plugins <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_
   |--| specific advice on writing Bazaar plugins. (web link)
@@ -38,7 +42,7 @@ Process
 
 * `Managing the Bazaar PPA <ppa.html>`_ |--| Packaging Bazaar for Ubuntu.
 
-* `Giving back <http://bazaar-vcs.org/BzrGivingBack>`_ (wiki) |--| How to get
+* `Giving back <http://wiki.bazaar.canonical.com/BzrGivingBack>`_ (wiki) |--| How to get
   your changes to Bazaar integrated into a release.
 
 * `Profiling notes <profiling.html>`_ |--| Instructions on how to profile
@@ -49,6 +53,12 @@ Process
 
 * `Tracking Bugs in Bazaar <bug-handling.html>`_ |--| How we use the bug
   tracker.
+
+Architecture overviews
+======================
+
+* `Transports <transports.html>`_ |--| Transport virtual filesystem
+  abstraction.
 
 Plans
 =====

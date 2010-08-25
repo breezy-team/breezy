@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,11 +18,13 @@
 
 import threading
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    transport,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import request
 from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
-from bzrlib.transport import get_transport
 
 
 class NoBodyRequest(request.SmartServerRequest):
@@ -34,7 +36,7 @@ class NoBodyRequest(request.SmartServerRequest):
 
 class DoErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do()."""
-    
+
     def do(self):
         raise errors.NoSuchFile('xyzzy')
 
@@ -172,7 +174,7 @@ class TestRequestHanderErrorTranslation(TestCase):
 
 
 class TestRequestJail(TestCaseWithMemoryTransport):
-    
+
     def test_jail(self):
         transport = self.get_transport('blah')
         req = request.SmartServerRequest(transport)
@@ -185,9 +187,11 @@ class TestRequestJail(TestCaseWithMemoryTransport):
 
 class TestJailHook(TestCaseWithMemoryTransport):
 
-    def tearDown(self):
-        request.jail_info.transports = None
-        TestCaseWithMemoryTransport.tearDown(self)
+    def setUp(self):
+        super(TestJailHook, self).setUp()
+        def clear_jail_info():
+            request.jail_info.transports = None
+        self.addCleanup(clear_jail_info)
 
     def test_jail_hook(self):
         request.jail_info.transports = None
@@ -203,8 +207,8 @@ class TestJailHook(TestCaseWithMemoryTransport):
         # A parent is not allowed
         self.assertRaises(errors.JailBreak, _pre_open_hook, t.clone('..'))
         # A completely unrelated transport is not allowed
-        self.assertRaises(
-            errors.JailBreak, _pre_open_hook, get_transport('http://host/'))
+        self.assertRaises(errors.JailBreak, _pre_open_hook,
+                          transport.get_transport('http://host/'))
 
     def test_open_bzrdir_in_non_main_thread(self):
         """Opening a bzrdir in a non-main thread should work ok.

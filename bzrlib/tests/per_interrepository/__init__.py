@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 #
@@ -26,6 +26,7 @@ rather than in tests/per_interrepository/*.py.
 """
 
 
+from bzrlib import transport
 from bzrlib.errors import (
     FileExists,
     UninitializableFormat,
@@ -38,8 +39,7 @@ from bzrlib.tests import (
                           default_transport,
                           multiply_tests,
                           )
-from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.transport import get_transport
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -128,7 +128,7 @@ def default_test_list():
     return result
 
 
-class TestCaseWithInterRepository(TestCaseWithBzrDir):
+class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def setUp(self):
         super(TestCaseWithInterRepository, self).setUp()
@@ -143,7 +143,7 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
             segments = url.split('/')
             if segments and segments[-1] not in ('', '.'):
                 parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
+                t = transport.get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
                 except FileExists:

@@ -27,7 +27,7 @@ from bzrlib import (
     tests,
     workingtree,
     )
-from bzrlib.tests import per_bzrdir
+from bzrlib.tests import per_controldir
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -50,7 +50,7 @@ def make_scenario(transport_server, transport_readonly_server,
         }
 
 
-class TestCaseWithWorkingTree(per_bzrdir.TestCaseWithBzrDir):
+class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
@@ -101,6 +101,7 @@ def load_tests(standard_tests, module, loader):
         'revision_tree',
         'set_root_id',
         'smart_add',
+        'symlinks',
         'uncommit',
         'unversion',
         'views',

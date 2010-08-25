@@ -4,7 +4,7 @@ Bazaar Main Document Catalog
 
 The latest version of these documents are available from Bazaar's
 documentation site, <http://doc.bazaar.canonical.com/>, and more documentation
-may be linked from <http://bazaar-vcs.org/Documentation>.
+may be linked from <http://wiki.bazaar.canonical.com/Documentation>.
 
 Core Documentation
 ==================
@@ -43,15 +43,15 @@ Developer Documentation
 Web links
 =========
 
-* `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_
+* `Switching Guides <http://wiki.bazaar.canonical.com/BzrSwitching>`_
   |--| for users moving from another VCS tool
 
-* `Migration Guide <http://bazaar-vcs.org/BzrMigration>`_
+* `Migration Guide <http://wiki.bazaar.canonical.com/BzrMigration>`_
   |--| for teams migrating history from another VCS tool
 
-* `Glossary <http://bazaar-vcs.org/BzrGlossary>`_
+* `Glossary <http://wiki.bazaar.canonical.com/BzrGlossary>`_
 
-* `Frequently Asked Questions <http://bazaar-vcs.org/FAQ>`_
+* `Frequently Asked Questions <http://wiki.bazaar.canonical.com/FAQ>`_
 
 
 Other Languages

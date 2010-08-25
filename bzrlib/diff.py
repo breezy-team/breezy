@@ -17,7 +17,6 @@
 import difflib
 import os
 import re
-import shutil
 import string
 import sys
 
@@ -100,8 +99,8 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     if sequence_matcher is None:
         sequence_matcher = patiencediff.PatienceSequenceMatcher
     ud = patiencediff.unified_diff(oldlines, newlines,
-                      fromfile=old_filename.encode(path_encoding),
-                      tofile=new_filename.encode(path_encoding),
+                      fromfile=old_filename.encode(path_encoding, 'replace'),
+                      tofile=new_filename.encode(path_encoding, 'replace'),
                       sequencematcher=sequence_matcher)
 
     ud = list(ud)
@@ -421,12 +420,9 @@ def get_trees_and_branches_to_diff_locked(
 
     # Get the specific files (all files is None, no files is [])
     if make_paths_wt_relative and working_tree is not None:
-        try:
-            from bzrlib.builtins import safe_relpath_files
-            other_paths = safe_relpath_files(working_tree, other_paths,
+        other_paths = working_tree.safe_relpath_files(
+            other_paths,
             apply_view=apply_view)
-        except errors.FileInWrongBranch:
-            raise errors.BzrCommandError("Files are in different branches")
     specific_files.extend(other_paths)
     if len(specific_files) == 0:
         specific_files = None
@@ -707,18 +703,18 @@ class DiffText(DiffPath):
         """
         def _get_text(tree, file_id, path):
             if file_id is not None:
-                return tree.get_file(file_id, path).readlines()
+                return tree.get_file_lines(file_id, path)
             else:
                 return []
         try:
             from_text = _get_text(self.old_tree, from_file_id, from_path)
             to_text = _get_text(self.new_tree, to_file_id, to_path)
             self.text_differ(from_label, from_text, to_label, to_text,
-                             self.to_file)
+                             self.to_file, path_encoding=self.path_encoding)
         except errors.BinaryFile:
             self.to_file.write(
                   ("Binary files %s and %s differ\n" %
-                  (from_label, to_label)).encode(self.path_encoding))
+                  (from_label, to_label)).encode(self.path_encoding,'replace'))
         return self.CHANGED
 
 
@@ -740,9 +736,12 @@ class DiffFromTool(DiffPath):
                      path_encoding)
 
     @classmethod
-    def make_from_diff_tree(klass, command_string):
+    def make_from_diff_tree(klass, command_string, external_diff_options=None):
         def from_diff_tree(diff_tree):
-            return klass.from_string(command_string, diff_tree.old_tree,
+            full_command_string = [command_string]
+            if external_diff_options is not None:
+                full_command_string += ' ' + external_diff_options
+            return klass.from_string(full_command_string, diff_tree.old_tree,
                                      diff_tree.new_tree, diff_tree.to_file)
         return from_diff_tree
 
@@ -916,12 +915,15 @@ class DiffTree(object):
         :param using: Commandline to use to invoke an external diff tool
         """
         if using is not None:
-            extra_factories = [DiffFromTool.make_from_diff_tree(using)]
+            extra_factories = [DiffFromTool.make_from_diff_tree(using, external_diff_options)]
         else:
             extra_factories = []
         if external_diff_options:
             opts = external_diff_options.split()
-            def diff_file(olab, olines, nlab, nlines, to_file):
+            def diff_file(olab, olines, nlab, nlines, to_file, path_encoding=None):
+                """:param path_encoding: not used but required
+                        to match the signature of internal_diff.
+                """
                 external_diff(olab, olines, nlab, nlines, to_file, opts)
         else:
             diff_file = internal_diff

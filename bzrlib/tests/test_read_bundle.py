@@ -35,7 +35,8 @@ import bzrlib.urlutils
 def load_tests(standard_tests, module, loader):
     """Multiply tests for tranport implementations."""
     transport_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance(TestReadBundleFromURL))
+        standard_tests,
+        tests.condition_isinstance(TestReadMergeableBundleFromURL))
     return tests.multiply_tests(transport_tests, transport_test_permutations(),
         remaining_tests)
 
@@ -60,32 +61,11 @@ def create_bundle_file(test_case):
     return out, wt
 
 
-class TestDeprecations(tests.TestCaseInTempDir):
-
-    def create_test_bundle(self):
-        out, wt = create_bundle_file(self)
-        f = open('test_bundle', 'wb')
-        try:
-            f.write(out.getvalue())
-        finally:
-            f.close()
-        return wt
-
-    def test_read_bundle_from_url_deprecated(self):
-        wt = self.create_test_bundle()
-        t = bzrlib.transport.get_transport(self.test_dir)
-        url = t.abspath('test_bundle')
-        self.callDeprecated([deprecated_in((1, 12, 0))
-                             % 'bzrlib.bundle.read_bundle_from_url'],
-                            bzrlib.bundle.read_bundle_from_url,
-                            url)
-
-
-class TestReadBundleFromURL(TestTransportImplementation):
+class TestReadMergeableBundleFromURL(TestTransportImplementation):
     """Test that read_bundle works properly across multiple transports"""
 
     def setUp(self):
-        super(TestReadBundleFromURL, self).setUp()
+        super(TestReadMergeableBundleFromURL, self).setUp()
         self.bundle_name = 'test_bundle'
         # read_mergeable_from_url will invoke get_transport which may *not*
         # respect self._transport (i.e. returns a transport that is different

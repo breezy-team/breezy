@@ -99,7 +99,10 @@ class LocalTransport(transport.Transport):
          - relative_reference is url escaped.
         """
         if relative_reference in ('.', ''):
-            return self._local_base
+            # _local_base normally has a trailing slash; strip it so that stat
+            # on a transport pointing to a symlink reads the link not the
+            # referent but be careful of / and c:\
+            return osutils.split(self._local_base)[0]
         return self._local_base + urlutils.unescape(relative_reference)
 
     def abspath(self, relpath):
@@ -399,10 +402,12 @@ class LocalTransport(transport.Transport):
 
     def rename(self, rel_from, rel_to):
         path_from = self._abspath(rel_from)
+        path_to = self._abspath(rel_to)
         try:
             # *don't* call bzrlib.osutils.rename, because we want to
-            # detect errors on rename
-            os.rename(path_from, self._abspath(rel_to))
+            # detect conflicting names on rename, and osutils.rename tries to
+            # mask cross-platform differences there
+            os.rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)

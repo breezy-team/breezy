@@ -23,9 +23,19 @@ Working on Bazaar
    bug-handling
    HACKING
    testing
+   code-review
+   code-style
 
 * `Contributing to Bazaar Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
 
+
+Architecture overviews
+======================
+
+.. toctree::
+   :maxdepth: 1
+
+   transports
 
 Releasing and Packaging
 =======================

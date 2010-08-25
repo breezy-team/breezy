@@ -30,14 +30,13 @@ from bzrlib import (
     cleanup,
     errors,
     ui,
-    repository,
     )
 from bzrlib.trace import mutter
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import AdapterFactory, FulltextContentFactory
 
 
-def reconcile(dir, other=None):
+def reconcile(dir, canonicalize_chks=False):
     """Reconcile the data in dir.
 
     Currently this is limited to a inventory 'reweave'.
@@ -47,18 +46,19 @@ def reconcile(dir, other=None):
     Directly using Reconciler is recommended for library users that
     desire fine grained control or analysis of the found issues.
 
-    :param other: another bzrdir to reconcile against.
+    :param canonicalize_chks: Make sure CHKs are in canonical form.
     """
-    reconciler = Reconciler(dir, other=other)
+    reconciler = Reconciler(dir, canonicalize_chks=canonicalize_chks)
     reconciler.reconcile()
 
 
 class Reconciler(object):
     """Reconcilers are used to reconcile existing data."""
 
-    def __init__(self, dir, other=None):
+    def __init__(self, dir, other=None, canonicalize_chks=False):
         """Create a Reconciler."""
         self.bzrdir = dir
+        self.canonicalize_chks = canonicalize_chks
 
     def reconcile(self):
         """Perform reconciliation.
@@ -97,9 +97,17 @@ class Reconciler(object):
     def _reconcile_repository(self):
         self.repo = self.bzrdir.find_repository()
         ui.ui_factory.note('Reconciling repository %s' %
-            self.repo.bzrdir.root_transport.base)
+            self.repo.user_url)
         self.pb.update("Reconciling repository", 0, 1)
-        repo_reconciler = self.repo.reconcile(thorough=True)
+        if self.canonicalize_chks:
+            try:
+                self.repo.reconcile_canonicalize_chks
+            except AttributeError:
+                raise errors.BzrError(
+                    "%s cannot canonicalize CHKs." % (self.repo,))
+            repo_reconciler = self.repo.reconcile_canonicalize_chks()
+        else:
+            repo_reconciler = self.repo.reconcile(thorough=True)
         self.inconsistent_parents = repo_reconciler.inconsistent_parents
         self.garbage_inventories = repo_reconciler.garbage_inventories
         if repo_reconciler.aborted:
@@ -495,7 +503,13 @@ class PackReconciler(RepoReconciler):
     #  - lock the names list
     #  - perform a customised pack() that regenerates data as needed
     #  - unlock the names list
-    # https://bugs.edge.launchpad.net/bzr/+bug/154173
+    # https://bugs.launchpad.net/bzr/+bug/154173
+
+    def __init__(self, repo, other=None, thorough=False,
+            canonicalize_chks=False):
+        super(PackReconciler, self).__init__(repo, other=other,
+            thorough=thorough)
+        self.canonicalize_chks = canonicalize_chks
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
@@ -510,8 +524,12 @@ class PackReconciler(RepoReconciler):
         total_inventories = len(list(
             collection.inventory_index.combined_index.iter_all_entries()))
         if len(all_revisions):
-            new_pack =  self.repo._reconcile_pack(collection, packs,
-                ".reconcile", all_revisions, self.pb)
+            if self.canonicalize_chks:
+                reconcile_meth = self.repo._canonicalize_chks_pack
+            else:
+                reconcile_meth = self.repo._reconcile_pack
+            new_pack = reconcile_meth(collection, packs, ".reconcile",
+                all_revisions, self.pb)
             if new_pack is not None:
                 self._discard_and_save(packs)
         else:

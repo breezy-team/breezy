@@ -23,7 +23,7 @@ far larger than the team as it includes everyone interested in
 the software: the team, users, training partners, support partners,
 third-party developers and so on.
 
-Great communities are well understood in the open source world.
+Great communities are well understood in the free software community.
 Their applicability extends well beyond that though: most
 successful commercial software vendors are well skilled at
 building and managing the communities that grow up around
@@ -92,9 +92,9 @@ Launchpad: More development, less friction
 ------------------------------------------
 
 As well as sponsoring `Ubuntu <http://www.ubuntu.com>`_ and
-`Bazaar <http://bazaar-vcs.org>`_ development, Canonical
-provides Launchpad, https://launchpad.net, as a free service
-for the open source community. Launchpad is one of the most
+`Bazaar <http://bazaar.canonical.com>`_ development, Canonical
+provides Launchpad, <https://launchpad.net/>, as a free service
+for the community. Launchpad is one of the most
 exciting CDEs around for several notable reasons:
 
 * it models relationships between many of things tracked, e.g.
@@ -179,10 +179,10 @@ it easy to see things such as:
 Accessing code in Launchpad using Bazaar
 ========================================
 
-Getting the code for an open source project
--------------------------------------------
+Getting the code for a project
+------------------------------
 
-As Launchpad keeps track of thousands of open source projects
+As Launchpad keeps track of thousands of projects
 and their latest code whether it be managed by Bazaar, CVS or Subversion,
 Bazaar users can grab that code as easily as this::
 
@@ -447,8 +447,7 @@ If you have any feedback on how you'd like to see Bazaar and Launchpad
 further integrated, please contact us on the Bazaar mailing list,
 bazaar@lists.canonical.com.
 
-While designed as a free service to support open source projects,
+While designed as a free service to support free software projects,
 Canonical may make Launchpad available to commercial software developers
 depending on their requirements. We would be happy to hear from you
-if you think Launchpad would be useful for managing your community,
-open source or otherwise.
+if you think Launchpad would be useful for managing your community.

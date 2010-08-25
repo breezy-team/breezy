@@ -21,6 +21,7 @@
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     foreign,
     lockable_files,
@@ -90,6 +91,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         self._format = _format
         self._base = a_bzrdir.transport.base
         self._ignore_fallbacks = False
+        self.bzrdir = a_bzrdir
         foreign.ForeignBranch.__init__(self, 
             DummyForeignVcsMapping(DummyForeignVcs()))
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, 
@@ -204,13 +206,6 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
     def get_branch_format(self):
         return DummyForeignVcsBranchFormat()
 
-    @classmethod
-    def probe_transport(klass, transport):
-        """Return the .bzrdir style format present in a directory."""
-        if not transport.has('.dummy'):
-            raise errors.NotBranchError(path=transport.base)
-        return klass()
-
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
         # Since we don't have a .bzr directory, inherit the
@@ -265,14 +260,27 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
 
 def register_dummy_foreign_for_test(testcase):
-    bzrdir.BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
-    testcase.addCleanup(bzrdir.BzrDirFormat.unregister_control_format,
+    controldir.ControlDirFormat.register_format(DummyForeignVcsDirFormat)
+    testcase.addCleanup(controldir.ControlDirFormat.unregister_format,
                         DummyForeignVcsDirFormat)
+    controldir.ControlDirFormat.register_prober(DummyForeignProber)
+    testcase.addCleanup(controldir.ControlDirFormat.unregister_prober,
+        DummyForeignProber)
     # We need to register the optimiser to make the dummy appears really
     # different from a regular bzr repository.
     branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
     testcase.addCleanup(branch.InterBranch.unregister_optimiser,
                         InterToDummyVcsBranch)
+
+
+class DummyForeignProber(controldir.Prober):
+
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return the .bzrdir style format present in a directory."""
+        if not transport.has('.dummy'):
+            raise errors.NotBranchError(path=transport.base)
+        return DummyForeignVcsDirFormat()
 
 
 class ForeignVcsRegistryTests(tests.TestCase):

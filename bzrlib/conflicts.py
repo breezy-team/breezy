@@ -18,14 +18,12 @@
 # point down
 
 import os
-import re
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
 
 from bzrlib import (
-    builtins,
     cleanup,
     commands,
     errors,
@@ -60,13 +58,14 @@ class cmd_conflicts(commands.Command):
     Use bzr resolve when you have fixed a problem.
     """
     takes_options = [
+            'directory',
             option.Option('text',
                           help='List paths of files with text conflicts.'),
         ]
     _see_also = ['resolve', 'conflict-types']
 
-    def run(self, text=False):
-        wt = workingtree.WorkingTree.open_containing(u'.')[0]
+    def run(self, text=False, directory=u'.'):
+        wt = workingtree.WorkingTree.open_containing(directory)[0]
         for conflict in wt.conflicts():
             if text:
                 if conflict.typestring != 'text conflict':
@@ -113,20 +112,22 @@ class cmd_resolve(commands.Command):
     aliases = ['resolved']
     takes_args = ['file*']
     takes_options = [
+            'directory',
             option.Option('all', help='Resolve all conflicts in this tree.'),
             ResolveActionOption(),
             ]
     _see_also = ['conflicts']
-    def run(self, file_list=None, all=False, action=None):
+    def run(self, file_list=None, all=False, action=None, directory=u'.'):
         if all:
             if file_list:
                 raise errors.BzrCommandError("If --all is specified,"
                                              " no FILE may be provided")
-            tree = workingtree.WorkingTree.open_containing('.')[0]
+            tree = workingtree.WorkingTree.open_containing(directory)[0]
             if action is None:
                 action = 'done'
         else:
-            tree, file_list = builtins.tree_files(file_list)
+            tree, file_list = workingtree.WorkingTree.open_containing_paths(
+                file_list)
             if file_list is None:
                 if action is None:
                     # FIXME: There is a special case here related to the option

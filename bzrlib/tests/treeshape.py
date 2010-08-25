@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,13 +41,17 @@ def build_tree_contents(template):
 
     The template is built relative to the Python process's current
     working directory.
+
+    ('foo/',) will build a directory.
+    ('foo', 'bar') will write 'bar' to 'foo'
+    ('foo@', 'linktarget') will raise an error
     """
     for tt in template:
         name = tt[0]
         if name[-1] == '/':
             os.mkdir(name)
         elif name[-1] == '@':
-            raise NotImplementedError('symlinks not handled yet')
+            os.symlink(tt[1], tt[0][:-1])
         else:
             f = file(name, 'wb')
             try:
