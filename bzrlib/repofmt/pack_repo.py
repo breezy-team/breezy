@@ -2916,7 +2916,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development-subtree')
+            'development5-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass
