@@ -80,6 +80,15 @@ class GitLockableFiles(lockable_files.LockableFiles):
             self._lock_warner = LockWarner(repr(self))
 
 
+class GitdirConfig(object):
+
+    def get_default_stack_on(self):
+        return None
+
+    def set_default_stack_on(self, value):
+        raise bzr_errors.BzrError("Cannot set configuration")
+
+
 class GitDir(ControlDir):
     """An adapter to the '.git' dir used by git."""
 
@@ -88,6 +97,9 @@ class GitDir(ControlDir):
 
     def can_convert_format(self):
         return False
+
+    def break_lock(self):
+        pass
 
     def cloning_metadir(self, stacked=False):
         return format_registry.make_bzrdir("default")
@@ -104,6 +116,9 @@ class GitDir(ControlDir):
         def open_branch(self, ignore_fallbacks=None, unsupported=False):
             return self._open_branch(name=None,
                 ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
+
+    def get_config(self):
+        return GitDirConfig()
 
 
 class LocalGitDir(GitDir):
