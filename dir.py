@@ -80,7 +80,7 @@ class GitLockableFiles(lockable_files.LockableFiles):
             self._lock_warner = LockWarner(repr(self))
 
 
-class GitdirConfig(object):
+class GitDirConfig(object):
 
     def get_default_stack_on(self):
         return None
