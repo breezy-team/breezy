@@ -817,11 +817,9 @@ class TestCase(testtools.TestCase):
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._log_contents = None
-        def return_log():
-            return [self._get_log(keep_log_file=True)]
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
-            return_log))
+            lambda:[self._get_log(keep_log_file=True)]))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
