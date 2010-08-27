@@ -20,6 +20,9 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* `decode` parameter to get() method in FtpTransport and GioTransport classes
+  is deprecated. (Alexander Belchenko)
+
 * `FileInWrongBranch` is deprecated in favour of `PathNotChild` and no
   longer raised.
   (Martin Pool)
