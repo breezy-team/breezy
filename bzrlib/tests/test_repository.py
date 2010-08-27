@@ -31,6 +31,7 @@ from bzrlib.errors import (NoSuchFile,
                            UnsupportedFormatError,
                            )
 from bzrlib import (
+    btree_index,
     graph,
     tests,
     )
@@ -680,6 +681,21 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
 
 
 class Test2a(tests.TestCaseWithMemoryTransport):
+
+    def test_chk_bytes_uses_custom_btree_parser(self):
+        mt = self.make_branch_and_memory_tree('test', format='2a')
+        mt.lock_write()
+        self.addCleanup(mt.unlock)
+        mt.add([''], ['root-id'])
+        mt.commit('first')
+        index = mt.branch.repository.chk_bytes._index._graph_index._indices[0]
+        self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
+        # It should also work if we re-open the repo
+        repo = mt.branch.repository.bzrdir.open_repository()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        index = repo.chk_bytes._index._graph_index._indices[0]
+        self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
 
     def test_fetch_combines_groups(self):
         builder = self.make_branch_builder('source', format='2a')

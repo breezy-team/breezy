@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,10 +15,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import errno
 import os
 import shutil
 
-from bzrlib import bzrdir, errors
+from bzrlib import (
+    bzrdir,
+    errors,
+    ui,
+    )
 from bzrlib.osutils import isdir
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
@@ -93,16 +98,33 @@ def _filter_out_nested_bzrdirs(deletables):
 
 def delete_items(deletables, dry_run=False):
     """Delete files in the deletables iterable"""
+    def onerror(function, path, excinfo):
+        """Show warning for errors seen by rmtree.
+        """
+        # Handle only permission error while removing files.
+        # Other errors are re-raised.
+        if function is not os.remove or excinfo[1].errno != errno.EACCES:
+            raise
+        ui.ui_factory.show_warning('unable to remove %s' % path)
     has_deleted = False
     for path, subp in deletables:
         if not has_deleted:
             note("deleting paths:")
             has_deleted = True
-        note('  ' + subp)
         if not dry_run:
             if isdir(path):
-                shutil.rmtree(path)
+                shutil.rmtree(path, onerror=onerror)
             else:
-                os.unlink(path)
+                try:
+                    os.unlink(path)
+                    note('  ' + subp)
+                except OSError, e:
+                    # We handle only permission error here
+                    if e.errno != errno.EACCES:
+                        raise e
+                    ui.ui_factory.show_warning(
+                        'unable to remove "%s": %s.' % (path, e.strerror))
+        else:
+            note('  ' + subp)
     if not has_deleted:
         note("No files deleted.")

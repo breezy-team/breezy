@@ -114,12 +114,12 @@ class MockTree(object):
             ie = InventoryDirectory(file_id, name, parent_id)
         elif kind == 'file':
             ie = InventoryFile(file_id, name, parent_id)
+            ie.text_sha1 = text_sha_1
+            ie.text_size = text_size
         elif kind == 'symlink':
             ie = InventoryLink(file_id, name, parent_id)
         else:
             raise errors.BzrError('unknown kind %r' % kind)
-        ie.text_sha1 = text_sha_1
-        ie.text_size = text_size
         return ie
 
     def add_dir(self, file_id, path):
