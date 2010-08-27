@@ -1642,6 +1642,8 @@ class TestCase(testtools.TestCase):
     def _report_skip(self, result, e):
         # We override the default _report_skip, just so we can disable
         # including the log details, and then thunk to the original code.
+        # We have to do it before that code runs, because the log gets turned
+        # into 'reason' otherwise.
         self._suppress_log()
         super(TestCase, self)._report_skip(self, result, e)
 
