@@ -676,9 +676,6 @@ class TreeTransformBase(object):
                 continue
             if not self._any_contents(children):
                 continue
-            for child in children:
-                if self.final_kind(child) is None:
-                    continue
             kind = self.final_kind(parent_id)
             if kind is None:
                 conflicts.append(('missing parent', parent_id))
@@ -689,9 +686,8 @@ class TreeTransformBase(object):
     def _any_contents(self, trans_ids):
         """Return true if any of the trans_ids, will have contents."""
         for trans_id in trans_ids:
-            if self.final_kind(trans_id) is None:
-                continue
-            return True
+            if self.final_kind(trans_id) is not None:
+                return True
         return False
 
     def _set_executability(self, path, trans_id):
