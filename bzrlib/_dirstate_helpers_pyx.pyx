@@ -656,23 +656,20 @@ cdef class Reader:
         # Build up the key that will be used.
         # By using <object>(void *) Pyrex will automatically handle the
         # Py_INCREF that we need.
-        # TODO: We could avoid a tuple allocation and delete by using
-        #       StaticTuple_New and StaticTuple_SET_ITEM, however, it is a bit
-        #       clumsy, and we should be sure of the benefit first.
-        #       Currently, WT.lock_read() && wt._read_dirblocks() seems to go
-        #       from 3.05ms to 3.44ms for bzr.dev.
         cur_dirname = <object>p_current_dirname[0]
-        tmp = StaticTuple_New(3)
-        Py_INCREF(cur_dirname); StaticTuple_SET_ITEM(tmp, 0, cur_dirname)
-        s1 = self.get_next_str()
-        s2 = self.get_next_str()
-        Py_INCREF(s1); StaticTuple_SET_ITEM(tmp, 1, s1)
-        Py_INCREF(s2); StaticTuple_SET_ITEM(tmp, 2, s2)
-        path_name_file_id_key = tmp
+        # Use StaticTuple_New to pre-allocate, rather than creating a regular
+        # tuple and passing it to the StaticTuple constructor.
         # path_name_file_id_key = StaticTuple(<object>p_current_dirname[0],
         #                          self.get_next_str(),
         #                          self.get_next_str(),
         #                         )
+        tmp = StaticTuple_New(3)
+        Py_INCREF(cur_dirname); StaticTuple_SET_ITEM(tmp, 0, cur_dirname)
+        cur_basename = self.get_next_str()
+        cur_file_id = self.get_next_str()
+        Py_INCREF(cur_basename); StaticTuple_SET_ITEM(tmp, 1, cur_basename)
+        Py_INCREF(cur_file_id); StaticTuple_SET_ITEM(tmp, 2, cur_file_id)
+        path_name_file_id_key = tmp
 
         # Parse all of the per-tree information. current has the information in
         # the same location as parent trees. The only difference is that 'info'
@@ -696,6 +693,12 @@ cdef class Reader:
             executable_cstr = self.get_next(&cur_size)
             is_executable = (executable_cstr[0] == c'y')
             info = self.get_next_str()
+            # TODO: If we want to use StaticTuple_New here we need to be pretty
+            #       careful. We are relying on a bit of Pyrex
+            #       automatic-conversion from 'int' to PyInt, and that doesn't
+            #       play well with the StaticTuple_SET_ITEM macro.
+            #       Timing doesn't (yet) show a worthwile improvement in speed
+            #       versus complexity and maintainability.
             # tmp = StaticTuple_New(5)
             # Py_INCREF(minikind); StaticTuple_SET_ITEM(tmp, 0, minikind)
             # Py_INCREF(fingerprint); StaticTuple_SET_ITEM(tmp, 1, fingerprint)
