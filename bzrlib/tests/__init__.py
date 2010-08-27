@@ -817,9 +817,11 @@ class TestCase(testtools.TestCase):
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
         self._log_contents = None
+        def return_log():
+            return [self._get_log(keep_log_file=True)]
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
-            lambda:[self._get_log(keep_log_file=True)]))
+            return_log))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -836,6 +838,22 @@ class TestCase(testtools.TestCase):
         # debug a frame up.
         import pdb
         pdb.Pdb().set_trace(sys._getframe().f_back)
+
+    def discardDetail(self, name):
+        """Extend the addDetail, getDetails api so we can remove a detail.
+
+        eg. bzr always adds the 'log' detail at startup, but we don't want to
+        include it for skipped, xfail, etc tests.
+
+        It is safe to call this for a detail that doesn't exist, in case this
+        gets called multiple times.
+        """
+        # We cheat. details is stored in __details which means we shouldn't
+        # touch it. but getDetails() returns the dict directly, so we can
+        # mutate it.
+        details = self.getDetails()
+        if name in details:
+            del details[name]
 
     def _check_leaked_threads(self):
         active = threading.activeCount()
@@ -1585,7 +1603,12 @@ class TestCase(testtools.TestCase):
         """This test has failed for some known reason."""
         raise KnownFailure(reason)
 
+    def _suppress_log(self):
+        """Remove the log info from details."""
+        self.discardDetail('log')
+
     def _do_skip(self, result, reason):
+        self._suppress_log()
         addSkip = getattr(result, 'addSkip', None)
         if not callable(addSkip):
             result.addSuccess(result)
@@ -1594,6 +1617,7 @@ class TestCase(testtools.TestCase):
 
     @staticmethod
     def _do_known_failure(self, result, e):
+        self._suppress_log()
         err = sys.exc_info()
         addExpectedFailure = getattr(result, 'addExpectedFailure', None)
         if addExpectedFailure is not None:
@@ -1607,6 +1631,7 @@ class TestCase(testtools.TestCase):
             reason = 'No reason given'
         else:
             reason = e.args[0]
+        self._suppress_log ()
         addNotApplicable = getattr(result, 'addNotApplicable', None)
         if addNotApplicable is not None:
             result.addNotApplicable(self, reason)
@@ -1614,8 +1639,16 @@ class TestCase(testtools.TestCase):
             self._do_skip(result, reason)
 
     @staticmethod
+    def _report_skip(self, result, e):
+        # We override the default _report_skip, just so we can disable
+        # including the log details, and then thunk to the original code.
+        self._suppress_log()
+        super(TestCase, self)._report_skip(self, result, e)
+
+    @staticmethod
     def _do_unsupported_or_skip(self, result, e):
         reason = e.args[0]
+        self._suppress_log()
         addNotSupported = getattr(result, 'addNotSupported', None)
         if addNotSupported is not None:
             result.addNotSupported(self, reason)
