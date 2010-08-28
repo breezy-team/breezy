@@ -376,10 +376,10 @@ class StatusHooks(_mod_hooks.Hooks):
         """
         _mod_hooks.Hooks.__init__(self)
         self.create_hook(_mod_hooks.HookPoint('post_status',
-            "Called after bazaar has printed the status with arguments "
-            "StatusPostHookParams. StatusPostHookParams has the attrubutes "
+            "Called with argument StatusPostHookParams after Bazaar has "
+            "displayed the status. StatusPostHookParams has the attriubutes "
             "(old_tree, new_tree, versioned, show_ids, short). The last "
-            "three arguments correspont to the command line options "
+            "three arguments correspond to the command line options "
             "specified by the user for the status command.",
             (2, 3), None))
 
