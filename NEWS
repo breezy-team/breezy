@@ -103,6 +103,9 @@ Bug Fixes
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
 
+* Fix spurious paramiko warning on hardy by ensuring that ``selftest``
+  properly remove its warning filter. (Vincent Ladeuil, #625686)
+
 * ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
   with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
 

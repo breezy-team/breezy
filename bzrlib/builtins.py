@@ -3572,9 +3572,6 @@ class cmd_selftest(Command):
             parallel=None, lsprof_tests=False):
         from bzrlib.tests import selftest
 
-        # Make deprecation warnings visible, unless -Werror is set
-        symbol_versioning.activate_deprecation_warnings(override=False)
-
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
@@ -3620,7 +3617,14 @@ class cmd_selftest(Command):
                           "starting_with": starting_with
                           }
         selftest_kwargs.update(self.additional_selftest_args)
-        result = selftest(**selftest_kwargs)
+
+        # Make deprecation warnings visible, unless -Werror is set
+        cleanup = symbol_versioning.activate_deprecation_warnings(
+            override=False)
+        try:
+            result = selftest(**selftest_kwargs)
+        finally:
+            cleanup()
         return int(not result)
 
 
