@@ -37,6 +37,10 @@ Performance improvements
   tree may substantially improve the speed of operations like ``bzr
   commit``.  (Andrew Bennetts)
 
+* Lower memory consumption when reading many chk index pages. Helpful for
+  things like ``bzr co`` or ``bzr ls -R`` on large trees.
+  (John Arbash Meinel)
+
 * When building new working trees, default to reading from the repository
   rather than the source tree unless explicitly requested. (via
   ``--files-from`` and ``--hardlink`` for ``bzr branch`` and

@@ -43,6 +43,12 @@ from bzrlib import (
     debug,
     ui,
     )
+from bzrlib.symbol_versioning import (
+    DEPRECATED_PARAMETER,
+    deprecated_in,
+    deprecated_passed,
+    warn,
+    )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     FileStream,
@@ -262,7 +268,7 @@ class GioTransport(ConnectedTransport):
             else:
                 self._translate_gio_error(e, relpath)
 
-    def get(self, relpath, decode=False, retries=0):
+    def get(self, relpath, decode=DEPRECATED_PARAMETER, retries=0):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
@@ -272,6 +278,10 @@ class GioTransport(ConnectedTransport):
         We're meant to return a file-like object which bzr will
         then read from. For now we do this via the magic of StringIO
         """
+        if deprecated_passed(decode):
+            warn(deprecated_in((2,3,0)) %
+                 '"decode" parameter to GioTransport.get()',
+                 DeprecationWarning, stacklevel=2)
         try:
             if 'gio' in debug.debug_flags:
                 mutter("GIO get: %s" % relpath)

@@ -20,6 +20,9 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* `decode` parameter to get() method in FtpTransport and GioTransport classes
+  is deprecated. (Alexander Belchenko)
+
 * `FileInWrongBranch` is deprecated in favour of `PathNotChild` and no
   longer raised.
   (Martin Pool)
@@ -77,6 +80,10 @@ Bug Fixes
   regular expression.
   (Parth Malwankar #300062)
 
+* ``clean-tree`` issues a warning if it is unable to delete a file
+  due to ``errno.EACCES`` instead of exiting with an error on Windows.
+  (Parth Malwankar, #430785)
+
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
 
@@ -119,6 +126,17 @@ Improvements
   the files if they can easily be recovered using revert, otherwise they
   will be backed up (adding an extention of the form .~#~).
   (Marius Kruger, #400554)
+
+* Decrease memory consumption when many chk index pages are loaded. (Such
+  as during ``bzr co`` or ``bzr ls -R`` of a large tree.) Often we need to
+  read many chk pages because the individual chk map nodes will be spread
+  randomly. Peak memory for 'bzr ls -R' on a large tree dropped from 396MB
+  down to 247MB, expect even more significant savings on 64-bit platforms.
+  (John Arbash Meinel)
+
+* ``DirState`` internals use a little bit less memory. For bzr.dev it
+  drops the memory from 1MB down to about 800kB. And replaces a few
+  thousand tuples and sets with StaticTuple.  (John Arbash Meinel)
 
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
@@ -13404,4 +13422,4 @@ Enhancements
 
 
 ..
-   vim: tw=74 ft=rst ff=unix encoding=utf-8
+   vim: tw=74 ft=rst ff=unix
