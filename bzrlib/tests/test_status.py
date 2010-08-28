@@ -17,7 +17,10 @@
 
 from StringIO import StringIO
 
-from bzrlib import config
+from bzrlib import (
+    config,
+    status as _mod_status,
+    )
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.status import show_pending_merges, show_tree_status
 from bzrlib.tests import TestCaseWithTransport
@@ -130,3 +133,42 @@ class TestStatus(TestCaseWithTransport):
                      revision=[RevisionSpec.from_string("revid:%s" % r1_id),
                                RevisionSpec.from_string("revid:%s" % r2_id)])
         # return does not matter as long as it did not raise.
+
+
+class TestHooks(TestCaseWithTransport):
+
+    def test_constructor(self):
+        """Check that creating a StatusHooks instance has the right defaults.
+        """
+        hooks = _mod_status.StatusHooks()
+        self.assertTrue("post_status" in hooks, "post_status not in %s" % hooks)
+
+    def test_installed_hooks_are_StatusHooks(self):
+        """The installed hooks object should be a StatusHooks.
+        """
+        # the installed hooks are saved in self._preserved_hooks.
+        self.assertIsInstance(self._preserved_hooks[_mod_status][1],
+            _mod_status.StatusHooks)
+
+    def test_post_status_hook(self):
+        """Ensure that post_status hook is invoked with the right args.
+        """
+        calls = []
+        _mod_status.hooks.install_named_hook('post_status', calls.append, None)
+        self.assertLength(0, calls)
+        tree = self.make_branch_and_tree('.')
+        r1_id = tree.commit('one', allow_pointless=True)
+        r2_id = tree.commit('two', allow_pointless=True)
+        r2_tree = tree.branch.repository.revision_tree(r2_id)
+        output = StringIO()
+        show_tree_status(tree, to_file=output,
+            revision=[RevisionSpec.from_string("revid:%s" % r1_id),
+                RevisionSpec.from_string("revid:%s" % r2_id)])
+        self.assertLength(1, calls)
+        params = calls[0]
+        self.assertIsInstance(params, _mod_status.StatusPostHookParams)
+        attrs = ['old_tree', 'new_tree', 'versioned', 'show_ids', 'short']
+        for a in attrs:
+            self.assertTrue(hasattr(params, a),
+                'Attribute "%s" not found in StatusPostHookParam' % a)
+

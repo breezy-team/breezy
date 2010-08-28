@@ -212,7 +212,7 @@ def show_tree_status(wt, show_unchanged=None,
             if nonexistents:
                 raise errors.PathsDoNotExist(nonexistents)
             for hook in hooks['post_status']:
-                hook(old, new, versioned, show_ids, short)
+                hook(StatusPostHookParams(old, new, versioned, show_ids, short))
         finally:
             old.unlock()
             new.unlock()
@@ -377,6 +377,7 @@ class StatusHooks(_mod_hooks.Hooks):
         _mod_hooks.Hooks.__init__(self)
         self.create_hook(_mod_hooks.HookPoint('post_status',
             "Called after bazaar has printed the status with arguments "
+            "StatusPostHookParams. StatusPostHookParams has the attrubutes "
             "(old_tree, new_tree, versioned, show_ids, short). The last "
             "three arguments correspont to the command line options "
             "specified by the user for the status command.",
@@ -384,4 +385,39 @@ class StatusHooks(_mod_hooks.Hooks):
 
 
 hooks = StatusHooks()
+
+
+class StatusPostHookParams(object):
+    """Object holding parameters passed to post_status hooks.
+
+    :ivar old_tree: Start tree (basis tree) for comparison.
+    :ivar new_tree: Working tree.
+    :ivar versioned: Show only versioned files.
+    :ivar show_ids: Show internal object ids.
+    :ivar short: Use short status indicators.
+    """
+
+    def __init__(self, old_tree, new_tree, versioned, show_ids, short):
+        """Create a group of post_status hook parameters.
+
+        :param old_tree: Start tree (basis tree) for comparison.
+        :param new_tree: Working tree.
+        :param versioned: Show only versioned files.
+        :param show_ids: Show internal object ids.
+        :param short: Use short status indicators.
+        """
+        self.old_tree = old_tree
+        self.new_tree = new_tree
+        self.versioned = versioned
+        self.show_ids = show_ids
+        self.short = short
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        return "<%s(%s, %s, %s, %s, %s)>" % (self.__class__.__name__,
+            self.old_tree, self.new_tree, self.versioned, self.show_ids,
+            self.short)
+
 
