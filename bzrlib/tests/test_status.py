@@ -167,7 +167,8 @@ class TestHooks(TestCaseWithTransport):
         self.assertLength(1, calls)
         params = calls[0]
         self.assertIsInstance(params, _mod_status.StatusPostHookParams)
-        attrs = ['old_tree', 'new_tree', 'versioned', 'show_ids', 'short']
+        attrs = ['old_tree', 'new_tree', 'to_file', 'versioned',
+            'show_ids', 'short']
         for a in attrs:
             self.assertTrue(hasattr(params, a),
                 'Attribute "%s" not found in StatusPostHookParam' % a)

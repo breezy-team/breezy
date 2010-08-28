@@ -212,7 +212,7 @@ def show_tree_status(wt, show_unchanged=None,
             if nonexistents:
                 raise errors.PathsDoNotExist(nonexistents)
             for hook in hooks['post_status']:
-                hook(StatusPostHookParams(old, new, versioned, show_ids, short))
+                hook(StatusPostHookParams(old, new, to_file, versioned, show_ids, short))
         finally:
             old.unlock()
             new.unlock()
@@ -378,8 +378,8 @@ class StatusHooks(_mod_hooks.Hooks):
         self.create_hook(_mod_hooks.HookPoint('post_status',
             "Called with argument StatusPostHookParams after Bazaar has "
             "displayed the status. StatusPostHookParams has the attriubutes "
-            "(old_tree, new_tree, versioned, show_ids, short). The last "
-            "three arguments correspond to the command line options "
+            "(old_tree, new_tree, to_file, versioned, show_ids, short). "
+            "The last three arguments correspond to the command line options "
             "specified by the user for the status command.",
             (2, 3), None))
 
@@ -392,22 +392,25 @@ class StatusPostHookParams(object):
 
     :ivar old_tree: Start tree (basis tree) for comparison.
     :ivar new_tree: Working tree.
+    :ivar to_file: If set, write to this file.
     :ivar versioned: Show only versioned files.
     :ivar show_ids: Show internal object ids.
     :ivar short: Use short status indicators.
     """
 
-    def __init__(self, old_tree, new_tree, versioned, show_ids, short):
+    def __init__(self, old_tree, new_tree, to_file, versioned, show_ids, short):
         """Create a group of post_status hook parameters.
 
         :param old_tree: Start tree (basis tree) for comparison.
         :param new_tree: Working tree.
+        :param to_file: If set, write to this file.
         :param versioned: Show only versioned files.
         :param show_ids: Show internal object ids.
         :param short: Use short status indicators.
         """
         self.old_tree = old_tree
         self.new_tree = new_tree
+        self.to_file = to_file
         self.versioned = versioned
         self.show_ids = show_ids
         self.short = short
@@ -416,8 +419,8 @@ class StatusPostHookParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<%s(%s, %s, %s, %s, %s)>" % (self.__class__.__name__,
-            self.old_tree, self.new_tree, self.versioned, self.show_ids,
-            self.short)
+        return "<%s(%s, %s, %s, %s, %s, %s)>" % (self.__class__.__name__,
+            self.old_tree, self.new_tree, self.to_file, self.versioned,
+            self.show_ids, self.short)
 
 
