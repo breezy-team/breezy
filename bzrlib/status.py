@@ -18,6 +18,7 @@ import sys
 
 from bzrlib import (
     delta as _mod_delta,
+    hooks as _mod_hooks,
     log,
     osutils,
     tsort,
@@ -210,6 +211,8 @@ def show_tree_status(wt, show_unchanged=None,
                 show_pending_merges(new, to_file, short, verbose=verbose)
             if nonexistents:
                 raise errors.PathsDoNotExist(nonexistents)
+            for hook in hooks['post_status']:
+                hook(old, new, versioned, show_ids, short)
         finally:
             old.unlock()
             new.unlock()
@@ -356,3 +359,29 @@ def _filter_nonexistent(orig_paths, old_tree, new_tree):
     # their groups individually.  But for consistency of this
     # function's API, it's better to sort both than just 'nonexistent'.
     return sorted(remaining), sorted(nonexistent)
+
+
+class StatusHooks(_mod_hooks.Hooks):
+    """A dictionary mapping hook name to a list of callables for status hooks.
+
+    e.g. ['post_status'] Is the list of items to be called when the
+    status command has finished printing the status.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        _mod_hooks.Hooks.__init__(self)
+        self.create_hook(_mod_hooks.HookPoint('post_status',
+            "Called after bazaar has printed the status with arguments "
+            "(old_tree, new_tree, versioned, show_ids, short). The last "
+            "three arguments correspont to the command line options "
+            "specified by the user for the status command.",
+            (2, 3), None))
+
+
+hooks = StatusHooks()
+
