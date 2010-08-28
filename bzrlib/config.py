@@ -377,14 +377,14 @@ class IniBasedConfig(Config):
         self._parser = None
 
     @classmethod
-    def from_bytes(cls, unicode_bytes):
+    def from_string(cls, str_or_unicode):
         """Create a config object from bytes.
 
-        :param unicode_bytes: A string representing the file content. This will
+        :param str_or_unicode: A string representing the file content. This will
             be utf-8 encoded.
         """
         conf = cls()
-        conf._content = StringIO(unicode_bytes.encode('utf-8'))
+        conf._content = StringIO(str_or_unicode.encode('utf-8'))
         return conf
 
     def _get_parser(self, file=symbol_versioning.DEPRECATED_PARAMETER):
@@ -581,16 +581,16 @@ class LocationConfig(IniBasedConfig):
         self.location = location
 
     @classmethod
-    def from_bytes(cls, unicode_bytes, location):
+    def from_string(cls, str_or_unicode, location):
         """Create a config object from bytes.
 
-        :param unicode_bytes: A string representing the file content. This will
+        :param str_or_unicode: A string representing the file content. This will
             be utf-8 encoded.
 
         :param location: The location url to filter the configuration.
         """
         conf = cls(location)
-        conf._content = StringIO(unicode_bytes.encode('utf-8'))
+        conf._content = StringIO(str_or_unicode.encode('utf-8'))
         return conf
 
     def _get_matching_sections(self):

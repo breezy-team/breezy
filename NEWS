@@ -133,8 +133,8 @@ Documentation
 API Changes
 ***********
 
-* Configuration files should now use the ``from_bytes`` constructor the
-  rather than the ``file`` parameter of the ``_get_parser`` method. The
+* ``IniBaseConfig`` objects should now use the ``from_string`` constructor
+  the rather than the ``file`` parameter of the ``_get_parser`` method. The
   later has been deprecated. (Vincent Ladeuil)
 
 * InventoryEntry instances now raise AttributeError if you try to assign
@@ -148,10 +148,6 @@ API Changes
 
 * InventoryEntry objects no longer have ``_put_in_tar`` or
   ``_put_on_disk`` methods.  (Andrew Bennetts)
-
-* The ``configIniBaseConfig`` constructor now accepts a ``_content``
-  private parameter for tests that want to provide a config file content.
-  (Vincent Ladeuil)
 
 * The ``get_filename`` parameter in the ``config.IniBaseConfig``
   constructor has been deprecated, use the ``file_name`` parameter instead.
