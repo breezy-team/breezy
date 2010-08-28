@@ -377,20 +377,20 @@ class IniBasedConfig(Config):
         self._parser = None
 
     @classmethod
-    def from_bytes(cls, unicode_bytes, file_name=None):
-        """Create a config object from bytes.
+    def from_string(cls, str_or_unicode, file_name=None):
+        """Create a config object from a string.
 
-        :param unicode_bytes: A string representing the file content. This will
+        :param str_or_unicode: A string representing the file content. This will
             be utf-8 encoded.
 
         :param file_name: The configuration file path.
         """
         conf = cls(file_name=file_name)
-        conf._create_from_bytes(unicode_bytes)
+        conf._create_from_string(str_or_unicode)
         return conf
 
-    def _create_from_bytes(self, unicode_bytes):
-        self._content = StringIO(unicode_bytes.encode('utf-8'))
+    def _create_from_string(self, str_or_unicode):
+        self._content = StringIO(str_or_unicode.encode('utf-8'))
 
     def _get_parser(self, file=symbol_versioning.DEPRECATED_PARAMETER):
         if self._parser is not None:
@@ -604,14 +604,14 @@ class GlobalConfig(LockableConfig):
         super(GlobalConfig, self).__init__(file_name=config_filename())
 
     @classmethod
-    def from_bytes(cls, unicode_bytes):
-        """Create a config object from bytes.
+    def from_string(cls, str_or_unicode):
+        """Create a config object from a string.
 
-        :param unicode_bytes: A string representing the file content. This will
-            be utf-8 encoded.
+        :param str_or_unicode: A string representing the file content. This
+            will be utf-8 encoded.
         """
         conf = cls()
-        conf._create_from_bytes(unicode_bytes)
+        conf._create_from_string(str_or_unicode)
         return conf
 
     def get_editor(self):
@@ -664,16 +664,16 @@ class LocationConfig(LockableConfig):
         self.location = location
 
     @classmethod
-    def from_bytes(cls, unicode_bytes, location):
-        """Create a config object from bytes.
+    def from_string(cls, str_or_unicode, location):
+        """Create a config object from s string.
 
-        :param unicode_bytes: A string representing the file content. This will
+        :param str_or_unicode: A string representing the file content. This will
             be utf-8 encoded.
 
         :param location: The location url to filter the configuration.
         """
         conf = cls(location)
-        conf._create_from_bytes(unicode_bytes)
+        conf._create_from_string(str_or_unicode)
         return conf
 
     def _get_matching_sections(self):
