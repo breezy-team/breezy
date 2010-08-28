@@ -59,6 +59,10 @@ Compatibility Breaks
 New Features
 ************
 
+* Added ``post_status`` hook. This allows plugins to register custom
+  handlers which will be invoked after the standard status output has
+  been displayed. (Parth Malwankar)
+
 * The ``lp:`` prefix will now use your known username (from
   ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
   ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now
