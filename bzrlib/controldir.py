@@ -542,7 +542,9 @@ class ControlDir(ControlComponent):
                 branch = tree.branch
         return tree, branch
 
-
+    def get_config(self):
+        """Get configuration for this ControlDir."""
+        raise NotImplementedError(self.get_config)
 
 
 class ControlDirFormat(object):
