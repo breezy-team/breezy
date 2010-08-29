@@ -212,7 +212,8 @@ def show_tree_status(wt, show_unchanged=None,
             if nonexistents:
                 raise errors.PathsDoNotExist(nonexistents)
             for hook in hooks['post_status']:
-                hook(StatusPostHookParams(old, new, to_file, versioned, show_ids, short))
+                hook(StatusPostHookParams(old, new, to_file, versioned,
+                    show_ids, short, verbose))
         finally:
             old.unlock()
             new.unlock()
@@ -378,9 +379,10 @@ class StatusHooks(_mod_hooks.Hooks):
         self.create_hook(_mod_hooks.HookPoint('post_status',
             "Called with argument StatusPostHookParams after Bazaar has "
             "displayed the status. StatusPostHookParams has the attriubutes "
-            "(old_tree, new_tree, to_file, versioned, show_ids, short). "
-            "The last three arguments correspond to the command line options "
-            "specified by the user for the status command.",
+            "(old_tree, new_tree, to_file, versioned, show_ids, short, "
+            "verbose). The last four arguments correspond to the command "
+            "line options specified by the user for the status command. "
+            "to_file is the output stream for writing.",
             (2, 3), None))
 
 
@@ -396,9 +398,11 @@ class StatusPostHookParams(object):
     :ivar versioned: Show only versioned files.
     :ivar show_ids: Show internal object ids.
     :ivar short: Use short status indicators.
+    :ivar verbose: Verbose flag.
     """
 
-    def __init__(self, old_tree, new_tree, to_file, versioned, show_ids, short):
+    def __init__(self, old_tree, new_tree, to_file, versioned, show_ids,
+            short, verbose):
         """Create a group of post_status hook parameters.
 
         :param old_tree: Start tree (basis tree) for comparison.
@@ -407,6 +411,7 @@ class StatusPostHookParams(object):
         :param versioned: Show only versioned files.
         :param show_ids: Show internal object ids.
         :param short: Use short status indicators.
+        :param verbose: Verbose flag.
         """
         self.old_tree = old_tree
         self.new_tree = new_tree
@@ -414,13 +419,13 @@ class StatusPostHookParams(object):
         self.versioned = versioned
         self.show_ids = show_ids
         self.short = short
+        self.verbose = verbose
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        return "<%s(%s, %s, %s, %s, %s, %s)>" % (self.__class__.__name__,
+        return "<%s(%s, %s, %s, %s, %s, %s, %s)>" % (self.__class__.__name__,
             self.old_tree, self.new_tree, self.to_file, self.versioned,
-            self.show_ids, self.short)
-
+            self.show_ids, self.short, self.verbose)
 
