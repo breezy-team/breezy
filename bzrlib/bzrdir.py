@@ -165,25 +165,6 @@ class BzrDir(controldir.ControlDir):
                 format.get_format_description(),
                 basedir)
 
-    def clone(self, url, revision_id=None, force_new_repo=False,
-              preserve_stacking=False):
-        """Clone this bzrdir and its contents to url verbatim.
-
-        :param url: The url create the clone at.  If url's last component does
-            not exist, it will be created.
-        :param revision_id: The tip revision-id to use for any branch or
-            working tree.  If not None, then the clone operation may tune
-            itself to download less data.
-        :param force_new_repo: Do not use a shared repository for the target
-                               even if one is available.
-        :param preserve_stacking: When cloning a stacked branch, stack the
-            new branch on top of the other branch's stacked-on branch.
-        """
-        return self.clone_on_transport(get_transport(url),
-                                       revision_id=revision_id,
-                                       force_new_repo=force_new_repo,
-                                       preserve_stacking=preserve_stacking)
-
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True):
