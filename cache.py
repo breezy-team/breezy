@@ -55,6 +55,9 @@ def get_cache_dir():
 
 
 def get_remote_cache_transport():
+    """Retrieve the transport to use when accessing (unwritable) remote 
+    repositories.
+    """
     return get_transport(get_cache_dir())
 
 

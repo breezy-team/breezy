@@ -240,6 +240,8 @@ class RemoteGitProber(Prober):
 class RemoteGitControlDirFormat(GitControlDirFormat):
     """The .git directory control format."""
 
+    supports_workingtrees = False
+
     @classmethod
     def _known_formats(self):
         return set([RemoteGitControlDirFormat()])
