@@ -619,7 +619,7 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
 
     def test_get_push_location_exact(self):
         b = self.get_branch()
-        config.LocationConfig.from_bytes(
+        config.LocationConfig.from_string(
             '[%s]\npush_location=foo\n' % (b.base,), b.base, save=True)
         self.assertEqual("foo", self.get_branch().get_push_location())
 

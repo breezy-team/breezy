@@ -395,7 +395,7 @@ class TestConfigPath(tests.TestCase):
 class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):
-        conf = config.IniBasedConfig.from_bytes(s)
+        conf = config.IniBasedConfig.from_string(s)
         return conf, conf._get_parser()
 
 
@@ -405,11 +405,11 @@ class TestIniConfigBuilding(TestIniConfig):
         my_config = config.IniBasedConfig()
 
     def test_from_fp(self):
-        my_config = config.IniBasedConfig.from_bytes(sample_config_text)
+        my_config = config.IniBasedConfig.from_string(sample_config_text)
         self.assertIsInstance(my_config._get_parser(), configobj.ConfigObj)
 
     def test_cached(self):
-        my_config = config.IniBasedConfig.from_bytes(sample_config_text)
+        my_config = config.IniBasedConfig.from_string(sample_config_text)
         parser = my_config._get_parser()
         self.failUnless(my_config._get_parser() is parser)
 
@@ -436,7 +436,7 @@ class TestIniConfigBuilding(TestIniConfig):
 
     def test_get_parser_file_parameter_is_deprecated_(self):
         config_file = StringIO(sample_config_text.encode('utf-8'))
-        conf = config.IniBasedConfig.from_bytes(sample_config_text)
+        conf = config.IniBasedConfig.from_string(sample_config_text)
         conf = self.callDeprecated([
             'IniBasedConfig._get_parser(file=xxx) was deprecated in 2.3.'
             ' Use IniBasedConfig(_content=xxx) instead.'],
@@ -450,7 +450,7 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
 
     def test_saved_with_content(self):
         content = 'foo = bar\n'
-        conf = config.IniBasedConfig.from_bytes(
+        conf = config.IniBasedConfig.from_string(
             content, file_name='./test.conf', save=True)
         self.assertFileEqual(content, 'test.conf')
 
@@ -458,15 +458,15 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
 class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
 
     def test_cannot_reload_without_name(self):
-        conf = config.IniBasedConfig.from_bytes(sample_config_text)
+        conf = config.IniBasedConfig.from_string(sample_config_text)
         self.assertRaises(AssertionError, conf.reload)
 
     def test_reload_see_new_value(self):
-        c1 = config.IniBasedConfig.from_bytes('editor=vim\n',
-                                              file_name='./test/conf')
+        c1 = config.IniBasedConfig.from_string('editor=vim\n',
+                                               file_name='./test/conf')
         c1._write_config_file()
-        c2 = config.IniBasedConfig.from_bytes('editor=emacs\n',
-                                              file_name='./test/conf')
+        c2 = config.IniBasedConfig.from_string('editor=emacs\n',
+                                               file_name='./test/conf')
         c2._write_config_file()
         self.assertEqual('vim', c1.get_user_option('editor'))
         self.assertEqual('emacs', c2.get_user_option('editor'))
@@ -491,7 +491,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         return self.config_class(*self.config_args)
 
     def create_config(self, content):
-        c = self.config_class.from_bytes(content, *self.config_args, save=True)
+        c = self.config_class.from_string(content, *self.config_args, save=True)
         return c
 
     def test_simple_read_access(self):
@@ -711,7 +711,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.assertEqual('branch', branch.nick)
 
         local_url = urlutils.local_path_to_url('branch')
-        conf = config.LocationConfig.from_bytes(
+        conf = config.LocationConfig.from_string(
             '[%s]\nnickname = foobar' % (local_url,),
             local_url, save=True)
         self.assertEqual('foobar', branch.nick)
@@ -722,7 +722,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.assertEqual('branch', branch.nick)
 
         local_path = osutils.getcwd().encode('utf8')
-        conf = config.LocationConfig.from_bytes(
+        conf = config.LocationConfig.from_string(
             '[%s/branch]\nnickname = barry' % (local_path,),
             'branch',  save=True)
         self.assertEqual('barry', branch.nick)
@@ -780,7 +780,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
 class TestGlobalConfigItems(tests.TestCase):
 
     def test_user_id(self):
-        my_config = config.GlobalConfig.from_bytes(sample_config_text)
+        my_config = config.GlobalConfig.from_string(sample_config_text)
         self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
 
@@ -789,11 +789,11 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(None, my_config._get_user_id())
 
     def test_configured_editor(self):
-        my_config = config.GlobalConfig.from_bytes(sample_config_text)
+        my_config = config.GlobalConfig.from_string(sample_config_text)
         self.assertEqual("vim", my_config.get_editor())
 
     def test_signatures_always(self):
-        my_config = config.GlobalConfig.from_bytes(sample_always_signatures)
+        my_config = config.GlobalConfig.from_string(sample_always_signatures)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_ALWAYS,
@@ -801,7 +801,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(True, my_config.signature_needed())
 
     def test_signatures_if_possible(self):
-        my_config = config.GlobalConfig.from_bytes(sample_maybe_signatures)
+        my_config = config.GlobalConfig.from_string(sample_maybe_signatures)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_WHEN_REQUIRED,
@@ -809,7 +809,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def test_signatures_ignore(self):
-        my_config = config.GlobalConfig.from_bytes(sample_ignore_signatures)
+        my_config = config.GlobalConfig.from_string(sample_ignore_signatures)
         self.assertEqual(config.CHECK_ALWAYS,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_NEVER,
@@ -817,7 +817,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def _get_sample_config(self):
-        my_config = config.GlobalConfig.from_bytes(sample_config_text)
+        my_config = config.GlobalConfig.from_string(sample_config_text)
         return my_config
 
     def test_gpg_signing_command(self):
@@ -1165,9 +1165,9 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         if global_config is None:
             global_config = sample_config_text
 
-        my_global_config = config.GlobalConfig.from_bytes(global_config,
-                                                          save=True)
-        my_location_config = config.LocationConfig.from_bytes(
+        my_global_config = config.GlobalConfig.from_string(global_config,
+                                                           save=True)
+        my_location_config = config.LocationConfig.from_string(
             sample_branches_text, my_branch.base, save=True)
         my_config = config.BranchConfig(my_branch)
         self.my_config = my_config
@@ -1239,10 +1239,10 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
                           location_config=None, branch_data_config=None):
         my_branch = FakeBranch(location)
         if global_config is not None:
-            my_global_config = config.GlobalConfig.from_bytes(global_config,
-                                                              save=True)
+            my_global_config = config.GlobalConfig.from_string(global_config,
+                                                               save=True)
         if location_config is not None:
-            my_location_config = config.LocationConfig.from_bytes(
+            my_location_config = config.LocationConfig.from_string(
                 location_config, my_branch.base, save=True)
         my_config = config.BranchConfig(my_branch)
         if branch_data_config is not None:

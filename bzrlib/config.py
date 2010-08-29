@@ -377,10 +377,10 @@ class IniBasedConfig(Config):
         self._parser = None
 
     @classmethod
-    def from_bytes(cls, unicode_bytes, file_name=None, save=False):
-        """Create a config object from bytes.
+    def from_string(cls, str_or_unicode, file_name=None, save=False):
+        """Create a config object from a string.
 
-        :param unicode_bytes: A string representing the file content. This will
+        :param str_or_unicode: A string representing the file content. This will
             be utf-8 encoded.
 
         :param file_name: The configuration file path.
@@ -388,11 +388,11 @@ class IniBasedConfig(Config):
         :param _save: Whether the file should be saved upon creation.
         """
         conf = cls(file_name=file_name)
-        conf._create_from_bytes(unicode_bytes, save)
+        conf._create_from_string(str_or_unicode, save)
         return conf
 
-    def _create_from_bytes(self, unicode_bytes, save):
-        self._content = StringIO(unicode_bytes.encode('utf-8'))
+    def _create_from_string(self, str_or_unicode, save):
+        self._content = StringIO(str_or_unicode.encode('utf-8'))
         # Some tests use in-memory configs, some other always need the config
         # file to exist on disk.
         if save:
@@ -581,8 +581,8 @@ class LockableConfig(IniBasedConfig):
         self.transport = transport.get_transport(self.dir)
         self._lock = lockdir.LockDir(self.transport, 'lock')
 
-    def _create_from_bytes(self, unicode_bytes, save):
-        super(LockableConfig, self)._create_from_bytes(unicode_bytes, False)
+    def _create_from_string(self, unicode_bytes, save):
+        super(LockableConfig, self)._create_from_string(unicode_bytes, False)
         if save:
             # We need to handle the saving here (as opposed to IniBasedConfig)
             # to be able to lock
@@ -619,16 +619,16 @@ class GlobalConfig(LockableConfig):
         super(GlobalConfig, self).__init__(file_name=config_filename())
 
     @classmethod
-    def from_bytes(cls, unicode_bytes, save=False):
-        """Create a config object from bytes.
+    def from_string(cls, str_or_unicode, save=False):
+        """Create a config object from a string.
 
-        :param unicode_bytes: A string representing the file content. This will
-            be utf-8 encoded.
+        :param str_or_unicode: A string representing the file content. This
+            will be utf-8 encoded.
 
         :param save: Whether the file should be saved upon creation.
         """
         conf = cls()
-        conf._create_from_bytes(unicode_bytes, save)
+        conf._create_from_string(str_or_unicode, save)
         return conf
 
     def get_editor(self):
@@ -681,10 +681,10 @@ class LocationConfig(LockableConfig):
         self.location = location
 
     @classmethod
-    def from_bytes(cls, unicode_bytes, location, save=False):
-        """Create a config object from bytes.
+    def from_string(cls, str_or_unicode, location, save=False):
+        """Create a config object from a string.
 
-        :param unicode_bytes: A string representing the file content. This will
+        :param str_or_unicode: A string representing the file content. This will
             be utf-8 encoded.
 
         :param location: The location url to filter the configuration.
@@ -692,7 +692,7 @@ class LocationConfig(LockableConfig):
         :param save: Whether the file should be saved upon creation.
         """
         conf = cls(location)
-        conf._create_from_bytes(unicode_bytes, save)
+        conf._create_from_string(str_or_unicode, save)
         return conf
 
     def _get_matching_sections(self):

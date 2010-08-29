@@ -241,8 +241,8 @@ if len(sys.argv) == 2:
         os.environ['VISUAL'] = 'visual'
         os.environ['EDITOR'] = 'editor'
 
-        conf = config.GlobalConfig.from_bytes('editor = config_editor\n',
-                                              save=True)
+        conf = config.GlobalConfig.from_string('editor = config_editor\n',
+                                               save=True)
 
         editors = list(msgeditor._get_editor())
         editors = [editor for (editor, cfg_src) in editors]

@@ -161,7 +161,7 @@ class TestHelp(TestCaseWithTransport):
     def test_help_with_aliases(self):
         original = self.run_bzr('help cat')[0]
 
-        conf = config.GlobalConfig.from_bytes('''[ALIASES]
+        conf = config.GlobalConfig.from_string('''[ALIASES]
 c=cat
 cat=cat
 ''', save=True)
