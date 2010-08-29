@@ -3649,6 +3649,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.commands',
         'bzrlib.tests.doc_generate',
         'bzrlib.tests.per_branch',
+        'bzrlib.tests.per_bzrdir',
         'bzrlib.tests.per_controldir',
         'bzrlib.tests.per_controldir_colo',
         'bzrlib.tests.per_foreign_vcs',

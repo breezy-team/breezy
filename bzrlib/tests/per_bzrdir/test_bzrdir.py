@@ -23,9 +23,15 @@ import bzrlib.branch
 from bzrlib import (
     errors,
     revision as _mod_revision,
+    transport,
     )
-
+from bzrlib.tests import (
+    TestSkipped,
+    )
 from bzrlib.tests.per_bzrdir import TestCaseWithBzrDir
+from bzrlib.transport.local import (
+    LocalTransport,
+    )
 
 
 class TestBzrDir(TestCaseWithBzrDir):
@@ -126,6 +132,47 @@ class TestBzrDir(TestCaseWithBzrDir):
                 right_repo.unlock()
         finally:
             left_repo.unlock()
+
+    def sproutOrSkip(self, from_bzrdir, to_url, revision_id=None,
+                     force_new_repo=False, accelerator_tree=None,
+                     create_tree_if_local=True):
+        """Sprout from_bzrdir into to_url, or raise TestSkipped.
+
+        A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
+        TestSkipped.  Returns the newly sprouted bzrdir.
+        """
+        to_transport = transport.get_transport(to_url)
+        if not isinstance(to_transport, LocalTransport):
+            raise TestSkipped('Cannot sprout to remote bzrdirs.')
+        target = from_bzrdir.sprout(to_url, revision_id=revision_id,
+                                    force_new_repo=force_new_repo,
+                                    possible_transports=[to_transport],
+                                    accelerator_tree=accelerator_tree,
+                                    create_tree_if_local=create_tree_if_local)
+        return target
+
+    def skipIfNoWorkingTree(self, a_bzrdir):
+        """Raises TestSkipped if a_bzrdir doesn't have a working tree.
+
+        If the bzrdir does have a workingtree, this is a no-op.
+        """
+        try:
+            a_bzrdir.open_workingtree()
+        except (errors.NotLocalUrl, errors.NoWorkingTree):
+            raise TestSkipped("bzrdir on transport %r has no working tree"
+                              % a_bzrdir.transport)
+
+    def createWorkingTreeOrSkip(self, a_bzrdir):
+        """Create a working tree on a_bzrdir, or raise TestSkipped.
+
+        A simple wrapper for create_workingtree that translates NotLocalUrl into
+        TestSkipped.  Returns the newly created working tree.
+        """
+        try:
+            return a_bzrdir.create_workingtree()
+        except errors.NotLocalUrl:
+            raise TestSkipped("cannot make working tree with transport %r"
+                              % a_bzrdir.transport)
 
     def test_clone_bzrdir_repository_under_shared_force_new_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
