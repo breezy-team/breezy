@@ -75,6 +75,19 @@ from bzrlib import (
     )
 
 
+class addinfourl(urllib2.addinfourl):
+
+    def getheader(self, name, default=None):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers/getheader(name, default)
+
+    def getheaders(self):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers.items()
+
+
 class _ReportingFileSocket(object):
 
     def __init__(self, filesock, report_activity=None):
@@ -656,7 +669,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             r = response
             r.recv = r.read
             fp = socket._fileobject(r, bufsize=65536)
-            resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
+            resp = addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
             resp.version = r.version
