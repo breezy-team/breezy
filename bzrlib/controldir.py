@@ -589,6 +589,9 @@ class ControlDirFormat(object):
     """Whether co-located branches are supported for this control dir format.
     """
 
+    supports_workingtree = True
+    """This control directory can co-exist with a working tree."""
+
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
