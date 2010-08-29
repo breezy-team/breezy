@@ -16,6 +16,8 @@
 
 """UI tests for the test framework."""
 
+import os
+
 from bzrlib import (
     tests,
     )
@@ -148,3 +150,11 @@ class TestOptions(tests.TestCase, SelfTestPatch):
     def test_lsprof_tests(self):
         params = self.get_params_passed_to_core('selftest --lsprof-tests')
         self.assertEqual(True, params[1]["lsprof_tests"])
+
+    def test_parallel_fork_unsupported(self):
+        if getattr(os, "fork", None) is not None:
+            self.addCleanup(setattr, os, "fork", os.fork)
+            del os.fork
+        out, err = self.run_bzr(["selftest", "--parallel=fork", "-s", "x"], 3)
+        self.assertIn("platform does not support fork", err)
+        self.assertFalse(out)
