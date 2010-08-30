@@ -49,7 +49,6 @@ check-nodocs: extensions
 	if [ ! -s selftest.log ] ; then exit 1 ; fi
 	# Check that there were no errors reported.
 	subunit-stats < selftest.log
-	false
 
 # Run Python style checker (apt-get install pyflakes)
 #
