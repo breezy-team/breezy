@@ -124,6 +124,8 @@ Improvements
   will be backed up (adding an extention of the form .~#~).
   (Marius Kruger, #400554)
 
+* ``bzr revert`` is about 10% faster on large trees.  (Andrew Bennetts)
+
 * Decrease memory consumption when many chk index pages are loaded. (Such
   as during ``bzr co`` or ``bzr ls -R`` of a large tree.) Often we need to
   read many chk pages because the individual chk map nodes will be spread
