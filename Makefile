@@ -40,7 +40,12 @@ check: docs check-nodocs
 
 check-nodocs: extensions
 	# Generate a stream for PQM to watch.
+	-$(RM) selftest.log
 	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	# An empty log file should catch errors in the $(PYTHON)
+	# command above (the '|' swallow any errors since 'make'
+	# sees the 'tee' exit code for the whole line
+	if [ ! -s selftest.log ] ; then exit 1 ; fi
 	# Check that there were no errors reported.
 	subunit-stats < selftest.log
 
