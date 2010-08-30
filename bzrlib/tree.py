@@ -1125,17 +1125,12 @@ class InterTree(InterObject):
                 (None, to_kind),
                 (None, to_executable))
         # Yield all remaining source paths
-        all_file_ids_target = None
         for path, from_entry in from_entries_by_dir:
             file_id = from_entry.file_id
             if file_id in to_paths:
                 # already returned
                 continue
-            if all_file_ids_target is None:
-                # Calculate all_file_ids() for target just once, it doesn't
-                # change during this loop.
-                all_file_ids_target = self.target.all_file_ids()
-            if file_id not in all_file_ids_target:
+            if file_id not in self.target:
                 # common case - paths we have not emitted are not present in
                 # target.
                 to_path = None
@@ -1156,7 +1151,6 @@ class InterTree(InterObject):
             changed_file_ids.append(file_id)
             yield(file_id, (path, to_path), changed_content, versioned, parent,
                   name, kind, executable)
-        del all_file_ids_target
         changed_file_ids = set(changed_file_ids)
         if specific_file_ids is not None:
             for result in self._handle_precise_ids(precise_file_ids,
