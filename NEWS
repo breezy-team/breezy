@@ -128,6 +128,9 @@ Bug Fixes
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
 
+* ``PQM`` will no longer ignore syntax errors in submissions.
+  (Vincent Ladeuil, #626667)
+
 * Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
   which can result in "missing referenced chk root keys" errors when
   fetching from repositories with affected revisions.

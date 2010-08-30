@@ -491,7 +491,8 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         return self.config_class(*self.config_args)
 
     def create_config(self, content):
-        c = self.config_class.from_string(content, *self.config_args, save=True)
+        kwargs = dict(save=True)
+        c = self.config_class.from_string(content, *self.config_args, **kwargs)
         return c
 
     def test_simple_read_access(self):
