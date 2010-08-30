@@ -99,12 +99,19 @@ Bug Fixes
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
 
+* Errors occurring during http(s) test server starts should now be
+  handled cleanly. (Vincent Ladeuil, #392402)
+
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
 
 * ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
   with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
+
+* Most of the leaked threads during selftest are now fixed, allowing the
+  full test suite to pass on gentoo.
+  (Vincent Ladeuil, #392127)
 
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
@@ -187,6 +194,9 @@ Internals
 
 Testing
 *******
+
+* HTTP test servers will leak less threads (and sockets) and will not hang on
+  AIX anymore. (Vincent Ladeuil, #405745)
 
 * The way ``bzr selftest --parallel`` generates N partitions of tests to
   run in parallel has changed.  Instead of splitting the list of tests at

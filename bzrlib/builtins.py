@@ -3570,7 +3570,7 @@ class cmd_selftest(Command):
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
-        from bzrlib.tests import selftest
+        from bzrlib import tests
 
         # Make deprecation warnings visible, unless -Werror is set
         symbol_versioning.activate_deprecation_warnings(override=False)
@@ -3620,7 +3620,7 @@ class cmd_selftest(Command):
                           "starting_with": starting_with
                           }
         selftest_kwargs.update(self.additional_selftest_args)
-        result = selftest(**selftest_kwargs)
+        result = tests.selftest(**selftest_kwargs)
         return int(not result)
 
 
