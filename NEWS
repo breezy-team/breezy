@@ -145,11 +145,11 @@ Documentation
 API Changes
 ***********
 
-* Configuration files should now use the ``from_string`` constructor the
-  rather than the ``file`` parameter of the ``_get_parser`` method. The
-  later has been deprecated. ``from_string`` also accept a ``save=True``
-  parameter to have the configuration file immediately written to
-  disk. (Vincent Ladeuil)
+* Configuration files should now use the ``from_string`` constructor rather
+  than the ``file`` parameter of the ``_get_parser`` method. The later has
+  been deprecated. ``from_string`` also accept a ``save=True`` parameter to
+  have the configuration file immediately written to disk. 
+  (Vincent Ladeuil)
 
 * ``IniBaseConfig`` objects should now use the ``from_string`` constructor
   the rather than the ``file`` parameter of the ``_get_parser`` method. The
