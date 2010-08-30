@@ -44,6 +44,7 @@ check-nodocs: extensions
 	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
 	# Check that there were no errors reported.
 	subunit-stats < selftest.log
+	false
 
 # Run Python style checker (apt-get install pyflakes)
 #
