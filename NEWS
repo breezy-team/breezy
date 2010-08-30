@@ -59,6 +59,15 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr break-lock --config [location]`` can now break config files
+  locks. (Vincent Ladeuil, #525571)
+
+* ``bzrlib.config.LockableConfig`` is a base class for config files that
+  needs to be protected against multiple writers. All methods that
+  change a configuration variable value must be decorated with
+  @needs_write_lock (set_option() for example).
+  (Vincent Ladeuil,  #525571)
+
 * The ``lp:`` prefix will now use your known username (from
   ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
   ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now
@@ -86,6 +95,9 @@ Bug Fixes
 
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
+
+* Configuration files in ``${BZR_HOME}`` are now protected against
+  concurrent writers by using a lock. (Vincent Ladeuil, #525571)
 
 * Cope with Microsoft FTP Server and VSFTPd that return reply '250
   Directory created' when mkdir succeeds.  (Martin Pool, #224373)
@@ -167,6 +179,16 @@ Documentation
 API Changes
 ***********
 
+* Configuration files should now use the ``from_string`` constructor rather
+  than the ``file`` parameter of the ``_get_parser`` method. The later has
+  been deprecated. ``from_string`` also accept a ``save=True`` parameter to
+  have the configuration file immediately written to disk. 
+  (Vincent Ladeuil)
+
+* ``IniBaseConfig`` objects should now use the ``from_string`` constructor
+  the rather than the ``file`` parameter of the ``_get_parser`` method. The
+  later has been deprecated. (Vincent Ladeuil)
+
 * InventoryEntry instances now raise AttributeError if you try to assign
   to attributes that are irrelevant to that kind of entry.  e.g. setting
   ``symlink_target`` on an InventoryFile will fail.  It is still okay to
@@ -178,6 +200,10 @@ API Changes
 
 * InventoryEntry objects no longer have ``_put_in_tar`` or
   ``_put_on_disk`` methods.  (Andrew Bennetts)
+
+* The ``get_filename`` parameter in the ``config.IniBaseConfig``
+  constructor has been deprecated, use the ``file_name`` parameter instead.
+  (Vincent Ladeuil)
 
 Internals
 *********
