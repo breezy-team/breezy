@@ -39,6 +39,7 @@ extensions:
 check: docs check-nodocs
 
 check-nodocs: extensions
+	set -e
 	# Generate a stream for PQM to watch.
 	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
 	# Check that there were no errors reported.
