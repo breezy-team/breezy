@@ -59,9 +59,9 @@ Compatibility Breaks
 New Features
 ************
 
-* Added ``post_status`` hook. This allows plugins to register custom
-  handlers which will be invoked after the standard status output has
-  been displayed. (Parth Malwankar)
+* Added ``pre_status`` and ``post_status`` hooks. This allows plugins
+  to register custom handlers which will be invoked before/after the
+  standard status output is displayed. (Parth Malwankar)
 
 * The ``lp:`` prefix will now use your known username (from
   ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
