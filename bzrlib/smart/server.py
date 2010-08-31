@@ -190,6 +190,9 @@ class SmartTCPServer(object):
         thread_name = 'smart-server-child' + thread_name_suffix
         connection_thread = threading.Thread(
             None, handler.serve, name=thread_name)
+        # FIXME: This thread is never joined, it should at least be collected
+        # somewhere so that tests that want to check for leaked threads can get
+        # rid of them -- vila 20100531
         connection_thread.setDaemon(True)
         connection_thread.start()
         return connection_thread
