@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,15 +16,12 @@
 
 """Tests for bzrdir implementations - push."""
 
-from bzrlib import (
-    errors,
-    )
-from bzrlib.tests.per_bzrdir import (
-    TestCaseWithBzrDir,
+from bzrlib.tests.per_controldir import (
+    TestCaseWithControlDir,
     )
 
 
-class TestPush(TestCaseWithBzrDir):
+class TestPush(TestCaseWithControlDir):
 
     def create_simple_tree(self):
         tree = self.make_branch_and_tree('tree')

@@ -20,12 +20,11 @@ import stat
 
 from bzrlib import (
     bzrdir,
-    repository,
+    controldir,
     transport,
     )
 from bzrlib.tests import (
     features,
-    TestCaseInTempDir,
     TestCaseWithTransport,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -38,8 +37,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def setUp(self):
         super(TestWithUpgradableBranches, self).setUp()
-        self.addCleanup(bzrdir.BzrDirFormat._set_default_format,
-                        bzrdir.BzrDirFormat.get_default_format())
+        self.addCleanup(controldir.ControlDirFormat._set_default_format,
+                        controldir.ControlDirFormat.get_default_format())
 
     def make_current_format_branch_and_checkout(self):
         current_tree = self.make_branch_and_tree('current_format_branch',
@@ -104,7 +103,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         self.make_format_5_branch()
         url = transport.get_transport(self.get_url('format_5_branch')).base
         # check --format takes effect
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=metaweave', url])
@@ -128,7 +127,7 @@ finished
         self.make_metadir_weave_branch()
         url = transport.get_transport(self.get_url('metadir_weave_branch')).base
         # check --format takes effect
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=knit', url])
@@ -166,7 +165,7 @@ finished
         self.make_format_5_branch()
         t = transport.get_transport(self.get_url('format_5_branch'))
         url = t.base
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         backup_dir1 = 'backup.bzr.~1~'
         backup_dir2 = 'backup.bzr.~2~'
         # explicitly create backup_dir1. bzr should create the .~2~ directory

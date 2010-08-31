@@ -162,12 +162,13 @@ class TestTCPServerInAThread(tests.TestCase):
         # since the server doesn't accept connections anymore attempting to
         # connect should fail
         client = self.get_client()
-        self.assertRaises(socket.error, client.connect, server.server_address)
+        self.assertRaises(socket.error,
+                          client.connect, (server.host, server.port))
 
     def test_client_talks_server_respond(self):
         server = self.get_server()
         client = self.get_client()
-        client.connect(server.server_address)
+        client.connect((server.host, server.port))
         self.assertIs(None, client.write('ping\n'))
         resp = client.read()
         self.assertClientAddr(client, server, 0)
@@ -199,7 +200,7 @@ class TestTCPServerInAThread(tests.TestCase):
             connection_handler_class=FailingConnectionHandler)
         # The server won't fail until a client connect
         client = self.get_client()
-        client.connect(server.server_address)
+        client.connect((server.host, server.port))
         try:
             # Now we must force the server to answer by sending the request and
             # waiting for some answer. But since we don't control when the
@@ -229,7 +230,7 @@ class TestTCPServerInAThread(tests.TestCase):
         server = self.get_server(
             connection_handler_class=FailingDuringResponseHandler)
         client = self.get_client()
-        client.connect(server.server_address)
+        client.connect((server.host, server.port))
         client.write('ping\n')
         sync.wait()
         self.assertRaises(FailToRespond, server.pending_exception)
@@ -254,7 +255,7 @@ class TestTCPServerInAThread(tests.TestCase):
         server.set_ignored_exceptions(CantServe)
         client = self.get_client()
         # Connect to the server so the exception is raised there
-        client.connect(server.server_address)
+        client.connect((server.host, server.port))
         # Wait for the exception to propagate.
         sync.wait()
         # The connection wasn't served properly but the exception should have

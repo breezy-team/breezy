@@ -99,6 +99,11 @@ class HttpTransport_urllib(http.HttpTransportBase):
 
         return response
 
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
+
     def _get(self, relpath, offsets, tail_amount=0):
         """See HttpTransport._get"""
         abspath = self._remote_path(relpath)

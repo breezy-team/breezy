@@ -78,13 +78,13 @@ def load_tests(standard_tests, module, loader):
     transport_scenarios = [
         ('urllib', dict(_transport=_urllib.HttpTransport_urllib,
                         _server=http_server.HttpServer_urllib,
-                        _qualified_prefix='http+urllib',)),
+                        _url_protocol='http+urllib',)),
         ]
     if features.pycurl.available():
         transport_scenarios.append(
             ('pycurl', dict(_transport=PyCurlTransport,
                             _server=http_server.HttpServer_PyCurl,
-                            _qualified_prefix='http+pycurl',)))
+                            _url_protocol='http+pycurl',)))
     tests.multiply_tests(t_tests, transport_scenarios, result)
 
     protocol_scenarios = [
@@ -313,25 +313,20 @@ class TestHTTPServer(tests.TestCase):
 
             protocol_version = 'HTTP/0.1'
 
-        server = http_server.HttpServer(BogusRequestHandler)
-        try:
-            self.assertRaises(httplib.UnknownProtocol, server.start_server)
-        except:
-            server.stop_server()
-            self.fail('HTTP Server creation did not raise UnknownProtocol')
+        self.assertRaises(httplib.UnknownProtocol,
+                          http_server.HttpServer, BogusRequestHandler)
 
     def test_force_invalid_protocol(self):
-        server = http_server.HttpServer(protocol_version='HTTP/0.1')
-        self.addCleanup(server.stop_server)
-        self.assertRaises(httplib.UnknownProtocol, server.start_server)
+        self.assertRaises(httplib.UnknownProtocol,
+                          http_server.HttpServer, protocol_version='HTTP/0.1')
 
     def test_server_start_and_stop(self):
         server = http_server.HttpServer()
         self.addCleanup(server.stop_server)
         server.start_server()
-        self.assertTrue(server._httpd is not None)
-        self.assertTrue(server._httpd.serving is not None)
-        self.assertTrue(server._httpd.serving)
+        self.assertTrue(server.server is not None)
+        self.assertTrue(server.server.serving is not None)
+        self.assertTrue(server.server.serving)
 
     def test_create_http_server_one_zero(self):
         class RequestHandlerOneZero(http_server.TestingHTTPRequestHandler):
@@ -340,7 +335,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneZero)
         self.start_server(server)
-        self.assertIsInstance(server._httpd, http_server.TestingHTTPServer)
+        self.assertIsInstance(server.server, http_server.TestingHTTPServer)
 
     def test_create_http_server_one_one(self):
         class RequestHandlerOneOne(http_server.TestingHTTPRequestHandler):
@@ -349,7 +344,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneOne)
         self.start_server(server)
-        self.assertIsInstance(server._httpd,
+        self.assertIsInstance(server.server,
                               http_server.TestingThreadingHTTPServer)
 
     def test_create_http_server_force_one_one(self):
@@ -360,7 +355,7 @@ class TestHTTPServer(tests.TestCase):
         server = http_server.HttpServer(RequestHandlerOneZero,
                                         protocol_version='HTTP/1.1')
         self.start_server(server)
-        self.assertIsInstance(server._httpd,
+        self.assertIsInstance(server.server,
                               http_server.TestingThreadingHTTPServer)
 
     def test_create_http_server_force_one_zero(self):
@@ -371,7 +366,7 @@ class TestHTTPServer(tests.TestCase):
         server = http_server.HttpServer(RequestHandlerOneOne,
                                         protocol_version='HTTP/1.0')
         self.start_server(server)
-        self.assertIsInstance(server._httpd,
+        self.assertIsInstance(server.server,
                               http_server.TestingHTTPServer)
 
 
@@ -436,7 +431,7 @@ class TestHttpTransportUrls(tests.TestCase):
         server.start_server()
         try:
             url = server.get_url()
-            self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
+            self.assertTrue(url.startswith('%s://' % self._url_protocol))
         finally:
             server.stop_server()
 
@@ -487,7 +482,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
 
     def test_http_has(self):
         server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         self.assertEqual(t.has('foo/bar'), True)
         self.assertEqual(len(server.logs), 1)
         self.assertContainsRe(server.logs[0],
@@ -495,14 +490,14 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
 
     def test_http_has_not_found(self):
         server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         self.assertEqual(t.has('not-found'), False)
         self.assertContainsRe(server.logs[1],
             r'"HEAD /not-found HTTP/1.." 404 - "-" "bzr/')
 
     def test_http_get(self):
         server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         fp = t.get('foo/bar')
         self.assertEqualDiff(
             fp.read(),
@@ -531,7 +526,7 @@ class TestHttpTransportRegistration(tests.TestCase):
     """Test registrations of various http implementations"""
 
     def test_http_registered(self):
-        t = transport.get_transport('%s://foo.com/' % self._qualified_prefix)
+        t = transport.get_transport('%s://foo.com/' % self._url_protocol)
         self.assertIsInstance(t, transport.Transport)
         self.assertIsInstance(t, self._transport)
 
@@ -540,10 +535,11 @@ class TestPost(tests.TestCase):
 
     def test_post_body_is_received(self):
         server = RecordingServer(expect_body_tail='end-of-body',
-            scheme=self._qualified_prefix)
+                                 scheme=self._url_protocol)
         self.start_server(server)
         url = server.get_url()
-        http_transport = self._transport(url)
+        # FIXME: needs a cleanup -- vila 20100611
+        http_transport = transport.get_transport(url)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
             server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
@@ -593,8 +589,10 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
     _req_handler_class = http_server.TestingHTTPRequestHandler
 
     def create_transport_readonly_server(self):
-        return http_server.HttpServer(self._req_handler_class,
-                                      protocol_version=self._protocol_version)
+        server = http_server.HttpServer(self._req_handler_class,
+                                        protocol_version=self._protocol_version)
+        server._url_protocol = self._url_protocol
+        return server
 
     def _testing_pycurl(self):
         # TODO: This is duplicated for lots of the classes in this file
@@ -616,8 +614,7 @@ class TestWallServer(TestSpecificRequestHandler):
     _req_handler_class = WallRequestHandler
 
     def test_http_has(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         # Unfortunately httplib (see HTTPResponse._read_status
         # for details) make no distinction between a closed
         # socket and badly formatted status line, so we can't
@@ -629,8 +626,7 @@ class TestWallServer(TestSpecificRequestHandler):
                           t.has, 'foo/bar')
 
     def test_http_get(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         self.assertRaises((errors.ConnectionError, errors.ConnectionReset,
                            errors.InvalidHttpResponse),
                           t.get, 'foo/bar')
@@ -653,13 +649,11 @@ class TestBadStatusServer(TestSpecificRequestHandler):
     _req_handler_class = BadStatusRequestHandler
 
     def test_http_has(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
 
     def test_http_get(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         self.assertRaises(errors.InvalidHttpResponse, t.get, 'foo/bar')
 
 
@@ -670,6 +664,10 @@ class InvalidStatusRequestHandler(http_server.TestingHTTPRequestHandler):
         """Fakes handling a single HTTP request, returns a bad status"""
         ignored = http_server.TestingHTTPRequestHandler.parse_request(self)
         self.wfile.write("Invalid status line\r\n")
+        # If we don't close the connection pycurl will hang. Since this is a
+        # stress test we don't *have* to respect the protocol, but we don't
+        # have to sabotage it too much either.
+        self.close_connection = True
         return False
 
 
@@ -680,18 +678,6 @@ class TestInvalidStatusServer(TestBadStatusServer):
     """
 
     _req_handler_class = InvalidStatusRequestHandler
-
-    def test_http_has(self):
-        if self._testing_pycurl() and self._protocol_version == 'HTTP/1.1':
-            raise tests.KnownFailure(
-                'pycurl hangs if the server send back garbage')
-        super(TestInvalidStatusServer, self).test_http_has()
-
-    def test_http_get(self):
-        if self._testing_pycurl() and self._protocol_version == 'HTTP/1.1':
-            raise tests.KnownFailure(
-                'pycurl hangs if the server send back garbage')
-        super(TestInvalidStatusServer, self).test_http_get()
 
 
 class BadProtocolRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -720,13 +706,11 @@ class TestBadProtocolServer(TestSpecificRequestHandler):
         super(TestBadProtocolServer, self).setUp()
 
     def test_http_has(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         self.assertRaises(errors.InvalidHttpResponse, t.has, 'foo/bar')
 
     def test_http_get(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         self.assertRaises(errors.InvalidHttpResponse, t.get, 'foo/bar')
 
 
@@ -746,13 +730,11 @@ class TestForbiddenServer(TestSpecificRequestHandler):
     _req_handler_class = ForbiddenRequestHandler
 
     def test_http_has(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         self.assertRaises(errors.TransportError, t.has, 'foo/bar')
 
     def test_http_get(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         self.assertRaises(errors.TransportError, t.get, 'foo/bar')
 
 
@@ -797,8 +779,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         self.build_tree_contents([('a', '0123456789')],)
 
     def test_readv(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         l = list(t.readv('a', ((0, 1), (1, 1), (3, 2), (9, 1))))
         self.assertEqual(l[0], (0, '0'))
         self.assertEqual(l[1], (1, '1'))
@@ -806,8 +787,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         self.assertEqual(l[3], (9, '9'))
 
     def test_readv_out_of_order(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         l = list(t.readv('a', ((1, 1), (9, 1), (0, 1), (3, 2))))
         self.assertEqual(l[0], (1, '1'))
         self.assertEqual(l[1], (9, '9'))
@@ -815,8 +795,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         self.assertEqual(l[3], (3, '34'))
 
     def test_readv_invalid_ranges(self):
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
 
         # This is intentionally reading off the end of the file
         # since we are sure that it cannot get there
@@ -830,7 +809,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
 
     def test_readv_multiple_get_requests(self):
         server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         # force transport to issue multiple requests
         t._max_readv_combine = 1
         t._max_get_ranges = 1
@@ -844,7 +823,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
 
     def test_readv_get_max_size(self):
         server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         # force transport to issue multiple requests by limiting the number of
         # bytes by request. Note that this apply to coalesced offsets only, a
         # single range will keep its size even if bigger than the limit.
@@ -859,7 +838,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
 
     def test_complete_readv_leave_pipe_clean(self):
         server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         # force transport to issue multiple requests
         t._get_max_size = 2
         l = list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
@@ -870,7 +849,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
 
     def test_incomplete_readv_leave_pipe_clean(self):
         server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         # force transport to issue multiple requests
         t._get_max_size = 2
         # Don't collapse readv results into a list so that we leave unread
@@ -1026,7 +1005,7 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
 
     def test_readv_with_short_reads(self):
         server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         # Force separate ranges for each offset
         t._bytes_to_read_before_seek = 0
         ireadv = iter(t.readv('a', ((0, 1), (2, 1), (4, 2), (9, 1))))
@@ -1083,9 +1062,6 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
         return LimitedRangeHTTPServer(range_limit=self.range_limit,
                                       protocol_version=self._protocol_version)
 
-    def get_transport(self):
-        return self._transport(self.get_readonly_server().get_url())
-
     def setUp(self):
         http_utils.TestCaseWithWebserver.setUp(self)
         # We need to manipulate ranges that correspond to real chunks in the
@@ -1095,14 +1071,14 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
         self.build_tree_contents([('a', content)],)
 
     def test_few_ranges(self):
-        t = self.get_transport()
+        t = self.get_readonly_transport()
         l = list(t.readv('a', ((0, 4), (1024, 4), )))
         self.assertEqual(l[0], (0, '0000'))
         self.assertEqual(l[1], (1024, '0001'))
         self.assertEqual(1, self.get_readonly_server().GET_request_nb)
 
     def test_more_ranges(self):
-        t = self.get_transport()
+        t = self.get_readonly_transport()
         l = list(t.readv('a', ((0, 4), (1024, 4), (4096, 4), (8192, 4))))
         self.assertEqual(l[0], (0, '0000'))
         self.assertEqual(l[1], (1024, '0001'))
@@ -1159,36 +1135,30 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     """
 
     # FIXME: We don't have an https server available, so we don't
-    # test https connections.
+    # test https connections. --vila toolongago
 
     def setUp(self):
         super(TestProxyHttpServer, self).setUp()
+        self.transport_secondary_server = http_utils.ProxyServer
         self.build_tree_contents([('foo', 'contents of foo\n'),
                                   ('foo-proxied', 'proxied contents of foo\n')])
         # Let's setup some attributes for tests
-        self.server = self.get_readonly_server()
-        self.proxy_address = '%s:%d' % (self.server.host, self.server.port)
+        server = self.get_readonly_server()
+        self.server_host_port = '%s:%d' % (server.host, server.port)
         if self._testing_pycurl():
             # Oh my ! pycurl does not check for the port as part of
             # no_proxy :-( So we just test the host part
-            self.no_proxy_host = self.server.host
+            self.no_proxy_host = server.host
         else:
-            self.no_proxy_host = self.proxy_address
+            self.no_proxy_host = self.server_host_port
         # The secondary server is the proxy
-        self.proxy = self.get_secondary_server()
-        self.proxy_url = self.proxy.get_url()
+        self.proxy_url = self.get_secondary_url()
         self._old_env = {}
 
     def _testing_pycurl(self):
         # TODO: This is duplicated for lots of the classes in this file
         return (features.pycurl.available()
                 and self._transport == PyCurlTransport)
-
-    def create_transport_secondary_server(self):
-        """Creates an http server that will serve files with
-        '-proxied' appended to their names.
-        """
-        return http_utils.ProxyServer(protocol_version=self._protocol_version)
 
     def _install_env(self, env):
         for name, value in env.iteritems():
@@ -1200,8 +1170,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
 
     def proxied_in_env(self, env):
         self._install_env(env)
-        url = self.server.get_url()
-        t = self._transport(url)
+        t = self.get_readonly_transport()
         try:
             self.assertEqual('proxied contents of foo\n', t.get('foo').read())
         finally:
@@ -1209,8 +1178,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
 
     def not_proxied_in_env(self, env):
         self._install_env(env)
-        url = self.server.get_url()
-        t = self._transport(url)
+        t = self.get_readonly_transport()
         try:
             self.assertEqual('contents of foo\n', t.get('foo').read())
         finally:
@@ -1258,11 +1226,11 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
             # pycurl *ignores* invalid proxy env variables. If that ever change
             # in the future, this test will fail indicating that pycurl do not
             # ignore anymore such variables.
-            self.not_proxied_in_env({'http_proxy': self.proxy_address})
+            self.not_proxied_in_env({'http_proxy': self.server_host_port})
         else:
             self.assertRaises(errors.InvalidURL,
                               self.proxied_in_env,
-                              {'http_proxy': self.proxy_address})
+                              {'http_proxy': self.server_host_port})
 
 
 class TestRanges(http_utils.TestCaseWithWebserver):
@@ -1271,24 +1239,24 @@ class TestRanges(http_utils.TestCaseWithWebserver):
     def setUp(self):
         http_utils.TestCaseWithWebserver.setUp(self)
         self.build_tree_contents([('a', '0123456789')],)
-        server = self.get_readonly_server()
-        self.transport = self._transport(server.get_url())
 
     def create_transport_readonly_server(self):
         return http_server.HttpServer(protocol_version=self._protocol_version)
 
     def _file_contents(self, relpath, ranges):
+        t = self.get_readonly_transport()
         offsets = [ (start, end - start + 1) for start, end in ranges]
-        coalesce = self.transport._coalesce_offsets
+        coalesce = t._coalesce_offsets
         coalesced = list(coalesce(offsets, limit=0, fudge_factor=0))
-        code, data = self.transport._get(relpath, coalesced)
+        code, data = t._get(relpath, coalesced)
         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
         for start, end in ranges:
             data.seek(start)
             yield data.read(end - start + 1)
 
     def _file_tail(self, relpath, tail_amount):
-        code, data = self.transport._get(relpath, [], tail_amount)
+        t = self.get_readonly_transport()
+        code, data = t._get(relpath, [], tail_amount)
         self.assertTrue(code in (200, 206),'_get returns: %d' % code)
         data.seek(-tail_amount, 2)
         return data.read(tail_amount)
@@ -1313,28 +1281,17 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirection between http servers."""
 
-    def create_transport_secondary_server(self):
-        """Create the secondary server redirecting to the primary server"""
-        new = self.get_readonly_server()
-
-        redirecting = http_utils.HTTPServerRedirecting(
-            protocol_version=self._protocol_version)
-        redirecting.redirect_to(new.host, new.port)
-        return redirecting
-
     def setUp(self):
         super(TestHTTPRedirections, self).setUp()
         self.build_tree_contents([('a', '0123456789'),
                                   ('bundle',
                                   '# Bazaar revision bundle v0.9\n#\n')
                                   ],)
-        # The requests to the old server will be redirected to the new server
-        self.old_transport = self._transport(self.old_server.get_url())
 
     def test_redirected(self):
-        self.assertRaises(errors.RedirectRequested, self.old_transport.get, 'a')
-        t = self._transport(self.new_server.get_url())
-        self.assertEqual('0123456789', t.get('a').read())
+        self.assertRaises(errors.RedirectRequested,
+                          self.get_old_transport().get, 'a')
+        self.assertEqual('0123456789', self.get_new_transport().get('a').read())
 
 
 class RedirectedRequest(_urllib2_wrappers.Request):
@@ -1357,6 +1314,27 @@ def install_redirected_request(test):
     test.overrideAttr(_urllib2_wrappers, 'Request', RedirectedRequest)
 
 
+def cleanup_http_redirection_connections(test):
+    # Some sockets are opened but never seen by _urllib, so we trap them at
+    # the _urllib2_wrappers level to be able to clean them up.
+    def socket_disconnect(sock):
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+        except socket.error:
+            pass
+    def connect(connection):
+        test.http_connect_orig(connection)
+        test.addCleanup(socket_disconnect, connection.sock)
+    test.http_connect_orig = test.overrideAttr(
+        _urllib2_wrappers.HTTPConnection, 'connect', connect)
+    def connect(connection):
+        test.https_connect_orig(connection)
+        test.addCleanup(socket_disconnect, connection.sock)
+    test.https_connect_orig = test.overrideAttr(
+        _urllib2_wrappers.HTTPSConnection, 'connect', connect)
+
+
 class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirections.
 
@@ -1375,9 +1353,10 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         if (features.pycurl.available()
             and self._transport == PyCurlTransport):
             raise tests.TestNotApplicable(
-                "pycurl doesn't redirect silently annymore")
+                "pycurl doesn't redirect silently anymore")
         super(TestHTTPSilentRedirections, self).setUp()
         install_redirected_request(self)
+        cleanup_http_redirection_connections(self)
         self.build_tree_contents([('a','a'),
                                   ('1/',),
                                   ('1/a', 'redirected once'),
@@ -1391,27 +1370,18 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
                                   ('5/a', 'redirected 5 times'),
                                   ],)
 
-        self.old_transport = self._transport(self.old_server.get_url())
-
-    def create_transport_secondary_server(self):
-        """Create the secondary server, redirections are defined in the tests"""
-        return http_utils.HTTPServerRedirecting(
-            protocol_version=self._protocol_version)
-
     def test_one_redirection(self):
-        t = self.old_transport
-
-        req = RedirectedRequest('GET', t.abspath('a'))
+        t = self.get_old_transport()
+        req = RedirectedRequest('GET', t._remote_path('a'))
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)
         self.old_server.redirections = \
             [('(.*)', r'%s/1\1' % (new_prefix), 301),]
-        self.assertEqual('redirected once',t._perform(req).read())
+        self.assertEqual('redirected once', t._perform(req).read())
 
     def test_five_redirections(self):
-        t = self.old_transport
-
-        req = RedirectedRequest('GET', t.abspath('a'))
+        t = self.get_old_transport()
+        req = RedirectedRequest('GET', t._remote_path('a'))
         old_prefix = 'http://%s:%s' % (self.old_server.host,
                                        self.old_server.port)
         new_prefix = 'http://%s:%s' % (self.new_server.host,
@@ -1423,7 +1393,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
             ('/4(.*)', r'%s/5\1' % (new_prefix), 301),
             ('(/[^/]+)', r'%s/1\1' % (old_prefix), 301),
             ]
-        self.assertEqual('redirected 5 times',t._perform(req).read())
+        self.assertEqual('redirected 5 times', t._perform(req).read())
 
 
 class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
@@ -1432,14 +1402,15 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
     def setUp(self):
         super(TestDoCatchRedirections, self).setUp()
         self.build_tree_contents([('a', '0123456789'),],)
+        cleanup_http_redirection_connections(self)
 
-        self.old_transport = self._transport(self.old_server.get_url())
+        self.old_transport = self.get_old_transport()
 
-    def get_a(self, transport):
-        return transport.get('a')
+    def get_a(self, t):
+        return t.get('a')
 
     def test_no_redirection(self):
-        t = self._transport(self.new_server.get_url())
+        t = self.get_new_transport()
 
         # We use None for redirected so that we fail if redirected
         self.assertEqual('0123456789',
@@ -1449,10 +1420,10 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
     def test_one_redirection(self):
         self.redirections = 0
 
-        def redirected(transport, exception, redirection_notice):
+        def redirected(t, exception, redirection_notice):
             self.redirections += 1
-            dir, file = urlutils.split(exception.target)
-            return self._transport(dir)
+            redirected_t = t._redirected_to(exception.source, exception.target)
+            return redirected_t
 
         self.assertEqual('0123456789',
                          transport.do_catching_redirections(
@@ -1488,7 +1459,9 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                                   ('b', 'contents of b\n'),])
 
     def create_transport_readonly_server(self):
-        return self._auth_server(protocol_version=self._protocol_version)
+        server = self._auth_server(protocol_version=self._protocol_version)
+        server._url_protocol = self._url_protocol
+        return server
 
     def _testing_pycurl(self):
         # TODO: This is duplicated for lots of the classes in this file
@@ -1507,7 +1480,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         return url
 
     def get_user_transport(self, user, password):
-        return self._transport(self.get_user_url(user, password))
+        t = transport.get_transport(self.get_user_url(user, password))
+        return t
 
     def test_no_user(self):
         self.server.add_user('joe', 'foo')
@@ -1698,7 +1672,7 @@ class TestProxyAuth(TestAuth):
 
     def get_user_transport(self, user, password):
         self._install_env({'all_proxy': self.get_user_url(user, password)})
-        return self._transport(self.server.get_url())
+        return TestAuth.get_user_transport(self, user, password)
 
     def _install_env(self, env):
         for name, value in env.iteritems():
@@ -1731,6 +1705,7 @@ class SampleSocket(object):
         self.readfile = StringIO(socket_read_content)
         self.writefile = StringIO()
         self.writefile.close = lambda: None
+        self.close = lambda: None
 
     def makefile(self, mode='r', bufsize=None):
         if 'r' in mode:
@@ -1746,16 +1721,19 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         # We use the VFS layer as part of HTTP tunnelling tests.
         self._captureVar('BZR_NO_SMART_VFS', None)
         self.transport_readonly_server = http_utils.HTTPServerWithSmarts
+        self.http_server = self.get_readonly_server()
 
     def create_transport_readonly_server(self):
-        return http_utils.HTTPServerWithSmarts(
+        server = http_utils.HTTPServerWithSmarts(
             protocol_version=self._protocol_version)
+        server._url_protocol = self._url_protocol
+        return server
 
     def test_open_bzrdir(self):
         branch = self.make_branch('relpath')
-        http_server = self.get_readonly_server()
-        url = http_server.get_url() + 'relpath'
+        url = self.http_server.get_url() + 'relpath'
         bd = bzrdir.BzrDir.open(url)
+        self.addCleanup(bd.transport.disconnect)
         self.assertIsInstance(bd, _mod_remote.RemoteBzrDir)
 
     def test_bulk_data(self):
@@ -1763,8 +1741,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         # The 'readv' command in the smart protocol both sends and receives
         # bulk data, so we use that.
         self.build_tree(['data-file'])
-        http_server = self.get_readonly_server()
-        http_transport = self._transport(http_server.get_url())
+        http_transport = transport.get_transport(self.http_server.get_url())
         medium = http_transport.get_smart_medium()
         # Since we provide the medium, the url below will be mostly ignored
         # during the test, as long as the path is '/'.
@@ -1778,15 +1755,14 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         post_body = 'hello\n'
         expected_reply_body = 'ok\x012\n'
 
-        http_server = self.get_readonly_server()
-        http_transport = self._transport(http_server.get_url())
+        http_transport = transport.get_transport(self.http_server.get_url())
         medium = http_transport.get_smart_medium()
         response = medium.send_http_smart_request(post_body)
         reply_body = response.read()
         self.assertEqual(expected_reply_body, reply_body)
 
     def test_smart_http_server_post_request_handler(self):
-        httpd = self.get_readonly_server()._get_httpd()
+        httpd = self.http_server.server
 
         socket = SampleSocket(
             'POST /.bzr/smart %s \r\n' % self._protocol_version
@@ -1824,13 +1800,13 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
 
     def test_probe_smart_server(self):
         """Test error handling against server refusing smart requests."""
-        server = self.get_readonly_server()
-        t = self._transport(server.get_url())
+        t = self.get_readonly_transport()
         # No need to build a valid smart request here, the server will not even
         # try to interpret it.
         self.assertRaises(errors.SmartProtocolError,
                           t.get_smart_medium().send_http_smart_request,
                           'whatever')
+
 
 class Test_redirected_to(tests.TestCase):
 
@@ -1964,7 +1940,9 @@ class TestActivityMixin(object):
         self.addCleanup(self.server.stop_server)
 
     def get_transport(self):
-        return self._transport(self.server.get_url())
+        t = self._transport(self.server.get_url())
+        # FIXME: Needs cleanup -- vila 20100611
+        return t
 
     def assertActivitiesMatch(self):
         self.assertEqual(self.server.bytes_read,
@@ -2115,18 +2093,6 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
     _auth_server = http_utils.HTTPBasicAuthServer
     _transport = _urllib.HttpTransport_urllib
 
-    def create_transport_readonly_server(self):
-        return self._auth_server(protocol_version=self._protocol_version)
-
-    def create_transport_secondary_server(self):
-        """Create the secondary server redirecting to the primary server"""
-        new = self.get_readonly_server()
-
-        redirecting = http_utils.HTTPServerRedirecting(
-            protocol_version=self._protocol_version)
-        redirecting.redirect_to(new.host, new.port)
-        return redirecting
-
     def setUp(self):
         super(TestAuthOnRedirected, self).setUp()
         self.build_tree_contents([('a','a'),
@@ -2137,19 +2103,26 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
                                        self.new_server.port)
         self.old_server.redirections = [
             ('(.*)', r'%s/1\1' % (new_prefix), 301),]
-        self.old_transport = self._transport(self.old_server.get_url())
+        self.old_transport = self.get_old_transport()
         self.new_server.add_user('joe', 'foo')
+        cleanup_http_redirection_connections(self)
 
-    def get_a(self, transport):
-        return transport.get('a')
+    def create_transport_readonly_server(self):
+        server = self._auth_server(protocol_version=self._protocol_version)
+        server._url_protocol = self._url_protocol
+        return server
+
+    def get_a(self, t):
+        return t.get('a')
 
     def test_auth_on_redirected_via_do_catching_redirections(self):
         self.redirections = 0
 
-        def redirected(transport, exception, redirection_notice):
+        def redirected(t, exception, redirection_notice):
             self.redirections += 1
-            dir, file = urlutils.split(exception.target)
-            return self._transport(dir)
+            redirected_t = t._redirected_to(exception.source, exception.target)
+            self.addCleanup(redirected_t.disconnect)
+            return redirected_t
 
         stdout = tests.StringIOWrapper()
         stderr = tests.StringIOWrapper()
@@ -2176,7 +2149,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
                                        self.new_server.port)
         self.old_server.redirections = [
             ('(.*)', r'%s/1\1' % (new_prefix), 301),]
-        self.assertEqual('redirected once',t._perform(req).read())
+        self.assertEqual('redirected once', t._perform(req).read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
