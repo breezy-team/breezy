@@ -136,6 +136,10 @@ Bug Fixes
   fetching from repositories with affected revisions.
   (Andrew Bennetts, #522637)
 
+* strace test-helper tests cope with the new Ubuntu policy of not allowing
+  users to attach to their own processes by default.
+  (Martin Pool, #626679)
+
 * ``Transport.stat`` on a symlink, including a transport pointing directly
   to a symlink, now returns information about the symlink.
   (Martin Pool)

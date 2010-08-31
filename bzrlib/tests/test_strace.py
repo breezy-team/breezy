@@ -1,5 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
-#   Authors: Robert Collins <robert.collins@canonical.com>
+# Copyright (C) 2007, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +21,7 @@ import subprocess
 import threading
 
 from bzrlib import (
+    strace,
     tests,
     )
 from bzrlib.strace import StraceFeature, strace_detailed, StraceResult
@@ -61,14 +61,27 @@ class TestStrace(tests.TestCaseWithTransport):
             raise tests.KnownFailure(
                 '%d active threads, bug #103133 needs to be fixed.' % active)
 
+    def strace_detailed_or_skip(self, *args, **kwargs):
+        """Run strace, but cope if it's not allowed"""
+        # see bug 626679
+        try:
+            return strace_detailed(*args, **kwargs)
+        except strace.StraceError, e:
+            if e.err_messages.startswith(
+                    "attach: ptrace(PTRACE_ATTACH, ...): Operation not permitted"):
+                raise tests.TestSkipped("ptrace not permitted")
+            else:
+                raise
+
     def test_strace_callable_is_called(self):
         self._check_threads()
 
         output = []
         def function(positional, *args, **kwargs):
             output.append((positional, args, kwargs))
-        strace_detailed(function, ["a", "b"], {"c": "c"},
-                        follow_children=False)
+        self.strace_detailed_or_skip(
+            function, ["a", "b"], {"c": "c"},
+            follow_children=False)
         self.assertEqual([("a", ("b",), {"c":"c"})], output)
 
     def test_strace_callable_result(self):
@@ -76,7 +89,7 @@ class TestStrace(tests.TestCaseWithTransport):
 
         def function():
             return "foo"
-        result, strace_result = strace_detailed(function,[], {},
+        result, strace_result = self.strace_detailed_or_skip(function,[], {},
                                                 follow_children=False)
         self.assertEqual("foo", result)
         self.assertIsInstance(strace_result, StraceResult)
@@ -87,6 +100,6 @@ class TestStrace(tests.TestCaseWithTransport):
 
         def function():
             self.build_tree(['myfile'])
-        unused, result = strace_detailed(function, [], {},
+        unused, result = self.strace_detailed_or_skip(function, [], {},
                                          follow_children=False)
         self.assertContainsRe(result.raw_log, 'myfile')
