@@ -40,7 +40,7 @@ Bazaarユーザーリファレンス
 
 次のウェブサイトはBazaarに関する詳細な情報を提供します:
 
-:ホームページ:                     http://www.bazaar.canonical.com/
+:ホームページ:                     http://bazaar.canonical.com/
 :公式ドキュメント:                 http://doc.bazaar.canonical.com/
 :Launchpad:                     https://launchpad.net/bzr/
 

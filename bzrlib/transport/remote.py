@@ -435,7 +435,9 @@ class RemoteTransport(transport.ConnectedTransport):
         remote._translate_error(err, path=relpath)
 
     def disconnect(self):
-        self.get_smart_medium().disconnect()
+        m = self.get_smart_medium()
+        if m is not None:
+            m.disconnect()
 
     def stat(self, relpath):
         resp = self._call2('stat', self._remote_path(relpath))

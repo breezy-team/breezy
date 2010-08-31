@@ -63,6 +63,15 @@ New Features
   to register custom handlers which will be invoked before/after the
   standard status output is displayed. (Parth Malwankar)
 
+* ``bzr break-lock --config [location]`` can now break config files
+  locks. (Vincent Ladeuil, #525571)
+
+* ``bzrlib.config.LockableConfig`` is a base class for config files that
+  needs to be protected against multiple writers. All methods that
+  change a configuration variable value must be decorated with
+  @needs_write_lock (set_option() for example).
+  (Vincent Ladeuil,  #525571)
+
 * The ``lp:`` prefix will now use your known username (from
   ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
   ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now
@@ -91,6 +100,9 @@ Bug Fixes
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
 
+* Configuration files in ``${BZR_HOME}`` are now protected against
+  concurrent writers by using a lock. (Vincent Ladeuil, #525571)
+
 * Cope with Microsoft FTP Server and VSFTPd that return reply '250
   Directory created' when mkdir succeeds.  (Martin Pool, #224373)
 
@@ -103,15 +115,28 @@ Bug Fixes
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
 
+* Errors occurring during http(s) test server starts should now be
+  handled cleanly. (Vincent Ladeuil, #392402)
+
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
 
+* Fix spurious paramiko warning on hardy by ensuring that ``selftest``
+  properly remove its warning filter. (Vincent Ladeuil, #625686)
+
 * ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
   with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
 
+* Most of the leaked threads during selftest are now fixed, allowing the
+  full test suite to pass on gentoo.
+  (Vincent Ladeuil, #392127)
+
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
+
+* ``PQM`` will no longer ignore syntax errors in submissions.
+  (Vincent Ladeuil, #626667)
 
 * Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
   which can result in "missing referenced chk root keys" errors when
@@ -171,6 +196,16 @@ Documentation
 API Changes
 ***********
 
+* Configuration files should now use the ``from_string`` constructor rather
+  than the ``file`` parameter of the ``_get_parser`` method. The later has
+  been deprecated. ``from_string`` also accept a ``save=True`` parameter to
+  have the configuration file immediately written to disk. 
+  (Vincent Ladeuil)
+
+* ``IniBaseConfig`` objects should now use the ``from_string`` constructor
+  the rather than the ``file`` parameter of the ``_get_parser`` method. The
+  later has been deprecated. (Vincent Ladeuil)
+
 * InventoryEntry instances now raise AttributeError if you try to assign
   to attributes that are irrelevant to that kind of entry.  e.g. setting
   ``symlink_target`` on an InventoryFile will fail.  It is still okay to
@@ -183,6 +218,10 @@ API Changes
 * InventoryEntry objects no longer have ``_put_in_tar`` or
   ``_put_on_disk`` methods.  (Andrew Bennetts)
 
+* The ``get_filename`` parameter in the ``config.IniBaseConfig``
+  constructor has been deprecated, use the ``file_name`` parameter instead.
+  (Vincent Ladeuil)
+
 Internals
 *********
 
@@ -191,6 +230,9 @@ Internals
 
 Testing
 *******
+
+* HTTP test servers will leak less threads (and sockets) and will not hang on
+  AIX anymore. (Vincent Ladeuil, #405745)
 
 * The way ``bzr selftest --parallel`` generates N partitions of tests to
   run in parallel has changed.  Instead of splitting the list of tests at

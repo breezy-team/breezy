@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009, 2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,9 +18,6 @@
 """Adapter for running test cases against multiple encodings."""
 
 from copy import deepcopy
-
-from bzrlib.tests import TestSuite
-
 
 # prefix for micro (1/1000000)
 _mu = u'\xb5'
