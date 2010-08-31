@@ -40,9 +40,9 @@ versions it is also copied to the main PPA.
 
 The packaging information is kept in branches of bzr on Launchpad, named
 like
-<https://code.launchpad.net/~bzr/bzr/packaging-hardy>.
+<https://code.launchpad.net/~bzr/ubuntu/hardy/bzr/bzr-ppa>.
 or
-<lp:~bzr/bzr/packaging-hardy>.  These branches are intended to be used
+<lp:~bzr/ubuntu/hardy/bzr/bzr-ppa>.  These branches are intended to be used
 with the ``bzr-builddeb`` plugin.
 
 **You should almost always upload to the beta ppa first** and then either 
@@ -203,7 +203,7 @@ Long Form
 
 #. Checkout (or update) the packaging branch for each supported release::
 
-      bzr co lp:~bzr/bzr/packaging-hardy
+      bzr co lp:~bzr/ubuntu/hardy/bzr/bzr-ppa
 
    There is a script available to help::
 
@@ -268,7 +268,7 @@ Long Form
 
 #. Build the source packages::
 
-      cd packaging-$DISTRO; bzr builddeb -S
+      cd bzr-$DISTRO; bzr builddeb -S
 
    This will create a ``.changes`` file.  If you didn't configure builddeb
    to automatically sign them, you can use ::
