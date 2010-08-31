@@ -128,6 +128,11 @@ class PyCurlTransport(HttpTransportBase):
             self._set_connection(connection, auth)
         return connection
 
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
+
     def has(self, relpath):
         """See Transport.has()"""
         # We set NO BODY=0 in _get_full, so it should be safe

@@ -33,7 +33,7 @@ from bzrlib.branch import (BranchFormat,
                            )
 from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
 from bzrlib.tests import test_server
-from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from bzrlib.transport import memory
 
 
@@ -60,7 +60,7 @@ def make_scenarios(transport_server, transport_readonly_server,
     return result
 
 
-class TestCaseWithBranch(TestCaseWithBzrDir):
+class TestCaseWithBranch(TestCaseWithControlDir):
     """This helper will be parameterised in each per_branch test."""
 
     def setUp(self):
@@ -74,7 +74,7 @@ class TestCaseWithBranch(TestCaseWithBzrDir):
 
     def make_branch(self, relpath, format=None):
         if format is not None:
-            return TestCaseWithBzrDir.make_branch(self, relpath, format)
+            return TestCaseWithControlDir.make_branch(self, relpath, format)
         repo = self.make_repository(relpath)
         # fixme RBC 20060210 this isnt necessarily a fixable thing,
         # Skipped is the wrong exception to raise.

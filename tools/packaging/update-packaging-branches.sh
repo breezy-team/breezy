@@ -18,10 +18,7 @@ for DISTRO in $UBUNTU_RELEASES; do
             cd ..
         fi
     else
-        SRC="lp:~bzr/$PACKAGE/packaging-$DISTRO"
-        if [ "$PACKAGE" = "bzr-svn" ] ; then
-            SRC="lp:~bzr/$PACKAGE/beta-ppa-$DISTRO"
-        fi
+        SRC="lp:~bzr/ubuntu/$DISTRO/$PACKAGE/bzr-ppa"
         echo "Checking out $SRC"
         bzr co $SRC $PACKAGE-$DISTRO
     fi

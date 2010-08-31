@@ -1026,37 +1026,41 @@ class SmartTCPTests(tests.TestCase):
         self.server.start_server('127.0.0.1', 0)
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
-        self.addCleanup(self.tearDownServer)
+        self.addCleanup(self.stop_server)
         self.permit_url(self.server.get_url())
 
-    def tearDownServer(self):
+    def stop_server(self):
+        """Disconnect the client and stop the server.
+
+        This must be re-entrant as some tests will call it explicitly in
+        addition to the normal cleanup.
+        """
         if getattr(self, 'transport', None):
             self.transport.disconnect()
             del self.transport
         if getattr(self, 'server', None):
             self.server.stop_background_thread()
-            # XXX: why not .stop_server() -- mbp 20100106
             del self.server
 
 
 class TestServerSocketUsage(SmartTCPTests):
 
-    def test_server_setup_teardown(self):
-        """It should be safe to teardown the server with no requests."""
+    def test_server_start_stop(self):
+        """It should be safe to stop the server with no requests."""
         self.start_server()
         t = remote.RemoteTCPTransport(self.server.get_url())
-        self.tearDownServer()
+        self.stop_server()
         self.assertRaises(errors.ConnectionError, t.has, '.')
 
     def test_server_closes_listening_sock_on_shutdown_after_request(self):
         """The server should close its listening socket when it's stopped."""
         self.start_server()
-        server = self.server
+        server_url = self.server.get_url()
         self.transport.has('.')
-        self.tearDownServer()
+        self.stop_server()
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
-        t = remote.RemoteTCPTransport(server.get_url())
+        t = remote.RemoteTCPTransport(server_url)
         self.assertRaises(errors.ConnectionError, t.has, '.')
 
 
@@ -1198,7 +1202,7 @@ class TestServerHooks(SmartTCPTests):
         self.transport.has('.')
         self.assertEqual([], self.hook_calls)
         # clean up the server
-        self.tearDownServer()
+        self.stop_server()
         # now it should have fired.
         self.assertEqual(result, self.hook_calls)
 
@@ -1217,7 +1221,7 @@ class TestServerHooks(SmartTCPTests):
         self.transport.has('.')
         self.assertEqual([], self.hook_calls)
         # clean up the server
-        self.tearDownServer()
+        self.stop_server()
         # now it should have fired.
         self.assertEqual(result, self.hook_calls)
 

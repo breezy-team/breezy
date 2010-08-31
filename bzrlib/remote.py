@@ -21,6 +21,7 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    controldir,
     debug,
     errors,
     graph,
@@ -648,7 +649,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
 
 class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
-    bzrdir.ControlComponent):
+    controldir.ControlComponent):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed
