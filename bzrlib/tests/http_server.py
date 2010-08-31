@@ -31,6 +31,7 @@ import urllib
 import urlparse
 
 from bzrlib import (
+    osutils,
     tests,
     transport,
     )
@@ -73,6 +74,14 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 format % args,
                 self.headers.get('referer', '-'),
                 self.headers.get('user-agent', '-'))
+
+    def handle(self):
+        SimpleHTTPServer.SimpleHTTPRequestHandler.handle(self)
+        # Some client (pycurl, I'm looking at you) are more picky than others
+        # and require that the socket itself is closed
+        # (SocketServer.StreamRequestHandler only close the two associated
+        # 'makefile' objects)
+        self.connection.close()
 
     def handle_one_request(self):
         """Handle a single HTTP request.
@@ -254,12 +263,12 @@ Message: %(message)s.
             # mode may cause newline translations, making the
             # actual size of the content transmitted *less* than
             # the content-length!
-            file = open(path, 'rb')
+            f = open(path, 'rb')
         except IOError:
             self.send_error(404, "File not found")
             return
 
-        file_size = os.fstat(file.fileno())[6]
+        file_size = os.fstat(f.fileno())[6]
         tail, ranges = self.parse_ranges(ranges_header_value)
         # Normalize tail into ranges
         if tail != 0:
@@ -286,7 +295,7 @@ Message: %(message)s.
             # RFC2616 14.16 and 14.35 says that when a server
             # encounters unsatisfiable range specifiers, it
             # SHOULD return a 416.
-            file.close()
+            f.close()
             # FIXME: We SHOULD send a Content-Range header too,
             # but the implementation of send_error does not
             # allows that. So far.
@@ -295,10 +304,10 @@ Message: %(message)s.
 
         if len(ranges) == 1:
             (start, end) = ranges[0]
-            self.get_single_range(file, file_size, start, end)
+            self.get_single_range(f, file_size, start, end)
         else:
-            self.get_multiple_ranges(file, file_size, ranges)
-        file.close()
+            self.get_multiple_ranges(f, file_size, ranges)
+        f.close()
 
     def translate_path(self, path):
         """Translate a /-separated PATH to the local filename syntax.
@@ -359,241 +368,33 @@ class TestingHTTPServerMixin:
         # the tests cases.
         self.test_case_server = test_case_server
         self._home_dir = test_case_server._home_dir
-        self.serving = None
-        self.is_shut_down = threading.Event()
-        # We collect the sockets/threads used by the clients so we can
-        # close/join them when shutting down
-        self.clients = []
-
-    def get_request (self):
-        """Get the request and client address from the socket.
-        """
-        sock, addr = self._get_request()
-        self.clients.append([sock, addr])
-        return sock, addr
-
-    def verify_request(self, request, client_address):
-        """Verify the request.
-
-        Return True if we should proceed with this request, False if we should
-        not even touch a single byte in the socket !
-        """
-        return self.serving is not None and self.serving.isSet()
-
-    def handle_request(self):
-        request, client_address = self.get_request()
-        try:
-            if self.verify_request(request, client_address):
-                self.process_request(request, client_address)
-        except:
-            if self.serving is not None and self.serving.isSet():
-                self.handle_error(request, client_address)
-            else:
-                # Exceptions raised while we shut down are just noise, but feel
-                # free to put a breakpoint here if you suspect something
-                # else. Such an example is the SSL handshake: it's automatic
-                # once we start processing the request but the last connection
-                # will close immediately and will not be able to correctly
-                # reply.
-                pass
-            self.close_request(request)
-
-    def server_bind(self):
-        # The following has been fixed in 2.5 so we need to provide it for
-        # older python versions.
-        if sys.version < (2, 5):
-            self.server_address = self.socket.getsockname()
-
-    def serve(self, started):
-        self.serving  = threading.Event()
-        self.serving.set()
-        self.is_shut_down.clear()
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Starting %r' % (self.server_address,)
-        # We are listening and ready to accept connections
-        started.set()
-        while self.serving.isSet():
-            if 'threads' in tests.selftest_debug_flags:
-                print 'Accepting on %r' % (self.server_address,)
-            # Really a connection but the python framework is generic and
-            # call them requests
-            self.handle_request()
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Closing  %r' % (self.server_address,)
-        # Let's close the listening socket
-        self.server_close()
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Closed   %r' % (self.server_address,)
-        self.is_shut_down.set()
-
-    def connect_socket(self):
-        err = socket.error('getaddrinfo returns an empty list')
-        for res in socket.getaddrinfo(*self.server_address):
-            af, socktype, proto, canonname, sa = res
-            sock = None
-            try:
-                sock = socket.socket(af, socktype, proto)
-                sock.connect(sa)
-                return sock
-
-            except socket.error, err:
-                # 'err' is now the most recent error
-                if sock is not None:
-                    sock.close()
-        raise err
-
-    def join_thread(self, thread, timeout=2):
-        thread.join(timeout)
-        if thread.isAlive():
-            # The timeout expired without joining the thread, the thread is
-            # therefore stucked and that's a failure as far as the test is
-            # concerned. We used to hang here.
-            raise AssertionError('thread %s hung' % (thread.name,))
-
-    def shutdown(self):
-        """Stops the serve() loop.
-
-        Blocks until the loop has finished. This must be called while serve()
-        is running in another thread, or it will deadlock.
-        """
-        if self.serving is None:
-            # If the server wasn't properly started, there is nothing to
-            # shutdown.
-            return
-        # As soon as we stop serving, no more connection are accepted except
-        # one to get out of the blocking listen.
-        self.serving.clear()
-        # The server is listening for a last connection, let's give it:
-        last_conn = None
-        try:
-            last_conn = self.connect_socket()
-        except socket.error, e:
-            # But ignore connection errors as the point is to unblock the
-            # server thread, it may happen that it's not blocked or even not
-            # started (when something went wrong during test case setup
-            # leading to self.setUp() *not* being called but self.tearDown()
-            # still being called)
-            pass
-        # We don't have to wait for the server to shut down to start shutting
-        # down the clients, so let's start now.
-        for c in self.clients:
-            self.shutdown_client(c)
-        self.clients = []
-        # Now we wait for the thread running serve() to finish
-        self.is_shut_down.wait()
-        if last_conn is not None:
-            # Close the last connection without trying to use it. The server
-            # will not process a single byte on that socket to avoid
-            # complications (SSL starts with a handshake for example).
-            last_conn.close()
-
-    def shutdown_client(self, client):
-        sock, addr = client[:2]
-        self.shutdown_client_socket(sock)
-
-    def shutdown_client_socket(self, sock):
-        """Properly shutdown a client socket.
-
-        Under some circumstances (as in bug #383920), we need to force the
-        shutdown as python delays it until gc occur otherwise and the client
-        may hang.
-
-        This should be called only when no other thread is trying to use the
-        socket.
-        """
-        try:
-            # The request process has been completed, the thread is about to
-            # die, let's shutdown the socket if we can.
-            sock.shutdown(socket.SHUT_RDWR)
-        except (socket.error, select.error), e:
-            print 'exception in shutdown_client_socket: %r' % (e,)
-            if e[0] in (errno.EBADF, errno.ENOTCONN):
-                # Right, the socket is already down
-                pass
-            else:
-                raise
 
 
-class TestingHTTPServer(TestingHTTPServerMixin, SocketServer.TCPServer):
+class TestingHTTPServer(test_server.TestingTCPServer, TestingHTTPServerMixin):
 
     def __init__(self, server_address, request_handler_class,
                  test_case_server):
+        test_server.TestingTCPServer.__init__(self, server_address,
+                                              request_handler_class)
         TestingHTTPServerMixin.__init__(self, test_case_server)
-        SocketServer.TCPServer.__init__(self, server_address,
-                                        request_handler_class)
-
-    def _get_request (self):
-        return SocketServer.TCPServer.get_request(self)
-
-    def server_bind(self):
-        SocketServer.TCPServer.server_bind(self)
-        TestingHTTPServerMixin.server_bind(self)
 
 
-class TestingThreadingHTTPServer(TestingHTTPServerMixin,
-                                 SocketServer.ThreadingTCPServer,
-                                 ):
+class TestingThreadingHTTPServer(test_server.TestingThreadingTCPServer,
+                                 TestingHTTPServerMixin):
     """A threading HTTP test server for HTTP 1.1.
 
     Since tests can initiate several concurrent connections to the same http
     server, we need an independent connection for each of them. We achieve that
     by spawning a new thread for each connection.
     """
-
     def __init__(self, server_address, request_handler_class,
                  test_case_server):
+        test_server.TestingThreadingTCPServer.__init__(self, server_address,
+                                                       request_handler_class)
         TestingHTTPServerMixin.__init__(self, test_case_server)
-        SocketServer.ThreadingTCPServer.__init__(self, server_address,
-                                                 request_handler_class)
-        # Decides how threads will act upon termination of the main
-        # process. This is prophylactic as we should not leave the threads
-        # lying around.
-        self.daemon_threads = True
-
-    def _get_request (self):
-        return SocketServer.ThreadingTCPServer.get_request(self)
-
-    def process_request_thread(self, started, request, client_address):
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Processing: %s' % (threading.currentThread().name,)
-        started.set()
-        SocketServer.ThreadingTCPServer.process_request_thread(
-            self, request, client_address)
-        # Shutdown the socket as soon as possible, the thread will be joined
-        # later if needed during server shutdown thread.
-        self.shutdown_client_socket(request)
-
-    def process_request(self, request, client_address):
-        """Start a new thread to process the request."""
-        client = self.clients.pop()
-        started = threading.Event()
-        t = threading.Thread(target = self.process_request_thread,
-                             args = (started, request, client_address))
-        t.name = '%s -> %s' % (client_address, self.server_address)
-        client.append(t)
-        self.clients.append(client)
-        if self.daemon_threads:
-            t.setDaemon (1)
-        t.start()
-        started.wait()
-
-    def shutdown_client(self, client):
-        TestingHTTPServerMixin.shutdown_client(self, client)
-        if len(client) == 3:
-            # The thread has been created only if the request is processed but
-            # after the connection is inited. This could happne when the server
-            # is shut down.
-            sock, addr, thread = client
-            if 'threads' in tests.selftest_debug_flags:
-                print 'Try    joining: %s' % (thread.name,)
-            self.join_thread(thread)
-
-    def server_bind(self):
-        SocketServer.ThreadingTCPServer.server_bind(self)
-        TestingHTTPServerMixin.server_bind(self)
 
 
-class HttpServer(transport.Server):
+class HttpServer(test_server.TestingTCPServerInAThread):
     """A test server for http transports.
 
     Subclasses can provide a specific request handler.
@@ -621,64 +422,33 @@ class HttpServer(transport.Server):
         :param protocol_version: if specified, will override the protocol
             version of the request handler.
         """
-        transport.Server.__init__(self)
-        self.request_handler = request_handler
+        # Depending on the protocol version, we will create the approriate
+        # server
+        if protocol_version is None:
+            # Use the request handler one
+            proto_vers = request_handler.protocol_version
+        else:
+            # Use our own, it will be used to override the request handler
+            # one too.
+            proto_vers = protocol_version
+        # Get the appropriate server class for the required protocol
+        serv_cls = self.http_server_class.get(proto_vers, None)
+        if serv_cls is None:
+            raise httplib.UnknownProtocol(proto_vers)
         self.host = 'localhost'
         self.port = 0
-        self._httpd = None
-        self.protocol_version = protocol_version
+        super(HttpServer, self).__init__((self.host, self.port),
+                                         serv_cls,
+                                         request_handler)
+        self.protocol_version = proto_vers
         # Allows tests to verify number of GET requests issued
         self.GET_request_nb = 0
+        self._http_base_url = None
+        self.logs = []
 
-    def create_httpd(self, serv_cls, rhandler_cls):
-        return serv_cls((self.host, self.port), self.request_handler, self)
-
-    def __repr__(self):
-        return "%s(%s:%s)" % \
-            (self.__class__.__name__, self.host, self.port)
-
-    def _get_httpd(self):
-        if self._httpd is None:
-            rhandler = self.request_handler
-            # Depending on the protocol version, we will create the approriate
-            # server
-            if self.protocol_version is None:
-                # Use the request handler one
-                proto_vers = rhandler.protocol_version
-            else:
-                # Use our own, it will be used to override the request handler
-                # one too.
-                proto_vers = self.protocol_version
-            # Create the appropriate server for the required protocol
-            serv_cls = self.http_server_class.get(proto_vers, None)
-            if serv_cls is None:
-                raise httplib.UnknownProtocol(proto_vers)
-            else:
-                self._httpd = self.create_httpd(serv_cls, rhandler)
-            # Ensure we get the right port and an updated host if needed
-            self.host, self.port = self._httpd.server_address
-        return self._httpd
-
-    def _http_start(self, started):
-        """Server thread main entry point. """
-        server = None
-        try:
-            server = self._get_httpd()
-            self._http_base_url = '%s://%s:%s/' % (self._url_protocol,
-                                                   self.host, self.port)
-        except:
-            # Whatever goes wrong, we save the exception for the main
-            # thread. Note that since we are running in a thread, no signal
-            # can be received, so we don't care about KeyboardInterrupt.
-            self._http_exception = sys.exc_info()
-
-        if server is not None:
-            # From now on, exceptions are taken care of by the
-            # SocketServer.BaseServer or the request handler.
-            server.serve(started)
-        if not started.isSet():
-            # Hmm, something went wrong, but we can release the caller anyway
-            started.set()
+    def create_server(self):
+        return self.server_class(
+            (self.host, self.port), self.request_handler_class, self)
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)
@@ -713,36 +483,11 @@ class HttpServer(transport.Server):
                 backing_transport_server)
         self._home_dir = os.getcwdu()
         self._local_path_parts = self._home_dir.split(os.path.sep)
-        self._http_base_url = None
-
-        # Create the server thread
-        started = threading.Event()
-        self._http_thread = threading.Thread(target=self._http_start,
-                                             args = (started,))
-        self._http_thread.setDaemon(True)
-        self._http_exception = None
-        self._http_thread.start()
-        # Wait for the server thread to start (i.e release the lock)
-        started.wait()
-        self._http_thread.name = self._http_base_url
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Thread started: %s' % (self._http_thread.name,)
-
-
-        if self._http_exception is not None:
-            # Something went wrong during server start
-            exc_class, exc_value, exc_tb = self._http_exception
-            raise exc_class, exc_value, exc_tb
         self.logs = []
 
-    def stop_server(self):
-        """See bzrlib.transport.Server.tearDown."""
-        self._httpd.shutdown()
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Try    joining: %s' % (self._http_thread.name,)
-        self._httpd.join_thread(self._http_thread)
-        if 'threads' in tests.selftest_debug_flags:
-            print 'Thread  joined: %s' % (self._http_thread.name,)
+        super(HttpServer, self).start_server()
+        self._http_base_url = '%s://%s:%s/' % (
+            self._url_protocol, self.host, self.port)
 
     def get_url(self):
         """See bzrlib.transport.Server.get_url."""

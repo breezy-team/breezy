@@ -2436,6 +2436,15 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
+        # Ensure that ConnectedTransport doesn't leak sockets
+        def get_transport_with_cleanup(*args, **kwargs):
+            t = orig_get_transport(*args, **kwargs)
+            if isinstance(t, _mod_transport.ConnectedTransport):
+                self.addCleanup(t.disconnect)
+            return t
+
+        orig_get_transport = self.overrideAttr(_mod_transport, 'get_transport',
+                                               get_transport_with_cleanup)
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
@@ -3649,8 +3658,8 @@ def _test_suite_testmod_names():
         'bzrlib.tests.commands',
         'bzrlib.tests.doc_generate',
         'bzrlib.tests.per_branch',
-        'bzrlib.tests.per_bzrdir',
-        'bzrlib.tests.per_bzrdir_colo',
+        'bzrlib.tests.per_controldir',
+        'bzrlib.tests.per_controldir_colo',
         'bzrlib.tests.per_foreign_vcs',
         'bzrlib.tests.per_interrepository',
         'bzrlib.tests.per_intertree',
@@ -3669,6 +3678,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_workingtree',
         'bzrlib.tests.test__annotator',
         'bzrlib.tests.test__bencode',
+        'bzrlib.tests.test__btree_serializer',
         'bzrlib.tests.test__chk_map',
         'bzrlib.tests.test__dirstate_helpers',
         'bzrlib.tests.test__groupcompress',
@@ -3807,6 +3817,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_switch',
         'bzrlib.tests.test_symbol_versioning',
         'bzrlib.tests.test_tag',
+        'bzrlib.tests.test_test_server',
         'bzrlib.tests.test_testament',
         'bzrlib.tests.test_textfile',
         'bzrlib.tests.test_textmerge',

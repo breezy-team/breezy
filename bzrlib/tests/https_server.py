@@ -21,6 +21,7 @@ import ssl
 from bzrlib.tests import (
     http_server,
     ssl_certs,
+    test_server,
     )
 
 
@@ -44,10 +45,12 @@ class TestingHTTPSServerMixin:
         Return True if we should proceed with this request, False if we should
         not even touch a single byte in the socket !
         """
-        serving = self.serving is not None and self.serving.isSet()
+        serving = test_server.TestingTCPServerMixin.verify_request(
+            self, request, client_address)
         if serving:
             request.do_handshake()
         return serving
+
 
 class TestingHTTPSServer(TestingHTTPSServerMixin,
                          http_server.TestingHTTPServer):
@@ -58,8 +61,8 @@ class TestingHTTPSServer(TestingHTTPSServerMixin,
         http_server.TestingHTTPServer.__init__(
             self, server_address, request_handler_class, test_case_server)
 
-    def _get_request (self):
-        sock, addr = http_server.TestingHTTPServer._get_request(self)
+    def get_request(self):
+        sock, addr = http_server.TestingHTTPServer.get_request(self)
         return self._get_ssl_request(sock, addr)
 
 
@@ -72,8 +75,8 @@ class TestingThreadingHTTPSServer(TestingHTTPSServerMixin,
         http_server.TestingThreadingHTTPServer.__init__(
             self, server_address, request_handler_class, test_case_server)
 
-    def _get_request (self):
-        sock, addr = http_server.TestingThreadingHTTPServer._get_request(self)
+    def get_request(self):
+        sock, addr = http_server.TestingThreadingHTTPServer.get_request(self)
         return self._get_ssl_request(sock, addr)
 
 
@@ -98,9 +101,10 @@ class HTTPSServer(http_server.HttpServer):
         self.cert_file = cert_file
         self.temp_files = []
 
-    def create_httpd(self, serv_cls, rhandler_cls):
-        return serv_cls((self.host, self.port), self.request_handler,
-                        self, self.key_file, self.cert_file)
+    def create_server(self):
+        return self.server_class(
+            (self.host, self.port), self.request_handler_class, self,
+            self.key_file, self.cert_file)
 
 
 class HTTPSServer_urllib(HTTPSServer):

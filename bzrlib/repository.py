@@ -25,6 +25,7 @@ from bzrlib import (
     check,
     chk_map,
     config,
+    controldir,
     debug,
     fetch as _mod_fetch,
     fifo_cache,
@@ -891,7 +892,7 @@ class RepositoryWriteLockResult(LogicalLockResult):
 # Repositories
 
 
-class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
+class Repository(_RelockDebugMixin, controldir.ControlComponent):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including

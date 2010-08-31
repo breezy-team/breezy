@@ -20,6 +20,9 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* `decode` parameter to get() method in FtpTransport and GioTransport classes
+  is deprecated. (Alexander Belchenko)
+
 * `FileInWrongBranch` is deprecated in favour of `PathNotChild` and no
   longer raised.
   (Martin Pool)
@@ -28,6 +31,26 @@ Compatibility Breaks
   `WorkingTree.open_containing_paths`.
   (Martin Pool)
 
+* `ControlDirFormat` and  `ControlDir` have been split out of `BzrDirFormat`
+  and `BzrDir`, respectively. `ControlDirFormat`
+  and `ControlDir` should be used as the base classes for new non-.bzr
+  implementations.
+
+  `BzrDirFormat.register_control_format` has been renamed to
+  `ControlDirFormat.register_format`.
+
+  `BzrDirFormat.register_server_control_format` has been removed.
+
+  Probing for control directories is now done by separate objects derived
+  from `bzrlib.controldir.Prober` and registered using
+  `bzrlib.controldir.ControlDirFormat.register_prober` or
+  `bzrlib.controldir.ControlDirFormat.register_server_prober`.
+  `BzrDirFormat.probe_transport` has been moved onto `Prober`.
+
+  `BzrDirFormat.register_format` has been renamed to 
+  `BzrProber.register_bzrdir_format`.
+  (Jelmer Vernooij)
+
 * The old ``bzr selftest --benchmark`` option has been removed.
   <https://launchpad.net/bzr-usertest> is an actively-maintained
   macrobenchmark suite.
@@ -35,6 +58,15 @@ Compatibility Breaks
 
 New Features
 ************
+
+* ``bzr break-lock --config [location]`` can now break config files
+  locks. (Vincent Ladeuil, #525571)
+
+* ``bzrlib.config.LockableConfig`` is a base class for config files that
+  needs to be protected against multiple writers. All methods that
+  change a configuration variable value must be decorated with
+  @needs_write_lock (set_option() for example).
+  (Vincent Ladeuil,  #525571)
 
 * The ``lp:`` prefix will now use your known username (from
   ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
@@ -64,6 +96,9 @@ Bug Fixes
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
 
+* Configuration files in ``${BZR_HOME}`` are now protected against
+  concurrent writers by using a lock. (Vincent Ladeuil, #525571)
+
 * Cope with Microsoft FTP Server and VSFTPd that return reply '250
   Directory created' when mkdir succeeds.  (Martin Pool, #224373)
 
@@ -75,6 +110,9 @@ Bug Fixes
 
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
+
+* Errors occurring during http(s) test server starts should now be
+  handled cleanly. (Vincent Ladeuil, #392402)
 
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
@@ -89,6 +127,9 @@ Bug Fixes
 
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
+
+* ``PQM`` will no longer ignore syntax errors in submissions.
+  (Vincent Ladeuil, #626667)
 
 * Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
   which can result in "missing referenced chk root keys" errors when
@@ -107,6 +148,17 @@ Improvements
   the files if they can easily be recovered using revert, otherwise they
   will be backed up (adding an extention of the form .~#~).
   (Marius Kruger, #400554)
+
+* Decrease memory consumption when many chk index pages are loaded. (Such
+  as during ``bzr co`` or ``bzr ls -R`` of a large tree.) Often we need to
+  read many chk pages because the individual chk map nodes will be spread
+  randomly. Peak memory for 'bzr ls -R' on a large tree dropped from 396MB
+  down to 247MB, expect even more significant savings on 64-bit platforms.
+  (John Arbash Meinel)
+
+* ``DirState`` internals use a little bit less memory. For bzr.dev it
+  drops the memory from 1MB down to about 800kB. And replaces a few
+  thousand tuples and sets with StaticTuple.  (John Arbash Meinel)
 
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
@@ -137,6 +189,16 @@ Documentation
 API Changes
 ***********
 
+* Configuration files should now use the ``from_string`` constructor rather
+  than the ``file`` parameter of the ``_get_parser`` method. The later has
+  been deprecated. ``from_string`` also accept a ``save=True`` parameter to
+  have the configuration file immediately written to disk. 
+  (Vincent Ladeuil)
+
+* ``IniBaseConfig`` objects should now use the ``from_string`` constructor
+  the rather than the ``file`` parameter of the ``_get_parser`` method. The
+  later has been deprecated. (Vincent Ladeuil)
+
 * InventoryEntry instances now raise AttributeError if you try to assign
   to attributes that are irrelevant to that kind of entry.  e.g. setting
   ``symlink_target`` on an InventoryFile will fail.  It is still okay to
@@ -148,6 +210,10 @@ API Changes
 
 * InventoryEntry objects no longer have ``_put_in_tar`` or
   ``_put_on_disk`` methods.  (Andrew Bennetts)
+
+* The ``get_filename`` parameter in the ``config.IniBaseConfig``
+  constructor has been deprecated, use the ``file_name`` parameter instead.
+  (Vincent Ladeuil)
 
 Internals
 *********
