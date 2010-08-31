@@ -52,18 +52,24 @@ class SmartTCPServer(object):
     hooks: An instance of SmartServerHooks.
     """
 
-    def __init__(self, backing_transport, host='127.0.0.1', port=0,
-                 root_client_path='/'):
+    def __init__(self, backing_transport, root_client_path='/'):
         """Construct a new server.
 
         To actually start it running, call either start_background_thread or
         serve.
 
         :param backing_transport: The transport to serve.
-        :param host: Name of the interface to listen on.
-        :param port: TCP port to listen on, or 0 to allocate a transient port.
         :param root_client_path: The client path that will correspond to root
             of backing_transport.
+        """
+        self.backing_transport = backing_transport
+        self.root_client_path = root_client_path
+
+    def start_server(self, host, port):
+        """Create the server listening socket.
+
+        :param host: Name of the interface to listen on.
+        :param port: TCP port to listen on, or 0 to allocate a transient port.
         """
         # let connections timeout so that we get a chance to terminate
         # Keep a reference to the exceptions we want to catch because the socket
@@ -90,15 +96,10 @@ class SmartTCPServer(object):
         self.port = self._sockname[1]
         self._server_socket.listen(1)
         self._server_socket.settimeout(1)
-        self.backing_transport = backing_transport
         self._started = threading.Event()
         self._stopped = threading.Event()
-        self.root_client_path = root_client_path
 
-    def serve(self, thread_name_suffix=''):
-        self._should_terminate = False
-        # for hooks we are letting code know that a server has started (and
-        # later stopped).
+    def _backing_urls(self):
         # There are three interesting urls:
         # The URL the server can be contacted on. (e.g. bzr://host/)
         # The URL that a commit done on the same machine as the server will
@@ -114,15 +115,32 @@ class SmartTCPServer(object):
         # The latter two urls are different aliases to the servers url,
         # so we group those in a list - as there might be more aliases
         # in the future.
-        backing_urls = [self.backing_transport.base]
+        urls = [self.backing_transport.base]
         try:
-            backing_urls.append(self.backing_transport.external_url())
+            urls.append(self.backing_transport.external_url())
         except errors.InProcessTransport:
             pass
+        return urls
+
+    def run_server_started_hooks(self, backing_urls=None):
+        if backing_urls is None:
+            backing_urls = self._backing_urls()
         for hook in SmartTCPServer.hooks['server_started']:
             hook(backing_urls, self.get_url())
         for hook in SmartTCPServer.hooks['server_started_ex']:
             hook(backing_urls, self)
+
+    def run_server_stopped_hooks(self, backing_urls=None):
+        if backing_urls is None:
+            backing_urls = self._backing_urls()
+        for hook in SmartTCPServer.hooks['server_stopped']:
+            hook(backing_urls, self.get_url())
+
+    def serve(self, thread_name_suffix=''):
+        self._should_terminate = False
+        # for hooks we are letting code know that a server has started (and
+        # later stopped).
+        self.run_server_started_hooks()
         self._started.set()
         try:
             try:
@@ -156,8 +174,7 @@ class SmartTCPServer(object):
             except self._socket_error:
                 # ignore errors on close
                 pass
-            for hook in SmartTCPServer.hooks['server_stopped']:
-                hook(backing_urls, self.get_url())
+            self.run_server_stopped_hooks()
 
     def get_url(self):
         """Return the url of the server"""
@@ -173,6 +190,9 @@ class SmartTCPServer(object):
         thread_name = 'smart-server-child' + thread_name_suffix
         connection_thread = threading.Thread(
             None, handler.serve, name=thread_name)
+        # FIXME: This thread is never joined, it should at least be collected
+        # somewhere so that tests that want to check for leaked threads can get
+        # rid of them -- vila 20100531
         connection_thread.setDaemon(True)
         connection_thread.start()
         return connection_thread
@@ -326,7 +346,8 @@ class BzrServerFactory(object):
                 host = medium.BZR_DEFAULT_INTERFACE
             if port is None:
                 port = medium.BZR_DEFAULT_PORT
-            smart_server = SmartTCPServer(self.transport, host=host, port=port)
+            smart_server = SmartTCPServer(self.transport)
+            smart_server.start_server(host, port)
             trace.note('listening on port: %s' % smart_server.port)
         self.smart_server = smart_server
 

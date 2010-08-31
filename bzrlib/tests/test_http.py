@@ -1314,6 +1314,27 @@ def install_redirected_request(test):
     test.overrideAttr(_urllib2_wrappers, 'Request', RedirectedRequest)
 
 
+def cleanup_http_redirection_connections(test):
+    # Some sockets are opened but never seen by _urllib, so we trap them at
+    # the _urllib2_wrappers level to be able to clean them up.
+    def socket_disconnect(sock):
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+        except socket.error:
+            pass
+    def connect(connection):
+        test.http_connect_orig(connection)
+        test.addCleanup(socket_disconnect, connection.sock)
+    test.http_connect_orig = test.overrideAttr(
+        _urllib2_wrappers.HTTPConnection, 'connect', connect)
+    def connect(connection):
+        test.https_connect_orig(connection)
+        test.addCleanup(socket_disconnect, connection.sock)
+    test.https_connect_orig = test.overrideAttr(
+        _urllib2_wrappers.HTTPSConnection, 'connect', connect)
+
+
 class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirections.
 
@@ -1335,6 +1356,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
                 "pycurl doesn't redirect silently anymore")
         super(TestHTTPSilentRedirections, self).setUp()
         install_redirected_request(self)
+        cleanup_http_redirection_connections(self)
         self.build_tree_contents([('a','a'),
                                   ('1/',),
                                   ('1/a', 'redirected once'),
@@ -1380,6 +1402,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
     def setUp(self):
         super(TestDoCatchRedirections, self).setUp()
         self.build_tree_contents([('a', '0123456789'),],)
+        cleanup_http_redirection_connections(self)
 
         self.old_transport = self.get_old_transport()
 
@@ -1710,6 +1733,7 @@ class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
         branch = self.make_branch('relpath')
         url = self.http_server.get_url() + 'relpath'
         bd = bzrdir.BzrDir.open(url)
+        self.addCleanup(bd.transport.disconnect)
         self.assertIsInstance(bd, _mod_remote.RemoteBzrDir)
 
     def test_bulk_data(self):
@@ -2081,6 +2105,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
             ('(.*)', r'%s/1\1' % (new_prefix), 301),]
         self.old_transport = self.get_old_transport()
         self.new_server.add_user('joe', 'foo')
+        cleanup_http_redirection_connections(self)
 
     def create_transport_readonly_server(self):
         server = self._auth_server(protocol_version=self._protocol_version)
@@ -2096,6 +2121,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         def redirected(t, exception, redirection_notice):
             self.redirections += 1
             redirected_t = t._redirected_to(exception.source, exception.target)
+            self.addCleanup(redirected_t.disconnect)
             return redirected_t
 
         stdout = tests.StringIOWrapper()
@@ -2123,7 +2149,7 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
                                        self.new_server.port)
         self.old_server.redirections = [
             ('(.*)', r'%s/1\1' % (new_prefix), 301),]
-        self.assertEqual('redirected once',t._perform(req).read())
+        self.assertEqual('redirected once', t._perform(req).read())
         # stdin should be empty
         self.assertEqual('', ui.ui_factory.stdin.readline())
         # stdout should be empty, stderr will contains the prompts
