@@ -151,6 +151,10 @@ def show_tree_status(wt, show_unchanged=None,
         old.lock_read()
         new.lock_read()
         try:
+            for hook in hooks['pre_status']:
+                hook(StatusHookParams(old, new, to_file, versioned,
+                    show_ids, short, verbose))
+
             specific_files, nonexistents \
                 = _filter_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
@@ -212,7 +216,7 @@ def show_tree_status(wt, show_unchanged=None,
             if nonexistents:
                 raise errors.PathsDoNotExist(nonexistents)
             for hook in hooks['post_status']:
-                hook(StatusPostHookParams(old, new, to_file, versioned,
+                hook(StatusHookParams(old, new, to_file, versioned,
                     show_ids, short, verbose))
         finally:
             old.unlock()
@@ -377,8 +381,16 @@ class StatusHooks(_mod_hooks.Hooks):
         """
         _mod_hooks.Hooks.__init__(self)
         self.create_hook(_mod_hooks.HookPoint('post_status',
-            "Called with argument StatusPostHookParams after Bazaar has "
-            "displayed the status. StatusPostHookParams has the attriubutes "
+            "Called with argument StatusHookParams after Bazaar has "
+            "displayed the status. StatusHookParams has the attributes "
+            "(old_tree, new_tree, to_file, versioned, show_ids, short, "
+            "verbose). The last four arguments correspond to the command "
+            "line options specified by the user for the status command. "
+            "to_file is the output stream for writing.",
+            (2, 3), None))
+        self.create_hook(_mod_hooks.HookPoint('pre_status',
+            "Called with argument StatusHookParams before Bazaar "
+            "displays the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
@@ -389,7 +401,7 @@ class StatusHooks(_mod_hooks.Hooks):
 hooks = StatusHooks()
 
 
-class StatusPostHookParams(object):
+class StatusHookParams(object):
     """Object holding parameters passed to post_status hooks.
 
     :ivar old_tree: Start tree (basis tree) for comparison.

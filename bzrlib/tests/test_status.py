@@ -142,6 +142,7 @@ class TestHooks(TestCaseWithTransport):
         """
         hooks = _mod_status.StatusHooks()
         self.assertTrue("post_status" in hooks, "post_status not in %s" % hooks)
+        self.assertTrue("pre_status" in hooks, "pre_status not in %s" % hooks)
 
     def test_installed_hooks_are_StatusHooks(self):
         """The installed hooks object should be a StatusHooks.
@@ -166,10 +167,33 @@ class TestHooks(TestCaseWithTransport):
                 RevisionSpec.from_string("revid:%s" % r2_id)])
         self.assertLength(1, calls)
         params = calls[0]
-        self.assertIsInstance(params, _mod_status.StatusPostHookParams)
+        self.assertIsInstance(params, _mod_status.StatusHookParams)
         attrs = ['old_tree', 'new_tree', 'to_file', 'versioned',
             'show_ids', 'short', 'verbose']
         for a in attrs:
             self.assertTrue(hasattr(params, a),
-                'Attribute "%s" not found in StatusPostHookParam' % a)
+                'Attribute "%s" not found in StatusHookParam' % a)
+
+    def test_pre_status_hook(self):
+        """Ensure that pre_status hook is invoked with the right args.
+        """
+        calls = []
+        _mod_status.hooks.install_named_hook('pre_status', calls.append, None)
+        self.assertLength(0, calls)
+        tree = self.make_branch_and_tree('.')
+        r1_id = tree.commit('one', allow_pointless=True)
+        r2_id = tree.commit('two', allow_pointless=True)
+        r2_tree = tree.branch.repository.revision_tree(r2_id)
+        output = StringIO()
+        show_tree_status(tree, to_file=output,
+            revision=[RevisionSpec.from_string("revid:%s" % r1_id),
+                RevisionSpec.from_string("revid:%s" % r2_id)])
+        self.assertLength(1, calls)
+        params = calls[0]
+        self.assertIsInstance(params, _mod_status.StatusHookParams)
+        attrs = ['old_tree', 'new_tree', 'to_file', 'versioned',
+            'show_ids', 'short', 'verbose']
+        for a in attrs:
+            self.assertTrue(hasattr(params, a),
+                'Attribute "%s" not found in StatusHookParam' % a)
 
