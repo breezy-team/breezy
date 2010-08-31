@@ -1130,7 +1130,7 @@ class InterTree(InterObject):
             if file_id in to_paths:
                 # already returned
                 continue
-            if file_id not in self.target:
+            if not self.target.has_id(file_id):
                 # common case - paths we have not emitted are not present in
                 # target.
                 to_path = None
