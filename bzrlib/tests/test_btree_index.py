@@ -216,12 +216,12 @@ class TestBTreeBuilder(BTreeTestCase):
         leaf1_bytes = zlib.decompress(leaf1)
         sorted_node_keys = sorted(node[0] for node in nodes)
         node = btree_index._LeafNode(leaf1_bytes, 1, 0)
-        self.assertEqual(231, len(node.keys))
-        self.assertEqual(sorted_node_keys[:231], sorted(node.keys))
+        self.assertEqual(231, len(node))
+        self.assertEqual(sorted_node_keys[:231], node.all_keys())
         leaf2_bytes = zlib.decompress(leaf2)
         node = btree_index._LeafNode(leaf2_bytes, 1, 0)
-        self.assertEqual(400 - 231, len(node.keys))
-        self.assertEqual(sorted_node_keys[231:], sorted(node.keys))
+        self.assertEqual(400 - 231, len(node))
+        self.assertEqual(sorted_node_keys[231:], node.all_keys())
 
     def test_last_page_rounded_1_layer(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
@@ -241,9 +241,9 @@ class TestBTreeBuilder(BTreeTestCase):
         leaf2 = content[74:]
         leaf2_bytes = zlib.decompress(leaf2)
         node = btree_index._LeafNode(leaf2_bytes, 1, 0)
-        self.assertEqual(10, len(node.keys))
+        self.assertEqual(10, len(node))
         sorted_node_keys = sorted(node[0] for node in nodes)
-        self.assertEqual(sorted_node_keys, sorted(node.keys))
+        self.assertEqual(sorted_node_keys, node.all_keys())
 
     def test_last_page_not_rounded_2_layer(self):
         builder = btree_index.BTreeBuilder(key_elements=1, reference_lists=0)
@@ -263,9 +263,9 @@ class TestBTreeBuilder(BTreeTestCase):
         leaf2 = content[8192:]
         leaf2_bytes = zlib.decompress(leaf2)
         node = btree_index._LeafNode(leaf2_bytes, 1, 0)
-        self.assertEqual(400 - 231, len(node.keys))
+        self.assertEqual(400 - 231, len(node))
         sorted_node_keys = sorted(node[0] for node in nodes)
-        self.assertEqual(sorted_node_keys[231:], sorted(node.keys))
+        self.assertEqual(sorted_node_keys[231:], node.all_keys())
 
     def test_three_level_tree_details(self):
         # The left most pointer in the second internal node in a row should
@@ -302,7 +302,7 @@ class TestBTreeBuilder(BTreeTestCase):
         # in the second node it points at
         pos = index._row_offsets[2] + internal_node2.offset + 1
         leaf = index._get_leaf_nodes([pos])[pos]
-        self.assertTrue(internal_node2.keys[0] in leaf.keys)
+        self.assertTrue(internal_node2.keys[0] in leaf)
 
     def test_2_leaves_2_2(self):
         builder = btree_index.BTreeBuilder(key_elements=2, reference_lists=2)
@@ -728,7 +728,7 @@ class TestBTreeIndex(BTreeTestCase):
         nodes = dict(index._read_nodes([0]))
         self.assertEqual([0], nodes.keys())
         node = nodes[0]
-        self.assertEqual([('key',)], node.keys.keys())
+        self.assertEqual([('key',)], node.all_keys())
         self.assertEqual([('get', 'index')], trans._activity)
 
     def test__read_nodes_no_size_multiple_pages(self):
@@ -1112,7 +1112,7 @@ class TestBTreeIndex(BTreeTestCase):
         min_l2_key = l2.min_key
         max_l1_key = l1.max_key
         self.assertTrue(max_l1_key < min_l2_key)
-        parents_min_l2_key = l2.keys[min_l2_key][1][0]
+        parents_min_l2_key = l2[min_l2_key][1][0]
         self.assertEqual((l1.max_key,), parents_min_l2_key)
         # Now, whatever key we select that would fall on the second page,
         # should give us all the parents until the page break
@@ -1131,7 +1131,7 @@ class TestBTreeIndex(BTreeTestCase):
         parent_map = {}
         search_keys = index._find_ancestors([max_l1_key], 0, parent_map,
                                             missing_keys)
-        self.assertEqual(sorted(l1.keys), sorted(parent_map))
+        self.assertEqual(l1.all_keys(), sorted(parent_map))
         self.assertEqual(set(), missing_keys)
         self.assertEqual(set(), search_keys)
 
@@ -1205,7 +1205,7 @@ class TestBTreeNodes(BTreeTestCase):
             ("2222222222222222222222222222222222222222",): ("value:2", ()),
             ("3333333333333333333333333333333333333333",): ("value:3", ()),
             ("4444444444444444444444444444444444444444",): ("value:4", ()),
-            }, node.keys)
+            }, dict(node.all_items()))
 
     def test_LeafNode_2_2(self):
         node_bytes = ("type=leaf\n"
@@ -1225,7 +1225,7 @@ class TestBTreeNodes(BTreeTestCase):
             ('11', '33'): ('value:3',
                 ((('11', 'ref22'),), (('11', 'ref22'), ('11', 'ref22')))),
             ('11', '44'): ('value:4', ((), (('11', 'ref00'),)))
-            }, node.keys)
+            }, dict(node.all_items()))
 
     def test_InternalNode_1(self):
         node_bytes = ("type=internal\n"
@@ -1266,7 +1266,7 @@ class TestBTreeNodes(BTreeTestCase):
             ('11', '33'): ('value:3',
                 ((('11', 'ref22'),), (('11', 'ref22'), ('11', 'ref22')))),
             ('11', '44'): ('value:4', ((), (('11', 'ref00'),)))
-            }, node.keys)
+            }, dict(node.all_items()))
 
     def assertFlattened(self, expected, key, value, refs):
         flat_key, flat_line = self.parse_btree._flatten_node(
