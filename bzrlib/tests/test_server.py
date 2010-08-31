@@ -424,10 +424,19 @@ class TestingTCPServerMixin:
 
     def ignored_exceptions_during_shutdown(self, e):
         if sys.platform == 'win32':
-            accepted_errnos = [errno.EBADF, errno.WSAEBADF, errno.WSAENOTCONN,
-                               errno.WSAECONNRESET, errno.WSAESHUTDOWN]
+            accepted_errnos = [errno.EBADF,
+                               errno.EPIPE,
+                               errno.WSAEBADF,
+                               errno.WSAECONNRESET,
+                               errno.WSAENOTCONN,
+                               errno.WSAESHUTDOWN,
+                               ]
         else:
-            accepted_errnos = [errno.EBADF, errno.ENOTCONN, errno.ECONNRESET]
+            accepted_errnos = [errno.EBADF,
+                               errno.ECONNRESET,
+                               errno.ENOTCONN,
+                               errno.EPIPE,
+                               ]
         if isinstance(e, socket.error) and e[0] in accepted_errnos:
             return True
         return False
