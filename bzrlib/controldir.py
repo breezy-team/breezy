@@ -562,6 +562,8 @@ class ControlDirFormat(object):
     object will be created every system load.
 
     :cvar colocated_branches: Whether this formats supports colocated branches.
+    :cvar supports_workingtree: This control directory can co-exist with a
+        working tree.
     """
 
     _default_format = None
@@ -590,7 +592,6 @@ class ControlDirFormat(object):
     """
 
     supports_workingtree = True
-    """This control directory can co-exist with a working tree."""
 
     def get_format_description(self):
         """Return the short description for this format."""
