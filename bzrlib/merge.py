@@ -1085,9 +1085,7 @@ class Merge3Merger(object):
         return result
 
     def fix_root(self):
-        try:
-            self.tt.final_kind(self.tt.root)
-        except errors.NoSuchFile:
+        if self.tt.final_kind(self.tt.root) is None:
             self.tt.cancel_deletion(self.tt.root)
         if self.tt.final_file_id(self.tt.root) is None:
             self.tt.version_file(self.tt.tree_file_id(self.tt.root),
@@ -1102,10 +1100,9 @@ class Merge3Merger(object):
             # the other tree's root is a non-root in the current tree (as when
             # a previously unrelated branch is merged into another)
             return
-        try:
-            self.tt.final_kind(other_root)
+        if self.tt.final_kind(other_root) is not None:
             other_root_is_present = True
-        except errors.NoSuchFile:
+        else:
             # other_root doesn't have a physical representation. We still need
             # to move any references to the actual root of the tree.
             other_root_is_present = False
@@ -1115,15 +1112,10 @@ class Merge3Merger(object):
         for thing, child in self.other_tree.inventory.root.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
             if not other_root_is_present:
-                # FIXME: Make final_kind returns None instead of raising
-                # NoSuchFile to avoid the ugly construct below -- vila 20100402
-                try:
-                    self.tt.final_kind(trans_id)
+                if self.tt.final_kind(trans_id) is not None:
                     # The item exist in the final tree and has a defined place
                     # to go already.
                     continue
-                except errors.NoSuchFile, e:
-                    pass
             # Move the item into the root
             self.tt.adjust_path(self.tt.final_name(trans_id),
                                 self.tt.root, trans_id)
@@ -1405,10 +1397,7 @@ class Merge3Merger(object):
             self.tt.version_file(file_id, trans_id)
         # The merge has been performed, so the old contents should not be
         # retained.
-        try:
-            self.tt.delete_contents(trans_id)
-        except errors.NoSuchFile:
-            pass
+        self.tt.delete_contents(trans_id)
         return result
 
     def _default_other_winner_merge(self, merge_hook_params):
@@ -1586,10 +1575,7 @@ class Merge3Merger(object):
         if winner == 'this' and file_status != "modified":
             return
         trans_id = self.tt.trans_id_file_id(file_id)
-        try:
-            if self.tt.final_kind(trans_id) != "file":
-                return
-        except errors.NoSuchFile:
+        if self.tt.final_kind(trans_id) != "file":
             return
         if winner == "this":
             executability = this_executable

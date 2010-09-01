@@ -199,6 +199,11 @@ Documentation
 API Changes
 ***********
 
+* ``bzrlib.transform.TreeTransformBase.final_kind``,
+  ``bzrlib.transform.TreeTransform.tree_kind`` and
+  ``bzrlib.transform.TransformPreview.tree_kind``now return None instead
+  of raising NoSuchFile.  (Vincent Ladeuil)
+
 * Configuration files should now use the ``from_string`` constructor rather
   than the ``file`` parameter of the ``_get_parser`` method. The later has
   been deprecated. ``from_string`` also accept a ``save=True`` parameter to
