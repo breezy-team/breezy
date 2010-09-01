@@ -345,6 +345,8 @@ class TestingSFTPConnectionHandler(SocketServer.BaseRequestHandler):
         self.wrap_for_latency()
         tcs = self.server.test_case_server
         ssh_server = paramiko.Transport(self.request)
+        # Set it to a channel under 'bzr' so that we get debug info
+        ssh_server.set_log_channel('bzr.paramiko.transport')
         ssh_server.add_server_key(tcs.get_host_key())
         ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
                                          StubSFTPServer, root=tcs._root,
