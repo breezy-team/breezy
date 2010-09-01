@@ -350,16 +350,11 @@ class TestingSFTPConnectionHandler(SocketServer.BaseRequestHandler):
                                          StubSFTPServer, root=tcs._root,
                                          home=tcs._server_homedir)
         server = tcs._server_interface(tcs)
+        # This blocks until the key exchange has been done
         ssh_server.start_server(None, server)
-        # FIXME: Long story short:
-        # bt.test_transport.TestSSHConnections.test_bzr_connect_to_bzr_ssh
-        # fails if we wait less than 0.2 seconds... paramiko uses a lot of
-        # timeouts internally which probably mask a synchronisation
-        # problem. Note that this is the only test that requires this hack and
-        # the test may need to be fixed instead, but it's late and the test is
-        # horrible as mentioned in its comments :) -- vila 20100623
-        import time
-        time.sleep(0.2)
+        # Continue blocking until the run() loop has completed
+        ssh_server.completion_event.clear()
+        ssh_server.completion_event.wait()
 
     def wrap_for_latency(self):
         tcs = self.server.test_case_server
