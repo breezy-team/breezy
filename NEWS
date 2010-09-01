@@ -111,6 +111,9 @@ Bug Fixes
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
 
+* ``EPIPE`` can be raised during test server shutdown. This happened on
+  gentoo only so far. (Vincent Ladeuil, #627277)
+
 * Errors occurring during http(s) test server starts should now be
   handled cleanly. (Vincent Ladeuil, #392402)
 
