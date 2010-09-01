@@ -22,7 +22,7 @@ Compatibility Breaks
 
 * ``bzrlib.transform.TreeTransformBase.final_kind``,
   ``bzrlib.transform.TreeTransform.tree_kind`` and
-  ``bzrlib.transform.TransformPreview.tree_kind``now return None instead
+  ``bzrlib.transform.TransformPreview.tree_kind`` now return None instead
   of raising NoSuchFile.  (Vincent Ladeuil)
 
 * `decode` parameter to get() method in FtpTransport and GioTransport classes
