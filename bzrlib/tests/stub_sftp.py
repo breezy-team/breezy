@@ -373,8 +373,11 @@ class TestingSFTPConnectionHandler(SocketServer.BaseRequestHandler):
         server = tcs._server_interface(tcs)
         # This blocks until the key exchange has been done
         ssh_server.start_server(None, server)
-        # Continue blocking until the run() loop has completed
-        end_time = time.time() + 1.0
+        # Continue blocking until the run() loop has completed, this sets an
+        # upper bound on how long a test can take, but 5s is pretty long, and
+        # we don't really want to wait forever in case there really was a
+        # problem.
+        end_time = time.time() + 5.0
         do_join = True
         while True:
             ssh_server.stopped_event.wait(0.1)
