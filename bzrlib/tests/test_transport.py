@@ -16,6 +16,7 @@
 
 
 from cStringIO import StringIO
+import logging
 import os
 import subprocess
 import sys
@@ -910,6 +911,13 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # override the interface (doesn't change self._vendor).
         # Note that this does encryption, so can be slow.
         from bzrlib.tests import stub_sftp
+        para_logger = logging.getLogger('paramiko')
+        orig_handlers = para_logger.handlers[:]
+        def restore():
+            para_logger.handlers[:] = orig_handlers
+        self.addCleanup(restore)
+        para_logger.handlers[:] = logging.getLogger('bzr').handlers[:]
+        para_logger.setLevel(logging.DEBUG)
 
         # Start an SSH server
         self.command_executed = []
