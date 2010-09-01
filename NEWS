@@ -20,6 +20,11 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* ``bzrlib.transform.TreeTransformBase.final_kind``,
+  ``bzrlib.transform.TreeTransform.tree_kind`` and
+  ``bzrlib.transform.TransformPreview.tree_kind`` now return None instead
+  of raising NoSuchFile.  (Vincent Ladeuil)
+
 * `decode` parameter to get() method in FtpTransport and GioTransport classes
   is deprecated. (Alexander Belchenko)
 
@@ -73,6 +78,9 @@ New Features
   ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now
   push to ``lp:~user/project/branch``.  (John Arbash Meinel)
 
+* New development format ``development8-subtree`` which is similar to the 
+  ``2a`` format and adds subtree support. (Jelmer Vernooij)
+
 Bug Fixes
 *********
 
@@ -111,12 +119,18 @@ Bug Fixes
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
 
+* ``EPIPE`` can be raised during test server shutdown. This happened on
+  gentoo only so far. (Vincent Ladeuil, #627277)
+
 * Errors occurring during http(s) test server starts should now be
   handled cleanly. (Vincent Ladeuil, #392402)
 
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
+
+* Fix spurious paramiko warning on hardy by ensuring that ``selftest``
+  properly remove its warning filter. (Vincent Ladeuil, #625686)
 
 * ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
   with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
@@ -128,10 +142,17 @@ Bug Fixes
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
 
+* ``PQM`` will no longer ignore syntax errors in submissions.
+  (Vincent Ladeuil, #626667)
+
 * Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
   which can result in "missing referenced chk root keys" errors when
   fetching from repositories with affected revisions.
   (Andrew Bennetts, #522637)
+
+* strace test-helper tests cope with the new Ubuntu policy of not allowing
+  users to attach to their own processes by default.
+  (Martin Pool, #626679)
 
 * ``Transport.stat`` on a symlink, including a transport pointing directly
   to a symlink, now returns information about the symlink.
@@ -145,6 +166,10 @@ Improvements
   the files if they can easily be recovered using revert, otherwise they
   will be backed up (adding an extention of the form .~#~).
   (Marius Kruger, #400554)
+
+* ``bzr revert`` and ``bzr status`` are up to 15% faster on large trees
+  with many changes by not repeatedly building a list of all file-ids.
+  (Andrew Bennetts)
 
 * Decrease memory consumption when many chk index pages are loaded. (Such
   as during ``bzr co`` or ``bzr ls -R`` of a large tree.) Often we need to
