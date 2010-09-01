@@ -31,6 +31,16 @@ class TestStrace(tests.TestCaseWithTransport):
 
     _test_needs_features = [StraceFeature]
 
+    def setUp(self):
+        # NB: see http://pad.lv/626679 and
+        # <https://code.launchpad.net/~mbp/bzr/626679-strace/+merge/34157>:
+        # testing strace by connecting to ourselves has repeatedly caused
+        # hangs in running the test suite; these are fixable given enough
+        # determination but given that strace is not used by any other tests
+        # at the moment and that it's only test-support code, we just leave it
+        # untested -- mbp 20100901
+        raise tests.TestSkipped("strace selftests are broken and disabled")
+
     def _check_threads(self):
         # For bug #226769, it was decided that the strace tests should not be
         # run when more than one thread is active. A lot of tests are currently
@@ -44,7 +54,6 @@ class TestStrace(tests.TestCaseWithTransport):
 
     def strace_detailed_or_skip(self, *args, **kwargs):
         """Run strace, but cope if it's not allowed"""
-        # see bug 626679
         try:
             return strace_detailed(*args, **kwargs)
         except strace.StraceError, e:
