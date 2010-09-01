@@ -339,12 +339,31 @@ class SocketDelay(object):
         return bytes_sent
 
 
+class TransportWithStopEvent(paramiko.Transport):
+    """Identical to a regular paramiko.Transport
+
+    except when the main thread is finished processing events, we set an event,
+    so that the rest of the code can wait for it.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(TransportWithStopEvent, self).__init__(*args, **kwargs)
+        self.stopped_event = threading.Event()
+
+    def run(self):
+        self.stopped_event.clear()
+        try:
+            super(TransportWithStopEvent, self).run()
+        finally:
+            self.stopped_event.set()
+
+
 class TestingSFTPConnectionHandler(SocketServer.BaseRequestHandler):
 
     def setup(self):
         self.wrap_for_latency()
         tcs = self.server.test_case_server
-        ssh_server = paramiko.Transport(self.request)
+        ssh_server = TransportWithStopEvent(self.request)
         # Set it to a channel under 'bzr' so that we get debug info
         ssh_server.set_log_channel('bzr.paramiko.transport')
         ssh_server.add_server_key(tcs.get_host_key())
@@ -355,8 +374,25 @@ class TestingSFTPConnectionHandler(SocketServer.BaseRequestHandler):
         # This blocks until the key exchange has been done
         ssh_server.start_server(None, server)
         # Continue blocking until the run() loop has completed
-        ssh_server.completion_event.clear()
-        ssh_server.completion_event.wait()
+        end_time = time.time() + 1.0
+        do_join = True
+        while True:
+            ssh_server.stopped_event.wait(0.1)
+            if not ssh_server.active:
+                e = ssh_server.get_exception()
+                if e is not None:
+                    raise e
+            else:
+                # server is still actively running for requests
+                if time.time() >= end_time:
+                    sys.stderr.write("hung waiting for paramiko.Transport"
+                                     " %s to finish" % (ssh_server.getName(),))
+                    do_join = False
+                    break
+        if do_join:
+            # We already know the thread should have exited, so this should
+            # always be fast
+            ssh_server.join(1.0)
 
     def wrap_for_latency(self):
         tcs = self.server.test_case_server
