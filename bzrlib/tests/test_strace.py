@@ -27,25 +27,6 @@ from bzrlib import (
 from bzrlib.strace import StraceFeature, strace_detailed, StraceResult
 
 
-class TestStraceFeature(tests.TestCaseWithTransport):
-
-    def test_strace_detection(self):
-        """Strace is available if its runnable."""
-        try:
-            proc = subprocess.Popen(['strace'],
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE)
-            proc.communicate()
-            found_strace = True
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                # strace is not installed
-                found_strace = False
-            else:
-                raise
-        self.assertEqual(found_strace, StraceFeature.available())
-
-
 class TestStrace(tests.TestCaseWithTransport):
 
     _test_needs_features = [StraceFeature]
