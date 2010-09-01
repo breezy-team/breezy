@@ -1428,3 +1428,28 @@ class RepositoryFormat2a(RepositoryFormatCHK2):
         """See RepositoryFormat.get_format_description()."""
         return ("Repository format 2a - rich roots, group compression"
             " and chk inventories")
+
+
+class RepositoryFormat2aSubtree(RepositoryFormat2a):
+    """A 2a repository format that supports nested trees.
+
+    """
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development-subtree')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        return ('Bazaar development format 8\n')
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format 8 - nested trees, "
+                "group compression and chk inventories")
+
+    experimental = True
+    supports_tree_reference = True

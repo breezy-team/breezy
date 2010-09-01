@@ -73,6 +73,9 @@ New Features
   ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now
   push to ``lp:~user/project/branch``.  (John Arbash Meinel)
 
+* New development format ``development8-subtree`` which is similar to the 
+  ``2a`` format and adds subtree support. (Jelmer Vernooij)
+
 Bug Fixes
 *********
 
