@@ -1663,10 +1663,6 @@ class TestCase(testtools.TestCase):
                 unicodestr = self._log_contents.decode('utf8', 'replace')
                 self._log_contents = unicodestr.encode('utf8')
             return self._log_contents
-        import bzrlib.trace
-        if bzrlib.trace._trace_file:
-            # flush the log file, to get all content
-            bzrlib.trace._trace_file.flush()
         if self._log_file is not None:
             log_contents = self._log_file.getvalue()
             try:
