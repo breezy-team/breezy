@@ -182,9 +182,9 @@ class GitBranchBuilder(object):
 
 
 def test_suite():
-    loader = tests.TestLoader()
+    loader = tests.TestUtil.TestLoader()
 
-    suite = tests.TestSuite()
+    suite = tests.TestUtil.TestSuite()
 
     testmod_names = [
         'test_blackbox',
