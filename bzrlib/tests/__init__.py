@@ -1944,15 +1944,15 @@ class TestCase(testtools.TestCase):
             variables. A value of None will unset the env variable.
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
-        :param skip_if_plan_to_signal: raise TestSkipped when true and os.kill
-            is not available.
+        :param skip_if_plan_to_signal: raise TestSkipped when true and system
+            doesn't support signalling subprocesses.
         :param allow_plugins: If False (default) pass --no-plugins to bzr.
 
         :returns: Popen object for the started process.
         """
         if skip_if_plan_to_signal:
-            if not getattr(os, 'kill', None):
-                raise TestSkipped("os.kill not available.")
+            if os.name != "posix":
+                raise TestSkipped("Sending signals not supported")
 
         if env_changes is None:
             env_changes = {}
