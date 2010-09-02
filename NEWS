@@ -154,6 +154,10 @@ Bug Fixes
   users to attach to their own processes by default.
   (Martin Pool, #626679)
 
+* Test classes like ``TestCase``, ``TestLoader``, and ``TestSuite`` should
+  be available from ``bzrlib.tests.*``. They used to be, but were
+  accidentally removed. (John Arbash Meinel, #627438)
+
 * ``Transport.stat`` on a symlink, including a transport pointing directly
   to a symlink, now returns information about the symlink.
   (Martin Pool)
