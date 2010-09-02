@@ -344,22 +344,25 @@ class TestingSFTPConnectionHandler(SocketServer.BaseRequestHandler):
     def setup(self):
         self.wrap_for_latency()
         tcs = self.server.test_case_server
-        ssh_server = paramiko.Transport(self.request)
-        ssh_server.add_server_key(tcs.get_host_key())
-        ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
-                                         StubSFTPServer, root=tcs._root,
-                                         home=tcs._server_homedir)
+        ptrans = paramiko.Transport(self.request)
+        self.paramiko_transport = ptrans
+        # Set it to a channel under 'bzr' so that we get debug info
+        ptrans.set_log_channel('bzr.paramiko.transport')
+        ptrans.add_server_key(tcs.get_host_key())
+        ptrans.set_subsystem_handler('sftp', paramiko.SFTPServer,
+                                     StubSFTPServer, root=tcs._root,
+                                     home=tcs._server_homedir)
         server = tcs._server_interface(tcs)
-        ssh_server.start_server(None, server)
-        # FIXME: Long story short:
-        # bt.test_transport.TestSSHConnections.test_bzr_connect_to_bzr_ssh
-        # fails if we wait less than 0.2 seconds... paramiko uses a lot of
-        # timeouts internally which probably mask a synchronisation
-        # problem. Note that this is the only test that requires this hack and
-        # the test may need to be fixed instead, but it's late and the test is
-        # horrible as mentioned in its comments :) -- vila 20100623
-        import time
-        time.sleep(0.2)
+        # This blocks until the key exchange has been done
+        ptrans.start_server(None, server)
+
+    def finish(self):
+        # Wait for the conversation to finish, when the paramiko.Transport
+        # thread finishes
+        # TODO: Consider timing out after XX seconds rather than hanging.
+        #       Also we could check paramiko_transport.active and possibly
+        #       paramiko_transport.getException().
+        self.paramiko_transport.join()
 
     def wrap_for_latency(self):
         tcs = self.server.test_case_server
@@ -380,7 +383,7 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
             def get_transport(self):
                 return self
             def get_log_channel(self):
-                return 'paramiko'
+                return 'bzr.paramiko'
             def get_name(self):
                 return '1'
             def get_hexdump(self):
@@ -389,11 +392,13 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
                 pass
 
         tcs = self.server.test_case_server
-        server = paramiko.SFTPServer(
+        sftp_server = paramiko.SFTPServer(
             FakeChannel(), 'sftp', StubServer(tcs), StubSFTPServer,
             root=tcs._root, home=tcs._server_homedir)
+        self.sftp_server = sftp_server
+        sys_stderr = sys.stderr # Used in error reporting during shutdown
         try:
-            server.start_subsystem(
+            sftp_server.start_subsystem(
                 'sftp', None, ssh.SocketAsChannelAdapter(self.request))
         except socket.error, e:
             if (len(e.args) > 0) and (e.args[0] == errno.EPIPE):
@@ -409,10 +414,11 @@ class TestingSFTPWithoutSSHConnectionHandler(TestingSFTPConnectionHandler):
             # seems to be the best we can do.
             # FIXME: All interpreter shutdown errors should have been related
             # to daemon threads, cleanup needed -- vila 20100623
-            import sys
-            sys.stderr.write('\nEXCEPTION %r: ' % (e.__class__,))
-            sys.stderr.write('%s\n\n' % (e,))
-        server.finish_subsystem()
+            sys_stderr.write('\nEXCEPTION %r: ' % (e.__class__,))
+            sys_stderr.write('%s\n\n' % (e,))
+
+    def finish(self):
+        self.sftp_server.finish_subsystem()
 
 
 class TestingSFTPServer(test_server.TestingThreadingTCPServer):

@@ -158,6 +158,9 @@ Bug Fixes
   to a symlink, now returns information about the symlink.
   (Martin Pool)
 
+* Wait for the SSH server to actually finish, rather than just waiting for
+  it to negotiate the key exchange. (John Arbash Meinel, #626876)
+
 Improvements
 ************
 
