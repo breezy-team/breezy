@@ -344,19 +344,25 @@ class TestingSFTPConnectionHandler(SocketServer.BaseRequestHandler):
     def setup(self):
         self.wrap_for_latency()
         tcs = self.server.test_case_server
-        ssh_server = paramiko.Transport(self.request)
+        ptrans = paramiko.Transport(self.request)
+        self.paramiko_transport = ptrans
         # Set it to a channel under 'bzr' so that we get debug info
-        ssh_server.set_log_channel('bzr.paramiko.transport')
-        ssh_server.add_server_key(tcs.get_host_key())
-        ssh_server.set_subsystem_handler('sftp', paramiko.SFTPServer,
-                                         StubSFTPServer, root=tcs._root,
-                                         home=tcs._server_homedir)
+        ptrans.set_log_channel('bzr.paramiko.transport')
+        ptrans.add_server_key(tcs.get_host_key())
+        ptrans.set_subsystem_handler('sftp', paramiko.SFTPServer,
+                                     StubSFTPServer, root=tcs._root,
+                                     home=tcs._server_homedir)
         server = tcs._server_interface(tcs)
         # This blocks until the key exchange has been done
-        ssh_server.start_server(None, server)
-        # Wait until the full conversation has been completed
-        # TODO: We could play around with timeouts here...
-        ssh_server.join()
+        ptrans.start_server(None, server)
+
+    def finish(self):
+        # Wait for the conversation to finish, when the paramiko.Transport
+        # thread finishes
+        # TODO: Consider timing out after XX seconds rather than hanging.
+        #       Also we could check paramiko_transport.active and possibly
+        #       paramiko_transport.getException().
+        self.paramiko_transport.join()
 
     def wrap_for_latency(self):
         tcs = self.server.test_case_server
