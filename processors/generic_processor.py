@@ -19,14 +19,13 @@
 
 import time
 from bzrlib import (
-    bzrdir,
     delta,
     errors,
     osutils,
     progress,
     )
 from bzrlib.repofmt import pack_repo
-from bzrlib.trace import note, mutter
+from bzrlib.trace import note
 try:
     import bzrlib.util.configobj.configobj as configobj
 except ImportError:
@@ -35,13 +34,15 @@ from bzrlib.plugins.fastimport import (
     branch_updater,
     bzr_commit_handler,
     cache_manager,
+    marks_file,
+    revision_store,
+    )
+from bzrlib.plugins.fastimport.fastimport import (
     commands,
     errors as plugin_errors,
     helpers,
     idmapfile,
-    marks_file,
     processor,
-    revision_store,
     )
 
 

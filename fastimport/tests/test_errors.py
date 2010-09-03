@@ -16,14 +16,14 @@
 
 """Test the Import errors"""
 
-from bzrlib import tests
+from testtools import TestCase
 
-from bzrlib.plugins.fastimport import (
+from bzrlib.plugins.fastimport.fastimport import (
     errors,
     )
 
 
-class TestErrors(tests.TestCase):
+class TestErrors(TestCase):
 
     def test_MissingBytes(self):
         e = errors.MissingBytes(99, 10, 8)

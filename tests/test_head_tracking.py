@@ -20,7 +20,7 @@ from cStringIO import StringIO
 
 from bzrlib import tests
 
-from bzrlib.plugins.fastimport import (
+from bzrlib.plugins.fastimport.fastimport import (
     commands,
     parser,
     )

@@ -16,14 +16,14 @@
 
 """Test how Commands are displayed"""
 
-from bzrlib import tests
+from testtools import TestCase
 
-from bzrlib.plugins.fastimport import (
+from bzrlib.plugins.fastimport.fastimport import (
     commands,
     )
 
 
-class TestBlobDisplay(tests.TestCase):
+class TestBlobDisplay(TestCase):
 
     def test_blob(self):
         c = commands.BlobCommand("1", "hello world")
@@ -34,21 +34,21 @@ class TestBlobDisplay(tests.TestCase):
         self.assertEqual("blob\ndata 11\nhello world", repr(c))
 
 
-class TestCheckpointDisplay(tests.TestCase):
+class TestCheckpointDisplay(TestCase):
 
     def test_checkpoint(self):
         c = commands.CheckpointCommand()
         self.assertEqual("checkpoint", repr(c))
 
 
-class TestCommitDisplay(tests.TestCase):
+class TestCommitDisplay(TestCase):
 
     def test_commit(self):
         # user tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "bbb", None, committer,
             "release v1.0", ":aaa", None, None)
-        self.assertEqualDiff(
+        self.assertEqual(
             "commit refs/heads/master\n"
             "mark :bbb\n"
             "committer Joe Wong <joe@example.com> 1234567890 -0600\n"
@@ -64,7 +64,7 @@ class TestCommitDisplay(tests.TestCase):
         committer = (name, 'test@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "bbb", None, committer,
             "release v1.0", ":aaa", None, None)
-        self.assertEqualDiff(
+        self.assertEqual(
             "commit refs/heads/master\n"
             "mark :bbb\n"
             "committer %s <test@example.com> 1234567890 -0600\n"
@@ -78,7 +78,7 @@ class TestCommitDisplay(tests.TestCase):
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", None, None, committer,
             "release v1.0", ":aaa", None, None)
-        self.assertEqualDiff(
+        self.assertEqual(
             "commit refs/heads/master\n"
             "committer Joe Wong <joe@example.com> 1234567890 -0600\n"
             "data 12\n"
@@ -91,7 +91,7 @@ class TestCommitDisplay(tests.TestCase):
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "bbb", None, committer,
             "release v1.0", None, None, None)
-        self.assertEqualDiff(
+        self.assertEqual(
             "commit refs/heads/master\n"
             "mark :bbb\n"
             "committer Joe Wong <joe@example.com> 1234567890 -0600\n"
@@ -105,7 +105,7 @@ class TestCommitDisplay(tests.TestCase):
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "bbb", author,
             committer, "release v1.0", ":aaa", None, None)
-        self.assertEqualDiff(
+        self.assertEqual(
             "commit refs/heads/master\n"
             "mark :bbb\n"
             "author Sue Wong <sue@example.com> 1234565432 -0600\n"
@@ -120,7 +120,7 @@ class TestCommitDisplay(tests.TestCase):
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "ddd", None, committer,
                 "release v1.0", ":aaa", [':bbb', ':ccc'], None)
-        self.assertEqualDiff(
+        self.assertEqual(
             "commit refs/heads/master\n"
             "mark :ddd\n"
             "committer Joe Wong <joe@example.com> 1234567890 -0600\n"
@@ -141,7 +141,7 @@ class TestCommitDisplay(tests.TestCase):
         committer = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.CommitCommand("refs/heads/master", "bbb", None, committer,
             "release v1.0", ":aaa", None, file_cmds)
-        self.assertEqualDiff(
+        self.assertEqual(
             "commit refs/heads/master\n"
             "mark :bbb\n"
             "committer Joe Wong <joe@example.com> 1234567890 -0600\n"
@@ -165,7 +165,7 @@ class TestCommitDisplay(tests.TestCase):
         c = commands.CommitCommand("refs/heads/master", "bbb", author,
             committer, "release v1.0", ":aaa", None, None,
             more_authors=more_authors)
-        self.assertEqualDiff(
+        self.assertEqual(
             "commit refs/heads/master\n"
             "mark :bbb\n"
             "author Sue Wong <sue@example.com> 1234565432 -0600\n"
@@ -187,7 +187,7 @@ class TestCommitDisplay(tests.TestCase):
         c = commands.CommitCommand("refs/heads/master", "bbb", None,
             committer, "release v1.0", ":aaa", None, None,
             properties=properties)
-        self.assertEqualDiff(
+        self.assertEqual(
             "commit refs/heads/master\n"
             "mark :bbb\n"
             "committer Joe Wong <joe@example.com> 1234567890 -0600\n"
@@ -199,7 +199,7 @@ class TestCommitDisplay(tests.TestCase):
             repr(c))
 
 
-class TestFeatureDisplay(tests.TestCase):
+class TestFeatureDisplay(TestCase):
 
     def test_feature(self):
         c = commands.FeatureCommand("dwim")
@@ -210,14 +210,14 @@ class TestFeatureDisplay(tests.TestCase):
         self.assertEqual("feature dwim=please", repr(c))
 
 
-class TestProgressDisplay(tests.TestCase):
+class TestProgressDisplay(TestCase):
 
     def test_progress(self):
         c = commands.ProgressCommand("doing foo")
         self.assertEqual("progress doing foo", repr(c))
 
 
-class TestResetDisplay(tests.TestCase):
+class TestResetDisplay(TestCase):
 
     def test_reset(self):
         c = commands.ResetCommand("refs/tags/v1.0", ":xxx")
@@ -228,7 +228,7 @@ class TestResetDisplay(tests.TestCase):
         self.assertEqual("reset refs/remotes/origin/master", repr(c))
 
 
-class TestTagDisplay(tests.TestCase):
+class TestTagDisplay(TestCase):
 
     def test_tag(self):
         # tagger tuple is (name, email, secs-since-epoch, secs-offset-from-utc)
@@ -245,7 +245,7 @@ class TestTagDisplay(tests.TestCase):
     def test_tag_no_from(self):
         tagger = ('Joe Wong', 'joe@example.com', 1234567890, -6 * 3600)
         c = commands.TagCommand("refs/tags/v1.0", None, tagger, "create v1.0")
-        self.assertEqualDiff(
+        self.assertEqual(
             "tag refs/tags/v1.0\n"
             "tagger Joe Wong <joe@example.com> 1234567890 -0600\n"
             "data 11\n"
@@ -253,7 +253,7 @@ class TestTagDisplay(tests.TestCase):
             repr(c))
 
 
-class TestFileModifyDisplay(tests.TestCase):
+class TestFileModifyDisplay(TestCase):
 
     def test_filemodify_file(self):
         c = commands.FileModifyCommand("foo/bar", "file", False, ":23", None)
@@ -278,14 +278,14 @@ class TestFileModifyDisplay(tests.TestCase):
         self.assertEqual("M 160000 revision-id-info tree-info", repr(c))
 
 
-class TestFileDeleteDisplay(tests.TestCase):
+class TestFileDeleteDisplay(TestCase):
 
     def test_filedelete(self):
         c = commands.FileDeleteCommand("foo/bar")
         self.assertEqual("D foo/bar", repr(c))
 
 
-class TestFileCopyDisplay(tests.TestCase):
+class TestFileCopyDisplay(TestCase):
 
     def test_filecopy(self):
         c = commands.FileCopyCommand("foo/bar", "foo/baz")
@@ -297,7 +297,7 @@ class TestFileCopyDisplay(tests.TestCase):
         self.assertEqual('C "foo/b a r" foo/b a z', repr(c))
 
 
-class TestFileRenameDisplay(tests.TestCase):
+class TestFileRenameDisplay(TestCase):
 
     def test_filerename(self):
         c = commands.FileRenameCommand("foo/bar", "foo/baz")
@@ -309,14 +309,14 @@ class TestFileRenameDisplay(tests.TestCase):
         self.assertEqual('R "foo/b a r" foo/b a z', repr(c))
 
 
-class TestFileDeleteAllDisplay(tests.TestCase):
+class TestFileDeleteAllDisplay(TestCase):
 
     def test_filedeleteall(self):
         c = commands.FileDeleteAllCommand()
         self.assertEqual("deleteall", repr(c))
 
 
-class TestPathChecking(tests.TestCase):
+class TestPathChecking(TestCase):
 
     def test_filemodify_path_checking(self):
         self.assertRaises(ValueError, commands.FileModifyCommand, "",

@@ -20,7 +20,6 @@ import atexit
 import os
 import shutil
 import tempfile
-import time
 import weakref
 
 from bzrlib import lru_cache, trace
@@ -51,8 +50,7 @@ class _Cleanup(object):
             self.small_blobs.close()
             self.small_blobs = None
         if self.tempdir is not None:
-            shutils.rmtree(self.tempdir)
-        
+            shutil.rmtree(self.tempdir)
 
 
 class _Cleanup(object):

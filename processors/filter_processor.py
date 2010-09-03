@@ -21,10 +21,12 @@ from bzrlib import osutils
 from bzrlib.trace import (
     warning,
     )
-from bzrlib.plugins.fastimport import (
+from bzrlib.plugins.fastimport.fastimport import (
     commands,
-    helpers,
     processor,
+    )
+from bzrlib.plugins.fastimport import (
+    helpers,
     )
 
 

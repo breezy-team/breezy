@@ -25,7 +25,11 @@ from bzrlib import (
     revision,
     serializer,
     )
-from bzrlib.plugins.fastimport import commands, helpers, processor
+from bzrlib.plugins.fastimport.fastimport import (
+    commands,
+    helpers,
+    processor,
+    )
 
 
 _serializer_handles_escaping = hasattr(serializer.Serializer,

@@ -18,13 +18,14 @@
 
 from cStringIO import StringIO
 
-from bzrlib import tests
+from testtools import TestCase
 
-from bzrlib.plugins.fastimport import (
+from bzrlib.plugins.fastimport.fastimport import (
     parser,
     )
-from bzrlib.plugins.fastimport.processors.filter_processor import (
-    FilterProcessor,
+
+from bzrlib.plugins.fastimport.processors import (
+    filter_processor,
     )
 
 
@@ -103,17 +104,18 @@ M 644 :4 doc/index.txt
 """
 
 
-class TestCaseWithFiltering(tests.TestCase):
+class TestCaseWithFiltering(TestCase):
 
     def assertFiltering(self, input, params, expected):
         outf = StringIO()
-        proc = FilterProcessor(None, params=params)
+        proc = filter_processor.FilterProcessor(
+            None, params=params)
         proc.outf = outf
         s = StringIO(input)
         p = parser.ImportParser(s)
         proc.process(p.iter_commands)
         out = outf.getvalue()
-        self.assertEqualDiff(expected, out)
+        self.assertEquals(expected, out)
 
 
 class TestNoFiltering(TestCaseWithFiltering):

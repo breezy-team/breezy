@@ -21,9 +21,8 @@ from bzrlib import (
     tests,
     )
 
-from bzrlib.plugins.fastimport import (
+from bzrlib.plugins.fastimport.fastimport import (
     commands,
-    errors,
     )
 
 from bzrlib.plugins.fastimport.processors import (

@@ -348,7 +348,7 @@ class cmd_fast_import(Command):
         user_map=None):
         from bzrlib.errors import BzrCommandError, NotBranchError
         from bzrlib.plugins.fastimport.processors import generic_processor
-        from bzrlib.plugins.fastimport.helpers import (
+        from bzrlib.plugins.fastimport.fastimport.helpers import (
             open_destination_directory,
             )
         # If no format is given and the user is running a release

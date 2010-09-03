@@ -25,7 +25,7 @@ Each routine returns timestamp,timezone where
 
 import time
 
-from bzrlib.plugins.fastimport import errors
+from bzrlib.plugins.fastimport.fastimport import errors
 
 
 def parse_raw(s, lineno=0):
