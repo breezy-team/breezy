@@ -155,6 +155,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         if getattr(os, "fork", None) is not None:
             self.addCleanup(setattr, os, "fork", os.fork)
             del os.fork
-        out, err = self.run_bzr(["selftest", "--parallel=fork", "-s", "x"], 3)
+        out, err = self.run_bzr(["selftest", "--parallel=fork", "-s", "bt.x"],
+            retcode=3)
         self.assertIn("platform does not support fork", err)
         self.assertFalse(out)

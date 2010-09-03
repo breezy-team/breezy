@@ -3570,7 +3570,7 @@ class cmd_selftest(Command):
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
-        from bzrlib.tests import parallel_registry, selftest
+        from bzrlib.tests import selftest
 
         # Make deprecation warnings visible, unless -Werror is set
         symbol_versioning.activate_deprecation_warnings(override=False)
@@ -3596,10 +3596,6 @@ class cmd_selftest(Command):
                 import msvcrt
                 msvcrt.setmode(sys.stdout.fileno(), os.O_BINARY)
         if parallel:
-            if (parallel is parallel_registry.get("fork")
-                    and getattr(os, "fork", None) is None):
-                raise errors.BzrCommandError("platform does not support fork,"
-                    " try --parallel=subprocess instead.")
             self.additional_selftest_args.setdefault(
                 'suite_decorators', []).append(parallel)
         if benchmark:
