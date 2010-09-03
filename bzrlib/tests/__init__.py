@@ -135,6 +135,10 @@ _unitialized_attr = object()
 SUBUNIT_SEEK_SET = 0
 SUBUNIT_SEEK_CUR = 1
 
+# These are intentionally brought into this namespace. That way plugins, etc
+# can just "from bzrlib.tests import TestCase, TestLoader, etc"
+TestSuite = TestUtil.TestSuite
+TestLoader = TestUtil.TestLoader
 
 class ExtendedTestResult(testtools.TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
