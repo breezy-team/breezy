@@ -346,9 +346,8 @@ class cmd_fast_import(Command):
         trees=False, count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
         mode=None, import_marks=None, export_marks=None, format=None,
         user_map=None):
-        from bzrlib.errors import BzrCommandError, NotBranchError
         from bzrlib.plugins.fastimport.processors import generic_processor
-        from bzrlib.plugins.fastimport.fastimport.helpers import (
+        from fastimport.helpers import (
             open_destination_directory,
             )
         # If no format is given and the user is running a release
@@ -700,7 +699,7 @@ class cmd_fast_export(Command):
         plain=True):
         from bzrlib.plugins.fastimport import bzr_exporter
 
-        if marks:                                              
+        if marks:
             import_marks = export_marks = marks
         exporter = bzr_exporter.BzrFastExporter(source,
             destination=destination,
@@ -882,7 +881,7 @@ class cmd_fast_export_from_p4(Command):
     bzrp4 must be installed as its p4_fast_export.py module is used under
     the covers to do the export.  bzrp4 can be downloaded from
     https://launchpad.net/bzrp4/.
-    
+
     The P4PORT environment variable must be set, and you must be logged
     into the Perforce server.
 

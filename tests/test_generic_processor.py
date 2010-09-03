@@ -17,11 +17,10 @@
 import time
 
 from bzrlib import (
-    branch,
     tests,
     )
 
-from bzrlib.plugins.fastimport.fastimport import (
+from fastimport import (
     commands,
     )
 

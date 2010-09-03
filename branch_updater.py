@@ -21,7 +21,7 @@ from operator import itemgetter
 from bzrlib import bzrdir, errors, osutils, transport
 from bzrlib.trace import error, note
 
-from bzrlib.plugins.fastimport.fastimport.helpers import (
+from fastimport.helpers import (
     single_plural,
     )
 from bzrlib.plugins.fastimport.helpers import (

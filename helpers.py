@@ -16,7 +16,7 @@
 
 """Miscellaneous useful stuff."""
 
-from bzrlib.plugins.fastimport.fastimport.helpers import (
+from fastimport.helpers import (
     common_path,
     )
 

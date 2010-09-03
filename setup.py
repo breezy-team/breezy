@@ -8,7 +8,7 @@ bzr_minimum_version = (1, 1, 0)
 bzr_maximum_version = None
 
 if __name__ == '__main__':
-    setup(name="fastimport",
+    setup(name="bzr-fastimport",
           version="0.9.0dev0",
           description="stream-based import into and export from Bazaar.",
           author="Canonical Ltd",

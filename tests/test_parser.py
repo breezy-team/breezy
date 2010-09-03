@@ -20,7 +20,7 @@ import StringIO
 
 from bzrlib import tests
 
-from bzrlib.plugins.fastimport.fastimport import (
+from fastimport import (
     errors,
     parser,
     )

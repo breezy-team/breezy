@@ -37,7 +37,7 @@ from bzrlib.plugins.fastimport import (
     marks_file,
     revision_store,
     )
-from bzrlib.plugins.fastimport.fastimport import (
+from fastimport import (
     commands,
     errors as plugin_errors,
     helpers,

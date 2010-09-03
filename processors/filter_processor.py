@@ -21,7 +21,7 @@ from bzrlib import osutils
 from bzrlib.trace import (
     warning,
     )
-from bzrlib.plugins.fastimport.fastimport import (
+from fastimport import (
     commands,
     processor,
     )

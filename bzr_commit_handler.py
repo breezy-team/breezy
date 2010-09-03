@@ -25,7 +25,7 @@ from bzrlib import (
     revision,
     serializer,
     )
-from bzrlib.plugins.fastimport.fastimport import (
+from fastimport import (
     commands,
     helpers,
     processor,
