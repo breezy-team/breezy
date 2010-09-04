@@ -84,6 +84,9 @@ New Features
 Bug Fixes
 *********
 
+* Allow using string bug ID with generic bug trackers.
+  (Alexandre Garnier, #440472)
+
 * Allow using both --using and --diff-options. 
   (Matthäus G. Chajdas, #234708)
 

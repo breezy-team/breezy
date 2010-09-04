@@ -114,8 +114,8 @@ class TestBuiltinTrackers(TestCaseWithMemoryTransport):
         config = branch.get_config()
         config.set_user_option('bugtracker_foo_url', 'http://bugs.com/{id}/view.html')
         tracker = bugtracker.tracker_registry.get_tracker('foo', branch)
-        self.assertEqual('http://bugs.com/1234/view.html',
-                         tracker.get_bug_url('1234'))
+        self.assertEqual('http://bugs.com/ABC-1234/view.html',
+                         tracker.get_bug_url('ABC-1234'))
 
     def test_generic_incorrect_url(self):
         branch = self.make_branch('some_branch')
