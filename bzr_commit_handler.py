@@ -26,7 +26,6 @@ from bzrlib import (
     serializer,
     )
 from fastimport import (
-    commands,
     helpers,
     processor,
     )
@@ -34,6 +33,12 @@ from fastimport import (
 
 _serializer_handles_escaping = hasattr(serializer.Serializer,
     'squashes_xml_invalid_characters')
+
+# Bazaar file kinds
+FILE_KIND = 'file'
+DIRECTORY_KIND = 'directory'
+SYMLINK_KIND = 'symlink'
+TREE_REFERENCE_KIND = 'tree-reference'
 
 
 def copy_inventory(inv):
@@ -826,9 +831,9 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
 
     def modify_handler(self, filecmd):
         if filecmd.dataref is not None:
-            if filecmd.kind == commands.DIRECTORY_KIND:
+            if filecmd.kind == DIRECTORY_KIND:
                 data = None
-            elif filecmd.kind == commands.TREE_REFERENCE_KIND:
+            elif filecmd.kind == TREE_REFERENCE_KIND:
                 data = filecmd.dataref
             else:
                 data = self.cache_mgr.fetch_blob(filecmd.dataref)

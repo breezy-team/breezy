@@ -23,7 +23,9 @@ import tempfile
 import weakref
 
 from bzrlib import lru_cache, trace
-from bzrlib.plugins.fastimport import branch_mapper, helpers
+from fastimport.helpers import (
+    single_plural,
+    )
 
 
 class _Cleanup(object):
@@ -174,7 +176,7 @@ class CacheManager(object):
                 size = size / 1024
                 unit = 'G'
         note("    %-12s: %8.1f %s (%d %s)" % (label, size, unit, count,
-            helpers.single_plural(count, "item", "items")))
+            single_plural(count, "item", "items")))
 
     def clear_all(self):
         """Free up any memory used by the caches."""
@@ -191,7 +193,7 @@ class CacheManager(object):
         total_blobs = len(sticky_blobs)
         blobs.sort(key=lambda k:len(sticky_blobs[k]))
         if self._tempdir is None:
-            tempdir = tempfile.mkdtemp(prefix='bzr_fastimport_blobs-')
+            tempdir = tempfile.mkdtemp(prefix='fastimport_blobs-')
             self._tempdir = tempdir
             self._cleanup.tempdir = self._tempdir
             self._cleanup.small_blobs = tempfile.TemporaryFile(
@@ -232,7 +234,6 @@ class CacheManager(object):
         trace.note('flushed %d/%d blobs w/ %.1fMB (%.1fMB small) to disk'
                    % (count, total_blobs, bytes / 1024. / 1024,
                       n_small_bytes / 1024. / 1024))
-        
 
     def store_blob(self, id, data):
         """Store a blob of data."""

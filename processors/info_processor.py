@@ -17,15 +17,17 @@
 """Import processor that dump stats about the input (and doesn't import)."""
 
 
-from bzrlib.trace import (
-    note,
-    warning,
-    )
 from bzrlib.plugins.fastimport import (
     cache_manager,
+    )
+
+from fastimport import (
     commands,
-    helpers,
     processor,
+    )
+from fastimport.helpers import (
+    invert_dict,
+    invert_dictset,
     )
 
 
@@ -101,7 +103,7 @@ class InfoProcessor(processor.ImportProcessor):
                 }
             self._dump_stats_group("Parent counts", p_items, str)
             self._dump_stats_group("Commit analysis", flags.iteritems(), _found)
-            heads = helpers.invert_dictset(self.cache_mgr.heads)
+            heads = invert_dictset(self.cache_mgr.heads)
             self._dump_stats_group("Head analysis", heads.iteritems(), None,
                                     _iterable_as_config_list)
             # note("\t%d\t%s" % (len(self.committers), 'unique committers'))
@@ -125,7 +127,7 @@ class InfoProcessor(processor.ImportProcessor):
             self._dump_stats_group("Blob usage tracking",
                 self.blobs.iteritems(), len, _iterable_as_config_list)
         if self.blob_ref_counts:
-            blobs_by_count = helpers.invert_dict(self.blob_ref_counts)
+            blobs_by_count = invert_dict(self.blob_ref_counts)
             blob_items = blobs_by_count.items()
             blob_items.sort()
             self._dump_stats_group("Blob reference counts",
