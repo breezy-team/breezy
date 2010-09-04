@@ -123,8 +123,18 @@ class GenericProcessor(processor.ImportProcessor):
 
     def __init__(self, bzrdir, params=None, verbose=False, outf=None,
             prune_empty_dirs=True):
-        processor.ImportProcessor.__init__(self, bzrdir, params, verbose)
+        processor.ImportProcessor.__init__(self, params, verbose)
         self.prune_empty_dirs = prune_empty_dirs
+        self.bzrdir = bzrdir
+        try:
+            # Might be inside a branch
+            (self.working_tree, self.branch) = bzrdir._get_tree_branch()
+            self.repo = self.branch.repository
+        except errors.NotBranchError:
+            # Must be inside a repository
+            self.working_tree = None
+            self.branch = None
+            self.repo = bzrdir.open_repository()
 
     def pre_process(self):
         self._start_time = time.time()

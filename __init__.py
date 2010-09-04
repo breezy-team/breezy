@@ -495,7 +495,7 @@ class cmd_fast_import_filter(Command):
             'include_paths': include_paths,
             'exclude_paths': exclude_paths,
             }
-        return _run(source, filter_processor.FilterProcessor, None, params,
+        return _run(source, filter_processor.FilterProcessor, params,
             verbose, user_map=user_map)
 
 
@@ -529,7 +529,7 @@ class cmd_fast_import_info(Command):
     aliases = []
     def run(self, source, verbose=False):
         from bzrlib.plugins.fastimport.processors import info_processor
-        return _run(source, info_processor.InfoProcessor, None, {}, verbose)
+        return _run(source, info_processor.InfoProcessor, {}, verbose)
 
 
 class cmd_fast_import_query(Command):
@@ -588,7 +588,7 @@ class cmd_fast_import_query(Command):
         params = helpers.defines_to_dict(commands) or {}
         if commit_mark:
             params['commit-mark'] = commit_mark
-        return _run(source, query_processor.QueryProcessor, None, params,
+        return _run(source, query_processor.QueryProcessor, params,
             verbose)
 
 

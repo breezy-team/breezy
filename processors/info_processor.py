@@ -42,9 +42,8 @@ class InfoProcessor(processor.ImportProcessor):
     the source.
     """
 
-    def __init__(self, target=None, params=None, verbose=0, outf=None):
-        # Allow creation without a target
-        processor.ImportProcessor.__init__(self, target, params, verbose,
+    def __init__(self, params=None, verbose=0, outf=None):
+        processor.ImportProcessor.__init__(self, params, verbose,
             outf=outf)
 
     def pre_process(self):

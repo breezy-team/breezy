@@ -17,7 +17,7 @@
 """Import processor that queries the input (and doesn't import)."""
 
 
-from bzrlib.plugins.fastimport import (
+from fastimport import (
     commands,
     processor,
     )
@@ -32,9 +32,8 @@ class QueryProcessor(processor.ImportProcessor):
     known_params = commands.COMMAND_NAMES + commands.FILE_COMMAND_NAMES + \
         ['commit-mark']
 
-    def __init__(self, target=None, params=None, verbose=False):
-        # Allow creation without a target
-        processor.ImportProcessor.__init__(self, target, params, verbose)
+    def __init__(self, params=None, verbose=False):
+        processor.ImportProcessor.__init__(self, params, verbose)
         self.parsed_params = {}
         self.interesting_commit = None
         self._finished = False
