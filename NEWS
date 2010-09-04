@@ -20,6 +20,11 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* ``bzrlib.transform.TreeTransformBase.final_kind``,
+  ``bzrlib.transform.TreeTransform.tree_kind`` and
+  ``bzrlib.transform.TransformPreview.tree_kind`` now return None instead
+  of raising NoSuchFile.  (Vincent Ladeuil)
+
 * `decode` parameter to get() method in FtpTransport and GioTransport classes
   is deprecated. (Alexander Belchenko)
 
@@ -149,9 +154,16 @@ Bug Fixes
   users to attach to their own processes by default.
   (Martin Pool, #626679)
 
+* Test classes like ``TestCase``, ``TestLoader``, and ``TestSuite`` should
+  be available from ``bzrlib.tests.*``. They used to be, but were
+  accidentally removed. (John Arbash Meinel, #627438)
+
 * ``Transport.stat`` on a symlink, including a transport pointing directly
   to a symlink, now returns information about the symlink.
   (Martin Pool)
+
+* Wait for the SSH server to actually finish, rather than just waiting for
+  it to negotiate the key exchange. (John Arbash Meinel, #626876)
 
 Improvements
 ************
@@ -243,6 +255,10 @@ Testing
 
 * HTTP test servers will leak less threads (and sockets) and will not hang on
   AIX anymore. (Vincent Ladeuil, #405745)
+
+* The test suite now simply holds log files in memory, rather than writing them
+  out to disk and then reading them back in and deleting them.
+  (Andrew Bennetts)
 
 * The way ``bzr selftest --parallel`` generates N partitions of tests to
   run in parallel has changed.  Instead of splitting the list of tests at

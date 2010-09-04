@@ -900,8 +900,6 @@ class TestSSHConnections(tests.TestCaseWithTransport):
 
         bzr+ssh:// should cause bzr to run a remote bzr smart server over SSH.
         """
-        raise tests.TestSkipped('this test was recently broken,'
-                                ' see bug #626876')
         # This test actually causes a bzr instance to be invoked, which is very
         # expensive: it should be the only such test in the test suite.
         # A reasonable evolution for this would be to simply check inside
