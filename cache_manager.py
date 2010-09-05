@@ -79,7 +79,7 @@ class _Cleanup(object):
             self.small_blobs.close()
             self.small_blobs = None
         if self.tempdir is not None:
-            shutils.rmtree(self.tempdir)
+            shutil.rmtree(self.tempdir)
         
 
 class CacheManager(object):

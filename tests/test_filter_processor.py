@@ -109,7 +109,7 @@ class TestCaseWithFiltering(TestCase):
     def assertFiltering(self, input, params, expected):
         outf = StringIO()
         proc = filter_processor.FilterProcessor(
-            None, params=params)
+            params=params)
         proc.outf = outf
         s = StringIO(input)
         p = parser.ImportParser(s)
