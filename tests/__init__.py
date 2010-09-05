@@ -23,11 +23,7 @@ from bzrlib.tests.TestUtil import TestLoader
 def test_suite():
     module_names = [__name__ + '.' + x for x in [
         'test_branch_mapper',
-        'test_filter_processor',
         'test_generic_processor',
-        'test_head_tracking',
-        'test_helpers',
-        'test_parser',
         'test_revision_store',
         ]]
     loader = TestLoader()

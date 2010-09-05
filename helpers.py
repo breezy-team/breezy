@@ -16,39 +16,6 @@
 
 """Miscellaneous useful stuff."""
 
-from fastimport.helpers import (
-    common_path,
-    )
-
-
-def common_directory(paths):
-    """Find the deepest common directory of a list of paths.
-
-    :return: if no paths are provided, None is returned;
-      if there is no common directory, '' is returned;
-      otherwise the common directory with a trailing / is returned.
-    """
-    from bzrlib import osutils
-    def get_dir_with_slash(path):
-        if path == '' or path.endswith('/'):
-            return path
-        else:
-            dirname, basename = osutils.split(path)
-            if dirname == '':
-                return dirname
-            else:
-                return dirname + '/'
-
-    if not paths:
-        return None
-    elif len(paths) == 1:
-        return get_dir_with_slash(paths[0])
-    else:
-        common = common_path(paths[0], paths[1])
-        for path in paths[2:]:
-            common = common_path(common, path)
-        return get_dir_with_slash(common)
-
 
 def escape_commit_message(message):
     """Replace xml-incompatible control characters."""
