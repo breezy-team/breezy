@@ -85,7 +85,7 @@ class GenericCommitHandler(processor.CommitHandler):
         self.data_for_commit[inventory.ROOT_ID] = []
 
         # Track the heads and get the real parent list
-        parents = self.cache_mgr.track_heads(self.command)
+        parents = self.cache_mgr.reftracker.track_heads(self.command)
 
         # Convert the parent commit-ids to bzr revision-ids
         if parents:

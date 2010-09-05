@@ -331,15 +331,16 @@ class GenericProcessor(processor.ImportProcessor):
             marks_file.export_marks(self.params.get("export-marks"),
                 self.cache_mgr.revision_ids)
 
-        if self.cache_mgr.last_ref == None:
+        if self.cache_mgr.reftracker.last_ref == None:
             """Nothing to refresh"""
             return
 
         # Update the branches
         self.note("Updating branch information ...")
         updater = branch_updater.BranchUpdater(self.repo, self.branch,
-            self.cache_mgr, helpers.invert_dictset(self.cache_mgr.heads),
-            self.cache_mgr.last_ref, self.tags)
+            self.cache_mgr, helpers.invert_dictset(
+                self.cache_mgr.reftracker.heads),
+            self.cache_mgr.reftracker.last_ref, self.tags)
         branches_updated, branches_lost = updater.update()
         self._branch_count = len(branches_updated)
 
@@ -504,7 +505,7 @@ class GenericProcessor(processor.ImportProcessor):
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
         if self.skip_total and self._revision_count < self.skip_total:
-            self.cache_mgr.track_heads(cmd)
+            self.cache_mgr.reftracker.track_heads(cmd)
             # Check that we really do know about this commit-id
             if not self.cache_mgr.revision_ids.has_key(cmd.id):
                 raise plugin_errors.BadRestart(cmd.id)
@@ -519,7 +520,7 @@ class GenericProcessor(processor.ImportProcessor):
             return
         if self.first_incremental_commit:
             self.first_incremental_commit = None
-            parents = self.cache_mgr.track_heads(cmd)
+            parents = self.cache_mgr.reftracker.track_heads(cmd)
 
         # 'Commit' the revision and report progress
         handler = self.commit_handler_factory(cmd, self.cache_mgr,
@@ -582,7 +583,7 @@ class GenericProcessor(processor.ImportProcessor):
             return
 
         if cmd.from_ is not None:
-            self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
+            self.cache_mgr.reftracker.track_heads_for_ref(cmd.ref, cmd.from_)
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""

@@ -68,8 +68,8 @@ class InfoProcessor(processor.ImportProcessor):
         for usage in ['new', 'used', 'unknown', 'unmarked']:
             self.blobs[usage] = set()
         self.blob_ref_counts = {}
-        # Head tracking - delegate to the cache manager
-        self.cache_mgr = cache_manager.CacheManager(inventory_cache_size=0)
+        # Head tracking
+        self.reftracker = cache_manager.RefTracker()
         # Stuff to cache: a map from mark to # of times that mark is merged
         self.merges = {}
         # Stuff to cache: these are maps from mark to sets
@@ -102,7 +102,7 @@ class InfoProcessor(processor.ImportProcessor):
                 }
             self._dump_stats_group("Parent counts", p_items, str)
             self._dump_stats_group("Commit analysis", flags.iteritems(), _found)
-            heads = invert_dictset(self.cache_mgr.heads)
+            heads = invert_dictset(self.reftracker.heads)
             self._dump_stats_group("Head analysis", heads.iteritems(), None,
                                     _iterable_as_config_list)
             # note("\t%d\t%s" % (len(self.committers), 'unique committers'))
@@ -213,7 +213,7 @@ class InfoProcessor(processor.ImportProcessor):
                 self.copy_source_paths.setdefault(cmd.id, set()).add(fc.src_path)
 
         # Track the heads
-        parents = self.cache_mgr.track_heads(cmd)
+        parents = self.reftracker.track_heads(cmd)
 
         # Track the parent counts
         parent_count = len(parents)
@@ -240,7 +240,8 @@ class InfoProcessor(processor.ImportProcessor):
             self.lightweight_tags += 1
         else:
             if cmd.from_ is not None:
-                self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
+                self.reftracker.track_heads_for_ref(
+                    cmd.ref, cmd.from_)
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""

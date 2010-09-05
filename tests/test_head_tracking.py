@@ -222,13 +222,13 @@ class TestHeadTracking(tests.TestCase):
         cm = CacheManager()
         for cmd in p.iter_commands():
             if isinstance(cmd, commands.CommitCommand):
-                cm.track_heads(cmd)
+                cm.reftracker.track_heads(cmd)
                 # eat the file commands
                 list(cmd.file_iter())
             elif isinstance(cmd, commands.ResetCommand):
                 if cmd.from_ is not None:
-                    cm.track_heads_for_ref(cmd.ref, cmd.from_)
-        self.assertEqual(cm.heads, expected)
+                    cm.reftracker.track_heads_for_ref(cmd.ref, cmd.from_)
+        self.assertEqual(cm.reftracker.heads, expected)
 
     def test_mainline(self):
         self.assertHeads(_SAMPLE_MAINLINE, {
