@@ -84,11 +84,11 @@ New Features
 Bug Fixes
 *********
 
-* Allow using string bug ID with generic bug trackers.
-  (Alexandre Garnier, #440472)
-
 * Allow using both --using and --diff-options. 
   (Matthäus G. Chajdas, #234708)
+
+* Allow using non-integer bug ID with generic bug trackers.
+  (Alexandre Garnier, #440472)
 
 * ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
   previously-unversioned directory within the tree: the directory is

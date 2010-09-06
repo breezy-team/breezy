@@ -114,6 +114,14 @@ class TestBuiltinTrackers(TestCaseWithMemoryTransport):
         config = branch.get_config()
         config.set_user_option('bugtracker_foo_url', 'http://bugs.com/{id}/view.html')
         tracker = bugtracker.tracker_registry.get_tracker('foo', branch)
+        self.assertEqual('http://bugs.com/1234/view.html',
+                         tracker.get_bug_url('1234'))
+
+    def test_generic_registered_non_integer(self):
+        branch = self.make_branch('some_branch')
+        config = branch.get_config()
+        config.set_user_option('bugtracker_foo_url', 'http://bugs.com/{id}/view.html')
+        tracker = bugtracker.tracker_registry.get_tracker('foo', branch)
         self.assertEqual('http://bugs.com/ABC-1234/view.html',
                          tracker.get_bug_url('ABC-1234'))
 
@@ -173,15 +181,13 @@ class TestUniqueIntegerBugTracker(TestCaseWithMemoryTransport):
         self.assertRaises(
             errors.MalformedBugIdentifier, tracker.check_bug_id, 'red')
 
-
-class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
-    """Tests for TracTracker."""
+class TestURLParametrizedBugTracker(TestCaseWithMemoryTransport):
+    """Tests for URLParametrizedBugTracker."""
 
     def setUp(self):
         TestCaseWithMemoryTransport.setUp(self)
         self.url = 'http://twistedmatrix.com/trac'
-        self.tracker = bugtracker.URLParametrizedIntegerBugTracker('some',
-                                                                   'ticket/')
+        self.tracker = bugtracker.URLParametrizedBugTracker('some', 'ticket/')
 
     def test_get_with_unsupported_tag(self):
         """If asked for an unrecognized or unconfigured tag, return None."""
@@ -202,6 +208,22 @@ class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
         self.assertEqual(
             urlutils.join(self.url, 'ticket/') + '1234',
             tracker.get_bug_url('1234'))
+
+    def test_get_bug_url_for_integer_id(self):
+        self.tracker.check_bug_id('1234')
+
+    def test_get_bug_url_for_non_integer_id(self):
+        self.tracker.check_bug_id('ABC-1234')
+
+
+class TestURLParametrizedIntegerBugTracker(TestCaseWithMemoryTransport):
+    """Tests for URLParametrizedIntegerBugTracker."""
+
+    def setUp(self):
+        TestCaseWithMemoryTransport.setUp(self)
+        self.url = 'http://twistedmatrix.com/trac'
+        self.tracker = bugtracker.URLParametrizedIntegerBugTracker('some',
+                                                                   'ticket/')
 
     def test_get_bug_url_for_bad_bug(self):
         """When given a bug identifier that is invalid for Trac, get_bug_url
