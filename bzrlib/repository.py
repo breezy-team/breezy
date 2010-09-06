@@ -25,6 +25,7 @@ from bzrlib import (
     check,
     chk_map,
     config,
+    controldir,
     debug,
     fetch as _mod_fetch,
     fifo_cache,
@@ -242,8 +243,7 @@ class CommitBuilder(object):
 
     def _gen_revision_id(self):
         """Return new revision-id."""
-        return generate_ids.gen_revision_id(self._config.username(),
-                                            self._timestamp)
+        return generate_ids.gen_revision_id(self._committer, self._timestamp)
 
     def _generate_revision_if_needed(self):
         """Create a revision id if None was supplied.
@@ -892,7 +892,7 @@ class RepositoryWriteLockResult(LogicalLockResult):
 # Repositories
 
 
-class Repository(_RelockDebugMixin, bzrdir.ControlComponent):
+class Repository(_RelockDebugMixin, controldir.ControlComponent):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -3377,6 +3377,11 @@ format_registry.register_lazy(
     'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormat2a',
+    )
+format_registry.register_lazy(
+    'Bazaar development format 8\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormat2aSubtree',
     )
 
 

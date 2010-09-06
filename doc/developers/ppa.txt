@@ -18,16 +18,14 @@ As of June 2010, there are three PPAs:
 <https://launchpad.net/~bzr/+archive>
     Final released versions and updates.
 
+<https://launchpad.net/~bzr/+archive/proposed>
+    Proposed uploads to move into ~bzr, awaiting testing.
+
 <https://launchpad.net/~bzr-beta-ppa/+archive>
     Beta releases.
 
 <https://launchpad.net/~bzr-nightly-ppa/+archive>
     Automatic nightly builds from trunk.
-
-We build packages for every supported Ubuntu release
-<https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
-when the release passes end-of-life because all users should
-have upgraded by then.  
 
 We build a distinct package for each distrorelease.  
 If you upload a release-specific version, you should add a suffix to the
@@ -42,14 +40,33 @@ versions it is also copied to the main PPA.
 
 The packaging information is kept in branches of bzr on Launchpad, named
 like
-<https://code.launchpad.net/~bzr/bzr/packaging-hardy>.
+<https://code.launchpad.net/~bzr/ubuntu/hardy/bzr/bzr-ppa>.
 or
-<lp:~bzr/bzr/packaging-hardy>.  These branches are intended to be used
+<lp:~bzr/ubuntu/hardy/bzr/bzr-ppa>.  These branches are intended to be used
 with the ``bzr-builddeb`` plugin.
 
 **You should almost always upload to the beta ppa first** and then either 
 upload again or copy the packages into the release ppa.  That reduces the 
 risk of breaking the main archive from which people get bzr updates.
+
+
+Supported releases
+------------------
+
+We build packages for every supported Ubuntu release
+<https://wiki.ubuntu.com/Releases>.  Packages need no longer be updated
+when the release passes end-of-life because all users should
+have upgraded by then.  
+
+As of August 2010, the following releases are supported:
+
+* Maverick 
+* Lucid LTS
+* Karmic
+* Jaunty (support ends October 2010)
+* Hardy LTS
+* Dapper LTS (supported but no longer updated for new releases)
+
 
 Preconditions
 -------------
@@ -62,7 +79,7 @@ Preconditions
 On reasonably recent versions of Ubuntu you no longer need special dput
 configuration, because you can just say ::
 
-  dput ppa:bzr/2.1-proposed <source.changes
+  dput ppa:bzr/proposed <source.changes
   
 
 However, you may still want to add these lines to ``~/.dput.cf`` prevent 
@@ -120,6 +137,14 @@ It may be useful to locally test builds inside pbuilder.  You may want to
 use the script from <http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=255165> 
 to wrap it.
 
+Update all packages in proposed before copping the main ppa
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If one updates bzr, and there are plugins that are not compatible with the
+new version of bzr, this can cause pain for users using the ppa. In order to
+avoid this, we first get all packages up to date in the proposed ppa, and then
+copy them to the main ppa.
+
 
 Short form
 ~~~~~~~~~~
@@ -132,10 +157,11 @@ release packages is as simple as::
   export PACKAGE="bzr"
   export UBUNTU_RELEASES="dapper hardy intrepid jaunty karmic"
   ~/dev/bzr/bzr.dev/tools/packaging/update-packaging-branches.sh
+  * Optionaly merge debian unstable. 
   ~/dev/bzr/bzr.dev/tools/packaging/update-changelogs.sh
   ~/dev/bzr/bzr.dev/tools/packaging/update-control.sh 1.16 1.17 1.18
   ~/dev/bzr/bzr.dev/tools/packaging/build-packages.sh
-  dput bzr-beta-ppa ${PACKAGE}_$VERSION*.changes
+  dput ppa:bzr/proposed ${PACKAGE}_$VERSION*.changes
 
 Rinse and repeat for all the plugins by changing VERSION and PACKAGE.
 
@@ -177,11 +203,15 @@ Long Form
 
 #. Checkout (or update) the packaging branch for each supported release::
 
-      bzr co lp:~bzr/bzr/packaging-hardy
+      bzr co lp:~bzr/ubuntu/hardy/bzr/bzr-ppa
 
    There is a script available to help::
 
       tools/packaging/update-packaging-branches.sh
+
+#. Optionaly, merge the Debian unstable branch into each of the packaging
+   branches. You can find the Debian unstable branch here:
+   http://bzr.debian.org/pkg-bazaar/
 
 #. The ``bzr-builddeb`` step will download the original tarball if you do
    not already have it, putting it into a ``tarballs`` directory.
@@ -238,7 +268,7 @@ Long Form
 
 #. Build the source packages::
 
-      cd packaging-$DISTRO; bzr builddeb -S
+      cd bzr-$DISTRO; bzr builddeb -S
 
    This will create a ``.changes`` file.  If you didn't configure builddeb
    to automatically sign them, you can use ::
@@ -252,16 +282,9 @@ Long Form
 
       tools/packaging/build-packages.sh
 
-#. Upload into the beta PPA for each release::
+#. Upload into the PPA for each release::
 
-     dput bzr-beta-ppa bzr*1.17-1*.changes
-
-#. For final release versions, also copy it into the ``~bzr`` PPA::
-
-     dput bzr-ppa ../bzr_1.17-1\~bazaar1\~hardy1\_source.changes
-
-   Alternatively, you can use Launchpad's "copy" feature to copy the
-   packages between repositories.
+     dput dput ppa:bzr/proposed bzr*1.17-1*.changes
 
 #. You should soon get an "upload accepted" mail from Launchpad, which
    means that your package is waiting to be built.  You can then track its

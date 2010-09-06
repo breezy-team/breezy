@@ -86,18 +86,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         self.assertIsDirectory('.bzr/branch/lock/held', t)
 
     def test_set_push_location(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
-        # write correct newlines to locations.conf
-        # by default ConfigObj uses native line-endings for new files
-        # but uses already existing line-endings if file is not empty
-        f = open(fn, 'wb')
-        try:
-            f.write('# comment\n')
-        finally:
-            f.close()
+        conf = config.LocationConfig.from_string('# comment\n', '.', save=True)
 
         branch = self.make_branch('.', format='knit')
         branch.set_push_location('foo')
@@ -106,7 +95,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
                              "[%s]\n"
                              "push_location = foo\n"
                              "push_location:policy = norecurse\n" % local_path,
-                             fn)
+                             config.locations_config_filename())
 
     # TODO RBC 20051029 test getting a push location from a branch in a
     # recursive section - that is, it appends the branch name.
@@ -551,6 +540,15 @@ class TestHooks(tests.TestCaseWithTransport):
         self.assertIsInstance(params, _mod_branch.BranchInitHookParams)
         self.assertTrue(hasattr(params, 'bzrdir'))
         self.assertTrue(hasattr(params, 'branch'))
+
+    def test_post_branch_init_hook_repr(self):
+        param_reprs = []
+        _mod_branch.Branch.hooks.install_named_hook('post_branch_init',
+            lambda params: param_reprs.append(repr(params)), None)
+        branch = self.make_branch('a')
+        self.assertLength(1, param_reprs)
+        param_repr = param_reprs[0]
+        self.assertStartsWith(param_repr, '<BranchInitHookParams of ')
 
     def test_post_switch_hook(self):
         from bzrlib import switch

@@ -32,7 +32,7 @@ from bzrlib import (
     bzrdir,
     directory_service,
     delta,
-    config,
+    config as _mod_config,
     errors,
     globbing,
     hooks,
@@ -1477,10 +1477,11 @@ class cmd_info(Command):
 class cmd_remove(Command):
     __doc__ = """Remove files or directories.
 
-    This makes bzr stop tracking changes to the specified files. bzr will delete
-    them if they can easily be recovered using revert. If no options or
-    parameters are given bzr will scan for files that are being tracked by bzr
-    but missing in your tree and stop tracking them for you.
+    This makes Bazaar stop tracking changes to the specified files. Bazaar will
+    delete them if they can easily be recovered using revert otherwise they
+    will be backed up (adding an extention of the form .~#~). If no options or
+    parameters are given Bazaar will scan for files that are being tracked by
+    Bazaar but missing in your tree and stop tracking them for you.
     """
     takes_args = ['file*']
     takes_options = ['verbose',
@@ -1488,8 +1489,7 @@ class cmd_remove(Command):
         RegistryOption.from_kwargs('file-deletion-strategy',
             'The file deletion mode to be used.',
             title='Deletion Strategy', value_switches=True, enum_switch=False,
-            safe='Only delete files if they can be'
-                 ' safely recovered (default).',
+            safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
             force='Delete all the specified files, even if they can not be '
                 'recovered and even if they are non-empty directories.')]
@@ -1592,11 +1592,17 @@ class cmd_reconcile(Command):
 
     _see_also = ['check']
     takes_args = ['branch?']
+    takes_options = [
+        Option('canonicalize-chks',
+               help='Make sure CHKs are in canonical form (repairs '
+                    'bug 522637).',
+               hidden=True),
+        ]
 
-    def run(self, branch="."):
+    def run(self, branch=".", canonicalize_chks=False):
         from bzrlib.reconcile import reconcile
         dir = bzrdir.BzrDir.open(branch)
-        reconcile(dir)
+        reconcile(dir, canonicalize_chks=canonicalize_chks)
 
 
 class cmd_revision_history(Command):
@@ -1878,12 +1884,16 @@ class cmd_diff(Command):
         Same as 'bzr diff' but prefix paths with old/ and new/::
 
             bzr diff --prefix old/:new/
+            
+        Show the differences using a custom diff program with options::
+        
+            bzr diff --using /usr/bin/diff --diff-options -wu
     """
     _see_also = ['status']
     takes_args = ['file*']
     takes_options = [
         Option('diff-options', type=str,
-               help='Pass these options to the diff program.'),
+               help='Pass these options to the external diff program.'),
         Option('prefix', type=str,
                short_name='p',
                help='Set prefixes added to old and new filenames, as '
@@ -1929,10 +1939,6 @@ class cmd_diff(Command):
             raise errors.BzrCommandError(
                 '--prefix expects two values separated by a colon'
                 ' (eg "old/:new/")')
-
-        if using is not None and diff_options is not None:
-            raise errors.BzrCommandError(
-            '--diff-options and --using are mutually exclusive.')
 
         if revision and len(revision) > 2:
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
@@ -3316,7 +3322,7 @@ class cmd_whoami(Command):
                 try:
                     c = Branch.open_containing(u'.')[0].get_config()
                 except errors.NotBranchError:
-                    c = config.GlobalConfig()
+                    c = _mod_config.GlobalConfig()
             else:
                 c = Branch.open(directory).get_config()
             if email:
@@ -3327,7 +3333,7 @@ class cmd_whoami(Command):
 
         # display a warning if an email address isn't included in the given name.
         try:
-            config.extract_email_address(name)
+            _mod_config.extract_email_address(name)
         except errors.NoEmailInUsername, e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
@@ -3339,7 +3345,7 @@ class cmd_whoami(Command):
             else:
                 c = Branch.open(directory).get_config()
         else:
-            c = config.GlobalConfig()
+            c = _mod_config.GlobalConfig()
         c.set_user_option('email', name)
 
 
@@ -3412,13 +3418,13 @@ class cmd_alias(Command):
                 'bzr alias --remove expects an alias to remove.')
         # If alias is not found, print something like:
         # unalias: foo: not found
-        c = config.GlobalConfig()
+        c = _mod_config.GlobalConfig()
         c.unset_alias(alias_name)
 
     @display_command
     def print_aliases(self):
         """Print out the defined aliases in a similar format to bash."""
-        aliases = config.GlobalConfig().get_aliases()
+        aliases = _mod_config.GlobalConfig().get_aliases()
         for key, value in sorted(aliases.iteritems()):
             self.outf.write('bzr alias %s="%s"\n' % (key, value))
 
@@ -3434,7 +3440,7 @@ class cmd_alias(Command):
 
     def set_alias(self, alias_name, alias_command):
         """Save the alias in the global config."""
-        c = config.GlobalConfig()
+        c = _mod_config.GlobalConfig()
         c.set_alias(alias_name, alias_command)
 
 
@@ -3564,10 +3570,7 @@ class cmd_selftest(Command):
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
-        from bzrlib.tests import selftest
-
-        # Make deprecation warnings visible, unless -Werror is set
-        symbol_versioning.activate_deprecation_warnings(override=False)
+        from bzrlib import tests
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -3614,7 +3617,14 @@ class cmd_selftest(Command):
                           "starting_with": starting_with
                           }
         selftest_kwargs.update(self.additional_selftest_args)
-        result = selftest(**selftest_kwargs)
+
+        # Make deprecation warnings visible, unless -Werror is set
+        cleanup = symbol_versioning.activate_deprecation_warnings(
+            override=False)
+        try:
+            result = tests.selftest(**selftest_kwargs)
+        finally:
+            cleanup()
         return int(not result)
 
 
@@ -4801,7 +4811,10 @@ class cmd_uncommit(Command):
 
 
 class cmd_break_lock(Command):
-    __doc__ = """Break a dead lock on a repository, branch or working directory.
+    __doc__ = """Break a dead lock.
+
+    This command breaks a lock on a repository, branch, working directory or
+    config file.
 
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
@@ -4812,17 +4825,27 @@ class cmd_break_lock(Command):
     :Examples:
         bzr break-lock
         bzr break-lock bzr+ssh://example.com/bzr/foo
+        bzr break-lock --conf ~/.bazaar
     """
-    takes_args = ['location?']
 
-    def run(self, location=None, show=False):
+    takes_args = ['location?']
+    takes_options = [
+        Option('config',
+               help='LOCATION is the directory where the config lock is.'),
+        ]
+
+    def run(self, location=None, config=False):
         if location is None:
             location = u'.'
-        control, relpath = bzrdir.BzrDir.open_containing(location)
-        try:
-            control.break_lock()
-        except NotImplementedError:
-            pass
+        if config:
+            conf = _mod_config.LockableConfig(file_name=location)
+            conf.break_lock()
+        else:
+            control, relpath = bzrdir.BzrDir.open_containing(location)
+            try:
+                control.break_lock()
+            except NotImplementedError:
+                pass
 
 
 class cmd_wait_until_signalled(Command):
