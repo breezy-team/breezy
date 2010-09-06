@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 #
@@ -17,14 +17,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""BzrDir implementation tests for bzr.
+"""ControlDir implementation tests for bzr.
 
-These test the conformance of all the bzrdir variations to the expected API.
+These test the conformance of all the controldir variations to the expected API.
 Specific tests for individual formats are in the tests/test_bzrdir.py file
 rather than in tests/per_branch/*.py.
 """
 
-from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.controldir import ControlDirFormat
 from bzrlib.tests import (
     default_transport,
     multiply_tests,
@@ -56,10 +56,10 @@ def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
     return result
 
 
-class TestCaseWithBzrDir(TestCaseWithTransport):
+class TestCaseWithControlDir(TestCaseWithTransport):
 
     def setUp(self):
-        super(TestCaseWithBzrDir, self).setUp()
+        super(TestCaseWithControlDir, self).setUp()
         self.bzrdir = None
 
     def get_bzrdir(self):
@@ -70,17 +70,17 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
     def make_bzrdir(self, relpath, format=None):
         if format is None:
             format = self.bzrdir_format
-        return super(TestCaseWithBzrDir, self).make_bzrdir(
+        return super(TestCaseWithControlDir, self).make_bzrdir(
             relpath, format=format)
 
 
 def load_tests(standard_tests, module, loader):
-    test_per_bzrdir = [
-        'bzrlib.tests.per_bzrdir.test_bzrdir',
-        'bzrlib.tests.per_bzrdir.test_push',
+    test_per_controldir = [
+        'bzrlib.tests.per_controldir.test_controldir',
+        'bzrlib.tests.per_controldir.test_push',
         ]
-    submod_tests = loader.loadTestsFromModuleNames(test_per_bzrdir)
-    formats = BzrDirFormat.known_formats()
+    submod_tests = loader.loadTestsFromModuleNames(test_per_controldir)
+    formats = ControlDirFormat.known_formats()
     scenarios = make_scenarios(
         default_transport,
         None,

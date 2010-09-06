@@ -95,9 +95,7 @@ class TestCommands(tests.TestCase):
 class TestGetAlias(tests.TestCase):
 
     def _get_config(self, config_text):
-        my_config = config.GlobalConfig()
-        config_file = StringIO(config_text.encode('utf-8'))
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig.from_string(config_text)
         return my_config
 
     def test_simple(self):
@@ -345,6 +343,7 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
+
 
 class TestDeprecations(tests.TestCase):
 
