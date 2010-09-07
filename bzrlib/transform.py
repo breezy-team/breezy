@@ -2799,11 +2799,11 @@ def conflict_pass(tt, conflicts, path_tree=None):
 
         elif c_type == 'missing parent':
             trans_id = conflict[1]
-            try:
+            if trans_id in tt._removed_contents:
                 tt.cancel_deletion(trans_id)
                 new_conflicts.add(('deleting parent', 'Not deleting',
                                    trans_id))
-            except KeyError:
+            else:
                 create = True
                 try:
                     tt.final_name(trans_id)
