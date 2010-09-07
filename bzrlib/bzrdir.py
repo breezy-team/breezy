@@ -3290,8 +3290,24 @@ register_metadir(controldir.format_registry, 'development-rich-root',
     alias=True,
     hidden=True,
     )
-register_metadir(controldir.format_registry, 'development-subtree',
+register_metadir(controldir.format_registry, 'development5-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
+    help='Development format, subtree variant. Can convert data to and '
+        'from pack-0.92-subtree (and anything compatible with '
+        'pack-0.92-subtree) format repositories. Repositories and branches in '
+        'this format can only be read by bzr.dev. Please read '
+        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    experimental=True,
+    hidden=True,
+    alias=False,
+    )
+
+
+register_metadir(controldir.format_registry, 'development-subtree',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2aSubtree',
     help='Current development format, subtree variant. Can convert data to and '
         'from pack-0.92-subtree (and anything compatible with '
         'pack-0.92-subtree) format repositories. Repositories and branches in '
@@ -3341,7 +3357,7 @@ register_metadir(controldir.format_registry, '2a',
         # 'rich roots. Supported by bzr 1.16 and later.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',
-    experimental=True,
+    experimental=False,
     )
 
 # The following format should be an alias for the rich root equivalent 

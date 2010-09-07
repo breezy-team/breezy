@@ -122,6 +122,19 @@ class TestTreeShape(tests.TestCaseInTempDir):
         self.failUnlessExists(filename)
 
 
+class TestClassesAvailable(tests.TestCase):
+    """As a convenience we expose Test* classes from bzrlib.tests"""
+
+    def test_test_case(self):
+        from bzrlib.tests import TestCase
+
+    def test_test_loader(self):
+        from bzrlib.tests import TestLoader
+
+    def test_test_suite(self):
+        from bzrlib.tests import TestSuite
+
+
 class TestTransportScenarios(tests.TestCase):
     """A group of tests that test the transport implementation adaption core.
 

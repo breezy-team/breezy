@@ -20,6 +20,14 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* ``bzrlib.transform.TreeTransformBase.final_kind``,
+  ``bzrlib.transform.TreeTransform.tree_kind`` and
+  ``bzrlib.transform.TransformPreview.tree_kind`` now return None instead
+  of raising NoSuchFile.  (Vincent Ladeuil)
+
+* `decode` parameter to get() method in FtpTransport and GioTransport classes
+  is deprecated. (Alexander Belchenko)
+
 * `FileInWrongBranch` is deprecated in favour of `PathNotChild` and no
   longer raised.
   (Martin Pool)
@@ -56,10 +64,22 @@ Compatibility Breaks
 New Features
 ************
 
+* ``bzr break-lock --config [location]`` can now break config files
+  locks. (Vincent Ladeuil, #525571)
+
+* ``bzrlib.config.LockableConfig`` is a base class for config files that
+  needs to be protected against multiple writers. All methods that
+  change a configuration variable value must be decorated with
+  @needs_write_lock (set_option() for example).
+  (Vincent Ladeuil,  #525571)
+
 * The ``lp:`` prefix will now use your known username (from
   ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
   ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now
   push to ``lp:~user/project/branch``.  (John Arbash Meinel)
+
+* New development format ``development8-subtree`` which is similar to the 
+  ``2a`` format and adds subtree support. (Jelmer Vernooij)
 
 Bug Fixes
 *********
@@ -84,6 +104,9 @@ Bug Fixes
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
 
+* Configuration files in ``${BZR_HOME}`` are now protected against
+  concurrent writers by using a lock. (Vincent Ladeuil, #525571)
+
 * Cope with Microsoft FTP Server and VSFTPd that return reply '250
   Directory created' when mkdir succeeds.  (Martin Pool, #224373)
 
@@ -96,24 +119,51 @@ Bug Fixes
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
 
+* ``EPIPE`` can be raised during test server shutdown. This happened on
+  gentoo only so far. (Vincent Ladeuil, #627277)
+
+* Errors occurring during http(s) test server starts should now be
+  handled cleanly. (Vincent Ladeuil, #392402)
+
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
 
+* Fix spurious paramiko warning on hardy by ensuring that ``selftest``
+  properly remove its warning filter. (Vincent Ladeuil, #625686)
+
 * ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
   with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
 
+* Most of the leaked threads during selftest are now fixed, allowing the
+  full test suite to pass on gentoo.
+  (Vincent Ladeuil, #392127)
+
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
+
+* ``PQM`` will no longer ignore syntax errors in submissions.
+  (Vincent Ladeuil, #626667)
 
 * Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
   which can result in "missing referenced chk root keys" errors when
   fetching from repositories with affected revisions.
   (Andrew Bennetts, #522637)
 
+* strace test-helper tests cope with the new Ubuntu policy of not allowing
+  users to attach to their own processes by default.
+  (Martin Pool, #626679)
+
+* Test classes like ``TestCase``, ``TestLoader``, and ``TestSuite`` should
+  be available from ``bzrlib.tests.*``. They used to be, but were
+  accidentally removed. (John Arbash Meinel, #627438)
+
 * ``Transport.stat`` on a symlink, including a transport pointing directly
   to a symlink, now returns information about the symlink.
   (Martin Pool)
+
+* Wait for the SSH server to actually finish, rather than just waiting for
+  it to negotiate the key exchange. (John Arbash Meinel, #626876)
 
 Improvements
 ************
@@ -124,12 +174,20 @@ Improvements
   will be backed up (adding an extention of the form .~#~).
   (Marius Kruger, #400554)
 
+* ``bzr revert`` and ``bzr status`` are up to 15% faster on large trees
+  with many changes by not repeatedly building a list of all file-ids.
+  (Andrew Bennetts)
+
 * Decrease memory consumption when many chk index pages are loaded. (Such
   as during ``bzr co`` or ``bzr ls -R`` of a large tree.) Often we need to
   read many chk pages because the individual chk map nodes will be spread
   randomly. Peak memory for 'bzr ls -R' on a large tree dropped from 396MB
   down to 247MB, expect even more significant savings on 64-bit platforms.
   (John Arbash Meinel)
+
+* ``DirState`` internals use a little bit less memory. For bzr.dev it
+  drops the memory from 1MB down to about 800kB. And replaces a few
+  thousand tuples and sets with StaticTuple.  (John Arbash Meinel)
 
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
@@ -160,10 +218,15 @@ Documentation
 API Changes
 ***********
 
-* ``bzrlib.transform.TreeTransformBase.final_kind``,
-  ``bzrlib.transform.TreeTransform.tree_kind`` and
-  ``bzrlib.transform.TransformPreview.tree_kind``now return None instead
-  of raising NoSuchFile.  (Vincent Ladeuil)
+* Configuration files should now use the ``from_string`` constructor rather
+  than the ``file`` parameter of the ``_get_parser`` method. The later has
+  been deprecated. ``from_string`` also accept a ``save=True`` parameter to
+  have the configuration file immediately written to disk. 
+  (Vincent Ladeuil)
+
+* ``IniBaseConfig`` objects should now use the ``from_string`` constructor
+  the rather than the ``file`` parameter of the ``_get_parser`` method. The
+  later has been deprecated. (Vincent Ladeuil)
 
 * InventoryEntry instances now raise AttributeError if you try to assign
   to attributes that are irrelevant to that kind of entry.  e.g. setting
@@ -177,6 +240,10 @@ API Changes
 * InventoryEntry objects no longer have ``_put_in_tar`` or
   ``_put_on_disk`` methods.  (Andrew Bennetts)
 
+* The ``get_filename`` parameter in the ``config.IniBaseConfig``
+  constructor has been deprecated, use the ``file_name`` parameter instead.
+  (Vincent Ladeuil)
+
 Internals
 *********
 
@@ -185,6 +252,13 @@ Internals
 
 Testing
 *******
+
+* HTTP test servers will leak less threads (and sockets) and will not hang on
+  AIX anymore. (Vincent Ladeuil, #405745)
+
+* The test suite now simply holds log files in memory, rather than writing them
+  out to disk and then reading them back in and deleting them.
+  (Andrew Bennetts)
 
 * The way ``bzr selftest --parallel`` generates N partitions of tests to
   run in parallel has changed.  Instead of splitting the list of tests at

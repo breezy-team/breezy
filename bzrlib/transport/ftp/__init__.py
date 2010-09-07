@@ -40,6 +40,12 @@ from bzrlib import (
     osutils,
     urlutils,
     )
+from bzrlib.symbol_versioning import (
+    DEPRECATED_PARAMETER,
+    deprecated_in,
+    deprecated_passed,
+    warn,
+    )
 from bzrlib.trace import mutter, warning
 from bzrlib.transport import (
     AppendBasedFileStream,
@@ -164,6 +170,11 @@ class FtpTransport(ConnectedTransport):
         connection, credentials = self._create_connection(credentials)
         self._set_connection(connection, credentials)
 
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
+
     def _translate_ftp_error(self, err, path, extra=None,
                               unknown_exc=FtpPathError):
         """Try to translate an ftplib exception to a bzrlib exception.
@@ -235,7 +246,7 @@ class FtpTransport(ConnectedTransport):
             mutter("FTP has not: %s: %s", abspath, e)
             return False
 
-    def get(self, relpath, decode=False, retries=0):
+    def get(self, relpath, decode=DEPRECATED_PARAMETER, retries=0):
         """Get the file at the given relative path.
 
         :param relpath: The relative path to the file
@@ -245,7 +256,10 @@ class FtpTransport(ConnectedTransport):
         We're meant to return a file-like object which bzr will
         then read from. For now we do this via the magic of StringIO
         """
-        # TODO: decode should be deprecated
+        if deprecated_passed(decode):
+            warn(deprecated_in((2,3,0)) %
+                 '"decode" parameter to FtpTransport.get()',
+                 DeprecationWarning, stacklevel=2)
         try:
             mutter("FTP get: %s", self._remote_path(relpath))
             f = self._get_FTP()
