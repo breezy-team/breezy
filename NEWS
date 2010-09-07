@@ -29,6 +29,10 @@ Documentation
 API Changes
 ***********
 
+* Deprecate treating a `PushResult` and `PullResult` as an integer for the
+  relative change in revno.
+  (Martin Pool)
+
 Internals
 *********
 
