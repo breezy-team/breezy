@@ -814,6 +814,17 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertIs(None, self.wt.path2id('parent'))
         self.assertIs(None, self.wt.path2id('parent.new'))
 
+    def test_resolve_conflicts_missing_parent(self):
+        wt = self.make_branch_and_tree('.')
+        tt = TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        parent = tt.trans_id_file_id('parent-id')
+        tt.new_file('file', parent, 'Contents')
+        raw_conflicts = resolve_conflicts(tt)
+        self.assertLength(1, raw_conflicts)
+        self.assertEqual(('missing parent', 'Created directory', 'new-1'),
+                         raw_conflicts.pop())
+
     def test_moving_versioned_directories(self):
         create, root = self.get_transform()
         kansas = create.new_directory('kansas', root, 'kansas-id')
@@ -2328,14 +2339,6 @@ class TestTransformRollback(tests.TestCaseWithTransport):
                           _mover=self.ExceptionFileMover(bad_target='d'))
         self.failUnlessExists('a')
         self.failUnlessExists('a/b')
-
-    def test_resolve_no_parent(self):
-        wt = self.make_branch_and_tree('.')
-        tt = TreeTransform(wt)
-        self.addCleanup(tt.finalize)
-        parent = tt.trans_id_file_id('parent-id')
-        tt.new_file('file', parent, 'Contents')
-        resolve_conflicts(tt)
 
 
 A_ENTRY = ('a-id', ('a', 'a'), True, (True, True),
