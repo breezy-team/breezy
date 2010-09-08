@@ -2703,7 +2703,7 @@ class ConvertMetaToMeta(Converter):
 class RemoteBzrDirFormat(BzrDirMetaFormat1):
     """Format representing bzrdirs accessed via a smart server"""
 
-    supports_workingtree = False
+    supports_workingtrees = False
 
     def __init__(self):
         BzrDirMetaFormat1.__init__(self)
