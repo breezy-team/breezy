@@ -1255,6 +1255,24 @@ class TestRunner(tests.TestCase):
         result = self.run_test_runner(runner, test)
         self.assertLength(1, calls)
 
+    def test_unicode_test_output_on_ascii_stream(self):
+        """Showing results should always succeed even on an ascii console"""
+        class FailureWithUnicode(tests.TestCase):
+            def test_log_unicode(self):
+                self.log(u"\u2606")
+                self.fail("Now print that log!")
+        out = StringIO()
+        self.overrideAttr(osutils, "get_terminal_encoding",
+            lambda trace=False: "ascii")
+        result = self.run_test_runner(tests.TextTestRunner(stream=out),
+            FailureWithUnicode("test_log_unicode"))
+        self.assertContainsRe(out.getvalue(),
+            "Text attachment: log\n
+            "-+\n"
+            "\d+\.\d+  \\\\u2606\n"
+            "-+\n")
+        
+
 
 class SampleTestCase(tests.TestCase):
 

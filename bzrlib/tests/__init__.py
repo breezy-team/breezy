@@ -618,7 +618,10 @@ class TextTestRunner(object):
             encode = codec[0]
         else:
             encode = codec.encode
-        stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream)
+        # GZ 2010-09-08: Really we don't want to be writing arbitrary bytes,
+        #                so should swap to the plain codecs.StreamWriter
+        stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream,
+            "backslashreplace")
         stream.encoding = new_encoding
         self.stream = stream
         self.descriptions = descriptions
