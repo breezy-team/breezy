@@ -64,6 +64,10 @@ Compatibility Breaks
 New Features
 ************
 
+* Added ``pre_status`` and ``post_status`` hooks. This allows plugins
+  to register custom handlers which will be invoked before/after the
+  standard status output is displayed. (Parth Malwankar)
+
 * ``bzr break-lock --config [location]`` can now break config files
   locks. (Vincent Ladeuil, #525571)
 

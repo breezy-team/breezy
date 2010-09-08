@@ -54,6 +54,8 @@ known_hooks.register_lazy(('bzrlib.smart.client', '_SmartClient.hooks'),
     'bzrlib.smart.client', 'SmartClientHooks')
 known_hooks.register_lazy(('bzrlib.smart.server', 'SmartTCPServer.hooks'),
     'bzrlib.smart.server', 'SmartServerHooks')
+known_hooks.register_lazy(('bzrlib.status', 'hooks'),
+    'bzrlib.status', 'StatusHooks')
 known_hooks.register_lazy(
     ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks'),
     'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilderHooks')
@@ -179,13 +181,13 @@ class HookPoint(object):
     """A single hook that clients can register to be called back when it fires.
 
     :ivar name: The name of the hook.
+    :ivar doc: The docs for using the hook.
     :ivar introduced: A version tuple specifying what version the hook was
         introduced in. None indicates an unknown version.
     :ivar deprecated: A version tuple specifying what version the hook was
         deprecated or superseded in. None indicates that the hook is not
         superseded or deprecated. If the hook is superseded then the doc
         should describe the recommended replacement hook to register for.
-    :ivar doc: The docs for using the hook.
     """
 
     def __init__(self, name, doc, introduced, deprecated):
