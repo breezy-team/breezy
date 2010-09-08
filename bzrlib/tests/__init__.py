@@ -418,6 +418,9 @@ class ExtendedTestResult(testtools.TextTestResult):
         else:
             raise errors.BzrError("Unknown whence %r" % whence)
 
+    def report_test_start(self, test):
+        """Display information on the test just about to be run"""
+
     def _report_thread_leak(self, test, leaked_threads, active_threads):
         """Display information on a test that leaked one or more threads"""
         if 'threads' in selftest_debug_flags:

@@ -21,6 +21,7 @@ from doctest import ELLIPSIS
 import os
 import signal
 import sys
+import threading
 import time
 import unittest
 import warnings
@@ -2974,6 +2975,81 @@ class TestTestPrefixRegistry(tests.TestCase):
         self.assertEquals('bzrlib.tests', tpr.resolve_alias('bt'))
         self.assertEquals('bzrlib.tests.blackbox', tpr.resolve_alias('bb'))
         self.assertEquals('bzrlib.plugins', tpr.resolve_alias('bp'))
+
+
+class TestThreadLeakDetection(tests.TestCase):
+    """Ensure when tests leak threads we detect and report it"""
+
+    class LeakRecordingResult(tests.ExtendedTestResult):
+        def __init__(self):
+            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
+            self.leaks = []
+        def _report_thread_leak(self, test, leaks, alive):
+            self.leaks.append((test, leaks))
+
+    def test_testcase_without_addCleanups(self):
+        class Test(unittest.TestCase):
+            def runTest(self):
+                pass
+            addCleanup = None # for when on Python 2.7 with native addCleanup
+        result = self.LeakRecordingResult()
+        test = Test()
+        self.assertIs(getattr(test, "addCleanup", None), None)
+        result.startTestRun()
+        test.run(result)
+        result.stopTestRun()
+        self.assertEqual(result._tests_leaking_threads_count, 0)
+        self.assertEqual(result.leaks, [])
+        
+    def test_thread_leak(self):
+        event = threading.Event()
+        thread = threading.Thread(name="Leaker", target=event.wait)
+        class Test(tests.TestCase):
+            def test_leak(self):
+                thread.start()
+        result = self.LeakRecordingResult()
+        test = Test("test_leak")
+        self.addCleanup(thread.join)
+        self.addCleanup(event.set)
+        result.startTestRun()
+        test.run(result)
+        result.stopTestRun()
+        self.assertEqual(result._tests_leaking_threads_count, 1)
+        self.assertEqual(result._first_thread_leaker_id, test.id())
+        self.assertEqual(result.leaks, [(test, set([thread]))])
+        self.assertContainsString(result.stream.getvalue(), "leaking threads")
+
+    def test_multiple_leaks(self):
+        event = threading.Event()
+        thread_a = threading.Thread(name="LeakerA", target=event.wait)
+        thread_b = threading.Thread(name="LeakerB", target=event.wait)
+        thread_c = threading.Thread(name="LeakerC", target=event.wait)
+        class Test(tests.TestCase):
+            def test_first_leak(self):
+                thread_b.start()
+            def test_second_no_leak(self):
+                pass
+            def test_third_leak(self):
+                thread_c.start()
+                thread_a.start()
+        result = self.LeakRecordingResult()
+        first_test = Test("test_first_leak")
+        third_test = Test("test_third_leak")
+        self.addCleanup(thread_a.join)
+        self.addCleanup(thread_b.join)
+        self.addCleanup(thread_c.join)
+        self.addCleanup(event.set)
+        result.startTestRun()
+        unittest.TestSuite(
+            [first_test, Test("test_second_no_leak"), third_test]
+            ).run(result)
+        result.stopTestRun()
+        self.assertEqual(result._tests_leaking_threads_count, 2)
+        self.assertEqual(result._first_thread_leaker_id, first_test.id())
+        self.assertEqual(result.leaks, [
+            (first_test, set([thread_b])),
+            (third_test, set([thread_a, thread_c]))])
+        self.assertContainsString(result.stream.getvalue(), "leaking threads")
 
 
 class TestRunSuite(tests.TestCase):
