@@ -418,9 +418,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         else:
             raise errors.BzrError("Unknown whence %r" % whence)
 
-    def report_cleaning_up(self):
-        pass
-
     def _report_thread_leak(self, test, leaked_threads, active_threads):
         """Display information on a test that leaked one or more threads"""
         if 'threads' in selftest_debug_flags:
@@ -536,9 +533,6 @@ class TextTestResult(ExtendedTestResult):
 
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
-
-    def report_cleaning_up(self):
-        self.pb.update('Cleaning up')
 
 
 class VerboseTestResult(ExtendedTestResult):
