@@ -1036,14 +1036,11 @@ class TestRunner(tests.TestCase):
         because of our use of global state.
         """
         old_root = tests.TestCaseInTempDir.TEST_ROOT
-        old_leak = tests.TestCase._first_thread_leaker_id
         try:
             tests.TestCaseInTempDir.TEST_ROOT = None
-            tests.TestCase._first_thread_leaker_id = None
             return testrunner.run(test)
         finally:
             tests.TestCaseInTempDir.TEST_ROOT = old_root
-            tests.TestCase._first_thread_leaker_id = old_leak
 
     def test_known_failure_failed_run(self):
         # run a test that generates a known failure which should be printed in

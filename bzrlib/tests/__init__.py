@@ -194,6 +194,8 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.count = 0
         self._overall_start_time = time.time()
         self._strict = strict
+        self._first_thread_leaker_id = None
+        self._tests_leaking_threads_count = 0
 
     def stopTestRun(self):
         run = self.testsRun
@@ -238,15 +240,15 @@ class ExtendedTestResult(testtools.TextTestResult):
             ok = self.wasStrictlySuccessful()
         else:
             ok = self.wasSuccessful()
-        if TestCase._first_thread_leaker_id:
+        if self._first_thread_leaker_id:
             self.stream.write(
                 '%s is leaking threads among %d leaking tests.\n' % (
-                TestCase._first_thread_leaker_id,
-                TestCase._leaking_threads_tests))
+                self._first_thread_leaker_id,
+                self._tests_leaking_threads_count))
             # We don't report the main thread as an active one.
             self.stream.write(
                 '%d non-main threads were left active in the end.\n'
-                % (TestCase._active_threads - 1))
+                % (len(self._active_threads) - 1))
 
     def getDescription(self, test):
         return test.id()
@@ -286,6 +288,9 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_test_start(test)
         test.number = self.count
         self._recordTestStartTime()
+        addCleanup = getattr(test, "addCleanup", None)
+        if addCleanup is not None:
+            addCleanup(self._check_leaked_threads, test)
 
     def startTests(self):
         import platform
@@ -305,6 +310,18 @@ class ExtendedTestResult(testtools.TextTestResult):
                     platform.platform(aliased=1),
                     ))
         self.stream.write('\n')
+        self._active_threads = threading.enumerate()
+
+    def _check_leaked_threads(self, test):
+        """See if any threads have leaked since last call"""
+        now_active_threads = set(threading.enumerate())
+        threads_leaked = now_active_threads.difference(self._active_threads)
+        if threads_leaked:
+            self._report_thread_leak(test, threads_leaked, now_active_threads)
+            self._tests_leaking_threads_count += 1
+            if self._first_thread_leaker_id is None:
+                self._first_thread_leaker_id = test.id()
+            self._active_threads = now_active_threads
 
     def _recordTestStartTime(self):
         """Record that a test has started."""
@@ -403,6 +420,12 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def report_cleaning_up(self):
         pass
+
+    def _report_thread_leak(self, test, leaked_threads, active_threads):
+        """Display information on a test that leaked one or more threads"""
+        if 'threads' in selftest_debug_flags:
+            self.stream.write('%s is leaking, active is now %d\n' %
+                (test.id(), len(active_threads)))
 
     def startTestRun(self):
         self.startTime = time.time()
@@ -795,9 +818,6 @@ class TestCase(testtools.TestCase):
     accidentally overlooked.
     """
 
-    _active_threads = None
-    _leaking_threads_tests = 0
-    _first_thread_leaker_id = None
     _log_file = None
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
@@ -828,30 +848,11 @@ class TestCase(testtools.TestCase):
         self._track_transports()
         self._track_locks()
         self._clear_debug_flags()
-        TestCase._active_threads = threading.activeCount()
-        self.addCleanup(self._check_leaked_threads)
 
     def debug(self):
         # debug a frame up.
         import pdb
         pdb.Pdb().set_trace(sys._getframe().f_back)
-
-    def _check_leaked_threads(self):
-        active = threading.activeCount()
-        leaked_threads = active - TestCase._active_threads
-        TestCase._active_threads = active
-        # If some tests make the number of threads *decrease*, we'll consider
-        # that they are just observing old threads dieing, not agressively kill
-        # random threads. So we don't report these tests as leaking. The risk
-        # is that we have false positives that way (the test see 2 threads
-        # going away but leak one) but it seems less likely than the actual
-        # false positives (the test see threads going away and does not leak).
-        if leaked_threads > 0:
-            if 'threads' in selftest_debug_flags:
-                print '%s is leaking, active is now %d' % (self.id(), active)
-            TestCase._leaking_threads_tests += 1
-            if TestCase._first_thread_leaker_id is None:
-                TestCase._first_thread_leaker_id = self.id()
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
