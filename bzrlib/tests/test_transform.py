@@ -28,6 +28,7 @@ from bzrlib import (
     revision as _mod_revision,
     rules,
     tests,
+    transform,
     urlutils,
     )
 from bzrlib.bzrdir import BzrDir
@@ -2366,7 +2367,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
     def test_resolve_orphan_non_versioned_file(self):
         wt, tt = self.get_tree_transform_with_unversioned_dir()
         dir_tid = tt.trans_id_tree_file_id('dir-id')
-        tt.new_file('file', 'dir-id', 'Contents')
+        tt.new_file('file', dir_tid, 'Contents')
         tt.delete_contents(dir_tid)
         tt.unversion_file(dir_tid)
         conflicts = resolve_conflicts(tt)
@@ -3253,3 +3254,18 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
         trans_id = tt.trans_id_tree_path('file')
         self.assertEqual((LINES_ONE,),
             tt._get_parents_texts(trans_id))
+
+
+class TestOrphan(tests.TestCaseWithTransport):
+
+    # - can't create oprhan dir
+    # - orphaning forbidden
+    # - can't create orphan
+    # - create orphan
+
+    def test_no_orphan_for_transform_preview(self):
+        tree = self.make_branch_and_tree('tree')
+        tt = TransformPreview(tree)
+        self.addCleanup(tt.finalize)
+        self.assertRaises(NotImplementedError, tt.new_orphan, 'foo', 'bar')
+

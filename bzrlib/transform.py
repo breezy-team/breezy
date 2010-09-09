@@ -19,8 +19,11 @@ import errno
 from stat import S_ISREG, S_IEXEC
 import time
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
+from bzrlib import (
+    errors,
+    lazy_import,
+    )
+lazy_import.lazy_import(globals(), """
 from bzrlib import (
     annotate,
     bencode,
@@ -63,7 +66,6 @@ import bzrlib.urlutils as urlutils
 
 
 ROOT_PARENT = "root-parent"
-
 
 def unique_add(map, key, value):
     if key in map:
@@ -759,6 +761,17 @@ class TreeTransformBase(object):
         self.create_symlink(target, trans_id)
         return trans_id
 
+    def new_orphan(self, trans_id, parent_id):
+        """Schedule an item to be orphaned.
+
+        When a directory is about to be removed, its children, if they are not
+        versioned are moved out of the way: they don't have a parent anymore.
+
+        :param trans_id: The trans_id of the existing item.
+        :param parent_id: The parent trans_id of the item.
+        """
+        raise NotImplementedError(self.new_orphan)
+
     def _affected_ids(self):
         """Return the set of transform ids affected by the transform"""
         trans_ids = set(self._removed_id)
@@ -1271,6 +1284,17 @@ class DiskTreeTransform(TreeTransformBase):
             del self._limbo_children_names[trans_id]
         delete_any(self._limbo_name(trans_id))
 
+    def new_orphan(self, trans_id, parent_id):
+        """See TreeTransformBase.new_orphan."""
+        # Add the orphan dir if it doesn't exist
+        od_id = self.trans_id_tree_path('bzr-orphans')
+        if self.final_kind(od_id) is None:
+            self.create_directory(od_id)
+        # Find a name that doesn't exist yet in the orphan dir
+        new_name = osutils.generate_backup_name(
+            self.final_name(trans_id), lambda name: name in self._tree_path_ids)
+        self.adjust_path(new_name, od_id, trans_id)
+
 
 class TreeTransform(DiskTreeTransform):
     """Represent a tree transformation.
@@ -1726,6 +1750,9 @@ class TransformPreview(DiskTreeTransform):
         for child in children:
             childpath = joinpath(path, child)
             yield self.trans_id_tree_path(childpath)
+
+    def new_orphan(self, trans_id, parent_id):
+        raise NotImplementedError(self.new_orphan)
 
 
 class _PreviewTree(tree.Tree):
@@ -2427,11 +2454,13 @@ def _reparent_children(tt, old_parent, new_parent):
     for child in tt.iter_tree_children(old_parent):
         tt.adjust_path(tt.final_name(child), new_parent, child)
 
+
 def _reparent_transform_children(tt, old_parent, new_parent):
     by_parent = tt.by_parent()
     for child in by_parent[old_parent]:
         tt.adjust_path(tt.final_name(child), new_parent, child)
     return by_parent[old_parent]
+
 
 def _content_match(tree, entry, file_id, kind, target_path):
     if entry.kind != kind:
@@ -2800,9 +2829,24 @@ def conflict_pass(tt, conflicts, path_tree=None):
         elif c_type == 'missing parent':
             trans_id = conflict[1]
             if trans_id in tt._removed_contents:
-                tt.cancel_deletion(trans_id)
-                new_conflicts.add(('deleting parent', 'Not deleting',
-                                   trans_id))
+                orphans = []
+                empty = True
+                # Find the potential orphans, stop if one item should be kept
+                for c in tt.by_parent()[trans_id]:
+                    if tt.final_file_id(c) is None:
+                        orphans.append(c)
+                    else:
+                        empty = False
+                        break
+                if empty:
+                    # All children are orphans
+                    for o in orphans:
+                        tt.new_orphan(o, trans_id)
+                else:
+                    # Cancel the directory deletion
+                    tt.cancel_deletion(trans_id)
+                    new_conflicts.add(('deleting parent', 'Not deleting',
+                                       trans_id))
             else:
                 create = True
                 try:

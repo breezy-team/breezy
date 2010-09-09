@@ -2354,3 +2354,17 @@ def getuser_unicode():
         raise errors.BzrError("Can't decode username as %s." % \
                 user_encoding)
     return username
+
+
+def generate_backup_name(base, exists):
+        """Generate a non-existing backup file name.
+
+        :param base: The base name.
+        :param exists: A callable returning True if the passed path exists.
+        """
+        counter = 1
+        name = "%s.~%d~" % (base, counter)
+        while exists(name):
+            counter += 1
+            name = "%s.~%d~" % (base, counter)
+        return name
