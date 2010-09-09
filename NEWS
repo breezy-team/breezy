@@ -231,6 +231,10 @@ API Changes
   have the configuration file immediately written to disk. 
   (Vincent Ladeuil)
 
+* Deprecate treating a `PushResult` and `PullResult` as an integer for the
+  relative change in revno.
+  (Martin Pool)
+  `
 * ``IniBaseConfig`` objects should now use the ``from_string`` constructor
   the rather than the ``file`` parameter of the ``_get_parser`` method. The
   later has been deprecated. (Vincent Ladeuil)
