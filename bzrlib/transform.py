@@ -1291,7 +1291,7 @@ class DiskTreeTransform(TreeTransformBase):
         if self.final_kind(od_id) is None:
             self.create_directory(od_id)
         # Find a name that doesn't exist yet in the orphan dir
-        new_name = osutils.generate_backup_name(
+        new_name = osutils.available_backup_name(
             self.final_name(trans_id), lambda name: name in self._tree_path_ids)
         self.adjust_path(new_name, od_id, trans_id)
 
