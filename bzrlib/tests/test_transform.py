@@ -821,9 +821,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         parent = tt.trans_id_file_id('parent-id')
         tt.new_file('file', parent, 'Contents')
         raw_conflicts = resolve_conflicts(tt)
+        # Since the directory doesn't exist it's seen as missing to resolve
+        # create a conflict asking for it to be created.
         self.assertLength(1, raw_conflicts)
         self.assertEqual(('missing parent', 'Created directory', 'new-1'),
                          raw_conflicts.pop())
+        # apply fail since the missing directory doesn't exist
+        self.assertRaises(errors.NoFinalPath, tt.apply)
 
     def test_moving_versioned_directories(self):
         create, root = self.get_transform()
