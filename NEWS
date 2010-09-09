@@ -20,6 +20,10 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* ``BzrDir.generate_backup_name`` has been deprecated and replaced by a
+  private method. ``osutils.available_backup_name`` provides an extensible
+  replacement. (Vincent Ladeuil)
+
 * ``bzrlib.transform.TreeTransformBase.final_kind``,
   ``bzrlib.transform.TreeTransform.tree_kind`` and
   ``bzrlib.transform.TransformPreview.tree_kind`` now return None instead
