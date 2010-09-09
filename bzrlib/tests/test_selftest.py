@@ -1007,6 +1007,19 @@ class TestTestResult(tests.TestCase):
         test.run(result)
         self.assertEquals(1, result.calls)
 
+    def test_startTests_only_once(self):
+        """With multiple tests startTests should still only be called once"""
+        class InstrumentedTestResult(tests.ExtendedTestResult):
+            calls = 0
+            def startTests(self): self.calls += 1
+        result = InstrumentedTestResult(None, None, None, None)
+        suite = unittest.TestSuite([
+            unittest.FunctionTestCase(lambda: None),
+            unittest.FunctionTestCase(lambda: None)])
+        suite.run(result)
+        self.assertEquals(1, result.calls)
+        self.assertEquals(2, result.count)
+
 
 class TestUnicodeFilenameFeature(tests.TestCase):
 

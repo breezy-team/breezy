@@ -286,6 +286,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         super(ExtendedTestResult, self).startTest(test)
         if self.count == 0:
             self.startTests()
+        self.count += 1
         self.report_test_start(test)
         test.number = self.count
         self._recordTestStartTime()
@@ -508,7 +509,6 @@ class TextTestResult(ExtendedTestResult):
         return a
 
     def report_test_start(self, test):
-        self.count += 1
         self.pb.update(
                 self._progress_prefix_text()
                 + ' '
@@ -558,7 +558,6 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.write('running %d tests...\n' % self.num_tests)
 
     def report_test_start(self, test):
-        self.count += 1
         name = self._shortened_test_description(test)
         width = osutils.terminal_width()
         if width is not None:
