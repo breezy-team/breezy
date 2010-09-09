@@ -56,10 +56,22 @@ class TestUIConfiguration(tests.TestCaseWithTransport):
 
 class TestTextUIFactory(tests.TestCase):
 
-    def test_text_factory_ascii_password(self):
-        ui = tests.TestUIFactory(stdin='secret\n',
+    def make_test_ui_factory(self, stdin_contents):
+        ui = tests.TestUIFactory(stdin=stdin_contents,
                                  stdout=tests.StringIOWrapper(),
                                  stderr=tests.StringIOWrapper())
+        return ui
+
+    def test_text_factory_confirm(self):
+        # turns into reading a regular boolean
+        ui = self.make_test_ui_factory('n\n')
+        self.assertEquals(ui.confirm_action('Should %(thing)s pass?',
+            'bzrlib.tests.test_ui.confirmation',
+            {'thing': 'this'},),
+            False)
+
+    def test_text_factory_ascii_password(self):
+        ui = self.make_test_ui_factory('secret\n')
         pb = ui.nested_progress_bar()
         try:
             self.assertEqual('secret',
@@ -80,9 +92,7 @@ class TestTextUIFactory(tests.TestCase):
         We can't predict what encoding users will have for stdin, so we force
         it to utf8 to test that we transport the password correctly.
         """
-        ui = tests.TestUIFactory(stdin=u'baz\u1234'.encode('utf8'),
-                                 stdout=tests.StringIOWrapper(),
-                                 stderr=tests.StringIOWrapper())
+        ui = self.make_test_ui_factory(u'baz\u1234'.encode('utf8'))
         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = 'utf8'
         pb = ui.nested_progress_bar()
         try:

@@ -151,6 +151,23 @@ class UIFactory(object):
         """
         self._quiet = state
 
+    def confirm_action(self, prompt, confirmation_id, args, default=True):
+        """Seek user confirmation for an action.
+
+        If the UI is noninteractive, or the user does not want to be asked
+        about this action, the default value will be returned.
+
+        The confirmation id allows the user to configure certain actions to
+        always be confirmed or always denied, and for UIs to specialize the
+        display of particular confirmations.
+
+        :param prompt: Suggested text to display to the user.
+        :param args: A dictionary of arguments that can be string-interpolated 
+            into the prompt.
+        :param confirmation_id: Unique string identifier for the confirmation.
+        """
+        return self.get_boolean(prompt % args)
+
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
 
@@ -377,7 +394,14 @@ class UIFactory(object):
                 "without an upgrade path.\n" % (inter.target._format,))
 
 
-class SilentUIFactory(UIFactory):
+class NoninteractiveUIFactory(UIFactory):
+    """Base class for UIs with no user."""
+
+    def confirm_action(self, prompt, confirmation_id, args, default=True):
+        return default
+
+
+class SilentUIFactory(NoninteractiveUIFactory):
     """A UI Factory which never prints anything.
 
     This is the default UI, if another one is never registered by a program
@@ -417,6 +441,9 @@ class CannedInputUIFactory(SilentUIFactory):
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.responses)
+
+    def confirm_action(self, prompt, confirmation_id, args, default=True):
+        return self.get_boolean(prompt % args)
 
     def get_boolean(self, prompt):
         return self.responses.pop(0)

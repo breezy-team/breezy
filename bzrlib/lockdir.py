@@ -351,7 +351,10 @@ class LockDir(lock.Lock):
         holder_info = self.peek()
         if holder_info is not None:
             lock_info = '\n'.join(self._format_lock_info(holder_info))
-            if bzrlib.ui.ui_factory.get_boolean("Break %s" % lock_info):
+            if bzrlib.ui.ui_factory.confirm_action(
+                "Break %(lock_info)s",
+                'bzr.lock.break.confirm',
+                dict(lock_info=lock_info)):
                 self.force_break(holder_info)
 
     def force_break(self, dead_holder_info):
