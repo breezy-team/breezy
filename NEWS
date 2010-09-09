@@ -207,6 +207,10 @@ Improvements
   content faster than seeking and reading content from another tree,
   especially in cold-cache situations. (John Arbash Meinel, #607298)
 
+* Add ``__pycache__`` to the default ``ignores`` file. Future releases of
+  Python will use this directory to store bytecodes.
+  (Andrea Corbellini, #626687)
+
 Documentation
 *************
 
