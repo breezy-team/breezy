@@ -2356,15 +2356,17 @@ def getuser_unicode():
     return username
 
 
-def generate_backup_name(base, exists):
-        """Generate a non-existing backup file name.
+def available_backup_name(base, exists):
+    """Find a non-existing backup file name.
 
-        :param base: The base name.
-        :param exists: A callable returning True if the passed path exists.
-        """
-        counter = 1
+    This will *not* create anything, this only return a 'free' entry.
+
+    :param base: The base name.
+    :param exists: A callable returning True if the passed path exists.
+    """
+    counter = 1
+    name = "%s.~%d~" % (base, counter)
+    while exists(name):
+        counter += 1
         name = "%s.~%d~" % (base, counter)
-        while exists(name):
-            counter += 1
-            name = "%s.~%d~" % (base, counter)
-        return name
+    return name

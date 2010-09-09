@@ -2078,3 +2078,32 @@ class TestGetuserUnicode(tests.TestCase):
         ue = osutils.get_user_encoding()
         osutils.set_or_unset_env('LOGNAME', u'jrandom\xb6'.encode(ue))
         self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
+
+class TestBackupNames(tests.TestCase):
+
+    def setUp(self):
+        super(TestBackupNames, self).setUp()
+        self.backups = []
+
+    def backup_exists(self, name):
+        return name in self.backups
+
+    def available_backup_name(self, name):
+        backup_name = osutils.available_backup_name(name, self.backup_exists)
+        self.backups.append(backup_name)
+        return backup_name
+
+    def assertBackupName(self, expected, name):
+        self.assertEqual(expected, self.available_backup_name(name))
+
+    def test_empty(self):
+        self.assertBackupName('file.~1~', 'file')
+
+    def test_existing(self):
+        self.available_backup_name('file')
+        self.available_backup_name('file')
+        self.assertBackupName('file.~3~', 'file')
+        # Empty slots are found, this is not a strict requirement and may be
+        # revisited if we test against all implementations.
+        self.backups.remove('file.~2~')
+        self.assertBackupName('file.~2~', 'file')
