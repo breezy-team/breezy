@@ -32,6 +32,7 @@ from bzrlib import (
     repository,
     osutils,
     remote,
+    symbol_versioning,
     urlutils,
     win32utils,
     workingtree,
@@ -1417,6 +1418,9 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
 
 
 class TestGenerateBackupName(TestCaseWithMemoryTransport):
+    # FIXME: This may need to be unified with test_osutils.TestBackupNames or
+    # moved to per_bzrdir or per_transport for better coverage ?
+    # -- vila 20100909
 
     def setUp(self):
         super(TestGenerateBackupName, self).setUp()
@@ -1425,9 +1429,14 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
             possible_transports=[self._transport])
         self._bzrdir = bzrdir.BzrDir.open_from_transport(self._transport)
 
+    def test_deprecated_generate_backup_name(self):
+        res = self.applyDeprecated(
+                symbol_versioning.deprecated_in((2, 3, 0)),
+                self._bzrdir.generate_backup_name, 'whatever')
+
     def test_new(self):
-        self.assertEqual("a.~1~", self._bzrdir.generate_backup_name("a"))
+        self.assertEqual("a.~1~", self._bzrdir._available_backup_name("a"))
 
     def test_exiting(self):
         self._transport.put_bytes("a.~1~", "some content")
-        self.assertEqual("a.~2~", self._bzrdir.generate_backup_name("a"))
+        self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
