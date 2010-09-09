@@ -290,6 +290,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_test_start(test)
         test.number = self.count
         self._recordTestStartTime()
+        # Only check for thread leaks if the test case supports cleanups
         addCleanup = getattr(test, "addCleanup", None)
         if addCleanup is not None:
             addCleanup(self._check_leaked_threads, test)
@@ -299,7 +300,12 @@ class ExtendedTestResult(testtools.TextTestResult):
         self._active_threads = threading.enumerate()
 
     def _check_leaked_threads(self, test):
-        """See if any threads have leaked since last call"""
+        """See if any threads have leaked since last call
+
+        A sample of live threads is stored in the _active_threads attribute,
+        when this method runs it compares the current live threads and any not
+        in the previous sample are treated as having leaked.
+        """
         now_active_threads = set(threading.enumerate())
         threads_leaked = now_active_threads.difference(self._active_threads)
         if threads_leaked:
@@ -428,6 +434,10 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def _report_thread_leak(self, test, leaked_threads, active_threads):
         """Display information on a test that leaked one or more threads"""
+        # GZ 2010-09-09: A leak summary reported separately from the general
+        #                thread debugging would be nice. Tests under subunit
+        #                need something not using stream, perhaps adding a
+        #                testtools details object would be fitting.
         if 'threads' in selftest_debug_flags:
             self.stream.write('%s is leaking, active is now %d\n' %
                 (test.id(), len(active_threads)))

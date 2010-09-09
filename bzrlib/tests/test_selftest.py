@@ -2997,6 +2997,7 @@ class TestThreadLeakDetection(tests.TestCase):
             self.leaks.append((test, leaks))
 
     def test_testcase_without_addCleanups(self):
+        """Check old TestCase instances don't break with leak detection"""
         class Test(unittest.TestCase):
             def runTest(self):
                 pass
@@ -3011,6 +3012,13 @@ class TestThreadLeakDetection(tests.TestCase):
         self.assertEqual(result.leaks, [])
         
     def test_thread_leak(self):
+        """Ensure a thread that outlives the running of a test is reported
+
+        Uses a thread that blocks on an event, and is started by the inner
+        test case. As the thread outlives the inner case's run, it should be
+        detected as a leak, but the event is then set so that the thread can
+        be safely joined in cleanup so it's not leaked for real.
+        """
         event = threading.Event()
         thread = threading.Thread(name="Leaker", target=event.wait)
         class Test(tests.TestCase):
@@ -3029,6 +3037,11 @@ class TestThreadLeakDetection(tests.TestCase):
         self.assertContainsString(result.stream.getvalue(), "leaking threads")
 
     def test_multiple_leaks(self):
+        """Check multiple leaks are blamed on the test cases at fault
+
+        Same concept as the previous test, but has one inner test method that
+        leaks two threads, and one that doesn't leak at all.
+        """
         event = threading.Event()
         thread_a = threading.Thread(name="LeakerA", target=event.wait)
         thread_b = threading.Thread(name="LeakerB", target=event.wait)
