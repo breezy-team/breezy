@@ -207,6 +207,34 @@ def import_archive(tree, archive_file, file_ids_from=None):
         for other_tree in file_ids_from:
             other_tree.unlock()
 
+def _get_paths_to_process(archive_file, prefix, implied_parents):
+    to_process = set()
+    for member in archive_file.getmembers():
+        if member.type == 'g':
+            # type 'g' is a header
+            continue
+        relative_path = member.name
+        relative_path = normpath(relative_path)
+        relative_path = relative_path.lstrip('/')
+        if prefix is not None:
+            relative_path = relative_path[len(prefix)+1:]
+            relative_path = relative_path.rstrip('/')
+        if relative_path == '' or relative_path == '.':
+            continue
+        if should_ignore(relative_path):
+            continue
+        add_implied_parents(implied_parents, relative_path)
+        to_process.add((relative_path, member))
+    return to_process
+
+
+def _different_id(relative_path, existing_file_id, file_ids_from):
+    for other_tree in file_ids_from:
+        found_file_id = other_tree.path2id(relative_path)
+        if found_file_id:
+            if found_file_id != existing_file_id:
+                return found_file_id
+
 
 def _import_archive(tree, archive_file, file_ids_from):
     prefix = common_directory(names_of_files(archive_file))
@@ -223,21 +251,21 @@ def _import_archive(tree, archive_file, file_ids_from):
         added = set()
         implied_parents = set()
         seen = set()
-        for member in archive_file.getmembers():
-            if member.type == 'g':
-                # type 'g' is a header
-                continue
-            relative_path = member.name
-            relative_path = normpath(relative_path)
-            relative_path = relative_path.lstrip('/')
-            if prefix is not None:
-                relative_path = relative_path[len(prefix)+1:]
-                relative_path = relative_path.rstrip('/')
-            if relative_path == '' or relative_path == '.':
-                continue
-            if should_ignore(relative_path):
-                continue
-            add_implied_parents(implied_parents, relative_path)
+        to_process = _get_paths_to_process(archive_file, prefix,
+                implied_parents)
+        renames = {}
+
+        # First we find the renames
+        for relative_path, member in to_process:
+            trans_id = tt.trans_id_tree_path(relative_path)
+            existing_file_id = tt.tree_file_id(trans_id)
+            different_id = _different_id(relative_path, existing_file_id,
+                    file_ids_from)
+            if different_id is not None:
+                renames[different_id] = relative_path
+
+        # The we do the work
+        for relative_path, member in to_process:
             trans_id = tt.trans_id_tree_path(relative_path)
             added.add(relative_path.rstrip('/'))
             # To handle renames, we need to not use the preserved file id, rather
@@ -247,19 +275,28 @@ def _import_archive(tree, archive_file, file_ids_from):
             # tree to authoritative about id2path, which is why we consult it
             # first.
             existing_file_id = tt.tree_file_id(trans_id)
-            for other_tree in file_ids_from:
-                found_file_id = other_tree.path2id(relative_path)
-                if found_file_id:
-                    if found_file_id != existing_file_id:
-                        # Found a specific file id in one of the source trees
-                        tt.version_file(found_file_id, trans_id)
-                        if existing_file_id is not None:
-                            # We need to remove the existing file so it can be
-                            # replaced by the file (and file id) from the
-                            # file_ids_from tree.
-                            tt.delete_versioned(trans_id)
-                        trans_id = tt.trans_id_file_id(found_file_id)
-                    break
+            # If we find an id that we know we are going to assign to
+            # different path as it has been renamed in one of the
+            # file_ids_from trees then we ignore the one in this tree.
+            if existing_file_id in renames:
+                if relative_path != renames[existing_file_id]:
+                    existing_file_id = None
+            found_file_id = _different_id(relative_path, existing_file_id,
+                    file_ids_from)
+            if found_file_id in renames:
+                if renames[found_file_id] != relative_path:
+                    found_file_id = None
+            if (found_file_id is not None
+                and found_file_id != existing_file_id):
+                # Found a specific file id in one of the source trees
+                tt.version_file(found_file_id, trans_id)
+                if existing_file_id is not None:
+                    # We need to remove the existing file so it can be
+                    # replaced by the file (and file id) from the
+                    # file_ids_from tree.
+                    tt.delete_versioned(trans_id)
+                trans_id = tt.trans_id_file_id(found_file_id)
+
             if not found_file_id and not existing_file_id:
                 # No file_id in any of the source trees and no file id in the base
                 # tree.

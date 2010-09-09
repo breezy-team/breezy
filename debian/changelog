@@ -11,6 +11,9 @@ bzr-builddeb (2.6) unstable; urgency=low
     both badly. If you are used to doing "bzr merge-upstream --version
     <package version>" then it will no longer work for you, use the
     upstream version instead.
+  * Don't crash when doing merge-upstream with a branch that does a rename
+    and then ships another file with the old path in the tarball that isn't
+    in the branch.
 
  -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
 

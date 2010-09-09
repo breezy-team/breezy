@@ -1660,6 +1660,82 @@ class DistributionBranchTests(BuilddebTestCase):
         # Check that we tagged wiht the dash version
         self.assertTrue(tree.branch.tags.has_tag('upstream-0.2-1'))
 
+    def test_merge_upstream_rename_and_replace(self):
+        """Test renaming a file upstream and replacing it.
+
+        We want to take the rename in to our tree, but have to be
+        careful not to assign the file id to the new file at the same
+        path as well, as that will lead to problems.
+        """
+        self.requireFeature(PristineTarFeature)
+        version1 = Version("1.0-1")
+        version2 = Version("1.1-1")
+        upstream_tree = self.make_branch_and_tree("upstream")
+        upstream_tree.lock_write()
+        self.addCleanup(upstream_tree.unlock)
+        self.build_tree(['upstream/a'])
+        upstream_tree.add(['a'], ['a-id'])
+        upstream_rev1 = upstream_tree.commit("one")
+        tree = upstream_tree.bzrdir.sprout('packaging').open_workingtree()
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit("add packaging")
+        tree.branch.tags.set_tag("upstream-%s" % version1.upstream_version,
+                upstream_rev1)
+        builder = SourcePackageBuilder("package", version2)
+        builder.add_default_control()
+        builder.add_upstream_file("a", "New a")
+        builder.add_upstream_file("b", "Renamed a")
+        builder.build()
+        upstream_tree.rename_one('a', 'b')
+        # We don't add the new file upstream, as the new file id would
+        # be picked up from there.
+        upstream_rev2 = upstream_tree.commit("two")
+        db.merge_upstream(builder.tar_name(), version2.upstream_version,
+            version1.upstream_version,
+            upstream_branch=upstream_tree.branch,
+            upstream_revision=upstream_rev2)
+        self.assertEqual("a-id", tree.path2id("b"))
+
+    def test_merge_upstream_rename_on_top(self):
+        """Test renaming a file upstream, replacing an existing file."""
+        self.requireFeature(PristineTarFeature)
+        version1 = Version("1.0-1")
+        version2 = Version("1.1-1")
+        upstream_tree = self.make_branch_and_tree("upstream")
+        upstream_tree.lock_write()
+        self.addCleanup(upstream_tree.unlock)
+        self.build_tree(['upstream/a', 'upstream/b'])
+        upstream_tree.add(['a', 'b'], ['a-id', 'b-id'])
+        upstream_rev1 = upstream_tree.commit("one")
+        tree = upstream_tree.bzrdir.sprout('packaging').open_workingtree()
+        db = DistributionBranch(tree.branch, None, tree=tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit("add packaging")
+        tree.branch.tags.set_tag("upstream-%s" % version1.upstream_version,
+                upstream_rev1)
+        builder = SourcePackageBuilder("package", version2)
+        builder.add_default_control()
+        builder.add_upstream_file("b", "Renamed a")
+        builder.build()
+        upstream_tree.unversion(['b-id'])
+        os.unlink('upstream/b')
+        upstream_tree.rename_one('a', 'b')
+        # We don't add the new file upstream, as the new file id would
+        # be picked up from there.
+        upstream_rev2 = upstream_tree.commit("two")
+        db.merge_upstream(builder.tar_name(), version2.upstream_version,
+            version1.upstream_version,
+            upstream_branch=upstream_tree.branch,
+            upstream_revision=upstream_rev2)
+        self.assertEqual("a-id", tree.path2id("b"))
+
     def test_import_symlink(self):
         version = Version("1.0-1")
         self.requireFeature(PristineTarFeature)
