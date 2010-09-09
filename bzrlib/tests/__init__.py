@@ -38,6 +38,7 @@ import itertools
 import logging
 import math
 import os
+import platform
 import pprint
 import random
 import re
@@ -293,23 +294,7 @@ class ExtendedTestResult(testtools.TextTestResult):
             addCleanup(self._check_leaked_threads, test)
 
     def startTests(self):
-        import platform
-        if getattr(sys, 'frozen', None) is None:
-            bzr_path = osutils.realpath(sys.argv[0])
-        else:
-            bzr_path = sys.executable
-        self.stream.write(
-            'bzr selftest: %s\n' % (bzr_path,))
-        self.stream.write(
-            '   %s\n' % (
-                    bzrlib.__path__[0],))
-        self.stream.write(
-            '   bzr-%s python-%s %s\n' % (
-                    bzrlib.version_string,
-                    bzrlib._format_version_tuple(sys.version_info),
-                    platform.platform(aliased=1),
-                    ))
-        self.stream.write('\n')
+        self.report_tests_starting()
         self._active_threads = threading.enumerate()
 
     def _check_leaked_threads(self, test):
@@ -417,6 +402,25 @@ class ExtendedTestResult(testtools.TextTestResult):
             self.num_tests += offset
         else:
             raise errors.BzrError("Unknown whence %r" % whence)
+
+    def report_tests_starting(self):
+        """Display information before the test run begins"""
+        if getattr(sys, 'frozen', None) is None:
+            bzr_path = osutils.realpath(sys.argv[0])
+        else:
+            bzr_path = sys.executable
+        self.stream.write(
+            'bzr selftest: %s\n' % (bzr_path,))
+        self.stream.write(
+            '   %s\n' % (
+                    bzrlib.__path__[0],))
+        self.stream.write(
+            '   bzr-%s python-%s %s\n' % (
+                    bzrlib.version_string,
+                    bzrlib._format_version_tuple(sys.version_info),
+                    platform.platform(aliased=1),
+                    ))
+        self.stream.write('\n')
 
     def report_test_start(self, test):
         """Display information on the test just about to be run"""

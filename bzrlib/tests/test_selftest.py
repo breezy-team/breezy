@@ -851,8 +851,7 @@ class TestTestResult(tests.TestCase):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
             def stopTestRun(self): pass
-            def startTests(self): pass
-            def report_test_start(self, test): pass
+            def report_tests_starting(self): pass
             def report_known_failure(self, test, err=None, details=None):
                 self._call = test, 'known failure'
         result = InstrumentedTestResult(None, None, None, None)
@@ -908,8 +907,7 @@ class TestTestResult(tests.TestCase):
         """Test the behaviour of invoking addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
             def stopTestRun(self): pass
-            def startTests(self): pass
-            def report_test_start(self, test): pass
+            def report_tests_starting(self): pass
             def report_unsupported(self, test, feature):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
@@ -954,8 +952,7 @@ class TestTestResult(tests.TestCase):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
             def stopTestRun(self): pass
-            def startTests(self): pass
-            def report_test_start(self, test): pass
+            def report_tests_starting(self): pass
             def addNotSupported(self, test, feature):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
@@ -1003,7 +1000,6 @@ class TestTestResult(tests.TestCase):
         class InstrumentedTestResult(tests.ExtendedTestResult):
             calls = 0
             def startTests(self): self.calls += 1
-            def report_test_start(self, test): pass
         result = InstrumentedTestResult(None, None, None, None)
         def test_function():
             pass
