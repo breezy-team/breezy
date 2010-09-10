@@ -256,6 +256,10 @@ Testing
 * HTTP test servers will leak less threads (and sockets) and will not hang on
   AIX anymore. (Vincent Ladeuil, #405745)
 
+* Printing selftest results to a non-UTF-8 console will now escape characters
+  that can't be encoded rather than aborting the test run with an exception.
+  (Martin [gz], #633216)
+
 * The test suite now simply holds log files in memory, rather than writing them
   out to disk and then reading them back in and deleting them.
   (Andrew Bennetts)

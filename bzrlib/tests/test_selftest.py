@@ -1271,7 +1271,6 @@ class TestRunner(tests.TestCase):
             "-+\n"
             "\d+\.\d+  \\\\u2606\n"
             "-+\n")
-        
 
 
 class SampleTestCase(tests.TestCase):
