@@ -279,7 +279,7 @@ Many commands that accept URLs also accept location aliases too.  See
 
 _basic_help = \
 """Bazaar %s -- a free distributed version-control tool
-http://www.bazaar.canonical.com/
+http://bazaar.canonical.com/
 
 Basic commands:
   bzr init           makes this directory a versioned branch

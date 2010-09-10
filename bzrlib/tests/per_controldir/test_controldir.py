@@ -423,9 +423,8 @@ class TestControlDir(TestCaseWithControlDir):
         try:
             target.open_workingtree()
         except errors.NoWorkingTree:
-            # bzrdir's that never have working trees are allowed to pass;
-            # whitelist them for now.
-            self.assertIsInstance(target, RemoteBzrDir)
+            # Some bzrdirs can never have working trees.
+            self.assertFalse(target._format.supports_workingtrees)
 
     def test_sprout_bzrdir_empty_under_shared_repo_force_new(self):
         # the force_new_repo parameter should force use of a new repo in an empty
@@ -503,7 +502,7 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertNotEqual(dir.transport.base, shared_repo.bzrdir.transport.base)
         branch = target.open_branch()
         self.assertTrue(branch.repository.has_revision('1'))
-        if not isinstance(branch.bzrdir, RemoteBzrDir):
+        if branch.bzrdir._format.supports_workingtrees:
             self.assertTrue(branch.repository.make_working_trees())
         self.assertFalse(branch.repository.is_shared())
 

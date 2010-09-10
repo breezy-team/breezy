@@ -127,7 +127,13 @@ Roundup bug tracker as fixed, or::
 
     bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}
 
-for CPAN's RT bug tracker.
+would allow ``bzr commit --fixes cpan:1234`` to mark bug 1234 in CPAN's
+RT bug tracker as fixed, or::
+
+    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}
+
+would allow ``bzr commit --fixes hudson:HUDSON-1234`` to mark bug HUDSON-1234
+in Hudson's JIRA bug tracker as fixed.
 """
 
 
@@ -228,14 +234,13 @@ tracker_registry.register('gnome',
     UniqueIntegerBugTracker('gnome', 'http://bugzilla.gnome.org/show_bug.cgi?id='))
 
 
-class URLParametrizedIntegerBugTracker(IntegerBugTracker):
+class URLParametrizedBugTracker(BugTracker):
     """A type of bug tracker that can be found on a variety of different sites,
     and thus needs to have the base URL configured.
 
     Looks for a config setting in the form '<type_name>_<abbreviation>_url'.
-    `type_name` is the name of the type of tracker (e.g. 'bugzilla' or 'trac')
-    and `abbreviation` is a short name for the particular instance (e.g.
-    'squid' or 'apache').
+    `type_name` is the name of the type of tracker and `abbreviation`
+    is a short name for the particular instance.
     """
 
     def get(self, abbreviation, branch):
@@ -256,6 +261,16 @@ class URLParametrizedIntegerBugTracker(IntegerBugTracker):
         return urlutils.join(self._base_url, self._bug_area) + str(bug_id)
 
 
+class URLParametrizedIntegerBugTracker(IntegerBugTracker, URLParametrizedBugTracker):
+    """A type of bug tracker that can be found on a variety of different sites,
+    and thus needs to have the base URL configured, but only allows integer bug IDs.
+
+    Looks for a config setting in the form '<type_name>_<abbreviation>_url'.
+    `type_name` is the name of the type of tracker (e.g. 'bugzilla' or 'trac')
+    and `abbreviation` is a short name for the particular instance (e.g.
+    'squid' or 'apache').
+    """
+
 tracker_registry.register(
     'trac', URLParametrizedIntegerBugTracker('trac', 'ticket/'))
 
@@ -264,7 +279,7 @@ tracker_registry.register(
     URLParametrizedIntegerBugTracker('bugzilla', 'show_bug.cgi?id='))
 
 
-class GenericBugTracker(URLParametrizedIntegerBugTracker):
+class GenericBugTracker(URLParametrizedBugTracker):
     """Generic bug tracker specified by an URL template."""
 
     def __init__(self):

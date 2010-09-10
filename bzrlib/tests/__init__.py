@@ -114,11 +114,6 @@ from bzrlib.tests import (
     TestUtil,
     treeshape,
     )
-from bzrlib.tests.http_server import HttpServer
-from bzrlib.tests.TestUtil import (
-                          TestSuite,
-                          TestLoader,
-                          )
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
@@ -140,6 +135,10 @@ _unitialized_attr = object()
 SUBUNIT_SEEK_SET = 0
 SUBUNIT_SEEK_CUR = 1
 
+# These are intentionally brought into this namespace. That way plugins, etc
+# can just "from bzrlib.tests import TestCase, TestLoader, etc"
+TestSuite = TestUtil.TestSuite
+TestLoader = TestUtil.TestLoader
 
 class ExtendedTestResult(testtools.TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
@@ -799,7 +798,7 @@ class TestCase(testtools.TestCase):
     _active_threads = None
     _leaking_threads_tests = 0
     _first_thread_leaker_id = None
-    _log_file_name = None
+    _log_file = None
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
 
@@ -848,6 +847,8 @@ class TestCase(testtools.TestCase):
         # going away but leak one) but it seems less likely than the actual
         # false positives (the test see threads going away and does not leak).
         if leaked_threads > 0:
+            if 'threads' in selftest_debug_flags:
+                print '%s is leaking, active is now %d' % (self.id(), active)
             TestCase._leaking_threads_tests += 1
             if TestCase._first_thread_leaker_id is None:
                 TestCase._first_thread_leaker_id = self.id()
@@ -1457,10 +1458,8 @@ class TestCase(testtools.TestCase):
 
         The file is removed as the test is torn down.
         """
-        fileno, name = tempfile.mkstemp(suffix='.log', prefix='testbzr')
-        self._log_file = os.fdopen(fileno, 'w+')
+        self._log_file = StringIO()
         self._log_memento = bzrlib.trace.push_log_file(self._log_file)
-        self._log_file_name = name
         self.addCleanup(self._finishLogFile)
 
     def _finishLogFile(self):
@@ -1668,65 +1667,21 @@ class TestCase(testtools.TestCase):
                 unicodestr = self._log_contents.decode('utf8', 'replace')
                 self._log_contents = unicodestr.encode('utf8')
             return self._log_contents
-        import bzrlib.trace
-        if bzrlib.trace._trace_file:
-            # flush the log file, to get all content
-            bzrlib.trace._trace_file.flush()
-        if self._log_file_name is not None:
-            logfile = open(self._log_file_name)
-            try:
-                log_contents = logfile.read()
-            finally:
-                logfile.close()
+        if self._log_file is not None:
+            log_contents = self._log_file.getvalue()
             try:
                 log_contents.decode('utf8')
             except UnicodeDecodeError:
                 unicodestr = log_contents.decode('utf8', 'replace')
                 log_contents = unicodestr.encode('utf8')
             if not keep_log_file:
-                close_attempts = 0
-                max_close_attempts = 100
-                first_close_error = None
-                while close_attempts < max_close_attempts:
-                    close_attempts += 1
-                    try:
-                        self._log_file.close()
-                    except IOError, ioe:
-                        if ioe.errno is None:
-                            # No errno implies 'close() called during
-                            # concurrent operation on the same file object', so
-                            # retry.  Probably a thread is trying to write to
-                            # the log file.
-                            if first_close_error is None:
-                                first_close_error = ioe
-                            continue
-                        raise
-                    else:
-                        break
-                if close_attempts > 1:
-                    sys.stderr.write(
-                        'Unable to close log file on first attempt, '
-                        'will retry: %s\n' % (first_close_error,))
-                    if close_attempts == max_close_attempts:
-                        sys.stderr.write(
-                            'Unable to close log file after %d attempts.\n'
-                            % (max_close_attempts,))
                 self._log_file = None
                 # Permit multiple calls to get_log until we clean it up in
                 # finishLogFile
                 self._log_contents = log_contents
-                try:
-                    os.remove(self._log_file_name)
-                except OSError, e:
-                    if sys.platform == 'win32' and e.errno == errno.EACCES:
-                        sys.stderr.write(('Unable to delete log file '
-                                             ' %r\n' % self._log_file_name))
-                    else:
-                        raise
-                self._log_file_name = None
             return log_contents
         else:
-            return "No log file content and no log file name."
+            return "No log file content."
 
     def get_log(self):
         """Get a unicode string containing the log from bzrlib.trace.
@@ -1947,15 +1902,15 @@ class TestCase(testtools.TestCase):
             variables. A value of None will unset the env variable.
             The values must be strings. The change will only occur in the
             child, so you don't need to fix the environment after running.
-        :param skip_if_plan_to_signal: raise TestSkipped when true and os.kill
-            is not available.
+        :param skip_if_plan_to_signal: raise TestSkipped when true and system
+            doesn't support signalling subprocesses.
         :param allow_plugins: If False (default) pass --no-plugins to bzr.
 
         :returns: Popen object for the started process.
         """
         if skip_if_plan_to_signal:
-            if not getattr(os, 'kill', None):
-                raise TestSkipped("os.kill not available.")
+            if os.name != "posix":
+                raise TestSkipped("Sending signals not supported")
 
         if env_changes is None:
             env_changes = {}
@@ -2439,6 +2394,15 @@ class TestCaseWithMemoryTransport(TestCase):
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()
+        # Ensure that ConnectedTransport doesn't leak sockets
+        def get_transport_with_cleanup(*args, **kwargs):
+            t = orig_get_transport(*args, **kwargs)
+            if isinstance(t, _mod_transport.ConnectedTransport):
+                self.addCleanup(t.disconnect)
+            return t
+
+        orig_get_transport = self.overrideAttr(_mod_transport, 'get_transport',
+                                               get_transport_with_cleanup)
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
         self.makeAndChdirToTestDir()
@@ -2736,9 +2700,10 @@ class ChrootedTestCase(TestCaseWithTransport):
     """
 
     def setUp(self):
+        from bzrlib.tests import http_server
         super(ChrootedTestCase, self).setUp()
         if not self.vfs_transport_factory == memory.MemoryServer:
-            self.transport_readonly_server = HttpServer
+            self.transport_readonly_server = http_server.HttpServer
 
 
 def condition_id_re(pattern):
@@ -3065,7 +3030,7 @@ def identity_decorator(suite):
     return suite
 
 
-class TestDecorator(TestSuite):
+class TestDecorator(TestUtil.TestSuite):
     """A decorator for TestCase/TestSuite objects.
     
     Usually, subclasses should override __iter__(used when flattening test
@@ -3074,7 +3039,7 @@ class TestDecorator(TestSuite):
     """
 
     def __init__(self, suite):
-        TestSuite.__init__(self)
+        TestUtil.TestSuite.__init__(self)
         self.addTest(suite)
 
     def countTestCases(self):
@@ -3248,7 +3213,7 @@ def fork_for_tests(suite):
 
     test_blocks = partition_tests(suite, concurrency)
     for process_tests in test_blocks:
-        process_suite = TestSuite()
+        process_suite = TestUtil.TestSuite()
         process_suite.addTests(process_tests)
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
@@ -3409,6 +3374,8 @@ class ProfileResult(ForwardingResult):
 #                           rather than failing tests. And no longer raise
 #                           LockContention when fctnl locks are not being used
 #                           with proper exclusion rules.
+#   -Ethreads               Will display thread ident at creation/join time to
+#                           help track thread leaks
 selftest_debug_flags = set()
 
 
@@ -3809,6 +3776,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_switch',
         'bzrlib.tests.test_symbol_versioning',
         'bzrlib.tests.test_tag',
+        'bzrlib.tests.test_test_server',
         'bzrlib.tests.test_testament',
         'bzrlib.tests.test_textfile',
         'bzrlib.tests.test_textmerge',
@@ -4005,7 +3973,7 @@ def multiply_tests(tests, scenarios, result):
     ...     bzrlib.tests.test_sampler.DemoTest('test_nothing'),
     ...     [('one', dict(param=1)),
     ...      ('two', dict(param=2))],
-    ...     TestSuite())
+    ...     TestUtil.TestSuite())
     >>> tests = list(iter_suite_tests(r))
     >>> len(tests)
     2
