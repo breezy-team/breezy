@@ -443,7 +443,7 @@ class CannedInputUIFactory(SilentUIFactory):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.responses)
 
-    def confirm_action(self, prompt, confirmation_id, args, default=True):
+    def confirm_action(self, prompt, confirmation_id, args):
         return self.get_boolean(prompt % args)
 
     def get_boolean(self, prompt):

@@ -1,6 +1,6 @@
-==========================================
-Bazaar Developer Guide to User Interaction
-==========================================
+=========================
+Interacting with the user
+=========================
 
 Getting Input
 =============
@@ -44,8 +44,11 @@ use them.  (Because code may move or the check may for implementation
 reasons be done elsewhere, they need not perfectly correspond to the place
 they're used, and they should stay stable even when the code moves.)
 
-bzrlib.lockdir.break
+``bzrlib.lockdir.break``
     Before breaking a lock.
+
+``bzrlib.builtins.uncommit``
+    Before the ``uncommit`` command actually changes the branch.
 
 
 Writing Output
