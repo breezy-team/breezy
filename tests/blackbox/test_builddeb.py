@@ -33,7 +33,7 @@ class TestBuilddeb(BuilddebTestCase):
     """Create an unpacked source tree in a branch. Return the working tree"""
     tree = self.make_branch_and_tree('.')
     cl_file = 'debian/changelog'
-    source_files = ['debian/'] + [cl_file]
+    source_files = ['README', 'debian/'] + [cl_file]
     self.build_tree(source_files)
     c = self.make_changelog()
     self.write_changelog(c, cl_file)
