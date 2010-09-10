@@ -272,6 +272,10 @@ Internals
 Testing
 *******
 
+* Bump minimum testtools version required to run ``bzr selftest`` from 0.9.2
+  to 0.9.5 which will allow tests that need the fixed unicode handling to be
+  written. (Martin [gz])
+
 * HTTP test servers will leak less threads (and sockets) and will not hang on
   AIX anymore. (Vincent Ladeuil, #405745)
 
