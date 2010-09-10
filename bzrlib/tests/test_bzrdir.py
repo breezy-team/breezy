@@ -803,8 +803,8 @@ class ChrootedTests(TestCaseWithTransport):
         # turn the line below into an assertRaises when 'subtree/.bzr' is
         # orphaned and sprout tries to access the branch there (which is left
         # by bzrdir.BzrDirMeta1.destroy_workingtree when it ignores the
-        # [DeletingParent('Not deleting', u'subtree', None)] conflict)
-        # -- vila 20100909
+        # [DeletingParent('Not deleting', u'subtree', None)] conflict). See bug
+        # #634470.  -- vila 20100909
         self.assertRaises(errors.NotBranchError,
                           tree.bzrdir.sprout, 'repo/tree2')
 #        self.failUnlessExists('repo/tree2/subtree')

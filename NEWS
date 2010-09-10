@@ -197,6 +197,12 @@ Improvements
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
   to 48).  (Andrew Bennetts)
 
+* When a bzr command remove a previously versioned directory, all
+  unversioned files are moved to a 'bzr-orphans' directory at the working
+  tree root with backup names (<file>.~#~). This was previously creating
+  spurious conflicts during merge, pull or switch operations.
+  (Vincent Ladeuil, #323111)
+
 * When building new working trees, default to reading from the repository
   rather than the source tree unless explicitly requested. (via
   ``--files-from`` and ``--hardlink`` for ``bzr branch`` and

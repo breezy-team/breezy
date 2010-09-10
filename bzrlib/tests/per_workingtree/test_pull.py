@@ -91,7 +91,11 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
                 'WorkingTreeFormat2 does not support missing parent conflicts')
         trunk = self.make_branch_deleting_dir('trunk')
         work = trunk.bzrdir.sprout('work', revision_id='2').open_workingtree()
-        # Add an unversioned file in dir
-        self.build_tree(['work/dir/foo'])
+        # Add some unversioned files in dir
+        self.build_tree(['work/dir/foo',
+                         'work/dir/subdir/',
+                         'work/dir/subdir/foo'])
         work.pull(trunk)
         self.assertLength(0, work.conflicts())
+        # The directory removal should succeed
+        self.failIfExists('work/dir')
