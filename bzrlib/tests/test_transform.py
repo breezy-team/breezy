@@ -2348,7 +2348,7 @@ class TestTransformRollback(tests.TestCaseWithTransport):
 
 class TestTransformMissingParent(tests.TestCaseWithTransport):
 
-    def get_tree_transform_with_unversioned_dir(self):
+    def make_tt_with_versioned_dir(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['dir/',])
         wt.add(['dir'], ['dir-id'])
@@ -2358,7 +2358,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
         return wt, tt
 
     def test_resolve_create_parent_for_versioned_file(self):
-        wt, tt = self.get_tree_transform_with_unversioned_dir()
+        wt, tt = self.make_tt_with_versioned_dir()
         dir_tid = tt.trans_id_tree_file_id('dir-id')
         file_tid = tt.new_file('file', dir_tid, 'Contents', file_id='file-id')
         tt.delete_contents(dir_tid)
@@ -2369,7 +2369,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
         self.assertLength(2, conflicts)
 
     def test_resolve_orphan_non_versioned_file(self):
-        wt, tt = self.get_tree_transform_with_unversioned_dir()
+        wt, tt = self.make_tt_with_versioned_dir()
         dir_tid = tt.trans_id_tree_file_id('dir-id')
         tt.new_file('file', dir_tid, 'Contents')
         tt.delete_contents(dir_tid)
@@ -3292,4 +3292,6 @@ class TestOrphan(tests.TestCaseWithTransport):
         # Yeah for resolved conflicts !
         self.assertLength(0, remaining_conflicts)
         # We have a new orphan
-        self.assertEndsWith('foo.~1~', tt.final_name(foo_tid))
+        self.assertEquals('foo.~1~', tt.final_name(foo_tid))
+        self.assertEquals('bzr-orphans',
+                          tt.final_name(tt.final_parent(foo_tid)))

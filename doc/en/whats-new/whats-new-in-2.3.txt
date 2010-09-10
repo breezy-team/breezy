@@ -52,6 +52,15 @@ Performance improvements
   content faster than seeking and reading content from another tree,
   especially in cold-cache situations. (John Arbash Meinel, #607298)
 
+
+Improved conflict handling
+**************************
+
+* Deleting a versioned directory containing unversioned files will no
+  longer create a conflict. Instead, the unversioned files will be moved
+  into a 'bzr-orphans' directory at the root of the working tree.
+  (Vincent Ladeuil, #323111)
+
 Documentation
 *************
 * A beta version of the documentation is now available in GNU TexInfo
