@@ -1,9 +1,9 @@
 bzr-builddeb (2.6) unstable; urgency=low
 
+  [ James Westby ]
+
   * Don't fail if asked to use a .bz2 tarball that is already in the desired
     location. LP: #616786
-  * Don't crash on merge mode packages where there is no export-upstream
-    if we can't find the tarball. Thanks Jelmer.
   * Don't crash if we are asked to merge-upstream with an unrelated branch.
     LP: #619614.
   * Don't strip -n from the version we get in merge-upstream, as some
@@ -14,6 +14,12 @@ bzr-builddeb (2.6) unstable; urgency=low
   * Don't crash when doing merge-upstream with a branch that does a rename
     and then ships another file with the old path in the tarball that isn't
     in the branch.
+
+  [ Jelmer Vernooij ]
+
+  * Fix the auto-detection of merge mode.
+  * Don't crash on merge mode packages where there is no export-upstream
+    if we can't find the tarball.
 
  -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
 
