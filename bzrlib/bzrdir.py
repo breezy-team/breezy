@@ -1311,7 +1311,7 @@ class BzrDirMeta1(BzrDir):
         empty = repository.revision_tree(_mod_revision.NULL_REVISION)
         # We ignore the conflicts returned by wt.revert since we're about to
         # delete the wt metadata anyway, all that should be left here are
-        # detritus. But see bug #634470.
+        # detritus. But see bug #634470 about subtree .bzr dirs.
         conflicts = wt.revert(old_tree=empty)
         self.destroy_workingtree_metadata()
 
