@@ -19,7 +19,7 @@ Bug Fixes
 
 * ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
   previously-unversioned directory within the tree: the directory is
-  marked versioned too.  
+  marked versioned too.
   (Martin Pool, #192859)
 
 * CommitBuilder now uses the committer instead of _config.username to generate
@@ -28,9 +28,14 @@ Bug Fixes
 * Cope with Microsoft FTP server that returns reply '250 Directory
   created' when mkdir succeeds.  (Martin Pool, #224373)
 
-* Fix ``AttributeError on parent.children`` when adding a file under a 
+* Fix ``AttributeError on parent.children`` when adding a file under a
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
+
+* Fix ``AttributeError: 'NoneType' object has no attribute 'close'`` in
+  ``_close_ssh_proc`` when using ``bzr+ssh://``.  This was causing
+  connections to pre-1.6 bzr+ssh servers to fail, and causing warnings on
+  stderr in some other circumstances.  (Andrew Bennetts, #633745)
 
 * Only call ``setlocale`` in the bzr startup script on posix systems. This
   avoids an issue with the newer windows C runtimes used by Python 2.6 and
