@@ -20,6 +20,8 @@ bzr-builddeb (2.6) unstable; urgency=low
   * Fix the auto-detection of merge mode.
   * Don't crash on merge mode packages where there is no export-upstream
     if we can't find the tarball.
+  * Determine Bazaar home directory using bzrlib to prevent test
+    isolation issues. LP: #614125
 
  -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
 
