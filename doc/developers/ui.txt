@@ -39,6 +39,14 @@ takes a `confirmation_id` parameter that acts as a symbolic name for the
 type of confirmation, so the user can configure them off.  (This is not
 implemented at present.)
 
+Confirmation ids look like Python paths to the logical code that should
+use them.  (Because code may move or the check may for implementation
+reasons be done elsewhere, they need not perfectly correspond to the place
+they're used, and they should stay stable even when the code moves.)
+
+bzrlib.lockdir.break
+    Before breaking a lock.
+
 
 Writing Output
 ==============
