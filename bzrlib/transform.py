@@ -58,6 +58,7 @@ from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
         deprecated_in,
+        deprecated_method,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib import tree
@@ -533,30 +534,53 @@ class TreeTransformBase(object):
             # ensure that all children are registered with the transaction
             list(self.iter_tree_children(parent_id))
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def has_named_child(self, by_parent, parent_id, name):
-        try:
-            children = by_parent[parent_id]
-        except KeyError:
-            children = []
-        for child in children:
+        return self._has_named_child(
+            name, parent_id, known_children=by_parent.get(parent_id, []))
+
+    def _has_named_child(self, name, parent_id, known_children):
+        """Does a parent already have a name child.
+
+        :param name: The searched for name.
+
+        :param parent_id: The parent for which the check is made.
+
+        :param known_children: The already known children. This should have
+            been recently obtained from `self.by_parent.get(parent_id)`
+            (or will be if None is passed).
+        """
+        if known_children is None:
+            known_children = self.by_parent().get(parent_id, [])
+        for child in known_children:
             if self.final_name(child) == name:
                 return True
-        try:
-            path = self._tree_id_paths[parent_id]
-        except KeyError:
+        parent_path = self._tree_id_paths.get(parent_id, None)
+        if parent_path is None:
+            # No parent... no children
             return False
-        childpath = joinpath(path, name)
-        child_id = self._tree_path_ids.get(childpath)
+        child_path = joinpath(parent_path, name)
+        child_id = self._tree_path_ids.get(child_path, None)
         if child_id is None:
-            return lexists(self._tree.abspath(childpath))
+            # Not known by the tree transform yet, check the filesystem
+            return osutils.lexists(self._tree.abspath(child_path))
         else:
-            if self.final_parent(child_id) != parent_id:
-                return False
-            if child_id in self._removed_contents:
-                # XXX What about dangling file-ids?
-                return False
-            else:
-                return True
+            raise AssertionError('child_id is missing: %s, %s, %s'
+                                 % (name, parent_id, child_id))
+
+    def _available_backup_name(self, name, target_id):
+        """Find an available backup name.
+
+        :param name: The basename of the file.
+
+        :param target_id: The directory trans_id where the backup should 
+            be placed.
+        """
+        known_children = self.by_parent().get(target_id, [])
+        return osutils.available_backup_name(
+            name,
+            lambda base: self._has_named_child(
+                base, target_id, known_children))
 
     def _parent_loops(self):
         """No entry should be its own ancestor"""
@@ -1291,8 +1315,7 @@ class DiskTreeTransform(TreeTransformBase):
         if self.final_kind(od_id) is None:
             self.create_directory(od_id)
         # Find a name that doesn't exist yet in the orphan dir
-        new_name = osutils.available_backup_name(
-            self.final_name(trans_id), lambda name: name in self._tree_path_ids)
+        new_name = self._available_backup_name(self.final_name(trans_id), od_id)
         self.adjust_path(new_name, od_id, trans_id)
 
 
@@ -2567,10 +2590,12 @@ def create_entry_executability(tt, entry, trans_id):
         tt.set_executability(entry.executable, trans_id)
 
 
+@deprecated_function(deprecated_in((2, 3, 0)))
 def get_backup_name(entry, by_parent, parent_trans_id, tt):
     return _get_backup_name(entry.name, by_parent, parent_trans_id, tt)
 
 
+@deprecated_function(deprecated_in((2, 3, 0)))
 def _get_backup_name(name, by_parent, parent_trans_id, tt):
     """Produce a backup-style name that appears to be available"""
     def name_gen():
@@ -2697,9 +2722,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         tt.delete_contents(trans_id)
                     elif kind[1] is not None:
                         parent_trans_id = tt.trans_id_file_id(parent[0])
-                        by_parent = tt.by_parent()
-                        backup_name = _get_backup_name(name[0], by_parent,
-                                                       parent_trans_id, tt)
+                        backup_name = tt._available_backup_name(name[0],
+                                                                parent_trans_id)
                         tt.adjust_path(backup_name, parent_trans_id, trans_id)
                         new_trans_id = tt.create_path(name[0], parent_trans_id)
                         if versioned == (True, True):

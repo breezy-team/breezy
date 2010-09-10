@@ -22,7 +22,11 @@ Compatibility Breaks
 
 * ``BzrDir.generate_backup_name`` has been deprecated and replaced by a
   private method. ``osutils.available_backup_name`` provides an extensible
-  replacement. (Vincent Ladeuil)
+  replacement. This allowed the deprecation of
+  ``bzrlib.transform.get_backup_name``,
+  ``bzrlib.transform._get_backup_name`` and
+  ``bzrlib.transform.TreeTransformBase.has_named_child``.
+  (Vincent Ladeuil)
 
 * ``bzrlib.transform.TreeTransformBase.final_kind``,
   ``bzrlib.transform.TreeTransform.tree_kind`` and

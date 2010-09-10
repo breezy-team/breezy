@@ -27,6 +27,7 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     rules,
+    symbol_versioning,
     tests,
     transform,
     urlutils,
@@ -2194,37 +2195,29 @@ class TestCommitTransform(tests.TestCaseWithTransport):
         self.assertEqual('tree', revision.properties['branch-nick'])
 
 
-class MockTransform(object):
+class TestBackupName(tests.TestCase):
 
-    def has_named_child(self, by_parent, parent_id, name):
-        for child_id in by_parent[parent_id]:
-            if child_id == '0':
-                if name == "name~":
-                    return True
-            elif name == "name.~%s~" % child_id:
-                return True
-        return False
+    def test_deprecations(self):
+        class MockTransform(object):
 
+            def has_named_child(self, by_parent, parent_id, name):
+                return name in by_parent.get(parent_id, [])
 
-class MockEntry(object):
-    def __init__(self):
-        object.__init__(self)
-        self.name = "name"
+        class MockEntry(object):
 
+            def __init__(self):
+                object.__init__(self)
+                self.name = "name"
 
-class TestGetBackupName(TestCase):
-    def test_get_backup_name(self):
         tt = MockTransform()
-        name = get_backup_name(MockEntry(), {'a':[]}, 'a', tt)
-        self.assertEqual(name, 'name.~1~')
-        name = get_backup_name(MockEntry(), {'a':['1']}, 'a', tt)
-        self.assertEqual(name, 'name.~2~')
-        name = get_backup_name(MockEntry(), {'a':['2']}, 'a', tt)
-        self.assertEqual(name, 'name.~1~')
-        name = get_backup_name(MockEntry(), {'a':['2'], 'b':[]}, 'b', tt)
-        self.assertEqual(name, 'name.~1~')
-        name = get_backup_name(MockEntry(), {'a':['1', '2', '3']}, 'a', tt)
-        self.assertEqual(name, 'name.~4~')
+        name1 = self.applyDeprecated(
+                symbol_versioning.deprecated_in((2, 3, 0)),
+                transform.get_backup_name, MockEntry(), {'a':[]}, 'a', tt)
+        self.assertEqual('name.~1~', name1)
+        name2 = self.applyDeprecated(
+                symbol_versioning.deprecated_in((2, 3, 0)),
+                transform._get_backup_name, 'name', {'a':['name.~1~']}, 'a', tt)
+        self.assertEqual('name.~2~', name2)
 
 
 class TestFileMover(tests.TestCaseWithTransport):
