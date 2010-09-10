@@ -52,8 +52,12 @@ Compatibility Breaks
   `bzrlib.controldir.ControlDirFormat.register_server_prober`.
   `BzrDirFormat.probe_transport` has been moved onto `Prober`.
 
-  `BzrDirFormat.register_format` has been renamed to 
+  `BzrDirFormat.register_format` has been renamed to
   `BzrProber.register_bzrdir_format`.
+
+  `bzrlib.bzrdir.network_format_registry` has been moved to
+  `bzrlib.controldir`.
+
   (Jelmer Vernooij)
 
 * The old ``bzr selftest --benchmark`` option has been removed.
