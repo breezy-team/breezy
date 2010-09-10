@@ -822,9 +822,13 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         parent = tt.trans_id_file_id('parent-id')
         tt.new_file('file', parent, 'Contents')
         raw_conflicts = resolve_conflicts(tt)
+        # Since the directory doesn't exist it's seen as missing to resolve
+        # create a conflict asking for it to be created.
         self.assertLength(1, raw_conflicts)
         self.assertEqual(('missing parent', 'Created directory', 'new-1'),
                          raw_conflicts.pop())
+        # apply fail since the missing directory doesn't exist
+        self.assertRaises(errors.NoFinalPath, tt.apply)
 
     def test_moving_versioned_directories(self):
         create, root = self.get_transform()
@@ -2371,6 +2375,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
         tt.delete_contents(dir_tid)
         tt.unversion_file(dir_tid)
         conflicts = resolve_conflicts(tt)
+        # no conflicts or rather: orphaning 'file' resolve the 'dir' conflict
         self.assertLength(0, conflicts)
 
 
@@ -3258,14 +3263,33 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
 
 class TestOrphan(tests.TestCaseWithTransport):
 
-    # - can't create oprhan dir
+    # Alternative implementations may want to test:
+    # - can't create orphan dir
     # - orphaning forbidden
     # - can't create orphan
-    # - create orphan
 
     def test_no_orphan_for_transform_preview(self):
         tree = self.make_branch_and_tree('tree')
-        tt = TransformPreview(tree)
+        tt = transform.TransformPreview(tree)
         self.addCleanup(tt.finalize)
         self.assertRaises(NotImplementedError, tt.new_orphan, 'foo', 'bar')
 
+    def test_new_orphan(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['dir/', 'dir/foo'])
+        wt.add(['dir'], ['dir-id'])
+        wt.commit('add dir')
+        tt = transform.TreeTransform(wt)
+        self.addCleanup(tt.finalize)
+        dir_tid = tt.trans_id_tree_path('dir')
+        foo_tid = tt.trans_id_tree_path('dir/foo')
+        tt.delete_contents(dir_tid)
+        tt.unversion_file(dir_tid)
+        raw_conflicts = tt.find_conflicts()
+        self.assertLength(1, raw_conflicts)
+        self.assertEqual(('missing parent', 'new-1'), raw_conflicts[0])
+        remaining_conflicts = resolve_conflicts(tt)
+        # Yeah for resolved conflicts !
+        self.assertLength(0, remaining_conflicts)
+        # We have a new orphan
+        self.assertEndsWith('foo.~1~', tt.final_name(foo_tid))

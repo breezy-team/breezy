@@ -20,6 +20,10 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* ``BzrDir.generate_backup_name`` has been deprecated and replaced by a
+  private method. ``osutils.available_backup_name`` provides an extensible
+  replacement. (Vincent Ladeuil)
+
 * ``bzrlib.transform.TreeTransformBase.final_kind``,
   ``bzrlib.transform.TreeTransform.tree_kind`` and
   ``bzrlib.transform.TransformPreview.tree_kind`` now return None instead
@@ -192,6 +196,12 @@ Improvements
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
   to 48).  (Andrew Bennetts)
+
+* When a bzr command remove a previously versioned directory, all
+  unversioned files are moved to a 'bzr-orphans' directory at the working
+  tree root with backup names (<file>.~#~). This was previously creating
+  spurious conflicts during merge, pull or switch operations.
+  (Vincent Ladeuil, #323111)
 
 * When building new working trees, default to reading from the repository
   rather than the source tree unless explicitly requested. (via

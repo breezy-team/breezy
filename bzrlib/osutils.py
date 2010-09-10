@@ -2359,7 +2359,9 @@ def getuser_unicode():
 def available_backup_name(base, exists):
     """Find a non-existing backup file name.
 
-    This will *not* create anything, this only return a 'free' entry.
+    This will *not* create anything, this only return a 'free' entry.  This
+    should be used for checking names in a directory below a locked
+    tree/branch/repo to avoid race conditions.
 
     :param base: The base name.
     :param exists: A callable returning True if the passed path exists.
