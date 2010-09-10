@@ -952,6 +952,7 @@ class DistributionBranch(object):
             return br.repository.revision_tree(br.last_revision())
         upstream_trees = [get_last_revision_tree(o.upstream_branch)
             for o in other_branches]
+        target_tree = None
         if upstream_branch is not None:
             if upstream_revision is None:
                 upstream_revision = upstream_branch.last_revision()
@@ -959,9 +960,8 @@ class DistributionBranch(object):
                     last_revision=upstream_revision)
             upstream_branch.tags.merge_to(self.upstream_branch.tags)
             upstream_parents.append(upstream_revision)
-            upstream_trees.insert(0,
-                    self.upstream_branch.repository.revision_tree(
-                        upstream_revision))
+            target_tree = self.upstream_branch.repository.revision_tree(
+                        upstream_revision)
         if file_ids_from is not None:
             upstream_trees = file_ids_from + upstream_trees
         if self.tree:
@@ -972,7 +972,8 @@ class DistributionBranch(object):
             self_tree.lock_read()
         try:
             import_dir(self.upstream_tree, upstream_part,
-                    file_ids_from=upstream_trees + [self_tree])
+                    file_ids_from=[self_tree] + upstream_trees,
+                    target_tree=target_tree)
         finally:
             self_tree.unlock()
         self.upstream_tree.set_parent_ids(upstream_parents)

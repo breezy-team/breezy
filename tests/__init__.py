@@ -116,6 +116,7 @@ def load_tests(standard_tests, module, loader):
     testmod_names = [
             'blackbox',
             'test_builder',
+            'test_bzrtools_import',
             'test_commit_message',
             'test_config',
             'test_dh_make',

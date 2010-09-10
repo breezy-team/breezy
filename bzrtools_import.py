@@ -180,29 +180,33 @@ def should_ignore(relative_path):
             return True
 
 
-def import_tar(tree, tar_input, file_ids_from=None):
+def import_tar(tree, tar_input, file_ids_from=None, target_tree=None):
     """Replace the contents of a working directory with tarfile contents.
     The tarfile may be a gzipped stream.  File ids will be updated.
     """
     tar_file = tarfile.open('lala', 'r', tar_input)
-    import_archive(tree, tar_file, file_ids_from=file_ids_from)
+    import_archive(tree, tar_file, file_ids_from=file_ids_from,
+            target_tree=target_tree)
 
-def import_zip(tree, zip_input, file_ids_from=None):
+def import_zip(tree, zip_input, file_ids_from=None, target_tree=None):
     zip_file = ZipFileWrapper(zip_input, 'r')
-    import_archive(tree, zip_file, file_ids_from=file_ids_from)
+    import_archive(tree, zip_file, file_ids_from=file_ids_from,
+            target_tree=target_tree)
 
-def import_dir(tree, dir, file_ids_from=None):
+def import_dir(tree, dir, file_ids_from=None, target_tree=None):
     dir_input = StringIO(dir)
     dir_file = DirWrapper(dir_input)
-    import_archive(tree, dir_file, file_ids_from=file_ids_from)
+    import_archive(tree, dir_file, file_ids_from=file_ids_from,
+            target_tree=target_tree)
 
-def import_archive(tree, archive_file, file_ids_from=None):
+def import_archive(tree, archive_file, file_ids_from=None, target_tree=None):
     if file_ids_from is None:
         file_ids_from = []
     for other_tree in file_ids_from:
         other_tree.lock_read()
     try:
-        return _import_archive(tree, archive_file, file_ids_from)
+        return _import_archive(tree, archive_file, file_ids_from,
+                target_tree=target_tree)
     finally:
         for other_tree in file_ids_from:
             other_tree.unlock()
@@ -228,15 +232,7 @@ def _get_paths_to_process(archive_file, prefix, implied_parents):
     return to_process
 
 
-def _different_id(relative_path, existing_file_id, file_ids_from):
-    for other_tree in file_ids_from:
-        found_file_id = other_tree.path2id(relative_path)
-        if found_file_id:
-            if found_file_id != existing_file_id:
-                return found_file_id
-
-
-def _import_archive(tree, archive_file, file_ids_from):
+def _import_archive(tree, archive_file, file_ids_from, target_tree=None):
     prefix = common_directory(names_of_files(archive_file))
     tt = TreeTransform(tree)
     try:
@@ -256,24 +252,25 @@ def _import_archive(tree, archive_file, file_ids_from):
         renames = {}
 
         # First we find the renames
-        for relative_path, member in to_process:
-            trans_id = tt.trans_id_tree_path(relative_path)
-            existing_file_id = tt.tree_file_id(trans_id)
-            different_id = _different_id(relative_path, existing_file_id,
-                    file_ids_from)
-            if different_id is not None:
-                renames[different_id] = relative_path
+        if target_tree is not None:
+            for relative_path, member in to_process:
+                trans_id = tt.trans_id_tree_path(relative_path)
+                existing_file_id = tt.tree_file_id(trans_id)
+                target_id = target_tree.path2id(relative_path)
+                if (target_id is not None
+                    and target_id != existing_file_id):
+                    renames[target_id] = relative_path
 
         # The we do the work
         for relative_path, member in to_process:
             trans_id = tt.trans_id_tree_path(relative_path)
             added.add(relative_path.rstrip('/'))
             # To handle renames, we need to not use the preserved file id, rather
-            # we need to lookup the file id in a from_tree, if there is one. If
+            # we need to lookup the file id in target_tree, if there is one. If
             # there isn't, we should use the one in the current tree, and failing
-            # that we will allocate one. In this importer we want the file_ids_from
-            # tree to authoritative about id2path, which is why we consult it
-            # first.
+            # that we will allocate one. In this importer we want the
+            # target_tree to be authoritative about id2path, which is why we
+            # consult it first.
             existing_file_id = tt.tree_file_id(trans_id)
             # If we find an id that we know we are going to assign to
             # different path as it has been renamed in one of the
@@ -281,11 +278,21 @@ def _import_archive(tree, archive_file, file_ids_from):
             if existing_file_id in renames:
                 if relative_path != renames[existing_file_id]:
                     existing_file_id = None
-            found_file_id = _different_id(relative_path, existing_file_id,
-                    file_ids_from)
-            if found_file_id in renames:
-                if renames[found_file_id] != relative_path:
-                    found_file_id = None
+            found_file_id = None
+            if target_tree is not None:
+                found_file_id = target_tree.path2id(relative_path)
+                if found_file_id in renames:
+                    if renames[found_file_id] != relative_path:
+                        found_file_id = None
+            if found_file_id is None and existing_file_id is None:
+                for other_tree in file_ids_from:
+                    found_file_id = other_tree.path2id(relative_path)
+                    if found_file_id is not None:
+                        if found_file_id in renames:
+                            if renames[found_file_id] != relative_path:
+                                found_file_id = None
+                                continue
+                        break
             if (found_file_id is not None
                 and found_file_id != existing_file_id):
                 # Found a specific file id in one of the source trees
