@@ -352,8 +352,7 @@ class LockDir(lock.Lock):
         if holder_info is not None:
             lock_info = '\n'.join(self._format_lock_info(holder_info))
             if bzrlib.ui.ui_factory.confirm_action(
-                "Break %(lock_info)s",
-                'bzr.lock.break.confirm',
+                "Break %(lock_info)s", 'bzrlib.lockdir.break', 
                 dict(lock_info=lock_info)):
                 self.force_break(holder_info)
 
