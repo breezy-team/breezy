@@ -120,6 +120,7 @@ from bzrlib.errors import (
         LockBreakMismatch,
         LockBroken,
         LockContention,
+        LockCorrupt,
         LockFailed,
         LockNotHeld,
         NoSuchFile,
@@ -348,7 +349,13 @@ class LockDir(lock.Lock):
         it possibly being still active.
         """
         self._check_not_locked()
-        holder_info = self.peek()
+        try:
+            holder_info = self.peek()
+        except LockCorrupt, e:
+            # The lock info is corrupt.
+            if bzrlib.ui.ui_factory.get_boolean("Break (corrupt %r)" % (self,)):
+                self.force_break_corrupt(e.file_data)
+            return
         if holder_info is not None:
             lock_info = '\n'.join(self._format_lock_info(holder_info))
             if bzrlib.ui.ui_factory.get_boolean("Break %s" % lock_info):
@@ -392,6 +399,35 @@ class LockDir(lock.Lock):
         self.transport.rmdir(tmpname)
         result = lock.LockResult(self.transport.abspath(self.path),
                                  current_info.get('nonce'))
+        for hook in self.hooks['lock_broken']:
+            hook(result)
+
+    def force_break_corrupt(self, corrupt_info_lines):
+        """Release a lock that has been corrupted.
+        
+        This is very similar to force_break, it except it doesn't assume that
+        self.peek() can work.
+        
+        :param corrupt_info_lines: the lines of the corrupted info file, used
+            to check that the lock hasn't changed between reading the (corrupt)
+            info file and calling force_break_corrupt.
+        """
+        # XXX: this copes with unparseable info files, but what about missing
+        # info files?  Or missing lock dirs?
+        self._check_not_locked()
+        tmpname = '%s/broken.%s.tmp' % (self.path, rand_chars(20))
+        self.transport.rename(self._held_dir, tmpname)
+        # check that we actually broke the right lock, not someone else;
+        # there's a small race window between checking it and doing the
+        # rename.
+        broken_info_path = tmpname + self.__INFO_NAME
+        f = self.transport.get(broken_info_path)
+        broken_lines = f.readlines()
+        if broken_lines != corrupt_info_lines:
+            raise LockBreakMismatch(self, broken_lines, corrupt_info_lines)
+        self.transport.delete(broken_info_path)
+        self.transport.rmdir(tmpname)
+        result = lock.LockResult(self.transport.abspath(self.path))
         for hook in self.hooks['lock_broken']:
             hook(result)
 
@@ -459,7 +495,13 @@ class LockDir(lock.Lock):
         return s.to_string()
 
     def _parse_info(self, info_bytes):
-        stanza = rio.read_stanza(osutils.split_lines(info_bytes))
+        lines = osutils.split_lines(info_bytes)
+        try:
+            stanza = rio.read_stanza(lines)
+        except ValueError, e:
+            mutter('Corrupt lock info file: %r', lines)
+            raise LockCorrupt("could not parse lock info file: " + str(e),
+                              lines)
         if stanza is None:
             # see bug 185013; we fairly often end up with the info file being
             # empty after an interruption; we could log a message here but

@@ -32,6 +32,10 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
@@ -535,6 +539,10 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
