@@ -701,8 +701,9 @@ class InterToGitBranch(branch.GenericInterBranch):
             refs.update(new_refs)
             return refs
         old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
-        result.old_revid = self.target.lookup_foreign_revision_id(
-            old_refs.get(main_ref, ZERO_SHA))
+        (result.old_revid, old_sha1) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
+        if result.old_revid is None:
+            result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
         result.new_revid = new_refs[main_ref]
         return result
 
