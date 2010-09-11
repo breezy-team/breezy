@@ -27,6 +27,7 @@ from bzrlib import (
 LockWarner = getattr(lockable_files, "_LockWarner", None)
 
 from bzrlib.plugins.git import (
+    BareLocalGitControlDirFormat,
     LocalGitControlDirFormat,
     )
 try:

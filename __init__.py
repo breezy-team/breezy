@@ -123,6 +123,12 @@ format_registry.register_lazy('git',
     help='GIT repository.', native=False, experimental=False,
     )
 
+format_registry.register_lazy('git-bare',
+    "bzrlib.plugins.git.dir", "BareLocalGitControlDirFormat",
+    help='Bare GIT repository (no working tree).', native=False,
+    experimental=False,
+    )
+
 from bzrlib.revisionspec import revspec_registry
 revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec",
     "RevisionSpec_git")
@@ -166,17 +172,22 @@ class LocalGitProber(Prober):
             raise bzr_errors.NotBranchError(path=transport.base)
         lazy_check_versions()
         import dulwich
-        format = LocalGitControlDirFormat()
+        from bzrlib.plugins.git.transportgit import TransportRepo
         try:
-            format.open(transport)
-            return format
+            gitrepo = TransportRepo(transport)
         except dulwich.errors.NotGitRepository, e:
             raise bzr_errors.NotBranchError(path=transport.base)
-        raise bzr_errors.NotBranchError(path=transport.base)
+        else:
+            if gitrepo.bare:
+                return BareLocalGitControlDirFormat()
+            else:
+                return LocalGitControlDirFormat()
 
 
 class LocalGitControlDirFormat(GitControlDirFormat):
     """The .git directory control format."""
+
+    bare = False
 
     @classmethod
     def _known_formats(self):
@@ -201,9 +212,6 @@ class LocalGitControlDirFormat(GitControlDirFormat):
     def get_format_description(self):
         return "Local Git Repository"
 
-    def get_format_string(self):
-        return "Local Git Repository"
-
     def initialize_on_transport(self, transport):
         from bzrlib.transport.local import LocalTransport
 
@@ -213,11 +221,20 @@ class LocalGitControlDirFormat(GitControlDirFormat):
                 "non-local transports")
         lazy_check_versions()
         from dulwich.repo import Repo
-        Repo.init(transport.local_abspath(".").encode(osutils._fs_enc))
+        Repo.init(transport.local_abspath(".").encode(osutils._fs_enc),
+            bare=self.bare)
         return self.open(transport)
 
     def is_supported(self):
         return True
+
+
+class BareLocalGitControlDirFormat(LocalGitControlDirFormat):
+
+    bare = True
+
+    def get_format_description(self):
+        return "Local Git Repository (bare)"
 
 
 class RemoteGitProber(Prober):
@@ -272,20 +289,19 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
     def get_format_description(self):
         return "Remote Git Repository"
 
-    def get_format_string(self):
-        return "Remote Git Repository"
-
     def initialize_on_transport(self, transport):
         raise bzr_errors.UninitializableFormat(self)
 
 
 if has_controldir:
     ControlDirFormat.register_format(LocalGitControlDirFormat())
+    ControlDirFormat.register_format(BareLocalGitControlDirFormat())
     ControlDirFormat.register_format(RemoteGitControlDirFormat())
     ControlDirFormat.register_prober(LocalGitProber)
     ControlDirFormat.register_prober(RemoteGitProber)
 else:
     ControlDirFormat.register_control_format(LocalGitControlDirFormat)
+    ControlDirFormat.register_control_format(BareLocalGitControlDirFormat)
     ControlDirFormat.register_control_format(RemoteGitControlDirFormat)
 
 register_transport_proto('git://',
