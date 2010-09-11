@@ -221,8 +221,11 @@ class LocalGitControlDirFormat(GitControlDirFormat):
                 "non-local transports")
         lazy_check_versions()
         from dulwich.repo import Repo
-        Repo.init(transport.local_abspath(".").encode(osutils._fs_enc),
-            bare=self.bare)
+        path = transport.local_abspath(".").encode(osutils._fs_enc)
+        if self.bare:
+            Repo.init_bare(path)
+        else:
+            Repo.init(path)
         return self.open(transport)
 
     def is_supported(self):
