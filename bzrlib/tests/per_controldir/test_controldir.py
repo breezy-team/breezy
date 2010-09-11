@@ -76,7 +76,7 @@ class TestControlDir(TestCaseWithControlDir):
         """
         try:
             return a_bzrdir.create_workingtree()
-        except errors.NotLocalUrl:
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped("cannot make working tree with transport %r"
                               % a_bzrdir.transport)
 
@@ -104,7 +104,7 @@ class TestControlDir(TestCaseWithControlDir):
         dir.create_branch()
         try:
             wt = dir.create_workingtree(revision_id=bzrlib.revision.NULL_REVISION)
-        except errors.NotLocalUrl:
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped("cannot make working tree with transport %r"
                               % dir.transport)
         self.assertEqual([], wt.get_parent_ids())
@@ -1006,7 +1006,8 @@ class TestControlDir(TestCaseWithControlDir):
             registry = controldir.network_format_registry
             network_name = format.network_name()
             looked_up_format = registry.get(network_name)
-            self.assertEqual(format.__class__, looked_up_format.__class__)
+            self.assertTrue(
+                issubclass(format.__class__, looked_up_format.__class__))
         # The network name must be a byte string.
         self.assertIsInstance(network_name, str)
 
@@ -1151,7 +1152,7 @@ class TestControlDir(TestCaseWithControlDir):
         source.branch.clone(made_control)
         try:
             made_tree = made_control.create_workingtree(revision_id='a')
-        except errors.NotLocalUrl:
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped("Can't make working tree on transport %r" % t)
         self.assertEqual(['a'], made_tree.get_parent_ids())
 
@@ -1169,7 +1170,7 @@ class TestControlDir(TestCaseWithControlDir):
             made_repo = made_control.create_repository()
             made_branch = made_control.create_branch()
             made_tree = made_control.create_workingtree()
-        except errors.NotLocalUrl:
+        except (errors.NotLocalUrl, errors.UnsupportedOperation):
             raise TestSkipped("Can't initialize %r on transport %r"
                               % (self.bzrdir_format, t))
         opened_tree = made_control.open_workingtree()
