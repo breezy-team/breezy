@@ -82,7 +82,7 @@ class GitRepository(ForeignRepository):
         return default_mapping
 
     def make_working_trees(self):
-        return True
+        return not self._git.bare
 
     def revision_graph_can_have_wrong_parents(self):
         return False
@@ -162,6 +162,7 @@ class LocalGitRepository(GitRepository):
         """Lookup a revision id.
 
         """
+        assert type(foreign_revid) is str
         if mapping is None:
             mapping = self.get_mapping()
         from dulwich.protocol import (
