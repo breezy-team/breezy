@@ -330,7 +330,7 @@ class TransportRepo(BaseRepo):
         return not self.bare
 
     def __repr__(self):
-        return "<TransportRepo for %r>" % self.transport
+        return "<%s for %r>" % (self.__class__.__name__, self.transport)
 
 
 class TransportObjectStore(PackBasedObjectStore):
@@ -344,7 +344,10 @@ class TransportObjectStore(PackBasedObjectStore):
         super(TransportObjectStore, self).__init__()
         self.transport = transport
         self.pack_transport = self.transport.clone(PACKDIR)
-    
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.transport)
+
     def _pack_cache_stale(self):
         return False # FIXME
 
