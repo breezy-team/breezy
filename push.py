@@ -158,16 +158,18 @@ class InterToLocalGitRepository(InterToGitRepository):
     def missing_revisions(self, stop_revisions):
         """Find the revisions that are missing from the target repository.
 
-        :param stop_revisions: Revisions to check for
+        :param stop_revisions: Revisions to check for (tuples with 
+            Git SHA1, bzr revid)
         :return: sequence of missing revisions, in topological order
         :raise: NoSuchRevision if the stop_revisions are not present in
             the source
         """
+        stop_revids = [revid for (sha1, revid) in stop_revisions]
         missing = []
         graph = self.source.get_graph()
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            for revid, _ in graph.iter_ancestry(stop_revisions):
+            for revid, _ in graph.iter_ancestry(stop_revids):
                 assert type(revid) is str
                 pb.update("determining revisions to fetch", len(missing))
                 if self._revision_needs_fetching(revid):
@@ -202,10 +204,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         try:
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
-            # FIXME: Keep track of already looked up revid<->sha mappings
-            fetch_spec = PendingAncestryResult(
-                [revid for sha, revid in new_refs.values()], self.source)
-            self.fetch(fetch_spec=fetch_spec)
+            self.fetch(mapped_refs=new_refs.values())
         finally:
             self.source.unlock()
         return old_refs, new_refs
@@ -237,7 +236,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         revidmap = {}
         self.source.lock_read()
         try:
-            todo = list(self.missing_revisions([revid for sha, revid in stop_revisions]))
+            todo = list(self.missing_revisions(stop_revisions))
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 object_generator = self._get_missing_objects_iterator(pb)
@@ -254,13 +253,15 @@ class InterToLocalGitRepository(InterToGitRepository):
         return revidmap, gitidmap
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
-            fetch_spec=None):
-        if revision_id is not None:
-            stop_revisions = [revision_id]
+            fetch_spec=None, mapped_refs=None):
+        if mapped_refs is not None:
+            stop_revisions = mapped_refs
+        elif revision_id is not None:
+            stop_revisions = [(None, revision_id)]
         elif fetch_spec is not None:
-            stop_revisions = fetch_spec.heads
+            stop_revisions = [(None, revid) for revid in fetch_spec.heads]
         else:
-            stop_revisions = self.source.all_revision_ids()
+            stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
         self.source.lock_read()
         try:
             todo = list(self.missing_revisions(stop_revisions))

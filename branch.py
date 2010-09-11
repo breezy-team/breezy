@@ -114,7 +114,7 @@ class LocalGitTagDict(tag.BasicTags):
 
     def set_tag(self, name, revid):
         self.repository._git.refs[tag_name_to_ref(name)], _ = \
-            self.branch.mapping.revision_id_bzr_to_foreign(revid)
+            self.branch.lookup_bzr_revision_id(revid)
 
 
 class DictTagDict(LocalGitTagDict):
@@ -256,6 +256,10 @@ class GitBranch(ForeignBranch):
     def lookup_foreign_revision_id(self, foreign_revid):
         return self.repository.lookup_foreign_revision_id(foreign_revid,
             self.mapping)
+
+    def lookup_bzr_revision_id(self, revid):
+        return self.repository.lookup_bzr_revision_id(
+            revid, mapping=self.mapping)
 
 
 class LocalGitBranch(GitBranch):

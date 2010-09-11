@@ -245,17 +245,16 @@ class InterIndexGitTree(tree.InterTree):
             self.source._repository._git.object_store.__getitem__,
             self.source.tree)
         if self.target.mapping.BZR_FILE_IDS_FILE is not None:
-            try:
-                file_id = self.target.path2id(
-                    self.target.mapping.BZR_FILE_IDS_FILE)
-            except errors.NoSuchId:
+            file_id = self.target.path2id(
+                self.target.mapping.BZR_FILE_IDS_FILE)
+            if file_id is None:
                 target_fileid_map = {}
             else:
                 target_fileid_map = self.target.mapping.import_fileid_map(Blob.from_string(self.target.get_file_text(file_id)))
         else:
             target_fileid_map = {}
         target_fileid_map = GitFileIdMap(target_fileid_map, self.target.mapping)
-        ret = tree_delta_from_git_changes(changes, self.target.mapping, 
+        ret = tree_delta_from_git_changes(changes, self.target.mapping,
             (source_fileid_map, target_fileid_map),
             specific_file=specific_files, require_versioned=require_versioned)
         if want_unversioned:

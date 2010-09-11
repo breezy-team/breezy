@@ -63,4 +63,4 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
 
     def test_missing_revisions_unknown_stop_rev(self):
         self.assertEquals([],
-                list(self.interrepo.missing_revisions(["unknown"])))
+                list(self.interrepo.missing_revisions([(None, "unknown")])))
