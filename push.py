@@ -20,9 +20,6 @@ from bzrlib import (
     errors,
     ui,
     )
-from bzrlib.graph import (
-    PendingAncestryResult,
-    )
 from bzrlib.repository import (
     InterRepository,
     )
@@ -116,7 +113,7 @@ class InterToGitRepository(InterRepository):
     def dfetch_refs(self, update_refs):
         """Fetch non-roundtripped revisions into the target repository.
 
-        :param update_refs: Generate refs to fetch. Receives dictionary 
+        :param update_refs: Generate refs to fetch. Receives dictionary
             with old names to old git shas. Should return a dictionary
             of new names to Bazaar revision ids.
         :return: revision id map, old refs dictionary and new refs dictionary
@@ -126,8 +123,8 @@ class InterToGitRepository(InterRepository):
     def fetch_refs(self, update_refs):
         """Fetch possibly roundtripped revisions into the target repository.
 
-        :param update_refs: Generate refs to fetch. Receives dictionary 
-            with old refs (git shas), returns dictionary of new names to 
+        :param update_refs: Generate refs to fetch. Receives dictionary
+            with old refs (git shas), returns dictionary of new names to
             git shas.
         :return: old refs, new refs
         """
@@ -142,13 +139,14 @@ class InterToLocalGitRepository(InterToGitRepository):
         self.target_store = self.target._git.object_store
         self.target_refs = self.target._git.refs
 
-    def _revision_needs_fetching(self, revid):
+    def _revision_needs_fetching(self, sha_id, revid):
         if revid == NULL_REVISION:
             return False
-        try:
-            sha_id = self.source_store._lookup_revision_sha1(revid)
-        except KeyError:
-            return False
+        if sha_id is None:
+            try:
+                sha_id = self.source_store._lookup_revision_sha1(revid)
+            except KeyError:
+                return False
         try:
             return (sha_id not in self.target_store)
         except errors.NoSuchRevision:
@@ -158,13 +156,23 @@ class InterToLocalGitRepository(InterToGitRepository):
     def missing_revisions(self, stop_revisions):
         """Find the revisions that are missing from the target repository.
 
-        :param stop_revisions: Revisions to check for (tuples with 
+        :param stop_revisions: Revisions to check for (tuples with
             Git SHA1, bzr revid)
         :return: sequence of missing revisions, in topological order
         :raise: NoSuchRevision if the stop_revisions are not present in
             the source
         """
-        stop_revids = [revid for (sha1, revid) in stop_revisions]
+        revid_sha_map = {}
+        stop_revids = []
+        stop_sha1s = []
+        for (sha1, revid) in stop_revisions:
+            if sha1 is not None and revid is not None:
+                revid_sha_map[revid] = sha1
+            elif sha1 is not None:
+                stop_sha1s.append(sha1)
+            else:
+                assert revid is not None
+                stop_revids.append(revid)
         missing = []
         graph = self.source.get_graph()
         pb = ui.ui_factory.nested_progress_bar()
@@ -172,10 +180,19 @@ class InterToLocalGitRepository(InterToGitRepository):
             for revid, _ in graph.iter_ancestry(stop_revids):
                 assert type(revid) is str
                 pb.update("determining revisions to fetch", len(missing))
-                if self._revision_needs_fetching(revid):
+                sha1 = revid_sha_map.get(revid)
+                if self._revision_needs_fetching(sha1, revid):
                     missing.append(revid)
         finally:
             pb.finished()
+        for sha1 in stop_sha1s:
+            try:
+                (kind, (revid, tree_sha, verifiers)) = self.source_store.lookup_git_sha(sha1)
+            except KeyError:
+                continue
+            else:
+                missing.append(revid)
+                revid_sha_map[revid] = sha1
         return graph.iter_topo_order(missing)
 
     def _get_target_bzr_refs(self):
