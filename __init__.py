@@ -232,6 +232,11 @@ class LocalGitControlDirFormat(GitControlDirFormat):
 class BareLocalGitControlDirFormat(LocalGitControlDirFormat):
 
     bare = True
+    supports_workingtrees = False
+
+    @classmethod
+    def _known_formats(self):
+        return set([RemoteGitControlDirFormat()])
 
     def get_format_description(self):
         return "Local Git Repository (bare)"
@@ -246,11 +251,10 @@ class RemoteGitProber(Prober):
         if (not url.startswith("git://") and not url.startswith("git+")):
             raise bzr_errors.NotBranchError(transport.base)
         # little ugly, but works
-        format = RemoteGitControlDirFormat()
         from bzrlib.plugins.git.remote import GitSmartTransport
         if not isinstance(transport, GitSmartTransport):
             raise bzr_errors.NotBranchError(transport.base)
-        return format
+        return RemoteGitControlDirFormat()
 
 
 
