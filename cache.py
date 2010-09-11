@@ -120,6 +120,11 @@ class GitShaMap(object):
         """
         raise NotImplementedError(self.lookup_tree_id)
 
+    def lookup_commit(self, revid):
+        """Retrieve a Git commit SHA by Bazaar revision id.
+        """
+        raise NotImplementedError(self.lookup_commit)
+
     def revids(self):
         """List the revision ids known."""
         raise NotImplementedError(self.revids)
