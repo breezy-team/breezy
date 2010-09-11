@@ -185,7 +185,7 @@ class BzrGitMapping(foreign.VcsMapping):
 
     def _extract_git_svn_metadata(self, rev, message):
         lines = message.split("\n")
-        if not (lines[-1] == "" and lines[-2].startswith("git-svn-id:")):
+        if not (lines[-1] == "" and len(lines) >= 2 and lines[-2].startswith("git-svn-id:")):
             return message
         git_svn_id = lines[-2].split(": ", 1)[1]
         rev.properties['git-svn-id'] = git_svn_id
@@ -228,14 +228,14 @@ class BzrGitMapping(foreign.VcsMapping):
         return b
 
     def export_commit(self, rev, tree_sha, parent_lookup, roundtrip,
-                      testament3_sha1):
+                      verifiers):
         """Turn a Bazaar revision in to a Git commit
 
         :param tree_sha: Tree sha for the commit
         :param parent_lookup: Function for looking up the GIT sha equiv of a
             bzr revision
         :param roundtrip: Whether to store roundtripping information.
-        :param testament3_sha1: Testament SHA1
+        :param verifiers: Verifiers info
         :return dulwich.objects.Commit represent the revision:
         """
         from dulwich.objects import Commit
@@ -243,7 +243,7 @@ class BzrGitMapping(foreign.VcsMapping):
         commit.tree = tree_sha
         if roundtrip:
             metadata = BzrGitRevisionMetadata()
-            metadata.testament3_sha1 = testament3_sha1
+            metadata.verifiers = verifiers
         else:
             metadata = None
         parents = []
@@ -355,11 +355,11 @@ class BzrGitMapping(foreign.VcsMapping):
             if md.explicit_parent_ids:
                 rev.parent_ids = md.explicit_parent_ids
             rev.properties.update(md.properties)
-            testament3_sha1 = md.testament3_sha1
+            verifiers = md.verifiers
         else:
             roundtrip_revid = None
-            testament3_sha1 = None
-        return rev, roundtrip_revid, testament3_sha1
+            verifiers = {}
+        return rev, roundtrip_revid, verifiers
 
     def get_fileid_map(self, lookup_object, tree_sha):
         """Obtain a fileid map for a particular tree.
@@ -407,9 +407,9 @@ class BzrGitMappingExperimental(BzrGitMappingv1):
         return ret
 
     def import_commit(self, commit, lookup_parent_revid):
-        rev, roundtrip_revid, testament3_sha1 = super(BzrGitMappingExperimental, self).import_commit(commit, lookup_parent_revid)
+        rev, roundtrip_revid, verifiers = super(BzrGitMappingExperimental, self).import_commit(commit, lookup_parent_revid)
         rev.properties['converted_revision'] = "git %s\n" % commit.id
-        return rev, roundtrip_revid, testament3_sha1
+        return rev, roundtrip_revid, verifiers
 
 
 class GitMappingRegistry(VcsMappingRegistry):

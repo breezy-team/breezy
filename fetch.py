@@ -344,7 +344,7 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
     o = lookup_object(head)
-    rev, roundtrip_revid, testament3_sha1 = mapping.import_commit(o,
+    rev, roundtrip_revid, verifiers = mapping.import_commit(o,
             lambda x: target_git_object_retriever.lookup_git_sha(x)[1][0])
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
@@ -359,7 +359,6 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_tree = lookup_object(o.parents[0]).tree
         base_mode = stat.S_IFDIR
     store_updater = target_git_object_retriever._get_updater(rev)
-    store_updater.add_object(o, None, None)
     fileid_map = mapping.get_fileid_map(lookup_object, o.tree)
     inv_delta, unusual_modes = import_git_tree(repo.texts,
             mapping, "", "", (base_tree, o.tree), base_inv,
@@ -367,7 +366,6 @@ def import_git_commit(repo, mapping, head, lookup_object,
             lookup_object, (base_mode, stat.S_IFDIR), store_updater,
             fileid_map.lookup_file_id,
             allow_submodules=getattr(repo._format, "supports_tree_reference", False))
-    store_updater.finish()
     if unusual_modes != {}:
         for path, mode in unusual_modes.iteritems():
             warn_unusual_mode(rev.foreign_revid, path, mode)
@@ -379,16 +377,19 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_inv = None
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
               inv_delta, rev.revision_id, rev.parent_ids, base_inv)
-    # FIXME: Check testament3_sha1
+    # FIXME: Check verifiers
+    testament = StrictTestament3(rev, inv)
+    calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
     if roundtrip_revid is not None:
         original_revid = rev.revision_id
         rev.revision_id = roundtrip_revid
-        testament = StrictTestament3(rev, inv)
-        if testament.as_sha1() != testament3_sha1:
+        if calculated_verifiers != verifiers:
             trace.mutter("Testament SHA1 %r for %r did not match %r.",
-                         testament.as_sha1(), rev.revision_id, 
-                         testament3_sha1)
+                         calculated_verifiers["testament3-sha1"],
+                         rev.revision_id, verifiers["testament3-sha1"])
             rev.revision_id = original_revid
+    store_updater.add_object(o, calculated_verifiers, None)
+    store_updater.finish()
     ret_tree = RevisionTree(repo, inv, rev.revision_id)
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
@@ -427,7 +428,7 @@ def import_git_objects(repo, mapping, object_iter,
         except KeyError:
             continue
         if isinstance(o, Commit):
-            rev, roundtrip_revid, testament3_sha1 = mapping.import_commit(o,
+            rev, roundtrip_revid, verifiers = mapping.import_commit(o,
                 lambda x: None)
             if (repo.has_revision(rev.revision_id) or
                 (roundtrip_revid and repo.has_revision(roundtrip_revid))):

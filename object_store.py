@@ -18,6 +18,7 @@
 
 from dulwich.objects import (
     Blob,
+    Commit,
     Tree,
     sha_to_hex,
     )
@@ -341,14 +342,22 @@ class BazaarObjectStore(BaseObjectStore):
         self._update_sha_map()
         return iter(self._cache.idmap.sha1s())
 
-    def _reconstruct_commit(self, rev, tree_sha, roundtrip, testament3_sha1):
+    def _reconstruct_commit(self, rev, tree_sha, roundtrip, verifiers):
+        """Reconstruct a Commit object.
+
+        :param rev: Revision object
+        :param tree_sha: SHA1 of the root tree object
+        :param roundtrip: Whether or not to roundtrip bzr metadata
+        :param verifiers: Verifiers for the commits
+        :return: Commit object
+        """
         def parent_lookup(revid):
             try:
                 return self._lookup_revision_sha1(revid)
             except errors.NoSuchRevision:
                 return None
         return self.mapping.export_commit(rev, tree_sha, parent_lookup,
-            roundtrip, testament3_sha1)
+            roundtrip, verifiers)
 
     def _create_fileid_map_blob(self, inv):
         # FIXME: This can probably be a lot more efficient, 
@@ -395,11 +404,11 @@ class BazaarObjectStore(BaseObjectStore):
         yield "", root_tree, root_ie
         if roundtrip:
             testament3 = StrictTestament3(rev, tree.inventory)
-            testament3_sha1 = testament3.as_sha1()
+            verifiers = { "testament3-sha1": testament3.as_sha1() }
         else:
-            testament3_sha1 = None
+            verifiers = {}
         commit_obj = self._reconstruct_commit(rev, root_tree.id,
-            roundtrip=roundtrip, testament3_sha1=testament3_sha1)
+            roundtrip=roundtrip, verifiers=verifiers)
         try:
             foreign_revid, mapping = mapping_registry.parse_revision_id(
                 rev.revision_id)
@@ -418,6 +427,9 @@ class BazaarObjectStore(BaseObjectStore):
         updater = self._get_updater(rev)
         for path, obj, ie in self._revision_to_objects(rev, tree,
             roundtrip=True):
+            if isinstance(obj, Commit):
+                testament3 = StrictTestament3(rev, tree.inventory)
+                ie = { "testament3-sha1": testament3.as_sha1() }
             updater.add_object(obj, ie, path)
         commit_obj = updater.finish()
         return commit_obj.id
@@ -563,14 +575,15 @@ class BazaarObjectStore(BaseObjectStore):
         (type, type_data) = self.lookup_git_sha(sha)
         # convert object to git object
         if type == "commit":
-            (revid, tree_sha) = type_data
+            (revid, tree_sha, verifiers) = type_data
             try:
                 rev = self.repository.get_revision(revid)
             except errors.NoSuchRevision:
                 trace.mutter('entry for %s %s in shamap: %r, but not found in '
                              'repository', type, sha, type_data)
                 raise KeyError(sha)
-            commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True)
+            commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True,
+                verifiers=verifiers)
             _check_expected_sha(sha, commit)
             return commit
         elif type == "blob":

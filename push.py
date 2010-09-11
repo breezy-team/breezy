@@ -148,7 +148,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         try:
             sha_id = self.source_store._lookup_revision_sha1(revid)
         except KeyError:
-            raise errors.NoSuchRevision(self.source, revid)
+            return False
         try:
             return (sha_id not in self.target_store)
         except errors.NoSuchRevision:
@@ -186,9 +186,14 @@ class InterToLocalGitRepository(InterToGitRepository):
         refs = self.target._git.get_refs()
         for k, v in refs.iteritems():
             try:
-                (kind, (revid, treesha)) = self.source_store.lookup_git_sha(v)
+                (kind, type_data) = self.source_store.lookup_git_sha(v)
             except KeyError:
                 revid = None
+            else:
+                if kind == "commit":
+                    revid = type_data[0]
+                else:
+                    revid = None
             bzr_refs[k] = (v, revid)
         return bzr_refs
 

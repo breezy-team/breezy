@@ -101,7 +101,9 @@ class GitShaMap(object):
         """Lookup a Git sha in the database.
         :param sha: Git object sha
         :return: (type, type_data) with type_data:
-            revision: revid, tree sha
+            commit: revid, tree_sha, verifiers
+            blob: fileid, revid
+            tree: fileid, revid
         """
         raise NotImplementedError(self.lookup_git_sha)
 
@@ -220,6 +222,13 @@ class CacheUpdater(object):
     """Base class for objects that can update a bzr-git cache."""
 
     def add_object(self, obj, ie, path):
+        """Add an object.
+
+        :param obj: Object type ("commit", "blob" or "tree")
+        :param ie: Inventory entry (for blob/tree) or testament_sha in case
+            of commit
+        :param path: Path of the object (optional)
+        """
         raise NotImplementedError(self.add_object)
 
     def finish(self):
@@ -257,8 +266,8 @@ class DictCacheUpdater(CacheUpdater):
     def add_object(self, obj, ie, path):
         if obj.type_name == "commit":
             self._commit = obj
-            assert ie is None
-            type_data = (self.revid, self._commit.tree)
+            assert type(ie) is dict
+            type_data = (self.revid, self._commit.tree, ie)
             self.cache.idmap._by_revid[self.revid] = obj.id
         elif obj.type_name in ("blob", "tree"):
             if ie is not None:
@@ -267,8 +276,7 @@ class DictCacheUpdater(CacheUpdater):
                 else:
                     revision = self.revid
                 type_data = (ie.file_id, revision)
-                self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] =\
-                    obj.id
+                self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
         else:
             raise AssertionError
         self.cache.idmap._by_sha[obj.id] = (obj.type_name, type_data)
@@ -321,7 +329,8 @@ class SqliteCacheUpdater(CacheUpdater):
     def add_object(self, obj, ie, path):
         if obj.type_name == "commit":
             self._commit = obj
-            assert ie is None
+            self._testament3_sha1 = ie["testament3-sha1"]
+            assert type(ie) is dict
         elif obj.type_name == "tree":
             if ie is not None:
                 self._trees.append((obj.id, ie.file_id, self.revid))
@@ -341,8 +350,8 @@ class SqliteCacheUpdater(CacheUpdater):
             "replace into blobs (sha1, fileid, revid) values (?, ?, ?)",
             self._blobs)
         self.db.execute(
-            "replace into commits (sha1, revid, tree_sha) values (?, ?, ?)",
-            (self._commit.id, self.revid, self._commit.tree))
+            "replace into commits (sha1, revid, tree_sha, testament3_sha1) values (?, ?, ?, ?)",
+            (self._commit.id, self.revid, self._commit.tree, self._testament3_sha1))
         return self._commit
 
 
@@ -397,10 +406,15 @@ class SqliteGitShaMap(GitShaMap):
         create unique index if not exists trees_sha1 on trees(sha1);
         create unique index if not exists trees_fileid_revid on trees(fileid, revid);
 """)
+        try:
+            self.db.executescript(
+                "ALTER TABLE commits ADD testament3_sha1 TEXT;")
+        except sqlite3.OperationalError:
+            pass # Column already exists.
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.path)
-    
+
     def lookup_commit(self, revid):
         cursor = self.db.execute("select sha1 from commits where revid = ?", 
             (revid,))
@@ -429,11 +443,13 @@ class SqliteGitShaMap(GitShaMap):
 
         :param sha: Git object sha
         :return: (type, type_data) with type_data:
-            revision: revid, tree sha
+            commit: revid, tree sha, verifiers
+            tree: fileid, revid
+            blob: fileid, revid
         """
-        row = self.db.execute("select revid, tree_sha from commits where sha1 = ?", (sha,)).fetchone()
+        row = self.db.execute("select revid, tree_sha, testament3_sha1 from commits where sha1 = ?", (sha,)).fetchone()
         if row is not None:
-            return ("commit", row)
+            return ("commit", (row[0], row[1], {"testament3-sha1": row[2]}))
         row = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,)).fetchone()
         if row is not None:
             return ("blob", row)
@@ -468,9 +484,9 @@ class TdbCacheUpdater(CacheUpdater):
         sha = obj.sha().digest()
         if obj.type_name == "commit":
             self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
-            type_data = (self.revid, obj.tree)
+            assert type(ie) is dict, "was %r" % ie
+            type_data = (self.revid, obj.tree, ie["testament3-sha1"])
             self._commit = obj
-            assert ie is None
         elif obj.type_name == "blob":
             if ie is None:
                 return
@@ -564,18 +580,26 @@ class TdbGitShaMap(GitShaMap):
 
     def lookup_blob_id(self, fileid, revision):
         return sha_to_hex(self.db["\0".join(("blob", fileid, revision))])
-                
+
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
 
         :param sha: Git object sha
         :return: (type, type_data) with type_data:
-            revision: revid, tree sha
+            commit: revid, tree sha
+            blob: fileid, revid
+            tree: fileid, revid
         """
         if len(sha) == 40:
             sha = hex_to_sha(sha)
         data = self.db["git\0" + sha].split("\0")
-        return (data[0], (data[1], data[2]))
+        if data[0] == "commit":
+            if len(data) == 3:
+                return (data[0], (data[1], data[2], {}))
+            else:
+                return (data[0], (data[1], data[2], {"testament3-sha1": data[3]}))
+        else:
+            return (data[0], tuple(data[1:]))
 
     def missing_revisions(self, revids):
         ret = set()
@@ -643,9 +667,9 @@ class IndexCacheUpdater(CacheUpdater):
     def add_object(self, obj, ie, path):
         if obj.type_name == "commit":
             self._commit = obj
-            assert ie is None
+            assert type(ie) is dict
             self.cache.idmap._add_git_sha(obj.id, "commit",
-                (self.revid, obj.tree))
+                (self.revid, obj.tree, ie))
             self.cache.idmap._add_node(("commit", self.revid, "X"),
                 " ".join((obj.id, obj.tree)))
             self._cache_objs.add((obj, path))
@@ -811,8 +835,11 @@ class IndexGitShaMap(GitShaMap):
     def _add_git_sha(self, hexsha, type, type_data):
         if hexsha is not None:
             self._name.update(hexsha)
-            self._add_node(("git", hexsha, "X"),
-                " ".join((type, type_data[0], type_data[1])))
+            if type == "commit":
+                td = (type_data[0], type_data[1], type_data[2]["testament3-sha1"])
+            else:
+                td = type_data
+            self._add_node(("git", hexsha, "X"), " ".join((type,) + td))
         else:
             # This object is not represented in Git - perhaps an empty
             # directory?
@@ -824,8 +851,11 @@ class IndexGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         if len(sha) == 20:
             sha = sha_to_hex(sha)
-        data = self._get_entry(("git", sha, "X")).split(" ", 2)
-        return (data[0], (data[1], data[2]))
+        data = self._get_entry(("git", sha, "X")).split(" ", 3)
+        if data[0] == "commit":
+            return ("commit", (data[1], data[2], {"testament3-sha1": data[3]}))
+        else:
+            return (data[0], tuple(data[1:]))
 
     def revids(self):
         """List the revision ids known."""

@@ -97,10 +97,10 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = "Author"
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(c,
+        rev, roundtrip_revid, verifiers = mapping.import_commit(c,
             mapping.revision_id_foreign_to_bzr)
         self.assertEquals(None, roundtrip_revid)
-        self.assertEquals(None, testament_sha1)
+        self.assertEquals({}, verifiers)
         self.assertEquals("Some message", rev.message)
         self.assertEquals("Committer", rev.committer)
         self.assertEquals("Author", rev.properties['author'])
@@ -122,10 +122,10 @@ class TestImportCommit(tests.TestCase):
         c.author = u"Authér".encode("iso8859-1")
         c.encoding = "iso8859-1"
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(c,
+        rev, roundtrip_revid, verifiers = mapping.import_commit(c,
             mapping.revision_id_foreign_to_bzr)
         self.assertEquals(None, roundtrip_revid)
-        self.assertEquals(None, testament_sha1)
+        self.assertEquals({}, verifiers)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("iso8859-1", rev.properties["git-explicit-encoding"])
         self.assertTrue("git-implicit-encoding" not in rev.properties)
@@ -141,10 +141,10 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("latin1")
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(c,
+        rev, roundtrip_revid, verifiers = mapping.import_commit(c,
             mapping.revision_id_foreign_to_bzr)
         self.assertEquals(None, roundtrip_revid)
-        self.assertEquals(None, testament_sha1)
+        self.assertEquals({}, verifiers)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertEquals("latin1", rev.properties["git-implicit-encoding"])
         self.assertTrue("git-explicit-encoding" not in rev.properties)
@@ -160,10 +160,10 @@ class TestImportCommit(tests.TestCase):
         c.author_timezone = 60 * 3
         c.author = u"Authér".encode("utf-8")
         mapping = BzrGitMappingv1()
-        rev, roundtrip_revid, testament_sha1 = mapping.import_commit(c,
+        rev, roundtrip_revid, verifiers = mapping.import_commit(c,
             mapping.revision_id_foreign_to_bzr)
         self.assertEquals(None, roundtrip_revid)
-        self.assertEquals(None, testament_sha1)
+        self.assertEquals({}, verifiers)
         self.assertEquals(u"Authér", rev.properties['author'])
         self.assertTrue("git-explicit-encoding" not in rev.properties)
         self.assertTrue("git-implicit-encoding" not in rev.properties)
@@ -180,12 +180,12 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
     def assertRoundtripRevision(self, orig_rev):
         commit = self.mapping.export_commit(orig_rev, "mysha",
             self._lookup_parent, True, "testamentsha")
-        rev, roundtrip_revid, testament_sha1 = self.mapping.import_commit(
+        rev, roundtrip_revid, verifiers = self.mapping.import_commit(
             commit, self.mapping.revision_id_foreign_to_bzr)
         self.assertEquals(rev.revision_id,
             self.mapping.revision_id_foreign_to_bzr(commit.id))
         if self.mapping.roundtripping:
-            self.assertEquals("testamentsha", testament_sha1)
+            self.assertEquals({"testament3-sha1": "testamentsha"} , verifiers)
             self.assertEquals(orig_rev.revision_id, roundtrip_revid)
             self.assertEquals(orig_rev.properties, rev.properties)
             self.assertEquals(orig_rev.committer, rev.committer)
@@ -194,7 +194,7 @@ class RoundtripRevisionsFromBazaar(tests.TestCase):
             self.assertEquals(orig_rev.message, rev.message)
             self.assertEquals(list(orig_rev.parent_ids), list(rev.parent_ids))
         else:
-            self.assertEquals(None, testament_sha1)
+            self.assertEquals({}, verifiers)
 
     def test_simple_commit(self):
         r = Revision(self.mapping.revision_id_foreign_to_bzr("edf99e6c56495c620f20d5dacff9859ff7119261"))
@@ -250,7 +250,7 @@ class RoundtripRevisionsFromGit(tests.TestCase):
         raise NotImplementedError(self.assertRoundtripBlob)
 
     def assertRoundtripCommit(self, commit1):
-        rev, roundtrip_revid, testament_sha1 = self.mapping.import_commit(
+        rev, roundtrip_revid, verifiers = self.mapping.import_commit(
             commit1, self.mapping.revision_id_foreign_to_bzr)
         commit2 = self.mapping.export_commit(rev, "12341212121212", None,
             True, None)

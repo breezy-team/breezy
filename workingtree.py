@@ -251,7 +251,7 @@ class InterIndexGitTree(tree.InterTree):
             except errors.NoSuchId:
                 target_fileid_map = {}
             else:
-                target_fileid_map = self.import_fileid_map(Blob.from_string(self.target.file_text(file_id)))
+                target_fileid_map = self.target.mapping.import_fileid_map(Blob.from_string(self.target.get_file_text(file_id)))
         else:
             target_fileid_map = {}
         target_fileid_map = GitFileIdMap(target_fileid_map, self.target.mapping)

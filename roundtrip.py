@@ -26,14 +26,14 @@ class BzrGitRevisionMetadata(object):
     :ivar revision_id: Revision id, as string
     :ivar properties: Revision properties, as dictionary
     :ivar explicit_parent_ids: Parent ids (needed if there are ghosts)
-    :ivar testament3_sha1: SHA1 of the testament.
+    :ivar verifiers: Verifier information
     """
 
     revision_id = None
 
     explicit_parent_ids = None
 
-    testament3_sha1 = None
+    verifiers = {}
 
     def __init__(self):
         self.properties = {}
@@ -53,7 +53,7 @@ def parse_roundtripping_metadata(text):
         elif key == "parent-ids":
             ret.explicit_parent_ids = tuple(value.strip().split(" "))
         elif key == "testament3-sha1":
-            ret.testament3_sha1 = value.strip()
+            ret.verifiers["testament3-sha1"] = value.strip()
         elif key.startswith("property-"):
             ret.properties[key[len("property-"):]] = value[1:].rstrip("\n")
         else:
@@ -74,8 +74,9 @@ def generate_roundtripping_metadata(metadata, encoding):
         lines.append("parent-ids: %s\n" % " ".join(metadata.explicit_parent_ids))
     for key in sorted(metadata.properties.keys()):
         lines.append("property-%s: %s\n" % (key.encode(encoding), metadata.properties[key].encode(encoding)))
-    if metadata.testament3_sha1:
-        lines.append("testament3-sha1: %s\n" % metadata.testament3_sha1)
+    if "testament3-sha1" in metadata.verifiers:
+        lines.append("testament3-sha1: %s\n" %
+                     metadata.verifiers["testament3-sha1"])
     return "".join(lines)
 
 

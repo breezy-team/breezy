@@ -70,11 +70,16 @@ class TestGitShaMap:
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
         c = self._get_test_commit()
-        updater.add_object(c, None, None)
+        updater.add_object(c, {
+            "testament3-sha1": "cc9462f7f8263ef5adf8eff2fb936bb36b504cba"},
+            None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(
-            ("commit", ("myrevid", "cc9462f7f8263ef5adfbeff2fb936bb36b504cba")),
+            ("commit", ("myrevid",
+                "cc9462f7f8263ef5adfbeff2fb936bb36b504cba",
+                {"testament3-sha1": "cc9462f7f8263ef5adf8eff2fb936bb36b504cba"},
+                )),
             self.map.lookup_git_sha(c.id))
         self.assertEquals(c.id, self.map.lookup_commit("myrevid"))
 
@@ -85,7 +90,7 @@ class TestGitShaMap:
     def test_blob(self):
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
-        updater.add_object(self._get_test_commit(), None, None)
+        updater.add_object(self._get_test_commit(), { "testament3-sha1": "Test" }, None)
         b = Blob()
         b.data = "TEH BLOB"
         ie = InventoryFile("myfileid", "somename", ROOT_ID)
@@ -102,7 +107,8 @@ class TestGitShaMap:
     def test_tree(self):
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
-        updater.add_object(self._get_test_commit(), None, None)
+        updater.add_object(self._get_test_commit(), {
+            "testament3-sha1": "mytestamentsha" }, None)
         t = Tree()
         t.add(stat.S_IFREG, "somename", Blob().id)
         ie = InventoryDirectory("fileid", "myname", ROOT_ID)
@@ -123,7 +129,7 @@ class TestGitShaMap:
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
         c = self._get_test_commit()
-        updater.add_object(c, None, None)
+        updater.add_object(c, {"testament3-sha1": "mtestament"}, None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(["myrevid"], list(self.map.revids()))
@@ -132,7 +138,7 @@ class TestGitShaMap:
         self.map.start_write_group()
         updater = self.cache.get_updater(Revision("myrevid"))
         c = self._get_test_commit()
-        updater.add_object(c, None, None)
+        updater.add_object(c, {"testament3-sha1": "testament"}, None)
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(set(["lala", "bla"]),
