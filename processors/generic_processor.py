@@ -19,13 +19,18 @@
 
 import time
 from bzrlib import (
+    debug,
     delta,
     errors,
     osutils,
     progress,
     )
 from bzrlib.repofmt import pack_repo
-from bzrlib.trace import note
+from bzrlib.trace import (
+    mutter,
+    note,
+    warning,
+    )
 try:
     import bzrlib.util.configobj.configobj as configobj
 except ImportError:
@@ -603,3 +608,19 @@ class GenericProcessor(processor.ImportProcessor):
         feature = cmd.feature_name
         if feature not in commands.FEATURE_NAMES:
             raise plugin_errors.UnknownFeature(feature)
+
+    def debug(self, mgs, *args):
+        """Output a debug message if the appropriate -D option was given."""
+        if "fast-import" in debug.debug_flags:
+            msg = "%s DEBUG: %s" % (self._time_of_day(), msg)
+            mutter(msg, *args)
+
+    def note(self, msg, *args):
+        """Output a note but timestamp it."""
+        msg = "%s %s" % (self._time_of_day(), msg)
+        note(msg, *args)
+
+    def warning(self, msg, *args):
+        """Output a warning but timestamp it."""
+        msg = "%s WARNING: %s" % (self._time_of_day(), msg)
+        warning(msg, *args)

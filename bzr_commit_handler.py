@@ -18,12 +18,18 @@
 
 
 from bzrlib import (
+    debug,
     errors,
     generate_ids,
     inventory,
     osutils,
     revision,
     serializer,
+    )
+from bzrlib.trace import (
+    mutter,
+    note,
+    warning,
     )
 from fastimport import (
     helpers,
@@ -72,6 +78,27 @@ class GenericCommitHandler(processor.CommitHandler):
         # If the same path is added or the destination of a rename say,
         # then a fresh file-id is required.
         self._paths_deleted_this_commit = set()
+
+    def mutter(self, msg, *args):
+        """Output a mutter but add context."""
+        msg = "%s (%s)" % (msg, self.command.id)
+        mutter(msg, *args)
+
+    def debug(self, msg, *args):
+        """Output a mutter if the appropriate -D option was given."""
+        if "fast-import" in debug.debug_flags:
+            msg = "%s (%s)" % (msg, self.command.id)
+            mutter(msg, *args)
+
+    def note(self, msg, *args):
+        """Output a note but add context."""
+        msg = "%s (%s)" % (msg, self.command.id)
+        note(msg, *args)
+
+    def warning(self, msg, *args):
+        """Output a warning but add context."""
+        msg = "%s (%s)" % (msg, self.command.id)
+        warning(msg, *args)
 
     def pre_process_files(self):
         """Prepare for committing."""
