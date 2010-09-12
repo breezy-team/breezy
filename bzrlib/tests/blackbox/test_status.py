@@ -33,6 +33,7 @@ from bzrlib import (
     conflicts,
     errors,
     osutils,
+    status,
     )
 import bzrlib.branch
 from bzrlib.osutils import pathjoin
@@ -519,6 +520,27 @@ class BranchStatus(TestCaseWithTransport):
         wt2.commit('Empty commit 2')
         out, err = self.run_bzr('status branch1 -rbranch:branch2')
         self.assertEqual('', out)
+
+    def test_status_with_shelves(self):
+        """Ensure that _show_shelve_summary handler works.
+        """
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['hello.c'])
+        wt.add('hello.c')
+        self.run_bzr(['shelve', '--all', '-m', 'foo'])
+        self.build_tree(['bye.c'])
+        wt.add('bye.c')
+        # As TestCase.setUp clears all hooks, we install this default
+        # post_status hook handler for the test.
+        status.hooks.install_named_hook('post_status',
+            status._show_shelve_summary,
+            'bzr status')
+        self.assertStatus([
+                'added:\n',
+                '  bye.c\n',
+                '1 shelves exist. See "bzr shelve --list" for details.\n',
+            ],
+            wt)
 
 
 class CheckoutStatus(BranchStatus):
