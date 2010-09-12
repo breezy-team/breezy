@@ -75,6 +75,11 @@ New Features
 * ``bzr break-lock --config [location]`` can now break config files
   locks. (Vincent Ladeuil, #525571)
 
+* ``bzr status`` now displays a summary of existing shelves after
+  the other status information. This us done using a ``post_status``
+  hook.
+  (Parth Malwankar, #403687)
+
 * ``bzrlib.config.LockableConfig`` is a base class for config files that
   needs to be protected against multiple writers. All methods that
   change a configuration variable value must be decorated with
