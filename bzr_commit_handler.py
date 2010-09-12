@@ -30,16 +30,13 @@ from fastimport import (
     processor,
     )
 
+from bzrlib.plugins.fastimport.helpers import (
+    mode_to_kind,
+    )
+
 
 _serializer_handles_escaping = hasattr(serializer.Serializer,
     'squashes_xml_invalid_characters')
-
-# Bazaar file kinds
-FILE_KIND = 'file'
-DIRECTORY_KIND = 'directory'
-SYMLINK_KIND = 'symlink'
-TREE_REFERENCE_KIND = 'tree-reference'
-
 
 def copy_inventory(inv):
     # This currently breaks revision-id matching
@@ -436,7 +433,7 @@ class GenericCommitHandler(processor.CommitHandler):
             self._modify_item(dest_path, kind, False, ie.symlink_target, inv)
         else:
             self.warning("ignoring copy of %s %s - feature not yet supported",
-                kind, path)
+                kind, dest_path)
 
     def _rename_item(self, old_path, new_path, inv):
         existing = self._new_file_ids.get(old_path) or \
@@ -560,8 +557,9 @@ class InventoryCommitHandler(GenericCommitHandler):
         else:
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
-        self._modify_item(filecmd.path, filecmd.kind,
-            filecmd.is_executable, data, self.inventory)
+        (kind, is_executable) = mode_to_kind(filecmd.mode)
+        self._modify_item(filecmd.path, kind,
+            is_executable, data, self.inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
@@ -659,7 +657,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             if len(ie.children) == 0:
                 result.append((dir, file_id))
                 if self.verbose:
-                    self.note("pruning empty directory %s" % (dir,))                
+                    self.note("pruning empty directory %s" % (dir,))
         return result
 
     def _get_proposed_inventory(self, delta):
@@ -830,18 +828,19 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         self.record_new(new_path, ie)
 
     def modify_handler(self, filecmd):
+        (kind, executable) = mode_to_kind(filecmd.mode)
         if filecmd.dataref is not None:
-            if filecmd.kind == DIRECTORY_KIND:
+            if kind == "directory":
                 data = None
-            elif filecmd.kind == TREE_REFERENCE_KIND:
+            elif kind == "tree-reference":
                 data = filecmd.dataref
             else:
                 data = self.cache_mgr.fetch_blob(filecmd.dataref)
         else:
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
-        self._modify_item(filecmd.path, filecmd.kind,
-            filecmd.is_executable, data, self.basis_inventory)
+        self._modify_item(filecmd.path, kind,
+            executable, data, self.basis_inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)

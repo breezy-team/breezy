@@ -24,6 +24,10 @@ from fastimport import (
     commands,
     )
 
+from bzrlib.plugins.fastimport.helpers import (
+    kind_to_mode,
+    )
+
 from bzrlib.plugins.fastimport.processors import (
     generic_processor,
     )
@@ -196,17 +200,17 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
             to_kind = kind
         if to_executable is None:
             to_executable = executable
+        mode = kind_to_mode(kind, executable)
+        to_mode = kind_to_mode(to_kind, to_executable)
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, executable,
-                        None, content)
+                yield commands.FileModifyCommand(path, mode, None, content)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(path, to_kind, to_executable,
-                        None, to_content)
+                yield commands.FileModifyCommand(path, to_mode, None, to_content)
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
         return command_list
@@ -323,9 +327,9 @@ class TestImportToPackModifyTwice(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, executable,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, executable),
                         None, content)
-                yield commands.FileModifyCommand(path, to_kind, to_executable,
+                yield commands.FileModifyCommand(path, kind_to_mode(to_kind, to_executable),
                         None, to_content)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -353,12 +357,12 @@ class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path1, kind, False,
+                yield commands.FileModifyCommand(path1, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(path2, kind, False,
+                yield commands.FileModifyCommand(path2, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -427,7 +431,7 @@ class TestImportToPackDelete(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, False,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -497,7 +501,7 @@ class TestImportToPackDeleteNew(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, False,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, False),
                         None, "aaa")
                 yield commands.FileDeleteCommand(path)
             yield commands.CommitCommand('head', '1', author,
@@ -545,7 +549,7 @@ class TestImportToPackDeleteMultiLevel(TestCaseForGenericProcessor):
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
                 for i, path in enumerate(paths):
-                    yield commands.FileModifyCommand(path, 'file', False,
+                    yield commands.FileModifyCommand(path, kind_to_mode('file', False),
                             None, "aaa%d" % i)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -623,13 +627,13 @@ class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, executable,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, executable),
                         None, content)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
                 yield commands.FileDeleteCommand(path)
-                yield commands.FileModifyCommand(path, to_kind, to_executable,
+                yield commands.FileModifyCommand(path, kind_to_mode(to_kind, to_executable),
                         None, to_content)
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -696,7 +700,7 @@ class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
                 for i, path in enumerate(paths):
-                    yield commands.FileModifyCommand(path, 'file', False,
+                    yield commands.FileModifyCommand(path, kind_to_mode('file', False),
                             None, "aaa%d" % i)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -737,13 +741,13 @@ class TestImportToPackDeleteDirectoryThenAddFile(TestCaseForGenericProcessor):
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
                 for i, path in enumerate(paths):
-                    yield commands.FileModifyCommand(path, kind, False,
+                    yield commands.FileModifyCommand(path, kind_to_mode(kind, False),
                             None, "aaa%d" % i)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
                 yield commands.FileDeleteCommand(dir)
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -785,7 +789,7 @@ class TestImportToPackRename(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -859,7 +863,7 @@ class TestImportToPackRenameNew(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
                 yield commands.FileRenameCommand(old_path, new_path)
             yield commands.CommitCommand('head', '1', author,
@@ -911,9 +915,9 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -1023,12 +1027,12 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "bbb")
                 yield commands.FileRenameCommand(old_path, new_path)
             yield commands.CommitCommand('head', '2', author,
@@ -1138,13 +1142,13 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
                 yield commands.FileRenameCommand(old_path, new_path)
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -1253,16 +1257,16 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "zzz")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
                 yield commands.FileDeleteCommand(new_path)
                 yield commands.FileRenameCommand(old_path, new_path)
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -1383,9 +1387,9 @@ class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path1, kind, False,
+                yield commands.FileModifyCommand(path1, kind_to_mode(kind, False),
                         None, "aaa")
-                yield commands.FileModifyCommand(old_path2, kind, False,
+                yield commands.FileModifyCommand(old_path2, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -1463,7 +1467,7 @@ class TestImportToPackCopy(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -1553,7 +1557,7 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "aaa")
                 yield commands.FileCopyCommand(src_path, dest_path)
             yield commands.CommitCommand('head', '1', author,
@@ -1634,9 +1638,9 @@ class TestImportToPackCopyToDeleted(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "aaa")
-                yield commands.FileModifyCommand(dest_path, kind, False,
+                yield commands.FileModifyCommand(dest_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -1722,12 +1726,12 @@ class TestImportToPackCopyModified(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "bbb")
                 yield commands.FileCopyCommand(src_path, dest_path)
             yield commands.CommitCommand('head', '2', author,
@@ -1817,7 +1821,7 @@ class TestImportToPackFileKinds(TestCaseForGenericProcessor):
         def command_list():
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, False,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, False),
                         None, content)
             yield commands.CommitCommand('head', '1', None,
                 committer, "commit 1", None, [], files_one)
@@ -1848,17 +1852,17 @@ class TestModifyRevertInBranch(TestCaseForGenericProcessor):
             committer_c = ['', 'c@elmer.com', time.time(), time.timezone]
             committer_d = ['', 'd@elmer.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand('foo', 'file', False,
+                yield commands.FileModifyCommand('foo', kind_to_mode('file', False),
                         None, "content A\n")
             yield commands.CommitCommand('head', '1', None,
                 committer_a, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand('foo', 'file', False,
+                yield commands.FileModifyCommand('foo', kind_to_mode('file', False),
                         None, "content B\n")
             yield commands.CommitCommand('head', '2', None,
                 committer_b, "commit 2", ":1", [], files_two)
             def files_three():
-                yield commands.FileModifyCommand('foo', 'file', False,
+                yield commands.FileModifyCommand('foo', kind_to_mode('file', False),
                         None, "content A\n")
             yield commands.CommitCommand('head', '3', None,
                 committer_c, "commit 3", ":2", [], files_three)

@@ -16,6 +16,8 @@
 
 """Miscellaneous useful stuff."""
 
+import stat
+
 
 def escape_commit_message(message):
     """Replace xml-incompatible control characters."""
@@ -111,3 +113,37 @@ def open_destination_directory(location, format=None, verbose=True):
         from bzrlib.info import show_bzrdir_info
         show_bzrdir_info(repo.bzrdir, verbose=0)
     return control
+
+
+def kind_to_mode(kind, executable):
+    if kind == "file":
+        if executable == True:
+            return stat.S_IFREG | 0755
+        elif executable == False:
+            return stat.S_IFREG | 0644
+        else:
+            raise AssertionError("Executable %r invalid" % executable)
+    elif kind == "symlink":
+        return stat.S_IFLNK
+    elif kind == "directory":
+        return stat.S_IFDIR
+    elif kind == "tree-reference":
+        return 0160000
+    else:
+        raise AssertionError("Unknown file kind '%s'" % kind)
+
+
+def mode_to_kind(mode):
+    # Note: Output from git-fast-export slightly different to spec
+    if mode in (0644, 0100644):
+        return 'file', False
+    elif mode in (0755, 0100755):
+        return 'file', True
+    elif mode == 0040000:
+        return 'directory', False
+    elif mode == 0120000:
+        return 'symlink', False
+    elif mode == 0160000:
+        return 'tree-reference', False
+    else:
+        raise AssertionError("invalid mode %o" % mode)

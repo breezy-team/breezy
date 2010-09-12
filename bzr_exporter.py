@@ -40,8 +40,9 @@ from bzrlib import (
     trace,
     )
 
-from bzrlib.plugins.fastimport import commands, helpers, marks_file
+from bzrlib.plugins.fastimport import helpers, marks_file
 
+from fastimport import commands
 
 class BzrFastExporter(object):
 
@@ -372,15 +373,18 @@ class BzrFastExporter(object):
         for path, id_, kind in changes.added + my_modified + rd_modifies:
             if kind == 'file':
                 text = tree_new.get_file_text(id_)
-                file_cmds.append(commands.FileModifyCommand(path, 'file',
-                    tree_new.is_executable(id_), None, text))
+                file_cmds.append(commands.FileModifyCommand(path,
+                    helpers.kind_to_mode('file', tree_new.is_executable(id_)),
+                    None, text))
             elif kind == 'symlink':
-                file_cmds.append(commands.FileModifyCommand(path, 'symlink',
-                    False, None, tree_new.get_symlink_target(id_)))
+                file_cmds.append(commands.FileModifyCommand(path,
+                    helpers.kind_to_mode('symlink', False),
+                    None, tree_new.get_symlink_target(id_)))
             elif kind == 'directory':
                 if not self.plain_format:
-                    file_cmds.append(commands.FileModifyCommand(path, 'directory',
-                        False, None, None))
+                    file_cmds.append(commands.FileModifyCommand(path,
+                        helpers.kind_to_mode('directory', False),
+                        None, None))
             else:
                 self.warning("cannot export '%s' of kind %s yet - ignoring" %
                     (path, kind))
