@@ -20,6 +20,7 @@ from bzrlib import (
     delta as _mod_delta,
     hooks as _mod_hooks,
     log,
+    shelf,
     osutils,
     tsort,
     revision as _mod_revision,
@@ -398,9 +399,6 @@ class StatusHooks(_mod_hooks.Hooks):
             (2, 3), None))
 
 
-hooks = StatusHooks()
-
-
 class StatusHookParams(object):
     """Object holding parameters passed to post_status hooks.
 
@@ -440,4 +438,22 @@ class StatusHookParams(object):
         return "<%s(%s, %s, %s, %s, %s, %s, %s)>" % (self.__class__.__name__,
             self.old_tree, self.new_tree, self.to_file, self.versioned,
             self.show_ids, self.short, self.verbose)
+
+
+def _show_shelve_summary(params):
+    """post_status hook to display a summary of shelves.
+
+    :param params: StatusHookParams.
+    """
+    shelves = shelf.list_shelves(params.new_tree)
+    if shelves:
+        params.to_file.write('%d shelves exist. '
+            'See "bzr shelve --list" for details.\n' % len(shelves))
+
+
+hooks = StatusHooks()
+
+
+hooks.install_named_hook('post_status', _show_shelve_summary,
+    'bzr status')
 

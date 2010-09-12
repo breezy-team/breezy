@@ -43,6 +43,7 @@ from bzrlib import (
     reconfigure,
     rename_map,
     revision as _mod_revision,
+    shelf,
     static_tuple,
     symbol_versioning,
     timestamp,
@@ -5880,14 +5881,11 @@ class cmd_shelve(Command):
         tree = WorkingTree.open_containing('.')[0]
         self.add_cleanup(tree.lock_read().unlock)
         manager = tree.get_shelf_manager()
-        shelves = manager.active_shelves()
+        shelves = shelf.list_shelves(tree)
         if len(shelves) == 0:
             note('No shelved changes.')
             return 0
-        for shelf_id in reversed(shelves):
-            message = manager.get_metadata(shelf_id).get('message')
-            if message is None:
-                message = '<no message>'
+        for shelf_id, message in shelves:
             self.outf.write('%3d: %s\n' % (shelf_id, message))
         return 1
 
