@@ -470,9 +470,9 @@ class cmd_test_confirm(commands.Command):
             # 'bzrlib.tests.test_script.confirm',
             # {}
             ):
-            self.outf.write('yes\n')
+            self.outf.write('Do it!\n')
         else:
-            print 'no'
+            print 'ok, no'
 
 
 class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
@@ -490,6 +490,10 @@ class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
             $ bzr test-confirm
             2>Really do it? [y/n]: 
             <yes
-            yes
+            Do it!
+            $ bzr test-confirm
+            2>Really do it? [y/n]: 
+            <no
+            ok, no
             """)
 
