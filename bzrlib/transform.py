@@ -35,6 +35,7 @@ from bzrlib import (
     multiparent,
     osutils,
     revision as _mod_revision,
+    trace,
     ui,
     )
 """)
@@ -1311,12 +1312,17 @@ class DiskTreeTransform(TreeTransformBase):
     def new_orphan(self, trans_id, parent_id):
         """See TreeTransformBase.new_orphan."""
         # Add the orphan dir if it doesn't exist
-        od_id = self.trans_id_tree_path('bzr-orphans')
+        orphan_dir = 'bzr-orphans'
+        od_id = self.trans_id_tree_path(orphan_dir)
         if self.final_kind(od_id) is None:
             self.create_directory(od_id)
+        parent_path = self._tree_id_paths[parent_id]
         # Find a name that doesn't exist yet in the orphan dir
-        new_name = self._available_backup_name(self.final_name(trans_id), od_id)
+        actual_name = self.final_name(trans_id)
+        new_name = self._available_backup_name(actual_name, od_id)
         self.adjust_path(new_name, od_id, trans_id)
+        trace.warning('%s has been orphaned in %s'
+                      % (joinpath(parent_path, actual_name), orphan_dir))
 
 
 class TreeTransform(DiskTreeTransform):
