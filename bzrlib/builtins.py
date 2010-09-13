@@ -4802,7 +4802,7 @@ class cmd_uncommit(Command):
                     'Uncommit these revisions',
                     'bzrlib.builtins.uncommit',
                     {}):
-                self.outf.write('Canceled')
+                self.outf.write('Canceled\n')
                 return 0
 
         mutter('Uncommitting from {%s} to {%s}',

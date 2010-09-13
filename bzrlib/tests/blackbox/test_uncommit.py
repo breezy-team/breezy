@@ -22,7 +22,10 @@ from bzrlib import uncommit, workingtree
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.errors import BzrError, BoundBranchOutOfDate
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.script import ScriptRunner
+from bzrlib.tests.script import (
+    run_script,
+    ScriptRunner,
+    )
 
 
 class TestUncommit(TestCaseWithTransport):
@@ -60,6 +63,22 @@ class TestUncommit(TestCaseWithTransport):
         self.assertEqual(['a1'], wt.get_parent_ids())
         out, err = self.run_bzr('status')
         self.assertEquals(out, 'modified:\n  a\n')
+
+    def test_uncommit_interactive(self):
+        """Uncommit seeks confirmation, and doesn't proceed without it."""
+        wt = self.create_simple_tree()
+        os.chdir('tree')
+        run_script(self, """    
+        $ bzr uncommit
+            2 jrandom@example.com\t...
+              second commit
+        
+        The above revision(s) will be removed.
+        2>Uncommit these revisions? [y/n]: 
+        <n
+        Canceled
+        """)
+        self.assertEqual(['a2'], wt.get_parent_ids())
 
     def test_uncommit_no_history(self):
         wt = self.make_branch_and_tree('tree')
