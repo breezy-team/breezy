@@ -478,7 +478,12 @@ class cmd_test_confirm(commands.Command):
 class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
 
     def test_confirm_action(self):
-        """You can write tests that demonstrate user confirmation"""
+        """You can write tests that demonstrate user confirmation.
+        
+        Specifically, ScriptRunner does't care if the output line for the prompt
+        isn't terminated by a newline from the program; it's implicitly terminated 
+        by the input.
+        """
         commands.builtin_command_registry.register(cmd_test_confirm)
         self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
         self.run_script("""
