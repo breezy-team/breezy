@@ -105,18 +105,17 @@ kwargs
 ======
 
 ``**kwargs`` in the prototype of a function should be used sparingly.
-
 It can be good on higher-order functions that decorate other functions,
-such as ``addCleanup`` or ``assertRaises``.  Otherwise, be careful:
+such as ``addCleanup`` or ``assertRaises``, or on functions that take only
+(or almost only) kwargs, where any kwargs can be passed.  
 
-    If the parameters to a function are a bit complex and might vary over
-    time (e.g. the commit API) then I think what's really called for is an
-    explicit object for the parameters (e.g. I think we should create a
-    CommitParams object), rather than a bag of positional and/or keyword
-    args.  If you have an arbitrary set of keys and values that are
-    different with each use (e.g.  string interpolation inputs) then again
-    I think that should not be mixed in with the regular
-    positional/keyword args, it seems like a different category of thing.
+Otherwise, be careful: if the parameters to a function are a bit complex
+and might vary over time (e.g.  the ``commit`` API) then we prefer to pass an
+object rather than a bag of positional and/or keyword args.  If you have
+an arbitrary set of keys and values that are different with each use (e.g.
+string interpolation inputs) then again that should not be mixed in with
+the regular positional/keyword args, it seems like a different category of
+thing.
 
 
 Imitating standard objects
