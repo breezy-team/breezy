@@ -79,18 +79,26 @@ def _script_to_commands(text, file_name=None):
     lineno = 0
     input, output, error = None, None, None
     text = textwrap.dedent(text)
-    for line in text.split('\n'):
+    lines = text.split('\n')
+    # to make use of triple-quoted strings easier, we ignore a blank line
+    # right at the start and right at the end; the rest are meaningful
+    if lines and lines[0] == '':
+        del lines[0]
+    if lines and lines[-1] == '':
+        del lines[-1]
+    for line in lines:
         lineno += 1
         # Keep a copy for error reporting
         orig = line
         comment =  line.find('#')
         if comment >= 0:
             # Delete comments
+            # NB: this syntax means comments are allowed inside output, which
+            # may be confusing...
             line = line[0:comment]
             line = line.rstrip()
-        if line == '':
-            # Ignore empty lines
-            continue
+            if line == '':
+                continue
         if line.startswith('$'):
             # Time to output the current command
             add_command(cmd_cur, input, output, error)

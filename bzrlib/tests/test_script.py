@@ -29,8 +29,22 @@ class TestSyntax(tests.TestCase):
     def test_comment_is_ignored(self):
         self.assertEquals([], script._script_to_commands('#comment\n'))
 
-    def test_empty_line_is_ignored(self):
-        self.assertEquals([], script._script_to_commands('\n'))
+    def test_trim_blank_lines(self):
+        """Blank lines are respected, but trimmed at the start and end.
+
+        Python triple-quoted syntax is going to give stubby/empty blank lines 
+        right at the start and the end.  These are cut off so that callers don't 
+        need special syntax to avoid them.
+
+        However we do want to be able to match commands that emit blank lines.
+        """
+        self.assertEquals([
+            (['bar'], None, '\n', None),
+            ],
+            script._script_to_commands("""
+            $bar
+
+            """))
 
     def test_simple_command(self):
         self.assertEquals([(['cd', 'trunk'], None, None, None)],
@@ -378,6 +392,14 @@ $ echo foo
         self.assertEquals(None, out)
         self.assertEquals(None, err)
         self.assertFileEqual('hello\nhappy\n', 'file')
+
+    def test_empty_line_in_output_is_respected(self):
+        self.run_script("""
+            $ echo
+
+            $ echo bar
+            bar
+            """)
 
 
 class TestRm(script.TestCaseWithTransportAndScript):
