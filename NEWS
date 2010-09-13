@@ -188,6 +188,9 @@ Internals
 Testing
 *******
 
+* On platforms that don't support forking give a nice error message saying so
+  when ``bzr selftest --parallel=fork`` is used. (Martin [gz], #528730)
+
 * The way ``bzr selftest --parallel`` generates N partitions of tests to
   run in parallel has changed.  Instead of splitting the list of tests at
   N-1 points, it distributes the tests one-by-one into the partitions in a
