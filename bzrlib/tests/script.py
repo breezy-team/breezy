@@ -56,6 +56,10 @@ def _script_to_commands(text, file_name=None):
     Input lines start with '<'.
     Output lines start with nothing.
     Error lines start with '2>'.
+
+    :return: A sequence of ([args], input, output, errors), where the args are
+        split in to words, and the input, output, and errors are just strings,
+        typically containing newlines.
     """
 
     commands = []
