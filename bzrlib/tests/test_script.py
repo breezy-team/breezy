@@ -29,6 +29,17 @@ class TestSyntax(tests.TestCase):
     def test_comment_is_ignored(self):
         self.assertEquals([], script._script_to_commands('#comment\n'))
 
+    def test_comment_multiple_lines(self):
+        self.assertEquals([
+            (['bar'], None, None, None),
+            ],
+            script._script_to_commands("""
+            # this comment is ignored
+            # so is this
+            # no we run bar
+            $ bar
+            """))
+
     def test_trim_blank_lines(self):
         """Blank lines are respected, but trimmed at the start and end.
 
