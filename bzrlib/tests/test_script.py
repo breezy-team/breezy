@@ -16,8 +16,10 @@
 
 
 from bzrlib import (
+    commands,
     osutils,
     tests,
+    ui,
     )
 from bzrlib.tests import script
 
@@ -458,4 +460,31 @@ $ echo content > file
         self.failUnlessExists('dir')
         self.failIfExists('file')
         self.failUnlessExists('dir/file')
+
+
+class cmd_test_confirm(commands.Command):
+
+    def run(self):
+        if ui.ui_factory.get_boolean(
+            'Really do it',
+            # 'bzrlib.tests.test_script.confirm',
+            # {}
+            ):
+            self.outf.write('yes\n')
+        else:
+            print 'no'
+
+
+class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
+
+    def test_confirm_action(self):
+        """You can write tests that demonstrate user confirmation"""
+        commands.builtin_command_registry.register(cmd_test_confirm)
+        self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
+        self.run_script("""
+            $ bzr test-confirm
+            2>Really do it? [y/n]: 
+            <yes
+            yes
+            """)
 
