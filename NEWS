@@ -130,6 +130,10 @@ Bug Fixes
 * Don't print internal object name when print an invalid revision spec
   error.  (Neil Martinsen-Burrell, #598701)
 
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
 * ``EPIPE`` can be raised during test server shutdown. This happened on
   gentoo only so far. (Vincent Ladeuil, #627277)
 
@@ -140,6 +144,11 @@ Bug Fixes
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
 
+* Fix ``AttributeError: 'NoneType' object has no attribute 'close'`` in
+  ``_close_ssh_proc`` when using ``bzr+ssh://``.  This was causing
+  connections to pre-1.6 bzr+ssh servers to fail, and causing warnings on
+  stderr in some other circumstances.  (Andrew Bennetts, #633745)
+
 * Fix spurious paramiko warning on hardy by ensuring that ``selftest``
   properly remove its warning filter. (Vincent Ladeuil, #625686)
 
@@ -149,6 +158,11 @@ Bug Fixes
 * Most of the leaked threads during selftest are now fixed, allowing the
   full test suite to pass on gentoo.
   (Vincent Ladeuil, #392127)
+
+* Only call ``setlocale`` in the bzr startup script on posix systems. This
+  avoids an issue with the newer windows C runtimes used by Python 2.6 and
+  later which can mangle bytestrings printed to the console.
+  (Martin [gz], #631350)
 
 * `PathNotChild` should not give a traceback.
   (Martin Pool, #98735)
@@ -299,7 +313,7 @@ Bug Fixes
 
 * ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
   previously-unversioned directory within the tree: the directory is
-  marked versioned too.  
+  marked versioned too.
   (Martin Pool, #192859)
 
 * CommitBuilder now uses the committer instead of _config.username to generate
@@ -308,9 +322,26 @@ Bug Fixes
 * Cope with Microsoft FTP server that returns reply '250 Directory
   created' when mkdir succeeds.  (Martin Pool, #224373)
 
-* Fix ``AttributeError on parent.children`` when adding a file under a 
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
+* Fix ``AttributeError on parent.children`` when adding a file under a
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
+
+* Fix ``AttributeError: 'NoneType' object has no attribute 'close'`` in
+  ``_close_ssh_proc`` when using ``bzr+ssh://``.  This was causing
+  connections to pre-1.6 bzr+ssh servers to fail, and causing warnings on
+  stderr in some other circumstances.  (Andrew Bennetts, #633745)
+
+* Only call ``setlocale`` in the bzr startup script on posix systems. This
+  avoids an issue with the newer windows C runtimes used by Python 2.6 and
+  later which can mangle bytestrings printed to the console.
+  (Martin [gz], #631350)
+
+Improvements
+************
 
 Documentation
 *************
@@ -1380,6 +1411,10 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
@@ -1934,6 +1969,10 @@ Bug Fixes
 * Don't traceback trying to unversion children files of an already
   unversioned directory.  (Vincent Ladeuil, #494221)
 
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
 * Fix ``AttributeError on parent.children`` when adding a file under a 
   directory that was a symlink in the previous commit.
   (Martin Pool, #192859)
