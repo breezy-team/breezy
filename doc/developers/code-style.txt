@@ -119,6 +119,21 @@ such as ``addCleanup`` or ``assertRaises``.  Otherwise, be careful:
     positional/keyword args, it seems like a different category of thing.
 
 
+Imitating standard objects
+==========================
+
+Don't provide methods that imitate built-in classes (eg ``__in__``,
+``__call__``, ``__int__``, ``__getitem__``) unless the class you're
+implementing really does act like the builtin class, in semantics and
+performance.
+
+For example, old code lets you say ``file_id in inv`` but we no longer
+consider this good style.  Instead, say more explicitly
+``inv.has_id(file_id)``.
+
+``__repr__``, ``__cmp__``, ``__str__`` are usually fine.
+
+
 Module Imports
 ==============
 
