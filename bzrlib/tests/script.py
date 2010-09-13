@@ -232,7 +232,15 @@ class ScriptRunner(object):
             # 'expected' parameter. So we just fallback to our good old
             # assertEqualDiff since we know there *are* differences and the
             # output should be decently readable.
-            test_case.assertEqualDiff(expected, actual)
+            #
+            # As a special case, we allow output that's missing a final
+            # newline to match an expected string that does have one, so that
+            # we can match a prompt printed on one line, then input given on
+            # the next line.
+            if expected == actual + '\n':
+                pass
+            else:
+                test_case.assertEqualDiff(expected, actual)
 
     def _pre_process_args(self, args):
         new_args = []
