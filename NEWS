@@ -289,6 +289,9 @@ Testing
 * HTTP test servers will leak less threads (and sockets) and will not hang on
   AIX anymore. (Vincent Ladeuil, #405745)
 
+* Rearrange thread leak detection code to eliminate global state and make it
+  possible to extend the reporting. (Marting [gz], #633462)
+
 * The test suite now simply holds log files in memory, rather than writing them
   out to disk and then reading them back in and deleting them.
   (Andrew Bennetts)
