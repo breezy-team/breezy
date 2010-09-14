@@ -182,6 +182,9 @@ class Inter1and2Helper(object):
     This is for use by fetchers and converters.
     """
 
+    # This is a class variable so that the test suite can override it.
+    known_graph_threshold = 100
+
     def __init__(self, source):
         """Constructor.
 
@@ -243,10 +246,8 @@ class Inter1and2Helper(object):
         # yet, and are unlikely to in non-rich-root environments anyway.
         root_id_order.sort(key=operator.itemgetter(0))
         # Create a record stream containing the roots to create.
-        if len(revs) > 100:
-            # XXX: not covered by tests, should have a flag to always run
-            # this. -- mbp 20100129
-            graph = self.source_repo.get_known_graph_ancestry(revs)
+        if len(revs) > self.known_graph_threshold:
+            graph = self.source.get_known_graph_ancestry(revs)
         new_roots_stream = _new_root_data_stream(
             root_id_order, rev_id_to_root_id, parent_map, self.source, graph)
         return [('texts', new_roots_stream)]

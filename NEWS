@@ -46,6 +46,12 @@ Bug Fixes
   later which can mangle bytestrings printed to the console.
   (Martin [gz], #631350)
 
+* Upgrading or fetching from a non-rich-root repository to a rich-root
+  repository (e.g. from pack-0.92 to 2a) no longer fails with
+  ``'Inter1and2Helper' object has no attribute 'source_repo'``.  This was
+  a regression from Bazaar 2.1.  (Andrew Bennetts, #636930)
+  
+
 Improvements
 ************
 
