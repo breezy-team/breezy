@@ -19,41 +19,28 @@
 
 
 from bzrlib import (
+    progress,
     ui,
     )
 
 
-class CapturingUIFactory(ui.UIFactory):
-    """A UI Factory for testing - capture the updates made through it."""
+class CapturingUIFactory(ui.UIFactory, progress.DummyProgress):
+    """Captures progress updates made through it.
+    
+    This is overloaded as both the UIFactory and the progress model."""
 
     def __init__(self):
         super(CapturingUIFactory, self).__init__()
         self._calls = []
         self.depth = 0
 
-    def clear(self):
-        """See progress.ProgressTask.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressTask.clear_term()."""
-
-    def finished(self):
-        """See progress.ProgressTask.finished()."""
-        self.depth -= 1
-
-    def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressTask.note()."""
-
-    def progress_bar(self):
-        return self
-
     def nested_progress_bar(self):
         self.depth += 1
         return self
 
+    def finished(self):
+        self.depth -= 1
+
     def update(self, message, count=None, total=None):
-        """See progress.ProgressTask.update()."""
         if self.depth == 1:
             self._calls.append(("update", count, total, message))
-
-
