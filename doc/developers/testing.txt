@@ -388,6 +388,12 @@ The following will succeeds only if 'bzr add' outputs 'adding file'::
 If you want the command to succeed for any output, just use::
 
   $ bzr add file
+  ...
+  2>...
+
+or use the ``--quiet`` option::
+
+  $ bzr add -q file
 
 The following will stop with an error::
 
