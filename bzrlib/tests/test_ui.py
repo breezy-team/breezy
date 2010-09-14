@@ -18,10 +18,11 @@
 """
 
 import os
-import re
 import time
 
 from StringIO import StringIO
+
+from testtools.matchers import *
 
 from bzrlib import (
     config,
@@ -50,8 +51,8 @@ class TestUIConfiguration(tests.TestCaseWithTransport):
         ui = tests.TestUIFactory(stdin=None,
             stdout=tests.StringIOWrapper(),
             stderr=tests.StringIOWrapper())
-        os = ui.make_output_stream()
-        self.assertEquals(os.encoding, enc)
+        output = ui.make_output_stream()
+        self.assertEquals(output.encoding, enc)
 
 
 class TestTextUIFactory(tests.TestCase):
@@ -442,3 +443,36 @@ class TestBoolFromString(tests.TestCase):
         self.assertIsNone('0', av)
         self.assertIsNone('on', av)
         self.assertIsNone('off', av)
+
+
+class TestConfirmationUserInterfacePolicy(tests.TestCase):
+
+    def test_confirm_action_default(self):
+        base_ui = _mod_ui.NoninteractiveUIFactory()
+        for answer in [True, False]:
+            self.assertEquals(
+                _mod_ui.ConfirmationUserInterfacePolicy(base_ui, answer, {})
+                .confirm_action("Do something?",
+                    "bzrlib.tests.do_something", {}),
+                answer)
+
+    def test_confirm_action_specific(self):
+        base_ui = _mod_ui.NoninteractiveUIFactory()
+        for default_answer in [True, False]:
+            for specific_answer in [True, False]:
+                for conf_id in ['given_id', 'other_id']:
+                    wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
+                        base_ui, default_answer, dict(given_id=specific_answer))
+                    result = wrapper.confirm_action("Do something?", conf_id, {})
+                    if conf_id == 'given_id':
+                        self.assertEquals(result, specific_answer)
+                    else:
+                        self.assertEquals(result, default_answer)
+
+    def test_repr(self):
+        base_ui = _mod_ui.NoninteractiveUIFactory()
+        wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
+            base_ui, True, dict(a=2))
+        self.assertThat(repr(wrapper),
+            Equals("ConfirmationUserInterfacePolicy("
+                "NoninteractiveUIFactory(), True, {'a': 2})"))
