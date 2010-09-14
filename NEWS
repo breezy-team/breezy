@@ -76,7 +76,7 @@ New Features
   locks. (Vincent Ladeuil, #525571)
 
 * ``bzr status`` now displays a summary of existing shelves after
-  the other status information. This us done using a ``post_status``
+  the other status information. This is done using a ``post_status``
   hook.
   (Parth Malwankar, #403687)
 
