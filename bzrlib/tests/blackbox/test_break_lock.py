@@ -28,6 +28,9 @@ from bzrlib import (
     osutils,
     tests,
     )
+from bzrlib.tests.script import (
+    ScriptRunner,
+    )
 
 
 class TestBreakLock(tests.TestCaseWithTransport):
@@ -69,6 +72,14 @@ class TestBreakLock(tests.TestCaseWithTransport):
         out, err = self.run_bzr('break-lock --help')
         # shouldn't fail and should not produce error output
         self.assertEqual('', err)
+
+    def test_break_lock_no_interaction(self):
+        """With --force, the user isn't asked for confirmation"""
+        ScriptRunner().run_script(self, """
+        $ bzr break-lock --force master-repo/master-branch
+        """)
+        # lock should now be dead
+        self.assertRaises(errors.LockNotHeld, self.master_branch.unlock)
 
     def test_break_lock_everything_locked(self):
         ### if everything is locked, we should be able to unlock the lot.

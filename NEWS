@@ -71,6 +71,10 @@ New Features
 * ``bzr break-lock --config [location]`` can now break config files
   locks. (Vincent Ladeuil, #525571)
 
+* ``bzr break-lock --force`` breaks the lock without prompting.  (Before
+  using this, make sure the process holding the lock really is dead.)
+  (Martin Pool, #392315)
+
 * ``bzrlib.config.LockableConfig`` is a base class for config files that
   needs to be protected against multiple writers. All methods that
   change a configuration variable value must be decorated with
