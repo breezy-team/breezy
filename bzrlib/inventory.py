@@ -836,7 +836,8 @@ class CommonInventory(object):
                 if ie.kind == 'directory':
                     descend(ie, child_path)
 
-        descend(self.root, u'')
+        if self.root is not None:
+            descend(self.root, u'')
         return accum
 
     def directories(self):
