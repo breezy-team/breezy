@@ -286,6 +286,10 @@ Internals
 Testing
 *******
 
+* Blank output section in scriptrunner tests no longer match any output.
+  Instead, use '...' as a wildcard if you don't care about the output.
+  (Martin Pool, #637830)
+
 * HTTP test servers will leak less threads (and sockets) and will not hang on
   AIX anymore. (Vincent Ladeuil, #405745)
 

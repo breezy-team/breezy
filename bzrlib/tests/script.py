@@ -221,20 +221,30 @@ class ScriptRunner(object):
         retcode, actual_output, actual_error = method(test_case,
                                                       str_input, args)
 
-        self._check_output(output, actual_output, test_case)
-        self._check_output(error, actual_error, test_case)
+        try:
+            self._check_output(output, actual_output, test_case)
+        except AssertionError, e:
+            raise AssertionError(str(e) + " in stdout of command %s" % cmd)
+        try:
+            self._check_output(error, actual_error, test_case)
+        except AssertionError, e:
+            raise AssertionError(str(e) +
+                " in stderr of running command %s" % cmd)
         if retcode and not error and actual_error:
             test_case.fail('In \n\t%s\nUnexpected error: %s'
                            % (' '.join(cmd), actual_error))
         return retcode, actual_output, actual_error
 
     def _check_output(self, expected, actual, test_case):
-        if expected is None:
-            # Specifying None means: any output is accepted
-            return
-        if actual is None:
-            test_case.fail('We expected output: %r, but found None'
-                           % (expected,))
+        if not actual:
+            if expected is None:
+                return
+            elif expected == '...\n':
+                return
+            else:
+                test_case.fail('expected output: %r, but found nothing'
+                            % (expected,))
+        expected = expected or ''
         matching = self.output_checker.check_output(
             expected, actual, self.check_options)
         if not matching:
@@ -252,7 +262,7 @@ class ScriptRunner(object):
             if expected == actual + '\n':
                 pass
             else:
-                test_case.assertEqualDiff(expected, actual)
+                test_case.assertEquals(expected, actual)
 
     def _pre_process_args(self, args):
         new_args = []
