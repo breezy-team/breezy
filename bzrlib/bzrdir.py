@@ -165,25 +165,6 @@ class BzrDir(controldir.ControlDir):
                 format.get_format_description(),
                 basedir)
 
-    def clone(self, url, revision_id=None, force_new_repo=False,
-              preserve_stacking=False):
-        """Clone this bzrdir and its contents to url verbatim.
-
-        :param url: The url create the clone at.  If url's last component does
-            not exist, it will be created.
-        :param revision_id: The tip revision-id to use for any branch or
-            working tree.  If not None, then the clone operation may tune
-            itself to download less data.
-        :param force_new_repo: Do not use a shared repository for the target
-                               even if one is available.
-        :param preserve_stacking: When cloning a stacked branch, stack the
-            new branch on top of the other branch's stacked-on branch.
-        """
-        return self.clone_on_transport(get_transport(url),
-                                       revision_id=revision_id,
-                                       force_new_repo=force_new_repo,
-                                       preserve_stacking=preserve_stacking)
-
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True):
@@ -1719,7 +1700,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
     def register_format(klass, format):
         BzrProber.register_bzrdir_format(format)
         # bzr native formats have a network name of their format string.
-        network_format_registry.register(format.get_format_string(), format.__class__)
+        controldir.network_format_registry.register(format.get_format_string(), format.__class__)
         controldir.ControlDirFormat.register_format(format)
 
     def _supply_sub_formats_to(self, other_format):
@@ -1738,7 +1719,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
     def unregister_format(klass, format):
         BzrProber.unregister_bzrdir_format(format)
         controldir.ControlDirFormat.unregister_format(format)
-        network_format_registry.remove(format.get_format_string())
+        controldir.network_format_registry.remove(format.get_format_string())
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -2145,15 +2126,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)
-
-
-network_format_registry = registry.FormatRegistry()
-"""Registry of formats indexed by their network name.
-
-The network name for a BzrDirFormat is an identifier that can be used when
-referring to formats with smart server operations. See
-BzrDirFormat.network_name() for more detail.
-"""
 
 
 # Register bzr formats
@@ -2703,6 +2675,8 @@ class ConvertMetaToMeta(Converter):
 class RemoteBzrDirFormat(BzrDirMetaFormat1):
     """Format representing bzrdirs accessed via a smart server"""
 
+    supports_workingtrees = False
+
     def __init__(self):
         BzrDirMetaFormat1.__init__(self)
         # XXX: It's a bit ugly that the network name is here, because we'd
@@ -2717,7 +2691,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
 
     def get_format_description(self):
         if self._network_name:
-            real_format = network_format_registry.get(self._network_name)
+            real_format = controldir.network_format_registry.get(self._network_name)
             return 'Remote: ' + real_format.get_format_description()
         return 'bzr remote bzrdir'
 
@@ -3290,8 +3264,24 @@ register_metadir(controldir.format_registry, 'development-rich-root',
     alias=True,
     hidden=True,
     )
-register_metadir(controldir.format_registry, 'development-subtree',
+register_metadir(controldir.format_registry, 'development5-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
+    help='Development format, subtree variant. Can convert data to and '
+        'from pack-0.92-subtree (and anything compatible with '
+        'pack-0.92-subtree) format repositories. Repositories and branches in '
+        'this format can only be read by bzr.dev. Please read '
+        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    experimental=True,
+    hidden=True,
+    alias=False,
+    )
+
+
+register_metadir(controldir.format_registry, 'development-subtree',
+    'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2aSubtree',
     help='Current development format, subtree variant. Can convert data to and '
         'from pack-0.92-subtree (and anything compatible with '
         'pack-0.92-subtree) format repositories. Repositories and branches in '
@@ -3341,7 +3331,7 @@ register_metadir(controldir.format_registry, '2a',
         # 'rich roots. Supported by bzr 1.16 and later.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat6',
-    experimental=True,
+    experimental=False,
     )
 
 # The following format should be an alias for the rich root equivalent 

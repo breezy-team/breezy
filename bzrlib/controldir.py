@@ -542,7 +542,52 @@ class ControlDir(ControlComponent):
                 branch = tree.branch
         return tree, branch
 
+    def get_config(self):
+        """Get configuration for this ControlDir."""
+        raise NotImplementedError(self.get_config)
 
+    def check_conversion_target(self, target_format):
+        """Check that a bzrdir as a whole can be converted to a new format."""
+        raise NotImplementedError(self.check_conversion_target)
+
+    def clone(self, url, revision_id=None, force_new_repo=False,
+              preserve_stacking=False):
+        """Clone this bzrdir and its contents to url verbatim.
+
+        :param url: The url create the clone at.  If url's last component does
+            not exist, it will be created.
+        :param revision_id: The tip revision-id to use for any branch or
+            working tree.  If not None, then the clone operation may tune
+            itself to download less data.
+        :param force_new_repo: Do not use a shared repository for the target
+                               even if one is available.
+        :param preserve_stacking: When cloning a stacked branch, stack the
+            new branch on top of the other branch's stacked-on branch.
+        """
+        return self.clone_on_transport(get_transport(url),
+                                       revision_id=revision_id,
+                                       force_new_repo=force_new_repo,
+                                       preserve_stacking=preserve_stacking)
+
+    def clone_on_transport(self, transport, revision_id=None,
+        force_new_repo=False, preserve_stacking=False, stacked_on=None,
+        create_prefix=False, use_existing_dir=True):
+        """Clone this bzrdir and its contents to transport verbatim.
+
+        :param transport: The transport for the location to produce the clone
+            at.  If the target directory does not exist, it will be created.
+        :param revision_id: The tip revision-id to use for any branch or
+            working tree.  If not None, then the clone operation may tune
+            itself to download less data.
+        :param force_new_repo: Do not use a shared repository for the target,
+                               even if one is available.
+        :param preserve_stacking: When cloning a stacked branch, stack the
+            new branch on top of the other branch's stacked-on branch.
+        :param create_prefix: Create any missing directories leading up to
+            to_transport.
+        :param use_existing_dir: Use an existing directory if one exists.
+        """
+        raise NotImplementedError(self.clone_on_transport)
 
 
 class ControlDirFormat(object):
@@ -562,6 +607,8 @@ class ControlDirFormat(object):
     object will be created every system load.
 
     :cvar colocated_branches: Whether this formats supports colocated branches.
+    :cvar supports_workingtrees: This control directory can co-exist with a
+        working tree.
     """
 
     _default_format = None
@@ -588,6 +635,8 @@ class ControlDirFormat(object):
     colocated_branches = False
     """Whether co-located branches are supported for this control dir format.
     """
+
+    supports_workingtrees = True
 
     def get_format_description(self):
         """Return the short description for this format."""
@@ -918,3 +967,11 @@ class ControlDirFormatRegistry(registry.Registry):
 # appear in chronological order and format descriptions can build
 # on previous ones.
 format_registry = ControlDirFormatRegistry()
+
+network_format_registry = registry.FormatRegistry()
+"""Registry of formats indexed by their network name.
+
+The network name for a ControlDirFormat is an identifier that can be used when
+referring to formats with smart server operations. See
+ControlDirFormat.network_name() for more detail.
+"""

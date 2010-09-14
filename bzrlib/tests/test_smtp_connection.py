@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2009 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -91,9 +91,7 @@ class WideOpenSMTPFactory(StubSMTPFactory):
 class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def get_connection(self, text, smtp_factory=None):
-        my_config = config.GlobalConfig()
-        config_file = StringIO(text)
-        my_config._get_parser(config_file)
+        my_config = config.GlobalConfig.from_string(text)
         return smtp_connection.SMTPConnection(my_config,
                                               _smtp_factory=smtp_factory)
 
@@ -160,17 +158,18 @@ class TestSMTPConnection(tests.TestCaseInTempDir):
 
     def test_authenticate_with_byte_strings(self):
         user = 'joe'
-        password = 'h\xC3\xACspass'
+        unicode_pass = u'h\xECspass'
+        utf8_pass = unicode_pass.encode('utf-8')
         factory = WideOpenSMTPFactory()
         conn = self.get_connection(
-            '[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
-            % (user, password), smtp_factory=factory)
-        self.assertEqual(u'h\xECspass', conn._smtp_password)
+            u'[DEFAULT]\nsmtp_username=%s\nsmtp_password=%s\n'
+            % (user, unicode_pass), smtp_factory=factory)
+        self.assertEqual(unicode_pass, conn._smtp_password)
         conn._connect()
         self.assertEqual([('connect', 'localhost'),
                           ('ehlo',),
                           ('has_extn', 'starttls'),
-                          ('login', user, password)], factory._calls)
+                          ('login', user, utf8_pass)], factory._calls)
         smtp_username, smtp_password = factory._calls[-1][1:]
         self.assertIsInstance(smtp_username, str)
         self.assertIsInstance(smtp_password, str)

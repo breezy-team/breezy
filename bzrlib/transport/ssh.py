@@ -645,11 +645,28 @@ import weakref
 _subproc_weakrefs = set()
 
 def _close_ssh_proc(proc):
-    for func in [proc.stdin.close, proc.stdout.close, proc.wait]:
+    """Carefully close stdin/stdout and reap the SSH process.
+
+    If the pipes are already closed and/or the process has already been
+    wait()ed on, that's ok, and no error is raised.  The goal is to do our best
+    to clean up (whether or not a clean up was already tried).
+    """
+    dotted_names = ['stdin.close', 'stdout.close', 'wait']
+    for dotted_name in dotted_names:
+        attrs = dotted_name.split('.')
         try:
-            func()
+            obj = proc
+            for attr in attrs:
+                obj = getattr(obj, attr)
+        except AttributeError:
+            # It's ok for proc.stdin or proc.stdout to be None.
+            continue
+        try:
+            obj()
         except OSError:
-            pass
+            # It's ok for the pipe to already be closed, or the process to
+            # already be finished.
+            continue
 
 
 class SSHConnection(object):

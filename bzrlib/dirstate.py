@@ -2876,12 +2876,12 @@ class DirState(object):
             # converted to relocated.
             if path_utf8 is None:
                 raise AssertionError('no path')
-            existing_keys = id_index[key[2]]
+            existing_keys = id_index.get(key[2], ())
             if key not in existing_keys:
                 raise AssertionError('We found the entry in the blocks, but'
                     ' the key is not in the id_index.'
                     ' key: %s, existing_keys: %s' % (key, existing_keys))
-            for entry_key in id_index[key[2]]:
+            for entry_key in existing_keys:
                 # TODO:PROFILING: It might be faster to just update
                 # rather than checking if we need to, and then overwrite
                 # the one we are located at.

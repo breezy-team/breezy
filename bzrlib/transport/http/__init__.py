@@ -629,6 +629,11 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         """
         pass
 
+    def disconnect(self):
+        """See SmartClientMedium.disconnect()."""
+        t = self._http_transport_ref()
+        t.disconnect()
+
 
 # TODO: May be better located in smart/medium.py with the other
 # SmartMediumRequest classes
