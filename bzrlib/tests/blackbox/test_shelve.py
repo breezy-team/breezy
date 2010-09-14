@@ -77,10 +77,18 @@ class TestShelveList(TestCaseWithTransport):
         sr = ScriptRunner()
         sr.run_script(self, '''
 $ bzr add file
+adding file
 $ bzr shelve --all -m Foo
+2>Selected changes:
+2>-D  file
+2>Changes shelved with id "1".
 $ bzr shelve --list
   1: Foo
 $ bzr unshelve --keep
+2>Using changes with id "1".
+2>Message: Foo
+2>+N  file
+2>All changes applied successfully.
 $ bzr shelve --list
   1: Foo
 $ cat file
