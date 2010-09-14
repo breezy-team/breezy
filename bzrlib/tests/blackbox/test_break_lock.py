@@ -16,15 +16,11 @@
 
 """Tests for lock-breaking user interface"""
 
-import os
-
-import bzrlib
 from bzrlib import (
     branch,
     bzrdir,
     config,
     errors,
-    lockdir,
     osutils,
     tests,
     )
