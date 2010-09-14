@@ -801,6 +801,7 @@ class TestCase(testtools.TestCase):
     _gather_lsprof_in_benchmarks = False
 
     def __init__(self, methodName='testMethod'):
+        self.__methodName = methodName
         super(TestCase, self).__init__(methodName)
         self._cleanups = []
         self._directory_isolation = True
@@ -808,6 +809,9 @@ class TestCase(testtools.TestCase):
             (UnavailableFeature, self._do_unsupported_or_skip))
         self.exception_handlers.insert(0,
             (TestNotApplicable, self._do_not_applicable))
+
+    def __copy__(self):
+        return self.__class__(self.__methodName)
 
     def setUp(self):
         super(TestCase, self).setUp()
