@@ -2981,6 +2981,9 @@ parallel_registry = registry.Registry()
 
 
 def fork_decorator(suite):
+    if getattr(os, "fork", None) is None:
+        raise errors.BzrCommandError("platform does not support fork,"
+            " try --parallel=subprocess instead.")
     concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
