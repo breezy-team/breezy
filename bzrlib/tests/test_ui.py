@@ -40,7 +40,7 @@ from bzrlib.tests import (
     )
 from bzrlib.ui import text as _mod_ui_text
 from bzrlib.ui.testsupport import (
-    CapturingUIFactory,
+    ProgressRecordingUIFactory,
     )
 
 
@@ -437,13 +437,13 @@ class TestBoolFromString(tests.TestCase):
         self.assertIsNone('off', av)
 
 
-class TestCapturingUI(tests.TestCase):
+class TestProgressRecordingUI(tests.TestCase):
     """Test test-oriented UIFactory that records progress updates"""
 
     def test_nested_ignore_depth_beyond_one(self):
         # we only want to capture the first level out progress, not
         # want sub-components might do. So we have nested bars ignored.
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         pb1 = factory.nested_progress_bar()
         pb1.update('foo', 0, 1)
         pb2 = factory.nested_progress_bar()

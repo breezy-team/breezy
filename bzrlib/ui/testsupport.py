@@ -24,13 +24,13 @@ from bzrlib import (
     )
 
 
-class CapturingUIFactory(ui.UIFactory, progress.DummyProgress):
+class ProgressRecordingUIFactory(ui.UIFactory, progress.DummyProgress):
     """Captures progress updates made through it.
     
     This is overloaded as both the UIFactory and the progress model."""
 
     def __init__(self):
-        super(CapturingUIFactory, self).__init__()
+        super(ProgressRecordingUIFactory, self).__init__()
         self._calls = []
         self.depth = 0
 

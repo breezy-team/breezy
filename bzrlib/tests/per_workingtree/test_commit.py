@@ -38,7 +38,7 @@ from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-from bzrlib.ui.testsupport import CapturingUIFactory
+from bzrlib.ui.testsupport import ProgressRecordingUIFactory
 
 
 class TestCommit(TestCaseWithWorkingTree):
@@ -459,7 +459,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestCommitProgress, self).setUp()
-        ui.ui_factory = CapturingUIFactory()
+        ui.ui_factory = ProgressRecordingUIFactory()
 
     def test_commit_progress_steps(self):
         # during commit we one progress update for every entry in the
@@ -478,7 +478,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         f.close()
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
         # TODO RBC 20060421 it would be nice to merge the reporter output
         # into the factory for this test - just make the test ui factory
@@ -499,7 +499,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6):
             pass
@@ -522,7 +522,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
             pass
