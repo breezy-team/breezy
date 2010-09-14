@@ -38,7 +38,7 @@ from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-from bzrlib.ui.testsupport import ProgressRecordingUIFactory
+from bzrlib.tests.testui import ProgressRecordingUIFactory
 
 
 class TestCommit(TestCaseWithWorkingTree):

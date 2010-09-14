@@ -39,7 +39,7 @@ from bzrlib.tests import (
     test_progress,
     )
 from bzrlib.ui import text as _mod_ui_text
-from bzrlib.ui.testsupport import (
+from bzrlib.tests.testui import (
     ProgressRecordingUIFactory,
     )
 
