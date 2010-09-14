@@ -251,7 +251,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_get_bytes_unknown_file(self):
         t = self.get_transport()
-
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
     def test_get_with_open_write_stream_sees_all_content(self):
@@ -1266,7 +1265,7 @@ class TransportTests(TestTransportImplementation):
         self.assertIs(t._get_connection(), c._get_connection())
 
         # Temporary failure, we need to create a new dummy connection
-        new_connection = object()
+        new_connection = None
         t._set_connection(new_connection)
         # Check that both transports use the same connection
         self.assertIs(new_connection, t._get_connection())

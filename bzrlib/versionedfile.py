@@ -46,7 +46,6 @@ from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
 from bzrlib.transport.memory import MemoryTransport
 """)
 from bzrlib.registry import Registry
-from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
 from bzrlib import bencode
 

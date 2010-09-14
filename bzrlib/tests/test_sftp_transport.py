@@ -504,7 +504,7 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
     """Test that AuthenticationConfig can supply default usernames."""
 
     def get_transport_for_connection(self, set_config):
-        port = self.get_server()._listener.port
+        port = self.get_server().port
         if set_config:
             conf = config.AuthenticationConfig()
             conf._get_config().update(
