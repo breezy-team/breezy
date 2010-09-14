@@ -312,19 +312,21 @@ class TestInterRepositoryScenarios(tests.TestCase):
         from bzrlib.tests.per_interrepository import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [("C0", "C1", "C2"), ("D0", "D1", "D2")]
+        formats = [("C0", "C1", "C2", "C3"), ("D0", "D1", "D2", "D3")]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
             ('C0,str,str',
              {'repository_format': 'C1',
               'repository_format_to': 'C2',
               'transport_readonly_server': 'b',
-              'transport_server': 'a'}),
+              'transport_server': 'a',
+              'extra_setup': 'C3'}),
             ('D0,str,str',
              {'repository_format': 'D1',
               'repository_format_to': 'D2',
               'transport_readonly_server': 'b',
-              'transport_server': 'a'})],
+              'transport_server': 'a',
+              'extra_setup': 'D3'})],
             scenarios)
 
 
