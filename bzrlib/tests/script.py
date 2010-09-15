@@ -262,7 +262,7 @@ class ScriptRunner(object):
             if expected == actual + '\n':
                 pass
             else:
-                test_case.assertEquals(expected, actual)
+                test_case.assertEqualDiff(expected, actual)
 
     def _pre_process_args(self, args):
         new_args = []
