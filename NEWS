@@ -92,6 +92,9 @@ New Features
 Bug Fixes
 *********
 
+* Fix traceback with python-2.7's xmlrpclib
+  (Toshio Kuratomi, #612096)
+
 * Allow using both --using and --diff-options. 
   (Matthäus G. Chajdas, #234708)
 
