@@ -3481,6 +3481,9 @@ class cmd_selftest(Command):
     If you set BZR_TEST_PDB=1 when running selftest, failing tests will drop
     into a pdb postmortem session.
 
+    The --coverage=DIRNAME global option produces a report with covered code
+    indicated.
+
     :Examples:
         Run only tests relating to 'ignore'::
 
