@@ -799,9 +799,17 @@ class TestCase(testtools.TestCase):
     _log_file_name = None
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
+    # Mutable attributes defined in bzrlib.tests.TestCase and
+    # testtools.TestCase that should not be shallow copied by clone_test.
+    # This is ugly, but probably the best we can do until testtools provide a
+    # nicer way to deal with this, see
+    # <https://bugs.launchpad.net/testtools/+bug/637725>.
+    _attrs_to_deepcopy = (
+        '_cleanups', 'exception_handlers', '_unique_id_gen',
+        '_traceback_id_gen', '_TestCase__details',
+        '_TestCase__exception_handlers')
 
     def __init__(self, methodName='testMethod'):
-        self.__methodName = methodName
         super(TestCase, self).__init__(methodName)
         self._cleanups = []
         self._directory_isolation = True
@@ -811,7 +819,15 @@ class TestCase(testtools.TestCase):
             (TestNotApplicable, self._do_not_applicable))
 
     def __copy__(self):
-        return self.__class__(self.__methodName)
+        attrs = self.__dict__.copy()
+        for attr_name in self._attrs_to_deepcopy:
+            if attr_name in attrs:
+                attrs[attr_name] = copy.deepcopy(attrs[attr_name])
+        # Some Python voodoo to create an instance without invoking its
+        # __init__, because we've already constructed the __dict__ to use.
+        new_instance = self.__class__.__new__(self.__class__)
+        new_instance.__dict__ = attrs
+        return new_instance
 
     def setUp(self):
         super(TestCase, self).setUp()
