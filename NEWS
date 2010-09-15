@@ -1151,6 +1151,10 @@ Bug Fixes
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
 
+* Stop ``AttributeError: 'module' object has no attribute 'ElementTree'``
+  being thrown from ``xml_serializer`` on certain cElementTree setups.
+  (Martin [gz], #254278)
+
 Improvements
 ************
 
