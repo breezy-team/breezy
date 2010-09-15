@@ -819,6 +819,14 @@ class TestCase(testtools.TestCase):
             (TestNotApplicable, self._do_not_applicable))
 
     def __copy__(self):
+        # XXX: This method works around the lack of a way to correctly clone a
+        # test with current testtools.  See
+        # <https://bugs.launchpad.net/testtools/+bug/637725>.
+        # The work around is to:
+        #  - shallow copy self.__dict__
+        #  - deep copy individual attributes in the _attrs_to_deepcopy black
+        #    list.
+        #  - create a new instance (skipping __init__) with the new __dict__.
         attrs = self.__dict__.copy()
         for attr_name in self._attrs_to_deepcopy:
             if attr_name in attrs:
