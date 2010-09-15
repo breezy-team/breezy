@@ -319,13 +319,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         """Record that a test has started."""
         self._start_time = time.time()
 
-    def _cleanupLogFile(self, test):
-        # We can only do this if we have one of our TestCases, not if
-        # we have a doctest.
-        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
-        if setKeepLogfile is not None:
-            setKeepLogfile()
-
     def addError(self, test, err):
         """Tell result that test finished with an error.
 
@@ -338,7 +331,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_error(test, err)
         if self.stop_early:
             self.stop()
-        self._cleanupLogFile(test)
 
     def addFailure(self, test, err):
         """Tell result that test failed.
@@ -352,7 +344,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_failure(test, err)
         if self.stop_early:
             self.stop()
-        self._cleanupLogFile(test)
 
     def addSuccess(self, test, details=None):
         """Tell result that test completed successfully.
@@ -366,7 +357,6 @@ class ExtendedTestResult(testtools.TextTestResult):
                     self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
-        self._cleanupLogFile(test)
         super(ExtendedTestResult, self).addSuccess(test)
         test._log_contents = ''
 
@@ -486,11 +476,6 @@ class TextTestResult(ExtendedTestResult):
     def startTestRun(self):
         super(TextTestResult, self).startTestRun()
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
-
-    def printErrors(self):
-        # clear the pb to make room for the error listing
-        self.pb.clear()
-        super(TextTestResult, self).printErrors()
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
