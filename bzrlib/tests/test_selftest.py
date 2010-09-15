@@ -1498,6 +1498,7 @@ class TestTestCase(tests.TestCase):
         test.run()
 
     def test_run_enabled_unittest_result(self):
+        """Test we revert to regular behaviour when the test is enabled."""
         test = SampleTestCase('_test_pass')
         class EnabledFeature(object):
             def available(self):
