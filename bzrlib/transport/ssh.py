@@ -377,7 +377,7 @@ class SubprocessVendor(SSHVendor):
             return SFTPClient(SocketAsChannelAdapter(sock))
         except _sftp_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
+        except (OSError, IOError, socket.error), e:
             # If the machine is fast enough, ssh can actually exit
             # before we try and send it the sftp request, which
             # raises a Broken Pipe
@@ -392,7 +392,7 @@ class SubprocessVendor(SSHVendor):
             return self._connect(argv)
         except (EOFError), e:
             self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
+        except (OSError, IOError, socket.error), e:
             # If the machine is fast enough, ssh can actually exit
             # before we try and send it the sftp request, which
             # raises a Broken Pipe

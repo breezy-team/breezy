@@ -286,6 +286,10 @@ Internals
 Testing
 *******
 
+* Catch socket errors to avoid
+  bt.test_sftp_transport.SSHVendorBadConnection.test_bad_connection_ssh
+  random failures. (Vincent Ladeuil, #601804)
+
 * HTTP test servers will leak less threads (and sockets) and will not hang on
   AIX anymore. (Vincent Ladeuil, #405745)
 
