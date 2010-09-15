@@ -591,8 +591,8 @@ class TestInventory(TestCase):
 
     def test_entries_for_empty_inventory(self):
         """Test that entries() will not fail for an empty inventory"""
-	inv = Inventory(root_id=None)
-	self.assertEqual([], inv.entries())
+        inv = Inventory(root_id=None)
+        self.assertEqual([], inv.entries())
 
 
 class TestInventoryEntry(TestCase):
