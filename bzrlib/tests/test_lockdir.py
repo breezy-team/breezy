@@ -873,3 +873,48 @@ class TestLockDirHooks(TestCaseWithTransport):
         ld2.force_break(holder_info)
         lock_path = ld.transport.abspath(ld.path)
         self.assertEqual([], self._calls)
+
+
+class TestStaleLockDir(TestCaseWithMemoryTransport):
+    """bzr can detect and specially deal with stale locks.
+
+    A detectable stale lock is one where the hostname is the same as the one
+    where bzr is running, and there's no running process with the pid given in
+    the file.
+
+    :see: https://bugs.launchpad.net/bzr/+bug/220464
+    """
+
+    def test_lock_holder_still_active(self):
+        """Detect that the holder (this process) is still running."""
+        self.knownFailure("not implemented")
+        
+    def test_lock_holder_other_machine(self):
+        """The lock holder isn't here so we don't know if they're alive."""
+        self.knownFailure("not implemented")
+
+    def test_lock_holder_gone(self):
+        """Lock holder a dead process on the same machine."""
+        self.knownFailure("not implemented")
+
+    def test_no_good_hostname(self):
+        """Correctly handle ambiguous hostnames.
+
+        If the lock's recorded with just 'localhost' we can't really trust
+        it's the same 'localhost'.
+        """
+        self.knownFailure("not implemented")
+
+    def test_auto_break_stale_lock(self):
+        """Locks safely known to be stale are just cleaned up.
+
+        This generates a warning but no other user interaction.
+        """
+        self.knownFailure("not implemented")
+
+    def test_auto_break_stale_lock_configured_off(self):
+        self.knownFailure("not implemented")
+
+    def test_break_stale_lock_no_confirmation(self):
+        self.knownFailure("not implemented")
+
