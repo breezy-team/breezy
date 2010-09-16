@@ -1343,9 +1343,15 @@ class DiskTreeTransform(TreeTransformBase):
         # but that's all we have (for now). It will find the option in
         # locations,conf or bazaar.conf though) -- vila 20100916
         conf = self._tree.branch.get_config()
-        orphan_policy = conf.get_user_option('bzrlib.transform.orphan_policy')
+        conf_var_name = 'bzrlib.transform.orphan_policy'
+        orphan_policy = conf.get_user_option(conf_var_name)
+        default_policy = orphaning_registry.default_key
         if orphan_policy is None:
-            orphan_policy = orphaning_registry.default_key
+            orphan_policy = default_policy
+        if orphan_policy not in orphaning_registry:
+            trace.warning('%s (from %s) is not a known policy, defaulting to %s'
+                          % (orphan_policy, conf_var_name, default_policy))
+            orphan_policy = default_policy
         handle_orphan = orphaning_registry.get(orphan_policy)
         handle_orphan(self, trans_id, parent_id)
 

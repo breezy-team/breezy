@@ -29,6 +29,7 @@ from bzrlib import (
     rules,
     symbol_versioning,
     tests,
+    trace,
     transform,
     urlutils,
     )
@@ -3314,3 +3315,20 @@ class TestOrphan(tests.TestCaseWithTransport):
         self.assertLength(1, remaining_conflicts)
         self.assertEqual(('deleting parent', 'Not deleting', 'new-1'),
                          remaining_conflicts.pop())
+
+    def test_unknown_orphan_policy(self):
+        wt = self.make_branch_and_tree('.')
+        # Set a fictional policy nobody ever implemented
+        self._set_orphan_policy(wt, 'donttouchmypreciouuus')
+        tt, orphan_tid = self._prepare_orphan(wt)
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+        remaining_conflicts = resolve_conflicts(tt)
+        # We fallback to the default policy which resolve the conflict by
+        # creating an orphan
+        self.assertLength(0, remaining_conflicts)
+        self.assertLength(2, warnings)
+        self.assertStartsWith( warnings[0], 'donttouchmypreciouuus')
+        self.assertStartsWith(warnings[1], 'dir/foo has been orphaned')
