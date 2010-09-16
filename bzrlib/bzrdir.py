@@ -524,7 +524,10 @@ class BzrDir(controldir.ControlDir):
         return self._available_backup_name(base)
 
     def _available_backup_name(self, base):
-        """Find a non-existing backup file name based on base."""
+        """Find a non-existing backup file name based on base.
+
+        See bzrlib.osutils.available_backup_name about race conditions.
+        """
         return osutils.available_backup_name(base, self.root_transport.has)
 
     def backup_bzrdir(self):
