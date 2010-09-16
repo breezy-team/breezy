@@ -76,6 +76,7 @@ def unique_add(map, key, value):
     map[key] = value
 
 
+
 class _TransformResults(object):
     def __init__(self, modified_paths, rename_count):
         object.__init__(self)
@@ -813,19 +814,16 @@ class TreeTransformBase(object):
              versioned file is present.
         """
         orphans = []
-        dont_delete = False
         # Find the potential orphans, stop if one item should be kept
         for c in self.by_parent()[dir_id]:
             if self.final_file_id(c) is None:
                 orphans.append(c)
             else:
-                dont_delete = True
+                # We have a versioned file here, searching for orphans is
+                # meaningless.
+                orphans = None
                 break
-        if dont_delete:
-            return None
-        else:
-            return orphans
-
+        return orphans
 
     def _affected_ids(self):
         """Return the set of transform ids affected by the transform"""
@@ -1340,7 +1338,37 @@ class DiskTreeTransform(TreeTransformBase):
         delete_any(self._limbo_name(trans_id))
 
     def new_orphan(self, trans_id, parent_id):
-        move_orphan(self, trans_id, parent_id)
+        # FIXME: There is no tree config, so we use the branch one (it's weird
+        # to define it this way as orphaning can only occur in a working tree,
+        # but that's all we have (for now). It will find the option in
+        # locations,conf or bazaar.conf though) -- vila 20100916
+        conf = self._tree.branch.get_config()
+        orphan_policy = conf.get_user_option('bzrlib.transform.orphan_policy')
+        if orphan_policy is None:
+            orphan_policy = orphaning_registry.default_key
+        handle_orphan = orphaning_registry.get(orphan_policy)
+        handle_orphan(self, trans_id, parent_id)
+
+
+class OrphaningError(errors.BzrError):
+
+    # Only bugs could lead to such exception being seen by the user
+    internal_error = True
+    _fmt = "Error while orphaning %s in %s directory"
+
+    def __init__(self, orphan, parent):
+        errors.BzrError.__init__(self)
+        self.orphan = orphan
+        self.parent = parent
+
+
+class OrphaningForbidden(OrphaningError):
+
+    _fmt = "Policy: %s doesn't allow creating orphans."
+
+    def __init__(self, policy):
+        errors.BzrError.__init__(self)
+        self.policy = policy
 
 
 def move_orphan(tt, orphan_id, parent_id):
@@ -1356,8 +1384,8 @@ def move_orphan(tt, orphan_id, parent_id):
     :param parent_id: The orphan parent trans id.
     """
     # Add the orphan dir if it doesn't exist
-    orphan_dir = 'bzr-orphans'
-    od_id = tt.trans_id_tree_path(orphan_dir)
+    orphan_dir_basename = 'bzr-orphans'
+    od_id = tt.trans_id_tree_path(orphan_dir_basename)
     if tt.final_kind(od_id) is None:
         tt.create_directory(od_id)
     parent_path = tt._tree_id_paths[parent_id]
@@ -1366,13 +1394,23 @@ def move_orphan(tt, orphan_id, parent_id):
     new_name = tt._available_backup_name(actual_name, od_id)
     tt.adjust_path(new_name, od_id, orphan_id)
     trace.warning('%s has been orphaned in %s'
-                  % (joinpath(parent_path, actual_name), orphan_dir))
+                  % (joinpath(parent_path, actual_name), orphan_dir_basename))
+
+
+def refuse_orphan(tt, orphan_id, parent_id):
+    """See TreeTransformBase.new_orphan.
+
+    This refuses to create orphan, letting caller handle the conflict.
+    """
+    raise OrphaningForbidden('never')
 
 
 orphaning_registry = registry.Registry()
-orphaning_registry.register('bzr-orphans', move_orphan,
+orphaning_registry.register('always', move_orphan,
                             'Move orphans into the bzr-orphans directory.')
-orphaning_registry._set_default_key('bzr-orphans')
+orphaning_registry._set_default_key('always')
+orphaning_registry.register('never', refuse_orphan,
+                            'Never create orphans.')
 
 
 class TreeTransform(DiskTreeTransform):
@@ -2909,16 +2947,24 @@ def conflict_pass(tt, conflicts, path_tree=None):
         elif c_type == 'missing parent':
             trans_id = conflict[1]
             if trans_id in tt._removed_contents:
+                cancel_deletion = True
                 orphans = tt._get_potential_orphans(trans_id)
                 if orphans:
+                    cancel_deletion = False
                     # All children are orphans
                     for o in orphans:
                         try:
                             tt.new_orphan(o, trans_id)
-                        except OrphaningForbidden:
-                            orphans = None
+                        except OrphaningError:
+                            # Something bad happened so we cancel the directory
+                            # deletion which will leave it in place with a
+                            # conflict. The user can deal with it from there.
+                            # Note that this also catch the case where we don't
+                            # want to create orphans and leave the directory in
+                            # place.
+                            cancel_deletion = True
                             break
-                if orphans is None:
+                if cancel_deletion:
                     # Cancel the directory deletion
                     tt.cancel_deletion(trans_id)
                     new_conflicts.add(('deleting parent', 'Not deleting',

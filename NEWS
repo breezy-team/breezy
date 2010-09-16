@@ -81,6 +81,12 @@ New Features
   @needs_write_lock (set_option() for example).
   (Vincent Ladeuil,  #525571)
 
+* Orphan creation (when a directory is deleted) is now controlled by the
+  ``bzrlib.transform.orphan_policy`` configuration variable. Acceptable
+  values are ``never`` (the previous behaviour) or ``always`` to create
+  orphans when a versioned directory is deleted and contains unversioned
+  files (the orphans). (Vincent Ladeuil, #323111)
+
 * The ``lp:`` prefix will now use your known username (from
   ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
   ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now

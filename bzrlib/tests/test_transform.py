@@ -3256,35 +3256,61 @@ class TestSerializeTransform(tests.TestCaseWithTransport):
 
 class TestOrphan(tests.TestCaseWithTransport):
 
-    # Alternative implementations may want to test:
-    # - can't create orphan dir
-    # - orphaning forbidden
-    # - can't create orphan
-
     def test_no_orphan_for_transform_preview(self):
         tree = self.make_branch_and_tree('tree')
         tt = transform.TransformPreview(tree)
         self.addCleanup(tt.finalize)
         self.assertRaises(NotImplementedError, tt.new_orphan, 'foo', 'bar')
 
-    def test_new_orphan_created(self):
-        wt = self.make_branch_and_tree('.')
+    def _set_orphan_policy(self, wt, policy):
+        wt.branch.get_config().set_user_option('bzrlib.transform.orphan_policy',
+                                               policy)
+
+    def _prepare_orphan(self, wt):
         self.build_tree(['dir/', 'dir/foo'])
         wt.add(['dir'], ['dir-id'])
         wt.commit('add dir')
         tt = transform.TreeTransform(wt)
         self.addCleanup(tt.finalize)
         dir_tid = tt.trans_id_tree_path('dir')
-        foo_tid = tt.trans_id_tree_path('dir/foo')
+        orphan_tid = tt.trans_id_tree_path('dir/foo')
         tt.delete_contents(dir_tid)
         tt.unversion_file(dir_tid)
         raw_conflicts = tt.find_conflicts()
         self.assertLength(1, raw_conflicts)
         self.assertEqual(('missing parent', 'new-1'), raw_conflicts[0])
+        return tt, orphan_tid
+
+    def test_new_orphan_created(self):
+        wt = self.make_branch_and_tree('.')
+        tt, orphan_tid = self._prepare_orphan(wt)
         remaining_conflicts = resolve_conflicts(tt)
         # Yeah for resolved conflicts !
         self.assertLength(0, remaining_conflicts)
         # We have a new orphan
-        self.assertEquals('foo.~1~', tt.final_name(foo_tid))
+        self.assertEquals('foo.~1~', tt.final_name(orphan_tid))
         self.assertEquals('bzr-orphans',
-                          tt.final_name(tt.final_parent(foo_tid)))
+                          tt.final_name(tt.final_parent(orphan_tid)))
+
+    def test_never_orphan(self):
+        wt = self.make_branch_and_tree('.')
+        self._set_orphan_policy(wt, 'never')
+        tt, orphan_tid = self._prepare_orphan(wt)
+        remaining_conflicts = resolve_conflicts(tt)
+        self.assertLength(1, remaining_conflicts)
+        self.assertEqual(('deleting parent', 'Not deleting', 'new-1'),
+                         remaining_conflicts.pop())
+
+    def test_orphan_error(self):
+        def bogus_orphan(tt, orphan_id, parent_id):
+            raise transform.OrphaningError(tt.final_name(orphan_id),
+                                           tt.final_name(parent_id))
+        transform.orphaning_registry.register('bogus', bogus_orphan,
+                                              'Raise an error when orphaning')
+        wt = self.make_branch_and_tree('.')
+        self._set_orphan_policy(wt, 'bogus')
+        tt, orphan_tid = self._prepare_orphan(wt)
+        remaining_conflicts = resolve_conflicts(tt)
+        self.assertLength(1, remaining_conflicts)
+        self.assertEqual(('deleting parent', 'Not deleting', 'new-1'),
+                         remaining_conflicts.pop())
