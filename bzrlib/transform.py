@@ -22,6 +22,7 @@ import time
 from bzrlib import (
     errors,
     lazy_import,
+    registry,
     )
 lazy_import.lazy_import(globals(), """
 from bzrlib import (
@@ -797,6 +798,35 @@ class TreeTransformBase(object):
         """
         raise NotImplementedError(self.new_orphan)
 
+    def _get_potential_orphans(self, dir_id):
+        """Find the potential orphans in a directory.
+
+        A directory can't be safely deleted if there are versioned files in it.
+        If all the contained files are unversioned then they can be orphaned.
+
+        The 'None' return value means that the directory contains at least one
+        versioned file and should not be deleted.
+
+        :param dir_id: The directory trans id.
+
+        :return: A list of the orphan trans ids or None if at least one
+             versioned file is present.
+        """
+        orphans = []
+        dont_delete = False
+        # Find the potential orphans, stop if one item should be kept
+        for c in self.by_parent()[dir_id]:
+            if self.final_file_id(c) is None:
+                orphans.append(c)
+            else:
+                dont_delete = True
+                break
+        if dont_delete:
+            return None
+        else:
+            return orphans
+
+
     def _affected_ids(self):
         """Return the set of transform ids affected by the transform"""
         trans_ids = set(self._removed_id)
@@ -1310,19 +1340,39 @@ class DiskTreeTransform(TreeTransformBase):
         delete_any(self._limbo_name(trans_id))
 
     def new_orphan(self, trans_id, parent_id):
-        """See TreeTransformBase.new_orphan."""
-        # Add the orphan dir if it doesn't exist
-        orphan_dir = 'bzr-orphans'
-        od_id = self.trans_id_tree_path(orphan_dir)
-        if self.final_kind(od_id) is None:
-            self.create_directory(od_id)
-        parent_path = self._tree_id_paths[parent_id]
-        # Find a name that doesn't exist yet in the orphan dir
-        actual_name = self.final_name(trans_id)
-        new_name = self._available_backup_name(actual_name, od_id)
-        self.adjust_path(new_name, od_id, trans_id)
-        trace.warning('%s has been orphaned in %s'
-                      % (joinpath(parent_path, actual_name), orphan_dir))
+        move_orphan(self, trans_id, parent_id)
+
+
+def move_orphan(tt, orphan_id, parent_id):
+    """See TreeTransformBase.new_orphan.
+
+    This creates a new orphan in the `bzr-orphans` dir at the root of the
+    `TreeTransform`.
+
+    :param tt: The TreeTransform orphaning `trans_id`.
+
+    :param orphan_id: The trans id that should be orphaned.
+
+    :param parent_id: The orphan parent trans id.
+    """
+    # Add the orphan dir if it doesn't exist
+    orphan_dir = 'bzr-orphans'
+    od_id = tt.trans_id_tree_path(orphan_dir)
+    if tt.final_kind(od_id) is None:
+        tt.create_directory(od_id)
+    parent_path = tt._tree_id_paths[parent_id]
+    # Find a name that doesn't exist yet in the orphan dir
+    actual_name = tt.final_name(orphan_id)
+    new_name = tt._available_backup_name(actual_name, od_id)
+    tt.adjust_path(new_name, od_id, orphan_id)
+    trace.warning('%s has been orphaned in %s'
+                  % (joinpath(parent_path, actual_name), orphan_dir))
+
+
+orphaning_registry = registry.Registry()
+orphaning_registry.register('bzr-orphans', move_orphan,
+                            'Move orphans into the bzr-orphans directory.')
+orphaning_registry._set_default_key('bzr-orphans')
 
 
 class TreeTransform(DiskTreeTransform):
@@ -2859,20 +2909,16 @@ def conflict_pass(tt, conflicts, path_tree=None):
         elif c_type == 'missing parent':
             trans_id = conflict[1]
             if trans_id in tt._removed_contents:
-                orphans = []
-                empty = True
-                # Find the potential orphans, stop if one item should be kept
-                for c in tt.by_parent()[trans_id]:
-                    if tt.final_file_id(c) is None:
-                        orphans.append(c)
-                    else:
-                        empty = False
-                        break
-                if empty:
+                orphans = tt._get_potential_orphans(trans_id)
+                if orphans:
                     # All children are orphans
                     for o in orphans:
-                        tt.new_orphan(o, trans_id)
-                else:
+                        try:
+                            tt.new_orphan(o, trans_id)
+                        except OrphaningForbidden:
+                            orphans = None
+                            break
+                if orphans is None:
                     # Cancel the directory deletion
                     tt.cancel_deletion(trans_id)
                     new_conflicts.add(('deleting parent', 'Not deleting',

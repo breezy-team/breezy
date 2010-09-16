@@ -3267,7 +3267,7 @@ class TestOrphan(tests.TestCaseWithTransport):
         self.addCleanup(tt.finalize)
         self.assertRaises(NotImplementedError, tt.new_orphan, 'foo', 'bar')
 
-    def test_new_orphan(self):
+    def test_new_orphan_created(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'dir/foo'])
         wt.add(['dir'], ['dir-id'])
