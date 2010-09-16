@@ -75,10 +75,10 @@ Testing
 *******
 
 * Tracebacks from a parameterized test are no longer reported against every
-  parameterization of that test.  This was done by adding a simple
+  parameterization of that test.  This was done by adding a custom
   ``__copy__`` method to TestCase, so that ``multiply_tests`` no longer
-  causes testtools.TestCase instances to share a details dict.
-  (Andrew Bennetts)
+  causes testtools.TestCase instances to share a details dict (or other
+  mutable attributes).  (Andrew Bennetts, #625574)
 
 
 bzr 2.2
