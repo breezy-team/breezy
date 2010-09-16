@@ -36,7 +36,6 @@ import doctest
 import errno
 import itertools
 import logging
-import math
 import os
 import platform
 import pprint
@@ -72,7 +71,6 @@ from bzrlib import (
     lock as _mod_lock,
     memorytree,
     osutils,
-    progress,
     ui,
     urlutils,
     registry,
@@ -319,13 +317,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         """Record that a test has started."""
         self._start_time = time.time()
 
-    def _cleanupLogFile(self, test):
-        # We can only do this if we have one of our TestCases, not if
-        # we have a doctest.
-        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
-        if setKeepLogfile is not None:
-            setKeepLogfile()
-
     def addError(self, test, err):
         """Tell result that test finished with an error.
 
@@ -338,7 +329,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_error(test, err)
         if self.stop_early:
             self.stop()
-        self._cleanupLogFile(test)
 
     def addFailure(self, test, err):
         """Tell result that test failed.
@@ -352,7 +342,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_failure(test, err)
         if self.stop_early:
             self.stop()
-        self._cleanupLogFile(test)
 
     def addSuccess(self, test, details=None):
         """Tell result that test completed successfully.
@@ -366,7 +355,6 @@ class ExtendedTestResult(testtools.TextTestResult):
                     self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
-        self._cleanupLogFile(test)
         super(ExtendedTestResult, self).addSuccess(test)
         test._log_contents = ''
 
@@ -486,11 +474,6 @@ class TextTestResult(ExtendedTestResult):
     def startTestRun(self):
         super(TextTestResult, self).startTestRun()
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
-
-    def printErrors(self):
-        # clear the pb to make room for the error listing
-        self.pb.clear()
-        super(TextTestResult, self).printErrors()
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -823,7 +806,7 @@ class TestCase(testtools.TestCase):
     routine, and to build and check bzr trees.
 
     In addition to the usual method of overriding tearDown(), this class also
-    allows subclasses to register functions into the _cleanups list, which is
+    allows subclasses to register cleanup functions via addCleanup, which are
     run in order as the object is torn down.  It's less likely this will be
     accidentally overlooked.
     """
@@ -834,7 +817,6 @@ class TestCase(testtools.TestCase):
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
-        self._cleanups = []
         self._directory_isolation = True
         self.exception_handlers.insert(0,
             (UnavailableFeature, self._do_unsupported_or_skip))
@@ -1497,14 +1479,6 @@ class TestCase(testtools.TestCase):
         issues rather than papering over the problem by calling this function.
         """
         debug.debug_flags.discard('strict_locks')
-
-    def addCleanup(self, callable, *args, **kwargs):
-        """Arrange to run a callable when this case is torn down.
-
-        Callables are run in the reverse of the order they are registered,
-        ie last-in first-out.
-        """
-        self._cleanups.append((callable, args, kwargs))
 
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
