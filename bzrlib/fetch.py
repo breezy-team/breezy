@@ -252,11 +252,6 @@ class Inter1and2Helper(object):
         return [('texts', new_roots_stream)]
 
 
-def _get_rich_root_heads_graph(source_repo, revision_ids):
-    """Get a Graph object suitable for asking heads() for new rich roots."""
-    return 
-
-
 def _new_root_data_stream(
     root_keys_to_create, rev_id_to_root_id_map, parent_map, repo, graph=None):
     """Generate a texts substream of synthesised root entries.
