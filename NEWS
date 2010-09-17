@@ -290,8 +290,15 @@ Testing
   Instead, use '...' as a wildcard if you don't care about the output.
   (Martin Pool, #637830)
 
+* Catch socket errors to avoid
+  bt.test_sftp_transport.SSHVendorBadConnection.test_bad_connection_ssh
+  random failures. (Vincent Ladeuil, #601804)
+
 * HTTP test servers will leak less threads (and sockets) and will not hang on
   AIX anymore. (Vincent Ladeuil, #405745)
+
+* On platforms that don't support forking give a nice error message saying so
+  when ``bzr selftest --parallel=fork`` is used. (Martin [gz], #528730)
 
 * Rearrange thread leak detection code to eliminate global state and make it
   possible to extend the reporting. (Marting [gz], #633462)

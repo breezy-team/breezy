@@ -62,6 +62,18 @@ class UIFactoryTestMixin(object):
         self.factory.be_quiet(False)
         self.assertEquals(False, self.factory.is_quiet())
 
+    def test_confirm_action(self):
+        # confirm_action should be answered by every ui factory; even
+        # noninteractive ones should have a reasonable default
+        self._load_responses([True])
+        result = self.factory.confirm_action(
+            'Break a lock?',
+            'bzr.lock.break.confirm',
+            {})
+        # will be true either because we read it from the input or because
+        # that's the default
+        self.assertEquals(result, True)
+
     def test_note(self):
         self.factory.note("a note to the user")
         self._check_note("a note to the user")
@@ -150,6 +162,11 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         # Without a TTY, we shouldn't display anything
         self.assertEqual('', self.stderr.getvalue())
 
+    def _load_responses(self, responses):
+        self.factory.stdin.seek(0)
+        self.factory.stdin.writelines([(r and "y\n" or "n\n") for r in responses])
+        self.factory.stdin.seek(0)
+
 
 class TestTTYTextUIFactory(TestTextUIFactory):
 
@@ -222,6 +239,9 @@ class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
     def _check_log_transport_activity_display_no_bytes(self):
         pass
 
+    def _load_responses(self, responses):
+        pass
+
 
 class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
     # discards output, reads input from variables
@@ -250,3 +270,6 @@ class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _check_log_transport_activity_display_no_bytes(self):
         pass
+
+    def _load_responses(self, responses):
+        self.factory.responses.extend(responses)

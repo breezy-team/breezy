@@ -1,6 +1,6 @@
-==========================================
-Bazaar Developer Guide to User Interaction
-==========================================
+=========================
+Interacting with the user
+=========================
 
 Getting Input
 =============
@@ -23,6 +23,40 @@ should be checked via ``bzrlib.osutils.safe_unicode``. This will coerce the
 input into unicode in a consistent fashion, allowing trivial strings to be
 used for programmer convenience, but not performing unpredictably in the
 presence of different locales.
+
+Confirmation
+============
+
+There are some operations, such as uncommitting, or breaking a lock, where
+bzr may want to get confirmation from the user before proceeding.
+However in some circumstances bzr should just go ahead without asking: if
+it's being used from a noninteractive program, or if the user's asked to
+never be asked for this particular confirmation or for any confirmations
+at all.
+
+We provide a special UIFactory method `confirm_action` to do this.  It
+takes a `confirmation_id` parameter that acts as a symbolic name for the
+type of confirmation, so the user can configure them off.  (This is not
+implemented at present.)  GUIs can have a "don't ask me again" option
+keyed by the confirmation id.
+
+Confirmation ids look like Python paths to the logical code that should
+use them.  (Because code may move or the check may for implementation
+reasons be done elsewhere, they need not perfectly correspond to the place
+they're used, and they should stay stable even when the code moves.)
+
+``bzrlib.builtins.uncommit``
+    Before the ``uncommit`` command actually changes the branch.
+
+``bzrlib.lockdir.break``
+    Before breaking a lock.
+
+``bzrlib.msgeditor.unchanged``
+    Proceed even though the user made no changes to the template message.
+
+Interactive confirmations can be overridden by using a
+`ConfirmationUserInterfacePolicy` decorator as the default
+ui_factory.
 
 
 Writing Output

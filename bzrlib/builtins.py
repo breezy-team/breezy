@@ -4801,8 +4801,11 @@ class cmd_uncommit(Command):
             self.outf.write('The above revision(s) will be removed.\n')
 
         if not force:
-            if not ui.ui_factory.get_boolean('Are you sure'):
-                self.outf.write('Canceled')
+            if not ui.ui_factory.confirm_action(
+                    'Uncommit these revisions',
+                    'bzrlib.builtins.uncommit',
+                    {}):
+                self.outf.write('Canceled\n')
                 return 0
 
         mutter('Uncommitting from {%s} to {%s}',
