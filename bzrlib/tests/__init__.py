@@ -799,15 +799,6 @@ class TestCase(testtools.TestCase):
     _log_file_name = None
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
-    # Mutable attributes defined in bzrlib.tests.TestCase and
-    # testtools.TestCase that should not be shallow copied by clone_test.
-    # This is ugly, but probably the best we can do until testtools provide a
-    # nicer way to deal with this, see
-    # <https://bugs.launchpad.net/testtools/+bug/637725>.
-    _attrs_to_deepcopy = (
-        '_cleanups', 'exception_handlers', '_unique_id_gen',
-        '_traceback_id_gen', '_TestCase__details',
-        '_TestCase__exception_handlers')
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
@@ -817,25 +808,6 @@ class TestCase(testtools.TestCase):
             (UnavailableFeature, self._do_unsupported_or_skip))
         self.exception_handlers.insert(0,
             (TestNotApplicable, self._do_not_applicable))
-
-    def __copy__(self):
-        # XXX: This method works around the lack of a way to correctly clone a
-        # test with current testtools.  See
-        # <https://bugs.launchpad.net/testtools/+bug/637725>.
-        # The work around is to:
-        #  - shallow copy self.__dict__
-        #  - deep copy individual attributes in the _attrs_to_deepcopy black
-        #    list.
-        #  - create a new instance (skipping __init__) with the new __dict__.
-        attrs = self.__dict__.copy()
-        for attr_name in self._attrs_to_deepcopy:
-            if attr_name in attrs:
-                attrs[attr_name] = copy.deepcopy(attrs[attr_name])
-        # Some Python voodoo to create an instance without invoking its
-        # __init__, because we've already constructed the __dict__ to use.
-        new_instance = self.__class__.__new__(self.__class__)
-        new_instance.__dict__ = attrs
-        return new_instance
 
     def setUp(self):
         super(TestCase, self).setUp()
@@ -4080,6 +4052,18 @@ def clone_test(test, new_id):
     """
     new_test = copy.copy(test)
     new_test.id = lambda: new_id
+    # XXX: Workaround <https://bugs.launchpad.net/testtools/+bug/637725>, which
+    # causes cloned tests to share the 'details' dict.  This makes it hard to
+    # read the test output for parameterized tests, because tracebacks will be
+    # associated with irrelevant tests.
+    try:
+        details = new_test._TestCase__details
+    except AttributeError:
+        # must be a different version of testtools than expected.  Do nothing.
+        pass
+    else:
+        # Reset the '__details' dict.
+        new_test._TestCase__details = {}
     return new_test
 
 
