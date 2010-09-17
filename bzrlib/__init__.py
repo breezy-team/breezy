@@ -44,7 +44,7 @@ __copyright__ = "Copyright 2005-2010 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (2, 1, 3, 'dev', 0)
+version_info = (2, 1, 3, 'final', 0)
 
 # API compatibility version: bzrlib is currently API compatible with 1.15.
 api_minimum_version = (2, 1, 0)
