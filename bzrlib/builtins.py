@@ -1354,6 +1354,9 @@ class cmd_update(Command):
     If you want to discard your local changes, you can just do a
     'bzr revert' instead of 'bzr commit' after the update.
 
+    If you want to restore a file that has been removed locally, use
+    'bzr revert' instead of 'bzr update'.
+
     If the tree's branch is bound to a master branch, it will also update
     the branch from the master.
     """
