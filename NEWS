@@ -9,7 +9,11 @@ Bazaar Release Notes
 bzr 2.0.6
 #########
 
-:2.0.6: NOT RELEASED YET
+:2.0.6: 2010-09-17
+
+The sixth release in our 2.0 series addresses several user-inconvenience
+bugs.  None are critical, but upgrading is recommended for all users on
+earlier 2.0 releases.
 
 Bug Fixes
 *********
