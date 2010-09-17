@@ -805,9 +805,8 @@ class TestCase(testtools.TestCase):
     # nicer way to deal with this, see
     # <https://bugs.launchpad.net/testtools/+bug/637725>.
     _attrs_to_deepcopy = (
-        '_cleanups', 'exception_handlers', '_unique_id_gen',
-        '_traceback_id_gen', '_TestCase__details',
-        '_TestCase__exception_handlers')
+        '_cleanups', '_unique_id_gen', '_traceback_id_gen',
+        '_TestCase__details')
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
