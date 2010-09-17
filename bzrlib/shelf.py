@@ -429,22 +429,3 @@ class ShelfManager(object):
             return active[-1]
         else:
             return None
-
-
-def list_shelves(tree):
-    """Return a list of all shelves as a tuple (shelf_id, message).
-
-    :param tree: Tree for which we want the information.
-    """
-    manager = tree.get_shelf_manager()
-    shelves = manager.active_shelves()
-    info = []
-    if len(shelves) == 0:
-        return info
-    for shelf_id in reversed(shelves):
-        message = manager.get_metadata(shelf_id).get('message')
-        if message is None:
-            message = '<no message>'
-        info.append((shelf_id, message))
-    return info
-

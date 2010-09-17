@@ -20,7 +20,6 @@ from bzrlib import (
     delta as _mod_delta,
     hooks as _mod_hooks,
     log,
-    shelf,
     osutils,
     tsort,
     revision as _mod_revision,
@@ -445,7 +444,8 @@ def _show_shelve_summary(params):
 
     :param params: StatusHookParams.
     """
-    shelves = shelf.list_shelves(params.new_tree)
+    manager = params.new_tree.get_shelf_manager()
+    shelves = manager.active_shelves()
     if shelves:
         params.to_file.write('%d shelves exist. '
             'See "bzr shelve --list" for details.\n' % len(shelves))

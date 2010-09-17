@@ -740,20 +740,3 @@ class TestShelfManager(tests.TestCaseWithTransport):
         metadata = shelf_manager.get_metadata(shelf_id)
         self.assertEqual('foo', metadata['message'])
         self.assertEqual('null:', metadata['revision_id'])
-
-    def test_list_shelves(self):
-        """Ensure shelf.list_shelves() works correctly.
-        """
-        tree = self.make_branch_and_tree('tree')
-        tree.commit('no-change commit')
-        tree.lock_write()
-        self.addCleanup(tree.unlock)
-        self.build_tree_contents([('tree/foo', 'bar')])
-        tree.add('foo', 'foo-id')
-        creator = shelf.ShelfCreator(tree, tree.basis_tree())
-        self.addCleanup(creator.finalize)
-        shelf_manager = tree.get_shelf_manager()
-        self.assertEqual([], shelf.list_shelves(tree))
-        shelf_id = shelf_manager.shelve_changes(creator)
-        self.assertEqual([(1, '<no message>')], shelf.list_shelves(tree))
-
