@@ -5,6 +5,37 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.0.7
+#########
+
+:Codename: Nirvana
+:2.0.7: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 
 bzr 2.0.6
 #########
@@ -3741,7 +3772,7 @@ Bug Fixes
   when the path to the root of the tree has been given. Users of
   the internal ``show_tree_status`` function should be aware that
   the show_pending flag is now authoritative for showing pending
-  merges, as it was originally. (Robert Collins, #225204)
+  merges, as it was originally. (Robert Collins, #255204)
 
 * Set valid default _param_name for Option so that ListOption can embed
   '-' in names. (Vincent Ladeuil, #263249)
@@ -5541,7 +5572,7 @@ Bugfixes
   checkouts.  (Aaron Bentley, #182040)
 
 * Stop polluting /tmp when running selftest.
-  (Vincent Ladeuil, #123623)
+  (Vincent Ladeuil, #123363)
 
 * Switch from NFKC => NFC for normalization checks. NFC allows a few
   more characters which should be considered valid.
@@ -7657,7 +7688,7 @@ Bugfixes
   hyphen. (``'abc'`` versus ``'abc-2'``). The WT4._iter_changes
   iterator was using direct comparison and ``'abc/a'`` sorts after
   ``'abc-2'``, but ``('abc', 'a')`` sorts before ``('abc-2',)``.
-  (John Arbash Meinel, #111227)
+  (John Arbash Meinel, #111127)
 
 * Handle when someone renames a file on disk without telling bzr.
   Previously we would report the first file as missing, but not show
@@ -8941,11 +8972,11 @@ Bug Fixes
 * ``Branch.bind(other_branch)`` no longer takes a write lock on the
   other branch, and will not push or pull between the two branches.
   API users will need to perform a push or pull or update operation if they
-  require branch synchronisation to take place. (Robert Collins, #47344)
+  require branch synchronisation to take place. (Robert Collins, #43744)
 
 * When creating a tarball or zipfile export, export unicode names as utf-8
   paths. This may not work perfectly on all platforms, but has the best
-  chance of working in the common case. (John Arbash Meinel, #56816)
+  chance of working in the common case. (John Arbash Meinel, #56815)
 
 * When committing, only files that exist in working tree or basis tree
   may be specified (Aaron Bentley, #50793)
