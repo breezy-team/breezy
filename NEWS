@@ -299,6 +299,10 @@ Testing
 * Rearrange thread leak detection code to eliminate global state and make it
   possible to extend the reporting. (Marting [gz], #633462)
 
+* Suppress the "maximum recursion depth exceeded in __subclasscheck__"
+  warning on stderr emitted during ``test_dict_deepnested`` in
+  ``bzrlib/tests/test__bencode.py``.  (Andrew Bennetts)
+
 * The test suite now simply holds log files in memory, rather than writing them
   out to disk and then reading them back in and deleting them.
   (Andrew Bennetts)
