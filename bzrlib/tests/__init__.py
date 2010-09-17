@@ -4016,6 +4016,18 @@ def clone_test(test, new_id):
     """
     new_test = copy.copy(test)
     new_test.id = lambda: new_id
+    # XXX: Workaround <https://bugs.launchpad.net/testtools/+bug/637725>, which
+    # causes cloned tests to share the 'details' dict.  This makes it hard to
+    # read the test output for parameterized tests, because tracebacks will be
+    # associated with irrelevant tests.
+    try:
+        details = new_test._TestCase__details
+    except AttributeError:
+        # must be a different version of testtools than expected.  Do nothing.
+        pass
+    else:
+        # Reset the '__details' dict.
+        new_test._TestCase__details = {}
     return new_test
 
 
