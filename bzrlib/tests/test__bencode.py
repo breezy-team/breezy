@@ -17,7 +17,6 @@
 """Tests for bencode structured encoding"""
 
 import sys
-from cStringIO import StringIO
 
 from bzrlib import tests
 
@@ -113,8 +112,9 @@ class TestBencodeDecode(tests.TestCase):
         # to running out of stack space while evaluating "except (...):" in
         # _bencode_py.  This is harmless, so we temporarily override stderr to
         # avoid distracting noise in the test output.
-        self.overrideAttr(sys, 'stderr', StringIO())
-        self._run_check_error(RuntimeError, ("d0:" * 10000) + 'i1e' + ("e" * 10000))
+        self.overrideAttr(sys, 'stderr', self._log_file)
+        self._run_check_error(
+            RuntimeError, ("d0:" * 10000) + 'i1e' + ("e" * 10000))
 
     def test_malformed_dict(self):
         self._run_check_error(ValueError, 'd')
