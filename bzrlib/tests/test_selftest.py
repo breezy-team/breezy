@@ -1236,6 +1236,18 @@ class TestRunner(tests.TestCase):
         self.assertContainsRe(output_string, "--date [0-9.]+")
         self.assertLength(1, self._get_source_tree_calls)
 
+    def test_verbose_test_count(self):
+        """A verbose test run reports the right test count at the start"""
+        suite = TestUtil.TestSuite([
+            unittest.FunctionTestCase(lambda:None),
+            unittest.FunctionTestCase(lambda:None)])
+        self.assertEqual(suite.countTestCases(), 2)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream, verbosity=2)
+        # Need to use the CountingDecorator as that's what sets num_tests
+        result = self.run_test_runner(runner, tests.CountingDecorator(suite))
+        self.assertStartsWith(stream.getvalue(), "running 2 tests")
+
     def test_startTestRun(self):
         """run should call result.startTestRun()"""
         calls = []
