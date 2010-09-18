@@ -44,7 +44,7 @@ the ``whoami`` command::
   email = Your Name <email@example.com>
 
 For further details on the syntax and configuration settings supported, see
-`Configuration Settings <../user-reference/bzr_man.html#configuration-settings>`_
+`Configuration Settings <../user-reference/configuration-help.html>`_
 in the Bazaar User Reference.
 
 
