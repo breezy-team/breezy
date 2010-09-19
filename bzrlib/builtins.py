@@ -4942,7 +4942,7 @@ class cmd_join(Command):
     not part of it.  (Such trees can be produced by "bzr split", but also by
     running "bzr branch" with the target inside a tree.)
 
-    The result is a combined tree, with the subtree no longer an independant
+    The result is a combined tree, with the subtree no longer an independent
     part.  This is marked as a merge of the subtree into the containing tree,
     and all history is preserved.
     """
