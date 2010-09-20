@@ -326,22 +326,44 @@ Testing
 bzr 2.2.1
 #########
 
-:Codename: ??
-:2.2.1: NOT RELEASED YET
+:2.2.1: 2010-09-17
+
+This is a bugfix release which also includes bugfixes from 2.0.6 and
+2.1.3. None are critical, but upgrading is recommended for all users on
+earlier 2.2 releases.
 
 Bug Fixes
 *********
+
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
 
 * ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
   previously-unversioned directory within the tree: the directory is
   marked versioned too.
   (Martin Pool, #192859)
 
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
+
 * CommitBuilder now uses the committer instead of _config.username to generate
   the revision-id.  (Aaron Bentley, #614404)
 
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
 * Cope with Microsoft FTP server that returns reply '250 Directory
   created' when mkdir succeeds.  (Martin Pool, #224373)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
 
 * Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
   contains only NUL bytes).  Instead warn the user, and allow ``bzr
@@ -361,14 +383,41 @@ Bug Fixes
   later which can mangle bytestrings printed to the console.
   (Martin [gz], #631350)
 
+* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
+  which can result in "missing referenced chk root keys" errors when
+  fetching from repositories with affected revisions.
+  (Andrew Bennetts, #522637)
+
+* Raise ValueError instead of a string exception.
+  (John Arbash Meinel, #586926)
+
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
+
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
+
+* Stop ``AttributeError: 'module' object has no attribute 'ElementTree'``
+  being thrown from ``xml_serializer`` on certain cElementTree setups.
+  (Martin [gz], #254278)
+
 * Upgrading or fetching from a non-rich-root repository to a rich-root
   repository (e.g. from pack-0.92 to 2a) no longer fails with
   ``'Inter1and2Helper' object has no attribute 'source_repo'``.  This was
   a regression from Bazaar 2.1.  (Andrew Bennetts, #636930)
   
-
-Improvements
-************
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
 
 Documentation
 *************
@@ -385,6 +434,9 @@ Internals
 
 Testing
 *******
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
 
 * Tracebacks from a parameterized test are no longer reported against every
   parameterization of that test.  This was done by adding a hack to
@@ -1184,8 +1236,8 @@ New Features
   without specific permission from the user.  (Martin Pool, #515052)
 
 * Parsing of command lines, for example in ``diff --using``, no longer
-  treats backslash as an escape character on Windows.   (Gordon Tyler,
-  #392428)
+  treats backslash as an escape character on Windows.
+  (Gordon Tyler, #392428)
 
 * Plugins can be disabled by defining ``BZR_DISABLE_PLUGINS`` as
   a list of plugin names separated by ':' (';' on windows).
@@ -1424,21 +1476,31 @@ bzr 2.1.3
 #########
 
 :Codename: Do run run
-:2.1.3: NOT RELEASED YET
+:2.1.3: 2010-09-17
 
-Compatibility Breaks
-********************
-
-New Features
-************
+The third release in our 2.1 series addresses several user-inconvenience bugs
+(and includes the fixes done in 2.0.6).  None are critical, but upgrading is
+recommended for all users on earlier 2.1 releases.
 
 Bug Fixes
 *********
+
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
 
 * ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
   previously-unversioned directory within the tree: the directory is
   marked versioned too.  
   (Martin Pool, #192859)
+
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
 
 * Configuration files in ``${BZR_HOME}`` are now written in an atomic
   way which should help avoid problems with concurrent writers.
@@ -1467,40 +1529,34 @@ Bug Fixes
 * Raise ValueError instead of a string exception.
   (John Arbash Meinel, #586926)
 
-* Recursive binding for checkouts is now detected by bzr. A clear error
-  message is shown to the user. (Parth Malwankar, #405192)
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
+
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
 
 * Stop ``AttributeError: 'module' object has no attribute 'ElementTree'``
   being thrown from ``xml_serializer`` on certain cElementTree setups.
   (Martin [gz], #254278)
 
-Improvements
-************
-
-* Add ``bzrlib.merge.MergeIntoMerger``, which can merge part or all of a
-  tree, and works with unrelated branches.  (Andrew Bennetts)
-
-Documentation
-*************
-
-* ``bzr help patterns`` now explains case insensitive patterns and
-  points to Python regular expression documentation.
-  (Parth Malwankar, #594386)
-
-API Changes
-***********
-
-* Delete ``ProgressTask.note``, which was deprecated in 2.1.
-
-Internals
-*********
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
 
 Testing
 *******
 
-* Unit test added to ensure that "message" is not uses as a format variable
-  name in BzrError subclasses as this conflicts with some Python versions.
-  (Parth Malwankar, #603461)
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
 
 bzr 2.1.2
 #########
@@ -1980,7 +2036,11 @@ Testing
 bzr 2.0.6
 #########
 
-:2.0.6: NOT RELEASED YET
+:2.0.6: 2010-09-17
+
+The sixth release in our 2.0 series addresses several user-inconvenience
+bugs.  None are critical, but upgrading is recommended for all users on
+earlier 2.0 releases.
 
 Bug Fixes
 *********
@@ -6348,7 +6408,7 @@ Bug Fixes
   when the path to the root of the tree has been given. Users of
   the internal ``show_tree_status`` function should be aware that
   the show_pending flag is now authoritative for showing pending
-  merges, as it was originally. (Robert Collins, #225204)
+  merges, as it was originally. (Robert Collins, #255204)
 
 * Set valid default _param_name for Option so that ListOption can embed
   '-' in names. (Vincent Ladeuil, #263249)
@@ -10264,7 +10324,7 @@ Bugfixes
   hyphen. (``'abc'`` versus ``'abc-2'``). The WT4._iter_changes
   iterator was using direct comparison and ``'abc/a'`` sorts after
   ``'abc-2'``, but ``('abc', 'a')`` sorts before ``('abc-2',)``.
-  (John Arbash Meinel, #111227)
+  (John Arbash Meinel, #111127)
 
 * Handle when someone renames a file on disk without telling bzr.
   Previously we would report the first file as missing, but not show
@@ -11548,11 +11608,11 @@ Bug Fixes
 * ``Branch.bind(other_branch)`` no longer takes a write lock on the
   other branch, and will not push or pull between the two branches.
   API users will need to perform a push or pull or update operation if they
-  require branch synchronisation to take place. (Robert Collins, #47344)
+  require branch synchronisation to take place. (Robert Collins, #43744)
 
 * When creating a tarball or zipfile export, export unicode names as utf-8
   paths. This may not work perfectly on all platforms, but has the best
-  chance of working in the common case. (John Arbash Meinel, #56816)
+  chance of working in the common case. (John Arbash Meinel, #56815)
 
 * When committing, only files that exist in working tree or basis tree
   may be specified (Aaron Bentley, #50793)
