@@ -249,6 +249,9 @@ Documentation
   the new http://bazaar.canonical.com or http://wiki.bazaar.canonical.com
   (John Arbash Meinel, #617503)
 
+* Suggest ``bzr revert`` for restoring locally deleted files in help text
+  for ``bzr update``.  (John C Barstow, #191466)
+
 API Changes
 ***********
 
