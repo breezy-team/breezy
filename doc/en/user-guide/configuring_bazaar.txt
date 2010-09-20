@@ -78,5 +78,5 @@ certain patterns. Per-user rule-based preferences are defined in
 ``BZR_HOME/rules``.
 
 For further information on how rules are searched and the detailed syntax of
-the relevant files, see `Rules <../user-reference/bzr_man.html#rules>`_
+the relevant files, see `Rules <../user-reference/rules-help.html>`_
 in the Bazaar User Reference.
