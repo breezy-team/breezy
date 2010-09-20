@@ -8,8 +8,24 @@ Bazaar Release Notes
 bzr 2.3b1
 #########
 
-:Codename: ???
-:2.3b1: NOT RELEASED YET
+:2.3b1: 2010-09-20
+
+This is the first beta of the 2.3 series, leading up to a 2.3.0
+release in January or February.  Beta releases are suitable for everyday use
+but may cause some incompatibilities with plugins.  Some plugins may need
+small updates to work with 2.3b1.
+
+2.3b1 includes some performance improvements in both speed and memory
+consumption, some preliminary support for generating a texinfo version of
+the doc and better support for launchpad.  Many changes were made to make
+our test suite more robust as well as numerous documentation fixes.  It
+improves the common infrastructure for dealing with colocated named
+branches and foreign branches.  We plan to continue with these themes
+through the 2.3 series.
+
+It also includes bug fixes for 2.0.6, 2.1.3 and 2.2.1 and over 40 fixes of
+its own.
+
 
 Compatibility Breaks
 ********************
@@ -20,21 +36,34 @@ Compatibility Breaks
   is now named "msg" instead of earlier "message".
   (Parth Malwankar, #603461)
 
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
+
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.
+  (Martin Pool, #192859)
+
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
+
 * ``bzrlib.transform.TreeTransformBase.final_kind``,
   ``bzrlib.transform.TreeTransform.tree_kind`` and
   ``bzrlib.transform.TransformPreview.tree_kind`` now return None instead
   of raising NoSuchFile.  (Vincent Ladeuil)
 
-* `decode` parameter to get() method in FtpTransport and GioTransport classes
-  is deprecated. (Alexander Belchenko)
+* CommitBuilder now uses the committer instead of _config.username to generate
+  the revision-id.  (Aaron Bentley, #614404)
 
-* `FileInWrongBranch` is deprecated in favour of `PathNotChild` and no
-  longer raised.
-  (Martin Pool)
-
-* `tree_files` and `internal_tree_files` are now deprecated in favor of
-  `WorkingTree.open_containing_paths`.
-  (Martin Pool)
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
 
 * `ControlDirFormat` and  `ControlDir` have been split out of `BzrDirFormat`
   and `BzrDir`, respectively. `ControlDirFormat`
@@ -60,10 +89,78 @@ Compatibility Breaks
 
   (Jelmer Vernooij)
 
+* Cope with Microsoft FTP server that returns reply '250 Directory
+  created' when mkdir succeeds.  (Martin Pool, #224373)
+
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
+* `decode` parameter to get() method in FtpTransport and GioTransport classes
+  is deprecated. (Alexander Belchenko)
+
+* `FileInWrongBranch` is deprecated in favour of `PathNotChild` and no
+  longer raised.
+  (Martin Pool)
+
+* Fix ``AttributeError on parent.children`` when adding a file under a
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
+
+* Fix ``AttributeError: 'NoneType' object has no attribute 'close'`` in
+  ``_close_ssh_proc`` when using ``bzr+ssh://``.  This was causing
+  connections to pre-1.6 bzr+ssh servers to fail, and causing warnings on
+  stderr in some other circumstances.  (Andrew Bennetts, #633745)
+
+* Only call ``setlocale`` in the bzr startup script on posix systems. This
+  avoids an issue with the newer windows C runtimes used by Python 2.6 and
+  later which can mangle bytestrings printed to the console.
+  (Martin [gz], #631350)
+
+* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
+  which can result in "missing referenced chk root keys" errors when
+  fetching from repositories with affected revisions.
+  (Andrew Bennetts, #522637)
+
+* Raise ValueError instead of a string exception.
+  (John Arbash Meinel, #586926)
+
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
+
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
+
+* Stop ``AttributeError: 'module' object has no attribute 'ElementTree'``
+  being thrown from ``xml_serializer`` on certain cElementTree setups.
+  (Martin [gz], #254278)
+
 * The old ``bzr selftest --benchmark`` option has been removed.
   <https://launchpad.net/bzr-usertest> is an actively-maintained
   macrobenchmark suite.
   (Martin Pool)
+
+* `tree_files` and `internal_tree_files` are now deprecated in favor of
+  `WorkingTree.open_containing_paths`.
+  (Martin Pool)
+
+* Upgrading or fetching from a non-rich-root repository to a rich-root
+  repository (e.g. from pack-0.92 to 2a) no longer fails with
+  ``'Inter1and2Helper' object has no attribute 'source_repo'``.  This was
+  a regression from Bazaar 2.1.  (Andrew Bennetts, #636930)
+  
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
 
 New Features
 ************
@@ -290,6 +387,9 @@ Internals
 
 Testing
 *******
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
 
 * Catch socket errors to avoid
   bt.test_sftp_transport.SSHVendorBadConnection.test_bad_connection_ssh
