@@ -34,8 +34,8 @@ Plugin searching rules
 
 Bzr will scan ``~/.bazaar/plugins``  and ``bzrlib/plugins`` for plugins
 by default.  You can override this with  ``BZR_PLUGIN_PATH``
-(see `User Reference <../user-reference/bzr_man.html#bzr-plugin-path>`_
-for details).
+(see `User Reference 
+<../user-reference/configuration-help.html#bzr-plugin-path>`_ for details).
 
 Plugins may be either modules or packages.  If your plugin is a single
 file, you can structure it as a module.  If it has multiple files, or if
