@@ -59,7 +59,7 @@ A brief introduction to some of these formats is given below.
 For complete details, see `Revision Identifiers`_ in the
 Bazaar User Reference.
 
-.. _Revision Identifiers: ../user-reference/bzr_man.html#revision-identifiers
+.. _Revision Identifiers: ../user-reference/index.html#revision-identifiers
 
 Numbers
 ~~~~~~~
