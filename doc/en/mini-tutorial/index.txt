@@ -29,10 +29,10 @@ easy. You can find installation instructions at:
 For other platforms and to install from source code, see the Download_
 and Installation_ pages.
 
-.. _installation instructions for Windows: http://bazaar-vcs.org/WindowsDownloads
-.. _installation instructions for Mac OS X: http://bazaar-vcs.org/MacOSXBundle
-.. _Download: http://bazaar-vcs.org/Download
-.. _Installation: http://bazaar-vcs.org/InstallationFaq
+.. _installation instructions for Windows: http://wiki.bazaar.canonical.com/WindowsDownloads
+.. _installation instructions for Mac OS X: http://wiki.bazaar.canonical.com/MacOSXBundle
+.. _Download: http://wiki.bazaar.canonical.com/Download
+.. _Installation: http://wiki.bazaar.canonical.com/InstallationFaq
 
 
 Introducing yourself
@@ -64,7 +64,7 @@ Let's create a directory and some files to use with Bazaar::
  $ mkdir subdirectory
  $ touch test1.txt test2.txt test3.txt subdirectory/test4.txt
 
-**Note for Windows users:** use Windows Explorer to create your
+**Note for Windows users**: use Windows Explorer to create your
 directories, then right-click in those directories and select
 ``New file`` to create your files.
 
@@ -75,7 +75,7 @@ Now get Bazaar to initialize itself in your project directory::
 If it looks like nothing happened, don't worry. Bazaar has created a
 branch_ where it will store your files and their revision histories.
 
-.. _branch: http://bazaar-vcs.org/Branch
+.. _branch: http://wiki.bazaar.canonical.com/Branch
 
 The next step is to tell Bazaar which files you want to track. Running
 ``bzr add`` will recursively add everything in the project::
@@ -164,8 +164,8 @@ Now anyone can create their own copy of your branch by typing::
 
  $ bzr branch http://www.example.com/myproject
 
-**Note:** to use sftp, you may need to install ``paramiko`` and
-``pyCrypto``. See http://bazaar-vcs.org/InstallationFaq for details.
+**Note**: to use sftp, you may need to install ``paramiko`` and
+``pyCrypto``. See http://wiki.bazaar.canonical.com/InstallationFaq for details.
 
 
 Publishing your branch with Launchpad
@@ -186,7 +186,7 @@ Replacing ``john.doe`` with your own Launchpad username, type [#]_::
 
 .. [#] Use of the ``lp:`` URL scheme requires bzr 0.92 or later.
 
-**Note:** ``+junk`` means that this branch isn't associated with any particular
+**Note**: ``+junk`` means that this branch isn't associated with any particular
 project in Launchpad.
 
 Now, anyone can create their own copy of your branch by typing::

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -93,10 +93,10 @@ def gen_root_id():
 def gen_revision_id(username, timestamp=None):
     """Return new revision-id.
 
-    :param username: This is the value returned by config.username(), which is
-        typically a real name, followed by an email address. If found, we will
-        use just the email address portion. Otherwise we flatten the real name,
-        and use that.
+    :param username: The username of the committer, in the format returned by
+        config.username().  This is typically a real name, followed by an
+        email address. If found, we will use just the email address portion.
+        Otherwise we flatten the real name, and use that.
     :return: A new revision id.
     """
     try:

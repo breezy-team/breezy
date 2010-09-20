@@ -1,3 +1,9 @@
+bzr (2.3.0~beta1-1) experimental; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 20 Sep 2010 11:30:28 -0700
+
 bzr (2.2.0-1) unstable; urgency=low
 
   * New upstream release.

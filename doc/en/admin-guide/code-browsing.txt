@@ -110,8 +110,8 @@ Other web interfaces
 --------------------
 
 There are a number of other web interfaces available for Bazaar branches (see
-the list at http://bazaar-vcs.org/WebInterfaces) and we will just mention a
-couple of them here for their advantages in particular situations.
+the list at http://wiki.bazaar.canonical.com/WebInterfaces) and we will just
+mention a couple of them here for their advantages in particular situations.
 
 trac+bzr (http://launchpad.net/trac-bzr)
   Trac is a popular web app that integrates a browser for branches, an issue

@@ -32,11 +32,13 @@ from bzrlib import (
     revision as _mod_revision,
     trace,
     ui,
+    versionedfile,
     )
 from bzrlib.btree_index import (
     BTreeGraphIndex,
     BTreeBuilder,
     )
+from bzrlib.decorators import needs_write_lock
 from bzrlib.groupcompress import (
     _GCGraphIndex,
     GroupCompressVersionedFiles,
@@ -425,8 +427,11 @@ class GCCHKPacker(Packer):
         self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
+    def _get_chk_vfs_for_copy(self):
+        return self._build_vfs('chk', False, False)
+
     def _copy_chk_texts(self):
-        source_vf, target_vf = self._build_vfs('chk', False, False)
+        source_vf, target_vf = self._get_chk_vfs_for_copy()
         # TODO: This is technically spurious... if it is a performance issue,
         #       remove it
         total_keys = source_vf.keys()
@@ -572,6 +577,111 @@ class GCCHKReconcilePacker(GCCHKPacker):
                     record.parents = new_parent_keys[record.key]
                 yield record
         target_vf.insert_record_stream(_update_parents_for_texts())
+
+    def _use_pack(self, new_pack):
+        """Override _use_pack to check for reconcile having changed content."""
+        return new_pack.data_inserted() and self._data_changed
+
+
+class GCCHKCanonicalizingPacker(GCCHKPacker):
+    """A packer that ensures inventories have canonical-form CHK maps.
+    
+    Ideally this would be part of reconcile, but it's very slow and rarely
+    needed.  (It repairs repositories affected by
+    https://bugs.launchpad.net/bzr/+bug/522637).
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(GCCHKCanonicalizingPacker, self).__init__(*args, **kwargs)
+        self._data_changed = False
+    
+    def _exhaust_stream(self, source_vf, keys, message, vf_to_stream, pb_offset):
+        """Create and exhaust a stream, but don't insert it.
+        
+        This is useful to get the side-effects of generating a stream.
+        """
+        self.pb.update('scanning %s' % (message,), pb_offset)
+        child_pb = ui.ui_factory.nested_progress_bar()
+        try:
+            list(vf_to_stream(source_vf, keys, message, child_pb))
+        finally:
+            child_pb.finished()
+
+    def _copy_inventory_texts(self):
+        source_vf, target_vf = self._build_vfs('inventory', True, True)
+        source_chk_vf, target_chk_vf = self._get_chk_vfs_for_copy()
+        inventory_keys = source_vf.keys()
+        # First, copy the existing CHKs on the assumption that most of them
+        # will be correct.  This will save us from having to reinsert (and
+        # recompress) these records later at the cost of perhaps preserving a
+        # few unused CHKs. 
+        # (Iterate but don't insert _get_filtered_inv_stream to populate the
+        # variables needed by GCCHKPacker._copy_chk_texts.)
+        self._exhaust_stream(source_vf, inventory_keys, 'inventories',
+                self._get_filtered_inv_stream, 2)
+        GCCHKPacker._copy_chk_texts(self)
+        # Now copy and fix the inventories, and any regenerated CHKs.
+        def chk_canonicalizing_inv_stream(source_vf, keys, message, pb=None):
+            return self._get_filtered_canonicalizing_inv_stream(
+                source_vf, keys, message, pb, source_chk_vf, target_chk_vf)
+        self._copy_stream(source_vf, target_vf, inventory_keys,
+                          'inventories', chk_canonicalizing_inv_stream, 4)
+
+    def _copy_chk_texts(self):
+        # No-op; in this class this happens during _copy_inventory_texts.
+        pass
+
+    def _get_filtered_canonicalizing_inv_stream(self, source_vf, keys, message,
+            pb=None, source_chk_vf=None, target_chk_vf=None):
+        """Filter the texts of inventories, regenerating CHKs to make sure they
+        are canonical.
+        """
+        total_keys = len(keys)
+        target_chk_vf = versionedfile.NoDupeAddLinesDecorator(target_chk_vf)
+        def _filtered_inv_stream():
+            stream = source_vf.get_record_stream(keys, 'groupcompress', True)
+            search_key_name = None
+            for idx, record in enumerate(stream):
+                # Inventories should always be with revisions; assume success.
+                bytes = record.get_bytes_as('fulltext')
+                chk_inv = inventory.CHKInventory.deserialise(
+                    source_chk_vf, bytes, record.key)
+                if pb is not None:
+                    pb.update('inv', idx, total_keys)
+                chk_inv.id_to_entry._ensure_root()
+                if search_key_name is None:
+                    # Find the name corresponding to the search_key_func
+                    search_key_reg = chk_map.search_key_registry
+                    for search_key_name, func in search_key_reg.iteritems():
+                        if func == chk_inv.id_to_entry._search_key_func:
+                            break
+                canonical_inv = inventory.CHKInventory.from_inventory(
+                    target_chk_vf, chk_inv,
+                    maximum_size=chk_inv.id_to_entry._root_node._maximum_size,
+                    search_key_name=search_key_name)
+                if chk_inv.id_to_entry.key() != canonical_inv.id_to_entry.key():
+                    trace.mutter(
+                        'Non-canonical CHK map for id_to_entry of inv: %s '
+                        '(root is %s, should be %s)' % (chk_inv.revision_id,
+                        chk_inv.id_to_entry.key()[0],
+                        canonical_inv.id_to_entry.key()[0]))
+                    self._data_changed = True
+                p_id_map = chk_inv.parent_id_basename_to_file_id
+                p_id_map._ensure_root()
+                canon_p_id_map = canonical_inv.parent_id_basename_to_file_id
+                if p_id_map.key() != canon_p_id_map.key():
+                    trace.mutter(
+                        'Non-canonical CHK map for parent_id_to_basename of '
+                        'inv: %s (root is %s, should be %s)'
+                        % (chk_inv.revision_id, p_id_map.key()[0],
+                           canon_p_id_map.key()[0]))
+                    self._data_changed = True
+                yield versionedfile.ChunkedContentFactory(record.key,
+                        record.parents, record.sha1,
+                        canonical_inv.to_lines())
+            # We have finished processing all of the inventory records, we
+            # don't need these sets anymore
+        return _filtered_inv_stream()
 
     def _use_pack(self, new_pack):
         """Override _use_pack to check for reconcile having changed content."""
@@ -999,8 +1109,22 @@ class CHKInventoryRepository(KnitPackRepository):
         finally:
             pb.finished()
 
+    @needs_write_lock
+    def reconcile_canonicalize_chks(self):
+        """Reconcile this repository to make sure all CHKs are in canonical
+        form.
+        """
+        from bzrlib.reconcile import PackReconciler
+        reconciler = PackReconciler(self, thorough=True, canonicalize_chks=True)
+        reconciler.reconcile()
+        return reconciler
+
     def _reconcile_pack(self, collection, packs, extension, revs, pb):
         packer = GCCHKReconcilePacker(collection, packs, extension)
+        return packer.pack(pb)
+
+    def _canonicalize_chks_pack(self, collection, packs, extension, revs, pb):
+        packer = GCCHKCanonicalizingPacker(collection, packs, extension, revs)
         return packer.pack(pb)
 
     def _get_source(self, to_format):
@@ -1304,3 +1428,28 @@ class RepositoryFormat2a(RepositoryFormatCHK2):
         """See RepositoryFormat.get_format_description()."""
         return ("Repository format 2a - rich roots, group compression"
             " and chk inventories")
+
+
+class RepositoryFormat2aSubtree(RepositoryFormat2a):
+    """A 2a repository format that supports nested trees.
+
+    """
+
+    def _get_matching_bzrdir(self):
+        return bzrdir.format_registry.make_bzrdir('development-subtree')
+
+    def _ignore_setting_bzrdir(self, format):
+        pass
+
+    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
+
+    def get_format_string(self):
+        return ('Bazaar development format 8\n')
+
+    def get_format_description(self):
+        """See RepositoryFormat.get_format_description()."""
+        return ("Development repository format 8 - nested trees, "
+                "group compression and chk inventories")
+
+    experimental = True
+    supports_tree_reference = True

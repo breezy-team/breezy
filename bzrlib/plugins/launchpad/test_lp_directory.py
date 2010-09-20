@@ -36,7 +36,7 @@ from bzrlib.plugins.launchpad import (
     )
 from bzrlib.plugins.launchpad.lp_directory import (
     LaunchpadDirectory)
-from bzrlib.plugins.launchpad.account import get_lp_login
+from bzrlib.plugins.launchpad.account import get_lp_login, set_lp_login
 from bzrlib.tests import (
     http_server,
     http_utils,
@@ -198,6 +198,29 @@ class DirectoryUrlTests(TestCaseInTempDir):
         directory = LaunchpadDirectory()
         self.assertRaises(errors.InvalidURL,
             directory._resolve, 'lp://ratotehunoahu')
+
+    def test_resolve_tilde_to_user(self):
+        factory = FakeResolveFactory(
+            self, '~username/apt/test', dict(urls=[
+                    'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+        directory = LaunchpadDirectory()
+        self.assertEquals(
+            'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
+            directory._resolve('lp:~/apt/test', factory, _lp_login='username'))
+        # Should also happen when the login is just set by config
+        set_lp_login('username')
+        self.assertEquals(
+            'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
+            directory._resolve('lp:~/apt/test', factory))
+
+    def test_tilde_fails_no_login(self):
+        factory = FakeResolveFactory(
+            self, '~username/apt/test', dict(urls=[
+                    'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+        self.assertIs(None, get_lp_login())
+        directory = LaunchpadDirectory()
+        e = self.assertRaises(errors.InvalidURL,
+            directory._resolve, 'lp:~/apt/test', factory)
 
 
 class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):

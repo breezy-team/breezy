@@ -136,9 +136,9 @@ Future ideas and open issues
 See also
 ********
 
-* http://bazaar-vcs.org/LineEndings
+* http://wiki.bazaar.canonical.com/LineEndings
 
-* http://bazaar-vcs.org/LineEndings/Roadmap
+* http://wiki.bazaar.canonical.com/LineEndings/Roadmap
 
 * `Developer Documentation <index.html>`_
 

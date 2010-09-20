@@ -175,7 +175,7 @@ class Shelver(object):
         try:
             target_tree = builtins._get_one_revision_tree('shelf2', revision,
                 tree.branch, tree)
-            files = builtins.safe_relpath_files(tree, file_list)
+            files = tree.safe_relpath_files(file_list)
             return klass(tree, target_tree, diff_writer, all, all, files,
                          message, destroy)
         finally:

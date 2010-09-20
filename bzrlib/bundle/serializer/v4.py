@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,9 +30,47 @@ from bzrlib import (
     serializer,
     trace,
     ui,
+    versionedfile as _mod_versionedfile,
     )
 from bzrlib.bundle import bundle_data, serializer as bundle_serializer
 from bzrlib import bencode
+
+
+class _MPDiffInventoryGenerator(_mod_versionedfile._MPDiffGenerator):
+    """Generate Inventory diffs serialized inventories."""
+
+    def __init__(self, repo, inventory_keys):
+        super(_MPDiffInventoryGenerator, self).__init__(repo.inventories,
+            inventory_keys)
+        self.repo = repo
+        self.sha1s = {}
+
+    def iter_diffs(self):
+        """Compute the diffs one at a time."""
+        # This is instead of compute_diffs() since we guarantee our ordering of
+        # inventories, we don't have to do any buffering
+        self._find_needed_keys()
+        # We actually use a slightly different ordering. We grab all of the
+        # parents first, and then grab the ordered requests.
+        needed_ids = [k[-1] for k in self.present_parents]
+        needed_ids.extend([k[-1] for k in self.ordered_keys])
+        inv_to_str = self.repo._serializer.write_inventory_to_string
+        for inv in self.repo.iter_inventories(needed_ids):
+            revision_id = inv.revision_id
+            key = (revision_id,)
+            if key in self.present_parents:
+                # Not a key we will transmit, which is a shame, since because
+                # of that bundles don't work with stacked branches
+                parent_ids = None
+            else:
+                parent_ids = [k[-1] for k in self.parent_map[key]]
+            as_bytes = inv_to_str(inv)
+            self._process_one_record(key, (as_bytes,))
+            if parent_ids is None:
+                continue
+            diff = self.diffs.pop(key)
+            sha1 = osutils.sha_string(as_bytes)
+            yield revision_id, parent_ids, sha1, diff
 
 
 class BundleWriter(object):
@@ -348,48 +386,10 @@ class BundleWriteOperation(object):
         the other side.
         """
         inventory_key_order = [(r,) for r in revision_order]
-        parent_map = self.repository.inventories.get_parent_map(
-                            inventory_key_order)
-        missing_keys = set(inventory_key_order).difference(parent_map)
-        if missing_keys:
-            raise errors.RevisionNotPresent(list(missing_keys)[0],
-                                            self.repository.inventories)
-        inv_to_str = self.repository._serializer.write_inventory_to_string
-        # Make sure that we grab the parent texts first
-        just_parents = set()
-        map(just_parents.update, parent_map.itervalues())
-        just_parents.difference_update(parent_map)
-        # Ignore ghost parents
-        present_parents = self.repository.inventories.get_parent_map(
-                            just_parents)
-        ghost_keys = just_parents.difference(present_parents)
-        needed_inventories = list(present_parents) + inventory_key_order
-        needed_inventories = [k[-1] for k in needed_inventories]
-        all_lines = {}
-        for inv in self.repository.iter_inventories(needed_inventories):
-            revision_id = inv.revision_id
-            key = (revision_id,)
-            as_bytes = inv_to_str(inv)
-            # The sha1 is validated as the xml/textual form, not as the
-            # form-in-the-repository
-            sha1 = osutils.sha_string(as_bytes)
-            as_lines = osutils.split_lines(as_bytes)
-            del as_bytes
-            all_lines[key] = as_lines
-            if key in just_parents:
-                # We don't transmit those entries
-                continue
-            # Create an mpdiff for this text, and add it to the output
-            parent_keys = parent_map[key]
-            # See the comment in VF.make_mpdiffs about how this effects
-            # ordering when there are ghosts present. I think we have a latent
-            # bug
-            parent_lines = [all_lines[p_key] for p_key in parent_keys
-                            if p_key not in ghost_keys]
-            diff = multiparent.MultiParent.from_lines(
-                as_lines, parent_lines)
+        generator = _MPDiffInventoryGenerator(self.repository,
+                                              inventory_key_order)
+        for revision_id, parent_ids, sha1, diff in generator.iter_diffs():
             text = ''.join(diff.to_patch())
-            parent_ids = [k[-1] for k in parent_keys]
             self.bundle.add_multiparent_record(text, sha1, parent_ids,
                                                'inventory', revision_id, None)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 from bzrlib import (
     chk_map,
     groupcompress,
-    bzrdir,
     errors,
     inventory,
     osutils,
@@ -590,6 +589,11 @@ class TestInventory(TestCase):
         self.assertFalse(inv.is_root('TREE_ROOT'))
         self.assertFalse(inv.is_root('booga'))
 
+    def test_entries_for_empty_inventory(self):
+        """Test that entries() will not fail for an empty inventory"""
+        inv = Inventory(root_id=None)
+        self.assertEqual([], inv.entries())
+
 
 class TestInventoryEntry(TestCase):
 
@@ -607,12 +611,7 @@ class TestInventoryEntry(TestCase):
 
     def test_dir_detect_changes(self):
         left = inventory.InventoryDirectory('123', 'hello.c', ROOT_ID)
-        left.text_sha1 = 123
-        left.executable = True
-        left.symlink_target='foo'
         right = inventory.InventoryDirectory('123', 'hello.c', ROOT_ID)
-        right.text_sha1 = 321
-        right.symlink_target='bar'
         self.assertEqual((False, False), left.detect_changes(right))
         self.assertEqual((False, False), right.detect_changes(left))
 
@@ -632,11 +631,8 @@ class TestInventoryEntry(TestCase):
 
     def test_symlink_detect_changes(self):
         left = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
-        left.text_sha1 = 123
-        left.executable = True
         left.symlink_target='foo'
         right = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
-        right.text_sha1 = 321
         right.symlink_target='foo'
         self.assertEqual((False, False), left.detect_changes(right))
         self.assertEqual((False, False), right.detect_changes(left))

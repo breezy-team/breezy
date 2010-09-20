@@ -25,6 +25,7 @@ from bzrlib import (
         bzrdir,
         cache_utf8,
         config as _mod_config,
+        controldir,
         debug,
         errors,
         lockdir,
@@ -64,7 +65,7 @@ BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 BZR_BRANCH_FORMAT_6 = "Bazaar Branch Format 6 (bzr 0.15)\n"
 
 
-class Branch(bzrdir.ControlComponent):
+class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
     :ivar base:
@@ -1861,7 +1862,7 @@ class BranchHooks(Hooks):
             "all are called with the url returned from the previous hook."
             "The order is however undefined.", (1, 9), None))
         self.create_hook(HookPoint('automatic_tag_name',
-            "Called to determine an automatic tag name for a revision."
+            "Called to determine an automatic tag name for a revision. "
             "automatic_tag_name is called with (branch, revision_id) and "
             "should return a tag name or None if no tag name could be "
             "determined. The first non-None tag name returned will be used.",
@@ -1958,12 +1959,7 @@ class BranchInitHookParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        if self.branch:
-            return "<%s of %s>" % (self.__class__.__name__, self.branch)
-        else:
-            return "<%s of format:%s bzrdir:%s>" % (
-                self.__class__.__name__, self.branch,
-                self.format, self.bzrdir)
+        return "<%s of %s>" % (self.__class__.__name__, self.branch)
 
 
 class SwitchHookParams(object):
@@ -3107,8 +3103,12 @@ class PullResult(_Result):
     :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: pull used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
@@ -3139,8 +3139,12 @@ class BranchPushResult(_Result):
         target, otherwise it will be None.
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: push used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
@@ -3312,6 +3316,15 @@ class InterBranch(InterObject):
         The source branch is considered to be 'local', having low latency.
         """
         raise NotImplementedError(self.push)
+
+    @needs_write_lock
+    def copy_content_into(self, revision_id=None):
+        """Copy the content of source into target
+
+        revision_id: if not None, the revision history in the new branch will
+                     be truncated to end with revision_id.
+        """
+        raise NotImplementedError(self.copy_content_into)
 
 
 class GenericInterBranch(InterBranch):

@@ -86,6 +86,15 @@ class TestGzip(TestCase):
         # and it should be new member time in the stream.
         self.failUnless(myfile._new_member)
 
+    def test_negative_crc(self):
+        """Content with a negative crc should not break when written"""
+        sio = StringIO()
+        gfile = tuned_gzip.GzipFile(mode="w", fileobj=sio)
+        gfile.write("\xFF")
+        gfile.close()
+        self.assertEqual(gfile.crc & 0xFFFFFFFFL, 0xFF000000L)
+        self.assertEqual(sio.getvalue()[-8:-4], "\x00\x00\x00\xFF")
+
 
 class TestToGzip(TestCase):
 

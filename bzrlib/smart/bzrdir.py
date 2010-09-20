@@ -22,6 +22,9 @@ from bzrlib.bzrdir import (
     BzrDir,
     BzrDirFormat,
     BzrDirMetaFormat1,
+    BzrProber,
+    )
+from bzrlib.controldir import (
     network_format_registry,
     )
 from bzrlib.smart.request import (
@@ -44,10 +47,9 @@ class SmartServerRequestOpenBzrDir(SmartServerRequest):
             # clients that don't anticipate errors from this method.
             answer = 'no'
         else:
-            default_format = BzrDirFormat.get_default_format()
-            real_bzrdir = default_format.open(t, _found=True)
+            bzr_prober = BzrProber()
             try:
-                real_bzrdir._format.probe_transport(t)
+                bzr_prober.probe_transport(t)
             except (errors.NotBranchError, errors.UnknownFormatError):
                 answer = 'no'
             else:

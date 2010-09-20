@@ -29,6 +29,9 @@ from bzrlib.diff import (
     DiffTree,
     format_registry as diff_format_registry,
     )
+from bzrlib.tests import (
+    features,
+    )
 
 
 def subst_dates(string):
@@ -321,7 +324,6 @@ class TestDiff(DiffBase):
         output = self.run_bzr('diff --format=boo', retcode=1)
         self.assertTrue("BOO!" in output[0])
 
-
 class TestCheckoutDiff(TestDiff):
 
     def make_example_branch(self):
@@ -399,6 +401,16 @@ class TestExternalDiff(DiffBase):
                                    "+++ goodbye\t")
         self.assertEndsWith(out, "\n@@ -0,0 +1 @@\n"
                                  "+baz\n\n")
+
+    def test_external_diff_options_and_using(self):
+        """Test that the options are passed correctly to an external diff process"""
+        self.requireFeature(features.diff_feature)
+        self.make_example_branch()
+        self.build_tree_contents([('hello', 'Foo\n')])
+        out, err = self.run_bzr('diff --diff-options -i --using diff',
+                                    retcode=1)
+        self.assertEquals("=== modified file 'hello'\n", out)
+        self.assertEquals('', err)
 
 
 class TestDiffOutput(DiffBase):

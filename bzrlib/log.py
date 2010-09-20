@@ -2017,7 +2017,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
       kind is one of values 'directory', 'file', 'symlink', 'tree-reference'.
       branch will be read-locked.
     """
-    from builtins import _get_revision_range, safe_relpath_files
+    from builtins import _get_revision_range
     tree, b, path = bzrdir.BzrDir.open_containing_tree_or_branch(file_list[0])
     add_cleanup(b.lock_read().unlock)
     # XXX: It's damn messy converting a list of paths to relative paths when
@@ -2029,7 +2029,7 @@ def _get_info_for_log_files(revisionspec_list, file_list, add_cleanup):
     # case of running log in a nested directory, assuming paths beyond the
     # first one haven't been deleted ...
     if tree:
-        relpaths = [path] + safe_relpath_files(tree, file_list[1:])
+        relpaths = [path] + tree.safe_relpath_files(file_list[1:])
     else:
         relpaths = [path] + file_list[1:]
     info_list = []
