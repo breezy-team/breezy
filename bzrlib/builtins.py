@@ -180,7 +180,7 @@ def internal_tree_files(file_list, default_branch=u'.', canonicalize=True,
                 view_str = views.view_display_str(view_files)
                 note("Ignoring files outside view. View is %s" % view_str)
         return tree, file_list
-    tree = WorkingTree.open_containing(osutils.realpath(file_list[0]))[0]
+    tree = WorkingTree.open_containing(file_list[0])[0]
     return tree, safe_relpath_files(tree, file_list, canonicalize,
         apply_view=apply_view)
 
@@ -2712,6 +2712,14 @@ class cmd_ignore(Command):
                 "NAME_PATTERN or --default-rules.")
         name_pattern_list = [globbing.normalize_pattern(p)
                              for p in name_pattern_list]
+        bad_patterns = ''
+        for p in name_pattern_list:
+            if not globbing.Globster.is_pattern_valid(p):
+                bad_patterns += ('\n  %s' % p)
+        if bad_patterns:
+            msg = ('Invalid ignore pattern(s) found. %s' % bad_patterns)
+            ui.ui_factory.show_error(msg)
+            raise errors.InvalidPattern('')
         for name_pattern in name_pattern_list:
             if (name_pattern[0] == '/' or
                 (len(name_pattern) > 1 and name_pattern[1] == ':')):
@@ -3529,15 +3537,13 @@ class cmd_selftest(Command):
                                  'throughout the test suite.',
                             type=get_transport_type),
                      Option('benchmark',
-                            help='Run the benchmarks rather than selftests.'),
+                            help='Run the benchmarks rather than selftests.',
+                            hidden=True),
                      Option('lsprof-timed',
                             help='Generate lsprof output for benchmarked'
                                  ' sections of code.'),
                      Option('lsprof-tests',
                             help='Generate lsprof output for each test.'),
-                     Option('cache-dir', type=str,
-                            help='Cache intermediate benchmark output in this '
-                                 'directory.'),
                      Option('first',
                             help='Run all tests, but run specified tests first.',
                             short_name='f',
@@ -3577,20 +3583,16 @@ class cmd_selftest(Command):
 
     def run(self, testspecs_list=None, verbose=False, one=False,
             transport=None, benchmark=None,
-            lsprof_timed=None, cache_dir=None,
+            lsprof_timed=None,
             first=False, list_only=False,
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
         from bzrlib.tests import selftest
-        import bzrlib.benchmarks as benchmarks
-        from bzrlib.benchmarks import tree_creator
 
         # Make deprecation warnings visible, unless -Werror is set
         symbol_versioning.activate_deprecation_warnings(override=False)
 
-        if cache_dir is not None:
-            tree_creator.TreeCreator.CACHE_ROOT = osutils.abspath(cache_dir)
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
         else:
@@ -3615,15 +3617,10 @@ class cmd_selftest(Command):
             self.additional_selftest_args.setdefault(
                 'suite_decorators', []).append(parallel)
         if benchmark:
-            test_suite_factory = benchmarks.test_suite
-            # Unless user explicitly asks for quiet, be verbose in benchmarks
-            verbose = not is_quiet()
-            # TODO: should possibly lock the history file...
-            benchfile = open(".perf_history", "at", buffering=1)
-            self.add_cleanup(benchfile.close)
-        else:
-            test_suite_factory = None
-            benchfile = None
+            raise errors.BzrCommandError(
+                "--benchmark is no longer supported from bzr 2.2; "
+                "use bzr-usertest instead")
+        test_suite_factory = None
         selftest_kwargs = {"verbose": verbose,
                           "pattern": pattern,
                           "stop_on_failure": one,
@@ -3631,7 +3628,6 @@ class cmd_selftest(Command):
                           "test_suite_factory": test_suite_factory,
                           "lsprof_timed": lsprof_timed,
                           "lsprof_tests": lsprof_tests,
-                          "bench_history": benchfile,
                           "matching_tests_first": first,
                           "list_only": list_only,
                           "random_seed": randomize,

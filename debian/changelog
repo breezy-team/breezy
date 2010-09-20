@@ -1,3 +1,42 @@
+bzr (2.2.0-1) unstable; urgency=low
+
+  * New upstream release.
+   + Adds support for setting timestamps to originating revisions.
+     Closes: #473450
+   + Removes remaining string exception. Closes: #585193, LP: #586926
+   + Add C extension to work around Python issue 1628205. LP: #583941,
+     Closes: #577110
+   + Avoids showing progress bars when --quiet is used. Closes: #542105,
+     LP: #320035
+   + No longer creates ~/.bazaar as root when run under sudo. LP: #376388
+   + 'bzr commit' now supports -p as alternative for --show-diff. LP: #571467
+   + 'bzr add' no longer adds .THIS/.BASE/.THEIRS files unless
+     explicitly requested. LP: #322767
+   + When parsing patch files, Bazaar now supports diff lines before each
+     patch. LP: #502076
+   + WorkingTrees now no longer requires using signal.signal, so can
+     be used in a threaded environment. LP: #521989
+   + An assertion error is no longer triggered when pushing to a pre-1.6
+     Bazaar server. LP: #528041
+  * Bump standards version to 3.9.1.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 07 Aug 2010 00:54:52 +0200
+
+bzr (2.2.0~b4-1) experimental; urgency=low
+
+  * New upstream beta.
+  * Bump standards version to 3.9.0.
+  * Drop build dependency on zlib.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 21 Jul 2010 01:02:00 +0200
+
+bzr (2.2.0~b2-1) experimental; urgency=low
+
+  * New upstream release.
+  * Recommend python-launchpadlib. Closes: #568937
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 21 May 2010 19:56:07 +0200
+
 bzr (2.2~b4-1) experimental; urgency=low
 
   * New upstream beta.
@@ -12,6 +51,19 @@ bzr (2.2~b2-1) experimental; urgency=low
   * Recommend python-launchpadlib. Closes: #568937
 
  -- Jelmer Vernooij <jelmer@debian.org>  Fri, 21 May 2010 19:56:07 +0200
+
+bzr (2.1.2-1.1) unstable; urgency=low
+
+  * Non-maintainer upload.
+  * Fix access via http_proxy. Closes: #588430 
+
+ -- Maximiliano Curia <maxy@debian.org>  Fri, 30 Jul 2010 19:14:08 -0400
+
+bzr (2.1.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 27 May 2010 21:58:49 +0200
 
 bzr (2.1.1-1.1) unstable; urgency=low
 

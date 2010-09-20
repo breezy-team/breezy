@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,19 +14,28 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Tests for bzr add performance."""
+
+import os
 
 
-from bzrlib.benchmarks import Benchmark
+from bzrlib import tests
 
 
-class AddBenchmark(Benchmark):
-    """Benchmarks for 'bzr add'"""
+class TestTreeShape(tests.TestCaseWithTransport):
 
-    def test_one_add_kernel_like_tree(self):
-        """Adding a kernel sized tree should be bearable (<5secs) fast."""
-        self.make_kernel_like_tree(link_working=True)
-        # on roberts machine: this originally took:  25936ms/32244ms
-        # after making smart_add use the parent_ie:   5033ms/ 9368ms
-        # plain os.walk takes 213ms on this tree
-        self.time(self.run_bzr, 'add')
+    def test_build_tree(self):
+        """Test tree-building test helper"""
+        self.build_tree_contents([
+            ('foo', 'new contents'),
+            ('.bzr/',),
+            ('.bzr/README', 'hello'),
+            ])
+        self.failUnlessExists('foo')
+        self.failUnlessExists('.bzr/README')
+        self.assertFileEqual('hello', '.bzr/README')
+
+    def test_build_tree_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        self.build_tree_contents([('link@', 'target')])
+        self.assertEqual('target',
+            os.readlink('link'))

@@ -179,24 +179,41 @@ class Globster(object):
     so are matched first, then the basename patterns, then the fullpath
     patterns.
     """
+    # We want to _add_patterns in a specific order (as per type_list below)
+    # starting with the shortest and going to the longest.
+    # As some Python version don't support ordered dicts the list below is
+    # used to select inputs for _add_pattern in a specific order.
+    pattern_types = [ "extension", "basename", "fullpath" ]
+
+    pattern_info = {
+        "extension" : {
+            "translator" : _sub_extension,
+            "prefix" : r'(?:.*/)?(?!.*/)(?:.*\.)'
+        },
+        "basename" : {
+            "translator" : _sub_basename,
+            "prefix" : r'(?:.*/)?(?!.*/)'
+        },
+        "fullpath" : {
+            "translator" : _sub_fullpath,
+            "prefix" : r''
+        },
+    }
+
     def __init__(self, patterns):
         self._regex_patterns = []
-        path_patterns = []
-        base_patterns = []
-        ext_patterns = []
+        pattern_lists = {
+            "extension" : [],
+            "basename" : [],
+            "fullpath" : [],
+        }
         for pat in patterns:
             pat = normalize_pattern(pat)
-            if pat.startswith(u'RE:') or u'/' in pat:
-                path_patterns.append(pat)
-            elif pat.startswith(u'*.'):
-                ext_patterns.append(pat)
-            else:
-                base_patterns.append(pat)
-        self._add_patterns(ext_patterns,_sub_extension,
-            prefix=r'(?:.*/)?(?!.*/)(?:.*\.)')
-        self._add_patterns(base_patterns,_sub_basename,
-            prefix=r'(?:.*/)?(?!.*/)')
-        self._add_patterns(path_patterns,_sub_fullpath)
+            pattern_lists[Globster.identify(pat)].append(pat)
+        pi = Globster.pattern_info
+        for t in Globster.pattern_types:
+            self._add_patterns(pattern_lists[t], pi[t]["translator"],
+                pi[t]["prefix"])
 
     def _add_patterns(self, patterns, translator, prefix=''):
         while patterns:
@@ -221,9 +238,49 @@ class Globster(object):
             # the combined pattern we sent to regex. Instead we indicate to
             # the user that an ignore file needs fixing.
             mutter('Invalid pattern found in regex: %s.', e.msg)
-            e.msg = "File ~/.bazaar/ignore or .bzrignore contains errors."
+            e.msg = "File ~/.bazaar/ignore or .bzrignore contains error(s)."
+            bad_patterns = ''
+            for _, patterns in self._regex_patterns:
+                for p in patterns:
+                    if not Globster.is_pattern_valid(p):
+                        bad_patterns += ('\n  %s' % p)
+            e.msg += bad_patterns
             raise e
         return None
+
+    @staticmethod
+    def identify(pattern):
+        """Returns pattern category.
+
+        :param pattern: normalized pattern.
+        Identify if a pattern is fullpath, basename or extension
+        and returns the appropriate type.
+        """
+        if pattern.startswith(u'RE:') or u'/' in pattern:
+            return "fullpath"
+        elif pattern.startswith(u'*.'):
+            return "extension"
+        else:
+            return "basename"
+
+    @staticmethod
+    def is_pattern_valid(pattern):
+        """Returns True if pattern is valid.
+
+        :param pattern: Normalized pattern.
+        is_pattern_valid() assumes pattern to be normalized.
+        see: globbing.normalize_pattern
+        """
+        result = True
+        translator = Globster.pattern_info[Globster.identify(pattern)]["translator"]
+        tpattern = '(%s)' % translator(pattern)
+        try:
+            re_obj = re.compile(tpattern, re.UNICODE)
+            re_obj.search("") # force compile
+        except errors.InvalidPattern, e:
+            result = False
+        return result
+
 
 class ExceptionGlobster(object):
     """A Globster that supports exception patterns.
@@ -272,14 +329,9 @@ class _OrderedGlobster(Globster):
         self._regex_patterns = []
         for pat in patterns:
             pat = normalize_pattern(pat)
-            if pat.startswith(u'RE:') or u'/' in pat:
-                self._add_patterns([pat], _sub_fullpath)
-            elif pat.startswith(u'*.'):
-                self._add_patterns([pat], _sub_extension,
-                    prefix=r'(?:.*/)?(?!.*/)(?:.*\.)')
-            else:
-                self._add_patterns([pat], _sub_basename,
-                    prefix=r'(?:.*/)?(?!.*/)')
+            t = Globster.identify(pat)
+            self._add_patterns([pat], Globster.pattern_info[t]["translator"],
+                Globster.pattern_info[t]["prefix"])
 
 
 _slashes = re.compile(r'[\\/]+')

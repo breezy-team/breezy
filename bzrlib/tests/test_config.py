@@ -35,6 +35,7 @@ from bzrlib import (
     trace,
     transport,
     )
+from bzrlib.tests import features
 from bzrlib.util.configobj import configobj
 
 
@@ -367,7 +368,7 @@ class TestConfigPath(tests.TestCase):
             '/home/bogus/.cache')
 
 
-class TestIniConfig(tests.TestCase):
+class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):
         conf = config.IniBasedConfig(None)
@@ -393,6 +394,22 @@ class TestIniConfigBuilding(TestIniConfig):
         parser = my_config._get_parser(file=config_file)
         self.failUnless(my_config._get_parser() is parser)
 
+    def _dummy_chown(self, path, uid, gid):
+        self.path, self.uid, self.gid = path, uid, gid
+
+    def test_ini_config_ownership(self):
+        """Ensure that chown is happening during _write_config_file.
+        """
+        self.requireFeature(features.chown_feature)
+        self.overrideAttr(os, 'chown', self._dummy_chown)
+        self.path = self.uid = self.gid = None
+        def get_filename():
+            return 'foo.conf'
+        conf = config.IniBasedConfig(get_filename)
+        conf._write_config_file()
+        self.assertEquals(self.path, 'foo.conf')
+        self.assertTrue(isinstance(self.uid, int))
+        self.assertTrue(isinstance(self.gid, int))
 
 class TestGetUserOptionAs(TestIniConfig):
 

@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Jeff Bailey <jbailey@raspberryginger.com>, Wouter van Heyst <larstiq@larstiq.dyndns.org>, Reinhard Tartler <siretart@tauware.de>, Jelmer Vernooij <jelmer@debian.org>, John Francesco Ferlito <johnf@inodes.org>
 Build-Depends: debhelper (>> 5.0.0), cdbs, python, python-all-dev, python-central, python-docutils, graphviz, python-pyrex
-Standards-Version: 3.9.0
+Standards-Version: 3.9.1
 XS-Python-Version: >= 2.4
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/unstable
 Homepage: http://bazaar-vcs.org
