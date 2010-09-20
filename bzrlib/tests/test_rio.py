@@ -188,6 +188,14 @@ tabs: \t\t\t
         self.assertEqual(s, None)
         self.assertTrue(s is None)
 
+    def test_read_nul_byte(self):
+        """File consisting of a nul byte causes an error."""
+        self.assertRaises(ValueError, read_stanza, ['\0'])
+
+    def test_read_nul_bytes(self):
+        """File consisting of many nul bytes causes an error."""
+        self.assertRaises(ValueError, read_stanza, ['\0' * 100])
+
     def test_read_iter(self):
         """Read several stanzas from file"""
         tmpf = TemporaryFile()

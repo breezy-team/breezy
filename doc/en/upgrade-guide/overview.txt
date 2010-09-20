@@ -61,7 +61,7 @@ To upgrade Bazaar on OS X (via MacPorts):
 2. Upgrade to the latest version using **sudo port upgrade bzr**
 
 For further information on installing and upgrading, see
-http://bazaar-vcs.org/Download.
+http://wiki.bazaar.canonical.com/Download.
 
 
 Upgrading required plugins

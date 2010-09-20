@@ -21,6 +21,7 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    controldir,
     debug,
     errors,
     graph,
@@ -213,7 +214,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if len(branch_info) != 2:
             raise errors.UnexpectedSmartServerResponse(response)
         branch_ref, branch_name = branch_info
-        format = bzrdir.network_format_registry.get(control_name)
+        format = controldir.network_format_registry.get(control_name)
         if repo_name:
             format.repository_format = repository.network_format_registry.get(
                 repo_name)
@@ -648,7 +649,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
 
 class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
-    bzrdir.ControlComponent):
+    controldir.ControlComponent):
     """Repository accessed over rpc.
 
     For the moment most operations are performed using local transport-backed

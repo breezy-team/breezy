@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -127,6 +127,11 @@ class PyCurlTransport(HttpTransportBase):
             # Proxy handling is out of reach, so we punt
             self._set_connection(connection, auth)
         return connection
+
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
 
     def has(self, relpath):
         """See Transport.has()"""

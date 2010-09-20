@@ -28,6 +28,7 @@ paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 pywintypes = tests.ModuleAvailableFeature('pywintypes')
 subunit = tests.ModuleAvailableFeature('subunit')
+sphinx = tests.ModuleAvailableFeature('sphinx')
 
 
 class _BackslashDirSeparatorFeature(tests.Feature):
@@ -113,3 +114,4 @@ class ExecutableFeature(tests.Feature):
 
 bash_feature = ExecutableFeature('bash')
 sed_feature = ExecutableFeature('sed')
+diff_feature = ExecutableFeature('diff')

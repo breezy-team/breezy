@@ -3,10 +3,9 @@ Releasing Bazaar
 
 This document describes the processes for making and announcing a Bazaar
 release, and managing the release process.  This is just one phase of the
-`overall development cycle <http://doc.bazaar-vcs.org/developers/cycle.html>`_,
-but it's the most complex part.
-This document gives a checklist you can follow from start to end in one
-go.
+`overall development cycle <http://doc.bazaar.canonical.com/developers/cycle.html>`_,
+but it's the most complex part.  This document gives a checklist you can
+follow from start to end in one go.
 
 If you're helping the Release Manager (RM) for one reason or another, you
 may notice that he didn't follow that document scrupulously. He may have
@@ -73,7 +72,7 @@ To start a new release cycle:
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
 
-    Please see <http://doc.bazaar-vcs.org/developers/HACKING.html#an-overview-of-pqm>
+    Please see <http://doc.bazaar.canonical.com/developers/HACKING.html#an-overview-of-pqm>
     for more details on PQM
 
 #. Update the version number in the ``bzr`` script, and the
@@ -84,6 +83,8 @@ To start a new release cycle:
 #. Add a new section at the top of ``NEWS`` about the new release,
    including its version number and the headings from
    ``NEWS-template.txt``.
+
+#. Update the "What's New" documents in ``doc/en/whats-new``.
 
 #. Commit this and send it to PQM.
 
@@ -120,13 +121,15 @@ Update the source code
 
        version_info = (2, 1, 2, 'final', 0)
 
-#. Check the release number in ``./NEWS``
+#. Update the ``./NEWS`` section for this release.
 
    Fill out the date and a description of the release under the existing
    header. If there isn't one, follow the above for using the NEWS
    template.
 
    See *2.1.1* or similar for an example of what this looks like.
+
+#. Add a summary of the release into the "What's New" document.
 
 #. To check that all bugs mentioned in ``./NEWS`` are actually marked as
    closed in Launchpad, you can run ``tools/check-newsbugs.py``::
@@ -263,17 +266,12 @@ available to the world.
 
 #. Go to the release web page at <https://launchpad.net/bzr/x.y/x.y.z>
 
-#. Link from http://bazaar-vcs.org/SourceDownloads to the tarball and
-   signature.
-
-#. Announce on the `Bazaar website <http://bazaar-vcs.org/>`_.
+#. Announce on the `Bazaar website <http://bazaar.canonical.com/>`_.
    This page is edited via the lp:bzr-website branch. (Changes
    pushed to this branch are refreshed by a cron job on escudero.)
 
-#. Announce on the `Bazaar wiki <http://bazaar-vcs.org/Welcome>`_.
-
 #. Check that the documentation for this release is available in
-   <http://doc.bazaar-vcs.org>.  It should be automatically build when the
+   <http://doc.bazaar.canonical.com>.  It should be automatically build when the
    branch is created, by a cron script ``update-bzr-docs`` on
    ``escudero``. As of today (2009-08-27) ``igc`` manually updates the
    pretty version of it.
@@ -312,7 +310,7 @@ Now that the release is publicly available, tell people about it.
       feedback.
 
       Bazaar is now available for download from
-      http://bazaar-vcs.org/Download as a source tarball; packages
+      https://launchpad.net/bzr/2.x/2.x/ as a source tarball; packages
       for various systems will be available soon.
 
       <<NEWS section from this release back to the last major release>>

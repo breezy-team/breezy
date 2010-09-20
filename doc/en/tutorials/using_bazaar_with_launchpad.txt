@@ -92,7 +92,7 @@ Launchpad: More development, less friction
 ------------------------------------------
 
 As well as sponsoring `Ubuntu <http://www.ubuntu.com>`_ and
-`Bazaar <http://bazaar-vcs.org>`_ development, Canonical
+`Bazaar <http://bazaar.canonical.com>`_ development, Canonical
 provides Launchpad, <https://launchpad.net/>, as a free service
 for the community. Launchpad is one of the most
 exciting CDEs around for several notable reasons:

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ class TestRemove(TestCaseWithWorkingTree):
 
     files = ['a', 'b/', 'b/c', 'd/']
     rfiles = ['b/c', 'b', 'a', 'd']
+    backup_files = ['a.~1~', 'b.~1~/', 'b.~1~/c.~1~', 'd.~1~/']
 
     def get_tree(self, files):
         tree = self.make_branch_and_tree('.')
@@ -72,28 +73,23 @@ class TestRemove(TestCaseWithWorkingTree):
         tree._validate()
 
     def test_remove_added_files(self):
-        """Removal of newly added files must fail."""
+        """Removal of newly added files must back them up."""
         tree = self.get_tree(TestRemove.files)
         tree.add(TestRemove.files)
         self.assertInWorkingTree(TestRemove.files)
-        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
-            TestRemove.files, keep_files=False)
-        self.assertContainsRe(err.changes_as_text,
-            '(?s)added:.*a.*b/.*b/c.*d/')
-        self.assertInWorkingTree(TestRemove.files)
-        self.failUnlessExists(TestRemove.files)
+        tree.remove(TestRemove.files, keep_files=False)
+        self.assertNotInWorkingTree(TestRemove.files)
+        self.failUnlessExists(TestRemove.backup_files)
         tree._validate()
 
     def test_remove_changed_file(self):
-        """Removal of a changed files must fail."""
+        """Removal of changed files must back it up."""
         tree = self.get_committed_tree(['a'])
         self.build_tree_contents([('a', "some other new content!")])
         self.assertInWorkingTree('a')
-        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
-            'a', keep_files=False)
-        self.assertContainsRe(err.changes_as_text, '(?s)modified:.*a')
-        self.assertInWorkingTree('a')
-        self.failUnlessExists('a')
+        tree.remove('a', keep_files=False)
+        self.assertNotInWorkingTree(TestRemove.files)
+        self.failUnlessExists('a.~1~')
         tree._validate()
 
     def test_remove_deleted_files(self):
@@ -122,7 +118,7 @@ class TestRemove(TestCaseWithWorkingTree):
         tree._validate()
 
     def test_remove_renamed_changed_files(self):
-        """Check that files are not removed if they are renamed and changed."""
+        """Check that files that are renamed and changed are backed up."""
         tree = self.get_committed_tree(TestRemove.files)
 
         for f in TestRemove.rfiles:
@@ -133,12 +129,10 @@ class TestRemove(TestCaseWithWorkingTree):
         self.assertInWorkingTree(rfilesx)
         self.failUnlessExists(rfilesx)
 
-        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
-            rfilesx, keep_files=False)
-        self.assertContainsRe(err.changes_as_text,
-            '(?s)modified:.*ax.*bx/cx')
-        self.assertInWorkingTree(rfilesx)
-        self.failUnlessExists(rfilesx)
+        tree.remove(rfilesx, keep_files=False)
+        self.assertNotInWorkingTree(rfilesx)
+        self.failUnlessExists(['bx.~1~/cx.~1~', 'bx.~1~', 'ax.~1~'])
+        self.failIfExists('dx.~1~') # unchanged file
         tree._validate()
 
     def test_force_remove_changed_files(self):
@@ -149,15 +143,15 @@ class TestRemove(TestCaseWithWorkingTree):
 
         tree.remove(TestRemove.files, keep_files=False, force=True)
         self.assertRemovedAndDeleted(TestRemove.files)
+        self.failIfExists(['a.~1~', 'b.~1~/', 'b.~1~/c', 'd.~1~/'])
         tree._validate()
 
     def test_remove_unknown_files(self):
-        """Try to delete unknown files."""
+        """Unknown files shuld be backed up"""
         tree = self.get_tree(TestRemove.files)
-        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
-            TestRemove.files, keep_files=False)
-        self.assertContainsRe(err.changes_as_text,
-            '(?s)unknown:.*d/.*b/c.*b/.*a.*')
+        tree.remove(TestRemove.files, keep_files=False)
+        self.assertRemovedAndDeleted(TestRemove.files)
+        self.failUnlessExists(TestRemove.backup_files)
         tree._validate()
 
     def test_remove_nonexisting_files(self):
@@ -202,45 +196,40 @@ class TestRemove(TestCaseWithWorkingTree):
         tree._validate()
 
     def test_remove_changed_ignored_files(self):
-        """Changed ignored files should not be deleted."""
+        """Changed ignored files should be backed up."""
         files = ['an_ignored_file']
         tree = self.get_tree(files)
         tree.add(files)
         ignores.add_runtime_ignores(["*ignored*"])
         self.assertInWorkingTree(files)
         self.assertNotEquals(None, tree.is_ignored(files[0]))
-        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
-            files, keep_files=False)
-        self.assertContainsRe(err.changes_as_text,
-            '(?s)added:.*' + files[0])
-        self.assertInWorkingTree(files)
+
+        tree.remove(files, keep_files=False)
+        self.assertNotInWorkingTree(files)
+        self.failUnlessExists('an_ignored_file.~1~')
         tree._validate()
 
     def test_dont_remove_directory_with_unknowns(self):
-        """Directories with unknowns should not be deleted."""
+        """Directories with unknowns should be backed up."""
         directories = ['a/', 'b/', 'c/', 'c/c/']
         tree = self.get_committed_tree(directories)
 
         self.build_tree(['a/unknown_file'])
-        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
-            'a', keep_files=False)
-        self.assertContainsRe(err.changes_as_text,
-            '(?s)unknown:.*a/unknown_file')
+        tree.remove('a', keep_files=False)
+        self.failUnlessExists('a.~1~/unknown_file')
 
         self.build_tree(['b/unknown_directory'])
-        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
-            'b', keep_files=False)
-        self.assertContainsRe(err.changes_as_text,
-            '(?s)unknown:.*b/unknown_directory')
+        tree.remove('b', keep_files=False)
+        self.failUnlessExists('b.~1~/unknown_directory')
 
         self.build_tree(['c/c/unknown_file'])
-        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
-            'c/c', keep_files=False)
-        self.assertContainsRe(err.changes_as_text,
-            '(?s)unknown:.*c/c/unknown_file')
+        tree.remove('c/c', keep_files=False)
+        self.failUnlessExists('c/c.~1~/unknown_file')
 
-        self.assertInWorkingTree(directories)
-        self.failUnlessExists(directories)
+        tree.remove('c', keep_files=False)
+        self.failUnlessExists('c.~1~/')
+
+        self.assertNotInWorkingTree(directories)
         tree._validate()
 
     def test_force_remove_directory_with_unknowns(self):
@@ -262,16 +251,20 @@ class TestRemove(TestCaseWithWorkingTree):
         tree._validate()
 
     def test_remove_directory_with_changed_file(self):
-        """Refuse to delete directories with changed files."""
+        """Backup directories with changed files."""
         files = ['b/', 'b/c']
         tree = self.get_committed_tree(files)
         self.build_tree_contents([('b/c', "some other new content!")])
 
-        err = self.assertRaises(errors.BzrRemoveChangedFilesError, tree.remove,
-            'b', keep_files=False)
-        self.assertContainsRe(err.changes_as_text, '(?s)modified:.*b/c')
-        self.assertInWorkingTree(files)
-        self.failUnlessExists(files)
+        tree.remove('b', keep_files=False)
+        self.failUnlessExists('b.~1~/c.~1~')
+        self.assertNotInWorkingTree(files)
+
+    def test_remove_force_directory_with_changed_file(self):
+        """Delete directories with changed files when forced."""
+        files = ['b/', 'b/c']
+        tree = self.get_committed_tree(files)
+        self.build_tree_contents([('b/c', "some other new content!")])
 
         # see if we can force it now..
         tree.remove('b', keep_files=False, force=True)

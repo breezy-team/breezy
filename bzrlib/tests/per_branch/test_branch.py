@@ -19,6 +19,7 @@
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    config,
     delta as _mod_delta,
     errors,
     gpg,
@@ -617,13 +618,9 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
         self.assertEqual(None, self.get_branch().get_push_location())
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
-        open(fn, 'wt').write(("[%s]\n"
-                                  "push_location=foo\n" %
-                                  self.get_branch().base[:-1]))
+        b = self.get_branch()
+        config.LocationConfig.from_string(
+            '[%s]\npush_location=foo\n' % (b.base,), b.base, save=True)
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
