@@ -336,15 +336,14 @@ class ParamikoVendor(SSHVendor):
             self._raise_connection_error(host, port=port, orig_error=e,
                                          msg='Unable to invoke remote bzr')
 
+_ssh_connection_errors = (EOFError, OSError, IOError, socket.error)
 if paramiko is not None:
     vendor = ParamikoVendor()
     register_ssh_vendor('paramiko', vendor)
     register_ssh_vendor('none', vendor)
     register_default_ssh_vendor(vendor)
-    _sftp_connection_errors = (EOFError, paramiko.SSHException)
+    _ssh_connection_errors += (paramiko.SSHException,)
     del vendor
-else:
-    _sftp_connection_errors = (EOFError,)
 
 
 class SubprocessVendor(SSHVendor):
@@ -375,14 +374,7 @@ class SubprocessVendor(SSHVendor):
                                                   subsystem='sftp')
             sock = self._connect(argv)
             return SFTPClient(SocketAsChannelAdapter(sock))
-        except _sftp_connection_errors, e:
-            self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
-            # If the machine is fast enough, ssh can actually exit
-            # before we try and send it the sftp request, which
-            # raises a Broken Pipe
-            if e.errno not in (errno.EPIPE,):
-                raise
+        except _ssh_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def connect_ssh(self, username, password, host, port, command):
@@ -390,14 +382,7 @@ class SubprocessVendor(SSHVendor):
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   command=command)
             return self._connect(argv)
-        except (EOFError), e:
-            self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
-            # If the machine is fast enough, ssh can actually exit
-            # before we try and send it the sftp request, which
-            # raises a Broken Pipe
-            if e.errno not in (errno.EPIPE,):
-                raise
+        except _ssh_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
@@ -645,11 +630,28 @@ import weakref
 _subproc_weakrefs = set()
 
 def _close_ssh_proc(proc):
-    for func in [proc.stdin.close, proc.stdout.close, proc.wait]:
+    """Carefully close stdin/stdout and reap the SSH process.
+
+    If the pipes are already closed and/or the process has already been
+    wait()ed on, that's ok, and no error is raised.  The goal is to do our best
+    to clean up (whether or not a clean up was already tried).
+    """
+    dotted_names = ['stdin.close', 'stdout.close', 'wait']
+    for dotted_name in dotted_names:
+        attrs = dotted_name.split('.')
         try:
-            func()
+            obj = proc
+            for attr in attrs:
+                obj = getattr(obj, attr)
+        except AttributeError:
+            # It's ok for proc.stdin or proc.stdout to be None.
+            continue
+        try:
+            obj()
         except OSError:
-            pass
+            # It's ok for the pipe to already be closed, or the process to
+            # already be finished.
+            continue
 
 
 class SSHConnection(object):

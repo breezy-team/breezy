@@ -149,8 +149,10 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
             return None
         edited_content = msg_transport.get_bytes(basename)
         if edited_content == reference_content:
-            if not ui.ui_factory.get_boolean(
-                "Commit message was not edited, use anyway"):
+            if not ui.ui_factory.confirm_action(
+                "Commit message was not edited, use anyway",
+                "bzrlib.msgeditor.unchanged",
+                {}):
                 # Returning "" makes cmd_commit raise 'empty commit message
                 # specified' which is a reasonable error, given the user has
                 # rejected using the unedited template.

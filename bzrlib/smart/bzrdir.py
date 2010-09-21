@@ -23,6 +23,8 @@ from bzrlib.bzrdir import (
     BzrDirFormat,
     BzrDirMetaFormat1,
     BzrProber,
+    )
+from bzrlib.controldir import (
     network_format_registry,
     )
 from bzrlib.smart.request import (

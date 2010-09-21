@@ -29,6 +29,7 @@ from bzrlib import (
     bzrdir,
     config,
     errors,
+    symbol_versioning,
     tests,
     trace,
     transport,
@@ -622,8 +623,10 @@ class TestPullResult(tests.TestCase):
         # this usage of results is not recommended for new code (because it
         # doesn't describe very well what happened), but for api stability
         # it's still supported
-        a = "%d revisions pulled" % r
-        self.assertEqual(a, "10 revisions pulled")
+        self.assertEqual(self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            r.__int__),
+            10)
 
     def test_report_changed(self):
         r = _mod_branch.PullResult()
