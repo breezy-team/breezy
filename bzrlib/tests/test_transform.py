@@ -2362,7 +2362,7 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
         # parent
         self.assertLength(2, conflicts)
 
-    def test_resolve_orphan_non_versioned_file(self):
+    def test_non_versioned_file_create_conflict(self):
         wt, tt = self.make_tt_with_versioned_dir()
         dir_tid = tt.trans_id_tree_file_id('dir-id')
         tt.new_file('file', dir_tid, 'Contents')
@@ -2370,7 +2370,9 @@ class TestTransformMissingParent(tests.TestCaseWithTransport):
         tt.unversion_file(dir_tid)
         conflicts = resolve_conflicts(tt)
         # no conflicts or rather: orphaning 'file' resolve the 'dir' conflict
-        self.assertLength(0, conflicts)
+        self.assertLength(1, conflicts)
+        self.assertEqual(('deleting parent', 'Not deleting', 'new-1'),
+                         conflicts.pop())
 
 
 A_ENTRY = ('a-id', ('a', 'a'), True, (True, True),
@@ -3284,6 +3286,7 @@ class TestOrphan(tests.TestCaseWithTransport):
 
     def test_new_orphan_created(self):
         wt = self.make_branch_and_tree('.')
+        self._set_orphan_policy(wt, 'move')
         tt, orphan_tid = self._prepare_orphan(wt)
         remaining_conflicts = resolve_conflicts(tt)
         # Yeah for resolved conflicts !
@@ -3295,7 +3298,7 @@ class TestOrphan(tests.TestCaseWithTransport):
 
     def test_never_orphan(self):
         wt = self.make_branch_and_tree('.')
-        self._set_orphan_policy(wt, 'never')
+        self._set_orphan_policy(wt, 'conflict')
         tt, orphan_tid = self._prepare_orphan(wt)
         remaining_conflicts = resolve_conflicts(tt)
         self.assertLength(1, remaining_conflicts)
@@ -3326,9 +3329,9 @@ class TestOrphan(tests.TestCaseWithTransport):
             warnings.append(args[0] % args[1:])
         self.overrideAttr(trace, 'warning', warning)
         remaining_conflicts = resolve_conflicts(tt)
-        # We fallback to the default policy which resolve the conflict by
-        # creating an orphan
-        self.assertLength(0, remaining_conflicts)
-        self.assertLength(2, warnings)
-        self.assertStartsWith( warnings[0], 'donttouchmypreciouuus')
-        self.assertStartsWith(warnings[1], 'dir/foo has been orphaned')
+        # We fallback to the default policy which create a conflict
+        self.assertLength(1, remaining_conflicts)
+        self.assertEqual(('deleting parent', 'Not deleting', 'new-1'),
+                         remaining_conflicts.pop())
+        self.assertLength(1, warnings)
+        self.assertStartsWith(warnings[0], 'donttouchmypreciouuus')

@@ -91,6 +91,8 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
                 'WorkingTreeFormat2 does not support missing parent conflicts')
         trunk = self.make_branch_deleting_dir('trunk')
         work = trunk.bzrdir.sprout('work', revision_id='2').open_workingtree()
+        work.branch.get_config().set_user_option(
+            'bzrlib.transform.orphan_policy', 'move')
         # Add some unversioned files in dir
         self.build_tree(['work/dir/foo',
                          'work/dir/subdir/',

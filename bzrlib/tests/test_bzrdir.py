@@ -791,6 +791,9 @@ class ChrootedTests(TestCaseWithTransport):
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
+        # The following line force the orhaning to reveal bug #634470
+        tree.branch.get_config().set_user_option(
+            'bzrlib.transform.orphan_policy', 'move')
         tree.bzrdir.destroy_workingtree()
         # FIXME: subtree/.bzr is left here which allows the test to pass (or
         # fail :-( ) -- vila 20100909

@@ -1412,11 +1412,11 @@ def refuse_orphan(tt, orphan_id, parent_id):
 
 
 orphaning_registry = registry.Registry()
-orphaning_registry.register('always', move_orphan,
-                            'Move orphans into the bzr-orphans directory.')
-orphaning_registry._set_default_key('always')
-orphaning_registry.register('never', refuse_orphan,
+orphaning_registry.register('conflict', refuse_orphan,
                             'Never create orphans.')
+orphaning_registry.register('move', move_orphan,
+                            'Move orphans into the bzr-orphans directory.')
+orphaning_registry._set_default_key('conflict')
 
 
 class TreeTransform(DiskTreeTransform):

@@ -27,20 +27,16 @@ New Features
 Bug Fixes
 *********
 
-* Orphan creation (when a directory is deleted) is now controlled by the
+* It's now possible to request orphan creation when a versioned directory
+  should be deleted (when doing a pull, a merge or switch) via the
   ``bzrlib.transform.orphan_policy`` configuration variable. Acceptable
-  values are ``never`` (the previous behaviour) or ``always`` to create
-  orphans when a versioned directory is deleted and contains unversioned
-  files (the orphans). (Vincent Ladeuil, #323111)
+  values are ``conflict`` (the default behaviour that refuse to delete the
+  directory) or ``move`` to create orphans (the unversioned files present
+  in the directory). The orphans will name ``<file>.~#~``.
+  (Vincent Ladeuil, #323111)
 
 Improvements
 ************
-
-* When a bzr command remove a previously versioned directory, all
-  unversioned files are moved to a 'bzr-orphans' directory at the working
-  tree root with backup names (<file>.~#~). This was previously creating
-  spurious conflicts during merge, pull or switch operations.
-  (Vincent Ladeuil, #323111)
 
 Documentation
 *************

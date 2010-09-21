@@ -64,12 +64,14 @@ Performance improvements
 Improved conflict handling
 **************************
 
-* Deleting a versioned directory containing unversioned files will no
-  longer create a conflict. Instead, the unversioned files will be moved
-  into a 'bzr-orphans' directory at the root of the working tree.  This is
-  controlled by the ``bzrlib.transform.orphan_policy`` configuration
-  variable with a value of ``always`` (the default). The previous behaviour
-  can be restored by using the ``never`` value.  (Vincent Ladeuil, #323111)
+* ``pull``, ``merge`` or ``switch`` can lead to conflicts when deleting a
+  versioned directory contains unversioned files. This can now be avoided
+  by setting the ``bzrlib.transform.orphan_policy`` configuration variable
+  with a value of ``move``. In this case the unversioned files are moved to
+  a ``bzr-orphans`` directory at the root of the working tree. The default
+  behaviour is specified (if needed) by setting the variable to
+  ``conflict``.
+  (Vincent Ladeuil, #323111)
 
 Documentation
 *************
