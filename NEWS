@@ -311,6 +311,9 @@ Bug Fixes
   be available from ``bzrlib.tests.*``. They used to be, but were
   accidentally removed. (John Arbash Meinel, #627438)
 
+* Treat all IO, OS, and socket errors consistently when establishing
+  SSH/SFTP connections via a subprocess.  (Andrew Bennetts)
+
 * ``Transport.stat`` on a symlink, including a transport pointing directly
   to a symlink, now returns information about the symlink.
   (Martin Pool)
