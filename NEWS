@@ -13,6 +13,10 @@ bzr 2.3b2
 Compatibility Breaks
 ********************
 
+* ``BzrDir.generate_backup_name`` has been deprecated and replaced by a
+  private method. ``osutils.available_backup_name`` provides an extensible
+  replacement. (Vincent Ladeuil)
+
 New Features
 ************
 
@@ -83,10 +87,6 @@ Compatibility Breaks
 * ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
   permissions as ``.bzr`` directory on a POSIX OS.
   (Parth Malwankar, #262450)
-
-* ``BzrDir.generate_backup_name`` has been deprecated and replaced by a
-  private method. ``osutils.available_backup_name`` provides an extensible
-  replacement. (Vincent Ladeuil)
 
 * ``bzrlib.transform.TreeTransformBase.final_kind``,
   ``bzrlib.transform.TreeTransform.tree_kind`` and
