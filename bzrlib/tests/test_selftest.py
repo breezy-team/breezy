@@ -78,18 +78,6 @@ def _test_ids(test_suite):
     return [t.id() for t in tests.iter_suite_tests(test_suite)]
 
 
-class SelftestTests(tests.TestCase):
-
-    def test_import_tests(self):
-        mod = TestUtil._load_module_by_name('bzrlib.tests.test_selftest')
-        self.assertEqual(mod.SelftestTests, SelftestTests)
-
-    def test_import_test_failure(self):
-        self.assertRaises(ImportError,
-                          TestUtil._load_module_by_name,
-                          'bzrlib.no-name-yet')
-
-
 class MetaTestLog(tests.TestCase):
 
     def test_logging(self):

@@ -8,7 +8,7 @@ Bazaar Release Notes
 bzr 2.3b2
 #########
 
-:2.3.b2: NOT RELEASED YET
+:2.3b2: NOT RELEASED YET
 
 Compatibility Breaks
 ********************
@@ -27,6 +27,10 @@ Documentation
 
 API Changes
 ***********
+
+* ``known_hooks_key_to_parent_and_attribute`` in ``bzrlib.hooks`` has been
+  deprecated in favour of ``known_hooks.key_to_parent_and_attribute`` in
+  the same module.  (Andrew Bennetts)
 
 Internals
 *********

@@ -71,6 +71,7 @@ from bzrlib import (
     lock as _mod_lock,
     memorytree,
     osutils,
+    pyutils,
     ui,
     urlutils,
     registry,
@@ -861,14 +862,14 @@ class TestCase(testtools.TestCase):
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
+        known_hooks = hooks.known_hooks
         self._preserved_hooks = {}
-        for key, factory in hooks.known_hooks.items():
-            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
-            current_hooks = hooks.known_hooks_key_to_object(key)
+        for key, (parent, name) in known_hooks.iter_parent_objects():
+            current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
         self.addCleanup(self._restoreHooks)
-        for key, factory in hooks.known_hooks.items():
-            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
+        for key, (parent, name) in known_hooks.iter_parent_objects():
+            factory = known_hooks.get(key)
             setattr(parent, name, factory())
         # this hook should always be installed
         request._install_hook()
@@ -3729,6 +3730,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_permissions',
         'bzrlib.tests.test_plugins',
         'bzrlib.tests.test_progress',
+        'bzrlib.tests.test_pyutils',
         'bzrlib.tests.test_read_bundle',
         'bzrlib.tests.test_reconcile',
         'bzrlib.tests.test_reconfigure',
@@ -4054,7 +4056,7 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
         the module is available.
     """
 
-    py_module = __import__(py_module_name, {}, {}, ['NO_SUCH_ATTRIB'])
+    py_module = pyutils.get_named_object(py_module_name)
     scenarios = [
         ('python', {'module': py_module}),
     ]
@@ -4213,9 +4215,8 @@ class _CompatabilityThunkFeature(Feature):
             symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
             # Import the new feature and use it as a replacement for the
             # deprecated one.
-            mod = __import__(self._replacement_module, {}, {},
-                             [self._replacement_name])
-            self._feature = getattr(mod, self._replacement_name)
+            self._feature = pyutils.get_named_object(
+                self._replacement_module, self._replacement_name)
 
     def _probe(self):
         self._ensure()
