@@ -3103,8 +3103,12 @@ class PullResult(_Result):
     :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: pull used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
@@ -3135,8 +3139,12 @@ class BranchPushResult(_Result):
         target, otherwise it will be None.
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: push used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
