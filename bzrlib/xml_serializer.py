@@ -33,6 +33,8 @@ try:
         from xml.etree.cElementTree import (ElementTree, SubElement, Element,
             XMLTreeBuilder, fromstring, tostring)
         import xml.etree as elementtree
+        # Also import ElementTree module so monkey-patching below always works
+        import xml.etree.ElementTree
     except ImportError:
         from cElementTree import (ElementTree, SubElement, Element,
                                   XMLTreeBuilder, fromstring, tostring)
