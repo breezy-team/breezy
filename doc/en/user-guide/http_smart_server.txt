@@ -260,6 +260,8 @@ standard`_ for further information.
 .. _WSGI standard: http://www.python.org/dev/peps/pep-0333/
 
 
+.. _http_smart_server_write_access:
+
 Pushing over the http smart server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
