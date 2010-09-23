@@ -1267,7 +1267,7 @@ class TestRunner(tests.TestCase):
         result = self.run_test_runner(tests.TextTestRunner(stream=out),
             FailureWithUnicode("test_log_unicode"))
         self.assertContainsRe(out.getvalue(),
-            "Text attachment: log\n
+            "Text attachment: log\n"
             "-+\n"
             "\d+\.\d+  \\\\u2606\n"
             "-+\n")
