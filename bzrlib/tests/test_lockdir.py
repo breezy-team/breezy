@@ -39,7 +39,7 @@ from bzrlib.errors import (
     LockNotHeld,
     )
 from bzrlib.lockdir import LockDir
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (features, TestCaseWithTransport)
 from bzrlib.trace import note
 
 # These tests sometimes use threads to test the behaviour of lock files with
@@ -669,6 +669,7 @@ class TestLockDir(TestCaseWithTransport):
         ld1.unlock()
 
     def test_lock_permission(self):
+        self.requireFeature(features.not_running_as_root)
         if not osutils.supports_posix_readonly():
             raise tests.TestSkipped('Cannot induce a permission failure')
         ld1 = self.get_lock()

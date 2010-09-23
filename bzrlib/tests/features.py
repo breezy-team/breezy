@@ -14,11 +14,27 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import os
 
 from bzrlib import tests
 from bzrlib.symbol_versioning import deprecated_in
 
 
+class _NotRunningAsRoot(tests.Feature):
+
+    def _probe(self):
+        try:
+            uid = os.getuid()
+        except AttributeError:
+            # If there is no uid, chances are there is no root either
+            return True
+        return uid != 0
+
+    def feature_name(self):
+        return 'Not running as root'
+
+
+not_running_as_root = _NotRunningAsRoot()
 apport = tests.ModuleAvailableFeature('apport')
 ApportFeature = tests._CompatabilityThunkFeature('bzrlib.tests.features',
     'ApportFeature', 'bzrlib.tests.features.apport', deprecated_in((2,1,0)))
