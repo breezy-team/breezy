@@ -467,6 +467,39 @@ Testing
   (Andrew Bennetts, #625574)
 
 
+bzr 2.2.2
+#########
+
+:2.2.2: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+* Fix tests that failed when run under ``LANG=C``.
+  (Andrew Bennetts, #632387)
+
+
 bzr 2.2.1
 #########
 
