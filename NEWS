@@ -34,6 +34,9 @@ Internals
 Testing
 *******
 
+* Fix tests that failed when run under ``LANG=C``.
+  (Andrew Bennetts, #632387)
+
 
 bzr 2.2.1
 #########
