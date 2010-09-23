@@ -19,6 +19,10 @@ New Features
 Bug Fixes
 *********
 
+* Skip tests that needs a bzr source tree when there isn't one. This is
+  needed to succesfully run the test suite for installed versions.
+  (Vincent Ladeuil, #644855).
+
 Improvements
 ************
 
