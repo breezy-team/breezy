@@ -19,6 +19,9 @@ New Features
 Bug Fixes
 *********
 
+* Skip the tests that requires respecting the chmod bits when running as root.
+  (Vincent Ladeuil, #646133)
+
 Improvements
 ************
 

@@ -609,12 +609,13 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
                 l.attempt_lock()
         test = TestDanglingLock('test_function')
         result = test.run()
+        total_failures = result.errors + result.failures
         if self._lock_check_thorough:
-            self.assertEqual(1, len(result.errors))
+            self.assertEqual(1, len(total_failures))
         else:
             # When _lock_check_thorough is disabled, then we don't trigger a
             # failure
-            self.assertEqual(0, len(result.errors))
+            self.assertEqual(0, len(total_failures))
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
