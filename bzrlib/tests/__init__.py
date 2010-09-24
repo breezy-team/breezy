@@ -36,8 +36,8 @@ import doctest
 import errno
 import itertools
 import logging
-import math
 import os
+import platform
 import pprint
 import random
 import re
@@ -71,7 +71,6 @@ from bzrlib import (
     lock as _mod_lock,
     memorytree,
     osutils,
-    progress,
     ui,
     urlutils,
     registry,
@@ -194,6 +193,8 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.count = 0
         self._overall_start_time = time.time()
         self._strict = strict
+        self._first_thread_leaker_id = None
+        self._tests_leaking_threads_count = 0
 
     def stopTestRun(self):
         run = self.testsRun
@@ -238,15 +239,15 @@ class ExtendedTestResult(testtools.TextTestResult):
             ok = self.wasStrictlySuccessful()
         else:
             ok = self.wasSuccessful()
-        if TestCase._first_thread_leaker_id:
+        if self._first_thread_leaker_id:
             self.stream.write(
                 '%s is leaking threads among %d leaking tests.\n' % (
-                TestCase._first_thread_leaker_id,
-                TestCase._leaking_threads_tests))
+                self._first_thread_leaker_id,
+                self._tests_leaking_threads_count))
             # We don't report the main thread as an active one.
             self.stream.write(
                 '%d non-main threads were left active in the end.\n'
-                % (TestCase._active_threads - 1))
+                % (len(self._active_threads) - 1))
 
     def getDescription(self, test):
         return test.id()
@@ -283,39 +284,38 @@ class ExtendedTestResult(testtools.TextTestResult):
         super(ExtendedTestResult, self).startTest(test)
         if self.count == 0:
             self.startTests()
+        self.count += 1
         self.report_test_start(test)
         test.number = self.count
         self._recordTestStartTime()
+        # Only check for thread leaks if the test case supports cleanups
+        addCleanup = getattr(test, "addCleanup", None)
+        if addCleanup is not None:
+            addCleanup(self._check_leaked_threads, test)
 
     def startTests(self):
-        import platform
-        if getattr(sys, 'frozen', None) is None:
-            bzr_path = osutils.realpath(sys.argv[0])
-        else:
-            bzr_path = sys.executable
-        self.stream.write(
-            'bzr selftest: %s\n' % (bzr_path,))
-        self.stream.write(
-            '   %s\n' % (
-                    bzrlib.__path__[0],))
-        self.stream.write(
-            '   bzr-%s python-%s %s\n' % (
-                    bzrlib.version_string,
-                    bzrlib._format_version_tuple(sys.version_info),
-                    platform.platform(aliased=1),
-                    ))
-        self.stream.write('\n')
+        self.report_tests_starting()
+        self._active_threads = threading.enumerate()
+
+    def _check_leaked_threads(self, test):
+        """See if any threads have leaked since last call
+
+        A sample of live threads is stored in the _active_threads attribute,
+        when this method runs it compares the current live threads and any not
+        in the previous sample are treated as having leaked.
+        """
+        now_active_threads = set(threading.enumerate())
+        threads_leaked = now_active_threads.difference(self._active_threads)
+        if threads_leaked:
+            self._report_thread_leak(test, threads_leaked, now_active_threads)
+            self._tests_leaking_threads_count += 1
+            if self._first_thread_leaker_id is None:
+                self._first_thread_leaker_id = test.id()
+            self._active_threads = now_active_threads
 
     def _recordTestStartTime(self):
         """Record that a test has started."""
         self._start_time = time.time()
-
-    def _cleanupLogFile(self, test):
-        # We can only do this if we have one of our TestCases, not if
-        # we have a doctest.
-        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
-        if setKeepLogfile is not None:
-            setKeepLogfile()
 
     def addError(self, test, err):
         """Tell result that test finished with an error.
@@ -329,7 +329,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_error(test, err)
         if self.stop_early:
             self.stop()
-        self._cleanupLogFile(test)
 
     def addFailure(self, test, err):
         """Tell result that test failed.
@@ -343,7 +342,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_failure(test, err)
         if self.stop_early:
             self.stop()
-        self._cleanupLogFile(test)
 
     def addSuccess(self, test, details=None):
         """Tell result that test completed successfully.
@@ -357,7 +355,6 @@ class ExtendedTestResult(testtools.TextTestResult):
                     self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
-        self._cleanupLogFile(test)
         super(ExtendedTestResult, self).addSuccess(test)
         test._log_contents = ''
 
@@ -401,8 +398,37 @@ class ExtendedTestResult(testtools.TextTestResult):
         else:
             raise errors.BzrError("Unknown whence %r" % whence)
 
-    def report_cleaning_up(self):
-        pass
+    def report_tests_starting(self):
+        """Display information before the test run begins"""
+        if getattr(sys, 'frozen', None) is None:
+            bzr_path = osutils.realpath(sys.argv[0])
+        else:
+            bzr_path = sys.executable
+        self.stream.write(
+            'bzr selftest: %s\n' % (bzr_path,))
+        self.stream.write(
+            '   %s\n' % (
+                    bzrlib.__path__[0],))
+        self.stream.write(
+            '   bzr-%s python-%s %s\n' % (
+                    bzrlib.version_string,
+                    bzrlib._format_version_tuple(sys.version_info),
+                    platform.platform(aliased=1),
+                    ))
+        self.stream.write('\n')
+
+    def report_test_start(self, test):
+        """Display information on the test just about to be run"""
+
+    def _report_thread_leak(self, test, leaked_threads, active_threads):
+        """Display information on a test that leaked one or more threads"""
+        # GZ 2010-09-09: A leak summary reported separately from the general
+        #                thread debugging would be nice. Tests under subunit
+        #                need something not using stream, perhaps adding a
+        #                testtools details object would be fitting.
+        if 'threads' in selftest_debug_flags:
+            self.stream.write('%s is leaking, active is now %d\n' %
+                (test.id(), len(active_threads)))
 
     def startTestRun(self):
         self.startTime = time.time()
@@ -445,14 +471,9 @@ class TextTestResult(ExtendedTestResult):
         self.pb.finished()
         super(TextTestResult, self).stopTestRun()
 
-    def startTestRun(self):
-        super(TextTestResult, self).startTestRun()
+    def report_tests_starting(self):
+        super(TextTestResult, self).report_tests_starting()
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
-
-    def printErrors(self):
-        # clear the pb to make room for the error listing
-        self.pb.clear()
-        super(TextTestResult, self).printErrors()
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -481,7 +502,6 @@ class TextTestResult(ExtendedTestResult):
         return a
 
     def report_test_start(self, test):
-        self.count += 1
         self.pb.update(
                 self._progress_prefix_text()
                 + ' '
@@ -514,9 +534,6 @@ class TextTestResult(ExtendedTestResult):
     def report_unsupported(self, test, feature):
         """test cannot be run because feature is missing."""
 
-    def report_cleaning_up(self):
-        self.pb.update('Cleaning up')
-
 
 class VerboseTestResult(ExtendedTestResult):
     """Produce long output, with one line per test run plus times"""
@@ -529,12 +546,11 @@ class VerboseTestResult(ExtendedTestResult):
             result = a_string
         return result.ljust(final_width)
 
-    def startTestRun(self):
-        super(VerboseTestResult, self).startTestRun()
+    def report_tests_starting(self):
         self.stream.write('running %d tests...\n' % self.num_tests)
+        super(VerboseTestResult, self).report_tests_starting()
 
     def report_test_start(self, test):
-        self.count += 1
         name = self._shortened_test_description(test)
         width = osutils.terminal_width()
         if width is not None:
@@ -790,21 +806,17 @@ class TestCase(testtools.TestCase):
     routine, and to build and check bzr trees.
 
     In addition to the usual method of overriding tearDown(), this class also
-    allows subclasses to register functions into the _cleanups list, which is
+    allows subclasses to register cleanup functions via addCleanup, which are
     run in order as the object is torn down.  It's less likely this will be
     accidentally overlooked.
     """
 
-    _active_threads = None
-    _leaking_threads_tests = 0
-    _first_thread_leaker_id = None
     _log_file = None
     # record lsprof data when performing benchmark calls.
     _gather_lsprof_in_benchmarks = False
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
-        self._cleanups = []
         self._directory_isolation = True
         self.exception_handlers.insert(0,
             (UnavailableFeature, self._do_unsupported_or_skip))
@@ -828,30 +840,11 @@ class TestCase(testtools.TestCase):
         self._track_transports()
         self._track_locks()
         self._clear_debug_flags()
-        TestCase._active_threads = threading.activeCount()
-        self.addCleanup(self._check_leaked_threads)
 
     def debug(self):
         # debug a frame up.
         import pdb
         pdb.Pdb().set_trace(sys._getframe().f_back)
-
-    def _check_leaked_threads(self):
-        active = threading.activeCount()
-        leaked_threads = active - TestCase._active_threads
-        TestCase._active_threads = active
-        # If some tests make the number of threads *decrease*, we'll consider
-        # that they are just observing old threads dieing, not agressively kill
-        # random threads. So we don't report these tests as leaking. The risk
-        # is that we have false positives that way (the test see 2 threads
-        # going away but leak one) but it seems less likely than the actual
-        # false positives (the test see threads going away and does not leak).
-        if leaked_threads > 0:
-            if 'threads' in selftest_debug_flags:
-                print '%s is leaking, active is now %d' % (self.id(), active)
-            TestCase._leaking_threads_tests += 1
-            if TestCase._first_thread_leaker_id is None:
-                TestCase._first_thread_leaker_id = self.id()
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -1486,14 +1479,6 @@ class TestCase(testtools.TestCase):
         issues rather than papering over the problem by calling this function.
         """
         debug.debug_flags.discard('strict_locks')
-
-    def addCleanup(self, callable, *args, **kwargs):
-        """Arrange to run a callable when this case is torn down.
-
-        Callables are run in the reverse of the order they are registered,
-        ie last-in first-out.
-        """
-        self._cleanups.append((callable, args, kwargs))
 
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
@@ -2970,6 +2955,9 @@ parallel_registry = registry.Registry()
 
 
 def fork_decorator(suite):
+    if getattr(os, "fork", None) is None:
+        raise errors.BzrCommandError("platform does not support fork,"
+            " try --parallel=subprocess instead.")
     concurrency = osutils.local_concurrency()
     if concurrency == 1:
         return suite
@@ -4028,6 +4016,18 @@ def clone_test(test, new_id):
     """
     new_test = copy.copy(test)
     new_test.id = lambda: new_id
+    # XXX: Workaround <https://bugs.launchpad.net/testtools/+bug/637725>, which
+    # causes cloned tests to share the 'details' dict.  This makes it hard to
+    # read the test output for parameterized tests, because tracebacks will be
+    # associated with irrelevant tests.
+    try:
+        details = new_test._TestCase__details
+    except AttributeError:
+        # must be a different version of testtools than expected.  Do nothing.
+        pass
+    else:
+        # Reset the '__details' dict.
+        new_test._TestCase__details = {}
     return new_test
 
 

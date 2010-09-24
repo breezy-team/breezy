@@ -60,8 +60,33 @@ Performance improvements
   content faster than seeking and reading content from another tree,
   especially in cold-cache situations. (John Arbash Meinel, #607298)
 
+New revision specifiers
+***********************
+
+* The ``mainline`` revision specifier has been added.  It takes another revision
+  spec as its input, and selects the revision which merged that revision into
+  the mainline.
+  
+  For example, ``bzr log -vp -r mainline:1.2.3`` will show the log of the
+  revision that merged revision 1.2.3 into mainline, along with its status
+  output and diff.  (Aaron Bentley)
+
+* The ``annotate`` revision specifier has been added.  It takes a path and a
+  line as its input (in the form ``path:line``), and selects the revision which
+  introduced that line of that file.
+
+  For example: ``bzr log -vp -r annotate:bzrlib/transform.py:500`` will select
+  the revision that introduced line 500 of transform.py, and display its log,
+  status output and diff.
+
+  It can be combined with ``mainline`` to select the revision that landed this
+  line into trunk, like so: 
+  ``bzr log -vp -r mainline:annotate:bzrlib/transform.py:500``
+  (Aaron Bentley)
+
 Documentation
 *************
+
 * A beta version of the documentation is now available in GNU TexInfo
   format, used by emacs and the standalone ``info`` reader.
   (Vincent Ladeuil, #219334)
