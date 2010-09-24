@@ -18,6 +18,8 @@
 import errno
 import re
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     bencode,
     errors,
@@ -26,6 +28,7 @@ from bzrlib import (
     pack,
     transform,
 )
+""")
 
 
 class ShelfCreator(object):
