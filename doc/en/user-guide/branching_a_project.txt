@@ -42,8 +42,8 @@ To address a path relative to your home directory on the server, use a
 tilde like so: ``sftp://example.com/~/public_html`` should map to
 ``public_html`` within your home directory.
 
-.. note:: Access over HTTP or HTTPS is read-only by default. See
-   :ref:`http_smart_server_write_access` for details on configuring
+.. note:: Access over HTTP or HTTPS is read-only by default.
+   See :ref:`http_smart_server_write_access` for details on configuring
    read-write access.
 
 A reminder about shared repositories
