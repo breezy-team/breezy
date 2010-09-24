@@ -697,7 +697,7 @@ class TestRevisionSpec_annotate(TestRevisionSpec):
             r"Requested revision: \'annotate:annotate-tree/file1:3\' does not"
             " exist in branch: .*\nLine 3 has not been committed.")
 
-    def test_non_existant_line(self):
+    def test_non_existent_line(self):
         spec = RevisionSpec.from_string('annotate:annotate-tree/file1:4')
         e = self.assertRaises(errors.InvalidRevisionSpec,
                               spec.as_revision_id, self.tree.branch)
