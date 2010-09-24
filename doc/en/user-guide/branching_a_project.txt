@@ -27,7 +27,7 @@ As indicated above, branches are identified using URLs with the
 prefix indicating the transfer technology. If no prefix is given,
 normal filenames are assumed. For a complete list of supported
 protocols, see the ``urlspec`` online help topic or the
-`URL Identifiers <../user-reference/bzr_man.html#url-identifiers>`_
+`URL Identifiers <../user-reference/index.html#url-identifiers>`_
 section of the Bazaar User Reference.
 
 A reminder about shared repositories
