@@ -402,6 +402,30 @@ category so that whole bugfix releases can more easily be approved.
 **After making a bzr stable-release release, nominate the most serious bug
 for the appropriate Ubuntu release and subscribe the `ubuntu-sru` team.**
 
+This requires a couple of tricks (please reconsider and tweak as things
+evolves from one release to the other):
+
+ * create a distro task with the ``Also affects distribution`` button and
+   select ``bzr (Ubuntu)``.
+
+ * change the *URL* to point to ``ubuntu/+source/bzr`` instead of ``bzr``
+   (this is needed if you create the distro task but not if it exists
+   already). You should now be able to click the ``Nominate for release``
+   button and select the right Ubuntu release. As of September 2010, this
+   means:
+
+  * ``maverick`` for the 2.2 series,
+  * ``lucid`` for the 2.1 series,
+  * ``karmic`` for the 2.0 series.
+
+ * Subscribe the ``~ubuntu-sru`` team to the bug.
+
+ * Add a comment targeted to ``~ubuntu-sru`` explaining the expectations
+   (we are targeting running the test suite during the build which, as of
+   September 2010, fails for known reasons that are currently addressed).
+   Search for bugs tagged with ``sru`` for examples and don't forget to tag
+   the bug you selected.
+
 
 See also
 --------
