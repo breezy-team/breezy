@@ -200,12 +200,21 @@ class TestRemove(TestCaseWithTransport):
         self.run_bzr('remove --keep a', error_regexes=["a is not versioned."])
         self.assertFilesUnversioned(files)
 
+    def test_remove_no_backup_unversioned_files(self):
+        self.build_tree(files)
+        tree = self.make_branch_and_tree('.')
+        self.run_bzr(['remove', '--no-backup'] + list(files),
+                     error_regexes=["deleted a", "deleted b",
+                                    "removed b/c", "deleted d"])
+        self.assertFilesDeleted(files)
+
     def test_remove_force_unversioned_files(self):
         self.build_tree(files)
         tree = self.make_branch_and_tree('.')
         self.run_bzr(['remove', '--force'] + list(files),
-                     error_regexes=["deleted a", "deleted b",
-                                    "removed b/c", "deleted d"])
+             error_regexes=["deleted a", "deleted b",
+                "removed b/c", "deleted d",
+                "The --force option is deprecated, rather use --no-backup."])
         self.assertFilesDeleted(files)
 
     def test_remove_deleted_files(self):
