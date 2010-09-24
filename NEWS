@@ -18,9 +18,14 @@ New Features
 
 * Add ``mainline`` revision specifier, which selects the revision that
   merged a specified revision into the mainline.  (Aaron Bentley)
-  
+
 * Add ``annotate`` revision specifier, which selects the revision that
   introduced a specified line of a file.  (Aaron Bentley)
+
+* ``bzr status`` now displays a summary of existing shelves after
+  the other status information. This is done using a ``post_status``
+  hook.
+  (Parth Malwankar, #403687)
 
 Bug Fixes
 *********
