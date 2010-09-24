@@ -16,6 +16,12 @@ Compatibility Breaks
 New Features
 ************
 
+* Add ``mainline`` revision specifier, which selects the revision that
+  merged a specified revision into the mainline.  (Aaron Bentley)
+  
+* Add ``annotate`` revision specifier, which selects the revision that
+  introduced a specified line of a file.  (Aaron Bentley)
+
 Bug Fixes
 *********
 
