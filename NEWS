@@ -33,6 +33,11 @@ Bug Fixes
 Improvements
 ************
 
+* ``bzr remove`` now takes a ``--no-backup`` option for when you don't want it
+  to backup anything, just delete it. This option used to be called ``--force``
+  which is now deprecated.
+  (Marius Kruger, #400554)
+
 Documentation
 *************
 
