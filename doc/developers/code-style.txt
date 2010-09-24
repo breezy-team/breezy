@@ -78,9 +78,9 @@ Python versions
 ===============
 
 Bazaar supports Python from 2.4 through 2.6, and in the future we want to
-support Python 3.0.  Avoid using language features added in 2.5 or 2.6, or
-features deprecated in Python 3.0.  (You can check v3 compatibility using
-the ``-3`` option of Python2.6.)
+support Python 2.7 and 3.0.  Avoid using language features added in 2.5,
+2.6 or 2.7, or features deprecated in Python 3.0.  (You can check v3
+compatibility using the ``-3`` option of Python2.6.)
 
 Specifically:
 
