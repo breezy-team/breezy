@@ -67,7 +67,7 @@ from bzrlib.tests import (
     test_sftp_transport,
     TestUtil,
     )
-from bzrlib.trace import note
+from bzrlib.trace import note, mutter
 from bzrlib.transport import memory
 from bzrlib.version import _get_bzr_source_tree
 
@@ -1654,6 +1654,101 @@ class TestTestCase(tests.TestCase):
         test = Test('test_value')
         test.run(unittest.TestResult())
         self.assertEqual('original', obj.test_attr)
+
+
+class TestTestCaseLogDetails(tests.TestCase):
+
+    def _run_test(self, a_test):
+        result = testtools.TestResult()
+        a_test.run(result)
+        return result
+
+    def test_fail_has_log(self):
+        class Test(tests.TestCase):
+            def test_fail(self):
+                mutter('this was a failing test')
+                self.fail('this test will fail')
+        result = self._run_test(Test('test_fail'))
+        self.assertEqual(1, len(result.failures))
+        result_content = result.failures[0][1]
+        self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content, 'this was a failing test')
+
+    def test_error_has_log(self):
+        class Test(tests.TestCase):
+            def test_error(self):
+                mutter('this test errored')
+                raise RuntimeError('gotcha')
+        result = self._run_test(Test('test_error'))
+        self.assertEqual(1, len(result.errors))
+        result_content = result.errors[0][1]
+        self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content, 'this test errored')
+
+    def test_skip_has_no_log(self):
+        class Test(tests.TestCase):
+            def test_skip(self):
+                mutter('this test will be skipped')
+                raise tests.TestSkipped('reason')
+        result = self._run_test(Test('test_skip'))
+        self.assertEqual(['reason'], result.skip_reasons.keys())
+        skips = result.skip_reasons['reason']
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        self.assertFalse('log' in test.getDetails())
+
+    def test_missing_feature_has_no_log(self):
+        class MissingFeature(tests.Feature):
+            def _probe(self):
+                return False
+        feature = MissingFeature()
+        class Test(tests.TestCase):
+            def test_missing_feature(self):
+                mutter('missing the feature')
+                self.requireFeature(feature)
+        # testtools doesn't know about addNotSupported, so it just gets
+        # considered as a skip
+        result = self._run_test(Test('test_missing_feature'))
+        self.assertEqual([feature], result.skip_reasons.keys())
+        skips = result.skip_reasons[feature]
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        self.assertFalse('log' in test.getDetails())
+
+    def test_xfail_has_no_log(self):
+        class Test(tests.TestCase):
+            def test_xfail(self):
+                mutter('test with expected failure')
+                self.knownFailure('this_fails')
+        result = self._run_test(Test('test_xfail'))
+        self.assertEqual(1, len(result.expectedFailures))
+        result_content = result.expectedFailures[0][1]
+        self.assertNotContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content, 'test with expected failure')
+
+    def test_unexpected_success_has_log(self):
+        class Test(tests.TestCase):
+            def test_unexpected_success(self):
+                mutter('test with unexpected success')
+                self.expectFailure('should_fail', lambda: None)
+        result = self._run_test(Test('test_unexpected_success'))
+        self.assertEqual(1, len(result.unexpectedSuccesses))
+        # Inconsistency, unexpectedSuccesses is a list of tests,
+        # expectedFailures is a list of reasons?
+        test = result.unexpectedSuccesses[0]
+        details = test.getDetails()
+        self.assertTrue('log' in details)
+
+    # def test_success_has_no_log(self):
+    #     # TODO: We need to test the Subunit implementation here
+    #     class Test(tests.TestCase):
+    #         def test_success(self):
+    #             mutter('this test succeeded')
+    #     result = self._run_test(Test('test_success'))
+    #     self.assertEqual(1, len(result.errors))
+    #     result_content = result.errors[0][1]
+    #     self.assertContainsRe(result_content, 'Text attachment: log')
+    #     self.assertContainsRe(result_content, 'this test errored')
 
 
 # NB: Don't delete this; it's not actually from 0.11!

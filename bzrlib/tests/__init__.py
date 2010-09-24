@@ -1637,13 +1637,24 @@ class TestCase(testtools.TestCase):
             self._do_skip(result, reason)
 
     @staticmethod
-    def _report_skip(self, result, e):
-        # We override the default _report_skip, just so we can disable
-        # including the log details, and then thunk to the original code.
-        # We have to do it before that code runs, because the log gets turned
-        # into 'reason' otherwise.
+    def _report_skip(self, result, err):
+        """Override the default _report_skip.
+
+        We want to strip the 'log' detail. If we waint until _do_skip, it has
+        already been formatted into the 'reason' string, and we can't pull it
+        out again.
+        """
         self._suppress_log()
-        super(TestCase, self)._report_skip(self, result, e)
+        super(TestCase, self)._report_skip(self, result, err)
+
+    @staticmethod
+    def _report_expected_failure(self, result, err):
+        """Strip the log.
+
+        See _report_skip for motivation.
+        """
+        self._suppress_log()
+        super(TestCase, self)._report_expected_failure(self, result, err)
 
     @staticmethod
     def _do_unsupported_or_skip(self, result, e):
