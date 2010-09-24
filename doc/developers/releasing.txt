@@ -378,6 +378,31 @@ between beta, candidate and final releases, but they should be
 documented. If the instructions aren't clear enough, please fix them.
 
 
+Getting the release into Ubuntu
+-------------------------------
+
+(Feel free to propose or add new sections here about what we should do to
+get bzr into other places.)
+
+For the currently-under-development release of Ubuntu, no special action
+is needed: the release should be picked by Debian and synced from there into
+Ubuntu.
+
+Releases off stable bzr branches should go in to the ``-updates`` of the
+Ubuntu release that originally contained that branch.  (Ubuntu Lucid had
+bzr 2.2.0, so should get every 2.2.x update.)  This means going through
+the `SRU (Stable Release Updates)
+<https://wiki.ubuntu.com/StableReleaseUpdates>`__ process.   
+
+As of September 2010, bzr has applied to the technical board to be added
+to the `MicroReleaseExceptions
+<https://wiki.ubuntu.com/StableReleaseUpdates/MicroReleaseExceptions>`__
+category so that whole bugfix releases can more easily be approved.
+
+**After making a bzr stable-release release, nominate the most serious bug
+for the appropriate Ubuntu release and subscribe the `ubuntu-sru` team.**
+
+
 See also
 --------
 

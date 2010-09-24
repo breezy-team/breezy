@@ -471,8 +471,8 @@ class TextTestResult(ExtendedTestResult):
         self.pb.finished()
         super(TextTestResult, self).stopTestRun()
 
-    def startTestRun(self):
-        super(TextTestResult, self).startTestRun()
+    def report_tests_starting(self):
+        super(TextTestResult, self).report_tests_starting()
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
 
     def _progress_prefix_text(self):
@@ -546,9 +546,9 @@ class VerboseTestResult(ExtendedTestResult):
             result = a_string
         return result.ljust(final_width)
 
-    def startTestRun(self):
-        super(VerboseTestResult, self).startTestRun()
+    def report_tests_starting(self):
         self.stream.write('running %d tests...\n' % self.num_tests)
+        super(VerboseTestResult, self).report_tests_starting()
 
     def report_test_start(self, test):
         name = self._shortened_test_description(test)
@@ -4016,6 +4016,18 @@ def clone_test(test, new_id):
     """
     new_test = copy.copy(test)
     new_test.id = lambda: new_id
+    # XXX: Workaround <https://bugs.launchpad.net/testtools/+bug/637725>, which
+    # causes cloned tests to share the 'details' dict.  This makes it hard to
+    # read the test output for parameterized tests, because tracebacks will be
+    # associated with irrelevant tests.
+    try:
+        details = new_test._TestCase__details
+    except AttributeError:
+        # must be a different version of testtools than expected.  Do nothing.
+        pass
+    else:
+        # Reset the '__details' dict.
+        new_test._TestCase__details = {}
     return new_test
 
 

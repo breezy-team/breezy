@@ -27,6 +27,7 @@ import unittest
 import warnings
 
 from testtools import MultiTestResult
+from testtools.content import Content
 from testtools.content_type import ContentType
 from testtools.matchers import (
     DocTestMatches,
@@ -43,7 +44,6 @@ from bzrlib import (
     lockdir,
     memorytree,
     osutils,
-    progress,
     remote,
     repository,
     symbol_versioning,
@@ -326,19 +326,21 @@ class TestInterRepositoryScenarios(tests.TestCase):
         from bzrlib.tests.per_interrepository import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [("C0", "C1", "C2"), ("D0", "D1", "D2")]
+        formats = [("C0", "C1", "C2", "C3"), ("D0", "D1", "D2", "D3")]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
             ('C0,str,str',
              {'repository_format': 'C1',
               'repository_format_to': 'C2',
               'transport_readonly_server': 'b',
-              'transport_server': 'a'}),
+              'transport_server': 'a',
+              'extra_setup': 'C3'}),
             ('D0,str,str',
              {'repository_format': 'D1',
               'repository_format_to': 'D2',
               'transport_readonly_server': 'b',
-              'transport_server': 'a'})],
+              'transport_server': 'a',
+              'extra_setup': 'D3'})],
             scenarios)
 
 
@@ -1234,6 +1236,18 @@ class TestRunner(tests.TestCase):
         self.assertContainsRe(output_string, "--date [0-9.]+")
         self.assertLength(1, self._get_source_tree_calls)
 
+    def test_verbose_test_count(self):
+        """A verbose test run reports the right test count at the start"""
+        suite = TestUtil.TestSuite([
+            unittest.FunctionTestCase(lambda:None),
+            unittest.FunctionTestCase(lambda:None)])
+        self.assertEqual(suite.countTestCases(), 2)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream, verbosity=2)
+        # Need to use the CountingDecorator as that's what sets num_tests
+        result = self.run_test_runner(runner, tests.CountingDecorator(suite))
+        self.assertStartsWith(stream.getvalue(), "running 2 tests")
+
     def test_startTestRun(self):
         """run should call result.startTestRun()"""
         calls = []
@@ -1674,6 +1688,40 @@ class TestTestCase(tests.TestCase):
         test = Test('test_value')
         test.run(unittest.TestResult())
         self.assertEqual('original', obj.test_attr)
+
+
+class TestTestCloning(tests.TestCase):
+    """Tests that test cloning of TestCases (as used by multiply_tests)."""
+
+    def test_cloned_testcase_does_not_share_details(self):
+        """A TestCase cloned with clone_test does not share mutable attributes
+        such as details or cleanups.
+        """
+        class Test(tests.TestCase):
+            def test_foo(self):
+                self.addDetail('foo', Content('text/plain', lambda: 'foo'))
+        orig_test = Test('test_foo')
+        cloned_test = tests.clone_test(orig_test, orig_test.id() + '(cloned)')
+        orig_test.run(unittest.TestResult())
+        self.assertEqual('foo', orig_test.getDetails()['foo'].iter_bytes())
+        self.assertEqual(None, cloned_test.getDetails().get('foo'))
+
+    def test_double_apply_scenario_preserves_first_scenario(self):
+        """Applying two levels of scenarios to a test preserves the attributes
+        added by both scenarios.
+        """
+        class Test(tests.TestCase):
+            def test_foo(self):
+                pass
+        test = Test('test_foo')
+        scenarios_x = [('x=1', {'x': 1}), ('x=2', {'x': 2})]
+        scenarios_y = [('y=1', {'y': 1}), ('y=2', {'y': 2})]
+        suite = tests.multiply_tests(test, scenarios_x, unittest.TestSuite())
+        suite = tests.multiply_tests(suite, scenarios_y, unittest.TestSuite())
+        all_tests = list(tests.iter_suite_tests(suite))
+        self.assertLength(4, all_tests)
+        all_xys = sorted((t.x, t.y) for t in all_tests)
+        self.assertEqual([(1, 1), (1, 2), (2, 1), (2, 2)], all_xys)
 
 
 # NB: Don't delete this; it's not actually from 0.11!
