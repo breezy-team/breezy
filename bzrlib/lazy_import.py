@@ -87,6 +87,9 @@ class ScopeReplacer(object):
                           " to another variable?",
                 extra=e)
         obj = factory(self, scope, name)
+        if obj is self:
+            raise errors.IllegalUseOfScopeReplacer(name, msg="Object tried"
+                " to replace itself, check it's not using its own scope.")
         if ScopeReplacer._should_proxy:
             object.__setattr__(self, '_real_obj', obj)
         scope[name] = obj

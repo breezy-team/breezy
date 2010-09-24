@@ -3842,15 +3842,13 @@ class InterDifferingSerializer(InterRepository):
                 basis_id, delta, current_revision_id, parents_parents)
             cache[current_revision_id] = parent_tree
 
-    def _fetch_batch(self, revision_ids, basis_id, cache, a_graph=None):
+    def _fetch_batch(self, revision_ids, basis_id, cache):
         """Fetch across a few revisions.
 
         :param revision_ids: The revisions to copy
         :param basis_id: The revision_id of a tree that must be in cache, used
             as a basis for delta when no other base is available
         :param cache: A cache of RevisionTrees that we can use.
-        :param a_graph: A Graph object to determine the heads() of the
-            rich-root data stream.
         :return: The revision_id of the last converted tree. The RevisionTree
             for it will be in cache
         """
@@ -3924,7 +3922,7 @@ class InterDifferingSerializer(InterRepository):
         if root_keys_to_create:
             root_stream = _mod_fetch._new_root_data_stream(
                 root_keys_to_create, self._revision_id_to_root_id, parent_map,
-                self.source, graph=a_graph)
+                self.source)
             to_texts.insert_record_stream(root_stream)
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
@@ -3987,11 +3985,7 @@ class InterDifferingSerializer(InterRepository):
         cache[basis_id] = basis_tree
         del basis_tree # We don't want to hang on to it here
         hints = []
-        if self._converting_to_rich_root and len(revision_ids) > 100:
-            a_graph = _mod_fetch._get_rich_root_heads_graph(self.source,
-                                                            revision_ids)
-        else:
-            a_graph = None
+        a_graph = None
 
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
@@ -3999,8 +3993,7 @@ class InterDifferingSerializer(InterRepository):
                 pb.update('Transferring revisions', offset,
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
-                basis_id = self._fetch_batch(batch, basis_id, cache,
-                                             a_graph=a_graph)
+                basis_id = self._fetch_batch(batch, basis_id, cache)
             except:
                 self.source._safe_to_return_from_cache = False
                 self.target.abort_write_group()
