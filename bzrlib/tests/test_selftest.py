@@ -1739,17 +1739,6 @@ class TestTestCaseLogDetails(tests.TestCase):
         details = test.getDetails()
         self.assertTrue('log' in details)
 
-    # def test_success_has_no_log(self):
-    #     # TODO: We need to test the Subunit implementation here
-    #     class Test(tests.TestCase):
-    #         def test_success(self):
-    #             mutter('this test succeeded')
-    #     result = self._run_test(Test('test_success'))
-    #     self.assertEqual(1, len(result.errors))
-    #     result_content = result.errors[0][1]
-    #     self.assertContainsRe(result_content, 'Text attachment: log')
-    #     self.assertContainsRe(result_content, 'this test errored')
-
 
 # NB: Don't delete this; it's not actually from 0.11!
 @deprecated_function(deprecated_in((0, 11, 0)))
@@ -1910,7 +1899,7 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
                 tree.branch.repository.bzrdir.root_transport)
 
 
-class SelfTestHelper:
+class SelfTestHelper(object):
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
@@ -2065,6 +2054,32 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
         # And generate a list of the tests in  the suite.
         err = self.assertRaises(errors.NoSuchFile, self.run_selftest,
             load_list='missing file name', list_only=True)
+
+
+class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
+
+    _test_needs_features = [features.subunit]
+
+    def run_subunit_stream(self, test_suite_factory):
+        from subunit import ProtocolTestCase
+        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+            test_suite_factory=test_suite_factory)
+        test = ProtocolTestCase(stream)
+        result = unittest.TestResult()
+        test.run(result)
+        return stream, result
+
+    def test_success_has_no_log(self):
+        class Test(tests.TestCase):
+            def test_success(self):
+                mutter('this test succeeds')
+        def factory():
+            return TestUtil.TestSuite([Test('test_success')])
+        stream, result = self.run_subunit_stream(factory)
+        self.assertEqual(1, result.testsRun)
+        content = stream.getvalue()
+        self.assertNotContainsRe(content, '(?m)^log$')
+        self.assertNotContainsRe(content, 'this test succeeds')
 
 
 class TestRunBzr(tests.TestCase):
