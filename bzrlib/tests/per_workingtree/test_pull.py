@@ -16,16 +16,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
-import os
 
-from bzrlib import errors
-from bzrlib.errors import NotBranchError, NotVersionedError
-from bzrlib.osutils import basename
-from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-from bzrlib.trace import mutter
+from bzrlib.tests import per_workingtree
 
 
-class TestPull(TestCaseWithWorkingTree):
+class TestPull(per_workingtree.TestCaseWithWorkingTree):
 
     def get_pullable_trees(self):
         self.build_tree(['from/', 'from/file', 'to/'])

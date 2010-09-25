@@ -49,6 +49,7 @@ from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,
+    btree_index,
     errors,
     lockable_files,
     lockdir,
@@ -56,10 +57,6 @@ from bzrlib import (
     )
 
 from bzrlib.decorators import needs_write_lock, only_raises
-from bzrlib.btree_index import (
-    BTreeGraphIndex,
-    BTreeBuilder,
-    )
 from bzrlib.index import (
     GraphIndex,
     InMemoryGraphIndex,
@@ -231,11 +228,13 @@ class Pack(object):
         unlimited_cache = False
         if index_type == 'chk':
             unlimited_cache = True
-        setattr(self, index_type + '_index',
-            self.index_class(self.index_transport,
-                self.index_name(index_type, self.name),
-                self.index_sizes[self.index_offset(index_type)],
-                unlimited_cache=unlimited_cache))
+        index = self.index_class(self.index_transport,
+                    self.index_name(index_type, self.name),
+                    self.index_sizes[self.index_offset(index_type)],
+                    unlimited_cache=unlimited_cache)
+        if index_type == 'chk':
+            index._leaf_factory = btree_index._gcchk_factory
+        setattr(self, index_type + '_index', index)
 
 
 class ExistingPack(Pack):
@@ -1680,7 +1679,7 @@ class RepositoryPackCollection(object):
             txt_index = self._make_index(name, '.tix')
             sig_index = self._make_index(name, '.six')
             if self.chk_index is not None:
-                chk_index = self._make_index(name, '.cix', unlimited_cache=True)
+                chk_index = self._make_index(name, '.cix', is_chk=True)
             else:
                 chk_index = None
             result = ExistingPack(self._pack_transport, name, rev_index,
@@ -1706,7 +1705,7 @@ class RepositoryPackCollection(object):
             sig_index = self._make_index(name, '.six', resume=True)
             if self.chk_index is not None:
                 chk_index = self._make_index(name, '.cix', resume=True,
-                                             unlimited_cache=True)
+                                             is_chk=True)
             else:
                 chk_index = None
             result = self.resumed_pack_factory(name, rev_index, inv_index,
@@ -1742,7 +1741,7 @@ class RepositoryPackCollection(object):
         return self._index_class(self.transport, 'pack-names', None
                 ).iter_all_entries()
 
-    def _make_index(self, name, suffix, resume=False, unlimited_cache=False):
+    def _make_index(self, name, suffix, resume=False, is_chk=False):
         size_offset = self._suffix_offsets[suffix]
         index_name = name + suffix
         if resume:
@@ -1751,8 +1750,11 @@ class RepositoryPackCollection(object):
         else:
             transport = self._index_transport
             index_size = self._names[name][size_offset]
-        return self._index_class(transport, index_name, index_size,
-                                 unlimited_cache=unlimited_cache)
+        index = self._index_class(transport, index_name, index_size,
+                                  unlimited_cache=is_chk)
+        if is_chk and self._index_class is btree_index.BTreeGraphIndex: 
+            index._leaf_factory = btree_index._gcchk_factory
+        return index
 
     def _max_pack_count(self, total_revisions):
         """Return the maximum number of packs to use for total revisions.
@@ -2829,8 +2831,8 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
     supports_external_lookups = True
     # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
+    index_builder_class = btree_index.BTreeBuilder
+    index_class = btree_index.BTreeGraphIndex
 
     @property
     def _serializer(self):
@@ -2865,8 +2867,8 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     supports_tree_reference = False # no subtrees
     supports_external_lookups = True
     # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
+    index_builder_class = btree_index.BTreeBuilder
+    index_class = btree_index.BTreeGraphIndex
 
     @property
     def _serializer(self):
@@ -2907,8 +2909,8 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     supports_tree_reference = True
     supports_external_lookups = True
     # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
+    index_builder_class = btree_index.BTreeBuilder
+    index_class = btree_index.BTreeGraphIndex
 
     @property
     def _serializer(self):
@@ -2916,7 +2918,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development-subtree')
+            'development5-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass

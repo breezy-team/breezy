@@ -33,6 +33,7 @@ cdef extern from "_static_tuple_c.h":
     int import_static_tuple_c() except -1
     StaticTuple StaticTuple_New(Py_ssize_t)
     StaticTuple StaticTuple_Intern(StaticTuple)
+    StaticTuple StaticTuple_FromSequence(object)
 
     # Steals a reference and val must be a valid type, no checking is done
     void StaticTuple_SET_ITEM(StaticTuple key, Py_ssize_t offset, object val)

@@ -36,6 +36,7 @@ Architecture overviews
    :maxdepth: 1
 
    transports
+   ui
 
 Releasing and Packaging
 =======================

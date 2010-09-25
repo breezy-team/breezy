@@ -27,22 +27,18 @@ Specific tests for individual variations are in other places such as:
 
 from bzrlib import (
     errors,
-    osutils,
-    progress,
     tests,
     transform,
     )
-from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from bzrlib.tests.per_workingtree import (
     make_scenarios as wt_make_scenarios,
     make_scenario as wt_make_scenario,
     )
-from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.transform import TransformPreview
 from bzrlib.workingtree import (
     WorkingTreeFormat,
-    WorkingTreeFormat3,
     _legacy_formats,
     )
 from bzrlib.workingtree_4 import (
@@ -98,7 +94,7 @@ class TestTreeImplementationSupport(tests.TestCaseWithTransport):
         self.assertIsInstance(tree, RevisionTree)
 
 
-class TestCaseWithTree(TestCaseWithBzrDir):
+class TestCaseWithTree(TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath):
         made_control = self.make_bzrdir(relpath, format=

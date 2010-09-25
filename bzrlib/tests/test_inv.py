@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -588,6 +588,11 @@ class TestInventory(TestCase):
         inv.root = None
         self.assertFalse(inv.is_root('TREE_ROOT'))
         self.assertFalse(inv.is_root('booga'))
+
+    def test_entries_for_empty_inventory(self):
+        """Test that entries() will not fail for an empty inventory"""
+        inv = Inventory(root_id=None)
+        self.assertEqual([], inv.entries())
 
 
 class TestInventoryEntry(TestCase):

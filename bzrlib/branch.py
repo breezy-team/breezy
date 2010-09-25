@@ -25,6 +25,7 @@ from bzrlib import (
         bzrdir,
         cache_utf8,
         config as _mod_config,
+        controldir,
         debug,
         errors,
         lockdir,
@@ -64,7 +65,7 @@ BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 BZR_BRANCH_FORMAT_6 = "Bazaar Branch Format 6 (bzr 0.15)\n"
 
 
-class Branch(bzrdir.ControlComponent):
+class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
     :ivar base:
@@ -3102,8 +3103,12 @@ class PullResult(_Result):
     :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: pull used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
@@ -3134,8 +3139,12 @@ class BranchPushResult(_Result):
         target, otherwise it will be None.
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: push used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):

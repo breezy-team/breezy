@@ -112,14 +112,21 @@ class BzrProfiler(object):
 
 
 class Stats(object):
-    """XXX docstring"""
+    """Wrapper around the collected data.
+
+    A Stats instance is created when the profiler finishes. Normal
+    usage is to use save() to write out the data to a file, or pprint()
+    to write human-readable information to the command line.
+    """
 
     def __init__(self, data, threads):
         self.data = data
         self.threads = threads
 
     def sort(self, crit="inlinetime"):
-        """XXX docstring"""
+        """Sort the data by the supplied critera.
+
+        :param crit: the data attribute used as the sort key."""
         if crit not in profiler_entry.__dict__:
             raise ValueError, "Can't sort by %s" % crit
         self.data.sort(lambda b, a: cmp(getattr(a, crit),
@@ -130,7 +137,12 @@ class Stats(object):
                                               getattr(b, crit)))
 
     def pprint(self, top=None, file=None):
-        """XXX docstring"""
+        """Pretty-print the data as plain text for human consumption.
+
+        :param top: only output the top n entries.
+            The default value of None means output all data.
+        :param file: the output file; if None, output will
+            default to stdout."""
         if file is None:
             file = sys.stdout
         d = self.data

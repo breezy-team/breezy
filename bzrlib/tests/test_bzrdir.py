@@ -26,6 +26,7 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     help_topics,
     repository,
@@ -69,37 +70,37 @@ class TestDefaultFormat(TestCase):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirFormat6
         self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
-        bzrdir.BzrDirFormat._set_default_format(SampleBzrDirFormat())
+        controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:///')
             self.failUnless(isinstance(result, SampleBzrDir))
         finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
+            controldir.ControlDirFormat._set_default_format(old_format)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
 
 class TestFormatRegistry(TestCase):
 
     def make_format_registry(self):
-        my_format_registry = bzrdir.BzrDirFormatRegistry()
+        my_format_registry = controldir.ControlDirFormatRegistry()
         my_format_registry.register('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
         my_format_registry.register_lazy('lazy', 'bzrlib.bzrdir',
             'BzrDirFormat6', 'Format registered lazily', deprecated=True)
-        my_format_registry.register_metadir('knit',
+        bzrdir.register_metadir(my_format_registry, 'knit',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
         my_format_registry.set_default('knit')
-        my_format_registry.register_metadir(
+        bzrdir.register_metadir(my_format_registry,
             'branch6',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='bzrlib.branch.BzrBranchFormat6',
             experimental=True)
-        my_format_registry.register_metadir(
+        bzrdir.register_metadir(my_format_registry,
             'hidden format',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
@@ -174,7 +175,7 @@ class TestFormatRegistry(TestCase):
             bzrdir.format_registry.set_default_repository(old_default)
 
     def test_aliases(self):
-        a_registry = bzrdir.BzrDirFormatRegistry()
+        a_registry = controldir.ControlDirFormatRegistry()
         a_registry.register('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
@@ -1058,7 +1059,9 @@ class NotBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
     def _known_formats(self):
         return set([NotBzrDirFormat()])
 
-    @classmethod
+
+class NotBzrDirProber(controldir.Prober):
+
     def probe_transport(self, transport):
         """Our format is present if the transport ends in '.not/'."""
         if transport.has('.not'):
@@ -1078,16 +1081,17 @@ class TestNotBzrDir(TestCaseWithTransport):
         dir = format.initialize(self.get_url())
         self.assertIsInstance(dir, NotBzrDir)
         # now probe for it.
-        bzrlib.bzrdir.BzrDirFormat.register_control_format(format)
+        controldir.ControlDirFormat.register_prober(NotBzrDirProber)
         try:
             found = bzrlib.bzrdir.BzrDirFormat.find_format(
                 get_transport(self.get_url()))
             self.assertIsInstance(found, NotBzrDirFormat)
         finally:
-            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(format)
+            controldir.ControlDirFormat.unregister_prober(NotBzrDirProber)
 
     def test_included_in_known_formats(self):
-        bzrlib.bzrdir.BzrDirFormat.register_control_format(NotBzrDirFormat)
+        not_format = NotBzrDirFormat()
+        bzrlib.controldir.ControlDirFormat.register_format(not_format)
         try:
             formats = bzrlib.bzrdir.BzrDirFormat.known_formats()
             for format in formats:
@@ -1095,7 +1099,7 @@ class TestNotBzrDir(TestCaseWithTransport):
                     return
             self.fail("No NotBzrDirFormat in %s" % formats)
         finally:
-            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(NotBzrDirFormat)
+            bzrlib.controldir.ControlDirFormat.unregister_format(not_format)
 
 
 class NonLocalTests(TestCaseWithTransport):

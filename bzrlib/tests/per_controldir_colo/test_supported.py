@@ -25,12 +25,12 @@ from bzrlib.transport import (
     get_transport,
     )
 
-from bzrlib.tests.per_bzrdir_colo import (
-    TestCaseWithBzrDir,
+from bzrlib.tests.per_controldir_colo import (
+    TestCaseWithControlDir,
     )
 
 
-class TestColocatedBranchSupport(TestCaseWithBzrDir):
+class TestColocatedBranchSupport(TestCaseWithControlDir):
 
     def test_destroy_colocated_branch(self):
         branch = self.make_branch('branch')
