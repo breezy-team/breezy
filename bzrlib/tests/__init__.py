@@ -4508,7 +4508,7 @@ try:
         def addSuccess(self, test, details=None):
             # The subunit client always includes the details in the subunit
             # stream, but we don't want to include it in ours.
-            if 'log' in details:
+            if details is not None and 'log' in details:
                 del details['log']
             return super(SubUnitBzrProtocolClient, self).addSuccess(
                 test, details)
