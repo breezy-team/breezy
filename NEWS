@@ -42,6 +42,10 @@ API Changes
 Internals
 *********
 
+* When running ``bzr selftest --subunit`` the subunit stream will no
+  longer include the "log" information for tests which are considered to
+  be 'successes' (success, xfail, skip, etc) (John Arbash Meinel)
+
 Testing
 *******
 
