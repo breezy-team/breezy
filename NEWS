@@ -23,6 +23,9 @@ Bug Fixes
   needed to succesfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
 
+* Skip the tests that requires respecting the chmod bits when running as root.
+  (Vincent Ladeuil, #646133)
+
 Improvements
 ************
 
