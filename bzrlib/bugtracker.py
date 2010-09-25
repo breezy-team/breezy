@@ -93,7 +93,7 @@ If present, the location of the Bugzilla bug tracker referred to by
 --fixes`` to mark bugs in that tracker as being fixed by that commit. For
 example::
 
-    bugzilla_squid_url = http://www.squid-cache.org/bugs
+    bugzilla_squid_url = http://bugs.squid-cache.org
 
 would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
 fixed.
