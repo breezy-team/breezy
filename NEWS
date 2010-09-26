@@ -31,6 +31,9 @@ API Changes
 Internals
 *********
 
+* Small change to GroupCompressBlock to work more in terms of 'chunks'
+  rather than 'content' for its compressed storage. (John Arbash Meinel)
+
 Testing
 *******
 

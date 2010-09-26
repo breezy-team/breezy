@@ -215,6 +215,10 @@ class GroupCompressBlock(object):
 
     @property
     def _z_content(self):
+        """Return z_content_chunks as a simple string.
+
+        Meant only to be used by the test suite.
+        """
         if self._z_content_chunks is not None:
             return ''.join(self._z_content_chunks)
         return None
