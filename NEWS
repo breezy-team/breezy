@@ -124,6 +124,86 @@ Testing
 * ``build_tree_contents`` can create symlinks.
   (Martin Pool, John Arbash Meinel)
 
+
+bzr 2.0.6
+#########
+
+:2.0.6: 2010-09-17
+
+The sixth release in our 2.0 series addresses several user-inconvenience
+bugs.  None are critical, but upgrading is recommended for all users on
+earlier 2.0 releases.
+
+Bug Fixes
+*********
+
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
+
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.  
+  (Martin Pool, #192859)
+
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
+* ``bzr revert`` now only takes write lock on working tree, instead of on 
+  both working tree and branch.
+  (Danny van Heumen, #498409)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
+
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
+* Fix ``AttributeError on parent.children`` when adding a file under a 
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
+
+* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
+  which can result in "missing referenced chk root keys" errors when
+  fetching from repositories with affected revisions.
+  (Andrew Bennetts, #522637)
+
+* Raise ValueError instead of a string exception.
+  (John Arbash Meinel, #586926)
+
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
+
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
+
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
+
+
+Testing
+*******
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
+
+
 bzr 2.1.2
 #########
 
@@ -567,85 +647,6 @@ Testing
 * The test progress bar no longer distinguishes tests that 'errored' from
   tests that 'failed' - they're all just failures.
   (Martin Pool)
-
-bzr 2.0.6
-#########
-
-:2.0.6: 2010-09-17
-
-The sixth release in our 2.0 series addresses several user-inconvenience
-bugs.  None are critical, but upgrading is recommended for all users on
-earlier 2.0 releases.
-
-Bug Fixes
-*********
-
-* Additional merges after an unrelated branch has been merged with its
-  history no longer crash when deleted files are involved.
-  (Vincent Ladeuil, John Arbash Meinel, #375898)
-
-* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
-  previously-unversioned directory within the tree: the directory is
-  marked versioned too.  
-  (Martin Pool, #192859)
-
-* ``bzr commit SYMLINK`` now works, rather than trying to commit the
-  target of the symlink.
-  (Martin Pool, John Arbash Meinel, #128562)
-
-* ``bzr revert`` now only takes write lock on working tree, instead of on 
-  both working tree and branch.
-  (Danny van Heumen, #498409)
-
-* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
-  permissions as ``.bzr`` directory on a POSIX OS.
-  (Parth Malwankar, #262450)
-
-* Don't traceback trying to unversion children files of an already
-  unversioned directory.  (Vincent Ladeuil, #494221)
-
-* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
-  contains only NUL bytes).  Instead warn the user, and allow ``bzr
-  break-lock`` to remove it.  (Andrew Bennetts, #619872)
-  
-* Fix ``AttributeError on parent.children`` when adding a file under a 
-  directory that was a symlink in the previous commit.
-  (Martin Pool, #192859)
-
-* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
-  which can result in "missing referenced chk root keys" errors when
-  fetching from repositories with affected revisions.
-  (Andrew Bennetts, #522637)
-
-* Raise ValueError instead of a string exception.
-  (John Arbash Meinel, #586926)
-
-* Reduce peak memory by one copy of compressed text.
-  (John Arbash Meinel, #566940)
-
-* Repositories accessed via a smart server now reject being stacked on a
-  repository in an incompatible format, as is the case when accessing them
-  via other methods.  This was causing fetches from those repositories via
-  a smart server (e.g. using ``bzr branch``) to receive invalid data.
-  (Andrew Bennetts, #562380)
-
-* Selftest with versions of subunit that support ``stopTestRun`` will no longer
-  error. This error was caused by 2.0 not being updated when upstream
-  python merged the end of run patch, which chose ``stopTestRun`` rather than
-  ``done``. (Robert Collins, #571437)
-
-* When passing a file to ``UTF8DirReader`` make sure to close the current
-  directory file handle after the chdir fails. Otherwise when passing many
-  filenames into a command line ``bzr status`` we would leak descriptors.
-  (John Arbash Meinel, #583486)
-
-
-Testing
-*******
-
-* ``build_tree_contents`` can create symlinks.
-  (Martin Pool, John Arbash Meinel)
-
 
 bzr 2.0.5
 #########
