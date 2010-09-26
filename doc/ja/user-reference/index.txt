@@ -614,7 +614,7 @@ bugzilla_<tracker_abbreviation>_url
 存在するのであれば、Bugzillaのバグトラッカーの位置は <tracker_abbreviation> によって参照されます。
 そのバグトラッカーのバグをそのコミットで修正されたものとしてマークするためにはこのオプションは ``bzr commit --fixes`` と一緒に使用できます::
 
-    bugzilla_squid_url = http://www.squid-cache.org/bugs
+    bugzilla_squid_url = http://bugs.squid-cache.org
 
 上記の例はSquidのバグ 1234が修正されたものとしてマークするために ``bzr commit --fixes squid:1234`` を許可します。
 
