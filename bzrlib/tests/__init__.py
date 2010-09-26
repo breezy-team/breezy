@@ -846,6 +846,22 @@ class TestCase(testtools.TestCase):
         import pdb
         pdb.Pdb().set_trace(sys._getframe().f_back)
 
+    def discardDetail(self, name):
+        """Extend the addDetail, getDetails api so we can remove a detail.
+
+        eg. bzr always adds the 'log' detail at startup, but we don't want to
+        include it for skipped, xfail, etc tests.
+
+        It is safe to call this for a detail that doesn't exist, in case this
+        gets called multiple times.
+        """
+        # We cheat. details is stored in __details which means we shouldn't
+        # touch it. but getDetails() returns the dict directly, so we can
+        # mutate it.
+        details = self.getDetails()
+        if name in details:
+            del details[name]
+
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
 
@@ -1569,7 +1585,12 @@ class TestCase(testtools.TestCase):
         """This test has failed for some known reason."""
         raise KnownFailure(reason)
 
+    def _suppress_log(self):
+        """Remove the log info from details."""
+        self.discardDetail('log')
+
     def _do_skip(self, result, reason):
+        self._suppress_log()
         addSkip = getattr(result, 'addSkip', None)
         if not callable(addSkip):
             result.addSuccess(result)
@@ -1578,6 +1599,7 @@ class TestCase(testtools.TestCase):
 
     @staticmethod
     def _do_known_failure(self, result, e):
+        self._suppress_log()
         err = sys.exc_info()
         addExpectedFailure = getattr(result, 'addExpectedFailure', None)
         if addExpectedFailure is not None:
@@ -1591,6 +1613,7 @@ class TestCase(testtools.TestCase):
             reason = 'No reason given'
         else:
             reason = e.args[0]
+        self._suppress_log ()
         addNotApplicable = getattr(result, 'addNotApplicable', None)
         if addNotApplicable is not None:
             result.addNotApplicable(self, reason)
@@ -1598,8 +1621,29 @@ class TestCase(testtools.TestCase):
             self._do_skip(result, reason)
 
     @staticmethod
+    def _report_skip(self, result, err):
+        """Override the default _report_skip.
+
+        We want to strip the 'log' detail. If we waint until _do_skip, it has
+        already been formatted into the 'reason' string, and we can't pull it
+        out again.
+        """
+        self._suppress_log()
+        super(TestCase, self)._report_skip(self, result, err)
+
+    @staticmethod
+    def _report_expected_failure(self, result, err):
+        """Strip the log.
+
+        See _report_skip for motivation.
+        """
+        self._suppress_log()
+        super(TestCase, self)._report_expected_failure(self, result, err)
+
+    @staticmethod
     def _do_unsupported_or_skip(self, result, e):
         reason = e.args[0]
+        self._suppress_log()
         addNotSupported = getattr(result, 'addNotSupported', None)
         if addNotSupported is not None:
             result.addNotSupported(self, reason)
@@ -4459,10 +4503,20 @@ SubUnitFeature = _CompatabilityThunkFeature(
 try:
     from subunit import TestProtocolClient
     from subunit.test_results import AutoTimingTestResultDecorator
+    class SubUnitBzrProtocolClient(TestProtocolClient):
+
+        def addSuccess(self, test, details=None):
+            # The subunit client always includes the details in the subunit
+            # stream, but we don't want to include it in ours.
+            if details is not None and 'log' in details:
+                del details['log']
+            return super(SubUnitBzrProtocolClient, self).addSuccess(
+                test, details)
+
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
             result = AutoTimingTestResultDecorator(
-                TestProtocolClient(self.stream))
+                SubUnitBzrProtocolClient(self.stream))
             test.run(result)
             return result
 except ImportError:
